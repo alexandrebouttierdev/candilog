@@ -86,15 +86,18 @@ icon_set! {
 }
 
 /// Taille optique d'une icône de ligne ou de bouton.
-pub const SM: f32 = 14.0;
-/// Taille optique d'une icône de navigation.
-pub const MD: f32 = 15.0;
+pub const SM: f32 = 16.0;
+/// Taille optique d'une icône de navigation, portée par une pastille.
+pub const MD: f32 = 18.0;
 /// Taille optique d'une icône de toolbar ou d'en-tête.
-pub const LG: f32 = 16.0;
+pub const LG: f32 = 20.0;
 
 const _: () = assert!(SM < MD, "tailles optiques non ordonnées");
 const _: () = assert!(MD < LG, "tailles optiques non ordonnées");
-const _: () = assert!(LG <= 16.0, "icône trop grande pour une interface dense");
+const _: () = assert!(
+    LG <= 20.0,
+    "densité Confort : icône disproportionnée par rapport au texte"
+);
 
 /// Rôle d'encrage d'une icône.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
