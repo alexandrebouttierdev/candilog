@@ -120,7 +120,10 @@ mod invariants {
     // Densité Confort : ces planchers remplacent les plafonds de la densité
     // dense précédente. Ils protègent contre un resserrement accidentel.
     const _: () = assert!(size::ROW >= 40.0, "densité Confort : ligne trop basse");
-    const _: () = assert!(size::TOOLBAR >= 48.0, "densité Confort : toolbar trop basse");
+    const _: () = assert!(
+        size::TOOLBAR >= 48.0,
+        "densité Confort : toolbar trop basse"
+    );
     const _: () = assert!(size::CONTROL >= 32.0, "densité Confort : contrôle trop bas");
     const _: () = assert!(space::XL >= 16.0, "densité Confort : panneau trop serré");
     const _: () = assert!(
@@ -161,7 +164,10 @@ mod invariants {
     );
     const _: () = assert!(size::MASTER_MIN < size::MASTER, "volet maître incohérent");
     const _: () = assert!(size::MASTER <= 420.0, "volet maître trop large");
-    const _: () = assert!(size::RAIL_COMPACT < size::RAIL, "largeurs de rail inversées");
+    const _: () = assert!(
+        size::RAIL_COMPACT < size::RAIL,
+        "largeurs de rail inversées"
+    );
     const _: () = assert!(
         size::NAV_TILE_COMPACT < size::NAV_TILE,
         "tailles de tuile inversées"

@@ -16,6 +16,7 @@ pub mod list;
 pub mod meter;
 pub mod notification;
 pub mod overlay;
+pub mod pane;
 pub mod rail;
 pub mod sidebar;
 pub mod state;
