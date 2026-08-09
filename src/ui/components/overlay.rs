@@ -184,6 +184,7 @@ fn dialog_surface(theme: &Theme) -> container::Style {
 #[cfg(test)]
 mod tests {
     use super::Size;
+    use crate::ui::theme::metrics::size;
 
     #[test]
     fn les_gabarits_suivent_l_usage() {
@@ -193,7 +194,6 @@ mod tests {
 
     #[test]
     fn une_confirmation_reste_etroite() {
-        // Densité Confort : le plafond suit la nouvelle largeur de DIALOG_CONFIRM.
-        assert!(Size::Confirm.width() <= 420.0);
+        assert!(Size::Confirm.width() <= size::DIALOG_CONFIRM);
     }
 }
