@@ -7,7 +7,8 @@ mod dialogs;
 use super::{App, Message};
 use crate::navigation::Route;
 use crate::ui::components::icon::Icon;
-use crate::ui::components::sidebar::{sidebar, Load};
+use crate::ui::components::pane::pane;
+use crate::ui::components::rail::{rail, Load};
 use crate::ui::components::{icon, notification, overlay, state, surface, toolbar, typo};
 use crate::ui::format;
 use crate::ui::theme::metrics::space;
@@ -26,21 +27,29 @@ pub fn view(app: &App) -> Element<'_, Message> {
         .width(Length::Fill)
         .height(Length::Fill);
 
-    let shell: Element<'_, Message> = row![
-        sidebar(
-            app.route,
-            load(app),
-            Message::Navigate,
-            Message::ToggleTheme,
-            app.is_dark,
-        ),
-        container(workspace)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .style(styles::canvas),
-    ]
-    .height(Length::Fill)
-    .into();
+    let section = app.route.section();
+    let mut bands = row![rail(
+        section,
+        load(app),
+        app.layout(),
+        |section: crate::navigation::Section| Message::Navigate(section.default_route()),
+        Message::ToggleTheme,
+        app.is_dark,
+    )]
+    .height(Length::Fill);
+
+    if let Some(volet) = pane(section, app.route, load(app), Message::Navigate) {
+        bands = bands.push(volet);
+    }
+
+    let shell: Element<'_, Message> = bands
+        .push(
+            container(workspace)
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .style(styles::canvas),
+        )
+        .into();
 
     let mut layers = vec![shell];
     if let Some(dialog) = app.dialog {
