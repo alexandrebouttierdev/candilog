@@ -13,7 +13,7 @@ use crate::navigation::{Route, Section};
 use crate::ui::theme::metrics::{radius, size, space, stroke};
 use crate::ui::theme::tokens::tokens;
 use crate::ui::theme::Layout;
-use iced::widget::{button, column, container, Space};
+use iced::widget::{button, column, container, stack, Space};
 use iced::{Alignment, Background, Border, Element, Length, Theme};
 
 /// Charge à traiter, agrégée par groupe.
@@ -87,7 +87,11 @@ pub fn rail<'a, Message: Clone + 'a>(
     }
 
     let footer = tile(
-        if is_dark { icon::Icon::Sun } else { icon::Icon::Moon },
+        if is_dark {
+            icon::Icon::Sun
+        } else {
+            icon::Icon::Moon
+        },
         if is_dark { "Nuit" } else { "Jour" },
         "Changer d'apparence",
         false,
@@ -120,7 +124,7 @@ pub fn rail<'a, Message: Clone + 'a>(
                 border: Border {
                     color: palette.border,
                     width: stroke::HAIRLINE,
-                    radius: 0.0.into(),
+                    radius: radius::NONE.into(),
                 },
                 ..container::Style::default()
             }
@@ -182,29 +186,38 @@ fn tile<'a, Message: Clone + 'a>(
     };
 
     let pastille = container(icon::icon(kind, icon::MD, pastille_ink(active)))
-    .width(Length::Fixed(size::PASTILLE))
-    .height(Length::Fixed(size::PASTILLE))
-    .align_x(Alignment::Center)
-    .align_y(Alignment::Center)
-    .style(move |theme: &Theme| {
-        let palette = tokens(theme);
-        let (fill, edge) = pastille_colors(active, &palette);
-        container::Style {
-            background: Some(Background::Color(fill)),
-            border: Border {
-                color: edge,
-                width: stroke::HAIRLINE,
-                radius: radius::CONTROL.into(),
-            },
-            ..container::Style::default()
-        }
-    });
+        .width(Length::Fixed(size::PASTILLE))
+        .height(Length::Fixed(size::PASTILLE))
+        .align_x(Alignment::Center)
+        .align_y(Alignment::Center)
+        .style(move |theme: &Theme| {
+            let palette = tokens(theme);
+            let (fill, edge) = pastille_colors(active, &palette);
+            container::Style {
+                background: Some(Background::Color(fill)),
+                border: Border {
+                    color: edge,
+                    width: stroke::HAIRLINE,
+                    radius: radius::CONTROL.into(),
+                },
+                ..container::Style::default()
+            }
+        });
 
+    // Le compteur se pose en surimpression du coin haut-droit de la pastille,
+    // et non à côté : juxtaposé, il déborderait de la tuile repliée, dont la
+    // pastille (32 px) laisse trop peu de marge (8 px) pour un badge accolé.
     let marked: Element<'a, Message> = match count {
-        Some(value) => iced::widget::row![pastille, badge::count(value)]
-            .spacing(space::XXS)
-            .align_y(Alignment::Start)
-            .into(),
+        Some(value) => stack(vec![
+            pastille.into(),
+            container(badge::count(value))
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .align_x(Alignment::End)
+                .align_y(Alignment::Start)
+                .into(),
+        ])
+        .into(),
         None => pastille.into(),
     };
 
@@ -349,17 +362,43 @@ mod tests {
 
     /// Les cinq tuiles, la marque et le pied doivent tenir dans la hauteur
     /// minimale de la fenêtre : un rail qui scrolle perd sa raison d'être.
+    ///
+    /// Le calcul rejoue, jeton par jeton, ce que `rail()` et `brand()`
+    /// construisent réellement : les paddings des deux conteneurs de tuiles,
+    /// les deux filets `divider()`, et la hauteur de la légende de la marque
+    /// dérivée de `typography::CAPTION` (aucun littéral de mise en page).
+    /// Le mode replié n'est pas mesuré : plus compact, il ne peut que mieux
+    /// tenir dans la hauteur minimale que le mode déplié testé ici.
     #[test]
     fn le_rail_tient_dans_la_hauteur_minimale() {
         use crate::ui::theme::layout::MIN_HEIGHT;
-        use crate::ui::theme::metrics::{size, space};
+        use crate::ui::theme::metrics::{size, space, stroke};
+        use crate::ui::theme::typography as font;
+        use iced::widget::text::LineHeight;
+        use iced::Pixels;
 
-        let tuiles = Section::ALL.len() as f32 * size::NAV_TILE
-            + (Section::ALL.len() as f32 - 1.0) * space::XS;
-        let marque = size::PASTILLE * 0.75 + 2.0 * space::LG + 16.0;
-        let pied = size::NAV_TILE + 2.0 * space::SM;
+        let n = Section::ALL.len() as f32;
+
+        // `typo::caption` ne fixe pas de hauteur de ligne : elle hérite donc
+        // du facteur par défaut d'Iced, résolu ici plutôt que recopié en dur.
+        let caption_height = LineHeight::default().to_absolute(Pixels(font::CAPTION)).0;
+
+        // `brand()` : padding du conteneur, icône, espacement, légende.
+        let marque = 2.0 * space::LG + size::PASTILLE * 0.75 + space::XS + caption_height;
+
+        // Les deux `surface::divider()` du rail, un filet chacun.
+        let filets = 2.0 * stroke::HAIRLINE;
+
+        // `container(tiles).padding([space::SM, space::XS])` : padding
+        // vertical du conteneur, puis les cinq tuiles et leurs quatre écarts.
+        let tuiles = 2.0 * space::SM + n * size::NAV_TILE + (n - 1.0) * space::XS;
+
+        // `container(footer).padding([space::SM, space::XS])` : même padding
+        // autour de l'unique tuile du pied.
+        let pied = 2.0 * space::SM + size::NAV_TILE;
+
         assert!(
-            marque + tuiles + pied <= MIN_HEIGHT,
+            marque + filets + tuiles + pied <= MIN_HEIGHT,
             "le rail déborde de la hauteur minimale de la fenêtre"
         );
     }
