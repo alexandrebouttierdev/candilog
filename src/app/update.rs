@@ -36,6 +36,9 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 return iced::exit();
             }
         }
+        Message::WindowResized(size) => {
+            app.window_size = size;
+        }
         Message::Navigate(route) => {
             app.route = route;
             app.search.clear();
@@ -1274,6 +1277,7 @@ pub fn subscription(_app: &App) -> Subscription<Message> {
     Subscription::batch([
         iced::time::every(Duration::from_secs(1)).map(|_| Message::Tick),
         keyboard::on_key_press(shortcut),
+        iced::window::resize_events().map(|(_id, size)| Message::WindowResized(size)),
     ])
 }
 

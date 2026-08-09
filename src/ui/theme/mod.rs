@@ -5,12 +5,14 @@
 //! l'application ne connaît que les jetons, les tons et les styles exposés ici.
 
 pub mod color;
+pub mod layout;
 pub mod metrics;
 pub mod styles;
 pub mod tokens;
 pub mod typography;
 
 pub use color::{Marker, Tone};
+pub use layout::Layout;
 pub use tokens::{tokens, Tokens};
 
 use iced::{theme, Theme};

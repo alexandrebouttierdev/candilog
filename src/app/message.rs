@@ -54,6 +54,8 @@ pub enum Message {
     CaptureWindow(Option<iced::window::Id>),
     /// Pixels rendus par Iced pour la revue visuelle.
     CapturedForReview(iced::window::Screenshot),
+    /// La fenêtre a été redimensionnée.
+    WindowResized(iced::Size),
     /// Navigation vers un écran.
     Navigate(Route),
     /// Recharge les données depuis SQLite.

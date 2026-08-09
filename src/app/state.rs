@@ -452,6 +452,8 @@ pub struct App {
     pub profile_section: ProfileSection,
     /// Largeur de la page dans les plans de travail de document.
     pub document_width: f32,
+    /// Dernière taille connue de la fenêtre, source des décisions de mise en page.
+    pub window_size: iced::Size,
 }
 
 impl App {
@@ -517,6 +519,10 @@ impl App {
             settings_section: SettingsSection::default(),
             profile_section: ProfileSection::default(),
             document_width: crate::ui::components::document::DEFAULT_WIDTH,
+            window_size: iced::Size::new(
+                crate::ui::theme::layout::MIN_WIDTH,
+                crate::ui::theme::layout::MIN_HEIGHT,
+            ),
         };
         if let Ok(route) = std::env::var("CANDILOG_CAPTURE_ROUTE") {
             app.route = match route.as_str() {
@@ -598,6 +604,12 @@ impl App {
             iced::Task::none()
         };
         (app, capture)
+    }
+
+    /// Décisions de mise en page pour la taille de fenêtre courante.
+    #[must_use]
+    pub fn layout(&self) -> crate::ui::theme::Layout {
+        crate::ui::theme::Layout::from_size(self.window_size)
     }
 
     /// Recharge les données sans remplacer un instantané valide en cas d'erreur.
