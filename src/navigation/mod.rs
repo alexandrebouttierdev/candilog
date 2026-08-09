@@ -54,6 +54,30 @@ impl Section {
         }
     }
 
+    /// Intitulé court affiché sous la pastille d'une tuile de rail.
+    #[must_use]
+    pub const fn short_label(self) -> &'static str {
+        match self {
+            Self::Pilotage => "Pilotage",
+            Self::Recherche => "Recherche",
+            Self::Relations => "Relations",
+            Self::Documents => "Documents",
+            Self::Systeme => "Réglages",
+        }
+    }
+
+    /// Intitulé complet, donné en infobulle lorsque la tuile est repliée.
+    #[must_use]
+    pub const fn long_label(self) -> &'static str {
+        match self {
+            Self::Pilotage => "Tableau de bord",
+            Self::Recherche => "Suivi des candidatures",
+            Self::Relations => "Entreprises et contacts",
+            Self::Documents => "CV et lettres",
+            Self::Systeme => "Profil et paramètres",
+        }
+    }
+
     /// Sections dans l'ordre de la barre latérale.
     pub const ALL: [Self; 5] = [
         Self::Pilotage,
@@ -282,6 +306,15 @@ mod tests {
             let route = section.default_route();
             assert_eq!(route.section(), section);
             assert_eq!(Some(route), Route::of_section(section).first().copied());
+        }
+    }
+
+    #[test]
+    fn chaque_groupe_porte_deux_intitules_distincts() {
+        for section in Section::ALL {
+            assert!(!section.short_label().is_empty());
+            assert!(!section.long_label().is_empty());
+            assert_ne!(section.short_label(), section.long_label());
         }
     }
 }
