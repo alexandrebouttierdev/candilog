@@ -118,11 +118,11 @@ fn entry<'a, Message: Clone + 'a>(
 
 /// Marqueur de sélection, second signal indépendant de la couleur du texte.
 fn marker<'a, Message: 'a>(active: bool) -> Element<'a, Message> {
-    container(Space::new(stroke::MARKER, space::LG))
+    container(Space::new(stroke::MARKER, size::MARKER))
         .style(move |theme: &Theme| container::Style {
             background: active.then(|| Background::Color(tokens(theme).accent)),
             border: Border {
-                radius: 1.0.into(),
+                radius: radius::MARKER.into(),
                 ..Border::default()
             },
             ..container::Style::default()

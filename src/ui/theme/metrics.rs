@@ -24,6 +24,8 @@ pub mod space {
 pub mod radius {
     /// Zones de données : lignes, cellules, en-têtes.
     pub const NONE: f32 = 0.0;
+    /// Arrondi d'un marqueur de sélection ou d'une barre fine.
+    pub const MARKER: f32 = 1.0;
     /// Page d'un aperçu de document.
     pub const DOCUMENT: f32 = 3.0;
     /// Boutons, champs, selects, segments, pastilles d'icône.
@@ -69,6 +71,8 @@ pub mod size {
     pub const PANE: f32 = 200.0;
     /// Hauteur d'une ligne du volet.
     pub const PANE_ROW: f32 = 36.0;
+    /// Hauteur du marqueur de sélection posé sur le bord d'une ligne.
+    pub const MARKER: f32 = 16.0;
 
     /// Largeur du volet liste d'un master-detail.
     pub const MASTER: f32 = 320.0;
@@ -145,6 +149,8 @@ mod invariants {
     const _: () = assert!(size::ICON_BUTTON >= 32.0, "zone cliquable trop petite");
     const _: () = assert!(size::CONTROL >= 32.0, "zone cliquable trop petite");
 
+    const _: () = assert!(radius::NONE < radius::MARKER, "rayons non différenciés");
+    const _: () = assert!(radius::MARKER < radius::DOCUMENT, "rayons non différenciés");
     const _: () = assert!(radius::NONE < radius::DOCUMENT, "rayons non différenciés");
     const _: () = assert!(
         radius::DOCUMENT < radius::CONTROL,
@@ -188,6 +194,10 @@ mod invariants {
     const _: () = assert!(
         size::KANBAN_COLUMN >= 280.0,
         "colonne de pipeline illisible"
+    );
+    const _: () = assert!(
+        size::MARKER < size::PANE_ROW,
+        "marqueur plus haut que la ligne qui le porte"
     );
 
     const _: () = assert!(stroke::HAIRLINE <= 1.0, "filet trop épais");
