@@ -5,7 +5,7 @@
 //! (`divider`).
 
 use super::typo;
-use crate::ui::theme::metrics::{radius, size, space};
+use crate::ui::theme::metrics::{radius, size, space, stroke};
 use crate::ui::theme::styles;
 use iced::widget::{column, container, horizontal_rule, row, scrollable, vertical_rule, Container};
 use iced::{Alignment, Element, Length};
@@ -39,7 +39,9 @@ pub fn raised<'a, Message: 'a>(content: impl Into<Element<'a, Message>>) -> Cont
 
 /// Filet horizontal intérieur à un panneau.
 pub fn divider<'a, Message: 'a>() -> Element<'a, Message> {
-    horizontal_rule(1).style(styles::divider).into()
+    horizontal_rule(stroke::HAIRLINE)
+        .style(styles::divider)
+        .into()
 }
 
 /// Filet horizontal appuyé, sous un en-tête.

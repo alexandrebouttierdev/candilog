@@ -95,6 +95,14 @@ pub mod size {
     pub const DIALOG_WIDE: f32 = 780.0;
 }
 
+/// Élévation des surfaces qui flottent réellement au-dessus du plan de travail.
+pub mod elevation {
+    /// Décalage vertical de l'ombre d'une surface surélevée.
+    pub const OFFSET: f32 = 4.0;
+    /// Étalement de l'ombre d'une surface surélevée.
+    pub const BLUR: f32 = 16.0;
+}
+
 /// Épaisseurs de filets.
 pub mod stroke {
     /// Filet standard.
@@ -110,7 +118,7 @@ pub const A4_RATIO: f32 = std::f32::consts::SQRT_2;
 
 /// Invariants du design system, vérifiés à la compilation.
 mod invariants {
-    use super::{radius, size, space, stroke, A4_RATIO};
+    use super::{elevation, radius, size, space, stroke, A4_RATIO};
 
     // Ordre de l'échelle d'espacement : inchangé.
     const _: () = assert!(space::XXS < space::XS, "échelle d'espacement non ordonnée");
@@ -206,5 +214,10 @@ mod invariants {
     const _: () = assert!(
         A4_RATIO > 1.41 && A4_RATIO < 1.42,
         "proportions A4 incorrectes"
+    );
+
+    const _: () = assert!(
+        elevation::OFFSET < elevation::BLUR,
+        "une ombre plus décalée qu'étalée paraît décollée"
     );
 }

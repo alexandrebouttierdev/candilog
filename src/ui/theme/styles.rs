@@ -5,7 +5,7 @@
 //! focus / sélection / désactivé.
 
 use super::color::Tone;
-use super::metrics::{radius, stroke};
+use super::metrics::{elevation, radius, stroke};
 use super::tokens::{alpha, tokens, Tokens};
 use iced::widget::{
     button, container, pick_list, progress_bar, rule, scrollable, slider, text, text_editor,
@@ -364,8 +364,8 @@ pub fn raised(theme: &Theme) -> container::Style {
         },
         shadow: Shadow {
             color: palette.shadow,
-            offset: Vector::new(0.0, 10.0),
-            blur_radius: 26.0,
+            offset: Vector::new(0.0, elevation::OFFSET),
+            blur_radius: elevation::BLUR,
         },
     }
 }
@@ -752,6 +752,32 @@ mod tests {
         for theme in [dark(), light()] {
             assert!(raised(&theme).shadow.blur_radius > 0.0);
             assert!(card(&theme, button::Status::Hovered).shadow.blur_radius > 0.0);
+        }
+    }
+
+    /// Une surface surélevée doit porter une ombre réelle : c'est ce qui la
+    /// détache d'un simple panneau. Sans elle, `raised` et `panel` se
+    /// confondent dès que leurs teintes sont proches.
+    #[test]
+    fn une_surface_surelevee_porte_une_ombre() {
+        for theme in [dark(), light()] {
+            let style = raised(&theme);
+            assert!(
+                style.shadow.blur_radius > 0.0,
+                "surface surélevée sans ombre"
+            );
+            assert!(style.shadow.color.a > 0.0, "ombre transparente");
+        }
+    }
+
+    /// Le panneau reste plat : l'ombre est réservée à ce qui flotte vraiment.
+    #[test]
+    fn un_panneau_ne_flotte_pas() {
+        for theme in [dark(), light()] {
+            assert!(
+                panel(&theme).shadow.blur_radius == 0.0,
+                "un panneau ne doit pas porter d'ombre"
+            );
         }
     }
 
