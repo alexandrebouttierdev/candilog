@@ -1,0 +1,16 @@
+//! Helpers communs et déclaration des cas de test.
+use super::*;
+
+mod test_est_configure_claude_avec_cle_est_vrai;
+mod test_est_configure_claude_sans_cle_est_faux;
+mod test_est_configure_defaut_ollama_est_vrai;
+mod test_est_configure_modele_vide_est_faux;
+mod test_est_configure_nvidia_avec_cle_est_vrai;
+mod test_est_configure_nvidia_sans_cle_est_faux;
+mod test_mode_absent_du_json_retombe_sur_auto;
+mod test_resolved_mode_gros_modele_local_donne_advanced;
+mod test_resolved_mode_modele_intermediaire_donne_standard;
+mod test_resolved_mode_override_manuel_est_prioritaire;
+mod test_resolved_mode_petit_modele_ollama_donne_small;
+mod test_resolved_mode_provider_cloud_donne_advanced;
+mod test_validate_endpoint_cloud_refuse_une_adresse_privee;

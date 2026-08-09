@@ -1,0 +1,152 @@
+//! Pipeline Kanban : colonnes pleine hauteur, cartes sobres, dépôt visible.
+
+use crate::app::state::Dialog;
+use crate::app::{App, Message};
+use crate::modules::candidatures::components::{
+    column_label, kanban_card, status_marker, status_tone, PIPELINE,
+};
+use crate::modules::candidatures::model::Candidature;
+use crate::ui::components::{badge, state, surface, typo};
+use crate::ui::theme::metrics::{size, space};
+use crate::ui::theme::styles;
+use crate::ui::theme::Tone;
+use iced::widget::{column, container, mouse_area, responsive, row, Space};
+use iced::{Alignment, Element, Length};
+
+/// Largeur d'une colonne : elle occupe l'espace disponible sur un grand écran
+/// et retombe sur sa largeur minimale, avec défilement, sur une petite fenêtre.
+fn column_width(available: f32) -> f32 {
+    let gaps = space::LG * (PIPELINE.len() - 1) as f32;
+    let share = (available - gaps) / PIPELINE.len() as f32;
+    share.max(size::KANBAN_COLUMN)
+}
+
+/// Rend le pipeline complet à partir des candidatures déjà filtrées.
+pub fn view<'a>(app: &'a App, candidates: &[&'a Candidature]) -> Element<'a, Message> {
+    let groups: Vec<Vec<&'a Candidature>> = PIPELINE
+        .iter()
+        .map(|status| {
+            candidates
+                .iter()
+                .copied()
+                .filter(|candidate| candidate.statut == *status)
+                .collect()
+        })
+        .collect();
+
+    responsive(move |viewport| {
+        let width = column_width(viewport.width);
+        let mut board = row![].spacing(space::LG).height(Length::Fill);
+        for (index, status) in PIPELINE.into_iter().enumerate() {
+            let is_target = app.drag_target_status == Some(status);
+            board = board.push(
+                mouse_area(pipeline_column(
+                    app,
+                    status,
+                    &groups[index],
+                    is_target,
+                    width,
+                ))
+                .on_enter(Message::CandidateDragHovered(status))
+                .on_release(Message::CandidateDropped(status)),
+            );
+        }
+        surface::scroll_x(container(board).height(Length::Fill))
+            .height(Length::Fill)
+            .into()
+    })
+    .into()
+}
+
+fn pipeline_column<'a>(
+    app: &'a App,
+    status: crate::modules::candidatures::model::StatutCandidature,
+    candidates: &[&'a Candidature],
+    is_target: bool,
+    width: f32,
+) -> Element<'a, Message> {
+    let tone = status_tone(status);
+    let header = container(
+        row![
+            badge::marker(tone, status_marker(status)),
+            typo::section(column_label(status)),
+            Space::with_width(Length::Fill),
+            badge::count(candidates.len()),
+        ]
+        .spacing(space::MD)
+        .align_y(Alignment::Center),
+    )
+    .height(size::SECTION_HEADER)
+    .padding([0.0, space::LG])
+    .align_y(Alignment::Center);
+
+    let body: Element<'a, Message> = if candidates.is_empty() {
+        state::empty_slot(if is_target {
+            "Relâchez pour déplacer ici"
+        } else {
+            "Aucune candidature"
+        })
+    } else {
+        let mut cards = column![].spacing(space::MD).padding(space::LG);
+        for candidate in candidates {
+            cards = cards.push(kanban_card(
+                candidate,
+                app.selected_candidate == Some(candidate.id),
+                Message::OpenDialog(Dialog::CandidatureDetail(candidate.id)),
+                Message::CandidateDragStarted(candidate.id),
+            ));
+        }
+        surface::scroll(cards).height(Length::Fill).into()
+    };
+
+    let drop_hint: Element<'a, Message> = if is_target && !candidates.is_empty() {
+        container(typo::meta_toned("Relâchez pour déplacer ici", Tone::Accent))
+            .padding([space::SM, space::LG])
+            .width(Length::Fill)
+            .into()
+    } else {
+        Space::with_height(0).into()
+    };
+
+    container(column![header, surface::divider(), body, drop_hint].height(Length::Fill))
+        .width(width)
+        .height(Length::Fill)
+        .style(if is_target {
+            styles::sunken
+        } else {
+            styles::panel
+        })
+        .into()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::column_width;
+    use crate::ui::theme::metrics::size;
+
+    #[test]
+    fn les_colonnes_occupent_un_grand_ecran() {
+        // 1800 px de fenêtre, moins la barre latérale et les marges.
+        let width = column_width(1560.0);
+        assert!(
+            width > size::KANBAN_COLUMN,
+            "l'espace libre doit être utilisé"
+        );
+        let total = 4.0f32.mul_add(width, 3.0 * 10.0);
+        assert!(
+            (total - 1560.0).abs() < 1.0,
+            "le pipeline doit remplir la largeur"
+        );
+    }
+
+    #[test]
+    fn les_colonnes_gardent_leur_lisibilite_en_petite_fenetre() {
+        let width = column_width(820.0);
+        assert!((width - size::KANBAN_COLUMN).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn la_largeur_ne_devient_jamais_negative() {
+        assert!(column_width(0.0) >= size::KANBAN_COLUMN);
+    }
+}

@@ -1,0 +1,14 @@
+//! Déclaration des cas de test du provider Ollama.
+
+use super::*;
+
+mod test_chat_modele_raisonnement_envoie_think_false;
+mod test_generate_ollama_parse_le_contenu;
+mod test_generate_sans_options_n_ajoute_pas_num_ctx;
+mod test_generate_structured_envoie_le_schema_dans_format;
+mod test_generate_with_options_injecte_num_ctx_num_predict_et_keep_alive;
+mod test_health_check_ollama_200_reussit;
+mod test_health_check_ollama_500_echoue;
+mod test_list_models_ollama_extrait_les_noms;
+mod test_model_disables_thinking_detecte_les_modeles_a_raisonnement;
+mod test_stream_ollama_accumule_les_fragments_ndjson;

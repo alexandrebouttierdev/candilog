@@ -1,0 +1,12 @@
+//! Helpers communs et déclaration des cas de test.
+use super::*;
+use crate::modules::candidatures::model::StatutCandidature;
+
+mod test_enum_depuis_texte_valeur_connue_retourne_la_variante;
+mod test_enum_depuis_texte_valeur_inconnue_retourne_erreur;
+mod test_maintenant_iso_produit_un_horodatage_rfc3339;
+mod test_texte_depuis_enum_restitue_la_valeur_serialisee;
+mod test_traduire_contrainte_ligne_absente_retombe_sur_le_label_de_ressource;
+mod test_traduire_contrainte_violation_retourne_la_phrase_destinee_a_l_utilisateur;
+mod test_traduire_erreur_ligne_absente_retourne_not_found;
+mod test_traduire_erreur_violation_de_cle_etrangere_retourne_validation;
