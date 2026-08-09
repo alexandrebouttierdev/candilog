@@ -101,7 +101,7 @@ pub fn sidebar<'a, Message: Clone + 'a>(
         ]
         .height(Length::Fill),
     )
-    .width(size::SIDEBAR)
+    .width(size::RAIL)
     .height(Length::Fill)
     .style(|theme: &Theme| {
         let palette = tokens(theme);
@@ -145,7 +145,7 @@ fn entry<'a, Message: Clone + 'a>(
 
     button(content)
         .width(Length::Fill)
-        .height(size::NAV_ROW)
+        .height(size::PANE_ROW)
         .padding([0.0, space::MD])
         .style(styles::nav_item(active))
         .on_press(on_navigate(route))

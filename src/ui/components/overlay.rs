@@ -193,6 +193,7 @@ mod tests {
 
     #[test]
     fn une_confirmation_reste_etroite() {
-        assert!(Size::Confirm.width() <= 400.0);
+        // Densité Confort : le plafond suit la nouvelle largeur de DIALOG_CONFIRM.
+        assert!(Size::Confirm.width() <= 420.0);
     }
 }

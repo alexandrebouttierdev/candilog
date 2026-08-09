@@ -122,7 +122,7 @@ fn pipeline_column<'a>(
 #[cfg(test)]
 mod tests {
     use super::column_width;
-    use crate::ui::theme::metrics::size;
+    use crate::ui::theme::metrics::{size, space};
 
     #[test]
     fn les_colonnes_occupent_un_grand_ecran() {
@@ -132,7 +132,7 @@ mod tests {
             width > size::KANBAN_COLUMN,
             "l'espace libre doit être utilisé"
         );
-        let total = 4.0f32.mul_add(width, 3.0 * 10.0);
+        let total = 4.0f32.mul_add(width, 3.0 * space::LG);
         assert!(
             (total - 1560.0).abs() < 1.0,
             "le pipeline doit remplir la largeur"

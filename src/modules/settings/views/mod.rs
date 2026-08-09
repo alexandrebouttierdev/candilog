@@ -57,7 +57,7 @@ fn summary(app: &App) -> Element<'_, Message> {
                 .align_y(Alignment::Center),
             )
             .width(Length::Fill)
-            .height(size::NAV_ROW + 2.0)
+            .height(size::PANE_ROW + 2.0)
             .padding([0.0, space::MD])
             .style(styles::nav_item(active))
             .on_press(Message::SettingsSectionChanged(section)),
