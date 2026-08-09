@@ -1,6 +1,6 @@
 //! Échelle typographique desktop de Candilog.
 //!
-//! Volontairement contenue : aucun texte d'interface ne dépasse 15 px. La
+//! Volontairement contenue : aucun texte d'interface ne dépasse 20 px. La
 //! hiérarchie s'obtient par la graisse, la couleur et l'espacement.
 
 use iced::font::{Family, Stretch, Style, Weight};
@@ -26,28 +26,28 @@ pub const MEDIUM: Font = font(Weight::Medium);
 pub const SEMIBOLD: Font = font(Weight::Semibold);
 
 /// Barre d'état et unités.
-pub const MICRO: f32 = 9.5;
+pub const MICRO: f32 = 10.5;
 /// Légendes et dates en liste.
-pub const CAPTION: f32 = 10.5;
+pub const CAPTION: f32 = 11.5;
 /// Métadonnées et texte secondaire.
-pub const META: f32 = 11.0;
+pub const META: f32 = 12.0;
 /// Étiquettes de formulaire et en-têtes de colonnes.
-pub const LABEL: f32 = 11.0;
+pub const LABEL: f32 = 12.0;
 /// Corps de texte et valeurs.
-pub const BODY: f32 = 12.0;
+pub const BODY: f32 = 13.5;
 /// Titre de section.
-pub const SECTION: f32 = 12.0;
+pub const SECTION: f32 = 13.0;
 /// Titre d'un objet de liste ou de carte.
-pub const ITEM: f32 = 12.5;
+pub const ITEM: f32 = 14.0;
 /// Titre de toolbar et d'écran.
-pub const TITLE: f32 = 15.0;
+pub const TITLE: f32 = 19.0;
 /// Valeur d'indicateur.
-pub const METRIC: f32 = 22.0;
+pub const METRIC: f32 = 28.0;
 /// Valeur d'indicateur mise en avant, réservée à un usage rare.
-pub const DISPLAY: f32 = 26.0;
+pub const DISPLAY: f32 = 34.0;
 
-const _: () = assert!(MICRO >= 9.0, "texte trop petit pour un écran desktop");
-const _: () = assert!(TITLE <= 15.0, "titre d'interface disproportionné");
+const _: () = assert!(MICRO >= 10.0, "texte trop petit pour un écran desktop");
+const _: () = assert!(TITLE <= 20.0, "titre d'interface disproportionné");
 
 #[cfg(test)]
 mod tests {
@@ -66,9 +66,10 @@ mod tests {
     }
 
     #[test]
-    fn interface_ne_depasse_jamais_quinze_pixels() {
+    fn interface_ne_depasse_jamais_vingt_pixels() {
         for size in [MICRO, CAPTION, META, LABEL, BODY, SECTION, ITEM, TITLE] {
             assert!(size <= TITLE, "taille d'interface disproportionnée");
+            assert!(size <= 20.0, "taille d'interface disproportionnée");
         }
     }
 
