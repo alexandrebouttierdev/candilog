@@ -30,6 +30,30 @@ impl Section {
         }
     }
 
+    /// Icône de la tuile du rail représentant ce groupe.
+    #[must_use]
+    pub const fn icon(self) -> Icon {
+        match self {
+            Self::Pilotage => Icon::Dashboard,
+            Self::Recherche => Icon::Applications,
+            Self::Relations => Icon::Network,
+            Self::Documents => Icon::Document,
+            Self::Systeme => Icon::Settings,
+        }
+    }
+
+    /// Écran ouvert lorsqu'on active ce groupe depuis le rail.
+    #[must_use]
+    pub const fn default_route(self) -> Route {
+        match self {
+            Self::Pilotage => Route::Dashboard,
+            Self::Recherche => Route::Candidatures,
+            Self::Relations => Route::Entreprises,
+            Self::Documents => Route::Cv,
+            Self::Systeme => Route::Profil,
+        }
+    }
+
     /// Sections dans l'ordre de la barre latérale.
     pub const ALL: [Self; 5] = [
         Self::Pilotage,
@@ -241,5 +265,23 @@ mod tests {
     #[test]
     fn la_route_par_defaut_est_le_tableau_de_bord() {
         assert_eq!(Route::default(), Route::Dashboard);
+    }
+
+    #[test]
+    fn chaque_groupe_porte_une_icone_distincte() {
+        let icones: std::collections::BTreeSet<_> = Section::ALL
+            .iter()
+            .map(|section| format!("{:?}", section.icon()))
+            .collect();
+        assert_eq!(icones.len(), Section::ALL.len());
+    }
+
+    #[test]
+    fn la_route_par_defaut_d_un_groupe_appartient_au_groupe() {
+        for section in Section::ALL {
+            let route = section.default_route();
+            assert_eq!(route.section(), section);
+            assert_eq!(Some(route), Route::of_section(section).first().copied());
+        }
     }
 }
