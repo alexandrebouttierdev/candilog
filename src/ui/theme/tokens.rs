@@ -92,33 +92,33 @@ pub struct Tokens {
 pub const NIGHT: Tokens = Tokens {
     is_dark: true,
 
-    chrome: hex(0x0A0C0E),
-    canvas: hex(0x0E1113),
-    panel: hex(0x15181B),
-    sunken: hex(0x101315),
-    raised: hex(0x1C2024),
-    hover: hex(0x21262B),
+    chrome: hex(0x0F1413),
+    canvas: hex(0x151A19),
+    panel: hex(0x1D2422),
+    sunken: hex(0x171D1C),
+    raised: hex(0x242C2A),
+    hover: hex(0x2A3331),
 
-    border: hex(0x23282D),
-    border_strong: hex(0x333A41),
+    border: hex(0x2A3330),
+    border_strong: hex(0x3B4744),
 
-    text: hex(0xE8EBEE),
-    text_secondary: hex(0x9AA4AE),
-    text_muted: hex(0x6C7681),
+    text: hex(0xEAF1EE),
+    text_secondary: hex(0xA2B0AB),
+    text_muted: hex(0x77857F),
 
-    accent: hex(0x3CBAC2),
-    accent_fill: hex(0x137F88),
-    accent_hover: hex(0x189AA4),
-    on_accent: hex(0xF2FBFC),
+    accent: hex(0x5FD1B2),
+    accent_fill: hex(0x2E9E82),
+    accent_hover: hex(0x37B896),
+    on_accent: hex(0x05110E),
     selection: Color {
         a: 0.16,
-        ..hex(0x3CBAC2)
+        ..hex(0x5FD1B2)
     },
 
-    success: hex(0x3FBF7F),
-    warning: hex(0xE0A63F),
-    danger: hex(0xEC6A6A),
-    info: hex(0x6BA4F5),
+    success: hex(0x4FC98E),
+    warning: hex(0xE0B15C),
+    danger: hex(0xEC7A72),
+    info: hex(0x6FAEF0),
 
     paper: hex(0xFBFAF7),
     paper_ink: hex(0x1A1D21),
@@ -127,7 +127,7 @@ pub const NIGHT: Tokens = Tokens {
 
     scrim: Color {
         a: 0.58,
-        ..hex(0x04060A)
+        ..hex(0x040A08)
     },
     shadow: Color {
         a: 0.46,
@@ -139,31 +139,31 @@ pub const NIGHT: Tokens = Tokens {
 pub const DAY: Tokens = Tokens {
     is_dark: false,
 
-    chrome: hex(0xE6E9EB),
-    canvas: hex(0xF1F3F4),
+    chrome: hex(0xE6EBE9),
+    canvas: hex(0xF0F4F2),
     panel: hex(0xFFFFFF),
-    sunken: hex(0xF6F7F8),
+    sunken: hex(0xF5F8F7),
     raised: hex(0xFFFFFF),
-    hover: hex(0xEBEEF0),
+    hover: hex(0xE9EFED),
 
-    border: hex(0xDCE0E4),
-    border_strong: hex(0xBFC6CC),
+    border: hex(0xDCE4E1),
+    border_strong: hex(0xBCC8C4),
 
-    text: hex(0x14181B),
-    text_secondary: hex(0x59636D),
-    text_muted: hex(0x7B858F),
+    text: hex(0x131917),
+    text_secondary: hex(0x55635E),
+    text_muted: hex(0x7A8783),
 
-    accent: hex(0x0C7C86),
-    accent_fill: hex(0x0C7C86),
-    accent_hover: hex(0x0A6971),
+    accent: hex(0x0C6E59),
+    accent_fill: hex(0x0C6E59),
+    accent_hover: hex(0x095847),
     on_accent: hex(0xFFFFFF),
     selection: Color {
         a: 0.10,
-        ..hex(0x0C7C86)
+        ..hex(0x0C6E59)
     },
 
-    success: hex(0x12855A),
-    warning: hex(0xA0670A),
+    success: hex(0x10794F),
+    warning: hex(0x9A6408),
     danger: hex(0xC0392F),
     info: hex(0x2563C9),
 
@@ -174,11 +174,11 @@ pub const DAY: Tokens = Tokens {
 
     scrim: Color {
         a: 0.26,
-        ..hex(0x1A2026)
+        ..hex(0x18211E)
     },
     shadow: Color {
         a: 0.22,
-        ..hex(0x0F1418)
+        ..hex(0x0E1614)
     },
 };
 
@@ -325,5 +325,50 @@ mod tests {
         let palette: Tokens = NIGHT;
         let copie = palette;
         assert_eq!(palette, copie);
+    }
+
+    /// La pastille inactive du rail (fond `panel`, filet `border`) doit rester
+    /// visible sur le `chrome` du rail, sinon la forme carrée disparaît pour
+    /// toutes les entrées sauf l'active.
+    #[test]
+    fn la_pastille_inactive_reste_visible_sur_le_rail() {
+        for palette in [NIGHT, DAY] {
+            assert_ne!(palette.panel, palette.chrome, "pastille noyée dans le rail");
+            assert!(
+                contrast(palette.panel, palette.chrome) > 1.05
+                    || contrast(palette.border, palette.chrome) > 1.2,
+                "pastille inactive indiscernable du rail"
+            );
+        }
+    }
+
+    /// L'icône reste lisible dans sa pastille, active comme inactive.
+    #[test]
+    fn l_icone_reste_lisible_dans_sa_pastille() {
+        for palette in [NIGHT, DAY] {
+            assert!(
+                contrast(palette.text_secondary, palette.panel) >= 4.5,
+                "icône inactive illisible"
+            );
+            assert!(
+                contrast(palette.on_accent, palette.accent_fill) >= 4.5,
+                "icône active illisible"
+            );
+        }
+    }
+
+    /// Les libellés de tuile se lisent sur le fond du rail, dans les deux états.
+    #[test]
+    fn les_libelles_de_tuile_se_lisent_sur_le_rail() {
+        for palette in [NIGHT, DAY] {
+            assert!(
+                contrast(palette.accent, palette.chrome) >= 4.5,
+                "libellé de tuile active illisible sur le rail"
+            );
+            assert!(
+                contrast(palette.text_secondary, palette.chrome) >= 4.5,
+                "libellé de tuile inactive illisible sur le rail"
+            );
+        }
     }
 }
