@@ -7,6 +7,7 @@
 pub mod ambient;
 pub mod avatar;
 pub mod badge;
+pub mod badge_score;
 pub mod bar;
 pub mod button;
 pub mod choice;
@@ -37,3 +38,4 @@ pub mod titlebar;
 pub mod toolbar;
 pub mod tooltip;
 pub mod typo;
+pub mod workflow;
