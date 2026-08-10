@@ -2,9 +2,11 @@
 //! seule fois en arrière-plan (approximation native du `glass-ambient` CSS).
 //!
 //! Le canvas Iced 0.13 ne connaît que le dégradé linéaire (`gradient::Linear`) :
-//! chaque halo radial est donc approximé par des cercles concentriques
-//! d'opacité croissante, posés du plus grand (bord, discret) vers le plus petit
-//! (centre, appuyé).
+//! chaque halo radial est donc approximé par des cercles concentriques posés du
+//! plus grand (bord, discret) vers le plus petit (centre, appuyé). Les alphas
+//! des anneaux sont calculés par `ring_alphas` pour que l'opacité visible
+//! retombe linéairement du centre (`a`) au bord (`a/n`), sans cumul excessif
+//! dû au mélange source-over : chaque anneau apporte exactement `a/n`.
 
 use crate::ui::theme::tokens::{tokens, Tokens};
 use iced::widget::canvas::{self, Canvas, Fill, Frame, Path};
@@ -23,6 +25,24 @@ pub struct Halo {
 /// Cercles concentriques de chaque halo : plus il y en a, plus la chute
 /// d'opacité est lisse (dessin unique, mis en cache par le `Canvas`).
 const HALO_RINGS: usize = 24;
+
+/// Alphas incrémentaux des anneaux d'un halo pour une chute d'opacité
+/// linéaire exacte : l'anneau k (indice `k` du vecteur, rayon `R·(n−k)/n`,
+/// dessiné en premier, du plus grand rayon vers le plus petit) reçoit
+/// `alpha_k = (a/n)/(1 − a·k/n)`.
+///
+/// La transparence cumulée après les anneaux `0..=k` est
+/// `∏ (1 − alpha_j) = (1 − a·(k+1)/n)/(1 − 0) = 1 − a·(k+1)/n` (télescopage),
+/// soit une opacité visible `a·(k+1)/n` sur l'anneau k : le centre atteint
+/// exactement `a`, le bord `a/n ≈ 0`, chaque anneau ajoute `a/n` d'opacité.
+/// Les alphas croissent du bord vers le centre (0.0175 → 0.0293 pour
+/// a = 0.42), tous dans (0, 1).
+fn ring_alphas(target_alpha: f32, rings: usize) -> Vec<f32> {
+    let step = target_alpha / rings as f32;
+    (0..rings)
+        .map(|k| step / (1.0 - target_alpha * k as f32 / rings as f32))
+        .collect()
+}
 
 /// Halos du thème donné (deux : indigo haut-droite, bleu bas-gauche).
 pub fn halos(palette: &Tokens) -> Vec<Halo> {
@@ -123,13 +143,13 @@ impl<Message> canvas::Program<Message> for Ambient {
                 bounds.size().height * halo.center.1,
             );
             let radius = long_edge * halo.radius;
-            for ring in 0..HALO_RINGS {
+            let alphas = ring_alphas(halo.color.a, HALO_RINGS);
+            for (ring, alpha) in alphas.iter().enumerate() {
                 let ring_radius = radius * (HALO_RINGS - ring) as f32 / HALO_RINGS as f32;
-                let ring_alpha = halo.color.a * (ring + 1) as f32 / HALO_RINGS as f32;
                 frame.fill(
                     &Path::circle(center, ring_radius),
                     Fill::from(Color {
-                        a: ring_alpha,
+                        a: *alpha,
                         ..halo.color
                     }),
                 );
@@ -154,8 +174,21 @@ pub fn reference_size(size: Size) -> Size {
 
 #[cfg(test)]
 mod tests {
-    use super::halo_stops;
+    use super::{halo_stops, ring_alphas};
     use crate::ui::theme::tokens::{DAY, NIGHT};
+
+    #[test]
+    fn les_alphas_des_anneaux_atteignent_la_cible_lineaire() {
+        let alphas = ring_alphas(0.42, 24);
+        assert_eq!(alphas.len(), 24);
+        // transparence cumulée au centre = 1 − 0.42
+        let centre: f32 = alphas.iter().map(|a| 1.0 - a).product();
+        assert!((centre - 0.58).abs() < 1e-3);
+        // tous dans (0,1)
+        assert!(alphas.iter().all(|a| *a > 0.0 && *a < 1.0));
+        // monotonie du premier au dernier
+        assert!(alphas.windows(2).all(|w| w[0] < w[1]));
+    }
 
     #[test]
     fn les_halos_sont_deux_par_theme() {
