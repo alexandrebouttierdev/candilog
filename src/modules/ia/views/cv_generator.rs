@@ -1,47 +1,164 @@
-//! CV Generator : atelier d'analyse à gauche, document A4 posé à droite.
+//! CV Generator : workflow, jauge de score et atelier d'analyse à gauche,
+//! document A4 posé à droite.
 
 use crate::app::state::RecommendationStatus;
 use crate::app::{App, Message};
-use crate::modules::ia::cv_model::CvGeneration;
+use crate::modules::ia::components::{recommendation, skill_list};
+use crate::modules::ia::cv_model::{CvGeneration, MatchScore, OfferAnalysis};
 use crate::ui::components::button as controls;
+use crate::ui::components::header;
 use crate::ui::components::icon::Icon;
-use crate::ui::components::{badge, document, field, layout, meter, state, surface, toolbar, typo};
-use crate::ui::theme::metrics::space;
+use crate::ui::components::score_gauge::{gauge, score_label, tone_pour_score};
+use crate::ui::components::workflow::{steps, StepState, WorkflowStep};
+use crate::ui::components::{badge, document, field, layout, meter, state, surface, typo};
+use crate::ui::theme::metrics::{space, stroke};
+use crate::ui::theme::styles;
+use crate::ui::theme::tokens::tokens;
+use crate::ui::theme::typography as font;
 use crate::ui::theme::Tone;
-use iced::widget::{column, container, row};
-use iced::{Alignment, Element, Length};
+use iced::widget::{column, container, row, Stack};
+use iced::{Alignment, Border, Element, Length, Shadow, Theme, Vector};
 
 /// Rend l'écran du générateur de CV.
 pub fn view(app: &App) -> Element<'_, Message> {
-    let status = if app.ai_is_running {
-        badge::badge("Analyse en cours", Tone::Warning)
-    } else if app.cv_generation.is_some() {
-        badge::badge("CV généré", Tone::Success)
-    } else {
-        badge::badge("Prêt", Tone::Neutral)
-    };
-
-    let trailing = toolbar::group([
-        field::input("Nom de la version", &app.cv_version_name)
-            .on_input(Message::CvVersionNameChanged)
-            .width(Length::Fixed(180.0))
-            .into(),
-        controls::ghost("Exporter PDF", Some(Icon::Download))
-            .on_press(Message::ExportGeneratedCvPdf)
-            .into(),
-        controls::primary("Enregistrer la version", Some(Icon::Save))
-            .on_press(Message::SaveGeneratedCv)
-            .into(),
-    ]);
-
     layout::screen(
-        toolbar::toolbar("CV Generator", status, trailing),
-        layout::split_portions(5, workbench(app), 6, preview(app)),
+        header::page_header(
+            Icon::Sparkles,
+            "CV Generator",
+            "Offre → analyse → CV optimisé",
+            actions(app),
+        ),
+        layout::workspace(
+            column![
+                overview(app),
+                layout::columns([workbench(app), preview(app)]),
+            ]
+            .spacing(space::LG)
+            .height(Length::Fill),
+        ),
     )
 }
 
+/// Actions de l'en-tête, révélées par l'avancée du parcours.
+fn actions(app: &App) -> Element<'_, Message> {
+    let mut actions = row![].spacing(space::SM).align_y(Alignment::Center);
+    if app.ai_is_running {
+        actions = actions
+            .push(controls::ghost("Tout annuler", Some(Icon::Stop)).on_press(Message::CancelAi));
+    }
+    if app.offer_analysis.is_some() {
+        actions = actions.push(
+            controls::secondary("Régénérer", Some(Icon::Refresh)).on_press(Message::GenerateCv),
+        );
+    }
+    if app.cv_generation.is_some() {
+        actions = actions.push(
+            controls::primary("Exporter PDF", Some(Icon::Download))
+                .on_press(Message::ExportGeneratedCvPdf),
+        );
+    }
+    actions.into()
+}
+
+/// Bandeau sous l'en-tête : étapes du parcours à gauche, jauge ATS à droite.
+fn overview(app: &App) -> Element<'_, Message> {
+    let analysed = app.offer_analysis.is_some();
+    let generated = app.cv_generation.is_some();
+    let items = [
+        WorkflowStep::new(
+            "Analyser",
+            "L'offre",
+            if analysed {
+                StepState::Done
+            } else {
+                StepState::Active
+            },
+        ),
+        WorkflowStep::new(
+            "Améliorer",
+            "Le CV",
+            if generated {
+                StepState::Done
+            } else if analysed {
+                StepState::Active
+            } else {
+                StepState::Pending
+            },
+        ),
+        WorkflowStep::new(
+            "Exporter",
+            "Le PDF",
+            if generated {
+                StepState::Active
+            } else {
+                StepState::Pending
+            },
+        ),
+    ];
+    let score = app
+        .offer_analysis
+        .as_ref()
+        .map_or(0, |analysis| analysis.score.total);
+
+    row![
+        steps(&items),
+        layout::spacer(),
+        column![
+            Stack::with_children(vec![
+                gauge(score, 48.0),
+                container(score_label(score))
+                    .center_x(Length::Fixed(48.0))
+                    .center_y(Length::Fixed(48.0))
+                    .into(),
+            ]),
+            typo::caption("Score ATS"),
+        ]
+        .spacing(space::XS)
+        .align_x(Alignment::Center),
+    ]
+    .spacing(space::LG)
+    .align_y(Alignment::Center)
+    .into()
+}
+
+/// Atelier d'analyse : offre à coller, puis correspondance et suggestions.
 fn workbench(app: &App) -> Element<'_, Message> {
-    let mut panel = column![
+    let panel = match &app.offer_analysis {
+        None => offer_panel(app),
+        Some(analysis) => analysis_panel(app, analysis),
+    };
+    surface::scroll(container(panel).padding(space::XL))
+        .height(Length::Fill)
+        .into()
+}
+
+/// Étape 1 : l'offre à analyser, avec compteur et action principale.
+fn offer_panel(app: &App) -> Element<'_, Message> {
+    let footer: Element<'_, Message> = if app.ai_is_running {
+        state::running(
+            "Analyse de l'offre",
+            app.ai_elapsed_seconds,
+            Message::CancelAi,
+        )
+    } else {
+        container(
+            row![
+                typo::text_mono(
+                    format!("{} caractères", app.offer_editor.text().chars().count()),
+                    font::MICRO,
+                    font::MONO_REGULAR,
+                ),
+                layout::spacer(),
+                controls::primary("Analyser l'offre", Some(Icon::Target))
+                    .on_press(Message::AnalyzeOffer),
+            ]
+            .spacing(space::SM)
+            .align_y(Alignment::Center),
+        )
+        .width(Length::Fill)
+        .into()
+    };
+    let content = column![
         surface::section_header(
             "Offre ciblée",
             typo::caption("Collez le texte complet de l'annonce"),
@@ -49,82 +166,37 @@ fn workbench(app: &App) -> Element<'_, Message> {
         surface::divider(),
         field::editor(&app.offer_editor, "Collez ici le texte complet de l'offre…")
             .on_action(Message::OfferEditorAction)
-            .height(Length::Fixed(150.0)),
+            .height(Length::Fixed(245.0)),
+        footer,
+    ]
+    .spacing(space::LG);
+    container(content)
+        .padding(space::XL)
+        .style(styles::glass_card)
+        .into()
+}
+
+/// Étape 2 : correspondance profil × offre, suggestions ATS et version.
+fn analysis_panel<'a>(app: &'a App, analysis: &'a OfferAnalysis) -> Element<'a, Message> {
+    let present = present_skills(&analysis.score);
+    let missing = missing_skills(&analysis.score);
+
+    let mut content = column![
+        surface::section_header(
+            "Correspondance",
+            badge::badge(
+                format!("{} / 100", analysis.score.total),
+                tone_pour_score(analysis.score.total),
+            ),
+        ),
+        surface::divider(),
+        skill_list("Présentes dans votre profil", &present, Tone::Success),
+        skill_list("Manquantes dans votre profil", &missing, Tone::Neutral),
     ]
     .spacing(space::LG);
 
-    panel = panel.push(if app.ai_is_running {
-        state::running(
-            "Analyse de l'offre",
-            app.ai_elapsed_seconds,
-            Message::CancelAi,
-        )
-    } else {
-        row![
-            layout::spacer(),
-            controls::secondary("Analyser l'offre", Some(Icon::Target))
-                .on_press(Message::AnalyzeOffer),
-        ]
-        .spacing(space::SM)
-        .align_y(Alignment::Center)
-        .into()
-    });
-
-    if let Some(analysis) = &app.offer_analysis {
-        panel = panel
-            .push(surface::divider())
-            .push(surface::section_header(
-                "Correspondance",
-                badge::badge(
-                    format!("{} / 100", analysis.score.total),
-                    score_tone(analysis.score.total),
-                ),
-            ))
-            .push(
-                row![
-                    meter::bar(
-                        "Compétences".into(),
-                        usize::from(analysis.score.skills),
-                        100,
-                        Tone::Accent,
-                    ),
-                    meter::bar(
-                        "Expérience".into(),
-                        usize::from(analysis.score.experience),
-                        100,
-                        Tone::Info,
-                    ),
-                    meter::bar(
-                        "Mots-clés ATS".into(),
-                        usize::from(analysis.score.ats),
-                        100,
-                        Tone::Success,
-                    ),
-                ]
-                .spacing(space::XL),
-            )
-            .push(crate::modules::ia::components::skill_list(
-                "Présentes dans votre profil",
-                &analysis.score.matched,
-                Tone::Success,
-            ))
-            .push(crate::modules::ia::components::skill_list(
-                "Manquantes",
-                &analysis.score.missing,
-                Tone::Warning,
-            ))
-            .push(
-                row![
-                    layout::spacer(),
-                    controls::secondary("Générer le CV", Some(Icon::Sparkles))
-                        .on_press(Message::GenerateCv),
-                ]
-                .align_y(Alignment::Center),
-            );
-    }
-
     if let Some(generation) = &app.cv_generation {
-        panel = panel
+        content = content
             .push(surface::divider())
             .push(surface::section_header(
                 "Suggestions ATS",
@@ -132,35 +204,45 @@ fn workbench(app: &App) -> Element<'_, Message> {
             ))
             .push(meter::ats(generation.analysis.score));
         if generation.analysis.recommandations.is_empty() {
-            panel = panel.push(state::empty_slot("Aucune suggestion à appliquer."));
+            content = content.push(state::empty_slot("Aucune suggestion à appliquer."));
         }
-        for (index, recommendation) in generation.analysis.recommandations.iter().enumerate() {
+        for (index, item) in generation.analysis.recommandations.iter().enumerate() {
             let status = app
                 .recommendation_states
                 .get(index)
                 .copied()
                 .unwrap_or(RecommendationStatus::Pending);
-            panel = panel.push(crate::modules::ia::components::recommendation(
-                recommendation.section.clone(),
-                recommendation.impact,
-                recommendation.texte_original.clone(),
-                recommendation.texte_propose.clone(),
+            content = content.push(recommendation(
+                item.section.clone(),
+                item.impact,
+                item.texte_original.clone(),
+                item.texte_propose.clone(),
                 status,
                 Message::AcceptRecommendation(index),
                 Message::RejectRecommendation(index),
             ));
         }
+        content = content
+            .push(surface::divider())
+            .push(surface::section_header(
+                "Enregistrer la version",
+                controls::secondary("Enregistrer", Some(Icon::Save))
+                    .on_press(Message::SaveGeneratedCv),
+            ))
+            .push(
+                field::input("Nom de la version", &app.cv_version_name)
+                    .on_input(Message::CvVersionNameChanged)
+                    .width(Length::Fill),
+            );
     }
 
-    surface::scroll(container(panel).padding(space::XL))
-        .height(Length::Fill)
+    container(content)
+        .padding(space::XL)
+        .style(styles::glass_card)
         .into()
 }
 
-const fn score_tone(score: u8) -> Tone {
-    crate::ui::components::meter::ats_level(score).tone()
-}
-
+/// Aperçu du document A4, posé sur son plan de travail.
 fn preview(app: &App) -> Element<'_, Message> {
     let bar = document::workbench_bar(
         "Aperçu du document",
@@ -174,12 +256,32 @@ fn preview(app: &App) -> Element<'_, Message> {
         None => placeholder(app),
     };
 
-    column![
-        container(bar).width(Length::Fill),
-        surface::divider(),
-        document::workspace(document::page(app.document_width, page)),
-    ]
+    container(
+        column![
+            container(bar).width(Length::Fill),
+            surface::divider(),
+            document::workspace(document::page(app.document_width, page)),
+        ]
+        .height(Length::Fill),
+    )
+    .width(Length::Fill)
     .height(Length::Fill)
+    .style(|theme: &Theme| {
+        let palette = tokens(theme);
+        container::Style {
+            border: Border {
+                color: palette.border,
+                width: stroke::HAIRLINE,
+                ..Border::default()
+            },
+            shadow: Shadow {
+                color: palette.shadow,
+                offset: Vector::new(0.0, 10.0),
+                blur_radius: 28.0,
+            },
+            ..container::Style::default()
+        }
+    })
     .into()
 }
 
@@ -304,4 +406,80 @@ fn contact_line(app: &App) -> String {
     .filter(|value| !value.trim().is_empty())
     .collect::<Vec<_>>()
     .join(" · ")
+}
+
+/// Compétences de l'offre présentes dans le profil, prêtes à afficher.
+///
+/// L'analyse fournit déjà les listes `matched`/`missing` : on ne recalcule pas
+/// le score, on nettoie seulement les doublons (casse ignorée, ordre préservé).
+fn present_skills(score: &MatchScore) -> Vec<String> {
+    clean_skills(&score.matched)
+}
+
+/// Compétences de l'offre absentes du profil, prêtes à afficher.
+fn missing_skills(score: &MatchScore) -> Vec<String> {
+    clean_skills(&score.missing)
+}
+
+/// Déduplication insensible à la casse : premier exemplaire conservé, ordre préservé.
+fn clean_skills(skills: &[String]) -> Vec<String> {
+    let mut seen = Vec::new();
+    let mut cleaned = Vec::new();
+    for skill in skills {
+        let key = skill.to_lowercase();
+        if !seen.contains(&key) {
+            seen.push(key);
+            cleaned.push(skill.clone());
+        }
+    }
+    cleaned
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{missing_skills, present_skills};
+    use crate::modules::ia::cv_model::MatchScore;
+
+    fn score(matched: &[&str], missing: &[&str]) -> MatchScore {
+        MatchScore {
+            total: 0,
+            skills: 0,
+            experience: 0,
+            ats: 0,
+            matched: matched.iter().map(|skill| (*skill).to_owned()).collect(),
+            missing: missing.iter().map(|skill| (*skill).to_owned()).collect(),
+        }
+    }
+
+    fn owned(items: &[&str]) -> Vec<String> {
+        items.iter().map(|item| (*item).to_owned()).collect()
+    }
+
+    #[test]
+    fn les_doublons_sont_supprimes() {
+        let analysis = score(&["Rust", "Rust", "Go"], &["SQL", "SQL"]);
+        assert_eq!(present_skills(&analysis), owned(&["Rust", "Go"]));
+        assert_eq!(missing_skills(&analysis), owned(&["SQL"]));
+    }
+
+    #[test]
+    fn la_casse_est_ignoree() {
+        let analysis = score(&["Rust", "rust"], &["Go", "GO", "go"]);
+        assert_eq!(present_skills(&analysis), owned(&["Rust"]));
+        assert_eq!(missing_skills(&analysis), owned(&["Go"]));
+    }
+
+    #[test]
+    fn l_ordre_d_apparition_est_preserve() {
+        let analysis = score(&["C", "Rust", "C++"], &["Kafka", "SQL", "Kafka"]);
+        assert_eq!(present_skills(&analysis), owned(&["C", "Rust", "C++"]));
+        assert_eq!(missing_skills(&analysis), owned(&["Kafka", "SQL"]));
+    }
+
+    #[test]
+    fn une_liste_vide_reste_vide() {
+        let analysis = score(&[], &[]);
+        assert!(present_skills(&analysis).is_empty());
+        assert!(missing_skills(&analysis).is_empty());
+    }
 }

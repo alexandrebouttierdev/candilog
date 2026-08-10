@@ -48,7 +48,10 @@ impl WorkflowStep {
 }
 
 /// Barre de workflow à 3 étapes, numérotées et colorées par état.
-pub fn steps<'a, Message: 'a>(steps: &'a [WorkflowStep]) -> Element<'a, Message> {
+///
+/// Les libellés sont copiés : l'appelant peut passer un tableau temporaire
+/// (`steps(&[WorkflowStep::new(…), …])`) sans avoir à le conserver.
+pub fn steps<'a, Message: 'a>(steps: &[WorkflowStep]) -> Element<'a, Message> {
     let mut cells = row![].spacing(0);
     for (index, step) in steps.iter().enumerate() {
         let (tone, number) = match step.state {
@@ -76,8 +79,8 @@ pub fn steps<'a, Message: 'a>(steps: &'a [WorkflowStep]) -> Element<'a, Message>
             row![
                 pastille,
                 column![
-                    typo::body(step.label.as_str()).font(font::SEMIBOLD),
-                    typo::caption(step.detail.as_str()),
+                    typo::body(step.label.clone()).font(font::SEMIBOLD),
+                    typo::caption(step.detail.clone()),
                 ]
                 .spacing(0),
             ]
