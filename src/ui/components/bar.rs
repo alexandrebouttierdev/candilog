@@ -30,29 +30,36 @@ pub fn barre<'a, Message: 'a>(
     tone: Tone,
 ) -> Element<'a, Message> {
     let (fill_portion, rest) = proportions(ratio);
-    let mut fill = row![];
-    if fill_portion > 0 {
-        fill = fill.push(
-            container(Space::new(
-                Length::FillPortion(fill_portion),
-                Length::Fixed(12.0),
-            ))
-            .style(move |theme: &Theme| {
-                let palette = tokens(theme);
-                container::Style {
-                    background: Some(Background::Color(tone.color(&palette))),
-                    border: Border {
-                        radius: radius::PILL.into(),
-                        ..Border::default()
-                    },
-                    ..container::Style::default()
-                }
-            }),
-        );
-    }
-    if rest > 0 {
-        fill = fill.push(Space::with_width(Length::FillPortion(rest)));
-    }
+
+    let fill = if fill_portion > 0 {
+        Some(
+            container(Space::new(Length::Fill, Length::Fixed(12.0)))
+                .width(Length::FillPortion(fill_portion))
+                .height(Length::Fixed(12.0))
+                .style(move |theme: &Theme| {
+                    let palette = tokens(theme);
+                    container::Style {
+                        background: Some(Background::Color(tone.color(&palette))),
+                        border: Border {
+                            radius: radius::PILL.into(),
+                            ..Border::default()
+                        },
+                        ..container::Style::default()
+                    }
+                }),
+        )
+    } else {
+        None
+    };
+    let rest_child = if rest > 0 {
+        Some(
+            container(Space::new(Length::Fill, Length::Fixed(12.0)))
+                .width(Length::FillPortion(rest))
+                .height(Length::Fixed(12.0)),
+        )
+    } else {
+        None
+    };
 
     column![
         row![
@@ -61,19 +68,24 @@ pub fn barre<'a, Message: 'a>(
             typo::caption(valeur.into()),
         ]
         .align_y(Alignment::Center),
-        container(fill)
-            .width(Length::Fill)
-            .style(move |theme: &Theme| {
-                let palette = tokens(theme);
-                container::Style {
-                    background: Some(Background::Color(palette.sunken)),
-                    border: Border {
-                        radius: radius::PILL.into(),
-                        ..Border::default()
-                    },
-                    ..container::Style::default()
-                }
-            }),
+        container(
+            iced::widget::Row::new()
+                .push_maybe(fill)
+                .push_maybe(rest_child)
+                .width(Length::Fill),
+        )
+        .width(Length::Fill)
+        .style(move |theme: &Theme| {
+            let palette = tokens(theme);
+            container::Style {
+                background: Some(Background::Color(palette.sunken)),
+                border: Border {
+                    radius: radius::PILL.into(),
+                    ..Border::default()
+                },
+                ..container::Style::default()
+            }
+        }),
     ]
     .spacing(space::XS)
     .into()
