@@ -1,69 +1,111 @@
-//! Écran Mes CV : bibliothèque à gauche, aperçu du document à droite.
+//! Écran Mes CV : bibliothèque en grille à gauche, aperçu du document à droite.
 
 use crate::app::state::Dialog;
 use crate::app::{App, Message};
-use crate::modules::cv::components::version_row;
+use crate::modules::cv::components::{self, version_card};
 use crate::navigation::Route;
 use crate::ui::components::button as controls;
+use crate::ui::components::header;
 use crate::ui::components::icon::Icon;
-use crate::ui::components::{badge, document, layout, meter, state, surface, toolbar, typo};
+use crate::ui::components::stat_card;
+use crate::ui::components::{document, field, layout, meter, state, surface, typo};
 use crate::ui::format;
 use crate::ui::theme::metrics::space;
+use crate::ui::theme::styles;
+use crate::ui::theme::Tone;
 use iced::widget::{column, container, row};
 use iced::{Alignment, Element, Length};
 
 /// Rend l'écran de la bibliothèque de CV.
 pub fn view(app: &App) -> Element<'_, Message> {
-    let leading = toolbar::group([
-        badge::count(app.data.cv_versions.len()),
-        toolbar::separator(),
-        typo::meta(crate::modules::cv::components::library_summary(
-            app.data.cv_versions.len(),
-        ))
-        .into(),
-    ]);
-    let export = controls::ghost("Exporter en PDF", Some(Icon::Download));
-    let trailing = toolbar::group([
-        if app.cv_generation.is_some() {
-            export.on_press(Message::ExportGeneratedCvPdf).into()
-        } else {
-            export.into()
-        },
-        controls::primary("Ouvrir le générateur", Some(Icon::Sparkles))
-            .on_press(Message::Navigate(Route::CvGenerator))
-            .into(),
-    ]);
+    let actions = controls::primary("Générateur de CV", Some(Icon::Sparkles))
+        .on_press(Message::Navigate(Route::CvGenerator))
+        .into();
+
+    let metrics = row![
+        stat_card::metric_icon_tinted(
+            "Versions sauvegardées",
+            app.data.cv_versions.len().to_string(),
+            Tone::Accent,
+            Icon::Document,
+        ),
+        stat_card::metric_icon_tinted(
+            "Dernière mise à jour",
+            components::latest_version_date(&app.data.cv_versions),
+            Tone::Info,
+            Icon::Clock,
+        ),
+    ]
+    .spacing(space::MD);
 
     layout::screen(
-        toolbar::toolbar("Mes CV", leading, trailing),
-        layout::split(library(app), preview(app)),
+        header::page_header(
+            Icon::Document,
+            "Mes CV",
+            "Votre bibliothèque de versions",
+            actions,
+        ),
+        layout::workspace(
+            column![metrics, layout::split(grid(app), preview(app))]
+                .spacing(space::LG)
+                .height(Length::Fill),
+        ),
     )
 }
 
-fn library(app: &App) -> Element<'_, Message> {
-    let body: Element<'_, Message> = if app.data.cv_versions.is_empty() {
+/// Grille des versions filtrées par la recherche.
+fn grid(app: &App) -> Element<'_, Message> {
+    let needle = app.search.trim().to_lowercase();
+    let versions: Vec<_> = app
+        .data
+        .cv_versions
+        .iter()
+        .filter(|version| components::matches(version, &needle))
+        .collect();
+
+    let body: Element<'_, Message> = if versions.is_empty() {
         state::empty(
-            "Aucune version enregistrée",
-            "Les CV sauvegardés depuis le générateur apparaîtront ici.",
+            "Aucune version",
+            "Sauvegardez une version depuis le générateur ou modifiez votre recherche.",
         )
     } else {
-        let mut rows = column![];
-        for version in &app.data.cv_versions {
-            rows = rows.push(version_row(
-                version,
-                app.selected_cv == Some(version.id),
-                Message::SelectCvVersion(Some(version.id)),
-            ));
+        let mut cards = row![].spacing(space::MD);
+        for version in versions {
+            cards = cards.push(
+                container(version_card(
+                    version,
+                    Message::LoadCvVersion(version.id),
+                    Message::LoadCvVersion(version.id),
+                    Message::OpenDialog(Dialog::DeleteCv(version.id)),
+                ))
+                .width(Length::FillPortion(1))
+                .max_width(240.0),
+            );
         }
-        surface::scroll(rows).height(Length::Fill).into()
+        surface::scroll(cards.wrap()).height(Length::Fill).into()
     };
-    container(body)
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .style(crate::ui::theme::styles::panel_flat)
-        .into()
+
+    container(
+        column![
+            container(field::search(
+                "Rechercher une version…",
+                &app.search,
+                Message::SearchChanged,
+                Length::Fill,
+            ))
+            .padding(space::LG),
+            surface::divider(),
+            body,
+        ]
+        .height(Length::Fill),
+    )
+    .width(Length::Fill)
+    .height(Length::Fill)
+    .style(styles::glass_card)
+    .into()
 }
 
+/// Aperçu du document de la version sélectionnée.
 fn preview(app: &App) -> Element<'_, Message> {
     let Some(version) = app.focused_cv() else {
         return state::no_selection("Sélectionnez une version pour afficher son aperçu.");
