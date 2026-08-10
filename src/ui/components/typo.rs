@@ -72,6 +72,11 @@ pub fn toned<'a>(value: impl IntoFragment<'a>, tone: Tone) -> Text<'a> {
     text(value).size(font::BODY).style(styles::toned_text(tone))
 }
 
+/// Texte monospace de taille fixe (dates, scores, compteurs).
+pub fn text_mono<'a>(value: impl IntoFragment<'a>, size: f32, font: iced::Font) -> Text<'a> {
+    text(value).size(size).font(font)
+}
+
 /// Métadonnée teintée par un ton sémantique.
 pub fn meta_toned<'a>(value: impl IntoFragment<'a>, tone: Tone) -> Text<'a> {
     text(value).size(font::META).style(styles::toned_text(tone))

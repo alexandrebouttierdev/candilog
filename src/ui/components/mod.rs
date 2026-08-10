@@ -6,6 +6,7 @@
 
 pub mod ambient;
 pub mod badge;
+pub mod bar;
 pub mod button;
 pub mod choice;
 pub mod document;
@@ -19,6 +20,8 @@ pub mod notification;
 pub mod overlay;
 pub mod pane;
 pub mod rail;
+pub mod score_gauge;
+pub mod stat_card;
 pub mod state;
 pub mod surface;
 pub mod table;
