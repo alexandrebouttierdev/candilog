@@ -8,9 +8,9 @@
 use iced::Size;
 
 /// Largeur minimale imposée à la fenêtre par `src/main.rs`.
-pub const MIN_WIDTH: f32 = 1040.0;
+pub const MIN_WIDTH: f32 = 800.0;
 /// Hauteur minimale imposée à la fenêtre par `src/main.rs`.
-pub const MIN_HEIGHT: f32 = 660.0;
+pub const MIN_HEIGHT: f32 = 600.0;
 /// Largeur au-delà de laquelle le contenu cesse de s'étirer et gagne des marges.
 pub const CONTENT_MAX: f32 = 1560.0;
 

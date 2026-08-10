@@ -784,11 +784,44 @@ impl App {
 #[cfg(test)]
 mod tests {
     use super::App;
+    use std::sync::Mutex;
+
+    /// `App::new()` lit des variables d'environnement globales : les tests qui
+    /// l'appellent sont sérialisés pour ne pas interférer entre eux.
+    static APP_NEW_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn le_reload_reussi_marque_l_application_initialisee() {
-        // App::new sur base mémoire : le premier reload passe initialized à true.
+        // App::new ouvre la base persistante de développement
+        // (.candilog-dev/candilog.sqlite sous le répertoire du projet), pas une
+        // base mémoire. Ce test exige donc une base de développement valide ;
+        // il est sérialisé avec le test d'échec par le verrou.
+        let _guard = APP_NEW_LOCK.lock().unwrap();
         let (app, _) = App::new();
-        assert!(app.initialized, "le chargement initial a réussi en mémoire");
+        assert!(
+            app.initialized,
+            "le chargement initial a réussi sur la base de développement"
+        );
+    }
+
+    #[test]
+    fn l_echec_d_ouverture_de_la_base_laisse_l_application_non_initialisee() {
+        // Branche d'échec du contrat : quand la base ne peut pas s'ouvrir,
+        // fatal_error est renseigné et initialized reste faux (reload n'est
+        // jamais appelé). On force l'échec sans toucher à la base de
+        // développement réelle : CANDILOG_DATA_DIR pointe sur un fichier
+        // ordinaire, ce qui rend le dossier de données inconstructible.
+        let _guard = APP_NEW_LOCK.lock().unwrap();
+        let marker = std::env::temp_dir().join(format!("candilog-failure-{}", std::process::id()));
+        std::fs::write(&marker, "blocage volontaire").unwrap();
+        std::env::set_var("CANDILOG_DATA_DIR", &marker);
+        let (app, _) = App::new();
+        std::env::remove_var("CANDILOG_DATA_DIR");
+        std::fs::remove_file(&marker).ok();
+        assert!(
+            app.fatal_error.is_some(),
+            "une erreur fatale est signalée quand la base ne peut pas s'ouvrir"
+        );
+        assert!(!app.initialized, "l'application reste non initialisée");
     }
 }
