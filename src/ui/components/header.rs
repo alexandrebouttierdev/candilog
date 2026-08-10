@@ -6,6 +6,7 @@ use super::typo;
 use crate::ui::theme::metrics::{radius, space};
 use crate::ui::theme::tokens::tokens;
 use crate::ui::theme::typography as font;
+use iced::widget::text::IntoFragment;
 use iced::widget::{column, container, row, text};
 use iced::{Alignment, Background, Border, Color, Element, Length, Theme};
 
@@ -16,7 +17,7 @@ pub const PAGE_HEADER_RADIUS: f32 = 16.0;
 pub fn page_header<'a, Message: 'a>(
     glyph: Icon,
     title: &'a str,
-    description: &'a str,
+    description: impl IntoFragment<'a>,
     actions: Element<'a, Message>,
 ) -> Element<'a, Message> {
     container(
