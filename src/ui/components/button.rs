@@ -8,7 +8,7 @@ use super::icon::{self, Icon, Ink};
 use super::tooltip;
 use crate::ui::theme::metrics::{radius, size, space, stroke};
 use crate::ui::theme::styles;
-use crate::ui::theme::tokens::tokens;
+use crate::ui::theme::tokens::{alpha, tokens};
 use crate::ui::theme::typography as font;
 use iced::widget::{container, row, text, Button};
 use iced::{Alignment, Background, Border, Element, Length, Theme};
@@ -28,24 +28,24 @@ fn face<'a, Message: 'a>(kind: Option<Icon>, ink: Ink, label: &'a str) -> Elemen
 /// Action principale de l'écran, avec icône optionnelle.
 pub fn primary<'a, Message: 'a>(label: &'a str, kind: Option<Icon>) -> Button<'a, Message> {
     iced::widget::button(face(kind, Ink::OnAccent, label))
-        .height(size::CONTROL)
-        .padding([0.0, space::SM + space::XXS])
+        .height(size::ACTION)
+        .padding([0.0, 13.0])
         .style(styles::primary)
 }
 
 /// Action secondaire d'un dialogue ou d'une section.
 pub fn secondary<'a, Message: 'a>(label: &'a str, kind: Option<Icon>) -> Button<'a, Message> {
     iced::widget::button(face(kind, Ink::Muted, label))
-        .height(size::CONTROL)
-        .padding([0.0, space::SM + space::XXS])
+        .height(size::ACTION)
+        .padding([0.0, 13.0])
         .style(styles::secondary)
 }
 
 /// Contrôle de toolbar ou action de section, sans surface au repos.
 pub fn ghost<'a, Message: 'a>(label: &'a str, kind: Option<Icon>) -> Button<'a, Message> {
     iced::widget::button(face(kind, Ink::Muted, label))
-        .height(size::CONTROL)
-        .padding([0.0, space::SM])
+        .height(size::ACTION)
+        .padding([0.0, space::MD])
         .style(styles::ghost)
 }
 
@@ -56,16 +56,16 @@ pub fn danger<'a, Message: 'a>(label: &'a str, kind: Option<Icon>) -> Button<'a,
         Ink::Toned(crate::ui::theme::Tone::Danger),
         label,
     ))
-    .height(size::CONTROL)
-    .padding([0.0, space::SM + space::XXS])
+    .height(size::ACTION)
+    .padding([0.0, 13.0])
     .style(styles::danger)
 }
 
 /// Confirmation destructive d'un dialogue.
 pub fn danger_filled<'a, Message: 'a>(label: &'a str) -> Button<'a, Message> {
     iced::widget::button(text(label).size(font::BODY))
-        .height(size::CONTROL)
-        .padding([0.0, space::SM + space::XXS])
+        .height(size::ACTION)
+        .padding([0.0, 13.0])
         .style(styles::danger_filled)
 }
 
@@ -83,7 +83,7 @@ pub fn segment<'a, Message: 'a>(label: impl Into<String>, active: bool) -> Butto
     .height(size::CONTROL - 2.0 * space::XXS)
     .padding([0.0, space::SM + space::XXS])
     .style(if active {
-        styles::selected
+        styles::selected_inverse
     } else {
         styles::ghost
     })
@@ -102,7 +102,7 @@ pub fn segmented<'a, Message: Clone + 'a>(
         .style(|theme: &Theme| {
             let palette = tokens(theme);
             container::Style {
-                background: Some(Background::Color(palette.sunken)),
+                background: Some(Background::Color(alpha(palette.sunken, 0.7))),
                 border: Border {
                     color: palette.border,
                     width: stroke::HAIRLINE,

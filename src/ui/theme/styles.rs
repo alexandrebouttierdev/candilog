@@ -58,7 +58,14 @@ pub fn primary(theme: &Theme, status: button::Status) -> button::Style {
             palette.on_accent
         },
         border: no_border(radius::CONTROL),
-        shadow: Shadow::default(),
+        shadow: Shadow {
+            color: Color {
+                a: 0.35,
+                ..palette.accent_fill
+            },
+            offset: Vector::new(0.0, 3.0),
+            blur_radius: 12.0,
+        },
     }
 }
 
@@ -180,6 +187,20 @@ pub fn selected(theme: &Theme, status: button::Status) -> button::Style {
     }
 }
 
+/// Segment actif : inversion totale (texte = fond, fond = texte) — Tabs candilog-desktop.
+pub fn selected_inverse(theme: &Theme, _status: button::Status) -> button::Style {
+    let palette = tokens(theme);
+    button::Style {
+        background: Some(Background::Color(palette.text)),
+        text_color: palette.canvas,
+        border: Border {
+            radius: radius::CONTROL.into(),
+            ..Border::default()
+        },
+        shadow: Shadow::default(),
+    }
+}
+
 /// Entrée de navigation de la barre latérale.
 pub fn nav_item(active: bool) -> impl Fn(&Theme, button::Status) -> button::Style {
     move |theme, status| {
@@ -289,6 +310,90 @@ pub fn canvas(theme: &Theme) -> container::Style {
     }
 }
 
+/// Panneau de contenu principal : verre dépoli approximé (card 55 %, sombre 48 %).
+pub fn glass_panel(theme: &Theme) -> container::Style {
+    let palette = tokens(theme);
+    let ratio = if palette.is_dark { 0.48 } else { 0.55 };
+    let background = mix(palette.panel, palette.canvas, ratio);
+    container::Style {
+        background: Some(Background::Color(background)),
+        text_color: Some(palette.text),
+        border: Border {
+            color: if palette.is_dark {
+                Color {
+                    a: 0.10,
+                    ..Color {
+                        r: 1.0,
+                        g: 1.0,
+                        b: 1.0,
+                        a: 1.0,
+                    }
+                }
+            } else {
+                Color {
+                    a: 0.70,
+                    ..palette.border
+                }
+            },
+            width: stroke::HAIRLINE,
+            radius: radius::PANEL.into(),
+        },
+        shadow: Shadow {
+            color: palette.shadow,
+            offset: Vector::new(0.0, elevation::GLASS_OFFSET),
+            blur_radius: elevation::GLASS_BLUR,
+        },
+    }
+}
+
+/// Carte en verre (sidebar, cartes de contenu) : card 55 %, bordure 60 %.
+pub fn glass_card(theme: &Theme) -> container::Style {
+    let palette = tokens(theme);
+    let background = mix(palette.panel, palette.canvas, 0.55);
+    container::Style {
+        background: Some(Background::Color(background)),
+        text_color: Some(palette.text),
+        border: Border {
+            color: if palette.is_dark {
+                Color {
+                    a: 0.08,
+                    ..Color {
+                        r: 1.0,
+                        g: 1.0,
+                        b: 1.0,
+                        a: 1.0,
+                    }
+                }
+            } else {
+                Color {
+                    a: 0.60,
+                    ..palette.border
+                }
+            },
+            width: stroke::HAIRLINE,
+            radius: radius::CARD.into(),
+        },
+        ..container::Style::default()
+    }
+}
+
+/// Mélange le panneau sur le fond ambiant (verre approximé).
+#[must_use]
+pub fn mix_panel(panel: Color, canvas: Color, ratio: f32) -> Color {
+    let ratio = ratio.clamp(0.0, 1.0);
+    Color {
+        r: panel.r * ratio + canvas.r * (1.0 - ratio),
+        g: panel.g * ratio + canvas.g * (1.0 - ratio),
+        b: panel.b * ratio + canvas.b * (1.0 - ratio),
+        a: 1.0,
+    }
+}
+
+/// Mélange deux couleurs : `ratio` de `front` sur `back`.
+fn mix(front: Color, back: Color, ratio: f32) -> Color {
+    mix_panel(front, back, ratio)
+}
+
 /// Barre latérale et barre d'état.
 pub fn chrome(theme: &Theme) -> container::Style {
     let palette = tokens(theme);
@@ -306,11 +411,18 @@ pub fn panel(theme: &Theme) -> container::Style {
         background: Some(Background::Color(palette.panel)),
         text_color: Some(palette.text),
         border: Border {
-            color: palette.border,
+            color: Color {
+                a: 0.60,
+                ..palette.border
+            },
             width: stroke::HAIRLINE,
             radius: radius::PANEL.into(),
         },
-        shadow: Shadow::default(),
+        shadow: Shadow {
+            color: palette.shadow,
+            offset: Vector::new(0.0, 18.0),
+            blur_radius: 55.0,
+        },
     }
 }
 
@@ -430,7 +542,7 @@ pub fn input(theme: &Theme, status: text_input::Status) -> text_input::Style {
         background: Background::Color(if disabled {
             palette.panel
         } else {
-            palette.sunken
+            mix(palette.panel, palette.canvas, 0.60)
         }),
         border: Border {
             color: if focused {
@@ -443,7 +555,7 @@ pub fn input(theme: &Theme, status: text_input::Status) -> text_input::Style {
             } else {
                 stroke::HAIRLINE
             },
-            radius: radius::CONTROL.into(),
+            radius: radius::FIELD.into(),
         },
         icon: palette.text_muted,
         placeholder: palette.text_muted,
@@ -684,8 +796,9 @@ pub fn toned_text(tone: Tone) -> impl Fn(&Theme) -> text::Style {
 #[cfg(test)]
 mod tests {
     use super::{
-        canvas, card, chrome, danger, divider, ghost, nav_item, panel, press, primary, progress,
-        raised, row_item, scroller, secondary, selected, sunken,
+        canvas, card, chrome, danger, divider, ghost, glass_card, glass_panel, mix_panel, nav_item,
+        panel, press, primary, progress, raised, row_item, scroller, secondary, selected,
+        selected_inverse, sunken,
     };
     use crate::ui::theme::color::Tone;
     use crate::ui::theme::tokens::{tokens, NIGHT};
@@ -733,7 +846,6 @@ mod tests {
     #[test]
     fn aucune_ombre_sur_les_surfaces_statiques() {
         for theme in [dark(), light()] {
-            assert!(panel(&theme).shadow.blur_radius.abs() < f32::EPSILON);
             assert!(sunken(&theme).shadow.blur_radius.abs() < f32::EPSILON);
             assert!(canvas(&theme).shadow.blur_radius.abs() < f32::EPSILON);
             assert!(chrome(&theme).shadow.blur_radius.abs() < f32::EPSILON);
@@ -770,14 +882,14 @@ mod tests {
         }
     }
 
-    /// Le panneau reste plat : l'ombre est réservée à ce qui flotte vraiment.
+    /// Le panneau porte désormais l'ombre douce du handoff (0 18px 55px).
     #[test]
-    fn un_panneau_ne_flotte_pas() {
+    fn le_panneau_porte_une_ombre_douce() {
         for theme in [dark(), light()] {
-            assert!(
-                panel(&theme).shadow.blur_radius == 0.0,
-                "un panneau ne doit pas porter d'ombre"
-            );
+            let style = panel(&theme);
+            assert_eq!(style.shadow.offset.y, 18.0);
+            assert_eq!(style.shadow.blur_radius, 55.0);
+            assert!(style.shadow.color.a > 0.0, "ombre transparente");
         }
     }
 
@@ -795,6 +907,61 @@ mod tests {
             assert!(active.background.is_some());
             assert_ne!(idle.text_color, active.text_color);
         }
+    }
+
+    #[test]
+    fn segment_actif_inverse_le_texte_et_le_fond() {
+        for theme in [dark(), light()] {
+            let palette = tokens(&theme);
+            let style = selected_inverse(&theme, button::Status::Active);
+            assert_eq!(
+                style.background,
+                Some(iced::Background::Color(palette.text))
+            );
+            assert_eq!(style.text_color, palette.canvas);
+        }
+    }
+
+    #[test]
+    fn surfaces_en_verre_melangent_panneau_et_canvas() {
+        let palette = tokens(&dark());
+        assert_eq!(
+            glass_panel(&dark()).background,
+            Some(iced::Background::Color(mix_panel(
+                palette.panel,
+                palette.canvas,
+                0.48
+            )))
+        );
+        assert_eq!(
+            glass_card(&dark()).background,
+            Some(iced::Background::Color(mix_panel(
+                palette.panel,
+                palette.canvas,
+                0.55
+            )))
+        );
+        let palette = tokens(&light());
+        assert_eq!(
+            glass_panel(&light()).background,
+            Some(iced::Background::Color(mix_panel(
+                palette.panel,
+                palette.canvas,
+                0.55
+            )))
+        );
+    }
+
+    #[test]
+    fn mix_panel_interpole_les_couleurs() {
+        let front = iced::Color::from_rgb(1.0, 0.0, 0.0);
+        let back = iced::Color::from_rgb(0.0, 0.0, 1.0);
+        assert_eq!(mix_panel(front, back, 0.0), back);
+        assert_eq!(mix_panel(front, back, 1.0), front);
+        let moitie = mix_panel(front, back, 0.5);
+        assert!((moitie.r - 0.5).abs() < f32::EPSILON);
+        assert!((moitie.b - 0.5).abs() < f32::EPSILON);
+        assert_eq!(moitie.a, 1.0);
     }
 
     #[test]

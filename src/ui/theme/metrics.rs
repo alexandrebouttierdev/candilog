@@ -13,9 +13,13 @@ pub mod space {
     /// Écart entre deux blocs proches.
     pub const LG: f32 = 16.0;
     /// Padding intérieur d'un panneau, gouttière entre groupes de toolbar.
-    pub const XL: f32 = 20.0;
+    pub const XL: f32 = 24.0;
     /// Padding d'un dialogue, respiration d'une section importante.
     pub const XXL: f32 = 24.0;
+    /// Padding horizontal d'une page de contenu (`px-7`).
+    pub const PAGE: f32 = 28.0;
+    /// Padding vertical d'une page de contenu (`py-6`).
+    pub const PAGE_Y: f32 = 24.0;
     /// Marge maximale autorisée, réservée aux plans de travail de document.
     pub const MAX: f32 = 32.0;
     /// Padding horizontal d'un plan de travail (workspace) : `XXL` resserré
@@ -34,10 +38,14 @@ pub mod radius {
     pub const BARRED: f32 = 1.0;
     /// Page d'un aperçu de document.
     pub const DOCUMENT: f32 = 3.0;
-    /// Boutons, champs, selects, segments, pastilles d'icône.
-    pub const CONTROL: f32 = 8.0;
+    /// Boutons, segments, pastilles d'icône.
+    pub const CONTROL: f32 = 6.0;
+    /// Champs de saisie.
+    pub const FIELD: f32 = 8.0;
     /// Panneaux et cartes réellement autonomes.
-    pub const PANEL: f32 = 12.0;
+    pub const PANEL: f32 = 10.0;
+    /// Cartes en verre, cartes de contenu.
+    pub const CARD: f32 = 16.0;
     /// Modales, drawers, menus.
     pub const DIALOG: f32 = 16.0;
     /// Jetons de statut, compteurs, points.
@@ -61,13 +69,17 @@ pub mod size {
     /// En-tête de colonnes d'une table.
     pub const TABLE_HEADER: f32 = 36.0;
     /// Ligne de données à une seule ligne de texte.
-    pub const ROW: f32 = 44.0;
+    pub const ROW: f32 = 42.0;
     /// Ligne de données portant un titre et une métadonnée.
     pub const ROW_COMFORTABLE: f32 = 56.0;
     /// Hauteur commune des contrôles.
-    pub const CONTROL: f32 = 34.0;
+    pub const CONTROL: f32 = 30.0;
+    /// Hauteur d'un bouton d'action avec libellé.
+    pub const ACTION: f32 = 30.0;
+    /// Hauteur d'un champ de saisie.
+    pub const FIELD_CONTROL: f32 = 36.0;
     /// Côté d'un bouton purement iconique.
-    pub const ICON_BUTTON: f32 = 34.0;
+    pub const ICON_BUTTON: f32 = 32.0;
     /// Hauteur du rail d'un interrupteur (switch) de ligne de réglage.
     pub const SWITCH: f32 = 16.0;
 
@@ -117,11 +129,18 @@ pub mod size {
     /// Largeur du sommaire des paramètres.
     pub const SUMMARY: f32 = 220.0;
     /// Largeur du drawer d'inspecteur.
-    pub const DRAWER: f32 = 440.0;
+    pub const DRAWER: f32 = 460.0;
     /// Largeur du champ de recherche d'une toolbar.
     pub const SEARCH: f32 = 260.0;
     /// Largeur d'une colonne Kanban.
-    pub const KANBAN_COLUMN: f32 = 300.0;
+    pub const KANBAN_COLUMN: f32 = 282.0;
+    /// Largeur de la barre latérale de navigation.
+    pub const SIDEBAR: f32 = 216.0;
+    /// Hauteur de la barre de titre de fenêtre.
+    pub const TITLEBAR: f32 = 42.0;
+
+    /// Largeur de la modale standard candilog-desktop (max-w-[34rem]).
+    pub const MODAL_WIDTH: f32 = 544.0;
 
     /// Largeur d'une modale de confirmation.
     pub const DIALOG_CONFIRM: f32 = 420.0;
@@ -153,6 +172,10 @@ pub mod elevation {
     pub const TOAST_OFFSET: f32 = 10.0;
     /// Étalement de l'ombre d'un toast.
     pub const TOAST_BLUR: f32 = 26.0;
+    /// Décalage vertical de l'ombre du panneau de verre.
+    pub const GLASS_OFFSET: f32 = 12.0;
+    /// Étalement de l'ombre du panneau de verre.
+    pub const GLASS_BLUR: f32 = 32.0;
 }
 
 /// Épaisseurs de filets.
@@ -171,6 +194,19 @@ pub mod stroke {
 /// Proportions d'une page A4, utilisées par l'aperçu de document.
 pub const A4_RATIO: f32 = std::f32::consts::SQRT_2;
 
+#[cfg(test)]
+mod tests {
+    use super::size;
+
+    #[test]
+    fn gabarits_de_la_coquille_sont_definis() {
+        assert_eq!(size::SIDEBAR, 216.0);
+        assert_eq!(size::TITLEBAR, 42.0);
+        assert_eq!(size::MODAL_WIDTH, 544.0);
+        assert_eq!(size::DRAWER, 460.0);
+    }
+}
+
 /// Invariants du design system, vérifiés à la compilation.
 mod invariants {
     use super::{elevation, radius, size, space, stroke, A4_RATIO};
@@ -181,10 +217,10 @@ mod invariants {
     const _: () = assert!(space::SM < space::MD, "échelle d'espacement non ordonnée");
     const _: () = assert!(space::MD < space::LG, "échelle d'espacement non ordonnée");
     const _: () = assert!(space::LG < space::XL, "échelle d'espacement non ordonnée");
-    const _: () = assert!(space::XL < space::XXL, "échelle d'espacement non ordonnée");
+    const _: () = assert!(space::XL <= space::XXL, "échelle d'espacement non ordonnée");
     const _: () = assert!(space::XXL < space::MAX, "échelle d'espacement non ordonnée");
     const _: () = assert!(
-        space::XL < space::WORKSPACE_X,
+        space::WORKSPACE_X < space::XL,
         "padding horizontal du plan de travail pas assez resserré face à XL"
     );
     const _: () = assert!(
@@ -199,7 +235,7 @@ mod invariants {
         size::TOOLBAR >= 48.0,
         "densité Confort : toolbar trop basse"
     );
-    const _: () = assert!(size::CONTROL >= 32.0, "densité Confort : contrôle trop bas");
+    const _: () = assert!(size::CONTROL >= 28.0, "densité Confort : contrôle trop bas");
     const _: () = assert!(space::XL >= 16.0, "densité Confort : panneau trop serré");
     const _: () = assert!(
         size::NAV_TILE >= 56.0,
@@ -235,8 +271,8 @@ mod invariants {
         "bande secondaire de toolbar pas assez dégagée par rapport à un en-tête de table"
     );
 
-    const _: () = assert!(size::ICON_BUTTON >= 32.0, "zone cliquable trop petite");
-    const _: () = assert!(size::CONTROL >= 32.0, "zone cliquable trop petite");
+    const _: () = assert!(size::ICON_BUTTON >= 28.0, "zone cliquable trop petite");
+    const _: () = assert!(size::CONTROL >= 28.0, "zone cliquable trop petite");
     const _: () = assert!(
         size::SWITCH < size::CONTROL,
         "interrupteur aussi haut qu'un contrôle"

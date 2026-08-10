@@ -17,9 +17,9 @@ use std::borrow::Borrow;
 pub fn input<'a, Message: Clone>(placeholder: &'a str, value: &'a str) -> TextInput<'a, Message> {
     iced::widget::text_input(placeholder, value)
         .size(font::BODY)
-        .padding([0.0, space::SM])
+        .padding([0.0, space::MD])
         .line_height(iced::widget::text::LineHeight::Absolute(
-            size::CONTROL.into(),
+            size::FIELD_CONTROL.into(),
         ))
         .style(styles::input)
 }
