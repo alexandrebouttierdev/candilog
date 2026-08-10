@@ -21,6 +21,7 @@ pub mod overlay;
 pub mod pane;
 pub mod rail;
 pub mod score_gauge;
+pub mod skeleton;
 pub mod stat_card;
 pub mod state;
 pub mod surface;
