@@ -62,8 +62,6 @@ pub mod size {
     /// sélection, contexte) : un peu plus haute qu'un en-tête de table pour
     /// respirer sous la toolbar.
     pub const TOOLBAR_STRIP: f32 = TABLE_HEADER + 6.0;
-    /// Barre d'état de bas de fenêtre.
-    pub const STATUS_BAR: f32 = 26.0;
     /// En-tête de section à l'intérieur d'un panneau.
     pub const SECTION_HEADER: f32 = 34.0;
     /// En-tête de colonnes d'une table.
@@ -91,20 +89,6 @@ pub mod size {
     /// Diamètre du marqueur de forme dessiné devant un jeton de statut.
     pub const STATUS_DOT: f32 = 7.0;
 
-    /// Largeur du rail de navigation, libellés affichés.
-    pub const RAIL: f32 = 88.0;
-    /// Largeur du rail replié sur ses icônes.
-    pub const RAIL_COMPACT: f32 = 64.0;
-    /// Côté d'une tuile de rail, libellé compris.
-    pub const NAV_TILE: f32 = 68.0;
-    /// Côté d'une tuile réduite à son icône.
-    pub const NAV_TILE_COMPACT: f32 = 48.0;
-    /// Côté de la pastille portant l'icône d'une tuile.
-    pub const PASTILLE: f32 = 32.0;
-    /// Largeur du volet listant les écrans du groupe actif.
-    pub const PANE: f32 = 200.0;
-    /// Hauteur d'une ligne du volet.
-    pub const PANE_ROW: f32 = 36.0;
     /// Hauteur du marqueur de sélection posé sur le bord d'une ligne.
     pub const MARKER: f32 = 16.0;
     /// Hauteur du marqueur de sélection d'une ligne de table, en retrait de
@@ -161,11 +145,6 @@ pub mod elevation {
     pub const OVERLAY_OFFSET: f32 = 18.0;
     /// Étalement de l'ombre d'une modale.
     pub const OVERLAY_BLUR: f32 = 44.0;
-    /// Décalage horizontal de l'ombre d'un drawer ancré à droite : l'ombre
-    /// part vers la gauche, contre le contenu qu'il recouvre.
-    pub const DRAWER_OFFSET: f32 = 14.0;
-    /// Étalement de l'ombre d'un drawer.
-    pub const DRAWER_BLUR: f32 = 40.0;
     /// Décalage vertical de l'ombre d'un toast : flotte au-dessus du plan de
     /// travail, plus franchement qu'un menu mais sans rivaliser avec une
     /// modale bloquante.
@@ -237,14 +216,6 @@ mod invariants {
     );
     const _: () = assert!(size::CONTROL >= 28.0, "densité Confort : contrôle trop bas");
     const _: () = assert!(space::XL >= 16.0, "densité Confort : panneau trop serré");
-    const _: () = assert!(
-        size::NAV_TILE >= 56.0,
-        "densité Confort : tuile de rail trop petite"
-    );
-    const _: () = assert!(
-        size::PASTILLE >= 28.0,
-        "densité Confort : pastille d'icône trop petite"
-    );
 
     const _: () = assert!(
         size::COUNTER < size::TAG,
@@ -261,7 +232,6 @@ mod invariants {
         "en-tête plus haut qu'une ligne"
     );
     const _: () = assert!(size::ROW < size::ROW_COMFORTABLE, "densités inversées");
-    const _: () = assert!(size::STATUS_BAR < size::TOOLBAR, "barre d'état trop haute");
     const _: () = assert!(
         size::TOOLBAR_SEPARATOR < size::TOOLBAR,
         "séparateur de toolbar aussi haut que la toolbar"
@@ -301,34 +271,10 @@ mod invariants {
     );
     const _: () = assert!(size::MASTER_MIN < size::MASTER, "volet maître incohérent");
     const _: () = assert!(size::MASTER <= 420.0, "volet maître trop large");
-    const _: () = assert!(
-        size::RAIL_COMPACT < size::RAIL,
-        "largeurs de rail inversées"
-    );
-    const _: () = assert!(
-        size::NAV_TILE_COMPACT < size::NAV_TILE,
-        "tailles de tuile inversées"
-    );
-    const _: () = assert!(
-        size::PASTILLE < size::NAV_TILE_COMPACT,
-        "pastille plus grande que la tuile"
-    );
-    const _: () = assert!(
-        size::NAV_TILE <= size::RAIL,
-        "la tuile déborde de la largeur du rail"
-    );
-    const _: () = assert!(
-        size::NAV_TILE_COMPACT <= size::RAIL_COMPACT,
-        "la tuile repliée déborde de la largeur du rail replié"
-    );
     const _: () = assert!(size::DRAWER <= 460.0, "drawer trop large");
     const _: () = assert!(
         size::KANBAN_COLUMN >= 280.0,
         "colonne de pipeline illisible"
-    );
-    const _: () = assert!(
-        size::MARKER < size::PANE_ROW,
-        "marqueur plus haut que la ligne qui le porte"
     );
     const _: () = assert!(
         size::ROW_MARKER < size::ROW,
@@ -341,10 +287,6 @@ mod invariants {
     const _: () = assert!(
         size::LIST_MARKER < size::ROW,
         "marqueur de ligne de liste plus haut que la plus petite ligne qui le porte"
-    );
-    const _: () = assert!(
-        size::PROGRESS_BAR < size::STATUS_BAR,
-        "barre de progression inline aussi épaisse qu'une barre d'état"
     );
     const _: () = assert!(
         size::TOAST < size::DIALOG_FORM,
@@ -375,14 +317,6 @@ mod invariants {
     const _: () = assert!(
         elevation::BLUR < elevation::OVERLAY_BLUR,
         "une modale doit se détacher plus franchement qu'une surface surélevée courante"
-    );
-    const _: () = assert!(
-        elevation::DRAWER_OFFSET < elevation::OVERLAY_OFFSET,
-        "gabarits d'élévation superposée non ordonnés"
-    );
-    const _: () = assert!(
-        elevation::DRAWER_BLUR < elevation::OVERLAY_BLUR,
-        "gabarits d'élévation superposée non ordonnés"
     );
     const _: () = assert!(
         elevation::OFFSET < elevation::TOAST_OFFSET,

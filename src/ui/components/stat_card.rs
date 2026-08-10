@@ -1,14 +1,13 @@
-//! Carte d'indicateur : libellé, valeur Geist Mono 28 px, couleur et icône filigrane.
+//! Carte d'indicateur : libellé, valeur Geist Mono 28 px, couleur et filigrane teinté.
 
-use super::icon::{self, Icon, Ink};
 use super::typo;
 use crate::ui::theme::metrics::{radius, space};
 use crate::ui::theme::styles;
 use crate::ui::theme::tokens::tokens;
 use crate::ui::theme::typography as font;
 use crate::ui::theme::Tone;
-use iced::widget::{column, container, row};
-use iced::{Alignment, Background, Border, Color, Element, Length, Theme};
+use iced::widget::{column, container};
+use iced::{Background, Border, Color, Element, Length, Theme};
 
 /// Carte d'indicateur simple : label, valeur mono, couleur.
 pub fn metric<'a, Message: 'a>(
@@ -25,32 +24,6 @@ pub fn metric<'a, Message: 'a>(
         .spacing(space::XXS),
     )
     .padding(space::LG)
-    .width(Length::Fill)
-    .style(styles::glass_card)
-    .into()
-}
-
-/// Carte d'indicateur avec icône posée à gauche du libellé.
-pub fn metric_icon<'a, Message: 'a>(
-    label: &'a str,
-    value: String,
-    tone: Tone,
-    glyph: Icon,
-) -> Element<'a, Message> {
-    container(
-        row![
-            icon::icon(glyph, icon::MD, Ink::Muted),
-            column![
-                typo::caption(label),
-                typo::text_mono(value, font::METRIC, font::MONO_SEMIBOLD)
-                    .style(styles::toned_text(tone)),
-            ]
-            .spacing(space::XXS),
-        ]
-        .spacing(space::SM)
-        .align_y(Alignment::Center),
-    )
-    .padding(space::XL)
     .width(Length::Fill)
     .style(styles::glass_card)
     .into()

@@ -52,11 +52,6 @@ pub fn caption<'a>(value: impl IntoFragment<'a>) -> Text<'a> {
     text(value).size(font::CAPTION).style(styles::muted_text)
 }
 
-/// Texte le plus discret, réservé à la barre d'état.
-pub fn micro<'a>(value: impl IntoFragment<'a>) -> Text<'a> {
-    text(value).size(font::MICRO).style(styles::muted_text)
-}
-
 /// Valeur d'un indicateur.
 pub fn metric<'a>(value: impl IntoFragment<'a>) -> Text<'a> {
     text(value).size(font::METRIC).font(font::SEMIBOLD)

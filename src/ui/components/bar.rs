@@ -13,6 +13,15 @@ pub fn borne(ratio: f32) -> f32 {
     ratio.clamp(0.0, 100.0)
 }
 
+/// Décompose une proportion en portions de piste : remplissage coloré et
+/// reste vide, sur une échelle de 10 000 unités. Le total vaut toujours
+/// 10 000, même hors bornes (0 ou 100 %).
+#[must_use]
+pub fn proportions(ratio: f32) -> (u16, u16) {
+    let fill = ((ratio * 100.0).round() as u16).clamp(0, 10_000);
+    (fill, 10_000_u16.saturating_sub(fill))
+}
+
 /// Barre de proportion verticalement compacte.
 pub fn barre<'a, Message: 'a>(
     label: &'a str,
@@ -20,27 +29,30 @@ pub fn barre<'a, Message: 'a>(
     ratio: f32,
     tone: Tone,
 ) -> Element<'a, Message> {
-    let proportion = (borne(ratio) * 100.0) as u16;
-    let fill: Element<'a, Message> = if proportion > 0 {
-        container(Space::new(
-            Length::FillPortion(proportion),
-            Length::Fixed(12.0),
-        ))
-        .style(move |theme: &Theme| {
-            let palette = tokens(theme);
-            container::Style {
-                background: Some(Background::Color(tone.color(&palette))),
-                border: Border {
-                    radius: radius::PILL.into(),
-                    ..Border::default()
-                },
-                ..container::Style::default()
-            }
-        })
-        .into()
-    } else {
-        Space::with_height(12.0).into()
-    };
+    let (fill_portion, rest) = proportions(ratio);
+    let mut fill = row![];
+    if fill_portion > 0 {
+        fill = fill.push(
+            container(Space::new(
+                Length::FillPortion(fill_portion),
+                Length::Fixed(12.0),
+            ))
+            .style(move |theme: &Theme| {
+                let palette = tokens(theme);
+                container::Style {
+                    background: Some(Background::Color(tone.color(&palette))),
+                    border: Border {
+                        radius: radius::PILL.into(),
+                        ..Border::default()
+                    },
+                    ..container::Style::default()
+                }
+            }),
+        );
+    }
+    if rest > 0 {
+        fill = fill.push(Space::with_width(Length::FillPortion(rest)));
+    }
 
     column![
         row![
@@ -69,7 +81,7 @@ pub fn barre<'a, Message: 'a>(
 
 #[cfg(test)]
 mod tests {
-    use super::borne;
+    use super::{borne, proportions};
 
     #[test]
     fn la_proportion_est_bornee_entre_zero_et_cent() {
@@ -77,5 +89,15 @@ mod tests {
         assert_eq!(borne(0.0), 0.0);
         assert_eq!(borne(50.0), 50.0);
         assert_eq!(borne(150.0), 100.0);
+        assert_eq!(proportions(-5.0), (0, 10_000));
+        assert_eq!(proportions(150.0), (10_000, 0));
+    }
+
+    #[test]
+    fn la_piste_conserve_une_part_vide_sous_la_barre() {
+        let (fill, rest) = proportions(30.0);
+        assert_eq!(fill, 3_000);
+        assert_eq!(rest, 7_000);
+        assert_eq!(fill + rest, 10_000);
     }
 }

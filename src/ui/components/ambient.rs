@@ -10,7 +10,7 @@
 
 use crate::ui::theme::tokens::{tokens, Tokens};
 use iced::widget::canvas::{self, Canvas, Fill, Frame, Path};
-use iced::{Color, Element, Size, Theme};
+use iced::{Color, Element, Theme};
 
 /// Position et rayon d'un halo, en fractions de la fenêtre.
 pub struct Halo {
@@ -165,11 +165,6 @@ pub fn ambient<'a, Message: 'a>() -> Element<'a, Message> {
         .width(iced::Length::Fill)
         .height(iced::Length::Fill)
         .into()
-}
-
-/// Taille de référence utilisée par le rendu.
-pub fn reference_size(size: Size) -> Size {
-    Size::new(size.width.max(1.0), size.height.max(1.0))
 }
 
 #[cfg(test)]
