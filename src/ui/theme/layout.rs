@@ -23,6 +23,11 @@ const TABLE_SECONDARY: f32 = 1280.0;
 const DASHBOARD_TWO_COLUMNS: f32 = 1320.0;
 /// Largeur à partir de laquelle l'inspecteur tient en colonne plutôt qu'en drawer.
 const INSPECTOR_INLINE: f32 = 1440.0;
+/// Largeur à partir de laquelle les actions de toolbar affichent leur
+/// libellé à côté de l'icône. En dessous, il n'y a plus la place pour le
+/// texte sans le faire retomber à la ligne : l'action se replie sur son
+/// icône seule.
+const TOOLBAR_ACTION_LABELS: f32 = 1200.0;
 
 /// Décisions de mise en page dérivées de la taille de la fenêtre.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -76,6 +81,14 @@ impl Layout {
     #[must_use]
     pub fn inspector_inline(&self) -> bool {
         self.width >= INSPECTOR_INLINE
+    }
+
+    /// Actions de toolbar avec leur libellé affiché à côté de l'icône. En
+    /// dessous, une action iconique se replie sur son icône seule, son
+    /// intitulé restitué en infobulle au survol.
+    #[must_use]
+    pub fn toolbar_action_labels(&self) -> bool {
+        self.width >= TOOLBAR_ACTION_LABELS
     }
 
     /// Largeur maximale du contenu ; au-delà, il gagne des marges latérales.
@@ -141,6 +154,12 @@ mod tests {
             MIN_WIDTH - chrome >= 700.0,
             "le rail et le volet étouffent le contenu"
         );
+    }
+
+    #[test]
+    fn les_libelles_d_action_de_toolbar_disparaissent_sous_leur_seuil() {
+        assert!(!Layout::from_size(Size::new(1100.0, 800.0)).toolbar_action_labels());
+        assert!(Layout::from_size(Size::new(1300.0, 800.0)).toolbar_action_labels());
     }
 
     #[test]

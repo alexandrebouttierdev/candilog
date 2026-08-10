@@ -44,9 +44,12 @@ pub fn view(app: &App) -> Element<'_, Message> {
     ]);
 
     let trailing = toolbar::group([
-        controls::ghost("Exporter", Some(Icon::Download))
-            .on_press(Message::ExportCandidatures)
-            .into(),
+        toolbar::action(
+            app.layout(),
+            "Exporter",
+            Some(Icon::Download),
+            Message::ExportCandidatures,
+        ),
         controls::primary("Nouvelle candidature", Some(Icon::Plus))
             .on_press(Message::OpenDialog(Dialog::Candidature))
             .into(),

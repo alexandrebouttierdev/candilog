@@ -1,12 +1,16 @@
 //! Barre d'outils d'écran.
 //!
-//! Une seule toolbar par écran, 44 px, jamais de titre « hero » ni de
-//! sous-titre marketing. Composition : titre, compteur, puis groupes de
-//! contrôles séparés par une gouttière de 12 px, actions à droite.
+//! Une seule toolbar par écran, hauteur `size::TOOLBAR`, jamais de titre
+//! « hero » ni de sous-titre marketing. Composition : titre, compteur, puis
+//! groupes de contrôles séparés par une gouttière `space::XL`, actions à
+//! droite.
 
+use super::button;
+use super::icon::Icon;
 use super::typo;
 use crate::ui::theme::metrics::{size, space, stroke};
 use crate::ui::theme::tokens::tokens;
+use crate::ui::theme::Layout;
 use iced::widget::{container, row, Space};
 use iced::{Alignment, Background, Border, Element, Length, Theme};
 
@@ -56,9 +60,26 @@ pub fn group<'a, Message: 'a>(
     line.into()
 }
 
+/// Action de toolbar. Sous [`Layout::toolbar_action_labels`], une action
+/// iconique se replie sur son icône seule, l'intitulé complet restitué en
+/// infobulle au survol — le motif déjà employé par le rail replié. Une
+/// action sans icône ne peut pas se replier sans devenir indevinable : elle
+/// garde toujours son libellé.
+pub fn action<'a, Message: Clone + 'a>(
+    layout: Layout,
+    label: &'a str,
+    icon: Option<Icon>,
+    on_press: Message,
+) -> Element<'a, Message> {
+    match icon {
+        Some(kind) if !layout.toolbar_action_labels() => button::icon_action(kind, label, on_press),
+        _ => button::ghost(label, icon).on_press(on_press).into(),
+    }
+}
+
 /// Séparateur vertical entre deux groupes de toolbar.
 pub fn separator<'a, Message: 'a>() -> Element<'a, Message> {
-    container(Space::new(stroke::HAIRLINE, 16.0))
+    container(Space::new(stroke::HAIRLINE, size::TOOLBAR_SEPARATOR))
         .style(|theme: &Theme| container::Style {
             background: Some(Background::Color(tokens(theme).border_strong)),
             ..container::Style::default()
@@ -69,7 +90,7 @@ pub fn separator<'a, Message: 'a>() -> Element<'a, Message> {
 /// Bande secondaire sous la toolbar : jetons de filtres, sélection, contexte.
 pub fn strip<'a, Message: 'a>(content: impl Into<Element<'a, Message>>) -> Element<'a, Message> {
     container(content)
-        .height(size::TABLE_HEADER + 6.0)
+        .height(size::TOOLBAR_STRIP)
         .padding([0.0, space::XL])
         .width(Length::Fill)
         .align_y(Alignment::Center)

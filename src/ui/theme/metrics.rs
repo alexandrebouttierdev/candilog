@@ -45,6 +45,12 @@ pub mod radius {
 pub mod size {
     /// Toolbar d'écran.
     pub const TOOLBAR: f32 = 52.0;
+    /// Hauteur du séparateur vertical entre deux groupes de toolbar.
+    pub const TOOLBAR_SEPARATOR: f32 = 16.0;
+    /// Hauteur de la bande secondaire sous la toolbar (jetons de filtres,
+    /// sélection, contexte) : un peu plus haute qu'un en-tête de table pour
+    /// respirer sous la toolbar.
+    pub const TOOLBAR_STRIP: f32 = TABLE_HEADER + 6.0;
     /// Barre d'état de bas de fenêtre.
     pub const STATUS_BAR: f32 = 26.0;
     /// En-tête de section à l'intérieur d'un panneau.
@@ -185,6 +191,14 @@ mod invariants {
     );
     const _: () = assert!(size::ROW < size::ROW_COMFORTABLE, "densités inversées");
     const _: () = assert!(size::STATUS_BAR < size::TOOLBAR, "barre d'état trop haute");
+    const _: () = assert!(
+        size::TOOLBAR_SEPARATOR < size::TOOLBAR,
+        "séparateur de toolbar aussi haut que la toolbar"
+    );
+    const _: () = assert!(
+        size::TOOLBAR_STRIP > size::TABLE_HEADER,
+        "bande secondaire de toolbar pas assez dégagée par rapport à un en-tête de table"
+    );
 
     const _: () = assert!(size::ICON_BUTTON >= 32.0, "zone cliquable trop petite");
     const _: () = assert!(size::CONTROL >= 32.0, "zone cliquable trop petite");
