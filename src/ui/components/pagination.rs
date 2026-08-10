@@ -13,6 +13,7 @@ pub fn window(page: u64, page_size: u64, total: u64) -> (u64, u64) {
     if total == 0 {
         return (0, 0);
     }
+    let page_size = if page_size == 0 { total } else { page_size };
     let total_pages = total.div_ceil(page_size);
     let page = page.clamp(1, total_pages);
     let first = (page - 1) * page_size + 1;
@@ -61,5 +62,10 @@ mod tests {
     fn la_page_est_clampee_aux_bornes() {
         assert_eq!(window(0, 20, 45), (1, 20));
         assert_eq!(window(9, 20, 45), (41, 45));
+    }
+
+    #[test]
+    fn une_taille_de_page_nulle_ne_panique_pas() {
+        assert_eq!(window(1, 0, 45), (1, 45));
     }
 }
