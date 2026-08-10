@@ -24,6 +24,7 @@ pub mod runtime_status;
 pub mod score_gauge;
 pub mod sidebar;
 pub mod skeleton;
+pub mod sparkline;
 pub mod stat_card;
 pub mod state;
 pub mod surface;
