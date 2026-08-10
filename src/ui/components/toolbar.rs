@@ -130,32 +130,3 @@ pub fn strip<'a, Message: 'a>(content: impl Into<Element<'a, Message>>) -> Eleme
         })
         .into()
 }
-
-/// Barre d'état de bas de fenêtre.
-pub fn status_bar<'a, Message: 'a>(
-    left: impl Into<Element<'a, Message>>,
-    right: impl Into<Element<'a, Message>>,
-) -> Element<'a, Message> {
-    container(
-        row![left.into(), Space::with_width(Length::Fill), right.into(),]
-            .spacing(space::XL)
-            .align_y(Alignment::Center),
-    )
-    .height(size::STATUS_BAR)
-    .padding([0.0, space::XL])
-    .width(Length::Fill)
-    .style(|theme: &Theme| {
-        let palette = tokens(theme);
-        container::Style {
-            background: Some(Background::Color(palette.chrome)),
-            text_color: Some(palette.text_secondary),
-            border: Border {
-                color: palette.border,
-                width: stroke::HAIRLINE,
-                radius: 0.0.into(),
-            },
-            ..container::Style::default()
-        }
-    })
-    .into()
-}

@@ -1,22 +1,20 @@
-//! Shell de l'application : navigation, écran actif, dialogues et notifications.
+//! Coquille de l'application : fond ambiant, barre de titre, barre latérale et panneau.
 //!
-//! Ce module ne rend aucun écran métier : chaque module expose sa propre vue.
+//! Aucun écran métier n'est rendu ici : chaque module expose sa propre vue.
 
 mod dialogs;
 
 use super::{App, Message};
-use crate::app::state::Dialog;
 use crate::navigation::Route;
-use crate::ui::components::icon::Icon;
-use crate::ui::components::pane::pane;
-use crate::ui::components::rail::{rail, Load};
-use crate::ui::components::{icon, notification, overlay, state, surface, toolbar, typo};
-use crate::ui::format;
-use crate::ui::theme::metrics::space;
+use crate::ui::components::ambient;
+use crate::ui::components::runtime_status::{app_version, runtime_status, Health};
+use crate::ui::components::sidebar::sidebar;
+use crate::ui::components::skeleton::PageSkeleton;
+use crate::ui::components::titlebar::titlebar;
+use crate::ui::components::{notification, overlay, state};
 use crate::ui::theme::styles;
-use crate::ui::theme::Tone;
 use iced::widget::{column, container, row, stack};
-use iced::{Alignment, Element, Length};
+use iced::{Element, Length};
 
 /// Rend l'application complète.
 pub fn view(app: &App) -> Element<'_, Message> {
@@ -24,52 +22,44 @@ pub fn view(app: &App) -> Element<'_, Message> {
         return state::fatal(error, "Réessayer", Message::Reload);
     }
 
-    let workspace = column![screen(app), status_bar(app)]
+    let page: Element<'_, Message> = if app.initialized {
+        screen(app)
+    } else {
+        PageSkeleton::Dashboard.render()
+    };
+
+    let main = container(page)
         .width(Length::Fill)
-        .height(Length::Fill);
+        .height(Length::Fill)
+        .style(styles::glass_panel);
 
-    let section = app.route.section();
-    let mut bands = row![rail(
-        section,
-        load(app),
-        app.layout(),
-        |section: crate::navigation::Section| Message::Navigate(section.default_route()),
-        Message::ToggleTheme,
-        app.is_dark,
-    )]
-    .height(Length::Fill);
-
-    if let Some(volet) = pane(section, app.route, load(app), Message::Navigate) {
-        bands = bands.push(volet);
-    }
-
-    bands = bands.push(
-        container(workspace)
+    let shell_body = column![
+        titlebar(
+            runtime_status(
+                provider_label(app),
+                model_label(app),
+                if app.ai_is_running {
+                    Health::Checking
+                } else {
+                    Health::Ok
+                },
+            ),
+            app.is_dark,
+            Message::ToggleTheme,
+        ),
+        row![sidebar(app.route, Message::Navigate, app_version()), main,]
             .width(Length::Fill)
             .height(Length::Fill)
-            .style(styles::canvas),
-    );
+            .spacing(8.0)
+            .padding(iced::Padding::default().right(8.0).bottom(8.0)),
+    ]
+    .width(Length::Fill)
+    .height(Length::Fill);
 
-    // Au-delà du seuil de largeur, l'inspecteur n'est plus une couche
-    // superposée : il prend sa place dans la rangée principale, à côté du
-    // volet de travail, plutôt que de flotter par-dessus dans la pile. On le
-    // pousse donc directement dans `bands` et on l'exclut de la pile plus
-    // bas, pour ne pas le rendre deux fois.
-    let inline_inspector = match app.dialog {
-        Some(Dialog::CandidatureDetail(id)) if app.layout().inspector_inline() => Some(id),
-        _ => None,
-    };
-    if let Some(id) = inline_inspector {
-        bands = bands.push(inspector_layer(app, id));
-    }
-
-    let shell: Element<'_, Message> = bands.into();
-
-    let mut layers = vec![shell];
+    let mut layers: Vec<Element<'_, Message>> =
+        vec![stack(vec![ambient::ambient(), shell_body.into()]).into()];
     if let Some(dialog) = app.dialog {
-        if inline_inspector.is_none() {
-            layers.push(dialogs::layer(app, dialog));
-        }
+        layers.push(dialogs::layer(app, dialog));
     }
     if let Some(message) = &app.notification {
         layers.push(notification::toast(
@@ -78,15 +68,10 @@ pub fn view(app: &App) -> Element<'_, Message> {
             Message::ClearNotification,
         ));
     }
-
-    if layers.len() == 1 {
-        layers.pop().unwrap_or_else(|| Element::from(row![]))
-    } else {
-        stack(layers)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .into()
-    }
+    stack(layers)
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .into()
 }
 
 fn screen(app: &App) -> Element<'_, Message> {
@@ -106,82 +91,28 @@ fn screen(app: &App) -> Element<'_, Message> {
     }
 }
 
-fn load(app: &App) -> Load {
-    let today = chrono::Local::now().format("%Y-%m-%d").to_string();
-    Load {
-        candidatures: app
-            .data
-            .candidatures
-            .iter()
-            .filter(|item| {
-                item.statut == crate::modules::candidatures::model::StatutCandidature::EnAttente
-            })
-            .count(),
-        agenda: app.upcoming_interviews(&today),
-        relances: app.due_reminders(&today),
+fn provider_label(app: &App) -> &str {
+    let provider = &app.data.settings.llm.provider;
+    match provider {
+        crate::shared::llm::ProviderKind::Ollama => "ollama",
+        crate::shared::llm::ProviderKind::Claude => "claude",
+        crate::shared::llm::ProviderKind::OpenAI => "openai",
+        crate::shared::llm::ProviderKind::Gemini => "gemini",
+        crate::shared::llm::ProviderKind::Mistral => "mistral",
+        crate::shared::llm::ProviderKind::Nvidia => "nvidia",
+        crate::shared::llm::ProviderKind::Custom(_) => "custom",
     }
 }
 
-fn status_bar(app: &App) -> Element<'_, Message> {
-    let database = app.paths.as_ref().map_or("initialisation", |paths| {
-        paths
-            .database
-            .file_name()
-            .and_then(std::ffi::OsStr::to_str)
-            .unwrap_or("candilog.sqlite")
-    });
-
-    let left = row![
-        icon::toned(
-            Icon::Check,
-            if app.ai_is_running {
-                Tone::Warning
-            } else {
-                Tone::Success
-            },
-        ),
-        typo::micro(if app.ai_is_running {
-            "Opération IA en cours"
-        } else {
-            "Prêt"
-        }),
-        surface::split_rule(),
-        typo::micro(format!("Base : {database}")),
-    ]
-    .spacing(space::MD)
-    .align_y(Alignment::Center);
-
-    let right = row![
-        typo::micro(format::plural(
-            app.data.candidatures.len(),
-            "candidature",
-            "candidatures"
-        )),
-        surface::split_rule(),
-        typo::micro(format::plural(
-            app.data.entreprises.len(),
-            "entreprise",
-            "entreprises"
-        )),
-        surface::split_rule(),
-        typo::micro(concat!("Candilog ", env!("CARGO_PKG_VERSION"))),
-    ]
-    .spacing(space::MD)
-    .align_y(Alignment::Center);
-
-    toolbar::status_bar(left, right)
+fn model_label(app: &App) -> &str {
+    app.data.settings.llm.model.as_str()
 }
 
 /// Ferme le dialogue courant depuis n'importe quelle couche superposée.
 pub(super) const DISMISS: Message = Message::CloseDialog;
 
-/// Rend l'inspection d'une candidature : en colonne si la fenêtre est assez
-/// large, en drawer superposé sinon.
+/// Rend l'inspection d'une candidature : drawer superposé (460 px).
 pub(super) fn inspector_layer(app: &App, id: uuid::Uuid) -> Element<'_, Message> {
     let content = crate::modules::candidatures::views::inspector::view(app, id);
-    if app.layout().inspector_inline() {
-        overlay::side_panel(content, DISMISS)
-    } else {
-        overlay::drawer(content, DISMISS)
-    }
+    overlay::drawer(content, DISMISS)
 }

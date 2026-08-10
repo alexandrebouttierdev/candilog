@@ -360,6 +360,8 @@ pub struct App {
     pub backend: Option<Arc<BackendState>>,
     /// Instantané courant des données.
     pub data: DataSnapshot,
+    /// Instantané de données initial chargé.
+    pub initialized: bool,
     /// Erreur bloquante d'initialisation.
     pub fatal_error: Option<String>,
     /// Notification utilisateur non bloquante.
@@ -473,6 +475,7 @@ impl App {
             paths: None,
             backend: None,
             data: DataSnapshot::default(),
+            initialized: false,
             fatal_error: None,
             notification: None,
             available_update: None,
@@ -639,7 +642,10 @@ impl App {
             })
         })();
         match loaded {
-            Ok(snapshot) => self.data = snapshot,
+            Ok(snapshot) => {
+                self.data = snapshot;
+                self.initialized = true;
+            }
             Err(error) => self.notification = Some(error.to_string()),
         }
     }
@@ -772,5 +778,17 @@ impl App {
             .iter()
             .filter(|item| item.date_entretien.as_str() >= today)
             .count()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::App;
+
+    #[test]
+    fn le_reload_reussi_marque_l_application_initialisee() {
+        // App::new sur base mémoire : le premier reload passe initialized à true.
+        let (app, _) = App::new();
+        assert!(app.initialized, "le chargement initial a réussi en mémoire");
     }
 }
