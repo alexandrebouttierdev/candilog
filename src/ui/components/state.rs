@@ -131,7 +131,7 @@ pub fn ai_progress<'a, Message: Clone + 'a>(
             container(icon::icon(Icon::Sparkles, 28.0, Ink::Accent))
                 .width(64.0)
                 .height(64.0)
-                .center(Length::Fill)
+                .center(Length::Fixed(64.0))
                 .style(styles::toned(Tone::Accent)),
             typo::section(step),
             typo::text_mono(
