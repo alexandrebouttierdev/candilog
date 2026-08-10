@@ -12,6 +12,7 @@ pub fn version_row<Message: Clone + 'static>(
     on_select: Message,
 ) -> Element<'static, Message> {
     list::row_item(
+        iced::widget::Space::with_width(0),
         version.name.clone(),
         format::compact_datetime(&version.created_at),
         typo::caption(""),

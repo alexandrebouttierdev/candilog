@@ -52,6 +52,7 @@ fn directory<'a>(app: &App, contacts: &[&'a Contact]) -> Element<'a, Message> {
         let mut rows = column![];
         for contact in contacts {
             rows = rows.push(list::row_item(
+                iced::widget::Space::with_width(0),
                 people::full_name(contact),
                 people::subtitle(contact),
                 iced::widget::Space::with_width(0),

@@ -5,6 +5,7 @@
 //! préparées et rend une composition Iced.
 
 pub mod ambient;
+pub mod avatar;
 pub mod badge;
 pub mod bar;
 pub mod button;

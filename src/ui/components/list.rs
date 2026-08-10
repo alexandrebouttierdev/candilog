@@ -9,8 +9,9 @@ use crate::ui::theme::tokens::tokens;
 use iced::widget::{button, column, container, row, Space};
 use iced::{Alignment, Background, Border, Element, Length, Theme};
 
-/// Ligne sélectionnable portant un titre et une métadonnée.
+/// Ligne sélectionnable portant un appui, un titre et une métadonnée.
 pub fn row_item<'a, Message: Clone + 'a>(
+    leading: impl Into<Element<'a, Message>>,
     title: String,
     meta: String,
     trailing: impl Into<Element<'a, Message>>,
@@ -19,6 +20,7 @@ pub fn row_item<'a, Message: Clone + 'a>(
 ) -> Element<'a, Message> {
     let body = row![
         marker(selected),
+        leading.into(),
         column![typo::item(title), typo::caption(meta)].spacing(space::XXS),
         Space::with_width(Length::Fill),
         trailing.into(),
