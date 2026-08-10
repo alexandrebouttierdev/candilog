@@ -593,7 +593,7 @@ impl App {
                     .into(),
             );
         }
-        let capture = if std::env::var_os("CANDILOG_CAPTURE_PATH").is_some() {
+        let initial = if std::env::var_os("CANDILOG_CAPTURE_PATH").is_some() {
             iced::Task::perform(
                 async {
                     tokio::time::sleep(std::time::Duration::from_millis(1_200)).await;
@@ -603,7 +603,13 @@ impl App {
         } else {
             iced::Task::none()
         };
-        (app, capture)
+        // La capture visuelle ne maximise pas la fenêtre (dimensions maîtrisées).
+        let maximize = if std::env::var_os("CANDILOG_CAPTURE_PATH").is_some() {
+            iced::Task::none()
+        } else {
+            iced::Task::done(super::Message::MaximizeWindow)
+        };
+        (app, iced::Task::batch([initial, maximize]))
     }
 
     /// Décisions de mise en page pour la taille de fenêtre courante.

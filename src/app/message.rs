@@ -54,6 +54,10 @@ pub enum Message {
     CaptureWindow(Option<iced::window::Id>),
     /// Pixels rendus par Iced pour la revue visuelle.
     CapturedForReview(iced::window::Screenshot),
+    /// Fenêtre initiale localisée, pour la maximiser au lancement.
+    MaximizeWindow,
+    /// Maximise la fenêtre identifiée.
+    MaximizeWindowId(iced::window::Id),
     /// La fenêtre a été redimensionnée.
     WindowResized(iced::Size),
     /// Navigation vers un écran.

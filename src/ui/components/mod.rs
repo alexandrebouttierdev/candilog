@@ -4,6 +4,7 @@
 //! SQLite, et ne porte aucune règle métier : il reçoit des valeurs déjà
 //! préparées et rend une composition Iced.
 
+pub mod ambient;
 pub mod badge;
 pub mod button;
 pub mod choice;

@@ -36,6 +36,17 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 return iced::exit();
             }
         }
+        Message::MaximizeWindow => {
+            return iced::window::get_latest().map(|id| {
+                id.map_or(Message::ClearNotification, |window_id| {
+                    // Deuxième message : la fenêtre existe, on la maximise.
+                    super::Message::MaximizeWindowId(window_id)
+                })
+            });
+        }
+        Message::MaximizeWindowId(id) => {
+            return iced::window::maximize(id, true);
+        }
         Message::WindowResized(size) => {
             app.window_size = size;
         }
