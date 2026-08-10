@@ -56,12 +56,14 @@ pub fn metric_icon<'a, Message: 'a>(
     .into()
 }
 
-/// Style d'une carte teintée par un ton : fond `tone.surface`, filet `tone.edge`.
+/// Style d'une carte teintée par un ton : fond `tone.surface` limité à 6 %, filet `tone.edge`.
 pub fn tinted_style(tone: Tone) -> impl Fn(&Theme) -> container::Style {
     move |theme| {
         let palette = tokens(theme);
+        let mut surface = tone.surface(&palette);
+        surface.a = 0.06;
         container::Style {
-            background: Some(Background::Color(tone.surface(&palette))),
+            background: Some(Background::Color(surface)),
             border: Border {
                 color: tone.edge(&palette),
                 width: 1.0,
@@ -97,14 +99,32 @@ mod tests {
     use super::tinted_style;
     use crate::ui::theme::tokens::NIGHT;
     use crate::ui::theme::{dark, Tone};
-    use iced::Background;
+    use iced::{Background, Color};
 
     #[test]
     fn le_ton_teinte_le_fond_sans_ecraser_le_texte() {
         let surface = Tone::Violet.surface(&NIGHT);
         assert_eq!(surface.a, 0.14);
         let style = tinted_style(Tone::Violet)(&dark());
-        assert_eq!(style.background, Some(Background::Color(surface)));
         assert_eq!(style.border.color, Tone::Violet.edge(&NIGHT));
+    }
+
+    #[test]
+    fn le_fond_teinte_est_limite_a_six_pour_cent() {
+        let style = tinted_style(Tone::Violet)(&dark());
+        let Background::Color(color) = style.background.unwrap() else {
+            panic!("fond absent")
+        };
+        assert!((color.a - 0.06).abs() < 1e-3);
+        let surface = Tone::Violet.surface(&NIGHT);
+        assert_eq!(
+            color,
+            Color {
+                r: surface.r,
+                g: surface.g,
+                b: surface.b,
+                a: 0.06,
+            }
+        );
     }
 }
