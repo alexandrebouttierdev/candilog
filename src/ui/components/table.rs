@@ -251,7 +251,29 @@ pub fn cell<'a, Message: 'a>(
     }
 }
 
-/// Sépare les cellules d'une ligne entre la ligne principale et, si des
+/// Sépare les cellules d'une ligne entre celles qui restent dans la ligne
+/// principale et celles dont la colonne secondaire est repliée : ces
+/// dernières sont mises de côté pour rejoindre la ligne de métadonnées
+/// plutôt que de disparaître. C'est cette répartition, isolée de la
+/// construction des widgets, qui porte la garantie testable de
+/// [`assemble`] : une colonne repliée ne reste jamais dans `shown`.
+fn partition<'a, Message: 'a>(
+    layout: Layout,
+    cells: impl IntoIterator<Item = Cell<'a, Message>>,
+) -> (Vec<Cell<'a, Message>>, Vec<Cell<'a, Message>>) {
+    let mut shown = Vec::new();
+    let mut folded = Vec::new();
+    for cell in cells {
+        if cell.column.shown(layout) {
+            shown.push(cell);
+        } else {
+            folded.push(cell);
+        }
+    }
+    (shown, folded)
+}
+
+/// Assemble les cellules d'une ligne entre la ligne principale et, si des
 /// colonnes secondaires sont repliées, la ligne de métadonnées qui les
 /// remplace sous le titre plutôt que de les faire disparaître. Le second
 /// membre du tuple indique si une ligne de métadonnées a été produite.
@@ -260,18 +282,19 @@ fn assemble<'a, Message: 'a>(
     marker: Element<'a, Message>,
     cells: impl IntoIterator<Item = Cell<'a, Message>>,
 ) -> (Element<'a, Message>, bool) {
+    let (shown, folded) = partition(layout, cells);
+    let has_meta = !folded.is_empty();
+
     let mut line = row![marker].spacing(space::LG).align_y(Alignment::Center);
-    let mut meta = row![].spacing(space::LG).align_y(Alignment::Center);
-    let mut folded = false;
-    for cell in cells {
-        if cell.column.shown(layout) {
-            line = line.push(cell.element);
-        } else {
-            meta = meta.push(cell.element);
-            folded = true;
-        }
+    for cell in shown {
+        line = line.push(cell.element);
     }
-    if folded {
+
+    if has_meta {
+        let mut meta = row![].spacing(space::LG).align_y(Alignment::Center);
+        for cell in folded {
+            meta = meta.push(cell.element);
+        }
         (column![line, meta].spacing(space::XXS).into(), true)
     } else {
         (line.into(), false)
@@ -346,7 +369,7 @@ fn marker<'a, Message: 'a>(selected: bool) -> Element<'a, Message> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Align, Column, SortOrder, Width};
+    use super::{Align, Column, Element, SortOrder, Width};
     use crate::ui::theme::layout::{MIN_HEIGHT, MIN_WIDTH};
     use crate::ui::theme::Layout;
     use iced::Size;
@@ -400,5 +423,61 @@ mod tests {
     fn une_colonne_principale_reste_visible_a_toute_largeur() {
         let etroit = Layout::from_size(Size::new(MIN_WIDTH, MIN_HEIGHT));
         assert!(Column::text("POSTE", 4).shown(etroit));
+    }
+
+    /// Deux cellules types, l'une principale (POSTE) et l'autre secondaire
+    /// (ENTREPRISE), pour exercer directement la répartition faite par
+    /// `partition`/`assemble`.
+    fn cellules_de_test() -> Vec<super::Cell<'static, ()>> {
+        vec![
+            super::cell(Column::text("POSTE", 4), iced::widget::text("Poste")),
+            super::cell(
+                Column::text("ENTREPRISE", 3).secondary(),
+                iced::widget::text("Entreprise"),
+            ),
+        ]
+    }
+
+    #[test]
+    fn sous_le_seuil_la_colonne_secondaire_ne_reste_pas_dans_la_ligne_principale() {
+        let etroit = Layout::from_size(Size::new(MIN_WIDTH, MIN_HEIGHT));
+        let (shown, folded) = super::partition(etroit, cellules_de_test());
+
+        // La colonne secondaire (ENTREPRISE) est repliée : elle ne doit
+        // apparaître nulle part dans `shown`, la ligne principale. C'est
+        // l'assertion qui échouerait si la branche de repli disparaissait
+        // et que tout finissait, à tort, dans la ligne principale.
+        assert_eq!(shown.len(), 1);
+        assert_eq!(shown[0].column.label, "POSTE");
+        assert_eq!(folded.len(), 1);
+        assert_eq!(folded[0].column.label, "ENTREPRISE");
+    }
+
+    #[test]
+    fn au_dessus_du_seuil_aucune_colonne_n_est_repliee() {
+        let large = Layout::from_size(Size::new(1600.0, 900.0));
+        let (shown, folded) = super::partition(large, cellules_de_test());
+
+        assert_eq!(shown.len(), 2);
+        assert!(folded.is_empty());
+    }
+
+    #[test]
+    fn assemble_signale_un_repli_uniquement_sous_le_seuil() {
+        let etroit = Layout::from_size(Size::new(MIN_WIDTH, MIN_HEIGHT));
+        let large = Layout::from_size(Size::new(1600.0, 900.0));
+        let marqueur = || Element::from(iced::widget::text(""));
+
+        let (_, replie_etroit) = super::assemble(etroit, marqueur(), cellules_de_test());
+        let (_, replie_large) = super::assemble(large, marqueur(), cellules_de_test());
+
+        assert!(
+            replie_etroit,
+            "une colonne secondaire masquée doit signaler un repli"
+        );
+        assert!(
+            !replie_large,
+            "aucune colonne masquée : pas de repli à signaler"
+        );
     }
 }
