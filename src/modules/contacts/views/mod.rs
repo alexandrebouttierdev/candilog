@@ -66,14 +66,13 @@ fn metrics(app: &App) -> Element<'_, Message> {
         ),
         stat_card::metric_icon_tinted(
             "Candidatures liées",
-            total_candidatures_contacts(&app.data.candidatures, app.selected_contact).to_string(),
+            total_candidatures_liees(&app.data.candidatures).to_string(),
             Tone::Info,
             Icon::Applications,
         ),
         stat_card::metric_icon_tinted(
             "Entretiens planifiés",
-            upcoming_interviews_contact(&app.data.entretiens, app.selected_contact, &today)
-                .to_string(),
+            entretiens_planifies(&app.data.entretiens, &today).to_string(),
             Tone::Violet,
             Icon::Calendar,
         ),
@@ -248,38 +247,27 @@ fn drawer_content(app: &App) -> Element<'_, Message> {
     .into()
 }
 
-/// Nombre de candidatures liées au contact sélectionné.
+/// Nombre total de candidatures liées à au moins un contact.
 #[must_use]
-fn total_candidatures_contacts(candidates: &[Candidature], selected: Option<uuid::Uuid>) -> usize {
-    let Some(id) = selected else {
-        return 0;
-    };
+fn total_candidatures_liees(candidates: &[Candidature]) -> usize {
     candidates
         .iter()
-        .filter(|item| item.contact_id == Some(id))
+        .filter(|item| item.contact_id.is_some())
         .count()
 }
 
-/// Nombre d'entretiens à venir liés au contact sélectionné.
+/// Nombre d'entretiens planifiés à partir de la date donnée (tous contacts).
 #[must_use]
-fn upcoming_interviews_contact(
-    interviews: &[Entretien],
-    selected: Option<uuid::Uuid>,
-    today: &str,
-) -> usize {
-    let Some(id) = selected else {
-        return 0;
-    };
+fn entretiens_planifies(interviews: &[Entretien], today: &str) -> usize {
     interviews
         .iter()
-        .filter(|item| item.contact_id == Some(id))
         .filter(|item| item.date_entretien.as_str() >= today)
         .count()
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{total_candidatures_contacts, upcoming_interviews_contact};
+    use super::{entretiens_planifies, total_candidatures_liees};
     use crate::modules::candidatures::model::{Candidature, StatutCandidature, TypeContrat};
     use crate::modules::entretiens::model::{Entretien, TypeEntretien};
     use uuid::Uuid;
@@ -318,13 +306,7 @@ mod tests {
     }
 
     #[test]
-    fn sans_contact_selectionne_aucune_candidature_ni_entretien_n_est_compte() {
-        assert_eq!(total_candidatures_contacts(&[], None), 0);
-        assert_eq!(upcoming_interviews_contact(&[], None, "2026-08-10"), 0);
-    }
-
-    #[test]
-    fn ne_comptent_que_les_elements_du_contact_selectionne() {
+    fn les_candidatures_liees_comptent_toutes_celles_qui_ont_un_contact() {
         let target = Uuid::new_v4();
         let other = Uuid::new_v4();
         let candidates = vec![
@@ -333,31 +315,19 @@ mod tests {
             candidature(Some(other)),
             candidature(None),
         ];
-        assert_eq!(total_candidatures_contacts(&candidates, Some(target)), 2);
-        assert_eq!(total_candidatures_contacts(&candidates, Some(other)), 1);
+        assert_eq!(total_candidatures_liees(&candidates), 3);
+        assert_eq!(total_candidatures_liees(&[]), 0);
     }
 
     #[test]
-    fn les_entretiens_futurs_du_contact_selectionne_sont_comptes() {
-        let target = Uuid::new_v4();
-        let other = Uuid::new_v4();
+    fn les_entretiens_planifies_sont_globaux_a_partir_d_aujourd_hui() {
         let interviews = vec![
-            entretien(Some(target), "2026-08-12T09:00:00"),
-            entretien(Some(target), "2026-08-08T09:00:00"),
-            entretien(Some(other), "2026-08-15T09:00:00"),
+            entretien(Some(Uuid::new_v4()), "2026-08-12T09:00:00"),
+            entretien(Some(Uuid::new_v4()), "2026-08-08T09:00:00"),
             entretien(None, "2026-08-20T09:00:00"),
         ];
-        assert_eq!(
-            upcoming_interviews_contact(&interviews, Some(target), "2026-08-10"),
-            1
-        );
-        assert_eq!(
-            upcoming_interviews_contact(&interviews, Some(other), "2026-08-10"),
-            1
-        );
-        assert_eq!(
-            upcoming_interviews_contact(&interviews, Some(target), "2026-08-13"),
-            0
-        );
+        assert_eq!(entretiens_planifies(&interviews, "2026-08-10"), 2);
+        assert_eq!(entretiens_planifies(&interviews, "2026-08-13"), 1);
+        assert_eq!(entretiens_planifies(&[], "2026-08-10"), 0);
     }
 }

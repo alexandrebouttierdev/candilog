@@ -18,20 +18,6 @@ pub fn full_name(contact: &Contact) -> String {
         .to_owned()
 }
 
-/// Sous-titre d'un contact dans une liste : fonction, à défaut coordonnées.
-#[must_use]
-pub fn subtitle(contact: &Contact) -> String {
-    contact
-        .poste
-        .as_deref()
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .map_or_else(
-            || format::or_else(contact.email.as_deref(), "Fonction non renseignée"),
-            str::to_owned,
-        )
-}
-
 /// Détermine si un contact correspond à une recherche libre.
 #[must_use]
 pub fn matches(contact: &Contact, needle: &str) -> bool {
@@ -89,7 +75,7 @@ pub fn contact_card<'a, Message: Clone + 'a>(
 
 #[cfg(test)]
 mod tests {
-    use super::{full_name, matches, subtitle};
+    use super::{full_name, matches};
     use crate::modules::contacts::model::Contact;
 
     fn contact(poste: Option<&str>, email: Option<&str>) -> Contact {
@@ -111,16 +97,6 @@ mod tests {
     #[test]
     fn le_nom_complet_est_normalise() {
         assert_eq!(full_name(&contact(None, None)), "Alex Bouttier");
-    }
-
-    #[test]
-    fn la_fonction_prime_sur_le_courriel_en_sous_titre() {
-        assert_eq!(subtitle(&contact(Some("DRH"), Some("a@b.fr"))), "DRH");
-        assert_eq!(subtitle(&contact(None, Some("a@b.fr"))), "a@b.fr");
-        assert_eq!(
-            subtitle(&contact(Some("  "), None)),
-            "Fonction non renseignée"
-        );
     }
 
     #[test]

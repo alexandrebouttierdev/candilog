@@ -2,13 +2,12 @@
 
 use super::typo;
 use crate::ui::components::icon::{self, Icon, Ink};
-use crate::ui::theme::metrics::{radius, space};
+use crate::ui::theme::metrics::space;
 use crate::ui::theme::styles;
-use crate::ui::theme::tokens::tokens;
 use crate::ui::theme::typography as font;
 use crate::ui::theme::Tone;
 use iced::widget::{column, container, row, Space};
-use iced::{Alignment, Background, Border, Color, Element, Length, Theme};
+use iced::{Alignment, Color, Element, Length};
 
 /// Carte d'indicateur simple : label, valeur mono, couleur.
 pub fn metric<'a, Message: 'a>(
@@ -27,44 +26,6 @@ pub fn metric<'a, Message: 'a>(
     .padding(space::LG)
     .width(Length::Fill)
     .style(styles::glass_card)
-    .into()
-}
-
-/// Style d'une carte teintée par un ton : fond `tone.surface` limité à 6 %, filet `tone.edge`.
-pub fn tinted_style(tone: Tone) -> impl Fn(&Theme) -> container::Style {
-    move |theme| {
-        let palette = tokens(theme);
-        let mut surface = tone.surface(&palette);
-        surface.a = 0.06;
-        container::Style {
-            background: Some(Background::Color(surface)),
-            border: Border {
-                color: tone.edge(&palette),
-                width: 1.0,
-                radius: radius::CARD.into(),
-            },
-            ..container::Style::default()
-        }
-    }
-}
-
-/// Carte d'indicateur en filigrane coloré (fond teinté par le ton).
-pub fn metric_tinted<'a, Message: 'a>(
-    label: &'a str,
-    value: String,
-    tone: Tone,
-) -> Element<'a, Message> {
-    container(
-        column![
-            typo::caption(label),
-            typo::text_mono(value, font::METRIC, font::MONO_SEMIBOLD)
-                .style(styles::toned_text(tone)),
-        ]
-        .spacing(space::XXS),
-    )
-    .padding(space::XL)
-    .width(Length::Fill)
-    .style(tinted_style(tone))
     .into()
 }
 
@@ -97,39 +58,12 @@ fn toned_value<'a>(value: String, tone: Tone) -> iced::widget::Text<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::{metric_icon_tinted, tinted_style};
+    use super::metric_icon_tinted;
     use crate::ui::components::icon::Icon;
     use crate::ui::theme::styles;
     use crate::ui::theme::tokens::NIGHT;
     use crate::ui::theme::{dark, Tone};
-    use iced::{Background, Color, Element};
-
-    #[test]
-    fn le_ton_teinte_le_fond_sans_ecraser_le_texte() {
-        let surface = Tone::Violet.surface(&NIGHT);
-        assert_eq!(surface.a, 0.14);
-        let style = tinted_style(Tone::Violet)(&dark());
-        assert_eq!(style.border.color, Tone::Violet.edge(&NIGHT));
-    }
-
-    #[test]
-    fn le_fond_teinte_est_limite_a_six_pour_cent() {
-        let style = tinted_style(Tone::Violet)(&dark());
-        let Background::Color(color) = style.background.unwrap() else {
-            panic!("fond absent")
-        };
-        assert!((color.a - 0.06).abs() < 1e-3);
-        let surface = Tone::Violet.surface(&NIGHT);
-        assert_eq!(
-            color,
-            Color {
-                r: surface.r,
-                g: surface.g,
-                b: surface.b,
-                a: 0.06,
-            }
-        );
-    }
+    use iced::Element;
 
     #[test]
     fn la_carte_avec_icone_s_instancie_pour_chaque_ton_du_dashboard() {

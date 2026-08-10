@@ -74,7 +74,7 @@ fn grid(app: &App) -> Element<'_, Message> {
             cards = cards.push(
                 container(version_card(
                     version,
-                    Message::LoadCvVersion(version.id),
+                    Message::SelectCvVersion(Some(version.id)),
                     Message::LoadCvVersion(version.id),
                     Message::OpenDialog(Dialog::DeleteCv(version.id)),
                 ))
