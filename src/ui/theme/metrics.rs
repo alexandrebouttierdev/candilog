@@ -59,6 +59,8 @@ pub mod size {
     pub const CONTROL: f32 = 34.0;
     /// Côté d'un bouton purement iconique.
     pub const ICON_BUTTON: f32 = 34.0;
+    /// Hauteur du rail d'un interrupteur (switch) de ligne de réglage.
+    pub const SWITCH: f32 = 16.0;
 
     /// Hauteur d'un jeton de statut (badge) et diamètre d'une pastille
     /// compacte, comme celle du jour courant sur un calendrier.
@@ -180,6 +182,10 @@ mod invariants {
 
     const _: () = assert!(size::ICON_BUTTON >= 32.0, "zone cliquable trop petite");
     const _: () = assert!(size::CONTROL >= 32.0, "zone cliquable trop petite");
+    const _: () = assert!(
+        size::SWITCH < size::CONTROL,
+        "interrupteur aussi haut qu'un contrôle"
+    );
 
     const _: () = assert!(radius::NONE < radius::MARKER, "rayons non différenciés");
     const _: () = assert!(radius::MARKER < radius::DOCUMENT, "rayons non différenciés");

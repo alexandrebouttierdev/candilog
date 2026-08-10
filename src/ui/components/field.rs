@@ -1,6 +1,6 @@
 //! Champs et contrôles de saisie.
 //!
-//! Hauteur unique de 26 px, étiquette au-dessus, description et erreur sous le
+//! Hauteur unique de 34 px, étiquette au-dessus, description et erreur sous le
 //! champ concerné : jamais dans un bandeau distant.
 
 use super::icon::{self, Icon, Ink};
@@ -17,7 +17,7 @@ use std::borrow::Borrow;
 pub fn input<'a, Message: Clone>(placeholder: &'a str, value: &'a str) -> TextInput<'a, Message> {
     iced::widget::text_input(placeholder, value)
         .size(font::BODY)
-        .padding([0.0, 8.0])
+        .padding([0.0, space::SM])
         .line_height(iced::widget::text::LineHeight::Absolute(
             size::CONTROL.into(),
         ))
@@ -55,7 +55,7 @@ where
     iced::widget::pick_list(options, selected, on_selected)
         .placeholder("Sélectionner…")
         .text_size(font::BODY)
-        .padding([0.0, 8.0])
+        .padding([0.0, space::SM])
         .handle(iced::widget::pick_list::Handle::Arrow {
             size: Some(icon::SM.into()),
         })
@@ -71,7 +71,7 @@ pub fn editor<'a, Message: Clone + 'a>(
     iced::widget::text_editor(content)
         .placeholder(placeholder)
         .size(font::BODY)
-        .padding(8)
+        .padding(space::SM)
         .style(styles::editor)
 }
 
@@ -82,7 +82,7 @@ pub fn switch<'a, Message: Clone + 'a>(
 ) -> Toggler<'a, Message> {
     toggler(active)
         .on_toggle(on_toggle)
-        .size(16)
+        .size(size::SWITCH)
         .style(styles::switch)
 }
 
