@@ -437,6 +437,24 @@ pub fn panel_flat(theme: &Theme) -> container::Style {
     }
 }
 
+/// État vide : bordure pointillée sur fond de carte.
+pub fn dashed(theme: &Theme) -> container::Style {
+    let palette = tokens(theme);
+    container::Style {
+        background: Some(Background::Color(Color {
+            a: 0.35,
+            ..palette.panel
+        })),
+        border: Border {
+            color: palette.border_strong,
+            width: stroke::HAIRLINE,
+            radius: radius::PANEL.into(),
+            // Iced 0.13 ne supporte pas les pointillés : filet simple renforcé.
+        },
+        ..container::Style::default()
+    }
+}
+
 /// Surface en creux : en-tête de table, plan de travail d'un document.
 pub fn sunken(theme: &Theme) -> container::Style {
     let palette = tokens(theme);

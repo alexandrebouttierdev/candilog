@@ -10,7 +10,7 @@ use crate::ui::theme::metrics::{elevation, radius, size, space, stroke};
 use crate::ui::theme::tokens::tokens;
 use crate::ui::theme::Tone;
 use iced::widget::{column, container, row, Space};
-use iced::{Alignment, Background, Border, Element, Length, Shadow, Theme, Vector};
+use iced::{Alignment, Background, Border, Color, Element, Length, Shadow, Theme, Vector};
 
 /// Nature d'une notification.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -95,11 +95,15 @@ pub fn toast<'a, Message: Clone + 'a>(
     .padding([space::MD, space::LG])
     .style(move |theme: &Theme| {
         let palette = tokens(theme);
+        let background = crate::ui::theme::styles::mix_panel(palette.panel, palette.canvas, 0.94);
         container::Style {
-            background: Some(Background::Color(palette.raised)),
+            background: Some(Background::Color(background)),
             text_color: Some(palette.text),
             border: Border {
-                color: tone.edge(&palette),
+                color: Color {
+                    a: 0.70,
+                    ..palette.border
+                },
                 width: stroke::HAIRLINE,
                 radius: radius::PANEL.into(),
             },

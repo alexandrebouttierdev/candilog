@@ -1,7 +1,7 @@
 //! États vides, chargements et erreurs inline.
 //!
-//! Les états vides desktop sont compacts : ils expliquent la suite possible
-//! sans occuper l'écran avec une icône et un bouton géants.
+//! Les états vides desktop restent sobres : un plancher de 256 px, une icône
+//! et le texte expliquant la suite possible, sans blason ni illustration.
 
 use super::button as controls;
 use super::icon::{self, Icon, Ink};
@@ -9,19 +9,36 @@ use super::typo;
 use crate::ui::theme::metrics::{size, space};
 use crate::ui::theme::styles;
 use crate::ui::theme::Tone;
-use iced::widget::{column, container, progress_bar, row, Space};
+use iced::widget::{column, container, progress_bar, row, Space, Stack};
 use iced::{Alignment, Element, Length};
 
-/// État vide compact intégré à un panneau.
+/// Plancher de hauteur des états vides (`min-h-64`) : Iced 0.13 ne connaît pas
+/// de hauteur minimale, une base invisible de 256 px la fixe dans un `Stack`.
+fn empty_floor<'a, Message: 'a>(content: Element<'a, Message>) -> Element<'a, Message> {
+    Stack::with_children(vec![
+        container(Space::with_height(Length::Fixed(256.0)))
+            .width(Length::Fill)
+            .into(),
+        container(content).center(Length::Fill).into(),
+    ])
+    .into()
+}
+
+/// État vide intégré à un panneau.
 pub fn empty<'a, Message: 'a>(title: &'a str, hint: &'a str) -> Element<'a, Message> {
-    container(
-        column![typo::item(title), typo::caption(hint)]
-            .spacing(space::XS)
-            .align_x(Alignment::Center),
-    )
+    container(empty_floor(
+        column![
+            icon::icon(Icon::Inbox, 48.0, Ink::Muted),
+            typo::body(title).size(crate::ui::theme::typography::ITEM),
+            typo::caption(hint),
+        ]
+        .spacing(space::MD)
+        .align_x(Alignment::Center)
+        .into(),
+    ))
     .padding([space::MAX, space::XL])
     .width(Length::Fill)
-    .center_x(Length::Fill)
+    .style(styles::dashed)
     .into()
 }
 
@@ -32,18 +49,20 @@ pub fn empty_with_action<'a, Message: Clone + 'a>(
     action: &'a str,
     on_press: Message,
 ) -> Element<'a, Message> {
-    container(
+    container(empty_floor(
         column![
-            typo::item(title),
+            icon::icon(Icon::Inbox, 48.0, Ink::Muted),
+            typo::body(title).size(crate::ui::theme::typography::ITEM),
             typo::caption(hint),
             controls::ghost(action, Some(Icon::Plus)).on_press(on_press),
         ]
         .spacing(space::MD)
-        .align_x(Alignment::Center),
-    )
+        .align_x(Alignment::Center)
+        .into(),
+    ))
     .padding([space::MAX, space::XL])
     .width(Length::Fill)
-    .center_x(Length::Fill)
+    .style(styles::dashed)
     .into()
 }
 
@@ -96,6 +115,38 @@ pub fn running<'a, Message: Clone + 'a>(
     .padding(space::LG)
     .width(Length::Fill)
     .style(styles::sunken)
+    .into()
+}
+
+/// Bloc de progression IA : icône 64 px, titre, chrono `mm:ss`, arrêt.
+pub fn ai_progress<'a, Message: Clone + 'a>(
+    step: &'a str,
+    elapsed_seconds: u64,
+    on_cancel: Message,
+) -> Element<'a, Message> {
+    let minutes = elapsed_seconds / 60;
+    let seconds = elapsed_seconds % 60;
+    container(
+        column![
+            container(icon::icon(Icon::Sparkles, 28.0, Ink::Accent))
+                .width(64.0)
+                .height(64.0)
+                .center(Length::Fill)
+                .style(styles::toned(Tone::Accent)),
+            typo::section(step),
+            typo::text_mono(
+                format!("{minutes:02}:{seconds:02}"),
+                13.0,
+                crate::ui::theme::typography::MONO_SEMIBOLD,
+            ),
+            controls::ghost("Arrêter", Some(Icon::Stop)).on_press(on_cancel),
+        ]
+        .spacing(space::MD)
+        .align_x(Alignment::Center),
+    )
+    .padding(space::XXL)
+    .width(Length::Fill)
+    .center_x(Length::Fill)
     .into()
 }
 
