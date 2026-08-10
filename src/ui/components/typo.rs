@@ -77,6 +77,14 @@ pub fn text_mono<'a>(value: impl IntoFragment<'a>, size: f32, font: iced::Font) 
     text(value).size(size).font(font)
 }
 
+/// Texte en capitales d'espacement élargi (titres de section de sidebar).
+pub fn text_uppercase<'a>(value: impl IntoFragment<'a>, size: f32, font: iced::Font) -> Text<'a> {
+    text(value)
+        .size(size)
+        .font(font)
+        .style(styles::secondary_text)
+}
+
 /// Métadonnée teintée par un ton sémantique.
 pub fn meta_toned<'a>(value: impl IntoFragment<'a>, tone: Tone) -> Text<'a> {
     text(value).size(font::META).style(styles::toned_text(tone))

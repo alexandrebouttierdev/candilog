@@ -3,7 +3,7 @@
 use crate::ui::components::icon::Icon;
 
 /// Regroupement d'écrans dans la barre latérale (libellés candilog-desktop).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Section {
     /// Tableau de bord, sans intitulé de groupe.
     Dashboard,
