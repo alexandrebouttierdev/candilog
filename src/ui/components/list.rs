@@ -3,7 +3,7 @@
 //! Plus compactes qu'une table : un titre, une métadonnée, un accessoire.
 
 use super::typo;
-use crate::ui::theme::metrics::{size, space, stroke};
+use crate::ui::theme::metrics::{radius, size, space, stroke};
 use crate::ui::theme::styles;
 use crate::ui::theme::tokens::tokens;
 use iced::widget::{button, column, container, row, Space};
@@ -19,7 +19,7 @@ pub fn row_item<'a, Message: Clone + 'a>(
 ) -> Element<'a, Message> {
     let body = row![
         marker(selected),
-        column![typo::item(title), typo::caption(meta)].spacing(1),
+        column![typo::item(title), typo::caption(meta)].spacing(space::XXS),
         Space::with_width(Length::Fill),
         trailing.into(),
     ]
@@ -95,11 +95,11 @@ pub fn row_static<'a, Message: 'a>(
 }
 
 fn marker<'a, Message: 'a>(selected: bool) -> Element<'a, Message> {
-    container(Space::new(stroke::MARKER, size::ROW - 10.0))
+    container(Space::new(stroke::MARKER, size::LIST_MARKER))
         .style(move |theme: &Theme| container::Style {
             background: selected.then(|| Background::Color(tokens(theme).accent)),
             border: Border {
-                radius: 1.0.into(),
+                radius: radius::MARKER.into(),
                 ..Border::default()
             },
             ..container::Style::default()

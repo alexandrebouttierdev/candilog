@@ -51,7 +51,7 @@ pub fn workspace<'a, Message: 'a>(
     container(content.into())
         .width(Length::Fill)
         .height(Length::Fill)
-        .padding([space::XL, space::XXL - 2.0])
+        .padding([space::XL, space::WORKSPACE_X])
         .into()
 }
 

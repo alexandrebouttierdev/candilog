@@ -60,7 +60,7 @@ pub fn empty_slot<'a, Message: 'a>(hint: &'a str) -> Element<'a, Message> {
 pub fn no_selection<'a, Message: 'a>(hint: &'a str) -> Element<'a, Message> {
     container(
         column![
-            icon::icon(Icon::Panel, 20.0, Ink::Muted),
+            icon::icon(Icon::Panel, icon::LG, Ink::Muted),
             typo::caption(hint),
         ]
         .spacing(space::MD)
@@ -88,7 +88,7 @@ pub fn running<'a, Message: Clone + 'a>(
             .spacing(space::MD)
             .align_y(Alignment::Center),
             progress_bar(0.0..=1.0, indeterminate(elapsed_seconds))
-                .height(3)
+                .height(size::PROGRESS_BAR)
                 .style(styles::progress(Tone::Accent)),
         ]
         .spacing(space::SM),
@@ -111,7 +111,7 @@ pub fn progress_step<'a, Message: 'a>(step: &'a str, ratio: f32) -> Element<'a, 
             ]
             .align_y(Alignment::Center),
             progress_bar(0.0..=1.0, ratio.clamp(0.0, 1.0))
-                .height(3)
+                .height(size::PROGRESS_BAR)
                 .style(styles::progress(Tone::Accent)),
         ]
         .spacing(space::SM),

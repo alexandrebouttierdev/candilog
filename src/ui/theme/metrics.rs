@@ -18,6 +18,9 @@ pub mod space {
     pub const XXL: f32 = 24.0;
     /// Marge maximale autorisée, réservée aux plans de travail de document.
     pub const MAX: f32 = 32.0;
+    /// Padding horizontal d'un plan de travail (workspace) : `XXL` resserré
+    /// de 2 px pour équilibrer visuellement avec le padding vertical `XL`.
+    pub const WORKSPACE_X: f32 = 22.0;
 }
 
 /// Rayons par rôle de surface.
@@ -98,6 +101,14 @@ pub mod size {
     /// Taille du chevron affiché à côté du libellé de la colonne triée dans
     /// un en-tête de table.
     pub const TABLE_SORT_ICON: f32 = 11.0;
+    /// Hauteur du marqueur de sélection d'une ligne de liste (`list.rs`),
+    /// fixe qu'elle porte un titre et une métadonnée ou une seule ligne de
+    /// texte, en retrait pour ne jamais toucher les bords.
+    pub const LIST_MARKER: f32 = 34.0;
+    /// Épaisseur d'une barre de progression inline (opération longue).
+    pub const PROGRESS_BAR: f32 = 3.0;
+    /// Largeur maximale du toast de notification flottant.
+    pub const TOAST: f32 = 460.0;
 
     /// Largeur du volet liste d'un master-detail.
     pub const MASTER: f32 = 320.0;
@@ -136,6 +147,12 @@ pub mod elevation {
     pub const DRAWER_OFFSET: f32 = 14.0;
     /// Étalement de l'ombre d'un drawer.
     pub const DRAWER_BLUR: f32 = 40.0;
+    /// Décalage vertical de l'ombre d'un toast : flotte au-dessus du plan de
+    /// travail, plus franchement qu'un menu mais sans rivaliser avec une
+    /// modale bloquante.
+    pub const TOAST_OFFSET: f32 = 10.0;
+    /// Étalement de l'ombre d'un toast.
+    pub const TOAST_BLUR: f32 = 26.0;
 }
 
 /// Épaisseurs de filets.
@@ -166,6 +183,14 @@ mod invariants {
     const _: () = assert!(space::LG < space::XL, "échelle d'espacement non ordonnée");
     const _: () = assert!(space::XL < space::XXL, "échelle d'espacement non ordonnée");
     const _: () = assert!(space::XXL < space::MAX, "échelle d'espacement non ordonnée");
+    const _: () = assert!(
+        space::XL < space::WORKSPACE_X,
+        "padding horizontal du plan de travail pas assez resserré face à XL"
+    );
+    const _: () = assert!(
+        space::WORKSPACE_X < space::XXL,
+        "padding horizontal du plan de travail aussi large que XXL"
+    );
 
     // Densité Confort : ces planchers remplacent les plafonds de la densité
     // dense précédente. Ils protègent contre un resserrement accidentel.
@@ -277,6 +302,18 @@ mod invariants {
         size::TABLE_SORT_ICON < size::TABLE_HEADER,
         "chevron de tri plus haut que l'en-tête qui le porte"
     );
+    const _: () = assert!(
+        size::LIST_MARKER < size::ROW,
+        "marqueur de ligne de liste plus haut que la plus petite ligne qui le porte"
+    );
+    const _: () = assert!(
+        size::PROGRESS_BAR < size::STATUS_BAR,
+        "barre de progression inline aussi épaisse qu'une barre d'état"
+    );
+    const _: () = assert!(
+        size::TOAST < size::DIALOG_FORM,
+        "toast aussi large qu'une modale de formulaire"
+    );
 
     const _: () = assert!(stroke::HAIRLINE <= 1.0, "filet trop épais");
     const _: () = assert!(stroke::MARKER <= 2.0, "marqueur trop épais");
@@ -310,5 +347,21 @@ mod invariants {
     const _: () = assert!(
         elevation::DRAWER_BLUR < elevation::OVERLAY_BLUR,
         "gabarits d'élévation superposée non ordonnés"
+    );
+    const _: () = assert!(
+        elevation::OFFSET < elevation::TOAST_OFFSET,
+        "un toast flottant doit se détacher plus franchement qu'une surface surélevée courante"
+    );
+    const _: () = assert!(
+        elevation::TOAST_OFFSET < elevation::OVERLAY_OFFSET,
+        "un toast ne doit pas rivaliser avec l'élévation d'une modale bloquante"
+    );
+    const _: () = assert!(
+        elevation::BLUR < elevation::TOAST_BLUR,
+        "un toast flottant doit se détacher plus franchement qu'une surface surélevée courante"
+    );
+    const _: () = assert!(
+        elevation::TOAST_BLUR < elevation::OVERLAY_BLUR,
+        "un toast ne doit pas rivaliser avec l'élévation d'une modale bloquante"
     );
 }

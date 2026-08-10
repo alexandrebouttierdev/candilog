@@ -6,7 +6,7 @@
 use super::button as controls;
 use super::icon::{self, Icon};
 use super::typo;
-use crate::ui::theme::metrics::{radius, space, stroke};
+use crate::ui::theme::metrics::{elevation, radius, size, space, stroke};
 use crate::ui::theme::tokens::tokens;
 use crate::ui::theme::Tone;
 use iced::widget::{column, container, row, Space};
@@ -91,7 +91,7 @@ pub fn toast<'a, Message: Clone + 'a>(
         .spacing(space::MD)
         .align_y(Alignment::Center),
     )
-    .max_width(460)
+    .max_width(size::TOAST)
     .padding([space::MD, space::LG])
     .style(move |theme: &Theme| {
         let palette = tokens(theme);
@@ -105,8 +105,8 @@ pub fn toast<'a, Message: Clone + 'a>(
             },
             shadow: Shadow {
                 color: palette.shadow,
-                offset: Vector::new(0.0, 10.0),
-                blur_radius: 26.0,
+                offset: Vector::new(0.0, elevation::TOAST_OFFSET),
+                blur_radius: elevation::TOAST_BLUR,
             },
         }
     });
