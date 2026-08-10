@@ -2,12 +2,18 @@
 //!
 //! L'en-tête de colonnes vit **hors** de la zone défilante : il reste visible
 //! quel que soit le nombre de lignes.
+//!
+//! Sous [`Layout::table_secondary_columns`], les colonnes marquées
+//! [`Column::secondary`] disparaissent de l'en-tête et des lignes plutôt que
+//! de déborder : leur contenu revient alors en métadonnée sous le titre de
+//! la ligne, il ne disparaît jamais.
 
 use super::icon::{self, Icon, Ink};
 use super::typo;
-use crate::ui::theme::metrics::{size, space, stroke};
+use crate::ui::theme::metrics::{radius, size, space, stroke};
 use crate::ui::theme::styles;
 use crate::ui::theme::tokens::tokens;
+use crate::ui::theme::Layout;
 use iced::widget::{button, column, container, row, Space};
 use iced::{Alignment, Background, Border, Element, Length, Theme};
 
@@ -87,6 +93,10 @@ pub struct Column {
     pub width: Width,
     /// Alignement du contenu.
     pub align: Align,
+    /// Vraie si la colonne peut être repliée sous
+    /// [`Layout::table_secondary_columns`]. Son contenu revient alors en
+    /// métadonnée sous le titre de la ligne plutôt que de disparaître.
+    pub secondary: bool,
 }
 
 impl Column {
@@ -97,6 +107,7 @@ impl Column {
             label,
             width: Width::Portion(portion),
             align: Align::Start,
+            secondary: false,
         }
     }
 
@@ -107,6 +118,7 @@ impl Column {
             label,
             width: Width::Fixed(pixels),
             align: Align::End,
+            secondary: false,
         }
     }
 
@@ -117,14 +129,34 @@ impl Column {
             label,
             width: Width::Fixed(pixels),
             align: Align::Center,
+            secondary: false,
         }
+    }
+
+    /// Marque la colonne secondaire : sous 1280 px, elle disparaît de
+    /// l'en-tête et son contenu revient en métadonnée sous le titre de la
+    /// ligne plutôt que de disparaître.
+    #[must_use]
+    pub const fn secondary(mut self) -> Self {
+        self.secondary = true;
+        self
+    }
+
+    /// Vraie si la colonne doit apparaître dans son propre emplacement,
+    /// compte tenu de la mise en page courante.
+    fn shown(self, layout: Layout) -> bool {
+        !self.secondary || layout.table_secondary_columns()
     }
 }
 
-/// En-tête de colonnes, figé hors de la zone défilante.
-pub fn header<'a, Message: 'a>(columns: &[Column]) -> Element<'a, Message> {
+/// En-tête de colonnes, figé hors de la zone défilante. Les colonnes
+/// secondaires disparaissent sous [`Layout::table_secondary_columns`].
+pub fn header<'a, Message: 'a>(layout: Layout, columns: &[Column]) -> Element<'a, Message> {
     let mut line = row![].spacing(space::LG).align_y(Alignment::Center);
     for column in columns {
+        if !column.shown(layout) {
+            continue;
+        }
         line = line.push(
             container(typo::label(column.label))
                 .width(column.width.length())
@@ -134,8 +166,10 @@ pub fn header<'a, Message: 'a>(columns: &[Column]) -> Element<'a, Message> {
     header_shell(line)
 }
 
-/// En-tête de colonnes dont certaines déclenchent un tri.
+/// En-tête de colonnes dont certaines déclenchent un tri. Les colonnes
+/// secondaires disparaissent sous [`Layout::table_secondary_columns`].
 pub fn header_sortable<'a, Message: Clone + 'a>(
+    layout: Layout,
     columns: &[Column],
     active: usize,
     order: SortOrder,
@@ -143,12 +177,19 @@ pub fn header_sortable<'a, Message: Clone + 'a>(
 ) -> Element<'a, Message> {
     let mut line = row![].spacing(space::LG).align_y(Alignment::Center);
     for (index, column) in columns.iter().enumerate() {
+        if !column.shown(layout) {
+            continue;
+        }
         let is_active = index == active;
         let mut label = row![typo::label(column.label)]
             .spacing(space::XS)
             .align_y(Alignment::Center);
         if is_active {
-            label = label.push(icon::icon(order.chevron(), 11.0, Ink::Accent));
+            label = label.push(icon::icon(
+                order.chevron(),
+                size::TABLE_SORT_ICON,
+                Ink::Accent,
+            ));
         }
         let control = button(
             container(label)
@@ -179,7 +220,7 @@ fn header_shell<'a, Message: 'a>(content: impl Into<Element<'a, Message>>) -> El
                 border: Border {
                     color: palette.border_strong,
                     width: stroke::HAIRLINE,
-                    radius: 0.0.into(),
+                    radius: radius::NONE.into(),
                 },
                 ..container::Style::default()
             }
@@ -187,34 +228,76 @@ fn header_shell<'a, Message: 'a>(content: impl Into<Element<'a, Message>>) -> El
         .into()
 }
 
+/// Cellule alignée sur la déclaration de sa colonne, en attente d'assemblage
+/// dans une ligne. [`row_button`] et [`row_static`] décident, selon la mise
+/// en page, si son contenu reste dans la ligne principale ou revient en
+/// métadonnée sous le titre lorsque sa colonne est secondaire et repliée.
+pub struct Cell<'a, Message> {
+    column: Column,
+    element: Element<'a, Message>,
+}
+
 /// Cellule alignée sur la déclaration de sa colonne.
 pub fn cell<'a, Message: 'a>(
     column: Column,
     content: impl Into<Element<'a, Message>>,
-) -> Element<'a, Message> {
-    container(content.into())
-        .width(column.width.length())
-        .align_x(column.align.alignment())
-        .into()
+) -> Cell<'a, Message> {
+    Cell {
+        column,
+        element: container(content.into())
+            .width(column.width.length())
+            .align_x(column.align.alignment())
+            .into(),
+    }
 }
 
-/// Ligne de données cliquable, avec état sélectionné marqué à gauche.
+/// Sépare les cellules d'une ligne entre la ligne principale et, si des
+/// colonnes secondaires sont repliées, la ligne de métadonnées qui les
+/// remplace sous le titre plutôt que de les faire disparaître. Le second
+/// membre du tuple indique si une ligne de métadonnées a été produite.
+fn assemble<'a, Message: 'a>(
+    layout: Layout,
+    marker: Element<'a, Message>,
+    cells: impl IntoIterator<Item = Cell<'a, Message>>,
+) -> (Element<'a, Message>, bool) {
+    let mut line = row![marker].spacing(space::LG).align_y(Alignment::Center);
+    let mut meta = row![].spacing(space::LG).align_y(Alignment::Center);
+    let mut folded = false;
+    for cell in cells {
+        if cell.column.shown(layout) {
+            line = line.push(cell.element);
+        } else {
+            meta = meta.push(cell.element);
+            folded = true;
+        }
+    }
+    if folded {
+        (column![line, meta].spacing(space::XXS).into(), true)
+    } else {
+        (line.into(), false)
+    }
+}
+
+/// Ligne de données cliquable, avec état sélectionné marqué à gauche. Le
+/// contenu des colonnes secondaires repliées revient en métadonnée sous le
+/// titre de la ligne, la hauteur de ligne s'ajuste en conséquence.
 pub fn row_button<'a, Message: Clone + 'a>(
-    cells: impl IntoIterator<Item = Element<'a, Message>>,
+    layout: Layout,
+    cells: impl IntoIterator<Item = Cell<'a, Message>>,
     selected: bool,
     on_press: Message,
 ) -> Element<'a, Message> {
-    let mut line = row![marker(selected)]
-        .spacing(space::LG)
-        .align_y(Alignment::Center);
-    for cell in cells {
-        line = line.push(cell);
-    }
+    let (content, comfortable) = assemble(layout, marker(selected), cells);
+    let height = if comfortable {
+        size::ROW_COMFORTABLE
+    } else {
+        size::ROW
+    };
     column![
-        button(line)
+        button(content)
             .width(Length::Fill)
-            .height(size::ROW)
-            .padding([0.0, space::XL - 2.0])
+            .height(height)
+            .padding([0.0, space::XL - stroke::MARKER])
             .style(styles::row_item(selected))
             .on_press(on_press),
         super::surface::divider(),
@@ -222,21 +305,24 @@ pub fn row_button<'a, Message: Clone + 'a>(
     .into()
 }
 
-/// Ligne de données non cliquable.
+/// Ligne de données non cliquable. Le contenu des colonnes secondaires
+/// repliées revient en métadonnée sous le titre de la ligne, la hauteur de
+/// ligne s'ajuste en conséquence.
 pub fn row_static<'a, Message: 'a>(
-    cells: impl IntoIterator<Item = Element<'a, Message>>,
+    layout: Layout,
+    cells: impl IntoIterator<Item = Cell<'a, Message>>,
 ) -> Element<'a, Message> {
-    let mut line = row![marker(false)]
-        .spacing(space::LG)
-        .align_y(Alignment::Center);
-    for cell in cells {
-        line = line.push(cell);
-    }
+    let (content, comfortable) = assemble(layout, marker(false), cells);
+    let height = if comfortable {
+        size::ROW_COMFORTABLE
+    } else {
+        size::ROW
+    };
     column![
-        container(line)
+        container(content)
             .width(Length::Fill)
-            .height(size::ROW)
-            .padding([0.0, space::XL - 2.0])
+            .height(height)
+            .padding([0.0, space::XL - stroke::MARKER])
             .align_y(Alignment::Center),
         super::surface::divider(),
     ]
@@ -244,13 +330,13 @@ pub fn row_static<'a, Message: 'a>(
 }
 
 fn marker<'a, Message: 'a>(selected: bool) -> Element<'a, Message> {
-    container(Space::new(stroke::MARKER, size::ROW - 8.0))
+    container(Space::new(stroke::MARKER, size::ROW_MARKER))
         .style(move |theme: &Theme| container::Style {
             background: selected
                 .then(|| Background::Color(tokens(theme).accent))
                 .or(None),
             border: Border {
-                radius: 1.0.into(),
+                radius: radius::MARKER.into(),
                 ..Border::default()
             },
             ..container::Style::default()
@@ -261,6 +347,9 @@ fn marker<'a, Message: 'a>(selected: bool) -> Element<'a, Message> {
 #[cfg(test)]
 mod tests {
     use super::{Align, Column, SortOrder, Width};
+    use crate::ui::theme::layout::{MIN_HEIGHT, MIN_WIDTH};
+    use crate::ui::theme::Layout;
+    use iced::Size;
 
     #[test]
     fn le_sens_de_tri_bascule_et_revient() {
@@ -290,5 +379,26 @@ mod tests {
     #[test]
     fn l_alignement_par_defaut_est_textuel() {
         assert_eq!(Align::default(), Align::Start);
+    }
+
+    #[test]
+    fn une_colonne_est_principale_par_defaut_et_se_marque_secondaire() {
+        assert!(!Column::text("ENTREPRISE", 3).secondary);
+        assert!(Column::text("ENTREPRISE", 3).secondary().secondary);
+    }
+
+    #[test]
+    fn une_colonne_secondaire_se_replie_sous_le_seuil_des_tables() {
+        let etroit = Layout::from_size(Size::new(MIN_WIDTH, MIN_HEIGHT));
+        let large = Layout::from_size(Size::new(1600.0, 900.0));
+        let colonne = Column::text("ENTREPRISE", 3).secondary();
+        assert!(!colonne.shown(etroit));
+        assert!(colonne.shown(large));
+    }
+
+    #[test]
+    fn une_colonne_principale_reste_visible_a_toute_largeur() {
+        let etroit = Layout::from_size(Size::new(MIN_WIDTH, MIN_HEIGHT));
+        assert!(Column::text("POSTE", 4).shown(etroit));
     }
 }

@@ -146,14 +146,17 @@ fn quality_panel<'a>(app: &'a App, ats_average: u8, llm: &LlmSummary) -> Element
     } else {
         let mut rows = column![];
         for (provider, calls) in &llm.by_provider {
-            rows = rows.push(table::row_static([
-                table::cell(PROVIDER_COLUMNS[0], typo::body(provider.clone())),
-                table::cell(PROVIDER_COLUMNS[1], typo::body(calls.to_string())),
-                table::cell(
-                    PROVIDER_COLUMNS[2],
-                    typo::caption(format!("{} %", format::percent(*calls, llm.total))),
-                ),
-            ]));
+            rows = rows.push(table::row_static(
+                app.layout(),
+                [
+                    table::cell(PROVIDER_COLUMNS[0], typo::body(provider.clone())),
+                    table::cell(PROVIDER_COLUMNS[1], typo::body(calls.to_string())),
+                    table::cell(
+                        PROVIDER_COLUMNS[2],
+                        typo::caption(format!("{} %", format::percent(*calls, llm.total))),
+                    ),
+                ],
+            ));
         }
         rows.into()
     };
@@ -180,7 +183,7 @@ fn quality_panel<'a>(app: &'a App, ats_average: u8, llm: &LlmSummary) -> Element
             )
             .padding([space::SM, 0.0]),
             surface::divider(),
-            table::header(&PROVIDER_COLUMNS),
+            table::header(app.layout(), &PROVIDER_COLUMNS),
             providers,
         ]
         .height(Length::Fill),

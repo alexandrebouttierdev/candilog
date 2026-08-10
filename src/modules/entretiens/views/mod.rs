@@ -345,11 +345,14 @@ fn day_view(app: &App) -> Element<'_, Message> {
     layout::workspace(layout::columns([
         surface::region(
             column![
-                table::header(&[
-                    crate::ui::components::table::Column::text("HEURE", 1),
-                    crate::ui::components::table::Column::text("ÉVÉNEMENT", 4),
-                    crate::ui::components::table::Column::trailing("", 130.0),
-                ]),
+                table::header(
+                    app.layout(),
+                    &[
+                        crate::ui::components::table::Column::text("HEURE", 1),
+                        crate::ui::components::table::Column::text("ÉVÉNEMENT", 4),
+                        crate::ui::components::table::Column::trailing("", 130.0),
+                    ],
+                ),
                 body,
             ]
             .height(Length::Fill),

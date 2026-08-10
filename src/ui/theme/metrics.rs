@@ -86,6 +86,12 @@ pub mod size {
     pub const PANE_ROW: f32 = 36.0;
     /// Hauteur du marqueur de sélection posé sur le bord d'une ligne.
     pub const MARKER: f32 = 16.0;
+    /// Hauteur du marqueur de sélection d'une ligne de table, en retrait de
+    /// la hauteur de ligne pour ne pas la toucher.
+    pub const ROW_MARKER: f32 = 36.0;
+    /// Taille du chevron affiché à côté du libellé de la colonne triée dans
+    /// un en-tête de table.
+    pub const TABLE_SORT_ICON: f32 = 11.0;
 
     /// Largeur du volet liste d'un master-detail.
     pub const MASTER: f32 = 320.0;
@@ -238,6 +244,14 @@ mod invariants {
     const _: () = assert!(
         size::MARKER < size::PANE_ROW,
         "marqueur plus haut que la ligne qui le porte"
+    );
+    const _: () = assert!(
+        size::ROW_MARKER < size::ROW,
+        "marqueur de ligne de table plus haut que la ligne qui le porte"
+    );
+    const _: () = assert!(
+        size::TABLE_SORT_ICON < size::TABLE_HEADER,
+        "chevron de tri plus haut que l'en-tête qui le porte"
     );
 
     const _: () = assert!(stroke::HAIRLINE <= 1.0, "filet trop épais");

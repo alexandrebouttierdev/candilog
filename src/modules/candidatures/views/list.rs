@@ -13,12 +13,14 @@ use crate::ui::theme::metrics::space;
 use iced::widget::{column, row};
 use iced::{Alignment, Element, Length};
 
-/// Colonnes de la table, dans l'ordre des critères de tri.
+/// Colonnes de la table, dans l'ordre des critères de tri. Seule POSTE (le
+/// titre de la ligne) reste toujours visible ; les autres sont secondaires
+/// et reviennent en métadonnée sous le titre en dessous de 1280 px.
 const COLUMNS: [Column; 4] = [
     Column::text("POSTE", 4),
-    Column::text("ENTREPRISE", 3),
-    Column::centered("STATUT", 132.0),
-    Column::trailing("ENVOYÉE LE", 96.0),
+    Column::text("ENTREPRISE", 3).secondary(),
+    Column::centered("STATUT", 132.0).secondary(),
+    Column::trailing("ENVOYÉE LE", 96.0).secondary(),
 ];
 
 /// Colonne d'actions, hors tri.
@@ -51,6 +53,7 @@ pub fn view<'a>(app: &'a App, candidates: &[&'a Candidature]) -> Element<'a, Mes
     surface::region(
         column![
             table::header_sortable(
+                app.layout(),
                 &columns,
                 app.candidate_sort.column(),
                 order,
@@ -107,6 +110,7 @@ fn data_row<'a>(app: &App, candidate: &'a Candidature, columns: &[Column]) -> El
         ),
     ];
     table::row_button(
+        app.layout(),
         cells,
         app.selected_candidate == Some(id),
         Message::OpenDialog(Dialog::CandidatureDetail(id)),
