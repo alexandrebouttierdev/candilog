@@ -5,6 +5,7 @@
 mod dialogs;
 
 use super::{App, Message};
+use crate::app::state::Dialog;
 use crate::navigation::Route;
 use crate::ui::components::icon::Icon;
 use crate::ui::components::pane::pane;
@@ -42,18 +43,33 @@ pub fn view(app: &App) -> Element<'_, Message> {
         bands = bands.push(volet);
     }
 
-    let shell: Element<'_, Message> = bands
-        .push(
-            container(workspace)
-                .width(Length::Fill)
-                .height(Length::Fill)
-                .style(styles::canvas),
-        )
-        .into();
+    bands = bands.push(
+        container(workspace)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .style(styles::canvas),
+    );
+
+    // Au-delà du seuil de largeur, l'inspecteur n'est plus une couche
+    // superposée : il prend sa place dans la rangée principale, à côté du
+    // volet de travail, plutôt que de flotter par-dessus dans la pile. On le
+    // pousse donc directement dans `bands` et on l'exclut de la pile plus
+    // bas, pour ne pas le rendre deux fois.
+    let inline_inspector = match app.dialog {
+        Some(Dialog::CandidatureDetail(id)) if app.layout().inspector_inline() => Some(id),
+        _ => None,
+    };
+    if let Some(id) = inline_inspector {
+        bands = bands.push(inspector_layer(app, id));
+    }
+
+    let shell: Element<'_, Message> = bands.into();
 
     let mut layers = vec![shell];
     if let Some(dialog) = app.dialog {
-        layers.push(dialogs::layer(app, dialog));
+        if inline_inspector.is_none() {
+            layers.push(dialogs::layer(app, dialog));
+        }
     }
     if let Some(message) = &app.notification {
         layers.push(notification::toast(
@@ -159,10 +175,13 @@ fn status_bar(app: &App) -> Element<'_, Message> {
 /// Ferme le dialogue courant depuis n'importe quelle couche superposée.
 pub(super) const DISMISS: Message = Message::CloseDialog;
 
-/// Rend le drawer d'inspection d'une candidature.
+/// Rend l'inspection d'une candidature : en colonne si la fenêtre est assez
+/// large, en drawer superposé sinon.
 pub(super) fn inspector_layer(app: &App, id: uuid::Uuid) -> Element<'_, Message> {
-    overlay::drawer(
-        crate::modules::candidatures::views::inspector::view(app, id),
-        DISMISS,
-    )
+    let content = crate::modules::candidatures::views::inspector::view(app, id);
+    if app.layout().inspector_inline() {
+        overlay::side_panel(content, DISMISS)
+    } else {
+        overlay::drawer(content, DISMISS)
+    }
 }

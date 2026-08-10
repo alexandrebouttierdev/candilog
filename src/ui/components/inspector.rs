@@ -4,13 +4,10 @@
 //! balayant une colonne d'étiquettes alignées.
 
 use super::typo;
-use crate::ui::theme::metrics::space;
+use crate::ui::theme::metrics::{size, space};
 use crate::ui::theme::Tone;
 use iced::widget::{column, container, row, Space};
 use iced::{Alignment, Element, Length};
-
-/// Hauteur d'une ligne de propriété.
-const PROPERTY_ROW: f32 = 26.0;
 
 /// Ligne de propriété : étiquette à gauche, valeur alignée à droite.
 pub fn property<'a, Message: 'a>(label: &'a str, value: impl Into<String>) -> Element<'a, Message> {
@@ -23,7 +20,7 @@ pub fn property<'a, Message: 'a>(label: &'a str, value: impl Into<String>) -> El
         .spacing(space::LG)
         .align_y(Alignment::Center),
     )
-    .height(PROPERTY_ROW)
+    .height(size::ROW)
     .align_y(Alignment::Center)
     .width(Length::Fill)
     .into()
@@ -44,7 +41,7 @@ pub fn property_toned<'a, Message: 'a>(
         .spacing(space::LG)
         .align_y(Alignment::Center),
     )
-    .height(PROPERTY_ROW)
+    .height(size::ROW)
     .align_y(Alignment::Center)
     .width(Length::Fill)
     .into()
@@ -64,13 +61,13 @@ pub fn property_control<'a, Message: 'a>(
         .spacing(space::LG)
         .align_y(Alignment::Center),
     )
-    .height(PROPERTY_ROW + 4.0)
+    .height(size::ROW)
     .align_y(Alignment::Center)
     .width(Length::Fill)
     .into()
 }
 
-/// Groupe de propriétés précédé d'un intitulé discret.
+/// Groupe de propriétés précédé d'un intitulé discret : une section.
 pub fn group<'a, Message: 'a>(
     title: &'a str,
     rows: impl IntoIterator<Item = Element<'a, Message>>,
@@ -80,7 +77,7 @@ pub fn group<'a, Message: 'a>(
         body = body.push(entry);
     }
     column![typo::label(title), super::surface::divider(), body,]
-        .spacing(space::XS)
+        .spacing(space::XL)
         .width(Length::Fill)
         .into()
 }
@@ -110,6 +107,7 @@ pub fn actions<'a, Message: 'a>(
     line.into()
 }
 
-/// Une propriété reste plus dense qu'une ligne de table, sans devenir illisible.
-const _: () = assert!(PROPERTY_ROW < crate::ui::theme::metrics::size::ROW);
-const _: () = assert!(PROPERTY_ROW >= 24.0);
+// Les lignes de propriété partagent la hauteur des lignes de table
+// (`size::ROW`) : une seule échelle de densité pour toute donnée alignée en
+// colonne, table ou inspecteur. Le plancher de cette hauteur est garanti par
+// l'invariant central `size::ROW >= 40.0` dans `theme::metrics`.

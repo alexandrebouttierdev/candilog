@@ -122,10 +122,20 @@ pub mod size {
 
 /// Élévation des surfaces qui flottent réellement au-dessus du plan de travail.
 pub mod elevation {
-    /// Décalage vertical de l'ombre d'une surface surélevée.
+    /// Décalage vertical de l'ombre d'une surface surélevée (menu, feuille).
     pub const OFFSET: f32 = 4.0;
-    /// Étalement de l'ombre d'une surface surélevée.
+    /// Étalement de l'ombre d'une surface surélevée (menu, feuille).
     pub const BLUR: f32 = 16.0;
+    /// Décalage vertical de l'ombre d'une modale : la plus haute des
+    /// surfaces superposées, elle se détache plus franchement qu'un menu.
+    pub const OVERLAY_OFFSET: f32 = 18.0;
+    /// Étalement de l'ombre d'une modale.
+    pub const OVERLAY_BLUR: f32 = 44.0;
+    /// Décalage horizontal de l'ombre d'un drawer ancré à droite : l'ombre
+    /// part vers la gauche, contre le contenu qu'il recouvre.
+    pub const DRAWER_OFFSET: f32 = 14.0;
+    /// Étalement de l'ombre d'un drawer.
+    pub const DRAWER_BLUR: f32 = 40.0;
 }
 
 /// Épaisseurs de filets.
@@ -284,5 +294,21 @@ mod invariants {
     const _: () = assert!(
         elevation::OFFSET < elevation::BLUR,
         "une ombre plus décalée qu'étalée paraît décollée"
+    );
+    const _: () = assert!(
+        elevation::OFFSET < elevation::OVERLAY_OFFSET,
+        "une modale doit se détacher plus franchement qu'une surface surélevée courante"
+    );
+    const _: () = assert!(
+        elevation::BLUR < elevation::OVERLAY_BLUR,
+        "une modale doit se détacher plus franchement qu'une surface surélevée courante"
+    );
+    const _: () = assert!(
+        elevation::DRAWER_OFFSET < elevation::OVERLAY_OFFSET,
+        "gabarits d'élévation superposée non ordonnés"
+    );
+    const _: () = assert!(
+        elevation::DRAWER_BLUR < elevation::OVERLAY_BLUR,
+        "gabarits d'élévation superposée non ordonnés"
     );
 }

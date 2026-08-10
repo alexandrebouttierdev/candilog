@@ -2,13 +2,16 @@
 //!
 //! La taille suit l'usage : une confirmation ne s'affiche pas dans le même
 //! cadre qu'un formulaire dense. Le drawer d'inspecteur laisse le contexte
-//! lisible plutôt que de le masquer sous un voile opaque.
+//! lisible plutôt que de le masquer sous un voile opaque. Sur une fenêtre
+//! assez large, ce drawer cède la place à [`side_panel`] : le même contenu,
+//! mais posé à côté du contenu plutôt que par-dessus.
 
 use super::button as controls;
 use super::icon::Icon;
 use super::surface;
 use super::typo;
-use crate::ui::theme::metrics::{radius, size, space, stroke};
+use crate::ui::theme::layout::MIN_HEIGHT;
+use crate::ui::theme::metrics::{elevation, radius, size, space, stroke};
 use crate::ui::theme::styles;
 use crate::ui::theme::tokens::{alpha, tokens};
 use iced::widget::{column, container, mouse_area, row, Space};
@@ -59,7 +62,7 @@ pub fn modal<'a, Message: Clone + 'a>(
         .spacing(space::LG),
     )
     .width(kind.width())
-    .max_height(660)
+    .max_height(MIN_HEIGHT)
     .padding(space::XXL)
     .style(dialog_surface);
 
@@ -89,12 +92,12 @@ pub fn drawer<'a, Message: Clone + 'a>(
                 border: Border {
                     color: palette.border_strong,
                     width: stroke::HAIRLINE,
-                    radius: 0.0.into(),
+                    radius: radius::NONE.into(),
                 },
                 shadow: Shadow {
                     color: palette.shadow,
-                    offset: Vector::new(-14.0, 0.0),
-                    blur_radius: 40.0,
+                    offset: Vector::new(-elevation::DRAWER_OFFSET, 0.0),
+                    blur_radius: elevation::DRAWER_BLUR,
                 },
             }
         });
@@ -120,6 +123,38 @@ pub fn drawer<'a, Message: Clone + 'a>(
     .into()
 }
 
+/// Inspecteur posé en colonne, à côté du contenu plutôt que par-dessus.
+///
+/// Même contenu qu'un [`drawer`], mais sans voile et sans ombre : appelé
+/// quand la fenêtre est assez large pour que l'inspecteur prenne sa place
+/// dans la rangée principale au lieu de flotter dans une couche superposée.
+/// Un filet vertical à gauche le détache du volet de travail qu'il jouxte.
+/// La signature reste alignée sur [`drawer`] ; `on_dismiss` n'est pas
+/// consommé ici, faute de voile à fermer au clic — la fermeture reste
+/// portée par le bouton de fermeture du contenu lui-même.
+pub fn side_panel<'a, Message: 'a>(
+    content: impl Into<Element<'a, Message>>,
+    _on_dismiss: Message,
+) -> Element<'a, Message> {
+    let panel = container(content.into())
+        .width(size::DRAWER)
+        .height(Length::Fill)
+        .style(|theme: &Theme| {
+            let palette = tokens(theme);
+            container::Style {
+                background: Some(Background::Color(palette.panel)),
+                text_color: Some(palette.text),
+                border: Border::default(),
+                shadow: Shadow::default(),
+            }
+        });
+
+    row![surface::split_rule(), panel]
+        .width(Length::Shrink)
+        .height(Length::Fill)
+        .into()
+}
+
 /// Feuille flottante ancrée sous une toolbar (filtres, menu secondaire).
 pub fn sheet<'a, Message: Clone + 'a>(
     content: impl Into<Element<'a, Message>>,
@@ -133,7 +168,7 @@ pub fn sheet<'a, Message: Clone + 'a>(
     mouse_area(
         container(
             column![
-                Space::with_height(size::TOOLBAR + 4.0),
+                Space::with_height(size::TOOLBAR + space::XS),
                 row![
                     Space::with_width(Length::Fixed(offset_x)),
                     mouse_area(panel),
@@ -175,8 +210,8 @@ fn dialog_surface(theme: &Theme) -> container::Style {
         },
         shadow: Shadow {
             color: palette.shadow,
-            offset: Vector::new(0.0, 18.0),
-            blur_radius: 44.0,
+            offset: Vector::new(0.0, elevation::OVERLAY_OFFSET),
+            blur_radius: elevation::OVERLAY_BLUR,
         },
     }
 }
