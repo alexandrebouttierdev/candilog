@@ -77,6 +77,27 @@ pub fn action<'a, Message: Clone + 'a>(
     }
 }
 
+/// Action principale de toolbar, repliée dans les mêmes conditions que
+/// [`action`]. Une fois repliée, son aplat d'accent continue de la
+/// distinguer de toute autre action de la toolbar, repliée ou non — la même
+/// logique que la tuile active du rail : la masse colorée porte la
+/// hiérarchie, le libellé porte le détail, et le détail peut se retirer
+/// quand la place manque. Une action sans icône ne peut pas se replier sans
+/// devenir indevinable : elle garde toujours son libellé.
+pub fn primary_action<'a, Message: Clone + 'a>(
+    layout: Layout,
+    label: &'a str,
+    icon: Option<Icon>,
+    on_press: Message,
+) -> Element<'a, Message> {
+    match icon {
+        Some(kind) if !layout.toolbar_action_labels() => {
+            button::icon_primary(kind, label, on_press)
+        }
+        _ => button::primary(label, icon).on_press(on_press).into(),
+    }
+}
+
 /// Séparateur vertical entre deux groupes de toolbar.
 pub fn separator<'a, Message: 'a>() -> Element<'a, Message> {
     container(Space::new(stroke::HAIRLINE, size::TOOLBAR_SEPARATOR))

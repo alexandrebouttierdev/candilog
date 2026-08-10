@@ -131,6 +131,23 @@ pub fn icon_action<'a, Message: Clone + 'a>(
     )
 }
 
+/// Bouton iconique d'action principale.
+pub fn icon_primary<'a, Message: Clone + 'a>(
+    kind: Icon,
+    hint: &'a str,
+    on_press: Message,
+) -> Element<'a, Message> {
+    with_hint(
+        iced::widget::button(icon::icon(kind, icon::SM, Ink::OnAccent))
+            .width(size::ICON_BUTTON)
+            .height(size::ICON_BUTTON)
+            .padding(0)
+            .style(styles::primary)
+            .on_press(on_press),
+        hint,
+    )
+}
+
 /// Bouton iconique destructif.
 pub fn icon_danger<'a, Message: Clone + 'a>(
     kind: Icon,

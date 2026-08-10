@@ -50,9 +50,12 @@ pub fn view(app: &App) -> Element<'_, Message> {
             Some(Icon::Download),
             Message::ExportCandidatures,
         ),
-        controls::primary("Nouvelle candidature", Some(Icon::Plus))
-            .on_press(Message::OpenDialog(Dialog::Candidature))
-            .into(),
+        toolbar::primary_action(
+            app.layout(),
+            "Nouvelle candidature",
+            Some(Icon::Plus),
+            Message::OpenDialog(Dialog::Candidature),
+        ),
     ]);
 
     let body = column![
