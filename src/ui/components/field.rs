@@ -128,6 +128,25 @@ pub fn text_field_error<'a, Message: Clone + 'a>(
     group.into()
 }
 
+/// Champ de date au masque JJ/MM/AAAA, avec erreur sous le champ.
+pub fn date_field<'a, Message: Clone + 'a>(
+    label: &'a str,
+    value: &'a str,
+    error: Option<&'a str>,
+    on_input: impl Fn(String) -> Message + 'a,
+) -> Element<'a, Message> {
+    let mut group = column![
+        typo::label(label),
+        input(label, value).on_input(on_input).width(Length::Fill),
+    ]
+    .spacing(space::XS)
+    .width(Length::Fill);
+    if let Some(message) = error {
+        group = group.push(typo::meta_toned(message, Tone::Danger));
+    }
+    group.into()
+}
+
 /// Champ masqué, pour un secret stocké dans le coffre système.
 pub fn secret_field<'a, Message: Clone + 'a>(
     label: &'a str,

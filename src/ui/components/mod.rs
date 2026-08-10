@@ -20,6 +20,7 @@ pub mod meter;
 pub mod notification;
 pub mod overlay;
 pub mod pane;
+pub mod provider_icon;
 pub mod rail;
 pub mod score_gauge;
 pub mod skeleton;
