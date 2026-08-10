@@ -178,6 +178,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
         Message::CloseDialog => {
             app.dialog = None;
             app.editing_id = None;
+            app.selected_contact = None;
         }
         Message::EntrepriseNomChanged(value) => app.entreprise_form.nom = value,
         Message::EntrepriseSecteurChanged(value) => app.entreprise_form.secteur = value,
