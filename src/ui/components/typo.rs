@@ -87,13 +87,15 @@ mod tests {
             font::MICRO,
             font::CAPTION,
             font::META,
+            font::LABEL,
             font::BODY,
             font::ITEM,
+            font::SECTION,
             font::TITLE,
             font::METRIC,
             font::DISPLAY,
         ];
-        assert_eq!(scale.len(), 8);
+        assert_eq!(scale.len(), 10);
         assert!(scale.windows(2).all(|pair| pair[0] < pair[1]));
     }
 

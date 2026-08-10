@@ -18,14 +18,15 @@ fn main() -> iced::Result {
     };
 
     iced::application("Candilog", app::update, app::view)
-        .font(include_bytes!("../assets/fonts/Cantarell-VF.otf").as_slice())
-        .default_font(Font::with_name("Cantarell"))
+        .font(include_bytes!("../assets/fonts/Geist[wght].ttf").as_slice())
+        .font(include_bytes!("../assets/fonts/GeistMono[wght].ttf").as_slice())
+        .default_font(Font::with_name("Geist"))
         .antialiasing(true)
         .theme(app::theme)
         .subscription(app::subscription)
         .window(window::Settings {
             size: window_size,
-            min_size: Some(Size::new(1040.0, 660.0)),
+            min_size: Some(Size::new(800.0, 600.0)),
             ..window::Settings::default()
         })
         .run_with(App::new)
