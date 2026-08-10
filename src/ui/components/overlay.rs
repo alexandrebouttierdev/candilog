@@ -15,7 +15,7 @@ use crate::ui::theme::metrics::{elevation, radius, size, space, stroke};
 use crate::ui::theme::styles;
 use crate::ui::theme::tokens::{alpha, tokens};
 use iced::widget::{column, container, mouse_area, row, Space};
-use iced::{Alignment, Background, Border, Element, Length, Shadow, Theme, Vector};
+use iced::{Alignment, Background, Border, Color, Element, Length, Shadow, Theme, Vector};
 
 /// Gabarit d'une modale, choisi selon le contenu.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -32,7 +32,7 @@ impl Size {
     const fn width(self) -> f32 {
         match self {
             Self::Confirm => size::DIALOG_CONFIRM,
-            Self::Form => size::DIALOG_FORM,
+            Self::Form => size::MODAL_WIDTH,
             Self::Wide => size::DIALOG_WIDE,
         }
     }
@@ -64,7 +64,27 @@ pub fn modal<'a, Message: Clone + 'a>(
     .width(kind.width())
     .max_height(MIN_HEIGHT)
     .padding(space::XXL)
-    .style(dialog_surface);
+    .style(move |theme: &Theme| {
+        let palette = tokens(theme);
+        let background = styles::mix_panel(palette.panel, palette.canvas, 0.94);
+        container::Style {
+            background: Some(Background::Color(background)),
+            text_color: Some(palette.text),
+            border: Border {
+                color: Color {
+                    a: 0.70,
+                    ..palette.border
+                },
+                width: stroke::HAIRLINE,
+                radius: radius::DIALOG.into(),
+            },
+            shadow: Shadow {
+                color: palette.shadow,
+                offset: Vector::new(0.0, 30.0),
+                blur_radius: 90.0,
+            },
+        }
+    });
 
     mouse_area(
         container(mouse_area(panel))
@@ -96,8 +116,8 @@ pub fn drawer<'a, Message: Clone + 'a>(
                 },
                 shadow: Shadow {
                     color: palette.shadow,
-                    offset: Vector::new(-elevation::DRAWER_OFFSET, 0.0),
-                    blur_radius: elevation::DRAWER_BLUR,
+                    offset: Vector::new(-20.0, 0.0),
+                    blur_radius: 70.0,
                 },
             }
         });
@@ -110,7 +130,7 @@ pub fn drawer<'a, Message: Clone + 'a>(
                 .style(|theme: &Theme| container::Style {
                     background: Some(Background::Color(alpha(
                         tokens(theme).scrim,
-                        tokens(theme).scrim.a * 0.55,
+                        tokens(theme).scrim.a * 0.40,
                     ))),
                     ..container::Style::default()
                 }),

@@ -27,6 +27,7 @@ pub mod stat_card;
 pub mod state;
 pub mod surface;
 pub mod table;
+pub mod tabs;
 pub mod toolbar;
 pub mod tooltip;
 pub mod typo;
