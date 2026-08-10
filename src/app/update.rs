@@ -1152,6 +1152,11 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
         }
         Message::SettingsSectionChanged(section) => app.settings_section = section,
         Message::ProfileSectionChanged(section) => app.profile_section = section,
+        Message::StatisticsTabChanged(tab) => app.statistics_tab = tab,
+        Message::AtsPagePrev => app.ats_page = app.ats_page.saturating_sub(1),
+        Message::AtsPageNext => app.ats_page = app.ats_page.saturating_add(1),
+        Message::LlmPagePrev => app.llm_page = app.llm_page.saturating_sub(1),
+        Message::LlmPageNext => app.llm_page = app.llm_page.saturating_add(1),
         Message::DocumentWidthChanged(width) => app.document_width = width,
         Message::FocusSearch => {
             return iced::widget::text_input::focus(SEARCH_FIELD_ID);

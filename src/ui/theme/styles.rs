@@ -588,6 +588,25 @@ pub fn toned(tone: Tone) -> impl Fn(&Theme) -> container::Style {
     }
 }
 
+/// Bandeau d'alerte ambre : fond teinté discret et filet ambre (relances à faire).
+pub fn amber_band(theme: &Theme) -> container::Style {
+    let palette = tokens(theme);
+    container::Style {
+        background: Some(Background::Color(mix(
+            palette.warning,
+            palette.canvas,
+            0.04,
+        ))),
+        text_color: Some(palette.text),
+        border: Border {
+            color: alpha(palette.warning, 0.20),
+            width: stroke::HAIRLINE,
+            radius: radius::PANEL.into(),
+        },
+        shadow: Shadow::default(),
+    }
+}
+
 /// Surface pleine d'une couleur arbitraire, réservée aux marqueurs dessinés.
 pub fn marker(color: Color, corner: f32) -> impl Fn(&Theme) -> container::Style {
     move |_theme| container::Style {
@@ -882,7 +901,7 @@ mod tests {
         row_item, scroller, secondary, selected, selected_inverse, sunken,
     };
     use crate::ui::theme::color::Tone;
-    use crate::ui::theme::tokens::{tokens, NIGHT};
+    use crate::ui::theme::tokens::{alpha, tokens, NIGHT};
     use crate::ui::theme::{dark, light};
     use iced::widget::{button, scrollable};
 
@@ -1118,6 +1137,23 @@ mod tests {
             format!("{:?}", style.bar),
             format!("{:?}", iced::Background::Color(NIGHT.success))
         );
+    }
+
+    #[test]
+    fn le_bandeau_ambre_melange_4_pourcent_et_filet_a_20_pourcent() {
+        for theme in [dark(), light()] {
+            let palette = tokens(&theme);
+            let style = super::amber_band(&theme);
+            assert_eq!(
+                style.background,
+                Some(iced::Background::Color(super::mix(
+                    palette.warning,
+                    palette.canvas,
+                    0.04
+                )))
+            );
+            assert_eq!(style.border.color, alpha(palette.warning, 0.20));
+        }
     }
 
     #[test]

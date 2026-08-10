@@ -242,6 +242,16 @@ impl SettingsSection {
     }
 }
 
+/// Onglet actif de l'écran Statistiques.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum StatisticsTab {
+    /// Suivi du pipeline et des relances.
+    #[default]
+    Candidatures,
+    /// Scores ATS et appels IA.
+    PerformanceCv,
+}
+
 /// Sections de l'écran Profil.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ProfileSection {
@@ -452,6 +462,12 @@ pub struct App {
     pub settings_section: SettingsSection,
     /// Section active de l'écran Profil.
     pub profile_section: ProfileSection,
+    /// Onglet actif de l'écran Statistiques.
+    pub statistics_tab: StatisticsTab,
+    /// Page courante de l'historique des scores ATS (1-based).
+    pub ats_page: u64,
+    /// Page courante de l'historique des appels IA (1-based).
+    pub llm_page: u64,
     /// Largeur de la page dans les plans de travail de document.
     pub document_width: f32,
     /// Dernière taille connue de la fenêtre, source des décisions de mise en page.
@@ -521,6 +537,9 @@ impl App {
             candidate_sort_descending: true,
             settings_section: SettingsSection::default(),
             profile_section: ProfileSection::default(),
+            statistics_tab: StatisticsTab::default(),
+            ats_page: 1,
+            llm_page: 1,
             document_width: crate::ui::components::document::DEFAULT_WIDTH,
             window_size: iced::Size::new(
                 crate::ui::theme::layout::MIN_WIDTH,

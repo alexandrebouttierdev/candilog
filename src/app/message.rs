@@ -1,6 +1,6 @@
 //! Messages produits par les vues Iced.
 
-use super::state::{Dialog, ProfileSection, SettingsSection};
+use super::state::{Dialog, ProfileSection, SettingsSection, StatisticsTab};
 use crate::modules::candidatures::model::{StatutCandidature, TypeContrat};
 use crate::modules::entretiens::model::TypeEntretien;
 use crate::navigation::Route;
@@ -346,6 +346,16 @@ pub enum Message {
     SettingsSectionChanged(SettingsSection),
     /// Change la section active du profil.
     ProfileSectionChanged(ProfileSection),
+    /// Change l'onglet actif des statistiques.
+    StatisticsTabChanged(StatisticsTab),
+    /// Page précédente de l'historique des scores ATS.
+    AtsPagePrev,
+    /// Page suivante de l'historique des scores ATS.
+    AtsPageNext,
+    /// Page précédente de l'historique des appels IA.
+    LlmPagePrev,
+    /// Page suivante de l'historique des appels IA.
+    LlmPageNext,
     /// Modifie la largeur de page des plans de travail de document.
     DocumentWidthChanged(f32),
     /// Donne le focus à la recherche de l'écran courant.
