@@ -11,6 +11,7 @@ pub mod button;
 pub mod choice;
 pub mod document;
 pub mod field;
+pub mod header;
 pub mod icon;
 pub mod inspector;
 pub mod layout;
