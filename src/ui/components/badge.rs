@@ -3,18 +3,13 @@
 //! Un jeton porte toujours un libellé. Les marqueurs de statut ajoutent une
 //! forme distincte pour que l'information ne dépende jamais de la couleur.
 
-use crate::ui::theme::metrics::{radius, space, stroke};
+use crate::ui::theme::metrics::{radius, size, space, stroke};
 use crate::ui::theme::styles;
 use crate::ui::theme::tokens::tokens;
 use crate::ui::theme::typography as font;
 use crate::ui::theme::{Marker, Tone};
 use iced::widget::{container, row, text, Space};
 use iced::{Alignment, Background, Border, Element, Length, Theme};
-
-/// Diamètre du marqueur dessiné devant un statut.
-const DOT: f32 = 7.0;
-
-const _: () = assert!(DOT <= 8.0, "marqueur de statut trop imposant");
 
 /// Jeton sémantique avec libellé.
 pub fn badge<'a, Message: 'a>(label: impl Into<String>, tone: Tone) -> Element<'a, Message> {
@@ -24,8 +19,8 @@ pub fn badge<'a, Message: 'a>(label: impl Into<String>, tone: Tone) -> Element<'
             .font(font::MEDIUM)
             .style(styles::toned_text(tone)),
     )
-    .height(18)
-    .padding([0.0, 7.0])
+    .height(size::TAG)
+    .padding([space::XXS, space::SM])
     .align_y(Alignment::Center)
     .style(styles::toned(tone))
     .into()
@@ -45,11 +40,11 @@ pub fn status<'a, Message: 'a>(
                 .font(font::MEDIUM)
                 .style(styles::toned_text(tone)),
         ]
-        .spacing(space::SM - 1.0)
+        .spacing(space::SM)
         .align_y(Alignment::Center),
     )
-    .height(18)
-    .padding([0.0, 7.0])
+    .height(size::TAG)
+    .padding([space::XXS, space::SM])
     .align_y(Alignment::Center)
     .style(styles::toned(tone))
     .into()
@@ -65,7 +60,7 @@ pub fn marker<'a, Message: 'a>(tone: Tone, shape: Marker) -> Element<'a, Message
                 background: None,
                 border: Border {
                     color,
-                    width: 1.5,
+                    width: stroke::EMPHASIS,
                     radius: radius::PILL.into(),
                 },
                 ..container::Style::default()
@@ -74,12 +69,12 @@ pub fn marker<'a, Message: 'a>(tone: Tone, shape: Marker) -> Element<'a, Message
                 background: Some(Background::Color(color)),
                 border: Border {
                     color,
-                    width: 1.0,
+                    width: stroke::HAIRLINE,
                     radius: iced::border::Radius {
                         top_left: radius::PILL,
                         bottom_left: radius::PILL,
-                        top_right: 0.0,
-                        bottom_right: 0.0,
+                        top_right: radius::NONE,
+                        bottom_right: radius::NONE,
                     },
                 },
                 ..container::Style::default()
@@ -98,14 +93,16 @@ pub fn marker<'a, Message: 'a>(tone: Tone, shape: Marker) -> Element<'a, Message
                 ))),
                 border: Border {
                     color,
-                    width: 1.5,
-                    radius: 1.0.into(),
+                    width: stroke::EMPHASIS,
+                    radius: radius::BARRED.into(),
                 },
                 ..container::Style::default()
             },
         }
     };
-    container(Space::new(DOT, DOT)).style(dot).into()
+    container(Space::new(size::STATUS_DOT, size::STATUS_DOT))
+        .style(dot)
+        .into()
 }
 
 /// Compteur discret accolé à un titre.
@@ -116,8 +113,8 @@ pub fn count<'a, Message: 'a>(value: usize) -> Element<'a, Message> {
             .font(font::MEDIUM)
             .style(styles::muted_text),
     )
-    .height(17)
-    .padding([0.0, 6.0])
+    .height(size::COUNTER)
+    .padding([space::XXS, space::XXS + space::XS])
     .align_y(Alignment::Center)
     .style(|theme: &Theme| {
         let palette = tokens(theme);
@@ -148,7 +145,7 @@ pub fn accent_bar<'a, Message: 'a>(tone: Tone, height: f32) -> Element<'a, Messa
         .style(move |theme: &Theme| container::Style {
             background: Some(Background::Color(tone.color(&tokens(theme)))),
             border: Border {
-                radius: 1.0.into(),
+                radius: radius::MARKER.into(),
                 ..Border::default()
             },
             ..container::Style::default()
@@ -166,8 +163,8 @@ pub fn today_chip<'a, Message: 'a>(label: impl Into<String>) -> Element<'a, Mess
                 color: Some(tokens(theme).on_accent),
             }),
     )
-    .center_x(Length::Fixed(18.0))
-    .center_y(Length::Fixed(18.0))
+    .center_x(Length::Fixed(size::TAG))
+    .center_y(Length::Fixed(size::TAG))
     .style(|theme: &Theme| container::Style {
         background: Some(Background::Color(tokens(theme).accent_fill)),
         border: Border {

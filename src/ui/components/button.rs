@@ -5,12 +5,12 @@
 //! dialogue.
 
 use super::icon::{self, Icon, Ink};
-use super::typo;
+use super::tooltip;
 use crate::ui::theme::metrics::{radius, size, space, stroke};
 use crate::ui::theme::styles;
 use crate::ui::theme::tokens::tokens;
 use crate::ui::theme::typography as font;
-use iced::widget::{container, row, text, tooltip, Button};
+use iced::widget::{container, row, text, Button};
 use iced::{Alignment, Background, Border, Element, Length, Theme};
 
 /// Compose une icône et un libellé dans l'ordre et l'espacement canoniques.
@@ -29,7 +29,7 @@ fn face<'a, Message: 'a>(kind: Option<Icon>, ink: Ink, label: &'a str) -> Elemen
 pub fn primary<'a, Message: 'a>(label: &'a str, kind: Option<Icon>) -> Button<'a, Message> {
     iced::widget::button(face(kind, Ink::OnAccent, label))
         .height(size::CONTROL)
-        .padding([0.0, 10.0])
+        .padding([0.0, space::SM + space::XXS])
         .style(styles::primary)
 }
 
@@ -37,7 +37,7 @@ pub fn primary<'a, Message: 'a>(label: &'a str, kind: Option<Icon>) -> Button<'a
 pub fn secondary<'a, Message: 'a>(label: &'a str, kind: Option<Icon>) -> Button<'a, Message> {
     iced::widget::button(face(kind, Ink::Muted, label))
         .height(size::CONTROL)
-        .padding([0.0, 10.0])
+        .padding([0.0, space::SM + space::XXS])
         .style(styles::secondary)
 }
 
@@ -45,7 +45,7 @@ pub fn secondary<'a, Message: 'a>(label: &'a str, kind: Option<Icon>) -> Button<
 pub fn ghost<'a, Message: 'a>(label: &'a str, kind: Option<Icon>) -> Button<'a, Message> {
     iced::widget::button(face(kind, Ink::Muted, label))
         .height(size::CONTROL)
-        .padding([0.0, 8.0])
+        .padding([0.0, space::SM])
         .style(styles::ghost)
 }
 
@@ -57,7 +57,7 @@ pub fn danger<'a, Message: 'a>(label: &'a str, kind: Option<Icon>) -> Button<'a,
         label,
     ))
     .height(size::CONTROL)
-    .padding([0.0, 10.0])
+    .padding([0.0, space::SM + space::XXS])
     .style(styles::danger)
 }
 
@@ -65,19 +65,23 @@ pub fn danger<'a, Message: 'a>(label: &'a str, kind: Option<Icon>) -> Button<'a,
 pub fn danger_filled<'a, Message: 'a>(label: &'a str) -> Button<'a, Message> {
     iced::widget::button(text(label).size(font::BODY))
         .height(size::CONTROL)
-        .padding([0.0, 10.0])
+        .padding([0.0, space::SM + space::XXS])
         .style(styles::danger_filled)
 }
 
 /// Élément d'un contrôle segmenté.
+///
+/// Plus bas que `size::CONTROL` de deux fois `space::XXS`, exactement
+/// l'espace pris par le padding du cadre `segmented` qui l'enveloppe : la
+/// somme des deux retombe sur `size::CONTROL`.
 pub fn segment<'a, Message: 'a>(label: impl Into<String>, active: bool) -> Button<'a, Message> {
     iced::widget::button(text(label.into()).size(font::BODY).font(if active {
         font::MEDIUM
     } else {
         font::REGULAR
     }))
-    .height(size::CONTROL - 4.0)
-    .padding([0.0, 10.0])
+    .height(size::CONTROL - 2.0 * space::XXS)
+    .padding([0.0, space::SM + space::XXS])
     .style(if active {
         styles::selected
     } else {
@@ -89,12 +93,12 @@ pub fn segment<'a, Message: 'a>(label: impl Into<String>, active: bool) -> Butto
 pub fn segmented<'a, Message: Clone + 'a>(
     segments: impl IntoIterator<Item = Button<'a, Message>>,
 ) -> Element<'a, Message> {
-    let mut group = row![].spacing(2);
+    let mut group = row![].spacing(space::XXS);
     for segment in segments {
         group = group.push(segment);
     }
     container(group)
-        .padding(2)
+        .padding(space::XXS)
         .style(|theme: &Theme| {
             let palette = tokens(theme);
             container::Style {
@@ -145,21 +149,15 @@ pub fn icon_danger<'a, Message: Clone + 'a>(
 }
 
 /// Enveloppe un contrôle d'une infobulle desktop.
+///
+/// Délègue au composant `tooltip` partagé : c'est la seule façon de dessiner
+/// une infobulle dans l'application. Toujours positionnée en dessous, comme
+/// il convient à un bouton de toolbar.
 pub fn with_hint<'a, Message: 'a>(
     control: impl Into<Element<'a, Message>>,
     hint: &'a str,
 ) -> Element<'a, Message> {
-    tooltip(control, typo::caption(hint), tooltip::Position::Bottom)
-        .gap(4)
-        .padding(6)
-        .style(|theme: &Theme| container::Style {
-            border: Border {
-                radius: radius::CONTROL.into(),
-                ..styles::raised(theme).border
-            },
-            ..styles::raised(theme)
-        })
-        .into()
+    tooltip::tip(control, hint, tooltip::Side::Bottom)
 }
 
 /// Bouton occupant toute la largeur de son conteneur, pour un volet latéral.

@@ -26,6 +26,9 @@ pub mod radius {
     pub const NONE: f32 = 0.0;
     /// Arrondi d'un marqueur de sélection ou d'une barre fine.
     pub const MARKER: f32 = 1.0;
+    /// Arrondi du jeton de statut « barré », presque carré : ni un marqueur
+    /// de sélection ni une barre, mais un jeton du même ordre de grandeur.
+    pub const BARRED: f32 = 1.0;
     /// Page d'un aperçu de document.
     pub const DOCUMENT: f32 = 3.0;
     /// Boutons, champs, selects, segments, pastilles d'icône.
@@ -56,6 +59,14 @@ pub mod size {
     pub const CONTROL: f32 = 34.0;
     /// Côté d'un bouton purement iconique.
     pub const ICON_BUTTON: f32 = 34.0;
+
+    /// Hauteur d'un jeton de statut (badge) et diamètre d'une pastille
+    /// compacte, comme celle du jour courant sur un calendrier.
+    pub const TAG: f32 = 18.0;
+    /// Hauteur d'un compteur discret, plus fin qu'un jeton de statut.
+    pub const COUNTER: f32 = 17.0;
+    /// Diamètre du marqueur de forme dessiné devant un jeton de statut.
+    pub const STATUS_DOT: f32 = 7.0;
 
     /// Largeur du rail de navigation, libellés affichés.
     pub const RAIL: f32 = 88.0;
@@ -107,6 +118,9 @@ pub mod elevation {
 pub mod stroke {
     /// Filet standard.
     pub const HAIRLINE: f32 = 1.0;
+    /// Filet plus marqué qu'un hairline, pour le contour d'un marqueur creux
+    /// ou barré : il doit rester lisible à l'échelle d'un petit jeton.
+    pub const EMPHASIS: f32 = 1.5;
     /// Marqueur de sélection posé sur le bord gauche d'une ligne.
     pub const MARKER: f32 = 2.0;
     /// Filet de focus d'un contrôle.
@@ -148,6 +162,16 @@ mod invariants {
     );
 
     const _: () = assert!(
+        size::COUNTER < size::TAG,
+        "compteur pas assez discret face au badge"
+    );
+    const _: () = assert!(size::TAG < size::CONTROL, "jeton aussi haut qu'un contrôle");
+    const _: () = assert!(
+        size::STATUS_DOT <= space::SM,
+        "marqueur de statut trop imposant"
+    );
+
+    const _: () = assert!(
         size::TABLE_HEADER < size::ROW,
         "en-tête plus haut qu'une ligne"
     );
@@ -159,6 +183,8 @@ mod invariants {
 
     const _: () = assert!(radius::NONE < radius::MARKER, "rayons non différenciés");
     const _: () = assert!(radius::MARKER < radius::DOCUMENT, "rayons non différenciés");
+    const _: () = assert!(radius::NONE < radius::BARRED, "rayons non différenciés");
+    const _: () = assert!(radius::BARRED < radius::DOCUMENT, "rayons non différenciés");
     const _: () = assert!(radius::NONE < radius::DOCUMENT, "rayons non différenciés");
     const _: () = assert!(
         radius::DOCUMENT < radius::CONTROL,
@@ -210,6 +236,11 @@ mod invariants {
 
     const _: () = assert!(stroke::HAIRLINE <= 1.0, "filet trop épais");
     const _: () = assert!(stroke::MARKER <= 2.0, "marqueur trop épais");
+    const _: () = assert!(
+        stroke::HAIRLINE < stroke::EMPHASIS,
+        "filets non différenciés"
+    );
+    const _: () = assert!(stroke::EMPHASIS < stroke::MARKER, "filets non différenciés");
 
     const _: () = assert!(
         A4_RATIO > 1.41 && A4_RATIO < 1.42,
