@@ -22,6 +22,7 @@ pub mod overlay;
 pub mod pane;
 pub mod provider_icon;
 pub mod rail;
+pub mod runtime_status;
 pub mod score_gauge;
 pub mod skeleton;
 pub mod stat_card;

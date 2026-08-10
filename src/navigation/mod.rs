@@ -2,31 +2,31 @@
 
 use crate::ui::components::icon::Icon;
 
-/// Regroupement d'écrans dans la barre latérale.
+/// Regroupement d'écrans dans la barre latérale (libellés candilog-desktop).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Section {
-    /// Vue d'ensemble, sans intitulé de groupe.
-    Pilotage,
-    /// Suivi du pipeline et de l'agenda.
-    Recherche,
-    /// Entreprises et contacts.
+    /// Tableau de bord, sans intitulé de groupe.
+    Dashboard,
+    /// Candidatures et CV.
+    Pipeline,
+    /// Entreprises, réseau et calendrier.
     Relations,
-    /// CV, lettres et outils IA.
-    Documents,
-    /// Profil et configuration.
-    Systeme,
+    /// Statistiques.
+    Analyse,
+    /// Outils de carrière, profil et paramètres.
+    Carriere,
 }
 
 impl Section {
-    /// Intitulé discret affiché au-dessus du groupe, absent pour le pilotage.
+    /// Intitulé discret affiché au-dessus du groupe, absent pour le tableau de bord.
     #[must_use]
     pub const fn label(self) -> Option<&'static str> {
         match self {
-            Self::Pilotage => None,
-            Self::Recherche => Some("Recherche"),
+            Self::Dashboard => None,
+            Self::Pipeline => Some("Pipeline"),
             Self::Relations => Some("Relations"),
-            Self::Documents => Some("Documents"),
-            Self::Systeme => Some("Système"),
+            Self::Analyse => Some("Analyse"),
+            Self::Carriere => Some("Espace carrière"),
         }
     }
 
@@ -34,11 +34,11 @@ impl Section {
     #[must_use]
     pub const fn icon(self) -> Icon {
         match self {
-            Self::Pilotage => Icon::Dashboard,
-            Self::Recherche => Icon::Applications,
+            Self::Dashboard => Icon::Dashboard,
+            Self::Pipeline => Icon::Applications,
             Self::Relations => Icon::Network,
-            Self::Documents => Icon::Document,
-            Self::Systeme => Icon::Settings,
+            Self::Analyse => Icon::Chart,
+            Self::Carriere => Icon::Sparkles,
         }
     }
 
@@ -46,11 +46,11 @@ impl Section {
     #[must_use]
     pub const fn default_route(self) -> Route {
         match self {
-            Self::Pilotage => Route::Dashboard,
-            Self::Recherche => Route::Candidatures,
+            Self::Dashboard => Route::Dashboard,
+            Self::Pipeline => Route::Candidatures,
             Self::Relations => Route::Entreprises,
-            Self::Documents => Route::Cv,
-            Self::Systeme => Route::Profil,
+            Self::Analyse => Route::Statistiques,
+            Self::Carriere => Route::CvGenerator,
         }
     }
 
@@ -58,11 +58,11 @@ impl Section {
     #[must_use]
     pub const fn short_label(self) -> &'static str {
         match self {
-            Self::Pilotage => "Pilotage",
-            Self::Recherche => "Recherche",
+            Self::Dashboard => "Accueil",
+            Self::Pipeline => "Pipeline",
             Self::Relations => "Relations",
-            Self::Documents => "Documents",
-            Self::Systeme => "Réglages",
+            Self::Analyse => "Analyse",
+            Self::Carriere => "Carrière",
         }
     }
 
@@ -70,21 +70,21 @@ impl Section {
     #[must_use]
     pub const fn long_label(self) -> &'static str {
         match self {
-            Self::Pilotage => "Tableau de bord",
-            Self::Recherche => "Suivi des candidatures",
-            Self::Relations => "Entreprises et contacts",
-            Self::Documents => "CV et lettres",
-            Self::Systeme => "Profil et paramètres",
+            Self::Dashboard => "Tableau de bord",
+            Self::Pipeline => "Candidatures et CV",
+            Self::Relations => "Entreprises, réseau et calendrier",
+            Self::Analyse => "Statistiques",
+            Self::Carriere => "CV, profil et paramètres",
         }
     }
 
     /// Sections dans l'ordre de la barre latérale.
     pub const ALL: [Self; 5] = [
-        Self::Pilotage,
-        Self::Recherche,
+        Self::Dashboard,
+        Self::Pipeline,
         Self::Relations,
-        Self::Documents,
-        Self::Systeme,
+        Self::Analyse,
+        Self::Carriere,
     ];
 }
 
@@ -161,13 +161,15 @@ impl Route {
     #[must_use]
     pub const fn section(self) -> Section {
         match self {
-            Self::Dashboard => Section::Pilotage,
-            Self::Candidatures | Self::Calendrier | Self::Statistiques => Section::Recherche,
-            Self::Entreprises | Self::Reseau => Section::Relations,
-            Self::Cv | Self::CvGenerator | Self::LettreMotivation | Self::CvImport => {
-                Section::Documents
-            }
-            Self::Profil | Self::Parametres => Section::Systeme,
+            Self::Dashboard => Section::Dashboard,
+            Self::Candidatures | Self::Cv => Section::Pipeline,
+            Self::Entreprises | Self::Reseau | Self::Calendrier => Section::Relations,
+            Self::Statistiques => Section::Analyse,
+            Self::CvGenerator
+            | Self::LettreMotivation
+            | Self::CvImport
+            | Self::Profil
+            | Self::Parametres => Section::Carriere,
         }
     }
 
@@ -209,11 +211,11 @@ impl Route {
     pub const ALL: [Self; 12] = [
         Self::Dashboard,
         Self::Candidatures,
-        Self::Calendrier,
-        Self::Statistiques,
+        Self::Cv,
         Self::Entreprises,
         Self::Reseau,
-        Self::Cv,
+        Self::Calendrier,
+        Self::Statistiques,
         Self::CvGenerator,
         Self::LettreMotivation,
         Self::CvImport,
@@ -255,8 +257,8 @@ mod tests {
     }
 
     #[test]
-    fn le_pilotage_n_affiche_pas_d_intitule() {
-        assert_eq!(Section::Pilotage.label(), None);
+    fn le_tableau_de_bord_n_affiche_pas_d_intitule() {
+        assert_eq!(Section::Dashboard.label(), None);
         for section in Section::ALL.into_iter().skip(1) {
             assert!(section.label().is_some());
         }

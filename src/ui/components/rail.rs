@@ -33,7 +33,8 @@ impl Load {
     #[must_use]
     pub const fn badge_for(self, section: Section) -> Option<usize> {
         let total = match section {
-            Section::Recherche => self.candidatures + self.agenda + self.relances,
+            Section::Pipeline => self.candidatures,
+            Section::Relations => self.agenda + self.relances,
             _ => 0,
         };
         if total > 0 {
@@ -301,11 +302,11 @@ mod tests {
             agenda: 2,
             relances: 3,
         };
-        assert_eq!(load.badge_for(Section::Recherche), Some(9));
-        assert_eq!(load.badge_for(Section::Pilotage), None);
-        assert_eq!(load.badge_for(Section::Relations), None);
-        assert_eq!(load.badge_for(Section::Documents), None);
-        assert_eq!(load.badge_for(Section::Systeme), None);
+        assert_eq!(load.badge_for(Section::Pipeline), Some(4));
+        assert_eq!(load.badge_for(Section::Relations), Some(5));
+        assert_eq!(load.badge_for(Section::Dashboard), None);
+        assert_eq!(load.badge_for(Section::Analyse), None);
+        assert_eq!(load.badge_for(Section::Carriere), None);
     }
 
     /// Le détail reste lisible écran par écran dans le volet.

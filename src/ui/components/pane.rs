@@ -137,8 +137,8 @@ mod tests {
     /// Un groupe à écran unique n'a rien à lister.
     #[test]
     fn un_groupe_a_ecran_unique_n_ouvre_pas_de_volet() {
-        assert!(super::has_pane(Section::Recherche));
-        assert!(!super::has_pane(Section::Pilotage));
+        assert!(super::has_pane(Section::Pipeline));
+        assert!(!super::has_pane(Section::Dashboard));
     }
 
     /// La règle est dérivée du nombre d'écrans, jamais codée en dur sur un
