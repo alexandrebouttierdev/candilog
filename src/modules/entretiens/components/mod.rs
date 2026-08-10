@@ -1,8 +1,9 @@
 //! Rendu des objets d'agenda : cellules de calendrier et lignes d'événement.
 
 use crate::ui::components::{badge, typo};
-use crate::ui::theme::metrics::{space, stroke};
-use crate::ui::theme::tokens::tokens;
+use crate::ui::theme::metrics::{radius, size, space, stroke};
+use crate::ui::theme::styles::mix_panel;
+use crate::ui::theme::tokens::{alpha, tokens};
 use crate::ui::theme::{Marker, Tone};
 use chrono::{Datelike, NaiveDate};
 use iced::widget::{button, column, container, row, Space};
@@ -22,7 +23,7 @@ impl EventKind {
     #[must_use]
     pub const fn tone(self) -> Tone {
         match self {
-            Self::Interview => Tone::Success,
+            Self::Interview => Tone::Violet,
             Self::Reminder => Tone::Warning,
         }
     }
@@ -37,7 +38,8 @@ impl EventKind {
     }
 }
 
-/// Événement compact affiché dans une cellule de calendrier.
+/// Événement compact affiché dans une cellule de calendrier : fond teinté du
+/// ton de la nature d'événement, texte 11 px, rayon 6 px.
 pub fn event_chip<'a, Message: 'a>(
     kind: EventKind,
     time: &str,
@@ -51,9 +53,21 @@ pub fn event_chip<'a, Message: 'a>(
     }
     line = line.push(typo::caption(title));
     container(line)
-        .height(16)
+        .height(size::TAG)
         .width(Length::Fill)
         .align_y(Alignment::Center)
+        .padding([0.0, space::XS])
+        .style(move |theme: &Theme| {
+            let palette = tokens(theme);
+            container::Style {
+                background: Some(Background::Color(kind.tone().surface(&palette))),
+                border: Border {
+                    radius: radius::CONTROL.into(),
+                    ..Border::default()
+                },
+                ..container::Style::default()
+            }
+        })
         .into()
 }
 
@@ -126,16 +140,19 @@ pub fn month_cell<'a, Message: Clone + 'a>(
         .padding(space::SM)
         .style(move |theme: &Theme, status| {
             let palette = tokens(theme);
+            let glass = mix_panel(palette.panel, palette.canvas, 0.55);
             let background = if selected && !is_today {
                 palette.selection
             } else if matches!(status, button::Status::Hovered) {
                 palette.hover
             } else if !in_month {
-                palette.canvas
+                alpha(palette.text_muted, 0.40)
+            } else if is_today {
+                alpha(palette.selection, 0.08)
             } else if is_weekend {
-                palette.sunken
+                mix_panel(palette.sunken, palette.canvas, 0.55)
             } else {
-                palette.panel
+                glass
             };
             button::Style {
                 background: Some(Background::Color(background)),
@@ -145,11 +162,7 @@ pub fn month_cell<'a, Message: Clone + 'a>(
                     palette.text_muted
                 },
                 border: Border {
-                    color: if is_today {
-                        palette.accent
-                    } else {
-                        palette.border
-                    },
+                    color: palette.border,
                     width: stroke::HAIRLINE,
                     radius: 0.0.into(),
                 },
@@ -169,7 +182,7 @@ mod tests {
     fn les_deux_natures_d_evenement_sont_distinguables() {
         assert_ne!(EventKind::Interview.tone(), EventKind::Reminder.tone());
         assert_ne!(EventKind::Interview.label(), EventKind::Reminder.label());
-        assert_eq!(EventKind::Interview.tone(), Tone::Success);
+        assert_eq!(EventKind::Interview.tone(), Tone::Violet);
         assert_eq!(EventKind::Reminder.tone(), Tone::Warning);
     }
 }

@@ -4,12 +4,17 @@ use crate::app::message::CalendarView;
 use crate::app::state::Dialog;
 use crate::app::{App, Message};
 use crate::modules::entretiens::components::{event_chip, month_cell, DayState, EventKind};
+use crate::modules::entretiens::model::Entretien;
+use crate::modules::relances::model::Relance;
 use crate::ui::components::button as controls;
+use crate::ui::components::header;
 use crate::ui::components::icon::Icon;
-use crate::ui::components::{badge, inspector, layout, list, state, surface, table, toolbar, typo};
+use crate::ui::components::stat_card;
+use crate::ui::components::{badge, inspector, layout, list, state, surface, table, typo};
 use crate::ui::format;
 use crate::ui::theme::metrics::{size, space};
-use crate::ui::theme::Tone;
+use crate::ui::theme::styles;
+use crate::ui::theme::{Marker, Tone};
 use chrono::{Datelike, NaiveDate};
 use iced::widget::{column, container, row};
 use iced::{Alignment, Element, Length};
@@ -24,44 +29,145 @@ const _: () = assert!(
 
 /// Rend l'écran du calendrier.
 pub fn view(app: &App) -> Element<'_, Message> {
-    let leading = toolbar::group([
-        controls::icon_action(
-            Icon::ArrowLeft,
-            "Période précédente",
-            Message::PreviousMonth,
-        ),
-        controls::icon_action(Icon::ArrowRight, "Période suivante", Message::NextMonth),
-        controls::ghost("Aujourd'hui", None)
-            .on_press(Message::CurrentMonth)
-            .into(),
-        toolbar::separator(),
-        typo::item_strong(period_label(app)).into(),
-        controls::segmented([
-            controls::segment("Mois", app.calendar_view == CalendarView::Month)
-                .on_press(Message::CalendarViewChanged(CalendarView::Month)),
-            controls::segment("Semaine", app.calendar_view == CalendarView::Week)
-                .on_press(Message::CalendarViewChanged(CalendarView::Week)),
-            controls::segment("Jour", app.calendar_view == CalendarView::Day)
-                .on_press(Message::CalendarViewChanged(CalendarView::Day)),
-        ]),
-    ]);
-
-    let trailing = toolbar::group([
-        controls::ghost("Relance", Some(Icon::Plus))
-            .on_press(Message::OpenDialog(Dialog::Relance))
-            .into(),
+    let actions = row![
+        controls::ghost("Relance", Some(Icon::Plus)).on_press(Message::OpenDialog(Dialog::Relance)),
         controls::primary("Entretien", Some(Icon::Plus))
-            .on_press(Message::OpenDialog(Dialog::Entretien))
-            .into(),
-    ]);
+            .on_press(Message::OpenDialog(Dialog::Entretien)),
+    ]
+    .spacing(space::SM)
+    .align_y(Alignment::Center)
+    .into();
 
-    let body = match app.calendar_view {
+    let calendar = match app.calendar_view {
         CalendarView::Month => month_view(app),
         CalendarView::Week => week_view(app),
         CalendarView::Day => day_view(app),
     };
 
-    layout::screen(toolbar::toolbar("Calendrier", leading, trailing), body)
+    layout::screen(
+        column![
+            header::page_header(
+                Icon::Calendar,
+                "Calendrier",
+                format::long_date(app.calendar_date),
+                actions,
+            ),
+            nav_band(app),
+        ]
+        .spacing(space::MD),
+        layout::workspace(
+            column![metrics_row(app), calendar]
+                .spacing(space::LG)
+                .height(Length::Fill),
+        ),
+    )
+}
+
+/// Bande verre de navigation : période précédente/suivante, aujourd'hui,
+/// libellé de période et granularité du calendrier.
+fn nav_band(app: &App) -> Element<'_, Message> {
+    container(
+        row![
+            controls::icon_action(
+                Icon::ArrowLeft,
+                "Période précédente",
+                Message::PreviousMonth,
+            ),
+            controls::icon_action(Icon::ArrowRight, "Période suivante", Message::NextMonth),
+            controls::ghost("Aujourd'hui", None).on_press(Message::CurrentMonth),
+            typo::item_strong(period_label(app)),
+            layout::spacer(),
+            controls::segmented([
+                controls::segment("Mois", app.calendar_view == CalendarView::Month)
+                    .on_press(Message::CalendarViewChanged(CalendarView::Month)),
+                controls::segment("Semaine", app.calendar_view == CalendarView::Week)
+                    .on_press(Message::CalendarViewChanged(CalendarView::Week)),
+                controls::segment("Jour", app.calendar_view == CalendarView::Day)
+                    .on_press(Message::CalendarViewChanged(CalendarView::Day)),
+            ]),
+        ]
+        .spacing(space::SM)
+        .align_y(Alignment::Center),
+    )
+    .padding(space::SM)
+    .width(Length::Fill)
+    .style(styles::glass_card)
+    .into()
+}
+
+/// Les trois métriques du mois affiché : événements, entretiens, relances.
+fn metrics_row(app: &App) -> Element<'_, Message> {
+    let (total, interviews, reminders) = month_counts(
+        &app.data.entretiens,
+        &app.data.relances,
+        app.calendar_year,
+        app.calendar_month,
+    );
+    row![
+        stat_card::metric_icon_tinted(
+            "Événements",
+            total.to_string(),
+            Tone::Neutral,
+            Icon::Calendar,
+        ),
+        stat_card::metric_icon_tinted(
+            "Entretiens",
+            interviews.to_string(),
+            Tone::Violet,
+            Icon::Calendar,
+        ),
+        stat_card::metric_icon_tinted(
+            "Relances",
+            reminders.to_string(),
+            Tone::Warning,
+            Icon::Alert,
+        ),
+    ]
+    .spacing(space::MD)
+    .into()
+}
+
+/// Comptes du mois affiché : événements totaux, entretiens et relances.
+///
+/// La correspondance se fait sur le préfixe `AAAA-MM` : les lignes reprises
+/// de l'ancienne base portent un horodatage complet qui commence par la date.
+fn month_counts(
+    entretiens: &[Entretien],
+    relances: &[Relance],
+    year: i32,
+    month: u32,
+) -> (usize, usize, usize) {
+    let prefix = format!("{year:04}-{month:02}");
+    let interviews = entretiens
+        .iter()
+        .filter(|item| item.date_entretien.starts_with(&prefix))
+        .count();
+    let reminders = relances
+        .iter()
+        .filter(|item| item.date_relance.starts_with(&prefix))
+        .count();
+    (interviews + reminders, interviews, reminders)
+}
+
+/// Légende des couleurs de la grille : entretiens en violet, relances en ambre.
+fn legend<'a>() -> Element<'a, Message> {
+    row![
+        row![
+            badge::marker(Tone::Violet, Marker::Solid),
+            typo::caption("Entretiens"),
+        ]
+        .spacing(space::SM)
+        .align_y(Alignment::Center),
+        row![
+            badge::marker(Tone::Warning, Marker::Solid),
+            typo::caption("Relances"),
+        ]
+        .spacing(space::SM)
+        .align_y(Alignment::Center),
+    ]
+    .spacing(space::LG)
+    .align_y(Alignment::Center)
+    .into()
 }
 
 fn period_label(app: &App) -> String {
@@ -118,21 +224,23 @@ fn month_view(app: &App) -> Element<'_, Message> {
         grid = grid.push(line);
     }
 
-    layout::workspace(
-        surface::region(
-            column![
-                container(weekdays)
-                    .height(size::TABLE_HEADER)
-                    .padding([0.0, 0.0])
-                    .align_y(Alignment::Center)
-                    .style(crate::ui::theme::styles::sunken),
-                grid,
-            ]
-            .height(Length::Fill),
-        )
-        .width(Length::Fill)
+    surface::region(
+        column![
+            container(weekdays)
+                .height(size::TABLE_HEADER)
+                .padding([0.0, 0.0])
+                .align_y(Alignment::Center)
+                .style(crate::ui::theme::styles::sunken),
+            grid,
+            container(legend())
+                .padding([space::SM, space::MD])
+                .width(Length::Fill),
+        ]
         .height(Length::Fill),
     )
+    .width(Length::Fill)
+    .height(Length::Fill)
+    .into()
 }
 
 fn cell(app: &App, date: NaiveDate) -> Element<'_, Message> {
@@ -255,7 +363,7 @@ fn week_view(app: &App) -> Element<'_, Message> {
                 }),
         );
     }
-    layout::workspace(container(week).height(Length::Fill))
+    container(week).height(Length::Fill).into()
 }
 
 fn day_view(app: &App) -> Element<'_, Message> {
@@ -342,7 +450,7 @@ fn day_view(app: &App) -> Element<'_, Message> {
 
     let analyses = analyses_panel(app, &prefix);
 
-    layout::workspace(layout::columns([
+    layout::columns([
         surface::region(
             column![
                 table::header(
@@ -361,7 +469,7 @@ fn day_view(app: &App) -> Element<'_, Message> {
         .height(Length::Fill)
         .into(),
         analyses,
-    ]))
+    ])
 }
 
 fn analyses_panel<'a>(app: &'a App, prefix: &str) -> Element<'a, Message> {
@@ -408,8 +516,38 @@ fn analyses_panel<'a>(app: &'a App, prefix: &str) -> Element<'a, Message> {
 
 #[cfg(test)]
 mod tests {
-    use super::week_start;
+    use super::{month_counts, week_start};
+    use crate::modules::entretiens::model::{Entretien, TypeEntretien};
+    use crate::modules::relances::model::Relance;
     use chrono::{Datelike, NaiveDate};
+    use uuid::Uuid;
+
+    fn entretien(date: &str) -> Entretien {
+        Entretien {
+            id: Uuid::new_v4(),
+            candidature_id: Uuid::new_v4(),
+            contact_id: None,
+            date_entretien: date.into(),
+            type_entretien: TypeEntretien::Visio,
+            lieu: None,
+            notes: None,
+            compte_rendu: None,
+            analyse_ia: None,
+            created_at: date.into(),
+            updated_at: date.into(),
+        }
+    }
+
+    fn relance(date: &str) -> Relance {
+        Relance {
+            id: Uuid::new_v4(),
+            candidature_id: Uuid::new_v4(),
+            date_relance: date.into(),
+            type_relance: "Email".into(),
+            notes: None,
+            created_at: date.into(),
+        }
+    }
 
     #[test]
     fn la_semaine_commence_toujours_un_lundi() {
@@ -418,5 +556,33 @@ mod tests {
             assert_eq!(week_start(date).weekday().num_days_from_monday(), 0);
             assert!(week_start(date) <= date);
         }
+    }
+
+    #[test]
+    fn le_compteur_ne_reitent_que_le_mois_affiche() {
+        let entretiens = [
+            entretien("2026-08-05T10:00:00+02:00"),
+            entretien("2026-08-20"),
+            entretien("2026-07-31"),
+            entretien("2026-09-01T14:30:00+02:00"),
+        ];
+        let relances = [
+            relance("2026-08-09"),
+            relance("2026-08-31T09:00:00+02:00"),
+            relance("2026-08-01"),
+            relance("2026-10-02"),
+        ];
+        let (total, interviews, reminders) = month_counts(&entretiens, &relances, 2026, 8);
+        assert_eq!(total, 5);
+        assert_eq!(interviews, 2);
+        assert_eq!(reminders, 3);
+    }
+
+    #[test]
+    fn le_compteur_accepte_les_horodatages_complets() {
+        let entretiens = [entretien("2026-12-15T18:00:00+02:00")];
+        let relances = [relance("2026-12-01T08:00:00+02:00")];
+        let (total, interviews, reminders) = month_counts(&entretiens, &relances, 2026, 12);
+        assert_eq!((total, interviews, reminders), (2, 1, 1));
     }
 }
