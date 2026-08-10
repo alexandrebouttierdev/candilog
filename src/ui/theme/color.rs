@@ -23,6 +23,8 @@ pub enum Tone {
     Danger,
     /// Information factuelle.
     Info,
+    /// Violet des statuts Entretien et des événements de calendrier.
+    Violet,
 }
 
 impl Tone {
@@ -36,6 +38,7 @@ impl Tone {
             Self::Warning => palette.warning,
             Self::Danger => palette.danger,
             Self::Info => palette.info,
+            Self::Violet => palette.violet,
         }
     }
 

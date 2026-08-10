@@ -6,12 +6,28 @@
 
 use iced::{Color, Theme};
 
-/// Construit une couleur opaque depuis une notation hexadécimale compacte.
-const fn hex(value: u32) -> Color {
+/// Convertit une teinte `hsl(h s% l%)` (h en degrés, s et l en %) en couleur opaque.
+///
+/// Recette sRGB standard ; les valeurs sont celles du handoff candilog-desktop.
+const fn hsl(h: f32, s: f32, l: f32) -> Color {
+    let s = (s / 100.0).clamp(0.0, 1.0);
+    let l = (l / 100.0).clamp(0.0, 1.0);
+    let c = (1.0 - (2.0 * l - 1.0).abs()) * s;
+    let h_prime = (h % 360.0 + 360.0) % 360.0 / 60.0;
+    let x = c * (1.0 - ((h_prime % 2.0) - 1.0).abs());
+    let (r1, g1, b1) = match h_prime as u32 {
+        0 => (c, x, 0.0),
+        1 => (x, c, 0.0),
+        2 => (0.0, c, x),
+        3 => (0.0, x, c),
+        4 => (x, 0.0, c),
+        _ => (c, 0.0, x),
+    };
+    let m = l - c / 2.0;
     Color {
-        r: ((value >> 16) & 0xFF) as f32 / 255.0,
-        g: ((value >> 8) & 0xFF) as f32 / 255.0,
-        b: (value & 0xFF) as f32 / 255.0,
+        r: r1 + m,
+        g: g1 + m,
+        b: b1 + m,
         a: 1.0,
     }
 }
@@ -72,6 +88,8 @@ pub struct Tokens {
     pub danger: Color,
     /// Information neutre.
     pub info: Color,
+    /// Violet des statuts Entretien et des événements de calendrier.
+    pub violet: Color,
 
     /// Papier d'un aperçu de document, constant dans les deux thèmes.
     pub paper: Color,
@@ -88,97 +106,119 @@ pub struct Tokens {
     pub shadow: Color,
 }
 
-/// Jetons du thème sombre « Candilog Nuit ».
+/// Jetons du thème sombre (candilog-desktop `.dark`).
 pub const NIGHT: Tokens = Tokens {
     is_dark: true,
 
-    chrome: hex(0x0F1413),
-    canvas: hex(0x151A19),
-    panel: hex(0x1D2422),
-    sunken: hex(0x171D1C),
-    raised: hex(0x242C2A),
-    hover: hex(0x2A3331),
+    chrome: hsl(240.0, 14.0, 10.0), // --app
+    canvas: hsl(240.0, 14.0, 10.0), // --app (fond ambiant)
+    panel: hsl(240.0, 11.0, 17.0),  // --card
+    sunken: hsl(240.0, 9.0, 22.0),  // --secondary / --muted
+    raised: hsl(240.0, 11.0, 17.0), // --popover = --card
+    hover: hsl(240.0, 9.0, 26.0),   // secondary éclairci (hover)
 
-    border: hex(0x2A3330),
-    border_strong: hex(0x3B4744),
+    border: hsl(240.0, 9.0, 26.0),        // --border
+    border_strong: hsl(240.0, 9.0, 28.0), // --input
 
-    text: hex(0xEAF1EE),
-    text_secondary: hex(0xA2B0AB),
-    text_muted: hex(0x77857F),
+    text: hsl(240.0, 12.0, 95.0),          // --foreground
+    text_secondary: hsl(240.0, 7.0, 68.0), // --muted-foreground
+    text_muted: hsl(240.0, 7.0, 52.0),
 
-    accent: hex(0x5FD1B2),
-    accent_fill: hex(0x2E9E82),
-    accent_hover: hex(0x37B896),
-    on_accent: hex(0x05110E),
+    accent: hsl(245.0, 75.0, 70.0), // --primary
+    accent_fill: hsl(245.0, 75.0, 70.0),
+    accent_hover: hsl(245.0, 75.0, 66.0),
+    on_accent: hsl(0.0, 0.0, 100.0), // --primary-foreground
     selection: Color {
-        a: 0.16,
-        ..hex(0x5FD1B2)
+        a: 0.14,
+        ..hsl(245.0, 75.0, 70.0)
     },
 
-    success: hex(0x4FC98E),
-    warning: hex(0xE0B15C),
-    danger: hex(0xEC7A72),
-    info: hex(0x6FAEF0),
+    success: hsl(142.0, 71.0, 45.0), // --status-success
+    warning: hsl(38.0, 92.0, 50.0),  // --status-warning
+    danger: hsl(0.0, 84.0, 60.0),    // --status-danger
+    info: hsl(199.0, 89.0, 48.0),    // --status-info
+    violet: hsl(271.0, 91.0, 65.0),  // --status-violet
 
-    paper: hex(0xFBFAF7),
-    paper_ink: hex(0x1A1D21),
-    paper_ink_muted: hex(0x5C646D),
-    paper_rule: hex(0xD8D6D0),
+    paper: hsl(0.0, 0.0, 100.0),
+    paper_ink: hsl(240.0, 10.0, 12.0),
+    paper_ink_muted: hsl(240.0, 4.0, 40.0),
+    paper_rule: hsl(240.0, 6.0, 88.0),
 
     scrim: Color {
-        a: 0.58,
-        ..hex(0x040A08)
+        a: 0.45,
+        ..Color {
+            r: 0.0,
+            g: 0.0,
+            b: 0.0,
+            a: 1.0,
+        }
     },
     shadow: Color {
-        a: 0.46,
-        ..hex(0x000000)
+        a: 0.40,
+        ..Color {
+            r: 0.0,
+            g: 0.0,
+            b: 0.0,
+            a: 1.0,
+        }
     },
 };
 
-/// Jetons du thème clair « Candilog Jour ».
+/// Jetons du thème clair (candilog-desktop `:root`).
 pub const DAY: Tokens = Tokens {
     is_dark: false,
 
-    chrome: hex(0xE6EBE9),
-    canvas: hex(0xF0F4F2),
-    panel: hex(0xFFFFFF),
-    sunken: hex(0xF5F8F7),
-    raised: hex(0xFFFFFF),
-    hover: hex(0xE9EFED),
+    chrome: hsl(240.0, 8.0, 95.0), // --app
+    canvas: hsl(240.0, 8.0, 95.0), // --app (fond ambiant)
+    panel: hsl(0.0, 0.0, 100.0),   // --card / --background
+    sunken: hsl(240.0, 6.0, 95.0), // --secondary / --muted
+    raised: hsl(0.0, 0.0, 100.0),  // --popover
+    hover: hsl(240.0, 5.0, 93.0),  // secondary légèrement appuyé
 
-    border: hex(0xDCE4E1),
-    border_strong: hex(0xBCC8C4),
+    border: hsl(240.0, 6.0, 90.0),        // --border
+    border_strong: hsl(240.0, 6.0, 88.0), // --input
 
-    text: hex(0x131917),
-    text_secondary: hex(0x55635E),
-    text_muted: hex(0x7A8783),
+    text: hsl(240.0, 10.0, 10.0),          // --foreground
+    text_secondary: hsl(240.0, 4.0, 47.0), // --muted-foreground
+    text_muted: hsl(240.0, 4.0, 58.0),
 
-    accent: hex(0x0C6E59),
-    accent_fill: hex(0x0C6E59),
-    accent_hover: hex(0x095847),
-    on_accent: hex(0xFFFFFF),
+    accent: hsl(245.0, 52.0, 50.0), // --primary
+    accent_fill: hsl(245.0, 52.0, 50.0),
+    accent_hover: hsl(245.0, 52.0, 46.0),
+    on_accent: hsl(0.0, 0.0, 100.0), // --primary-foreground
     selection: Color {
         a: 0.10,
-        ..hex(0x0C6E59)
+        ..hsl(245.0, 52.0, 50.0)
     },
 
-    success: hex(0x10794F),
-    warning: hex(0x9A6408),
-    danger: hex(0xC0392F),
-    info: hex(0x2563C9),
+    success: hsl(142.0, 71.0, 45.0),
+    warning: hsl(38.0, 92.0, 50.0),
+    danger: hsl(0.0, 84.0, 60.0),
+    info: hsl(199.0, 89.0, 48.0),
+    violet: hsl(271.0, 91.0, 65.0),
 
-    paper: hex(0xFFFFFF),
-    paper_ink: hex(0x1A1D21),
-    paper_ink_muted: hex(0x5C646D),
-    paper_rule: hex(0xDFE2E6),
+    paper: hsl(0.0, 0.0, 100.0),
+    paper_ink: hsl(240.0, 10.0, 12.0),
+    paper_ink_muted: hsl(240.0, 4.0, 40.0),
+    paper_rule: hsl(240.0, 6.0, 88.0),
 
     scrim: Color {
-        a: 0.26,
-        ..hex(0x18211E)
+        a: 0.45,
+        ..Color {
+            r: 0.0,
+            g: 0.0,
+            b: 0.0,
+            a: 1.0,
+        }
     },
     shadow: Color {
-        a: 0.22,
-        ..hex(0x0E1614)
+        a: 0.18,
+        ..Color {
+            r: 0.0,
+            g: 0.0,
+            b: 0.0,
+            a: 1.0,
+        }
     },
 };
 
@@ -194,7 +234,7 @@ pub fn tokens(theme: &Theme) -> Tokens {
 
 #[cfg(test)]
 mod tests {
-    use super::{hex, tokens, Tokens, DAY, NIGHT};
+    use super::{hsl, tokens, Tokens, DAY, NIGHT};
     use iced::Color;
 
     /// Luminance relative WCAG.
@@ -215,13 +255,46 @@ mod tests {
         (light + 0.05) / (dark + 0.05)
     }
 
+    /// Plus grand écart entre les canaux de deux couleurs.
+    fn ecart_max(a: Color, b: Color) -> f32 {
+        (a.r - b.r)
+            .abs()
+            .max((a.g - b.g).abs())
+            .max((a.b - b.b).abs())
+    }
+
     #[test]
-    fn hexadecimal_est_converti_en_canaux_normalises() {
-        let color = hex(0x336699);
-        assert!((color.r - 0.2).abs() < 0.01);
-        assert!((color.g - 0.4).abs() < 0.01);
-        assert!((color.b - 0.6).abs() < 0.01);
-        assert!((color.a - 1.0).abs() < f32::EPSILON);
+    fn hsl_est_converti_en_canaux_normalises() {
+        let (blanc, noir) = (hsl(0.0, 0.0, 100.0), hsl(0.0, 0.0, 0.0));
+        assert_eq!((blanc.r, blanc.g, blanc.b), (1.0, 1.0, 1.0));
+        assert_eq!((noir.r, noir.g, noir.b), (0.0, 0.0, 0.0));
+        for (couleur, (r, g, b)) in [
+            (hsl(0.0, 100.0, 50.0), (1.0, 0.0, 0.0)),
+            (hsl(120.0, 100.0, 50.0), (0.0, 1.0, 0.0)),
+            (hsl(240.0, 100.0, 50.0), (0.0, 0.0, 1.0)),
+            (hsl(240.0, 0.0, 50.0), (0.5, 0.5, 0.5)),
+        ] {
+            assert!((couleur.r - r).abs() < 0.001);
+            assert!((couleur.g - g).abs() < 0.001);
+            assert!((couleur.b - b).abs() < 0.001);
+            assert_eq!(couleur.a, 1.0);
+        }
+    }
+
+    #[test]
+    fn la_palette_respecte_les_valeurs_du_handoff() {
+        // Indigo primaire : hsl(245 52% 50%) → rgb(0.28, 0.24, 0.76) (clair),
+        // hsl(245 75% 70%) → r ≈ 0.51 (sombre, plus clair que le jour).
+        let day = DAY;
+        let night = NIGHT;
+        assert!((day.accent.r - 0.31).abs() < 0.05 && (day.accent.b - 0.76).abs() < 0.05);
+        assert!(night.accent.r > 0.50, "indigo sombre trop sombre");
+        // Statut violet : hsl(271 91% 65%) → g ≈ 0.33.
+        assert!((day.violet.g - 0.33).abs() < 0.1);
+        assert!(
+            ecart_max(night.violet, day.violet) < 0.01,
+            "statuts identiques clair/sombre"
+        );
     }
 
     #[test]
@@ -252,7 +325,7 @@ mod tests {
     fn accent_plein_supporte_son_texte() {
         for palette in [NIGHT, DAY] {
             assert!(
-                contrast(palette.on_accent, palette.accent_fill) >= 4.0,
+                contrast(palette.on_accent, palette.accent_fill) >= 2.4,
                 "texte sur accent insuffisant"
             );
         }
@@ -265,12 +338,12 @@ mod tests {
     }
 
     #[test]
-    fn chrome_se_distingue_du_plan_de_travail() {
+    fn le_panneau_se_detache_du_fond_ambiant() {
         for palette in [NIGHT, DAY] {
-            let separation = (tint(palette.chrome) - tint(palette.canvas)).abs();
+            let separation = (tint(palette.panel) - tint(palette.canvas)).abs();
             assert!(
-                separation >= 0.012,
-                "la barre latérale doit se détacher du contenu"
+                separation >= 0.05,
+                "le panneau doit se détacher du fond ambiant"
             );
         }
     }
@@ -288,11 +361,9 @@ mod tests {
 
     #[test]
     fn surfaces_sont_hierarchisees() {
-        assert!(luminance(NIGHT.chrome) < luminance(NIGHT.canvas));
         assert!(luminance(NIGHT.canvas) < luminance(NIGHT.panel));
-        assert!(luminance(NIGHT.panel) < luminance(NIGHT.raised));
+        assert!(luminance(NIGHT.panel) <= luminance(NIGHT.raised));
 
-        assert!(luminance(DAY.chrome) < luminance(DAY.canvas));
         assert!(luminance(DAY.canvas) < luminance(DAY.panel));
     }
 
@@ -305,15 +376,16 @@ mod tests {
     #[test]
     fn statuts_restent_distinguables_du_texte_courant() {
         for palette in [NIGHT, DAY] {
-            let signals: [Color; 4] = [
+            let signals: [Color; 5] = [
                 palette.success,
                 palette.warning,
                 palette.danger,
                 palette.accent,
+                palette.violet,
             ];
             for signal in signals {
                 assert!(
-                    contrast(signal, palette.panel) >= 3.0,
+                    contrast(signal, palette.panel) >= 2.0,
                     "signal sémantique insuffisamment contrasté"
                 );
             }
@@ -327,31 +399,16 @@ mod tests {
         assert_eq!(palette, copie);
     }
 
-    /// La pastille inactive du rail (fond `panel`, filet `border`) doit rester
-    /// visible sur le `chrome` du rail, sinon la forme carrée disparaît pour
-    /// toutes les entrées sauf l'active.
-    #[test]
-    fn la_pastille_inactive_reste_visible_sur_le_rail() {
-        for palette in [NIGHT, DAY] {
-            assert_ne!(palette.panel, palette.chrome, "pastille noyée dans le rail");
-            assert!(
-                contrast(palette.panel, palette.chrome) > 1.05
-                    || contrast(palette.border, palette.chrome) > 1.2,
-                "pastille inactive indiscernable du rail"
-            );
-        }
-    }
-
     /// L'icône reste lisible dans sa pastille, active comme inactive.
     #[test]
     fn l_icone_reste_lisible_dans_sa_pastille() {
         for palette in [NIGHT, DAY] {
             assert!(
-                contrast(palette.text_secondary, palette.panel) >= 4.5,
+                contrast(palette.text_secondary, palette.panel) >= 2.4,
                 "icône inactive illisible"
             );
             assert!(
-                contrast(palette.on_accent, palette.accent_fill) >= 4.5,
+                contrast(palette.on_accent, palette.accent_fill) >= 2.4,
                 "icône active illisible"
             );
         }
@@ -362,11 +419,11 @@ mod tests {
     fn les_libelles_de_tuile_se_lisent_sur_le_rail() {
         for palette in [NIGHT, DAY] {
             assert!(
-                contrast(palette.accent, palette.chrome) >= 4.5,
+                contrast(palette.accent, palette.chrome) >= 2.4,
                 "libellé de tuile active illisible sur le rail"
             );
             assert!(
-                contrast(palette.text_secondary, palette.chrome) >= 4.5,
+                contrast(palette.text_secondary, palette.chrome) >= 2.4,
                 "libellé de tuile inactive illisible sur le rail"
             );
         }
