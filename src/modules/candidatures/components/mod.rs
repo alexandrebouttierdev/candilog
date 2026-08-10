@@ -1,13 +1,14 @@
 //! Rendu des objets de candidature : statut, carte de pipeline, ligne de table.
 
 use crate::modules::candidatures::model::{Candidature, StatutCandidature, TypeContrat};
-use crate::ui::components::badge;
 use crate::ui::components::button as controls;
 use crate::ui::components::icon::{self, Icon};
 use crate::ui::components::typo;
+use crate::ui::components::{badge, surface};
 use crate::ui::format;
 use crate::ui::theme::metrics::space;
 use crate::ui::theme::styles;
+use crate::ui::theme::typography as font;
 use crate::ui::theme::{Marker, Tone};
 use iced::widget::{button, column, mouse_area, row, Space};
 use iced::{mouse, Alignment, Element, Length};
@@ -97,7 +98,8 @@ pub const fn contract_short(contract: TypeContrat) -> &'static str {
 /// Carte du pipeline : un objet autonome, saisissable, volontairement sobre.
 ///
 /// Le statut n'y figure pas : il est porté par la colonne. La carte ne
-/// présente que ce qui distingue une candidature d'une autre.
+/// présente que ce qui distingue une candidature d'une autre : poste,
+/// entreprise, contrat en pastille et date en chiffres.
 pub fn kanban_card<Message: Clone + 'static>(
     candidate: &Candidature,
     selected: bool,
@@ -105,20 +107,21 @@ pub fn kanban_card<Message: Clone + 'static>(
     on_drag: Message,
 ) -> Element<'static, Message> {
     let content = column![
+        typo::item(format::truncate(&candidate.poste, 30)),
+        typo::meta(format::or_else(
+            candidate.entreprise_nom.as_deref(),
+            "Entreprise inconnue"
+        )),
+        surface::divider(),
         row![
-            typo::item(format::truncate(&candidate.poste, 30)),
+            badge::badge(contract_short(candidate.type_contrat), Tone::Neutral),
             Space::with_width(Length::Fill),
-            typo::caption(format::compact_date(&candidate.date_envoi)),
-        ]
-        .spacing(space::SM)
-        .align_y(Alignment::Center),
-        row![
-            typo::meta(format::or_else(
-                candidate.entreprise_nom.as_deref(),
-                "Entreprise inconnue"
-            )),
-            Space::with_width(Length::Fill),
-            typo::caption(contract_short(candidate.type_contrat)),
+            typo::text_mono(
+                format::compact_date(&candidate.date_envoi),
+                font::CAPTION,
+                font::MONO_REGULAR,
+            )
+            .style(styles::muted_text),
         ]
         .spacing(space::SM)
         .align_y(Alignment::Center),
@@ -128,7 +131,7 @@ pub fn kanban_card<Message: Clone + 'static>(
     mouse_area(
         button(content)
             .width(Length::Fill)
-            .padding(space::LG)
+            .padding(14.0)
             .style(if selected {
                 styles::card_selected
             } else {

@@ -10,7 +10,8 @@ use crate::ui::components::table::{self, Column, SortOrder};
 use crate::ui::components::{state, surface, typo};
 use crate::ui::format;
 use crate::ui::theme::metrics::space;
-use iced::widget::{column, row};
+use crate::ui::theme::styles;
+use iced::widget::{column, container, row};
 use iced::{Alignment, Element, Length};
 
 /// Colonnes de la table, dans l'ordre des critères de tri. Seule POSTE (le
@@ -50,14 +51,15 @@ pub fn view<'a>(app: &'a App, candidates: &[&'a Candidature]) -> Element<'a, Mes
         surface::scroll(rows).height(Length::Fill).into()
     };
 
-    surface::region(
+    container(
         column![
-            table::header_sortable(
+            table::header_sortable_styled(
                 app.layout(),
                 &columns,
                 app.candidate_sort.column(),
                 order,
                 sortable_message,
+                styles::list_header,
             ),
             body,
         ]
@@ -65,6 +67,7 @@ pub fn view<'a>(app: &'a App, candidates: &[&'a Candidature]) -> Element<'a, Mes
     )
     .width(Length::Fill)
     .height(Length::Fill)
+    .style(styles::glass_card)
     .into()
 }
 

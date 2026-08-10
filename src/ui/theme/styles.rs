@@ -250,7 +250,7 @@ pub fn row_item(selected_row: bool) -> impl Fn(&Theme, button::Status) -> button
     }
 }
 
-/// Carte Kanban : surface autonome, saisissable, sans ombre au repos.
+/// Carte Kanban : verre léger, saisissable, ombre subtile au repos.
 pub fn card(theme: &Theme, status: button::Status) -> button::Style {
     let palette = tokens(theme);
     let engaged = matches!(status, button::Status::Hovered | button::Status::Pressed);
@@ -258,17 +258,17 @@ pub fn card(theme: &Theme, status: button::Status) -> button::Style {
         background: Some(Background::Color(if engaged {
             palette.raised
         } else {
-            palette.panel
+            mix_panel(palette.panel, palette.canvas, 0.75)
         })),
         text_color: palette.text,
         border: Border {
             color: if engaged {
                 palette.border_strong
             } else {
-                palette.border
+                alpha(palette.border, 0.60)
             },
             width: stroke::HAIRLINE,
-            radius: radius::PANEL.into(),
+            radius: radius::CARD.into(),
         },
         shadow: if engaged {
             Shadow {
@@ -277,7 +277,11 @@ pub fn card(theme: &Theme, status: button::Status) -> button::Style {
                 blur_radius: 10.0,
             }
         } else {
-            Shadow::default()
+            Shadow {
+                color: alpha(palette.shadow, palette.shadow.a * 0.35),
+                offset: Vector::new(0.0, 1.0),
+                blur_radius: 4.0,
+            }
         },
     }
 }
@@ -290,7 +294,7 @@ pub fn card_selected(theme: &Theme, status: button::Status) -> button::Style {
         border: Border {
             color: palette.accent,
             width: stroke::MARKER,
-            radius: radius::PANEL.into(),
+            radius: radius::CARD.into(),
         },
         ..card(theme, status)
     }
@@ -478,6 +482,65 @@ pub fn sunken_flat(theme: &Theme) -> container::Style {
             ..sunken(theme).border
         },
         ..sunken(theme)
+    }
+}
+
+/// Colonne Kanban : verre léger, bordure discrète, sans ombre.
+pub fn kanban_column(theme: &Theme) -> container::Style {
+    let palette = tokens(theme);
+    container::Style {
+        background: Some(Background::Color(mix_panel(
+            palette.panel,
+            palette.canvas,
+            0.20,
+        ))),
+        text_color: Some(palette.text),
+        border: Border {
+            color: palette.border,
+            width: stroke::HAIRLINE,
+            radius: radius::PANEL.into(),
+        },
+        shadow: Shadow::default(),
+    }
+}
+
+/// Zone de dépôt d'une colonne Kanban : neutre au repos, marquée d'accent
+/// pendant un glisser-déposer (le pointillé se simule par un filet renforcé).
+pub fn drop_zone(active: bool) -> impl Fn(&Theme) -> container::Style {
+    move |theme| {
+        let palette = tokens(theme);
+        container::Style {
+            background: active.then_some(Background::Color(palette.selection)),
+            border: Border {
+                color: if active {
+                    palette.border_strong
+                } else {
+                    palette.border
+                },
+                width: stroke::HAIRLINE,
+                radius: radius::PANEL.into(),
+            },
+            ..container::Style::default()
+        }
+    }
+}
+
+/// Bande d'en-tête d'une liste en verre : creux adouci, coins carrés.
+pub fn list_header(theme: &Theme) -> container::Style {
+    let palette = tokens(theme);
+    container::Style {
+        background: Some(Background::Color(mix_panel(
+            palette.sunken,
+            palette.canvas,
+            0.25,
+        ))),
+        text_color: Some(palette.text_secondary),
+        border: Border {
+            color: palette.border_strong,
+            width: stroke::HAIRLINE,
+            radius: radius::NONE.into(),
+        },
+        shadow: Shadow::default(),
     }
 }
 
@@ -814,9 +877,9 @@ pub fn toned_text(tone: Tone) -> impl Fn(&Theme) -> text::Style {
 #[cfg(test)]
 mod tests {
     use super::{
-        canvas, card, chrome, danger, divider, ghost, glass_card, glass_panel, mix_panel, nav_item,
-        panel, press, primary, progress, raised, row_item, scroller, secondary, selected,
-        selected_inverse, sunken,
+        canvas, card, chrome, danger, divider, drop_zone, ghost, glass_card, glass_panel,
+        kanban_column, list_header, mix_panel, nav_item, panel, press, primary, progress, raised,
+        row_item, scroller, secondary, selected, selected_inverse, sunken,
     };
     use crate::ui::theme::color::Tone;
     use crate::ui::theme::tokens::{tokens, NIGHT};
@@ -867,12 +930,21 @@ mod tests {
             assert!(sunken(&theme).shadow.blur_radius.abs() < f32::EPSILON);
             assert!(canvas(&theme).shadow.blur_radius.abs() < f32::EPSILON);
             assert!(chrome(&theme).shadow.blur_radius.abs() < f32::EPSILON);
+        }
+    }
+
+    #[test]
+    fn la_carte_porte_une_ombre_subtile_au_repos() {
+        for theme in [dark(), light()] {
+            let repos = card(&theme, button::Status::Active);
+            let survol = card(&theme, button::Status::Hovered);
             assert!(
-                card(&theme, button::Status::Active)
-                    .shadow
-                    .blur_radius
-                    .abs()
-                    < f32::EPSILON
+                repos.shadow.blur_radius > 0.0,
+                "carte au repos sans ombre subtile"
+            );
+            assert!(
+                repos.shadow.blur_radius < survol.shadow.blur_radius,
+                "ombre de survol pas plus marquée que celle du repos"
             );
         }
     }
@@ -968,6 +1040,46 @@ mod tests {
                 0.55
             )))
         );
+    }
+
+    #[test]
+    fn colonne_kanban_et_bande_de_liste_melangent_leurs_surfaces() {
+        for theme in [dark(), light()] {
+            let palette = tokens(&theme);
+            assert_eq!(
+                kanban_column(&theme).background,
+                Some(iced::Background::Color(mix_panel(
+                    palette.panel,
+                    palette.canvas,
+                    0.20
+                )))
+            );
+            assert_eq!(
+                list_header(&theme).background,
+                Some(iced::Background::Color(mix_panel(
+                    palette.sunken,
+                    palette.canvas,
+                    0.25
+                )))
+            );
+        }
+    }
+
+    #[test]
+    fn zone_de_depot_neutre_au_repos_et_marquee_au_survol() {
+        for theme in [dark(), light()] {
+            let palette = tokens(&theme);
+            let repos = drop_zone(false)(&theme);
+            let actif = drop_zone(true)(&theme);
+            assert!(repos.background.is_none(), "zone au repos non transparente");
+            assert_eq!(
+                actif.background,
+                Some(iced::Background::Color(palette.selection)),
+                "zone survolée sans fond d'accent"
+            );
+            assert_eq!(repos.border.color, palette.border);
+            assert_eq!(actif.border.color, palette.border_strong);
+        }
     }
 
     #[test]

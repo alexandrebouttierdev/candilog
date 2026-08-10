@@ -163,7 +163,7 @@ pub fn header<'a, Message: 'a>(layout: Layout, columns: &[Column]) -> Element<'a
                 .align_x(column.align.alignment()),
         );
     }
-    header_shell(line)
+    header_shell(line, table_header_style)
 }
 
 /// En-tête de colonnes dont certaines déclenchent un tri. Les colonnes
@@ -174,6 +174,19 @@ pub fn header_sortable<'a, Message: Clone + 'a>(
     active: usize,
     order: SortOrder,
     on_sort: impl Fn(usize) -> Message,
+) -> Element<'a, Message> {
+    header_sortable_styled(layout, columns, active, order, on_sort, table_header_style)
+}
+
+/// En-tête triable habillé d'un style de bande fourni, pour les listes qui
+/// veulent un bandeau différent du creux de table par défaut.
+pub fn header_sortable_styled<'a, Message: Clone + 'a>(
+    layout: Layout,
+    columns: &[Column],
+    active: usize,
+    order: SortOrder,
+    on_sort: impl Fn(usize) -> Message,
+    style: impl Fn(&Theme) -> container::Style + 'a,
 ) -> Element<'a, Message> {
     let mut line = row![].spacing(space::LG).align_y(Alignment::Center);
     for (index, column) in columns.iter().enumerate() {
@@ -203,28 +216,34 @@ pub fn header_sortable<'a, Message: Clone + 'a>(
         .on_press(on_sort(index));
         line = line.push(control);
     }
-    header_shell(line)
+    header_shell(line, style)
 }
 
-fn header_shell<'a, Message: 'a>(content: impl Into<Element<'a, Message>>) -> Element<'a, Message> {
+/// Bande d'en-tête de table par défaut : creux, filet appuyé, coins carrés.
+fn table_header_style(theme: &Theme) -> container::Style {
+    let palette = tokens(theme);
+    container::Style {
+        background: Some(Background::Color(palette.sunken)),
+        text_color: Some(palette.text_secondary),
+        border: Border {
+            color: palette.border_strong,
+            width: stroke::HAIRLINE,
+            radius: radius::NONE.into(),
+        },
+        ..container::Style::default()
+    }
+}
+
+fn header_shell<'a, Message: 'a>(
+    content: impl Into<Element<'a, Message>>,
+    style: impl Fn(&Theme) -> container::Style + 'a,
+) -> Element<'a, Message> {
     container(content.into())
         .height(size::TABLE_HEADER)
         .padding([0.0, space::XL])
         .width(Length::Fill)
         .align_y(Alignment::Center)
-        .style(|theme: &Theme| {
-            let palette = tokens(theme);
-            container::Style {
-                background: Some(Background::Color(palette.sunken)),
-                text_color: Some(palette.text_secondary),
-                border: Border {
-                    color: palette.border_strong,
-                    width: stroke::HAIRLINE,
-                    radius: radius::NONE.into(),
-                },
-                ..container::Style::default()
-            }
-        })
+        .style(style)
         .into()
 }
 
@@ -320,7 +339,7 @@ pub fn row_button<'a, Message: Clone + 'a>(
         button(content)
             .width(Length::Fill)
             .height(height)
-            .padding([0.0, space::XL - stroke::MARKER])
+            .padding([0.0, 20.0 - stroke::MARKER])
             .style(styles::row_item(selected))
             .on_press(on_press),
         super::surface::divider(),

@@ -1,15 +1,14 @@
-//! Pipeline Kanban : colonnes pleine hauteur, cartes sobres, dépôt visible.
+//! Pipeline Kanban : colonnes verre, en-tête pastille + compteur, zone de dépôt marquée.
 
 use crate::app::state::Dialog;
 use crate::app::{App, Message};
-use crate::modules::candidatures::components::{
-    column_label, kanban_card, status_marker, status_tone, PIPELINE,
-};
+use crate::modules::candidatures::components::{column_label, kanban_card, status_tone, PIPELINE};
 use crate::modules::candidatures::model::Candidature;
 use crate::ui::components::{badge, state, surface, typo};
 use crate::ui::theme::metrics::{size, space};
 use crate::ui::theme::styles;
-use crate::ui::theme::Tone;
+use crate::ui::theme::typography::SEMIBOLD;
+use crate::ui::theme::{Marker, Tone};
 use iced::widget::{column, container, mouse_area, responsive, row, Space};
 use iced::{Alignment, Element, Length};
 
@@ -68,16 +67,16 @@ fn pipeline_column<'a>(
     let tone = status_tone(status);
     let header = container(
         row![
-            badge::marker(tone, status_marker(status)),
-            typo::section(column_label(status)),
-            Space::with_width(Length::Fill),
+            badge::marker(tone, Marker::Solid),
+            typo::body(column_label(status)).font(SEMIBOLD),
             badge::count(candidates.len()),
+            Space::with_width(Length::Fill),
         ]
         .spacing(space::MD)
         .align_y(Alignment::Center),
     )
-    .height(size::SECTION_HEADER)
-    .padding([0.0, space::LG])
+    .height(40.0)
+    .padding([0.0, space::MD])
     .align_y(Alignment::Center);
 
     let body: Element<'a, Message> = if candidates.is_empty() {
@@ -99,6 +98,11 @@ fn pipeline_column<'a>(
         surface::scroll(cards).height(Length::Fill).into()
     };
 
+    let drop_zone = container(body)
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .style(styles::drop_zone(is_target));
+
     let drop_hint: Element<'a, Message> = if is_target && !candidates.is_empty() {
         container(typo::meta_toned("Relâchez pour déplacer ici", Tone::Accent))
             .padding([space::SM, space::LG])
@@ -108,14 +112,10 @@ fn pipeline_column<'a>(
         Space::with_height(0).into()
     };
 
-    container(column![header, surface::divider(), body, drop_hint].height(Length::Fill))
+    container(column![header, surface::divider(), drop_zone, drop_hint].height(Length::Fill))
         .width(width)
         .height(Length::Fill)
-        .style(if is_target {
-            styles::sunken
-        } else {
-            styles::panel
-        })
+        .style(styles::kanban_column)
         .into()
 }
 
