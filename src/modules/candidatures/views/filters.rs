@@ -11,8 +11,9 @@ use crate::ui::components::choice::Choice;
 use crate::ui::components::icon::Icon;
 use crate::ui::components::{badge, field, layout, surface, typo};
 use crate::ui::theme::metrics::space;
+use crate::ui::theme::styles;
 use crate::ui::theme::Tone;
-use iced::widget::{column, row};
+use iced::widget::{column, container, row};
 use iced::{Alignment, Element, Length};
 
 /// Filtre de statut, avec une option « tous » explicite.
@@ -155,15 +156,26 @@ pub fn active_strip<'a>(labels: &[String]) -> Element<'a, Message> {
         controls::ghost("Réinitialiser", Some(Icon::Close))
             .on_press(Message::ResetCandidateFilters),
     );
-    line.into()
+    container(line)
+        .width(Length::Fill)
+        .padding([space::LG, 0.0])
+        .into()
 }
 
-/// Panneau de filtres déplié sous la barre d'outils.
+/// Panneau de filtres déplié sous la bande de pilotage, en verre.
 pub fn sheet<'a>(app: &'a App, companies: Vec<Choice>) -> Element<'a, Message> {
     let filters = &app.candidate_filters;
     let selected_company = Choice::find(&companies, filters.company_id);
+    let labels = active_labels(filters, &companies);
+    let strip: Element<'_, Message> = if labels.is_empty() {
+        iced::widget::Space::with_height(0).into()
+    } else {
+        column![surface::divider(), active_strip(&labels)]
+            .spacing(0)
+            .into()
+    };
 
-    surface::panel_bare(
+    container(
         column![
             surface::section_header(
                 "Filtrer le pipeline",
@@ -215,10 +227,13 @@ pub fn sheet<'a>(app: &'a App, companies: Vec<Choice>) -> Element<'a, Message> {
             ]
             .spacing(space::LG)
             .padding([space::LG, 0.0]),
+            strip,
         ]
-        .padding([0.0, space::XL]),
+        .spacing(0),
     )
+    .padding(space::LG)
     .width(Length::Fill)
+    .style(styles::glass_card)
     .into()
 }
 
