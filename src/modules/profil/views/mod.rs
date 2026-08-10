@@ -1,258 +1,454 @@
-//! Écran Profil : sommaire à gauche, section éditable à droite.
+//! Écran Profil : identité, complétion et sections en cartes sur une seule
+//! page défilante, dans l'esprit candilog-desktop.
 
-use crate::app::state::{Dialog, ProfileSection};
+use crate::app::state::Dialog;
 use crate::app::{App, Message};
 use crate::modules::profil::components as rows;
+use crate::shared::profile::{PersonalInfo, Profile};
 use crate::ui::components::button as controls;
+use crate::ui::components::header;
 use crate::ui::components::icon::{self, Icon, Ink};
-use crate::ui::components::{badge, inspector, layout, list, state, surface, toolbar, typo};
+use crate::ui::components::{avatar, badge, inspector, layout, list, state, surface, typo};
 use crate::ui::format;
-use crate::ui::theme::metrics::{size, space};
+use crate::ui::theme::metrics::{radius, size, space, stroke};
 use crate::ui::theme::styles;
+use crate::ui::theme::tokens::{alpha, tokens};
+use crate::ui::theme::typography as font;
 use crate::ui::theme::Tone;
-use iced::widget::{button, column, container, row};
-use iced::{Alignment, Element, Length};
+use iced::widget::{column, container, progress_bar, row, text};
+use iced::{Alignment, Background, Border, Element, Length, Theme};
+
+/// Largeur maximale de la carte d'identité (`max-w-[980px]`).
+const IDENTITY_MAX_WIDTH: f32 = 980.0;
+/// Largeur de la colonne de complétion, à droite de la carte d'identité
+/// (`w-36`).
+const COMPLETION_WIDTH: f32 = 144.0;
+/// Côté de la pastille d'icône d'un en-tête de section (`w-7`).
+const HEADER_TILE: f32 = 28.0;
+
+/// Score de complétion du profil (0-100), 7 sections pondérées également.
+#[must_use]
+pub fn completion_score(profile: &Profile) -> u8 {
+    let complete = [
+        identity_complete(&profile.personal),
+        !profile.experiences.is_empty(),
+        !profile.skills.is_empty(),
+        !profile.education.is_empty(),
+        !profile.languages.is_empty(),
+        !profile.projects.is_empty(),
+        !profile.certifications.is_empty(),
+    ]
+    .into_iter()
+    .filter(|complete| *complete)
+    .count() as u16;
+    // Arrondi au plus proche : `+ 3` (moitié de 7) avant la division.
+    ((complete * 100 + 3) / 7) as u8
+}
+
+/// La section identité est complète quand nom, prénom et e-mail sont remplis.
+fn identity_complete(personal: &PersonalInfo) -> bool {
+    !personal.first_name.trim().is_empty()
+        && !personal.last_name.trim().is_empty()
+        && !personal.email.trim().is_empty()
+}
 
 /// Rend l'écran du profil.
 pub fn view(app: &App) -> Element<'_, Message> {
-    let trailing = toolbar::group([controls::primary("Modifier l'identité", Some(Icon::Edit))
-        .on_press(Message::OpenDialog(Dialog::Profil))
-        .into()]);
-
     layout::screen(
-        toolbar::toolbar(
+        header::page_header(
+            Icon::Profile,
             "Mon Profil",
-            typo::meta("Source structurée des CV et analyses IA"),
-            trailing,
+            "Source structurée des CV et analyses IA",
+            controls::ghost("Modifier", Some(Icon::Edit))
+                .on_press(Message::OpenDialog(Dialog::Profil))
+                .into(),
         ),
-        layout::split_sized(size::SUMMARY, summary(app), section(app)),
+        layout::workspace(surface::scroll(
+            column![
+                container(identity_card(app))
+                    .max_width(IDENTITY_MAX_WIDTH)
+                    .center_x(Length::Fill),
+                sections_grid(app),
+            ]
+            .spacing(space::LG)
+            .width(Length::Fill),
+        )),
     )
 }
 
-fn summary(app: &App) -> Element<'_, Message> {
-    let mut items = column![].spacing(1).padding(space::MD);
-    for section in ProfileSection::ALL {
-        let active = app.profile_section == section;
-        let count = section_count(app, section);
-        let trailing: Element<'_, Message> = if count > 0 {
-            badge::count(count)
-        } else {
-            iced::widget::Space::with_width(0).into()
-        };
-        items = items.push(
-            button(
-                row![
-                    icon::icon(
-                        section_icon(section),
-                        icon::MD,
-                        if active { Ink::Accent } else { Ink::Muted },
-                    ),
-                    typo::body(section.label()),
-                    layout::spacer(),
-                    trailing,
-                ]
-                .spacing(space::MD)
-                .align_y(Alignment::Center),
-            )
-            .width(Length::Fill)
-            .height(size::ROW + 2.0)
-            .padding([0.0, space::MD])
-            .style(styles::nav_item(active))
-            .on_press(Message::ProfileSectionChanged(section)),
-        );
-    }
-    container(surface::scroll(items).height(Length::Fill))
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .style(styles::panel_flat)
-        .into()
-}
-
-const fn section_icon(section: ProfileSection) -> Icon {
-    match section {
-        ProfileSection::Identite => Icon::Profile,
-        ProfileSection::Experiences => Icon::Applications,
-        ProfileSection::Competences => Icon::Target,
-        ProfileSection::Formations => Icon::Document,
-        ProfileSection::Langues => Icon::Link,
-        ProfileSection::Import => Icon::Import,
-    }
-}
-
-fn section_count(app: &App, section: ProfileSection) -> usize {
+/// Carte d'identité : avatar, nom, accroche, jetons de contact et barre de
+/// complétion.
+fn identity_card(app: &App) -> Element<'_, Message> {
     let profile = &app.data.profile;
-    match section {
-        ProfileSection::Identite => usize::from(!profile.personal.email.is_empty()),
-        ProfileSection::Experiences => profile.experiences.len(),
-        ProfileSection::Competences => profile.skills.len(),
-        ProfileSection::Formations => profile.education.len() + profile.certifications.len(),
-        ProfileSection::Langues => profile.languages.len(),
-        ProfileSection::Import => usize::from(app.extracted_profile.is_some()),
-    }
-}
-
-fn section(app: &App) -> Element<'_, Message> {
-    let profile = &app.data.profile;
-    let body: Element<'_, Message> = match app.profile_section {
-        ProfileSection::Identite => identity(app),
-        ProfileSection::Experiences => collection(
-            profile
-                .experiences
-                .iter()
-                .map(rows::experience_row)
-                .collect(),
-            "Aucune expérience",
-            "Importez un CV ou saisissez vos expériences pour nourrir le générateur.",
-        ),
-        ProfileSection::Competences => skills(app),
-        ProfileSection::Formations => {
-            let mut items: Vec<Element<'_, Message>> =
-                profile.education.iter().map(rows::education_row).collect();
-            items.extend(
-                profile
-                    .certifications
-                    .iter()
-                    .map(rows::certification_row)
-                    .collect::<Vec<_>>(),
-            );
-            collection(
-                items,
-                "Aucune formation",
-                "Ajoutez vos diplômes et certifications pour compléter vos CV.",
-            )
-        }
-        ProfileSection::Langues => collection(
-            profile.languages.iter().map(rows::language_row).collect(),
-            "Aucune langue",
-            "Précisez vos langues et leur niveau.",
-        ),
-        ProfileSection::Import => import(app),
-    };
-
-    column![
-        container(surface::section_header(
-            app.profile_section.label(),
-            section_actions(app),
-        ))
-        .height(size::TOOLBAR)
-        .padding([0.0, space::XL])
-        .align_y(Alignment::Center),
-        surface::divider(),
-        body,
-    ]
-    .height(Length::Fill)
-    .into()
-}
-
-fn section_actions(app: &App) -> Element<'_, Message> {
-    match app.profile_section {
-        ProfileSection::Identite => controls::ghost("Modifier", Some(Icon::Edit))
-            .on_press(Message::OpenDialog(Dialog::Profil))
-            .into(),
-        ProfileSection::Import => controls::ghost("Choisir un PDF", Some(Icon::Import))
-            .on_press(Message::SelectProfilePdf)
-            .into(),
-        _ => controls::ghost("Modifier le profil", Some(Icon::Edit))
-            .on_press(Message::OpenDialog(Dialog::Profil))
-            .into(),
-    }
-}
-
-fn identity(app: &App) -> Element<'_, Message> {
-    let personal = &app.data.profile.personal;
+    let personal = &profile.personal;
     let name = format!("{} {}", personal.first_name, personal.last_name)
         .trim()
         .to_owned();
+    let score = completion_score(profile);
 
-    surface::scroll(
-        container(
+    container(
+        row![
+            avatar::avatar(avatar::initials_of(&name), 76.0, Tone::Accent),
             column![
-                column![
-                    typo::title(if name.is_empty() {
-                        "Profil à compléter".to_owned()
-                    } else {
-                        name
-                    }),
-                    typo::meta(format::or_else(
+                typo::title(if name.is_empty() {
+                    "Profil à compléter".to_owned()
+                } else {
+                    name
+                }),
+                typo::toned(
+                    format::or_else(
                         personal.headline.as_deref(),
-                        "Titre professionnel non renseigné"
-                    )),
-                ]
-                .spacing(1),
-                inspector::group(
-                    "Coordonnées",
-                    [
-                        inspector::property("E-mail", format::or_dash(Some(&personal.email))),
-                        inspector::property(
-                            "Téléphone",
-                            format::or_dash(personal.phone.as_deref())
-                        ),
-                        inspector::property("Ville", format::or_dash(personal.city.as_deref())),
-                    ],
+                        "Titre professionnel non renseigné",
+                    ),
+                    Tone::Accent,
                 ),
-                inspector::group(
-                    "Présence en ligne",
-                    [
-                        inspector::property(
-                            "LinkedIn",
-                            format::or_dash(personal.linkedin.as_deref())
-                        ),
-                        inspector::property("GitHub", format::or_dash(personal.github.as_deref())),
-                        inspector::property(
-                            "Site web",
-                            format::or_dash(personal.website.as_deref())
-                        ),
-                    ],
-                ),
-                inspector::note("Résumé", personal.summary.clone()),
+                contact_chips(personal),
             ]
-            .spacing(space::XXL),
-        )
-        .padding(space::XL),
+            .spacing(space::SM)
+            .align_x(Alignment::Start),
+            layout::spacer(),
+            completion_panel(score),
+        ]
+        .spacing(space::XL)
+        .align_y(Alignment::Center),
     )
-    .height(Length::Fill)
+    .padding(space::XXL)
+    .width(Length::Fill)
+    .style(styles::glass_card)
     .into()
 }
 
-fn skills(app: &App) -> Element<'_, Message> {
-    if app.data.profile.skills.is_empty() {
-        return state::empty(
-            "Aucune compétence",
-            "Les compétences alimentent le score de correspondance avec les offres.",
-        );
+/// Jetons de contact : e-mail, téléphone et ville.
+fn contact_chips<'a, Message: 'a>(personal: &PersonalInfo) -> Element<'a, Message> {
+    let values: Vec<String> = [
+        Some(personal.email.as_str()).filter(|value| !value.is_empty()),
+        personal.phone.as_deref(),
+        personal.city.as_deref(),
+    ]
+    .into_iter()
+    .flatten()
+    .map(str::trim)
+    .filter(|value| !value.is_empty())
+    .map(str::to_owned)
+    .collect();
+
+    let mut line = row![].spacing(space::SM);
+    for value in values {
+        line = line.push(chip(value));
     }
-    let names: Vec<String> = app
-        .data
-        .profile
-        .skills
-        .iter()
-        .map(|skill| skill.name.clone())
-        .collect();
-    let mut grid = row![].spacing(space::SM);
-    for name in names {
-        grid = grid.push(badge::badge(name, Tone::Accent));
-    }
-    surface::scroll(container(grid.wrap()).padding(space::XL))
-        .height(Length::Fill)
+    line.into()
+}
+
+/// Jeton de contact : bordure fine sur fond ambiant translucide
+/// (`rounded-full border bg-background/35`).
+fn chip<'a, Message: 'a>(value: String) -> Element<'a, Message> {
+    container(typo::caption(value))
+        .padding([4.0, 10.0])
+        .style(|theme: &Theme| {
+            let palette = tokens(theme);
+            container::Style {
+                background: Some(Background::Color(alpha(palette.canvas, 0.35))),
+                border: Border {
+                    color: palette.border,
+                    width: stroke::HAIRLINE,
+                    radius: radius::PILL.into(),
+                },
+                ..container::Style::default()
+            }
+        })
         .into()
 }
 
-fn collection<'a>(
+/// Colonne de complétion : libellé, barre et pourcentage monospace.
+fn completion_panel<'a, Message: 'a>(score: u8) -> Element<'a, Message> {
+    column![
+        typo::caption("Profil complété"),
+        progress_bar(0.0..=1.0, f32::from(score) / 100.0)
+            .height(6.0)
+            .style(styles::progress(Tone::Accent)),
+        typo::text_mono(format!("{score} %"), font::MICRO, font::MONO_SEMIBOLD),
+    ]
+    .spacing(space::XS)
+    .width(Length::Fixed(COMPLETION_WIDTH))
+    .into()
+}
+
+/// Grille des sections : colonne large `1.55fr` à gauche, étroite `0.85fr`
+/// à droite.
+fn sections_grid(app: &App) -> Element<'_, Message> {
+    let left = column![
+        identity_section(app),
+        experiences_section(app),
+        skills_section(app),
+        formations_section(app),
+        import_section(app),
+    ]
+    .spacing(space::LG)
+    .width(Length::Fill);
+
+    let right = column![
+        languages_section(app),
+        projects_section(app),
+        certifications_section(app),
+    ]
+    .spacing(space::LG)
+    .width(Length::Fill);
+
+    row![
+        container(left).width(Length::FillPortion(155)),
+        container(right).width(Length::FillPortion(85)),
+    ]
+    .spacing(space::LG)
+    .width(Length::Fill)
+    .into()
+}
+
+/// Carte d'une section : en-tête (icône, titre, compteur, crayon) et contenu.
+fn section_card<'a>(
+    glyph: Icon,
+    title: &'a str,
+    count: Option<usize>,
+    pencil: bool,
+    content: Element<'a, Message>,
+) -> Element<'a, Message> {
+    let mut header = row![
+        header_tile(glyph),
+        text(title).size(font::LABEL).font(font::SEMIBOLD),
+        layout::spacer(),
+    ]
+    .spacing(space::MD)
+    .align_y(Alignment::Center);
+    if let Some(count) = count {
+        header = header.push(typo::text_mono(
+            count.to_string(),
+            font::MICRO,
+            font::MONO_SEMIBOLD,
+        ));
+    }
+    if pencil {
+        header = header.push(controls::icon_action(
+            Icon::Edit,
+            "Modifier",
+            Message::OpenDialog(Dialog::Profil),
+        ));
+    }
+
+    container(
+        column![
+            container(header)
+                .height(size::SECTION_HEADER)
+                .align_y(Alignment::Center),
+            surface::divider(),
+            content,
+        ]
+        .width(Length::Fill),
+    )
+    .padding([space::MD, space::LG])
+    .width(Length::Fill)
+    .style(styles::glass_card)
+    .into()
+}
+
+/// Pastille d'icône d'un en-tête de section (`bg-secondary/70 rounded-xl`).
+fn header_tile<'a, Message: 'a>(glyph: Icon) -> Element<'a, Message> {
+    container(icon::icon(glyph, icon::SM, Ink::Muted))
+        .width(HEADER_TILE)
+        .height(HEADER_TILE)
+        .center(Length::Fixed(HEADER_TILE))
+        .style(|theme: &Theme| {
+            let palette = tokens(theme);
+            container::Style {
+                background: Some(Background::Color(alpha(palette.sunken, 0.70))),
+                border: Border {
+                    radius: radius::CONTROL.into(),
+                    ..Border::default()
+                },
+                ..container::Style::default()
+            }
+        })
+        .into()
+}
+
+/// Contenu d'une section : les lignes, ou un emplacement vide minimal.
+fn rows_or_empty<'a, Message: 'a>(
     items: Vec<Element<'a, Message>>,
-    empty_title: &'a str,
-    empty_hint: &'a str,
+    hint: &'a str,
 ) -> Element<'a, Message> {
     if items.is_empty() {
-        return state::empty(empty_title, empty_hint);
+        return state::empty_slot(hint);
     }
-    let mut body = column![];
+    let mut body = column![].width(Length::Fill);
     for item in items {
         body = body.push(item);
     }
-    surface::scroll(body).height(Length::Fill).into()
+    body.into()
 }
 
-fn import(app: &App) -> Element<'_, Message> {
+/// Carte Identité : coordonnées et présence en ligne.
+fn identity_section(app: &App) -> Element<'_, Message> {
+    let personal = &app.data.profile.personal;
+    let filled = [
+        !personal.email.is_empty(),
+        personal
+            .phone
+            .as_deref()
+            .is_some_and(|value| !value.is_empty()),
+        personal
+            .city
+            .as_deref()
+            .is_some_and(|value| !value.is_empty()),
+        personal
+            .linkedin
+            .as_deref()
+            .is_some_and(|value| !value.is_empty()),
+        personal
+            .github
+            .as_deref()
+            .is_some_and(|value| !value.is_empty()),
+        personal
+            .website
+            .as_deref()
+            .is_some_and(|value| !value.is_empty()),
+    ];
+    let count = filled.into_iter().filter(|filled| *filled).count();
+
+    section_card(
+        Icon::Profile,
+        "Identité",
+        Some(count),
+        true,
+        column![
+            inspector::group(
+                "Coordonnées",
+                [
+                    inspector::property("E-mail", format::or_dash(Some(&personal.email))),
+                    inspector::property("Téléphone", format::or_dash(personal.phone.as_deref())),
+                    inspector::property("Ville", format::or_dash(personal.city.as_deref())),
+                ],
+            ),
+            inspector::group(
+                "Présence en ligne",
+                [
+                    inspector::property("LinkedIn", format::or_dash(personal.linkedin.as_deref())),
+                    inspector::property("GitHub", format::or_dash(personal.github.as_deref())),
+                    inspector::property("Site web", format::or_dash(personal.website.as_deref())),
+                ],
+            ),
+            inspector::note("Résumé", personal.summary.clone()),
+        ]
+        .spacing(space::XXL)
+        .into(),
+    )
+}
+
+/// Carte Expériences : la timeline est approchée par des lignes dont la
+/// période porte un jeton monospace.
+fn experiences_section(app: &App) -> Element<'_, Message> {
+    let experiences = &app.data.profile.experiences;
+    section_card(
+        Icon::Applications,
+        "Expériences",
+        Some(experiences.len()),
+        true,
+        rows_or_empty(
+            experiences.iter().map(rows::experience_row).collect(),
+            "Aucune expérience — importez un CV ou ouvrez le dialogue Profil.",
+        ),
+    )
+}
+
+/// Carte Compétences : jetons à plat.
+fn skills_section(app: &App) -> Element<'_, Message> {
+    let skills = &app.data.profile.skills;
+    let content: Element<'_, Message> = if skills.is_empty() {
+        state::empty_slot("Aucune compétence — ajoutez-en dans le dialogue Profil.")
+    } else {
+        let mut line = row![].spacing(space::SM).width(Length::Fill);
+        for skill in skills {
+            line = line.push(badge::badge(skill.name.clone(), Tone::Accent));
+        }
+        container(line.wrap()).padding(space::MD).into()
+    };
+    section_card(
+        Icon::Target,
+        "Compétences",
+        Some(skills.len()),
+        true,
+        content,
+    )
+}
+
+/// Carte Formations : diplômes puis certifications.
+fn formations_section(app: &App) -> Element<'_, Message> {
+    let profile = &app.data.profile;
+    let mut items: Vec<Element<'_, Message>> =
+        profile.education.iter().map(rows::education_row).collect();
+    items.extend(
+        profile
+            .certifications
+            .iter()
+            .map(rows::certification_row)
+            .collect::<Vec<_>>(),
+    );
+    section_card(
+        Icon::Document,
+        "Formations",
+        Some(profile.education.len() + profile.certifications.len()),
+        true,
+        rows_or_empty(
+            items,
+            "Aucune formation — ajoutez vos diplômes et certifications.",
+        ),
+    )
+}
+
+/// Carte Langues : langues parlées et niveau.
+fn languages_section(app: &App) -> Element<'_, Message> {
+    let languages = &app.data.profile.languages;
+    section_card(
+        Icon::Link,
+        "Langues",
+        Some(languages.len()),
+        true,
+        rows_or_empty(
+            languages.iter().map(rows::language_row).collect(),
+            "Aucune langue — précisez vos langues et leur niveau.",
+        ),
+    )
+}
+
+/// Carte Projets : projets personnels et professionnels.
+fn projects_section(app: &App) -> Element<'_, Message> {
+    let projects = &app.data.profile.projects;
+    section_card(
+        Icon::Network,
+        "Projets",
+        Some(projects.len()),
+        true,
+        rows_or_empty(
+            projects.iter().map(rows::project_row).collect(),
+            "Aucun projet — ajoutez vos réalisations.",
+        ),
+    )
+}
+
+/// Carte Certifications : certifications obtenues.
+fn certifications_section(app: &App) -> Element<'_, Message> {
+    let certifications = &app.data.profile.certifications;
+    section_card(
+        Icon::Check,
+        "Certifications",
+        Some(certifications.len()),
+        true,
+        rows_or_empty(
+            certifications.iter().map(rows::certification_row).collect(),
+            "Aucune certification — ajoutez vos attestations.",
+        ),
+    )
+}
+
+/// Carte Import : choix du PDF, extraction et validation explicite.
+fn import_section(app: &App) -> Element<'_, Message> {
     let file = app.profile_import_path.as_ref().map_or_else(
         || "Aucun CV sélectionné".to_owned(),
         |path| {
@@ -326,7 +522,82 @@ fn import(app: &App) -> Element<'_, Message> {
             );
     }
 
-    surface::scroll(container(body).padding(space::XL))
-        .height(Length::Fill)
-        .into()
+    section_card(
+        Icon::Import,
+        "Importer un CV",
+        None,
+        false,
+        container(body).into(),
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::completion_score;
+    use crate::shared::profile::{
+        Certification, Education, Experience, Language, PersonalInfo, Profile, Project, Skill,
+    };
+
+    /// Profil dont exactement `count` sections sont complètes.
+    fn profile_avec_sections(count: usize) -> Profile {
+        let mut profile = Profile::default();
+        if count >= 1 {
+            profile.personal = PersonalInfo {
+                first_name: "Alice".into(),
+                last_name: "Dupont".into(),
+                email: "alice@dupont.fr".into(),
+                ..PersonalInfo::default()
+            };
+        }
+        if count >= 2 {
+            profile.experiences.push(Experience::default());
+        }
+        if count >= 3 {
+            profile.skills.push(Skill::default());
+        }
+        if count >= 4 {
+            profile.education.push(Education::default());
+        }
+        if count >= 5 {
+            profile.languages.push(Language::default());
+        }
+        if count >= 6 {
+            profile.projects.push(Project::default());
+        }
+        if count >= 7 {
+            profile.certifications.push(Certification::default());
+        }
+        profile
+    }
+
+    #[test]
+    fn un_profil_vide_score_zero() {
+        assert_eq!(completion_score(&Profile::default()), 0);
+    }
+
+    #[test]
+    fn un_profil_complet_score_cent() {
+        assert_eq!(completion_score(&profile_avec_sections(7)), 100);
+    }
+
+    #[test]
+    fn un_profil_a_moitie_score_proche_de_cinquante() {
+        // Pondération 1/7 : les scores entiers les plus proches de 50 sont
+        // 3/7 ≈ 43 et 4/7 ≈ 57, arrondis au plus proche.
+        assert_eq!(completion_score(&profile_avec_sections(3)), 43);
+        assert_eq!(completion_score(&profile_avec_sections(4)), 57);
+    }
+
+    #[test]
+    fn l_identite_n_est_complete_qu_avec_nom_prenom_et_email() {
+        let mut profile = profile_avec_sections(0);
+        profile.personal.email = "alice@dupont.fr".into();
+        assert_eq!(completion_score(&profile), 0);
+
+        profile.personal.first_name = "Alice".into();
+        assert_eq!(completion_score(&profile), 0);
+
+        profile.personal.last_name = "Dupont".into();
+        assert_eq!(completion_score(&profile), 14);
+    }
 }

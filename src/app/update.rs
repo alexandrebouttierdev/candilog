@@ -1151,7 +1151,6 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             }
         }
         Message::SettingsSectionChanged(section) => app.settings_section = section,
-        Message::ProfileSectionChanged(section) => app.profile_section = section,
         Message::StatisticsTabChanged(tab) => app.statistics_tab = tab,
         Message::AtsPagePrev => app.ats_page = app.ats_page.saturating_sub(1),
         Message::AtsPageNext => app.ats_page = app.ats_page.saturating_add(1),

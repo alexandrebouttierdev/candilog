@@ -252,49 +252,6 @@ pub enum StatisticsTab {
     PerformanceCv,
 }
 
-/// Sections de l'écran Profil.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum ProfileSection {
-    /// Informations personnelles.
-    #[default]
-    Identite,
-    /// Expériences professionnelles.
-    Experiences,
-    /// Compétences.
-    Competences,
-    /// Formations.
-    Formations,
-    /// Langues.
-    Langues,
-    /// Import d'un CV existant.
-    Import,
-}
-
-impl ProfileSection {
-    /// Sections dans l'ordre du sommaire.
-    pub const ALL: [Self; 6] = [
-        Self::Identite,
-        Self::Experiences,
-        Self::Competences,
-        Self::Formations,
-        Self::Langues,
-        Self::Import,
-    ];
-
-    /// Intitulé affiché dans le sommaire et l'en-tête.
-    #[must_use]
-    pub const fn label(self) -> &'static str {
-        match self {
-            Self::Identite => "Identité",
-            Self::Experiences => "Expériences",
-            Self::Competences => "Compétences",
-            Self::Formations => "Formations",
-            Self::Langues => "Langues",
-            Self::Import => "Importer un CV",
-        }
-    }
-}
-
 /// Décision utilisateur sur une recommandation ATS.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RecommendationStatus {
@@ -460,8 +417,6 @@ pub struct App {
     pub candidate_sort_descending: bool,
     /// Section active de l'écran Paramètres.
     pub settings_section: SettingsSection,
-    /// Section active de l'écran Profil.
-    pub profile_section: ProfileSection,
     /// Onglet actif de l'écran Statistiques.
     pub statistics_tab: StatisticsTab,
     /// Page courante de l'historique des scores ATS (1-based).
@@ -536,7 +491,6 @@ impl App {
             candidate_sort: CandidateSort::default(),
             candidate_sort_descending: true,
             settings_section: SettingsSection::default(),
-            profile_section: ProfileSection::default(),
             statistics_tab: StatisticsTab::default(),
             ats_page: 1,
             llm_page: 1,

@@ -3,7 +3,12 @@
 use crate::shared::profile::{Certification, Education, Experience, Language, Project};
 use crate::ui::components::{list, typo};
 use crate::ui::format;
-use iced::Element;
+use crate::ui::theme::metrics::radius;
+use crate::ui::theme::styles;
+use crate::ui::theme::tokens::{alpha, tokens};
+use crate::ui::theme::typography as font;
+use iced::widget::container;
+use iced::{Background, Border, Element, Theme};
 
 /// Période lisible d'une expérience.
 #[must_use]
@@ -16,6 +21,27 @@ pub fn experience_period(experience: &Experience) -> String {
     format!("{} → {end}", experience.start_date)
 }
 
+/// Période en jeton monospace (`bg-secondary/70 rounded-md`), sur la
+/// timeline des expériences.
+pub fn period_badge<'a, Message: 'a>(
+    period: impl iced::widget::text::IntoFragment<'a>,
+) -> Element<'a, Message> {
+    container(typo::text_mono(period, font::MICRO, font::MONO_MEDIUM).style(styles::secondary_text))
+        .padding([3.0, 8.0])
+        .style(|theme: &Theme| {
+            let palette = tokens(theme);
+            container::Style {
+                background: Some(Background::Color(alpha(palette.sunken, 0.70))),
+                border: Border {
+                    radius: radius::CONTROL.into(),
+                    ..Border::default()
+                },
+                ..container::Style::default()
+            }
+        })
+        .into()
+}
+
 /// Ligne d'une expérience professionnelle.
 pub fn experience_row<'a, Message: 'a>(experience: &Experience) -> Element<'a, Message> {
     list::row_static(
@@ -25,7 +51,7 @@ pub fn experience_row<'a, Message: 'a>(experience: &Experience) -> Element<'a, M
             typo::caption(format::or_dash(experience.description.as_deref())),
         ]
         .spacing(0),
-        typo::caption(experience_period(experience)),
+        period_badge(experience_period(experience)),
     )
 }
 
