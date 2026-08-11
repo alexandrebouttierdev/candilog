@@ -171,12 +171,10 @@ fn offer_panel(app: &App) -> Element<'_, Message> {
     row![
         container(info_panel(app))
             .width(Length::FillPortion(72))
-            .height(Length::Fill)
             .padding(space::XL)
             .style(primary_info_style),
         container(offer_content(app))
             .width(Length::FillPortion(128))
-            .height(Length::Fill)
             .padding(space::XL)
             .style(styles::glass_card),
     ]
