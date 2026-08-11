@@ -205,7 +205,7 @@ fn month_view(app: &App) -> Element<'_, Message> {
         weekdays = weekdays.push(
             container(typo::label(format::weekday_abbrev(index)))
                 .width(Length::FillPortion(1))
-                .center_x(Length::FillPortion(1)),
+                .align_x(Alignment::Center),
         );
     }
 

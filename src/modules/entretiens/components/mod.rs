@@ -131,7 +131,11 @@ pub fn month_cell<'a, Message: Clone + 'a>(
         content = content.push(event);
     }
     if overflow > 0 {
-        content = content.push(typo::caption(format!("+{overflow}")));
+        content = content.push(
+            container(typo::caption(format!("+{overflow}")))
+                .width(Length::Fill)
+                .align_x(Alignment::Center),
+        );
     }
 
     button(content)
