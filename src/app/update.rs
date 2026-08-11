@@ -713,12 +713,68 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             Ok(path) => app.notify_success(format!("Backup créé : {}", path.display())),
             Err(error) => app.notify_failure(error),
         },
-        Message::CandidateDragStarted(id) => {
-            app.dragging_candidate = Some(id);
+        Message::CandidatePressed(id) => {
+            app.press_candidate = Some(id);
+            app.press_origin = None;
+            app.dragging_candidate = None;
             app.drag_target_status = None;
         }
-        Message::CandidateDragHovered(status) => app.drag_target_status = Some(status),
+        Message::CandidateMoved(point) => {
+            let Some(id) = app.press_candidate else {
+                return Task::none();
+            };
+            match app.press_origin {
+                None => app.press_origin = Some(point),
+                Some(origin) if depasse_le_seuil(origin, point) => {
+                    app.dragging_candidate = Some(id);
+                    app.press_candidate = None;
+                }
+                Some(_) => {}
+            }
+        }
+        Message::CandidateReleased => {
+            if let Some(id) = app.dragging_candidate.take() {
+                app.press_candidate = None;
+                app.press_origin = None;
+                let target = app.drag_target_status.take();
+                if let Some(status) = target {
+                    return ecrire(
+                        app,
+                        "Statut mis à jour par glisser-déposer.",
+                        move |backend| {
+                            backend
+                                .candidatures
+                                .changer_statut(id, status)
+                                .map(|_| ())
+                                .map_err(|error| error.to_string())
+                        },
+                    );
+                }
+                return Task::none();
+            }
+            if let Some(id) = app.press_candidate.take() {
+                app.press_origin = None;
+                app.drag_target_status = None;
+                return Task::done(Message::OpenDialog(Dialog::CandidatureDetail(id)));
+            }
+            return Task::none();
+        }
+        Message::CandidateCardHovered(id) => app.hovered_card = Some(id),
+        Message::CandidateCardExited => {
+            app.hovered_card = None;
+            if let Some(id) = app.press_candidate.take() {
+                app.dragging_candidate = Some(id);
+            }
+        }
+        Message::CandidateDragHovered(status) => {
+            if app.dragging_candidate.is_some() {
+                app.drag_target_status = Some(status);
+            }
+        }
         Message::CandidateDropped(status) => {
+            app.press_candidate = None;
+            app.press_origin = None;
+            app.hovered_card = None;
             let Some(id) = app.dragging_candidate.take() else {
                 return Task::none();
             };
@@ -1386,6 +1442,14 @@ fn apply_recommendation(
         }
         _ => {}
     }
+}
+
+/// Seuil de déplacement (px) au-delà duquel un appui sur une carte devient un glisser.
+const DRAG_THRESHOLD: f32 = 5.0;
+
+/// Vrai si le curseur s'est déplacé au-delà du seuil de glisser depuis l'origine.
+fn depasse_le_seuil(origin: iced::Point, cursor: iced::Point) -> bool {
+    (cursor.x - origin.x).hypot(cursor.y - origin.y) > DRAG_THRESHOLD
 }
 
 #[cfg(test)]

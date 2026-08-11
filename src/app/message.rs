@@ -254,8 +254,16 @@ pub enum Message {
     ExportBackup,
     /// Résultat de la sauvegarde SQLite.
     BackupExported(Result<std::path::PathBuf, String>),
-    /// Commence le glisser-déposer d'une candidature.
-    CandidateDragStarted(uuid::Uuid),
+    /// Appui gauche posé sur une carte de pipeline.
+    CandidatePressed(uuid::Uuid),
+    /// Déplacement du curseur au-dessus d'une carte de pipeline.
+    CandidateMoved(iced::Point),
+    /// Relâchement du bouton gauche au-dessus d'une carte de pipeline.
+    CandidateReleased,
+    /// Survol d'une carte de pipeline.
+    CandidateCardHovered(uuid::Uuid),
+    /// Fin du survol d'une carte de pipeline.
+    CandidateCardExited,
     /// Met à jour la colonne survolée.
     CandidateDragHovered(StatutCandidature),
     /// Dépose la candidature dans une colonne.

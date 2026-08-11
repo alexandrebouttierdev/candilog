@@ -1,6 +1,5 @@
 //! Pipeline Kanban : colonnes verre, en-tête pastille + compteur, zone de dépôt marquée.
 
-use crate::app::state::Dialog;
 use crate::app::{App, Message};
 use crate::modules::candidatures::components::{column_label, kanban_card, status_tone, PIPELINE};
 use crate::modules::candidatures::model::Candidature;
@@ -37,7 +36,8 @@ pub fn view<'a>(app: &'a App, candidates: &[&'a Candidature]) -> Element<'a, Mes
         let width = column_width(viewport.width);
         let mut board = row![].spacing(space::LG).height(Length::Fill);
         for (index, status) in PIPELINE.into_iter().enumerate() {
-            let is_target = app.drag_target_status == Some(status);
+            let is_target =
+                app.dragging_candidate.is_some() && app.drag_target_status == Some(status);
             board = board.push(
                 mouse_area(pipeline_column(
                     app,
@@ -91,8 +91,12 @@ fn pipeline_column<'a>(
             cards = cards.push(kanban_card(
                 candidate,
                 app.selected_candidate == Some(candidate.id),
-                Message::OpenDialog(Dialog::CandidatureDetail(candidate.id)),
-                Message::CandidateDragStarted(candidate.id),
+                app.hovered_card == Some(candidate.id),
+                Message::CandidatePressed(candidate.id),
+                Message::CandidateMoved,
+                Message::CandidateReleased,
+                Message::CandidateCardHovered(candidate.id),
+                Message::CandidateCardExited,
             ));
         }
         surface::scroll(cards).height(Length::Fill).into()

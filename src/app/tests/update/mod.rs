@@ -35,4 +35,5 @@ mod la_pagination_reste_dans_ses_bornes;
 mod le_cycle_de_vie_des_dialogues_reinitialise_les_formulaires;
 mod recommandation_experience_cible_uniquement_la_ligne_demandee;
 mod recommandation_resume_modifie_le_modele_commun;
+mod un_deplacement_de_5_px_est_un_glisser;
 mod une_soumission_invalide_ne_ferme_pas_le_dialogue;

@@ -2,7 +2,7 @@
 
 use crate::modules::candidatures::model::{Candidature, StatutCandidature, TypeContrat};
 use crate::ui::components::button as controls;
-use crate::ui::components::icon::{self, Icon};
+use crate::ui::components::icon::{self, Icon, Ink};
 use crate::ui::components::typo;
 use crate::ui::components::{badge, surface};
 use crate::ui::format;
@@ -10,7 +10,7 @@ use crate::ui::theme::metrics::space;
 use crate::ui::theme::styles;
 use crate::ui::theme::typography as font;
 use crate::ui::theme::{Marker, Tone};
-use iced::widget::{button, column, mouse_area, row, Space};
+use iced::widget::{column, container, mouse_area, row, Space};
 use iced::{mouse, Alignment, Element, Length};
 
 /// Ton sémantique associé à un statut de candidature.
@@ -95,31 +95,43 @@ pub const fn contract_short(contract: TypeContrat) -> &'static str {
     }
 }
 
-/// Carte du pipeline : un objet autonome, saisissable, volontairement sobre.
+/// Carte du pipeline : un objet autonome, saisissable au bouton gauche.
 ///
-/// Le statut n'y figure pas : il est porté par la colonne. La carte ne
-/// présente que ce qui distingue une candidature d'une autre : poste,
-/// entreprise, contrat en pastille et date en chiffres.
-pub fn kanban_card<Message: Clone + 'static>(
-    candidate: &Candidature,
+/// Le statut n'y figure pas : il est porté par la colonne. La carte présente
+/// ce qui distingue une candidature d'une autre : poste, entreprise, contrat
+/// en pastille et date. L'appui gauche lance un glisser passé un seuil de
+/// déplacement ; un simple clic ouvre le détail (tranché dans `update`).
+#[allow(clippy::too_many_arguments)]
+pub fn kanban_card<'a, Message: Clone + 'a>(
+    candidate: &'a Candidature,
     selected: bool,
-    on_select: Message,
-    on_drag: Message,
-) -> Element<'static, Message> {
+    hovered: bool,
+    on_press: Message,
+    on_move: impl Fn(iced::Point) -> Message + 'a,
+    on_release: Message,
+    on_hover: Message,
+    on_exit: Message,
+) -> Element<'a, Message> {
     let content = column![
-        typo::item(format::truncate(&candidate.poste, 30)),
-        // Même politique de débordement que le poste. Le nom d'entreprise était rendu par un
-        // texte ordinaire qui se replie : dans une même carte, le poste était tronqué avec une
-        // ellipse tandis que l'entreprise s'étalait sur deux lignes complètes, d'où une
-        // hauteur de carte variable d'une colonne du Kanban à l'autre.
-        typo::meta(format::truncate(
-            &format::or_else(candidate.entreprise_nom.as_deref(), "Entreprise inconnue"),
-            30,
-        )),
+        crate::ui::components::tooltip::tip(
+            typo::item(format::truncate(&candidate.poste, 30)).font(font::SEMIBOLD),
+            candidate.poste.as_str(),
+            crate::ui::components::tooltip::Side::Bottom,
+        ),
+        row![
+            icon::icon(Icon::Building, 12.0, Ink::Muted),
+            typo::meta(format::truncate(
+                &format::or_else(candidate.entreprise_nom.as_deref(), "Entreprise inconnue"),
+                30,
+            )),
+        ]
+        .spacing(space::XS)
+        .align_y(Alignment::Center),
         surface::divider(),
         row![
             badge::badge(contract_short(candidate.type_contrat), Tone::Neutral),
             Space::with_width(Length::Fill),
+            icon::icon(Icon::Calendar, 11.0, Ink::Muted),
             typo::text_mono(
                 format::compact_date(&candidate.date_envoi),
                 font::CAPTION,
@@ -133,17 +145,16 @@ pub fn kanban_card<Message: Clone + 'static>(
     .spacing(space::XS);
 
     mouse_area(
-        button(content)
+        container(content)
             .width(Length::Fill)
             .padding(14.0)
-            .style(if selected {
-                styles::card_selected
-            } else {
-                styles::card
-            })
-            .on_press(on_select),
+            .style(styles::kanban_card(selected, hovered)),
     )
-    .on_right_press(on_drag)
+    .on_press(on_press)
+    .on_move(on_move)
+    .on_release(on_release)
+    .on_enter(on_hover)
+    .on_exit(on_exit)
     .interaction(mouse::Interaction::Grab)
     .into()
 }
@@ -272,5 +283,27 @@ mod tests {
             assert!(!short.is_empty());
             assert!(short.chars().count() <= 10, "abréviation trop longue");
         }
+    }
+
+    #[test]
+    fn la_carte_du_pipeline_s_instancie() {
+        use crate::modules::candidatures::model::Candidature;
+        use uuid::Uuid;
+        let candidature = Candidature {
+            id: Uuid::new_v4(),
+            poste: "Développeur Rust".into(),
+            entreprise_id: Uuid::new_v4(),
+            entreprise_nom: Some("Agrial".into()),
+            contact_id: None,
+            type_contrat: TypeContrat::Cdi,
+            statut: StatutCandidature::EnAttente,
+            date_envoi: "2026-08-01".into(),
+            lien_offre: None,
+            notes: None,
+            created_at: "2026-08-01".into(),
+            updated_at: "2026-08-01".into(),
+        };
+        let _: iced::Element<'_, ()> =
+            super::kanban_card(&candidature, false, false, (), |_| (), (), (), ());
     }
 }

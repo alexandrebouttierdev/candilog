@@ -486,10 +486,16 @@ pub struct App {
     pub letter_length: String,
     /// Texte reçu progressivement du provider.
     pub letter_output: String,
+    /// Candidature sur laquelle un appui gauche est posé, avant le seuil de glisser.
+    pub press_candidate: Option<uuid::Uuid>,
+    /// Position du curseur à l'origine d'un potentiel glisser.
+    pub press_origin: Option<iced::Point>,
     /// Candidature actuellement glissée dans le Kanban.
     pub dragging_candidate: Option<uuid::Uuid>,
     /// Colonne survolée pendant le glisser-déposer.
     pub drag_target_status: Option<StatutCandidature>,
+    /// Carte de pipeline survolée (surbrillance au survol).
+    pub hovered_card: Option<uuid::Uuid>,
     /// Informations personnelles éditées.
     pub profile_personal_form: crate::shared::profile::PersonalInfo,
     /// Compétences éditées, séparées par des virgules.
@@ -629,8 +635,11 @@ impl App {
             letter_tone: "formal".into(),
             letter_length: "medium".into(),
             letter_output: String::new(),
+            press_candidate: None,
+            press_origin: None,
             dragging_candidate: None,
             drag_target_status: None,
+            hovered_card: None,
             profile_personal_form: crate::shared::profile::PersonalInfo::default(),
             profile_skills_form: String::new(),
             profile_import_path: None,

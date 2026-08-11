@@ -300,6 +300,38 @@ pub fn card_selected(theme: &Theme, status: button::Status) -> button::Style {
     }
 }
 
+/// Carte de pipeline (conteneur) : verre, survol surélevé, sélection au filet d'accent.
+pub fn kanban_card(selected: bool, hovered: bool) -> impl Fn(&Theme) -> container::Style {
+    move |theme: &Theme| {
+        let palette = tokens(theme);
+        let engaged = hovered;
+        container::Style {
+            background: Some(Background::Color(if selected || engaged {
+                palette.raised
+            } else {
+                mix_panel(palette.panel, palette.canvas, 0.75)
+            })),
+            text_color: Some(palette.text),
+            border: Border {
+                color: if selected {
+                    palette.accent
+                } else if engaged {
+                    palette.border_strong
+                } else {
+                    alpha(palette.border, 0.60)
+                },
+                width: if selected {
+                    stroke::MARKER
+                } else {
+                    stroke::HAIRLINE
+                },
+                radius: radius::CARD.into(),
+            },
+            ..container::Style::default()
+        }
+    }
+}
+
 // --------------------------------------------------------------------------
 // Conteneurs
 // --------------------------------------------------------------------------
@@ -897,8 +929,8 @@ pub fn toned_text(tone: Tone) -> impl Fn(&Theme) -> text::Style {
 mod tests {
     use super::{
         canvas, card, chrome, danger, divider, drop_zone, ghost, glass_card, glass_panel,
-        kanban_column, list_header, mix_panel, nav_item, panel, press, primary, progress, raised,
-        row_item, scroller, secondary, selected, selected_inverse, sunken,
+        kanban_card, kanban_column, list_header, mix_panel, nav_item, panel, press, primary,
+        progress, raised, row_item, scroller, secondary, selected, selected_inverse, sunken,
     };
     use crate::ui::theme::color::Tone;
     use crate::ui::theme::tokens::{alpha, tokens, NIGHT};
@@ -1175,5 +1207,13 @@ mod tests {
             },
         );
         assert!(hovered.vertical_rail.scroller.color.a > idle.vertical_rail.scroller.color.a);
+    }
+
+    #[test]
+    fn la_carte_kanban_se_selectionne_et_se_survole() {
+        use iced::widget::container;
+        let _: container::Style = kanban_card(false, false)(&dark());
+        let _: container::Style = kanban_card(true, false)(&dark());
+        let _: container::Style = kanban_card(false, true)(&dark());
     }
 }
