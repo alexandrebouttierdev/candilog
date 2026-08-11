@@ -50,8 +50,8 @@ pub fn view<'a>(app: &'a App, candidates: &[&'a Candidature]) -> Element<'a, Mes
                 .on_release(Message::CandidateDropped(status)),
             );
         }
-        surface::scroll_x(container(board).height(Length::Fill))
-            .height(Length::Fill)
+        mouse_area(surface::scroll_x(container(board).height(Length::Fill)).height(Length::Fill))
+            .on_release(Message::CandidateDragCancelled)
             .into()
     })
     .into()

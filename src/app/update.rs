@@ -736,6 +736,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             if let Some(id) = app.dragging_candidate.take() {
                 app.press_candidate = None;
                 app.press_origin = None;
+                app.hovered_card = None;
                 let target = app.drag_target_status.take();
                 if let Some(status) = target {
                     return ecrire(
@@ -760,12 +761,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             return Task::none();
         }
         Message::CandidateCardHovered(id) => app.hovered_card = Some(id),
-        Message::CandidateCardExited => {
-            app.hovered_card = None;
-            if let Some(id) = app.press_candidate.take() {
-                app.dragging_candidate = Some(id);
-            }
-        }
+        Message::CandidateCardExited => app.hovered_card = None,
         Message::CandidateDragHovered(status) => {
             if app.dragging_candidate.is_some() {
                 app.drag_target_status = Some(status);
@@ -790,6 +786,12 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                         .map_err(|error| error.to_string())
                 },
             );
+        }
+        Message::CandidateDragCancelled => {
+            app.press_candidate = None;
+            app.press_origin = None;
+            app.dragging_candidate = None;
+            app.drag_target_status = None;
         }
         Message::CalendarViewChanged(view) => app.calendar_view = view,
         Message::CalendarDateSelected(date) => {

@@ -205,7 +205,6 @@ pub fn wide<'a, Message: 'a>(label: &'a str, kind: Option<Icon>) -> Button<'a, M
 #[cfg(test)]
 mod tests {
     use super::*;
-    use iced::Element;
 
     #[test]
     fn chaque_fabrique_de_bouton_s_instancie() {

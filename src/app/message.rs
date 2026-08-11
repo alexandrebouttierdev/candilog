@@ -268,6 +268,8 @@ pub enum Message {
     CandidateDragHovered(StatutCandidature),
     /// Dépose la candidature dans une colonne.
     CandidateDropped(StatutCandidature),
+    /// Annule le glisser en cours (lâcher hors colonne ou hors carte).
+    CandidateDragCancelled,
     /// Change la granularité du calendrier.
     CalendarViewChanged(CalendarView),
     /// Sélectionne une date dans le calendrier.

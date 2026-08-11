@@ -33,6 +33,7 @@ fn envoyer(app: &mut App, messages: impl IntoIterator<Item = Message>) {
 
 mod la_pagination_reste_dans_ses_bornes;
 mod le_cycle_de_vie_des_dialogues_reinitialise_les_formulaires;
+mod le_glisser_suit_le_seuil_et_le_clic;
 mod recommandation_experience_cible_uniquement_la_ligne_demandee;
 mod recommandation_resume_modifie_le_modele_commun;
 mod un_deplacement_de_5_px_est_un_glisser;

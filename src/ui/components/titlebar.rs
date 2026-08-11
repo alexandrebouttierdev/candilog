@@ -25,11 +25,11 @@ pub fn titlebar<'a, Message: Clone + 'a>(
         Space::with_width(Length::Fill),
         runtime,
         Space::with_width(space::MD),
-        button(icon::icon(
+        button(crate::ui::components::button::centered(icon::icon(
             if is_dark { Icon::Sun } else { Icon::Moon },
             14.0,
             Ink::Muted,
-        ))
+        )))
         .width(28.0)
         .height(28.0)
         .padding(0)
