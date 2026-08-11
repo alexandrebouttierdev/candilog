@@ -378,27 +378,17 @@ fn skills_section(app: &App) -> Element<'_, Message> {
     )
 }
 
-/// Carte Formations : diplômes puis certifications.
+/// Carte Formations : diplômes (les certifications ont leur propre carte).
 fn formations_section(app: &App) -> Element<'_, Message> {
     let profile = &app.data.profile;
-    let mut items: Vec<Element<'_, Message>> =
+    let items: Vec<Element<'_, Message>> =
         profile.education.iter().map(rows::education_row).collect();
-    items.extend(
-        profile
-            .certifications
-            .iter()
-            .map(rows::certification_row)
-            .collect::<Vec<_>>(),
-    );
     section_card(
         Icon::Document,
         "Formations",
-        Some(profile.education.len() + profile.certifications.len()),
+        Some(profile.education.len()),
         true,
-        rows_or_empty(
-            items,
-            "Aucune formation — ajoutez vos diplômes et certifications.",
-        ),
+        rows_or_empty(items, "Aucune formation — ajoutez vos diplômes."),
     )
 }
 

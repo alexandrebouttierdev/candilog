@@ -617,7 +617,7 @@ fn updates_card(app: &App) -> Element<'_, Message> {
     }
     if let Some(progress) = app.update_progress {
         body = body.push(setting_stacked(
-            "Téléchargement du paquet",
+            "Progression",
             "Paquet en cours de téléchargement.",
             state::progress_step("Téléchargement du paquet", f32::from(progress) / 100.0),
         ));
@@ -692,6 +692,19 @@ mod tests {
 
     #[test]
     fn la_grille_propose_sept_fournisseurs() {
-        assert_eq!(providers().len(), 7);
+        let grille = providers();
+        assert_eq!(grille.len(), 7);
+        assert_eq!(
+            grille.iter().map(provider_label).collect::<Vec<_>>(),
+            [
+                "Ollama",
+                "Claude",
+                "OpenAI",
+                "Gemini",
+                "Mistral",
+                "NVIDIA",
+                "Personnalisé",
+            ]
+        );
     }
 }

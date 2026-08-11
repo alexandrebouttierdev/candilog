@@ -9,7 +9,7 @@ use iced::{Color, Theme};
 /// Convertit une teinte `hsl(h s% l%)` (h en degrés, s et l en %) en couleur opaque.
 ///
 /// Recette sRGB standard ; les valeurs sont celles du handoff candilog-desktop.
-const fn hsl(h: f32, s: f32, l: f32) -> Color {
+pub const fn hsl(h: f32, s: f32, l: f32) -> Color {
     let s = (s / 100.0).clamp(0.0, 1.0);
     let l = (l / 100.0).clamp(0.0, 1.0);
     let c = (1.0 - (2.0 * l - 1.0).abs()) * s;

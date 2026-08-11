@@ -2,36 +2,10 @@
 
 use super::typo;
 use crate::ui::theme::metrics::radius;
+use crate::ui::theme::tokens::hsl;
 use crate::ui::theme::typography as font;
 use iced::widget::{column, container};
 use iced::{Background, Border, Color, Element, Length};
-
-/// Convertit une teinte `hsl(h s% l%)` (h en degrés, s et l en %) en couleur opaque.
-///
-/// Recette sRGB standard, copie privée de `theme::tokens` : les couleurs des
-/// tranches sont fixées par le handoff, pas résolues depuis le thème actif.
-const fn hsl(h: f32, s: f32, l: f32) -> Color {
-    let s = (s / 100.0).clamp(0.0, 1.0);
-    let l = (l / 100.0).clamp(0.0, 1.0);
-    let c = (1.0 - (2.0 * l - 1.0).abs()) * s;
-    let h_prime = (h % 360.0 + 360.0) % 360.0 / 60.0;
-    let x = c * (1.0 - ((h_prime % 2.0) - 1.0).abs());
-    let (r1, g1, b1) = match h_prime as u32 {
-        0 => (c, x, 0.0),
-        1 => (x, c, 0.0),
-        2 => (0.0, c, x),
-        3 => (0.0, x, c),
-        4 => (x, 0.0, c),
-        _ => (c, 0.0, x),
-    };
-    let m = l - c / 2.0;
-    Color {
-        r: r1 + m,
-        g: g1 + m,
-        b: b1 + m,
-        a: 1.0,
-    }
-}
 
 /// Tranche du score : indigo ≥85, vert ≥70, ambre ≥50, rouge sinon.
 #[must_use]
@@ -58,7 +32,7 @@ pub fn score_colors(tier: &str) -> (Color, Color) {
     }
 }
 
-/// Badge de score : carte 80×80 colorée par tranche, chiffre mono 24 bold.
+/// Badge de score : carte 80×80 colorée par tranche, chiffre mono 24 semibold.
 pub fn score_badge<'a, Message: 'a>(score: u8) -> Element<'a, Message> {
     let (background, foreground) = score_colors(score_tier(score));
     container(
