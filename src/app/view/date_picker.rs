@@ -79,9 +79,13 @@ pub fn layer(app: &App) -> Element<'_, Message> {
             ),
         ]
         .align_y(Alignment::Center),
-        calendar,
+        container(calendar)
+            .padding(space::MD)
+            .width(Length::Shrink)
+            .style(crate::ui::theme::styles::sunken),
     ]
-    .spacing(space::LG);
+    .spacing(space::LG)
+    .align_x(Alignment::Center);
 
     overlay::modal(
         "Choisir une date",
@@ -96,7 +100,7 @@ pub fn layer(app: &App) -> Element<'_, Message> {
                 ))
                 .into(),
         ]),
-        Size::Form,
+        Size::Confirm,
         Message::CloseDatePicker,
     )
 }

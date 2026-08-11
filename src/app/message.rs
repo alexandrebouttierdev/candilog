@@ -89,6 +89,8 @@ pub enum Message {
     CurrentMonth,
     /// Bascule entre thème clair et sombre.
     ToggleTheme,
+    /// Résultat de la persistance immédiate du thème choisi dans la sidebar.
+    ThemePersisted(Result<crate::modules::settings::model::AppSettings, String>),
     /// Battement de l'horloge pour les durées et opérations progressives.
     Tick,
     /// Lance une vérification de mise à jour.
@@ -121,7 +123,7 @@ pub enum Message {
     /// Modifie l'adresse d'entreprise.
     EntrepriseAdresseChanged(String),
     /// Modifie les notes d'entreprise.
-    EntrepriseNotesChanged(String),
+    EntrepriseNotesChanged(iced::widget::text_editor::Action),
     /// Soumet une entreprise.
     SubmitEntreprise,
     /// Modifie le prénom du contact.
@@ -173,7 +175,7 @@ pub enum Message {
     /// Modifie le lieu d'entretien.
     EntretienLieuChanged(String),
     /// Modifie les notes d'entretien.
-    EntretienNotesChanged(String),
+    EntretienNotesChanged(iced::widget::text_editor::Action),
     /// Modifie le compte rendu multiligne.
     EntretienCompteRenduChanged(iced::widget::text_editor::Action),
     /// Soumet un entretien.

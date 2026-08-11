@@ -54,6 +54,11 @@ impl<R: CandidatureRepository> CandidatureService<R> {
         self.repo.stats()
     }
 
+    /// Charge une liste bornée de candidatures nécessitant une relance.
+    pub fn a_relancer(&self, before: &str, limit: u64) -> AppResult<Vec<Candidature>> {
+        self.repo.list_to_follow_up(before, limit)
+    }
+
     /// Valide les champs puis met à jour la candidature.
     ///
     /// # Errors

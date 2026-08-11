@@ -330,10 +330,14 @@ fn entreprise(app: &App) -> Element<'_, Message> {
             &app.entreprise_form.adresse,
             Message::EntrepriseAdresseChanged,
         ),
-        field::text_field(
+        field::labeled(
             "Notes",
-            &app.entreprise_form.notes,
-            Message::EntrepriseNotesChanged,
+            field::editor(
+                &app.entreprise_form.notes,
+                "Contexte, culture, informations utiles…"
+            )
+            .height(112.0)
+            .on_action(Message::EntrepriseNotesChanged),
         ),
     ]
     .spacing(space::LG)
@@ -530,10 +534,14 @@ fn entretien(app: &App) -> Element<'_, Message> {
                 Message::EntretienLieuChanged,
             ),
         ]),
-        field::text_field(
+        field::labeled(
             "Notes",
-            &app.entretien_form.notes,
-            Message::EntretienNotesChanged
+            field::editor(
+                &app.entretien_form.notes,
+                "Préparation, interlocuteurs, points clés…"
+            )
+            .height(112.0)
+            .on_action(Message::EntretienNotesChanged),
         ),
         field::labeled(
             "Compte rendu",

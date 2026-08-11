@@ -60,6 +60,7 @@ pub fn view(app: &App) -> Element<'_, Message> {
         } else {
             app.provider_health
         },
+        Message::Navigate(Route::Parametres),
     );
     let content = column![titlebar(runtime), main,]
         .width(Length::Fill)

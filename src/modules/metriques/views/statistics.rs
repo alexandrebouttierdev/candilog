@@ -96,7 +96,8 @@ const HAUTEUR_PANNEAUX: f32 = 300.0;
 
 fn candidatures_tab<'a>(app: &'a App, counts: &PipelineCounts) -> Element<'a, Message> {
     let today = chrono::Local::now().date_naive();
-    let due = app.due_reminders(&today.format("%Y-%m-%d").to_string());
+    let due = usize::try_from(app.data.candidature_stats.to_follow_up).unwrap_or(usize::MAX);
+    let interviews = effective_interviews(app, counts);
     let corps = column![
         row![
             stat_card::metric_icon_tinted(
@@ -107,13 +108,13 @@ fn candidatures_tab<'a>(app: &'a App, counts: &PipelineCounts) -> Element<'a, Me
             ),
             stat_card::metric_icon_tinted(
                 "Entretiens",
-                counts.interviews.to_string(),
+                interviews.to_string(),
                 Tone::Success,
                 Icon::Calendar,
             ),
             stat_card::metric_icon_tinted(
                 "Taux d'entretien",
-                format!("{} %", interview_rate(counts)),
+                format!("{} %", interview_rate(counts.total, interviews)),
                 Tone::Success,
                 Icon::Chart,
             ),
@@ -152,10 +153,12 @@ fn candidatures_tab<'a>(app: &'a App, counts: &PipelineCounts) -> Element<'a, Me
                 activity_panel(app, today)
                     .width(Length::FillPortion(3))
                     .into(),
-                funnel_panel(counts).width(Length::FillPortion(2)).into(),
+                funnel_panel(app, counts)
+                    .width(Length::FillPortion(2))
+                    .into(),
             ],
         ),
-        reminders_band(app, today, due),
+        reminders_band(app, due),
     ]
     .spacing(space::LG);
     // L'onglet défile au lieu de comprimer. Les trois blocs étaient empilés dans une colonne
@@ -207,15 +210,16 @@ fn activity_panel<'a>(app: &'a App, today: NaiveDate) -> Container<'a, Message> 
 
 /// Panneau donut + entonnoir : le taux d'entretien au centre, la répartition
 /// par statut en barres.
-fn funnel_panel<'a>(counts: &PipelineCounts) -> Container<'a, Message> {
+fn funnel_panel<'a>(app: &App, counts: &PipelineCounts) -> Container<'a, Message> {
     let body: Element<'a, Message> = if counts.total == 0 {
         state::empty(
             "Pas encore de données",
             "L'entonnoir apparaîtra dès la première candidature enregistrée.",
         )
     } else {
-        let rate = interview_rate(counts);
-        let ratio = counts.interviews as f32 / counts.total as f32;
+        let interviews = effective_interviews(app, counts);
+        let rate = interview_rate(counts.total, interviews);
+        let ratio = interviews as f32 / counts.total as f32;
         let mut bars = column![].spacing(space::LG);
         for status in PIPELINE {
             let value = match status {
@@ -267,41 +271,31 @@ fn funnel_panel<'a>(counts: &PipelineCounts) -> Container<'a, Message> {
 }
 
 /// Bandeau ambre : les relances arrivées à échéance, avec leur compteur.
-fn reminders_band<'a>(app: &'a App, today: NaiveDate, due: usize) -> Element<'a, Message> {
-    let today_str = today.format("%Y-%m-%d").to_string();
-    let mut reminders: Vec<_> = app
-        .data
-        .relances
-        .iter()
-        .filter(|item| item.date_relance.as_str() <= today_str.as_str())
-        .collect();
-    reminders.sort_by(|left, right| left.date_relance.cmp(&right.date_relance));
-
+fn reminders_band<'a>(app: &'a App, due: usize) -> Element<'a, Message> {
     let mut rows = column![].spacing(0);
-    for reminder in reminders.iter().take(5) {
-        let poste = app
-            .data
-            .candidatures
-            .iter()
-            .find(|item| item.id == reminder.candidature_id)
-            .map_or_else(|| "Candidature".to_owned(), |item| item.poste.clone());
+    for candidate in app.data.follow_up_candidates.iter().take(5) {
         rows = rows.push(list::row_static(
             alert_icon(),
             column![
-                typo::item(format::truncate(&poste, 30)),
+                typo::item(format::truncate(&candidate.poste, 30)),
                 typo::text_mono(
-                    format::compact_date(&reminder.date_relance),
+                    format::compact_date(&candidate.date_envoi),
                     11.0,
                     font::MONO_REGULAR,
                 ),
             ]
             .spacing(space::XXS),
-            typo::caption(reminder.type_relance.clone()),
+            typo::caption(
+                candidate
+                    .entreprise_nom
+                    .clone()
+                    .unwrap_or_else(|| "Entreprise non renseignée".to_owned()),
+            ),
         ));
     }
 
-    let list: Element<'a, Message> = if reminders.is_empty() {
-        typo::caption("Aucune relance arrivée à échéance.").into()
+    let list: Element<'a, Message> = if app.data.follow_up_candidates.is_empty() {
+        typo::caption("Aucune candidature sans réponse depuis plus de 7 jours.").into()
     } else {
         rows.into()
     };
@@ -648,11 +642,19 @@ fn weekly_counts_from_activity(activity: &[(String, u64)], today: NaiveDate) -> 
 }
 
 /// Taux d'entretien (0-100), arrondi.
-fn interview_rate(counts: &PipelineCounts) -> u8 {
-    if counts.total == 0 {
+fn interview_rate(total: usize, interviews: usize) -> u8 {
+    if total == 0 {
         return 0;
     }
-    ((counts.interviews as f64 / counts.total as f64) * 100.0).round() as u8
+    ((interviews.min(total) as f64 / total as f64) * 100.0).round() as u8
+}
+
+/// Une candidature est comptée comme entretien dès qu'elle porte ce statut ou qu'un entretien
+/// lui est réellement rattaché. Les anciennes données n'avaient pas toujours synchronisé les deux.
+fn effective_interviews(app: &App, counts: &PipelineCounts) -> usize {
+    counts
+        .interviews
+        .max(usize::try_from(app.data.candidature_stats.interview_candidates).unwrap_or(usize::MAX))
 }
 
 /// Candidatures envoyées au cours des 30 derniers jours.
@@ -736,13 +738,14 @@ mod tests {
             interviews: 3,
             ..PipelineCounts::default()
         };
-        assert_eq!(interview_rate(&counts), 30);
-        assert_eq!(interview_rate(&PipelineCounts::default()), 0);
+        assert_eq!(interview_rate(counts.total, counts.interviews), 30);
+        assert_eq!(interview_rate(0, 0), 0);
         let complet = PipelineCounts {
             total: 4,
             interviews: 4,
             ..PipelineCounts::default()
         };
-        assert_eq!(interview_rate(&complet), 100);
+        assert_eq!(interview_rate(complet.total, complet.interviews), 100);
+        assert_eq!(interview_rate(4, 8), 100);
     }
 }

@@ -11,7 +11,7 @@ use crate::ui::theme::metrics::{radius, size, space, stroke};
 use crate::ui::theme::styles;
 use crate::ui::theme::tokens::{alpha, tokens};
 use crate::ui::theme::typography as font;
-use iced::widget::{button, column, container, horizontal_rule, row, text, Space};
+use iced::widget::{button, column, container, row, text, Space};
 use iced::{Alignment, Background, Border, Color, Element, Length, Shadow, Theme};
 
 const BRAND_HEIGHT: f32 = 72.0;
@@ -51,14 +51,19 @@ pub fn sidebar<'a, Message: Clone + 'a>(
         ));
     }
 
-    let brand = button(container(
-        column![
-            icon::brand(34.0),
-            typo::body("Candilog").font(font::SEMIBOLD),
-        ]
-        .spacing(space::XS)
-        .align_x(Alignment::Center),
-    ))
+    let brand = button(
+        container(
+            column![
+                icon::brand(34.0),
+                typo::body("Candilog").font(font::SEMIBOLD),
+            ]
+            .spacing(space::XS)
+            .align_x(Alignment::Center),
+        )
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .center(Length::Fill),
+    )
     .height(BRAND_HEIGHT)
     .width(Length::Fill)
     .padding(0)
@@ -86,10 +91,8 @@ pub fn sidebar<'a, Message: Clone + 'a>(
     container(
         column![
             brand,
-            horizontal_rule(stroke::HAIRLINE).style(crate::ui::theme::styles::divider),
             container(navigation).padding([space::SM, space::XS]),
             Space::with_height(Length::Fill),
-            horizontal_rule(stroke::HAIRLINE).style(crate::ui::theme::styles::divider),
             container(theme).padding([space::XS, space::XS]),
             footer,
         ]

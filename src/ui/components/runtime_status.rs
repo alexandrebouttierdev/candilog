@@ -4,8 +4,8 @@ use super::provider_icon;
 use super::typo;
 use crate::ui::theme::metrics::{radius, space};
 use crate::ui::theme::tokens::tokens;
-use iced::widget::{container, row, Space};
-use iced::{Alignment, Background, Border, Color, Element, Theme};
+use iced::widget::{container, mouse_area, row, Space};
+use iced::{mouse, Alignment, Background, Border, Color, Element, Theme};
 
 /// Santé du fournisseur IA.
 ///
@@ -77,10 +77,11 @@ pub fn health_color(health: Health) -> Color {
 }
 
 /// Pastille d'état du fournisseur : logo, point, nom du modèle.
-pub fn runtime_status<'a, Message: 'a>(
+pub fn runtime_status<'a, Message: Clone + 'a>(
     provider: &'a str,
     model: &'a str,
     health: Health,
+    on_press: Message,
 ) -> Element<'a, Message> {
     let dot_color = health_color(health);
     let content = row![
@@ -118,25 +119,29 @@ pub fn runtime_status<'a, Message: 'a>(
     .spacing(space::SM)
     .align_y(Alignment::Center);
 
-    container(content)
-        .padding([4.0, space::MD])
-        .max_width(220.0)
-        .style(move |theme: &Theme| {
-            let palette = tokens(theme);
-            container::Style {
-                background: Some(Background::Color(palette.panel)),
-                border: Border {
-                    color: Color {
-                        a: 0.60,
-                        ..palette.border
+    mouse_area(
+        container(content)
+            .padding([4.0, space::MD])
+            .max_width(220.0)
+            .style(move |theme: &Theme| {
+                let palette = tokens(theme);
+                container::Style {
+                    background: Some(Background::Color(palette.panel)),
+                    border: Border {
+                        color: Color {
+                            a: 0.60,
+                            ..palette.border
+                        },
+                        width: 1.0,
+                        radius: radius::PILL.into(),
                     },
-                    width: 1.0,
-                    radius: radius::PILL.into(),
-                },
-                ..container::Style::default()
-            }
-        })
-        .into()
+                    ..container::Style::default()
+                }
+            }),
+    )
+    .on_press(on_press)
+    .interaction(mouse::Interaction::Pointer)
+    .into()
 }
 
 /// Version de l'application en pied de barre latérale.

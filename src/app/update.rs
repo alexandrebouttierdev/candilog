@@ -9,7 +9,7 @@ use super::state::{
     EntretienForm, NotificationKind, ProfileCollection, RelanceForm,
 };
 use super::{App, Message};
-use crate::modules::candidatures::model::NouvelleCandidature;
+use crate::modules::candidatures::model::{NouvelleCandidature, StatutCandidature};
 use crate::modules::contacts::model::NouveauContact;
 use crate::modules::entreprises::model::NouvelleEntreprise;
 use crate::modules::entretiens::model::NouvelEntretien;
@@ -186,7 +186,33 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             } else {
                 crate::modules::settings::model::ThemePref::Light
             };
+            app.settings_form.draft.theme = app.data.settings.theme;
+            let Some(backend) = app.backend.clone() else {
+                app.notify_failure("La préférence de thème n'a pas pu être enregistrée.");
+                return Task::none();
+            };
+            let settings = app.data.settings.clone();
+            return Task::perform(
+                async move {
+                    tokio::task::spawn_blocking(move || {
+                        backend
+                            .settings
+                            .persist(&settings)
+                            .map_err(|error| error.to_string())
+                    })
+                    .await
+                    .unwrap_or_else(|error| Err(format!("Opération interrompue : {error}")))
+                },
+                Message::ThemePersisted,
+            );
         }
+        Message::ThemePersisted(result) => match result {
+            Ok(settings) => {
+                app.data.settings = settings.clone();
+                app.settings_form.draft.theme = settings.theme;
+            }
+            Err(error) => app.notify_failure(format!("Thème non enregistré : {error}")),
+        },
         Message::Tick => {
             if app.ai_is_running {
                 app.ai_elapsed_seconds = app.ai_elapsed_seconds.saturating_add(1);
@@ -294,7 +320,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
         Message::EntrepriseSiteChanged(value) => app.entreprise_form.site_web = value,
         Message::EntrepriseVilleChanged(value) => app.entreprise_form.ville = value,
         Message::EntrepriseAdresseChanged(value) => app.entreprise_form.adresse = value,
-        Message::EntrepriseNotesChanged(value) => app.entreprise_form.notes = value,
+        Message::EntrepriseNotesChanged(action) => app.entreprise_form.notes.perform(action),
         Message::SubmitEntreprise => {
             let input = NouvelleEntreprise {
                 nom: app.entreprise_form.nom.clone(),
@@ -303,7 +329,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 site_web: optional(&app.entreprise_form.site_web),
                 ville: optional(&app.entreprise_form.ville),
                 adresse: optional(&app.entreprise_form.adresse),
-                notes: optional(&app.entreprise_form.notes),
+                notes: optional(&app.entreprise_form.notes.text()),
             };
             let edition = app.editing_id;
             return ecrire(app, "Entreprise enregistrée.", move |backend| {
@@ -424,7 +450,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
         Message::EntretienDateChanged(value) => app.entretien_form.date_entretien = value,
         Message::EntretienTypeChanged(value) => app.entretien_form.type_entretien = value,
         Message::EntretienLieuChanged(value) => app.entretien_form.lieu = value,
-        Message::EntretienNotesChanged(value) => app.entretien_form.notes = value,
+        Message::EntretienNotesChanged(action) => app.entretien_form.notes.perform(action),
         Message::EntretienCompteRenduChanged(action) => {
             app.entretien_form.compte_rendu.perform(action);
         }
@@ -444,6 +470,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                         return Task::none();
                     }
                 };
+            let notes = app.entretien_form.notes.text();
             let compte_rendu = app.entretien_form.compte_rendu.text();
             let input = NouvelEntretien {
                 candidature_id,
@@ -451,7 +478,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 date_entretien,
                 type_entretien: app.entretien_form.type_entretien,
                 lieu: optional(&app.entretien_form.lieu),
-                notes: optional(&app.entretien_form.notes),
+                notes: optional(&notes),
                 compte_rendu: optional(&compte_rendu),
             };
             let edition = app.editing_id;
@@ -461,6 +488,11 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                         || backend.entretiens.creer(&input),
                         |id| backend.entretiens.modifier(id, &input),
                     )
+                    .and_then(|_| {
+                        backend
+                            .candidatures
+                            .changer_statut(candidature_id, StatutCandidature::Entretien)
+                    })
                     .map(|_| ())
                     .map_err(|error| error.to_string())
             });
@@ -1216,7 +1248,9 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                     site_web: item.site_web.clone().unwrap_or_default(),
                     ville: item.ville.clone().unwrap_or_default(),
                     adresse: item.adresse.clone().unwrap_or_default(),
-                    notes: item.notes.clone().unwrap_or_default(),
+                    notes: iced::widget::text_editor::Content::with_text(
+                        item.notes.as_deref().unwrap_or_default(),
+                    ),
                 };
                 app.editing_id = Some(id);
                 app.dialog = Some(Dialog::Entreprise);
@@ -1263,7 +1297,9 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                     date_entretien: ui_format::datetime_for_input(&item.date_entretien),
                     type_entretien: item.type_entretien,
                     lieu: item.lieu.clone().unwrap_or_default(),
-                    notes: item.notes.clone().unwrap_or_default(),
+                    notes: iced::widget::text_editor::Content::with_text(
+                        item.notes.as_deref().unwrap_or_default(),
+                    ),
                     compte_rendu: iced::widget::text_editor::Content::with_text(
                         item.compte_rendu.as_deref().unwrap_or_default(),
                     ),

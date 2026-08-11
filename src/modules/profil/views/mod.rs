@@ -16,7 +16,7 @@ use crate::ui::theme::styles;
 use crate::ui::theme::tokens::{alpha, tokens};
 use crate::ui::theme::typography as font;
 use crate::ui::theme::Tone;
-use iced::widget::{column, container, progress_bar, row, text};
+use iced::widget::{column, container, progress_bar, row, text, Space};
 use iced::{Alignment, Background, Border, Element, Length, Theme};
 
 /// Largeur maximale de la carte d'identité (`max-w-[980px]`).
@@ -317,6 +317,7 @@ fn identity_section(app: &App) -> Element<'_, Message> {
         Some(count),
         true,
         column![
+            Space::with_height(space::MD),
             inspector::group(
                 "Coordonnées",
                 [

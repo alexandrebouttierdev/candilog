@@ -69,7 +69,7 @@ fn pipeline_column<'a>(
         row![
             badge::marker(tone, Marker::Solid),
             typo::body(column_label(status)).font(SEMIBOLD),
-            badge::count(candidates.len()),
+            badge::count(global_status_count(app, status)),
             Space::with_width(Length::Fill),
         ]
         .spacing(space::MD)
@@ -121,6 +121,27 @@ fn pipeline_column<'a>(
         .height(Length::Fill)
         .style(styles::kanban_column)
         .into()
+}
+
+/// Compteur SQL global de la colonne, indépendant de la page actuellement chargée.
+fn global_status_count(
+    app: &App,
+    status: crate::modules::candidatures::model::StatutCandidature,
+) -> usize {
+    match status {
+        crate::modules::candidatures::model::StatutCandidature::EnAttente => {
+            app.data.filtered_candidate_counts.pending
+        }
+        crate::modules::candidatures::model::StatutCandidature::Relancee => {
+            app.data.filtered_candidate_counts.followed_up
+        }
+        crate::modules::candidatures::model::StatutCandidature::Entretien => {
+            app.data.filtered_candidate_counts.interviews
+        }
+        crate::modules::candidatures::model::StatutCandidature::Refus => {
+            app.data.filtered_candidate_counts.rejected
+        }
+    }
 }
 
 #[cfg(test)]

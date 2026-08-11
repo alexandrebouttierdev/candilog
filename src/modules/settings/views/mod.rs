@@ -3,7 +3,6 @@
 
 use crate::app::state::Dialog;
 use crate::app::{App, Message};
-use crate::modules::settings::components::{actions, setting_stacked};
 use crate::navigation::Route;
 use crate::shared::llm::{AnalysisMode, ProviderKind};
 use crate::ui::components::button as controls;
@@ -393,78 +392,111 @@ fn temperature_value<'a, Message: 'a>(value: f32) -> Element<'a, Message> {
     .into()
 }
 
-/// Carte Sauvegarde : uniquement les actions utiles.
-fn backup_card<'a>() -> Element<'a, Message> {
-    section_card(
-        Icon::Document,
-        "Sauvegarde",
+/// Bandeau éditorial commun aux écrans secondaires des réglages.
+fn settings_hero<'a>(
+    glyph: Icon,
+    eyebrow: &'a str,
+    title: &'a str,
+    description: &'a str,
+) -> Element<'a, Message> {
+    container(
+        row![
+            container(icon::icon(glyph, 28.0, Ink::Accent))
+                .width(56.0)
+                .height(56.0)
+                .center(Length::Fixed(56.0))
+                .style(styles::toned(Tone::Accent)),
+            column![
+                typo::meta_toned(eyebrow, Tone::Accent),
+                typo::title(title),
+                typo::caption(description),
+            ]
+            .spacing(space::XS),
+        ]
+        .spacing(space::LG)
+        .align_y(Alignment::Center),
+    )
+    .padding(space::XL)
+    .width(Length::Fill)
+    .style(styles::glass_card)
+    .into()
+}
+
+/// Carte d'action autonome : une intention par surface, plus lisible qu'une pile de boutons.
+fn action_card<'a>(
+    glyph: Icon,
+    title: &'a str,
+    description: &'a str,
+    action: Element<'a, Message>,
+) -> Element<'a, Message> {
+    container(
         column![
-            controls::secondary("Exporter un backup", Some(Icon::Download))
-                .on_press(Message::ExportBackup)
-                .width(Length::Fill),
-            controls::secondary("Importer un backup", Some(Icon::Import))
-                .on_press(Message::SelectBackupImport)
-                .width(Length::Fill),
-            controls::secondary("Recharger", Some(Icon::Refresh))
-                .on_press(Message::Reload)
-                .width(Length::Fill),
-            controls::danger("Réinitialiser la base", Some(Icon::Trash))
-                .on_press(Message::OpenDialog(Dialog::ResetDatabase))
-                .width(Length::Fill),
+            header_tile(glyph),
+            typo::label(title),
+            typo::caption(description),
+            container(action).padding([space::MD, 0.0]),
         ]
         .spacing(space::SM)
         .width(Length::Fill),
     )
-}
-
-/// Carte Mises à jour : vérification, téléchargement et progression.
-fn updates_card(app: &App) -> Element<'_, Message> {
-    let mut body = column![setting_stacked(
-        "Vérification",
-        "Recherche une version plus récente de Candilog.",
-        controls::secondary("Rechercher une mise à jour", Some(Icon::Refresh))
-            .on_press(Message::CheckUpdate)
-            .width(Length::Fill),
-    )]
-    .width(Length::Fill);
-
-    if let Some(update) = &app.available_update {
-        body = body.push(actions(
-            "Version disponible",
-            "Téléchargement vérifié avant toute installation.",
-            [
-                badge::badge(update.version.to_string(), Tone::Success),
-                controls::primary("Télécharger", Some(Icon::Download))
-                    .on_press(Message::DownloadUpdate)
-                    .into(),
-            ],
-        ));
-    }
-    if let Some(progress) = app.update_progress {
-        body = body.push(setting_stacked(
-            "Progression",
-            "Paquet en cours de téléchargement.",
-            state::progress_step("Téléchargement du paquet", f32::from(progress) / 100.0),
-        ));
-    }
-    if let Some(path) = &app.verified_update_path {
-        body = body.push(setting_stacked(
-            "Paquet prêt",
-            "Signature vérifiée, prêt à être installé.",
-            typo::caption(path.display().to_string()),
-        ));
-    }
-    if app.available_update.is_none() && app.update_progress.is_none() {
-        body = body.push(
-            container(typo::caption("Aucune mise à jour en attente.")).padding([space::MD, 0.0]),
-        );
-    }
-
-    section_card(Icon::Download, "Mises à jour", body)
+    .padding(space::XL)
+    .width(Length::Fill)
+    .height(190.0)
+    .style(styles::glass_card)
+    .into()
 }
 
 /// Écran dédié à la sauvegarde et à la restauration.
 pub fn backup_view(_app: &App) -> Element<'_, Message> {
+    let content = column![
+        settings_hero(
+            Icon::Save,
+            "VOS DONNÉES",
+            "Une copie sûre, quand vous le décidez.",
+            "Exportez ou restaurez toute votre base Candilog depuis un fichier local.",
+        ),
+        row![
+            action_card(
+                Icon::Download,
+                "Créer une sauvegarde",
+                "Générez une archive complète et conservez-la où vous le souhaitez.",
+                controls::primary("Exporter", Some(Icon::Download))
+                    .on_press(Message::ExportBackup)
+                    .width(Length::Fill)
+                    .into(),
+            ),
+            action_card(
+                Icon::Import,
+                "Restaurer une sauvegarde",
+                "Choisissez un fichier Candilog existant avant de confirmer la restauration.",
+                controls::secondary("Choisir un fichier", Some(Icon::Import))
+                    .on_press(Message::SelectBackupImport)
+                    .width(Length::Fill)
+                    .into(),
+            ),
+        ]
+        .spacing(space::LG),
+        section_card(
+            Icon::Settings,
+            "Maintenance locale",
+            row![
+                column![
+                    typo::body("Rafraîchir les données"),
+                    typo::caption("Relit la base sans modifier son contenu."),
+                ]
+                .spacing(space::XS),
+                layout::spacer(),
+                controls::secondary("Recharger", Some(Icon::Refresh)).on_press(Message::Reload),
+                controls::danger("Réinitialiser", Some(Icon::Trash))
+                    .on_press(Message::OpenDialog(Dialog::ResetDatabase)),
+            ]
+            .spacing(space::MD)
+            .align_y(Alignment::Center)
+            .padding([space::LG, 0.0]),
+        ),
+    ]
+    .spacing(space::LG)
+    .width(Length::Fill);
     layout::screen(
         header::route_header(
             Icon::Save,
@@ -473,17 +505,85 @@ pub fn backup_view(_app: &App) -> Element<'_, Message> {
             Message::Navigate,
             iced::widget::Space::with_width(0).into(),
         ),
-        layout::workspace(
-            container(backup_card())
+        layout::workspace(surface::scroll(
+            container(content)
                 .width(Length::Fill)
-                .max_width(760.0)
+                .max_width(BODY_MAX_WIDTH)
                 .center_x(Length::Fill),
-        ),
+        )),
     )
 }
 
 /// Écran dédié au cycle de mise à jour.
 pub fn updates_view(app: &App) -> Element<'_, Message> {
+    let status: Element<'_, Message> = if let Some(update) = &app.available_update {
+        column![
+            badge::badge(
+                format!("Version {} disponible", update.version),
+                Tone::Success
+            ),
+            controls::primary("Télécharger la mise à jour", Some(Icon::Download))
+                .on_press(Message::DownloadUpdate),
+        ]
+        .spacing(space::MD)
+        .into()
+    } else {
+        column![
+            badge::badge("Aucune mise à jour en attente", Tone::Neutral),
+            controls::primary("Rechercher maintenant", Some(Icon::Refresh))
+                .on_press(Message::CheckUpdate),
+        ]
+        .spacing(space::MD)
+        .into()
+    };
+    let mut content = column![
+        settings_hero(
+            Icon::Download,
+            "VERSION ACTUELLE",
+            env!("CARGO_PKG_VERSION"),
+            "Candilog vérifie les nouvelles versions uniquement lorsque vous le demandez.",
+        ),
+        row![
+            action_card(
+                Icon::Refresh,
+                "Disponibilité",
+                "Interrogez la source officielle et comparez-la à votre version installée.",
+                status,
+            ),
+            action_card(
+                Icon::Check,
+                "Installation maîtrisée",
+                "Le paquet est téléchargé puis sa signature est vérifiée avant utilisation.",
+                typo::caption("Aucune installation silencieuse").into(),
+            ),
+        ]
+        .spacing(space::LG),
+    ]
+    .spacing(space::LG)
+    .width(Length::Fill);
+    if let Some(progress) = app.update_progress {
+        content = content.push(section_card(
+            Icon::Download,
+            "Téléchargement",
+            container(state::progress_step(
+                "Téléchargement et vérification du paquet",
+                f32::from(progress) / 100.0,
+            ))
+            .padding([space::LG, 0.0]),
+        ));
+    }
+    if let Some(path) = &app.verified_update_path {
+        content = content.push(section_card(
+            Icon::Check,
+            "Paquet prêt",
+            column![
+                typo::body("La signature est valide. Le paquet peut maintenant être installé."),
+                typo::caption(path.display().to_string()),
+            ]
+            .spacing(space::SM)
+            .padding([space::LG, 0.0]),
+        ));
+    }
     layout::screen(
         header::route_header(
             Icon::Download,
@@ -492,34 +592,53 @@ pub fn updates_view(app: &App) -> Element<'_, Message> {
             Message::Navigate,
             typo::caption(format!("Version actuelle {}", env!("CARGO_PKG_VERSION"))).into(),
         ),
-        layout::workspace(
-            container(updates_card(app))
+        layout::workspace(surface::scroll(
+            container(content)
                 .width(Length::Fill)
-                .max_width(760.0)
+                .max_width(BODY_MAX_WIDTH)
                 .center_x(Length::Fill),
-        ),
+        )),
     )
 }
 
 /// Écran À propos, accessible depuis les deux zones de marque du rail.
 pub fn about_view(_app: &App) -> Element<'_, Message> {
-    let card = section_card(
-        Icon::Info,
-        "Candilog",
+    let card = container(
         column![
-            typo::title("Votre copilote de candidature, pensé pour le bureau."),
-            typo::body(format!("Version {}", env!("CARGO_PKG_VERSION"))),
-            surface::divider(),
-            typo::label("Auteur"),
-            typo::body("Alexandre Bouttier"),
-            controls::secondary("alexandrebouttier.fr", Some(Icon::Link))
-                .on_press(Message::OpenAuthorWebsite),
-            surface::divider(),
+            icon::brand(84.0),
+            typo::title("Candilog"),
+            typo::body("Le cockpit desktop pour piloter votre recherche d'emploi."),
+            badge::badge(
+                format!("Version {}", env!("CARGO_PKG_VERSION")),
+                Tone::Neutral
+            ),
+            container(
+                row![
+                    column![
+                        typo::meta_toned("CONÇU ET DÉVELOPPÉ PAR", Tone::Accent),
+                        typo::label("Alexandre Bouttier"),
+                        typo::caption("Produit indépendant, pensé pour rester local."),
+                    ]
+                    .spacing(space::XS),
+                    layout::spacer(),
+                    controls::secondary("Visiter le site", Some(Icon::Link))
+                        .on_press(Message::OpenAuthorWebsite),
+                ]
+                .align_y(Alignment::Center),
+            )
+            .padding(space::LG)
+            .width(Length::Fill)
+            .style(styles::sunken),
             controls::primary("Vérifier les mises à jour", Some(Icon::Download))
                 .on_press(Message::Navigate(Route::MisesAJour)),
         ]
-        .spacing(space::LG),
-    );
+        .spacing(space::LG)
+        .align_x(Alignment::Center)
+        .width(Length::Fill),
+    )
+    .padding([space::XXL, 56.0])
+    .width(Length::Fill)
+    .style(styles::glass_card);
     layout::screen(
         header::route_header(
             Icon::Info,
@@ -531,7 +650,7 @@ pub fn about_view(_app: &App) -> Element<'_, Message> {
         layout::workspace(
             container(card)
                 .width(Length::Fill)
-                .max_width(760.0)
+                .max_width(880.0)
                 .center_x(Length::Fill),
         ),
     )

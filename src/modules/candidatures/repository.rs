@@ -34,6 +34,10 @@ pub struct CandidatureStats {
     pub interviews: u64,
     pub rejected: u64,
     pub linked_contacts: u64,
+    /// Candidatures ayant au moins un entretien enregistré, quel que soit leur statut actuel.
+    pub interview_candidates: u64,
+    /// Candidatures sans réponse depuis au moins sept jours.
+    pub to_follow_up: u64,
     /// Comptes journaliers des 56 derniers jours, au format ISO.
     pub activity_by_day: Vec<(String, u64)>,
 }
@@ -117,6 +121,17 @@ pub trait CandidatureRepository: Send + Sync {
             stats.linked_contacts += u64::from(item.contact_id.is_some());
         }
         Ok(stats)
+    }
+    /// Liste un nombre borné de candidatures sans réponse depuis la date limite donnée.
+    fn list_to_follow_up(&self, before: &str, limit: u64) -> AppResult<Vec<Candidature>> {
+        Ok(self
+            .list()?
+            .into_iter()
+            .filter(|item| {
+                item.statut == StatutCandidature::EnAttente && item.date_envoi.as_str() <= before
+            })
+            .take(limit as usize)
+            .collect())
     }
     /// Met à jour tous les champs éditables d'une candidature.
     ///
@@ -377,6 +392,7 @@ impl CandidatureRepository for SqliteCandidatureRepository {
             texte_depuis_enum(&StatutCandidature::Entretien)?,
             texte_depuis_enum(&StatutCandidature::Refus)?,
         ];
+        let pending_status = statuses[0].clone();
         let (total, pending, followed_up, interviews, rejected, linked_contacts): (
             u64,
             u64,
@@ -422,6 +438,24 @@ impl CandidatureRepository for SqliteCandidatureRepository {
         for row in rows {
             activity_by_day.push(row.map_err(|e| traduire_erreur(e, "activité candidatures"))?);
         }
+        let interview_candidates: u64 = conn
+            .query_row(
+                "SELECT count(DISTINCT candidature_id) FROM entretiens",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|e| traduire_erreur(e, "statistiques entretiens"))?;
+        let follow_up_before = (chrono::Local::now().date_naive() - chrono::Duration::days(7))
+            .format("%Y-%m-%d")
+            .to_string();
+        let to_follow_up: u64 = conn
+            .query_row(
+                "SELECT count(*) FROM candidatures
+                 WHERE statut = ?1 AND substr(date_envoi, 1, 10) <= ?2",
+                rusqlite::params![pending_status, follow_up_before],
+                |row| row.get(0),
+            )
+            .map_err(|e| traduire_erreur(e, "candidatures à relancer"))?;
         Ok(CandidatureStats {
             total,
             pending,
@@ -429,8 +463,33 @@ impl CandidatureRepository for SqliteCandidatureRepository {
             interviews,
             rejected,
             linked_contacts,
+            interview_candidates,
+            to_follow_up,
             activity_by_day,
         })
+    }
+
+    fn list_to_follow_up(&self, before: &str, limit: u64) -> AppResult<Vec<Candidature>> {
+        let conn = connexion(&self.pool)?;
+        let status = texte_depuis_enum(&StatutCandidature::EnAttente)?;
+        let mut statement = conn
+            .prepare(&format!(
+                "SELECT {COLONNES} {DEPUIS}
+                 WHERE c.statut = ?1 AND substr(c.date_envoi, 1, 10) <= ?2
+                 ORDER BY c.date_envoi ASC LIMIT ?3"
+            ))
+            .map_err(|e| traduire_erreur(e, "candidatures à relancer"))?;
+        let mut rows = statement
+            .query(rusqlite::params![status, before, limit.max(1)])
+            .map_err(|e| traduire_erreur(e, "candidatures à relancer"))?;
+        let mut items = Vec::new();
+        while let Some(row) = rows
+            .next()
+            .map_err(|e| traduire_erreur(e, "candidatures à relancer"))?
+        {
+            items.push(ligne_vers_candidature(row)?);
+        }
+        Ok(items)
     }
 
     fn update(&self, id: Uuid, input: &NouvelleCandidature) -> AppResult<Candidature> {

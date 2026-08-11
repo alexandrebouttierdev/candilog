@@ -8,6 +8,7 @@ use crate::modules::cv::model::CvVersionSummary;
 use crate::modules::entreprises::model::Entreprise;
 use crate::modules::entretiens::model::{Entretien, TypeEntretien};
 use crate::modules::ia::cv_model::{CvGeneration, OfferAnalysis};
+use crate::modules::metriques::components::PipelineCounts;
 use crate::modules::metriques::model::{AppelLlm, Page, ResumeScoresAts, ScoreAts};
 use crate::modules::metriques::repository::MetriquesRepository;
 use crate::modules::relances::model::Relance;
@@ -87,7 +88,7 @@ pub enum ProfileCollection {
 }
 
 /// État du formulaire entreprise.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Default)]
 pub struct EntrepriseForm {
     pub nom: String,
     pub secteur: String,
@@ -95,7 +96,7 @@ pub struct EntrepriseForm {
     pub site_web: String,
     pub ville: String,
     pub adresse: String,
-    pub notes: String,
+    pub notes: iced::widget::text_editor::Content,
 }
 
 /// État du formulaire contact.
@@ -145,7 +146,7 @@ pub struct EntretienForm {
     pub date_entretien: String,
     pub type_entretien: TypeEntretien,
     pub lieu: String,
-    pub notes: String,
+    pub notes: iced::widget::text_editor::Content,
     pub compte_rendu: iced::widget::text_editor::Content,
 }
 
@@ -157,7 +158,7 @@ impl Default for EntretienForm {
             date_entretien: chrono::Local::now().format("%d-%m-%Y %H:%M").to_string(),
             type_entretien: TypeEntretien::Presentiel,
             lieu: String::new(),
-            notes: String::new(),
+            notes: iced::widget::text_editor::Content::new(),
             compte_rendu: iced::widget::text_editor::Content::new(),
         }
     }
@@ -384,6 +385,11 @@ pub fn charger_instantane(
             &candidate_query,
         ),
     );
+    let filtered_candidate_counts = charger(
+        "compteurs filtrés du pipeline",
+        &mut echecs,
+        compter_pipeline_filtre(backend, &candidate_query),
+    );
     let company_page = charger(
         "entreprises",
         &mut echecs,
@@ -431,14 +437,23 @@ pub fn charger_instantane(
     let to = (month_start + chrono::Duration::days(40))
         .format("%Y-%m-%dT23:59")
         .to_string();
+    let follow_up_before = (chrono::Local::now().date_naive() - chrono::Duration::days(7))
+        .format("%Y-%m-%d")
+        .to_string();
     let data = DataSnapshot {
         candidatures: candidate_page.items,
         candidatures_total: candidate_page.total,
         candidatures_total_pages: candidate_page.total_pages,
+        filtered_candidate_counts,
         candidature_stats: charger(
             "statistiques candidatures",
             &mut echecs,
             backend.candidatures.statistiques(),
+        ),
+        follow_up_candidates: charger(
+            "candidatures à relancer",
+            &mut echecs,
+            backend.candidatures.a_relancer(&follow_up_before, 6),
         ),
         entreprises: company_page.items,
         entreprises_total: company_page.total,
@@ -481,6 +496,30 @@ pub fn charger_instantane(
     (data, echecs)
 }
 
+fn compter_pipeline_filtre(
+    backend: &BackendState,
+    query: &crate::modules::candidatures::repository::CandidaturePageQuery,
+) -> Result<PipelineCounts, AppError> {
+    let mut counts = PipelineCounts::default();
+    for status in crate::modules::candidatures::components::PIPELINE {
+        if query.status.is_some_and(|selected| selected != status) {
+            continue;
+        }
+        let mut status_query = query.clone();
+        status_query.status = Some(status);
+        let total = backend.candidatures.lister_page(1, 1, &status_query)?.total;
+        let total = usize::try_from(total).unwrap_or(usize::MAX);
+        match status {
+            StatutCandidature::EnAttente => counts.pending = total,
+            StatutCandidature::Relancee => counts.followed_up = total,
+            StatutCandidature::Entretien => counts.interviews = total,
+            StatutCandidature::Refus => counts.rejected = total,
+        }
+        counts.total = counts.total.saturating_add(total);
+    }
+    Ok(counts)
+}
+
 /// Charge un jeu de données isolément : un échec est journalisé, recensé, et remplacé par la
 /// valeur par défaut du type plutôt que d'interrompre le chargement des dix autres.
 fn charger<T: Default>(
@@ -518,8 +557,12 @@ pub struct DataSnapshot {
     pub candidatures: Vec<Candidature>,
     pub candidatures_total: u64,
     pub candidatures_total_pages: u64,
+    /// Compteurs globaux du pipeline après application des filtres et de la recherche.
+    pub filtered_candidate_counts: PipelineCounts,
     /// Agrégats globaux indépendants de la page affichée.
     pub candidature_stats: crate::modules::candidatures::repository::CandidatureStats,
+    /// Aperçu borné des candidatures nécessitant une relance.
+    pub follow_up_candidates: Vec<Candidature>,
     /// Entreprises.
     pub entreprises: Vec<Entreprise>,
     pub entreprises_total: u64,
@@ -1115,11 +1158,16 @@ impl App {
     /// Séparé du chargement lui-même pour être appelable depuis une `Task` : les écritures
     /// métier rechargent hors du fil de rendu, ce point d'entrée y applique le résultat.
     pub fn appliquer_instantane(&mut self, data: DataSnapshot, echecs: &[&'static str]) {
-        self.is_dark = crate::core::theme_systeme::resoudre(
-            data.settings.theme,
-            self.system_dark,
-            self.is_dark,
-        );
+        // Le thème est résolu au démarrage. Les rechargements métier suivants ne doivent
+        // jamais annuler une bascule effectuée depuis la sidebar pendant que sa persistance
+        // asynchrone se termine.
+        if !self.initialized {
+            self.is_dark = crate::core::theme_systeme::resoudre(
+                data.settings.theme,
+                self.system_dark,
+                self.is_dark,
+            );
+        }
         self.settings_form = SettingsForm::from_settings(&data.settings);
         self.data = data;
         // L'application reste utilisable même partiellement chargée : c'est le seul moyen
