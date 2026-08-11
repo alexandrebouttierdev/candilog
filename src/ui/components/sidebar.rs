@@ -45,7 +45,7 @@ pub fn sidebar<'a, Message: Clone + 'a>(
             );
         }
         for (route, is_active) in rows.get(&section).unwrap_or(&Vec::new()) {
-            let control = button(
+            let control = button(crate::ui::components::button::vcenter(
                 row![
                     icon::icon(
                         route.icon(),
@@ -56,7 +56,7 @@ pub fn sidebar<'a, Message: Clone + 'a>(
                 ]
                 .spacing(9.0)
                 .align_y(Alignment::Center),
-            )
+            ))
             .width(Length::Fill)
             .height(size::ACTION + 4.0)
             .padding([0.0, space::SM])
@@ -98,8 +98,19 @@ pub fn sidebar<'a, Message: Clone + 'a>(
 
 #[cfg(test)]
 mod tests {
-    use super::rows_by_section;
+    use super::{rows_by_section, sidebar};
     use crate::navigation::Route;
+
+    #[test]
+    fn la_sidebar_s_instancie() {
+        let _: iced::Element<'_, ()> = sidebar(
+            Route::Dashboard,
+            |route| {
+                let _ = route;
+            },
+            iced::widget::Space::with_width(0).into(),
+        );
+    }
 
     #[test]
     fn chaque_route_apparait_dans_une_seule_section() {
