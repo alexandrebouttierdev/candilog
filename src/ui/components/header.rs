@@ -25,6 +25,8 @@ pub fn page_header<'a, Message: 'a>(
             container(icon::icon(glyph, icon::LG, Ink::OnAccent))
                 .width(44.0)
                 .height(44.0)
+                .align_x(Alignment::Center)
+                .align_y(Alignment::Center)
                 .style(move |theme: &Theme| {
                     let palette = tokens(theme);
                     container::Style {
@@ -74,6 +76,8 @@ pub fn form_modal_header<'a, Message: Clone + 'a>(
         container(icon::icon(glyph, icon::MD, Ink::OnAccent))
             .width(40.0)
             .height(40.0)
+            .align_x(Alignment::Center)
+            .align_y(Alignment::Center)
             .style(move |theme: &Theme| {
                 let palette = tokens(theme);
                 container::Style {
