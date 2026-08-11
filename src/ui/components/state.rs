@@ -9,18 +9,33 @@ use super::typo;
 use crate::ui::theme::metrics::{size, space};
 use crate::ui::theme::styles;
 use crate::ui::theme::Tone;
-use iced::widget::{column, container, progress_bar, row, Space, Stack};
+use iced::widget::{column, container, progress_bar, row, scrollable, Space, Stack};
 use iced::{Alignment, Element, Length};
 
 /// Plancher de hauteur des états vides (`min-h-64`) : Iced 0.13 ne connaît pas
 /// de hauteur minimale, une base invisible de 256 px la fixe dans un `Stack`.
+///
+/// Ce plancher rend la hauteur **intrinsèque** de l'état vide supérieure à son contenu réel.
+/// Quand le conteneur parent en accorde moins, Iced rogne par le bas au lieu d'adapter : sur
+/// le tableau de bord d'un premier lancement, l'aide se réduisait à un liseré de quelques
+/// pixels et le bouton « Nouvelle candidature » n'était **pas rendu du tout** — l'incitation
+/// à l'action disparaissait exactement au moment où elle est utile.
+///
+/// Le défilement garantit que le contenu reste atteignable quelle que soit la place accordée ;
+/// la barre n'apparaît que lorsqu'elle est nécessaire.
 fn empty_floor<'a, Message: 'a>(content: Element<'a, Message>) -> Element<'a, Message> {
-    Stack::with_children(vec![
-        container(Space::with_height(Length::Fixed(256.0)))
-            .width(Length::Fill)
-            .into(),
-        container(content).center(Length::Fill).into(),
-    ])
+    scrollable(
+        Stack::with_children(vec![
+            container(Space::with_height(Length::Fixed(256.0)))
+                .width(Length::Fill)
+                .into(),
+            container(content).center(Length::Fill).into(),
+        ])
+        .width(Length::Fill),
+    )
+    .direction(scrollable::Direction::Vertical(
+        scrollable::Scrollbar::new().width(6).scroller_width(5),
+    ))
     .into()
 }
 
@@ -36,7 +51,7 @@ pub fn empty<'a, Message: 'a>(title: &'a str, hint: &'a str) -> Element<'a, Mess
         .align_x(Alignment::Center)
         .into(),
     ))
-    .padding([space::MAX, space::XL])
+    .padding([space::XL, space::XL])
     .width(Length::Fill)
     .style(styles::dashed)
     .into()
@@ -60,7 +75,7 @@ pub fn empty_with_action<'a, Message: Clone + 'a>(
         .align_x(Alignment::Center)
         .into(),
     ))
-    .padding([space::MAX, space::XL])
+    .padding([space::XL, space::XL])
     .width(Length::Fill)
     .style(styles::dashed)
     .into()
@@ -202,12 +217,26 @@ pub fn hint<'a, Message: 'a>(message: &'a str) -> Element<'a, Message> {
     .into()
 }
 
-/// Écran d'erreur bloquante d'initialisation.
+/// Écran d'erreur bloquante d'initialisation, avec ses issues de secours.
+///
+/// L'écran n'offrait qu'un bouton « Réessayer » câblé sur le rechargement des *données*, qui
+/// abandonne dès sa première ligne quand le backend n'a pas pu être construit — soit exactement
+/// la situation qui amène ici. Le bouton ne faisait rien, et les mécanismes de récupération
+/// existants n'étaient joignables que depuis l'écran Paramètres, lui-même inatteignable.
+///
+/// `actions` porte donc toutes les issues, la première étant mise en avant.
 pub fn fatal<'a, Message: Clone + 'a>(
     message: &'a str,
-    retry_label: &'a str,
-    on_retry: Message,
+    actions: Vec<(&'a str, Icon, Message)>,
 ) -> Element<'a, Message> {
+    let mut boutons = row![].spacing(space::MD).align_y(Alignment::Center);
+    for (index, (label, glyph, action)) in actions.into_iter().enumerate() {
+        boutons = boutons.push(if index == 0 {
+            controls::secondary(label, Some(glyph)).on_press(action)
+        } else {
+            controls::ghost(label, Some(glyph)).on_press(action)
+        });
+    }
     container(
         container(
             column![
@@ -215,9 +244,10 @@ pub fn fatal<'a, Message: Clone + 'a>(
                 typo::title("Candilog ne peut pas démarrer"),
                 typo::body(message),
                 typo::caption(
-                    "La base historique n'a pas été modifiée et aucun repli silencieux n'a été utilisé."
+                    "Vos données n'ont pas été modifiées. Réessayez, restaurez un backup, ou \
+                     redémarrez sur une base neuve — l'ancienne sera conservée."
                 ),
-                controls::secondary(retry_label, Some(Icon::Refresh)).on_press(on_retry),
+                boutons,
             ]
             .spacing(space::LG)
             .align_x(Alignment::Center),

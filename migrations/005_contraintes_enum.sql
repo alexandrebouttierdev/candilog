@@ -1,10 +1,20 @@
 -- Ajoute des contraintes CHECK sur les colonnes correspondant aux enums Rust.
 -- SQLite ne supportant pas ALTER TABLE ADD CONSTRAINT, on recrée les tables.
--- Idempotent : si la migration a déjà été appliquée (tables CHECK déjà en place), on saute.
+--
+-- Le rejeu est empêché par le curseur `PRAGMA user_version` (src/shared/db.rs) : ce fichier
+-- n'est pas idempotent par lui-même et n'a pas à l'être.
+--
+-- Deux précautions indispensables, toutes deux couvertes par des tests de migration :
+--   1. `run_local_migrations` désactive `PRAGMA foreign_keys` autour de la transaction.
+--      Sans cela, le `DROP TABLE candidatures` réalise un DELETE implicite qui déclenche les
+--      `ON DELETE CASCADE` de `relances`, `entretiens` et `statut_history` — soit la perte
+--      intégrale du suivi, les candidatures étant elles préservées par la table de travail.
+--   2. La recopie utilise un `INSERT` strict, précédé d'une normalisation des valeurs
+--      héritées. Un `INSERT OR IGNORE` ferait disparaître sans un mot toute ligne violant un
+--      nouveau CHECK ; ici, soit la valeur est ramenée dans la liste, soit la migration échoue
+--      de façon visible.
 
 -- ── candidatures : CHECK sur type_contrat et statut ────────────────────────
--- Vérifie si la colonne type_contrat a déjà un CHECK (colonne dans sqlite_master contient "CHECK").
--- Si oui, la migration est déjà appliquée pour cette table.
 
 DROP TABLE IF EXISTS candidatures_new;
 
@@ -24,7 +34,17 @@ CREATE TABLE candidatures_new (
     updated_at    TEXT NOT NULL
 );
 
-INSERT OR IGNORE INTO candidatures_new SELECT * FROM candidatures;
+-- Normalisation des valeurs héritées : une base venue d'une version antérieure peut porter
+-- des libellés absents des nouvelles listes. On les ramène sur la valeur de repli plutôt que
+-- de perdre la ligne.
+UPDATE candidatures SET type_contrat = 'Autre'
+    WHERE type_contrat IS NULL OR type_contrat NOT IN
+        ('CDI', 'CDD', 'Freelance', 'Stage', 'Alternance', 'Interim', 'Autre');
+UPDATE candidatures SET statut = 'EN_ATTENTE'
+    WHERE statut IS NULL OR statut NOT IN
+        ('EN_ATTENTE', 'RELANCEE', 'ENTRETIEN', 'REFUS');
+
+INSERT INTO candidatures_new SELECT * FROM candidatures;
 DROP TABLE IF EXISTS candidatures;
 ALTER TABLE candidatures_new RENAME TO candidatures;
 
@@ -51,7 +71,11 @@ CREATE TABLE entretiens_new (
     updated_at        TEXT NOT NULL
 );
 
-INSERT OR IGNORE INTO entretiens_new SELECT * FROM entretiens;
+UPDATE entretiens SET type = 'Autre'
+    WHERE type IS NULL OR type NOT IN
+        ('Présentiel', 'Visio', 'Téléphonique', 'Technique', 'RH', 'Autre');
+
+INSERT INTO entretiens_new SELECT * FROM entretiens;
 DROP TABLE IF EXISTS entretiens;
 ALTER TABLE entretiens_new RENAME TO entretiens;
 

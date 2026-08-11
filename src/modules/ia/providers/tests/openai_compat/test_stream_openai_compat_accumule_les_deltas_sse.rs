@@ -15,7 +15,7 @@ async fn test_stream_openai_compat_accumule_les_deltas_sse() {
         .with_body(body)
         .create_async()
         .await;
-    let p = OpenAiCompatProvider::new(server.url(), "sk".into(), "gpt-4o".into(), 0.5);
+    let p = OpenAiCompatProvider::new(server.url(), "sk".into(), "gpt-4o".into(), 0.5, None);
     let mut chunks: Vec<String> = Vec::new();
     let full = p
         .stream("x", "s", &GenOptions::none(), &mut |c: String| {

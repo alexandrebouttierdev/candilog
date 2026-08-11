@@ -12,7 +12,13 @@ async fn test_generate_gemini_parse_le_texte() {
         .with_body(r#"{"candidates":[{"content":{"parts":[{"text":"Salut Gemini"}]}}]}"#)
         .create_async()
         .await;
-    let p = GeminiProvider::new(server.url(), "key".into(), "gemini-2.5-flash".into(), 0.5);
+    let p = GeminiProvider::new(
+        server.url(),
+        "key".into(),
+        "gemini-2.5-flash".into(),
+        0.5,
+        None,
+    );
     let out = p.generate("x", "s").await.unwrap();
     assert_eq!(out, "Salut Gemini");
     m.assert_async().await;

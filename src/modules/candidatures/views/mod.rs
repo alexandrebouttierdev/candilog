@@ -92,7 +92,6 @@ fn control_strip(app: &App) -> Element<'_, Message> {
             controls::segment("Liste", app.candidate_view == CandidateView::List)
                 .on_press(Message::CandidateViewChanged(CandidateView::List)),
         ]),
-        controls::ghost("Exporter", Some(Icon::Download)).on_press(Message::ExportCandidatures),
     ]
     .spacing(space::SM)
     .align_y(Alignment::Center);

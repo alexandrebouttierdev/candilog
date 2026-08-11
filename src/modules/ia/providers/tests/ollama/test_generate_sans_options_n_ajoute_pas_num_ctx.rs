@@ -16,7 +16,7 @@ async fn test_generate_sans_options_n_ajoute_pas_num_ctx() {
         .with_body(r#"{"message":{"content":"ok"}}"#)
         .create_async()
         .await;
-    let p = OllamaProvider::new(server.url(), "gemma3:1b".into(), 0.0);
+    let p = OllamaProvider::new(server.url(), "gemma3:1b".into(), 0.0, None);
     assert_eq!(p.generate("x", "s").await.unwrap(), "ok");
     m.assert_async().await;
 }

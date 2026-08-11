@@ -15,7 +15,7 @@ async fn test_chat_modele_raisonnement_envoie_think_false() {
         .with_body(r#"{"message":{"content":"{}"}}"#)
         .create_async()
         .await;
-    let p = OllamaProvider::new(server.url(), "gpt-oss:20b".into(), 0.0);
+    let p = OllamaProvider::new(server.url(), "gpt-oss:20b".into(), 0.0, None);
     assert_eq!(p.generate("cv", "sys").await.unwrap(), "{}");
     m.assert_async().await;
 }

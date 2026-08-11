@@ -1,8 +1,12 @@
 //! Traitement des messages Iced.
 
+use super::capture::save_review_screenshot;
+use super::commandes::{ecrire, finish_submit, notifier_le_bureau, recharger};
+use super::export::export_candidatures;
 use super::message::{LetterStreamEvent, UpdateDownloadEvent};
 use super::state::{
-    CandidatureForm, ContactForm, Dialog, EntrepriseForm, EntretienForm, RelanceForm,
+    CandidatureForm, ContactForm, Dialog, EntrepriseForm, EntretienForm, NotificationKind,
+    RelanceForm,
 };
 use super::{App, Message};
 use crate::modules::candidatures::model::NouvelleCandidature;
@@ -13,13 +17,18 @@ use crate::modules::ia::cache::CacheIaRepository;
 use crate::modules::relances::model::NouvelleRelance;
 use chrono::{Datelike, Local};
 use iced::futures::SinkExt;
-use iced::{keyboard, Subscription, Task, Theme};
+use iced::Task;
 use semver::Version;
-use std::time::Duration;
 
 /// Met à jour l'état applicatif.
 pub fn update(app: &mut App, message: Message) -> Task<Message> {
     match message {
+        Message::Noop => {}
+        Message::WriteFinished(result, succes) => {
+            finish_submit(app, result, succes);
+            return recharger(app);
+        }
+        Message::DataLoaded(data, echecs) => app.appliquer_instantane(*data, &echecs),
         Message::CaptureForReview => {
             return iced::window::get_latest().map(Message::CaptureWindow);
         }
@@ -27,11 +36,11 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             return iced::window::screenshot(id).map(Message::CapturedForReview);
         }
         Message::CaptureWindow(None) => {
-            app.notification = Some("Capture visuelle : fenêtre introuvable.".into());
+            app.notify_failure("Capture visuelle : fenêtre introuvable.");
         }
         Message::CapturedForReview(screenshot) => {
             if let Err(error) = save_review_screenshot(&screenshot) {
-                app.notification = Some(error);
+                app.notify_failure(error);
             } else {
                 return iced::exit();
             }
@@ -51,10 +60,16 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             app.window_size = size;
         }
         Message::Navigate(route) => {
+            if route == crate::navigation::Route::Parametres {
+                // Le brouillon repart de l'état persisté : quitter l'écran sans enregistrer
+                // ne doit pas laisser de modification en mémoire.
+                app.settings_form =
+                    crate::app::state::SettingsForm::from_settings(&app.data.settings);
+            }
             app.route = route;
             app.search.clear();
         }
-        Message::Reload => app.reload(),
+        Message::Reload => return recharger(app),
         Message::SearchChanged(value) => app.search = value,
         Message::CandidateViewChanged(mode) => app.candidate_view = mode,
         Message::PreviousMonth => match app.calendar_view {
@@ -103,14 +118,27 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             app.calendar_month = now.month();
             app.calendar_date = now.date_naive();
         }
-        Message::ToggleTheme => app.is_dark = !app.is_dark,
+        Message::ToggleTheme => {
+            // La bascule rapide et le sélecteur à trois valeurs pilotent la même chose : la
+            // bascule fixe donc explicitement la préférence, faute de quoi le sélecteur
+            // afficherait « Système » alors que l'utilisateur vient de choisir la main.
+            app.is_dark = !app.is_dark;
+            app.data.settings.theme = if app.is_dark {
+                crate::modules::settings::model::ThemePref::Dark
+            } else {
+                crate::modules::settings::model::ThemePref::Light
+            };
+        }
         Message::Tick => {
             if app.ai_is_running {
                 app.ai_elapsed_seconds = app.ai_elapsed_seconds.saturating_add(1);
             }
         }
         Message::CheckUpdate => {
-            let client = reqwest::Client::new();
+            // Fabrique centralisée : `reqwest::Client::new()` n'applique aucun délai et suit
+            // les redirections jusqu'à 10 sauts. Un serveur qui accepte la connexion sans
+            // jamais répondre faisait attendre indéfiniment, sans message ni moyen d'annuler.
+            let client = crate::shared::http::client();
             let current =
                 Version::parse(env!("CARGO_PKG_VERSION")).unwrap_or_else(|_| Version::new(0, 0, 0));
             return Task::perform(
@@ -124,11 +152,14 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
         }
         Message::UpdateChecked(result) => match result {
             Ok(Some(info)) => {
-                app.notification = Some(format!("Candilog {} est disponible.", info.version));
+                app.notify(
+                    NotificationKind::Info,
+                    format!("Candilog {} est disponible.", info.version),
+                );
                 app.available_update = Some(info);
             }
-            Ok(None) => app.notification = Some("Candilog est à jour.".into()),
-            Err(error) => app.notification = Some(format!("Vérification impossible : {error}")),
+            Ok(None) => app.notify(NotificationKind::Info, "Candilog est à jour."),
+            Err(error) => app.notify_failure(format!("Vérification impossible : {error}")),
         },
         Message::ClearNotification => app.notification = None,
         Message::OpenDialog(dialog) => {
@@ -178,7 +209,22 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
         Message::CloseDialog => {
             app.dialog = None;
             app.editing_id = None;
-            app.selected_contact = None;
+            // `selected_contact` n'est plus effacé ici : `CloseDialog` sert les six modales,
+            // et l'effacement — ajouté pour la seule fermeture de la fiche contact —
+            // s'appliquait à tous les cas. Voir `Message::CloseContactCard`.
+        }
+        Message::CloseContactCard => app.selected_contact = None,
+        Message::DismissTopLayer => {
+            // Échap ferme ce qui est ouvert, et rien d'autre. Intercepté globalement et sans
+            // condition, il désélectionnait le contact affiché dans l'inspecteur du Réseau —
+            // et lui seul, ni la candidature, ni l'entreprise, ni le CV sélectionnés — alors
+            // même qu'aucun dialogue n'était ouvert.
+            if app.dialog.is_some() {
+                app.dialog = None;
+                app.editing_id = None;
+            } else if app.selected_contact.is_some() {
+                app.selected_contact = None;
+            }
         }
         Message::EntrepriseNomChanged(value) => app.entreprise_form.nom = value,
         Message::EntrepriseSecteurChanged(value) => app.entreprise_form.secteur = value,
@@ -197,18 +243,16 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 adresse: optional(&app.entreprise_form.adresse),
                 notes: optional(&app.entreprise_form.notes),
             };
-            let result = app.backend.as_ref().map_or_else(
-                || Err("La base Candilog n'est pas disponible.".into()),
-                |backend| {
-                    app.editing_id
-                        .map_or_else(
-                            || backend.entreprises.creer(&input),
-                            |id| backend.entreprises.modifier(id, &input),
-                        )
-                        .map_err(|error| error.to_string())
-                },
-            );
-            finish_submit(app, result.map(|_| ()), "Entreprise enregistrée.");
+            let edition = app.editing_id;
+            return ecrire(app, "Entreprise enregistrée.", move |backend| {
+                edition
+                    .map_or_else(
+                        || backend.entreprises.creer(&input),
+                        |id| backend.entreprises.modifier(id, &input),
+                    )
+                    .map(|_| ())
+                    .map_err(|error| error.to_string())
+            });
         }
         Message::ContactPrenomChanged(value) => app.contact_form.prenom = value,
         Message::ContactNomChanged(value) => app.contact_form.nom = value,
@@ -229,18 +273,16 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 linkedin: optional(&app.contact_form.linkedin),
                 notes: optional(&app.contact_form.notes),
             };
-            let result = app.backend.as_ref().map_or_else(
-                || Err("La base Candilog n'est pas disponible.".into()),
-                |backend| {
-                    app.editing_id
-                        .map_or_else(
-                            || backend.contacts.creer(&input),
-                            |id| backend.contacts.modifier(id, &input),
-                        )
-                        .map_err(|error| error.to_string())
-                },
-            );
-            finish_submit(app, result.map(|_| ()), "Contact enregistré.");
+            let edition = app.editing_id;
+            return ecrire(app, "Contact enregistré.", move |backend| {
+                edition
+                    .map_or_else(
+                        || backend.contacts.creer(&input),
+                        |id| backend.contacts.modifier(id, &input),
+                    )
+                    .map(|_| ())
+                    .map_err(|error| error.to_string())
+            });
         }
         Message::CandidaturePosteChanged(value) => app.candidature_form.poste = value,
         Message::CandidatureEntrepriseChanged(value) => {
@@ -252,44 +294,38 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
         Message::CandidatureLienChanged(value) => app.candidature_form.lien_offre = value,
         Message::CandidatureNotesChanged(value) => app.candidature_form.notes = value,
         Message::SubmitCandidature => {
-            let result = app.candidature_form.entreprise_id.map_or_else(
-                || Err("Sélectionnez une entreprise.".into()),
-                |entreprise_id| {
-                    let input = NouvelleCandidature {
-                        poste: app.candidature_form.poste.clone(),
-                        entreprise_id,
-                        type_contrat: app.candidature_form.type_contrat,
-                        statut: app.candidature_form.statut,
-                        date_envoi: app.candidature_form.date_envoi.clone(),
-                        lien_offre: optional(&app.candidature_form.lien_offre),
-                        notes: optional(&app.candidature_form.notes),
-                    };
-                    app.backend.as_ref().map_or_else(
-                        || Err("La base Candilog n'est pas disponible.".into()),
-                        |backend| {
-                            app.editing_id
-                                .map_or_else(
-                                    || backend.candidatures.creer(&input),
-                                    |id| backend.candidatures.modifier(id, &input),
-                                )
-                                .map_err(|error| error.to_string())
-                        },
+            let Some(entreprise_id) = app.candidature_form.entreprise_id else {
+                app.notify(NotificationKind::Warning, "Sélectionnez une entreprise.");
+                return Task::none();
+            };
+            let input = NouvelleCandidature {
+                poste: app.candidature_form.poste.clone(),
+                entreprise_id,
+                type_contrat: app.candidature_form.type_contrat,
+                statut: app.candidature_form.statut,
+                date_envoi: app.candidature_form.date_envoi.clone(),
+                lien_offre: optional(&app.candidature_form.lien_offre),
+                notes: optional(&app.candidature_form.notes),
+            };
+            let edition = app.editing_id;
+            return ecrire(app, "Candidature enregistrée.", move |backend| {
+                edition
+                    .map_or_else(
+                        || backend.candidatures.creer(&input),
+                        |id| backend.candidatures.modifier(id, &input),
                     )
-                },
-            );
-            finish_submit(app, result.map(|_| ()), "Candidature enregistrée.");
+                    .map(|_| ())
+                    .map_err(|error| error.to_string())
+            });
         }
         Message::MoveCandidature(id, status) => {
-            let result = app.backend.as_ref().map_or_else(
-                || Err("La base Candilog n'est pas disponible.".into()),
-                |backend| {
-                    backend
-                        .candidatures
-                        .changer_statut(id, status)
-                        .map_err(|error| error.to_string())
-                },
-            );
-            finish_submit(app, result.map(|_| ()), "Statut mis à jour.");
+            return ecrire(app, "Statut mis à jour.", move |backend| {
+                backend
+                    .candidatures
+                    .changer_statut(id, status)
+                    .map(|_| ())
+                    .map_err(|error| error.to_string())
+            });
         }
         Message::EntretienCandidatureChanged(value) => {
             app.entretien_form.candidature_id = Some(value)
@@ -301,83 +337,75 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
         Message::EntretienNotesChanged(value) => app.entretien_form.notes = value,
         Message::EntretienCompteRenduChanged(value) => app.entretien_form.compte_rendu = value,
         Message::SubmitEntretien => {
-            let result = app.entretien_form.candidature_id.map_or_else(
-                || Err("Sélectionnez une candidature.".into()),
-                |candidature_id| {
-                    let input = NouvelEntretien {
-                        candidature_id,
-                        contact_id: app.entretien_form.contact_id,
-                        date_entretien: app.entretien_form.date_entretien.clone(),
-                        type_entretien: app.entretien_form.type_entretien,
-                        lieu: optional(&app.entretien_form.lieu),
-                        notes: optional(&app.entretien_form.notes),
-                        compte_rendu: optional(&app.entretien_form.compte_rendu),
-                    };
-                    app.backend.as_ref().map_or_else(
-                        || Err("La base Candilog n'est pas disponible.".into()),
-                        |backend| {
-                            app.editing_id
-                                .map_or_else(
-                                    || backend.entretiens.creer(&input),
-                                    |id| backend.entretiens.modifier(id, &input),
-                                )
-                                .map_err(|error| error.to_string())
-                        },
+            let Some(candidature_id) = app.entretien_form.candidature_id else {
+                app.notify(NotificationKind::Warning, "Sélectionnez une candidature.");
+                return Task::none();
+            };
+            let input = NouvelEntretien {
+                candidature_id,
+                contact_id: app.entretien_form.contact_id,
+                date_entretien: app.entretien_form.date_entretien.clone(),
+                type_entretien: app.entretien_form.type_entretien,
+                lieu: optional(&app.entretien_form.lieu),
+                notes: optional(&app.entretien_form.notes),
+                compte_rendu: optional(&app.entretien_form.compte_rendu),
+            };
+            let edition = app.editing_id;
+            return ecrire(app, "Entretien enregistré.", move |backend| {
+                edition
+                    .map_or_else(
+                        || backend.entretiens.creer(&input),
+                        |id| backend.entretiens.modifier(id, &input),
                     )
-                },
-            );
-            finish_submit(app, result.map(|_| ()), "Entretien enregistré.");
+                    .map(|_| ())
+                    .map_err(|error| error.to_string())
+            });
         }
         Message::RelanceCandidatureChanged(value) => app.relance_form.candidature_id = Some(value),
         Message::RelanceDateChanged(value) => app.relance_form.date_relance = value,
         Message::RelanceTypeChanged(value) => app.relance_form.type_relance = value,
         Message::RelanceNotesChanged(value) => app.relance_form.notes = value,
         Message::SubmitRelance => {
-            let result = app.relance_form.candidature_id.map_or_else(
-                || Err("Sélectionnez une candidature.".into()),
-                |candidature_id| {
-                    let input = NouvelleRelance {
-                        candidature_id,
-                        date_relance: app.relance_form.date_relance.clone(),
-                        type_relance: app.relance_form.type_relance.clone(),
-                        notes: optional(&app.relance_form.notes),
-                    };
-                    app.backend.as_ref().map_or_else(
-                        || Err("La base Candilog n'est pas disponible.".into()),
-                        |backend| {
-                            app.editing_id
-                                .map_or_else(
-                                    || backend.relances.creer(&input),
-                                    |id| backend.relances.modifier(id, &input),
-                                )
-                                .map_err(|error| error.to_string())
-                        },
+            let Some(candidature_id) = app.relance_form.candidature_id else {
+                app.notify(NotificationKind::Warning, "Sélectionnez une candidature.");
+                return Task::none();
+            };
+            let input = NouvelleRelance {
+                candidature_id,
+                date_relance: app.relance_form.date_relance.clone(),
+                type_relance: app.relance_form.type_relance.clone(),
+                notes: optional(&app.relance_form.notes),
+            };
+            let edition = app.editing_id;
+            return ecrire(app, "Relance enregistrée.", move |backend| {
+                edition
+                    .map_or_else(
+                        || backend.relances.creer(&input),
+                        |id| backend.relances.modifier(id, &input),
                     )
-                },
-            );
-            finish_submit(app, result.map(|_| ()), "Relance enregistrée.");
+                    .map(|_| ())
+                    .map_err(|error| error.to_string())
+            });
         }
         Message::ExportCandidatures => {
             let rows = app.filtered_candidates().into_iter().cloned().collect();
             return Task::perform(export_candidatures(rows), Message::CandidaturesExported);
         }
         Message::CandidaturesExported(result) => match result {
-            Ok(path) => app.notification = Some(format!("Export créé : {}", path.display())),
-            Err(error) => app.notification = Some(error),
+            Ok(path) => app.notify_success(format!("Export créé : {}", path.display())),
+            Err(error) => app.notify_failure(error),
         },
         Message::OfferEditorAction(action) => app.offer_editor.perform(action),
         Message::AnalyzeOffer => {
             let Some(backend) = app.backend.clone() else {
-                app.notification = Some("La base Candilog n'est pas disponible.".into());
+                app.notify_failure("La base Candilog n'est pas disponible.");
                 return Task::none();
             };
             let offer = app.offer_editor.text();
-            app.ai_is_running = true;
-            app.ai_elapsed_seconds = 0;
             app.offer_analysis = None;
             app.cv_generation = None;
             let token = tokio_util::sync::CancellationToken::new();
-            app.ai_cancellation = Some(token.clone());
+            let sequence = app.commencer_operation_ia(token.clone());
             return Task::perform(
                 async move {
                     tokio::select! {
@@ -387,31 +415,29 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                         () = token.cancelled() => Err("Génération annulée".into()),
                     }
                 },
-                Message::OfferAnalyzed,
+                move |result| Message::OfferAnalyzed(result, sequence),
             );
         }
-        Message::OfferAnalyzed(result) => {
-            app.ai_is_running = false;
-            app.ai_cancellation = None;
+        Message::OfferAnalyzed(result, sequence) => {
+            if !app.terminer_operation_ia(sequence) {
+                return Task::none();
+            }
             match result {
                 Ok(analysis) => {
                     app.offer_analysis = Some(analysis);
-                    app.notification =
-                        Some(format!("Offre analysée en {} s.", app.ai_elapsed_seconds));
+                    app.notify_success(format!("Offre analysée en {} s.", app.ai_elapsed_seconds));
                 }
-                Err(error) => app.notification = Some(error),
+                Err(error) => app.notify_failure(error),
             }
         }
         Message::GenerateCv => {
             let (Some(backend), Some(analysis)) = (app.backend.clone(), app.offer_analysis.clone())
             else {
-                app.notification = Some("Analysez d'abord une offre.".into());
+                app.notify(NotificationKind::Warning, "Analysez d'abord une offre.");
                 return Task::none();
             };
             let token = tokio_util::sync::CancellationToken::new();
-            app.ai_cancellation = Some(token.clone());
-            app.ai_is_running = true;
-            app.ai_elapsed_seconds = 0;
+            let sequence = app.commencer_operation_ia(token.clone());
             return Task::perform(
                 async move {
                     crate::modules::ia::service::generate_cv(
@@ -423,12 +449,13 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                     .await
                     .map_err(|error| error.to_string())
                 },
-                Message::CvGenerated,
+                move |result| Message::CvGenerated(result, sequence),
             );
         }
-        Message::CvGenerated(result) => {
-            app.ai_is_running = false;
-            app.ai_cancellation = None;
+        Message::CvGenerated(result, sequence) => {
+            if !app.terminer_operation_ia(sequence) {
+                return Task::none();
+            }
             match result {
                 Ok(generation) => {
                     app.recommendation_states = vec![
@@ -436,15 +463,17 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                         generation.analysis.recommandations.len()
                     ];
                     app.cv_generation = Some(generation);
-                    app.notification = Some(format!("CV généré en {} s.", app.ai_elapsed_seconds));
+                    let corps = format!("CV généré en {} s.", app.ai_elapsed_seconds);
+                    app.notify_success(corps.clone());
+                    return notifier_le_bureau(corps);
                 }
-                Err(error) => app.notification = Some(error),
+                Err(error) => app.notify_failure(error),
             }
         }
         Message::CancelAi => {
             if let Some(token) = &app.ai_cancellation {
                 token.cancel();
-                app.notification = Some("Annulation demandée…".into());
+                app.notify(NotificationKind::Info, "Annulation demandée…");
             }
         }
         Message::SelectImportPdf => {
@@ -465,14 +494,15 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
         Message::AnalyzeImportedCv => {
             let (Some(backend), Some(path)) = (app.backend.clone(), app.import_pdf_path.clone())
             else {
-                app.notification = Some("Sélectionnez un PDF avant l'analyse.".into());
+                app.notify(
+                    NotificationKind::Warning,
+                    "Sélectionnez un PDF avant l'analyse.",
+                );
                 return Task::none();
             };
             let offer = app.import_offer_editor.text();
             let token = tokio_util::sync::CancellationToken::new();
-            app.ai_cancellation = Some(token.clone());
-            app.ai_is_running = true;
-            app.ai_elapsed_seconds = 0;
+            let sequence = app.commencer_operation_ia(token.clone());
             app.imported_cv_analysis = None;
             return Task::perform(
                 async move {
@@ -480,18 +510,21 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                         .await
                         .map_err(|error| error.to_string())
                 },
-                Message::ImportedCvAnalyzed,
+                move |result| Message::ImportedCvAnalyzed(result, sequence),
             );
         }
-        Message::ImportedCvAnalyzed(result) => {
-            app.ai_is_running = false;
-            app.ai_cancellation = None;
+        Message::ImportedCvAnalyzed(result, sequence) => {
+            if !app.terminer_operation_ia(sequence) {
+                return Task::none();
+            }
             match result {
                 Ok(analysis) => {
                     app.imported_cv_analysis = Some(analysis);
-                    app.notification = Some(format!("CV analysé en {} s.", app.ai_elapsed_seconds));
+                    let corps = format!("CV analysé en {} s.", app.ai_elapsed_seconds);
+                    app.notify_success(corps.clone());
+                    return notifier_le_bureau(corps);
                 }
-                Err(error) => app.notification = Some(error),
+                Err(error) => app.notify_failure(error),
             }
         }
         Message::LetterCompanyChanged(value) => app.letter_company = value,
@@ -501,13 +534,11 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
         Message::LetterLengthChanged(value) => app.letter_length = value,
         Message::GenerateLetter => {
             let Some(backend) = app.backend.clone() else {
-                app.notification = Some("La base Candilog n'est pas disponible.".into());
+                app.notify_failure("La base Candilog n'est pas disponible.");
                 return Task::none();
             };
             let token = tokio_util::sync::CancellationToken::new();
-            app.ai_cancellation = Some(token.clone());
-            app.ai_is_running = true;
-            app.ai_elapsed_seconds = 0;
+            let sequence = app.commencer_operation_ia(token.clone());
             app.letter_output.clear();
             let request = crate::modules::ia::cv_model::LetterGenerationRequest {
                 source: "job_offer".into(),
@@ -534,50 +565,80 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 .map_err(|error| error.to_string());
                 let _ = sender.send(LetterStreamEvent::Finished(result)).await;
             });
-            return Task::run(stream, Message::LetterStream);
+            return Task::run(stream, move |event| Message::LetterStream(event, sequence));
         }
-        Message::LetterStream(event) => match event {
-            LetterStreamEvent::Chunk(chunk) => app.letter_output.push_str(&chunk),
+        Message::LetterStream(event, sequence) => match event {
+            LetterStreamEvent::Chunk(chunk) => {
+                // Un fragment d'une génération abandonnée ne doit pas polluer l'éditeur.
+                if app.ai_sequence == sequence {
+                    app.letter_output.push_str(&chunk);
+                }
+            }
             LetterStreamEvent::Finished(result) => {
-                app.ai_is_running = false;
-                app.ai_cancellation = None;
+                if !app.terminer_operation_ia(sequence) {
+                    return Task::none();
+                }
                 match result {
                     Ok(letter) => {
                         app.letter_output = letter;
-                        app.notification =
-                            Some(format!("Lettre générée en {} s.", app.ai_elapsed_seconds));
+                        let corps = format!("Lettre générée en {} s.", app.ai_elapsed_seconds);
+                        app.notify_success(corps.clone());
+                        return notifier_le_bureau(corps);
                     }
-                    Err(error) => app.notification = Some(error),
+                    Err(error) => app.notify_failure(error),
                 }
             }
         },
+        // Les huit messages d'édition écrivent dans le **brouillon**, jamais dans
+        // l'instantané : seul `SettingsSaved(Ok(settings))` recopie la valeur réellement
+        // persistée.
         Message::SettingsProviderChanged(provider) => {
-            app.data.settings.llm.provider = provider;
+            app.settings_form.draft.llm.provider = provider;
             if matches!(
-                app.data.settings.llm.provider,
+                app.settings_form.draft.llm.provider,
                 crate::shared::llm::ProviderKind::Ollama
-            ) && app.data.settings.llm.endpoint.is_none()
+            ) && app.settings_form.draft.llm.endpoint.is_none()
             {
-                app.data.settings.llm.endpoint = Some("http://localhost:11434".into());
+                app.settings_form.draft.llm.endpoint = Some("http://localhost:11434".into());
             }
         }
-        Message::SettingsModelChanged(value) => app.data.settings.llm.model = value,
+        Message::SettingsModelChanged(value) => app.settings_form.draft.llm.model = value,
         Message::SettingsEndpointChanged(value) => {
-            app.data.settings.llm.endpoint = optional(&value)
+            app.settings_form.draft.llm.endpoint = optional(&value);
         }
-        Message::SettingsApiKeyChanged(value) => app.data.settings.llm.api_key = optional(&value),
-        Message::SettingsTemperatureChanged(value) => app.data.settings.llm.temperature = value,
-        Message::SettingsModeChanged(value) => app.data.settings.llm.mode = value,
+        Message::SettingsApiKeyChanged(value) => {
+            app.settings_form.draft.llm.api_key = optional(&value);
+        }
+        Message::SettingsTemperatureChanged(value) => {
+            app.settings_form.draft.llm.temperature = value;
+        }
+        Message::SettingsModeChanged(value) => app.settings_form.draft.llm.mode = value,
         Message::SettingsThemeChanged(value) => {
-            app.is_dark = !matches!(value, crate::modules::settings::model::ThemePref::Light);
-            app.data.settings.theme = value;
+            // Le thème est la seule exception assumée : l'aperçu doit être immédiat.
+            app.is_dark = crate::core::theme_systeme::resoudre(value, app.system_dark, app.is_dark);
+            app.settings_form.draft.theme = value;
+            // Le système a pu changer d'avis depuis le démarrage : on redemande.
+            if matches!(value, crate::modules::settings::model::ThemePref::System) {
+                return Task::perform(
+                    crate::core::theme_systeme::detecter(),
+                    Message::SystemThemeDetected,
+                );
+            }
+        }
+        Message::SystemThemeDetected(sombre) => {
+            app.system_dark = sombre;
+            app.is_dark = crate::core::theme_systeme::resoudre(
+                app.data.settings.theme,
+                app.system_dark,
+                app.is_dark,
+            );
         }
         Message::SaveSettings => {
             let Some(backend) = app.backend.clone() else {
-                app.notification = Some("La base Candilog n'est pas disponible.".into());
+                app.notify_failure("La base Candilog n'est pas disponible.");
                 return Task::none();
             };
-            let settings = app.data.settings.clone();
+            let settings = app.settings_form.draft.clone();
             return Task::perform(
                 async move {
                     backend
@@ -590,19 +651,23 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
         }
         Message::SettingsSaved(result) => match result {
             Ok(settings) => {
+                app.settings_form = crate::app::state::SettingsForm::from_settings(&settings);
                 app.data.settings = settings;
-                app.notification = Some("Paramètres enregistrés.".into());
+                app.notify_success("Paramètres enregistrés.");
+                return Task::done(Message::ProbeProviderHealth);
             }
-            Err(error) => app.notification = Some(error),
+            Err(error) => app.notify_failure(error),
         },
         Message::TestLlmConnection => {
-            let config = app.data.settings.llm.clone();
+            // Teste ce que l'utilisateur vient de saisir, pas ce qui est déjà enregistré.
+            let config = app.settings_form.draft.llm.clone();
+            app.provider_health = crate::ui::components::runtime_status::Health::Checking;
             return Task::perform(
                 async move {
-                    crate::shared::llm::validate_llm_endpoint(&config)
+                    let pin = crate::shared::llm::validate_llm_endpoint(&config)
                         .await
                         .map_err(|error| error.to_string())?;
-                    crate::modules::ia::factory::build_provider(&config)
+                    crate::modules::ia::factory::build_provider_pinned(&config, pin)
                         .health_check()
                         .await
                         .map_err(|error| error.to_string())
@@ -611,12 +676,18 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             );
         }
         Message::LlmConnectionTested(result) => match result {
-            Ok(()) => app.notification = Some("Connexion IA opérationnelle.".into()),
-            Err(error) => app.notification = Some(format!("Connexion IA impossible : {error}")),
+            Ok(()) => {
+                app.provider_health = crate::ui::components::runtime_status::Health::Ok;
+                app.notify_success("Connexion IA opérationnelle.");
+            }
+            Err(error) => {
+                app.provider_health = crate::ui::components::runtime_status::Health::Error;
+                app.notify_failure(format!("Connexion IA impossible : {error}"));
+            }
         },
         Message::ExportBackup => {
             let Some(backend) = app.backend.clone() else {
-                app.notification = Some("La base Candilog n'est pas disponible.".into());
+                app.notify_failure("La base Candilog n'est pas disponible.");
                 return Task::none();
             };
             return Task::perform(
@@ -639,8 +710,8 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             );
         }
         Message::BackupExported(result) => match result {
-            Ok(path) => app.notification = Some(format!("Backup créé : {}", path.display())),
-            Err(error) => app.notification = Some(error),
+            Ok(path) => app.notify_success(format!("Backup créé : {}", path.display())),
+            Err(error) => app.notify_failure(error),
         },
         Message::CandidateDragStarted(id) => {
             app.dragging_candidate = Some(id);
@@ -652,19 +723,16 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 return Task::none();
             };
             app.drag_target_status = None;
-            let result = app.backend.as_ref().map_or_else(
-                || Err("La base Candilog n'est pas disponible.".into()),
-                |backend| {
+            return ecrire(
+                app,
+                "Statut mis à jour par glisser-déposer.",
+                move |backend| {
                     backend
                         .candidatures
                         .changer_statut(id, status)
+                        .map(|_| ())
                         .map_err(|error| error.to_string())
                 },
-            );
-            finish_submit(
-                app,
-                result.map(|_| ()),
-                "Statut mis à jour par glisser-déposer.",
             );
         }
         Message::CalendarViewChanged(view) => app.calendar_view = view,
@@ -696,32 +764,34 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 .filter(|name| !name.is_empty())
                 .map(|name| crate::shared::profile::Skill { name: name.into() })
                 .collect();
-            let result = app.backend.as_ref().map_or_else(
-                || Err("La base Candilog n'est pas disponible.".into()),
-                |backend| {
-                    backend
-                        .profil
-                        .update(&profile)
-                        .map_err(|error| error.to_string())
-                },
-            );
-            finish_submit(app, result.map(|_| ()), "Profil enregistré.");
+            return ecrire(app, "Profil enregistré.", move |backend| {
+                backend
+                    .profil
+                    .update(&profile)
+                    .map(|_| ())
+                    .map_err(|error| error.to_string())
+            });
         }
         Message::DownloadUpdate => {
             let Some(update) = app.available_update.clone() else {
-                app.notification = Some("Aucune mise à jour disponible.".into());
+                app.notify(NotificationKind::Info, "Aucune mise à jour disponible.");
                 return Task::none();
             };
             app.update_progress = Some(0);
             app.verified_update_path = None;
+            let dossier = app
+                .paths
+                .as_ref()
+                .map_or_else(std::env::temp_dir, |paths| paths.data_dir.clone());
             let stream = iced::stream::channel(32, move |mut sender| async move {
-                let client = reqwest::Client::new();
+                let client = crate::shared::http::download_client();
                 let mut progress_sender = sender.clone();
-                let result = crate::core::updater::download_verified(&client, &update, |value| {
-                    let _ = progress_sender.try_send(UpdateDownloadEvent::Progress(value));
-                })
-                .await
-                .map_err(|error| error.to_string());
+                let result =
+                    crate::core::updater::download_verified(&client, &update, &dossier, |value| {
+                        let _ = progress_sender.try_send(UpdateDownloadEvent::Progress(value));
+                    })
+                    .await
+                    .map_err(|error| error.to_string());
                 let _ = sender.send(UpdateDownloadEvent::Finished(result)).await;
             });
             return Task::run(stream, Message::UpdateDownload);
@@ -732,14 +802,18 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 Ok(path) => {
                     app.update_progress = Some(100);
                     app.verified_update_path = Some(path.clone());
-                    app.notification = Some(format!(
-                        "Mise à jour téléchargée et signature vérifiée : {}",
-                        path.display()
-                    ));
+                    let corps = format!(
+                        "Mise à jour téléchargée et signature vérifiée. Le paquet est dans \
+                         le dossier « {} » de vos données Candilog ; installez-le comme vous \
+                         le feriez pour toute application de votre système.",
+                        crate::core::updater::DOSSIER_MISES_A_JOUR
+                    );
+                    app.notify_success(corps.clone());
+                    return notifier_le_bureau(corps);
                 }
                 Err(error) => {
                     app.update_progress = None;
-                    app.notification = Some(error);
+                    app.notify_failure(error);
                 }
             },
         },
@@ -757,24 +831,20 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             let Some(dialog) = app.dialog else {
                 return Task::none();
             };
-            let result = app.backend.as_ref().map_or_else(
-                || Err("La base Candilog n'est pas disponible.".into()),
-                |backend| {
-                    match dialog {
-                        Dialog::DeleteCandidature(id) => backend.candidatures.supprimer(id),
-                        Dialog::DeleteEntreprise(id) => backend.entreprises.supprimer(id),
-                        Dialog::DeleteContact(id) => backend.contacts.supprimer(id),
-                        Dialog::DeleteEntretien(id) => backend.entretiens.supprimer(id),
-                        Dialog::DeleteRelance(id) => backend.relances.supprimer(id),
-                        Dialog::DeleteCv(id) => backend.cv.delete(id),
-                        _ => Err(crate::shared::error::AppError::Validation(
-                            "Aucune suppression à confirmer.".into(),
-                        )),
-                    }
-                    .map_err(|error| error.to_string())
-                },
-            );
-            finish_submit(app, result, "Élément supprimé.");
+            return ecrire(app, "Élément supprimé.", move |backend| {
+                match dialog {
+                    Dialog::DeleteCandidature(id) => backend.candidatures.supprimer(id),
+                    Dialog::DeleteEntreprise(id) => backend.entreprises.supprimer(id),
+                    Dialog::DeleteContact(id) => backend.contacts.supprimer(id),
+                    Dialog::DeleteEntretien(id) => backend.entretiens.supprimer(id),
+                    Dialog::DeleteRelance(id) => backend.relances.supprimer(id),
+                    Dialog::DeleteCv(id) => backend.cv.delete(id),
+                    _ => Err(crate::shared::error::AppError::Validation(
+                        "Aucune suppression à confirmer.".into(),
+                    )),
+                }
+                .map_err(|error| error.to_string())
+            });
         }
         Message::EditEntreprise(id) => {
             if let Some(item) = app.data.entreprises.iter().find(|item| item.id == id) {
@@ -854,7 +924,10 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             let (Some(backend), Some(generation)) =
                 (app.backend.as_ref(), app.cv_generation.as_ref())
             else {
-                app.notification = Some("Générez un CV avant de le sauvegarder.".into());
+                app.notify(
+                    NotificationKind::Warning,
+                    "Générez un CV avant de le sauvegarder.",
+                );
                 return Task::none();
             };
             let content = serde_json::json!({
@@ -866,15 +939,15 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             });
             match backend.cv.save(&app.cv_version_name, &content) {
                 Ok(_) => {
-                    app.reload();
-                    app.notification = Some("Version de CV sauvegardée.".into());
+                    app.notify_success("Version de CV sauvegardée.");
+                    return recharger(app);
                 }
-                Err(error) => app.notification = Some(error.to_string()),
+                Err(error) => app.notify_error(&error),
             }
         }
         Message::LoadCvVersion(id) => {
             let Some(backend) = app.backend.as_ref() else {
-                app.notification = Some("La base Candilog n'est pas disponible.".into());
+                app.notify_failure("La base Candilog n'est pas disponible.");
                 return Task::none();
             };
             match backend.cv.load(id) {
@@ -897,15 +970,18 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                             app.cv_version_name = version.name;
                             app.route = crate::navigation::Route::CvGenerator;
                         }
-                        _ => app.notification = Some("Cette version de CV est illisible.".into()),
+                        _ => app.notify_failure("Cette version de CV est illisible."),
                     }
                 }
-                Err(error) => app.notification = Some(error.to_string()),
+                Err(error) => app.notify_error(&error),
             }
         }
         Message::ExportGeneratedCvPdf => {
             let Some(generation) = app.cv_generation.as_ref() else {
-                app.notification = Some("Générez un CV avant l'export PDF.".into());
+                app.notify(
+                    NotificationKind::Warning,
+                    "Générez un CV avant l'export PDF.",
+                );
                 return Task::none();
             };
             let profile = &app.data.profile.personal;
@@ -943,8 +1019,8 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             );
         }
         Message::CvPdfExported(result) => match result {
-            Ok(path) => app.notification = Some(format!("CV exporté : {}", path.display())),
-            Err(error) => app.notification = Some(error),
+            Ok(path) => app.notify_success(format!("CV exporté : {}", path.display())),
+            Err(error) => app.notify_failure(error),
         },
         Message::SelectProfilePdf => {
             return Task::perform(
@@ -964,13 +1040,11 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             let (Some(backend), Some(path)) =
                 (app.backend.clone(), app.profile_import_path.clone())
             else {
-                app.notification = Some("Sélectionnez un CV PDF.".into());
+                app.notify(NotificationKind::Warning, "Sélectionnez un CV PDF.");
                 return Task::none();
             };
             let token = tokio_util::sync::CancellationToken::new();
-            app.ai_cancellation = Some(token.clone());
-            app.ai_is_running = true;
-            app.ai_elapsed_seconds = 0;
+            let sequence = app.commencer_operation_ia(token.clone());
             app.extracted_profile = None;
             return Task::perform(
                 async move {
@@ -978,26 +1052,30 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                         .await
                         .map_err(|error| error.to_string())
                 },
-                Message::ProfileExtracted,
+                move |result| Message::ProfileExtracted(result, sequence),
             );
         }
-        Message::ProfileExtracted(result) => {
-            app.ai_is_running = false;
-            app.ai_cancellation = None;
+        Message::ProfileExtracted(result, sequence) => {
+            if !app.terminer_operation_ia(sequence) {
+                return Task::none();
+            }
             match result {
                 Ok(profile) => {
                     app.extracted_profile = Some(profile);
-                    app.notification = Some(format!(
+                    app.notify_success(format!(
                         "Profil extrait en {} s. Vérifiez-le avant validation.",
                         app.ai_elapsed_seconds
                     ));
                 }
-                Err(error) => app.notification = Some(error),
+                Err(error) => app.notify_failure(error),
             }
         }
         Message::ApplyExtractedProfile => {
             let Some(profile) = app.extracted_profile.clone() else {
-                app.notification = Some("Aucun profil extrait à appliquer.".into());
+                app.notify(
+                    NotificationKind::Warning,
+                    "Aucun profil extrait à appliquer.",
+                );
                 return Task::none();
             };
             let result = app.backend.as_ref().map_or_else(
@@ -1012,39 +1090,38 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             match result {
                 Ok(_) => {
                     app.extracted_profile = None;
-                    app.reload();
-                    app.notification = Some("Profil importé après validation.".into());
+                    app.notify_success("Profil importé après validation.");
+                    return recharger(app);
                 }
-                Err(error) => app.notification = Some(error),
+                Err(error) => app.notify_failure(error),
             }
         }
         Message::AnalyzeInterview(id) => {
             let Some(backend) = app.backend.clone() else {
-                app.notification = Some("La base Candilog n'est pas disponible.".into());
+                app.notify_failure("La base Candilog n'est pas disponible.");
                 return Task::none();
             };
             let token = tokio_util::sync::CancellationToken::new();
-            app.ai_cancellation = Some(token.clone());
-            app.ai_is_running = true;
-            app.ai_elapsed_seconds = 0;
+            let sequence = app.commencer_operation_ia(token.clone());
             return Task::perform(
                 async move {
                     crate::modules::ia::service::analyze_interview(&backend, id, token)
                         .await
                         .map_err(|error| error.to_string())
                 },
-                Message::InterviewAnalyzed,
+                move |result| Message::InterviewAnalyzed(result, sequence),
             );
         }
-        Message::InterviewAnalyzed(result) => {
-            app.ai_is_running = false;
-            app.ai_cancellation = None;
+        Message::InterviewAnalyzed(result, sequence) => {
+            if !app.terminer_operation_ia(sequence) {
+                return Task::none();
+            }
             match result {
                 Ok(_) => {
-                    app.reload();
-                    app.notification = Some("Compte rendu analysé et enregistré.".into());
+                    app.notify_success("Compte rendu analysé et enregistré.");
+                    return recharger(app);
                 }
-                Err(error) => app.notification = Some(error),
+                Err(error) => app.notify_failure(error),
             }
         }
         Message::SelectBackupImport => {
@@ -1060,6 +1137,97 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 Message::BackupImportSelected,
             );
         }
+        Message::ProbeProviderHealth => {
+            let config = app.data.settings.llm.clone();
+            app.provider_health = crate::ui::components::runtime_status::Health::Checking;
+            return Task::perform(
+                async move {
+                    let pin = crate::shared::llm::validate_llm_endpoint(&config)
+                        .await
+                        .map_err(|error| error.to_string())?;
+                    crate::modules::ia::factory::build_provider_pinned(&config, pin)
+                        .health_check()
+                        .await
+                        .map_err(|error| error.to_string())
+                },
+                Message::ProviderHealthChecked,
+            );
+        }
+        Message::ProviderHealthChecked(result) => {
+            // Contrôle silencieux : il alimente la pastille sans interrompre l'utilisateur.
+            app.provider_health = match &result {
+                Ok(()) => crate::ui::components::runtime_status::Health::Ok,
+                Err(erreur) => {
+                    tracing::warn!(erreur = %erreur, "fournisseur IA injoignable");
+                    crate::ui::components::runtime_status::Health::Error
+                }
+            };
+        }
+        Message::RetryBootstrap => {
+            app.bootstrap();
+            if app.fatal_error.is_none() {
+                app.notify_success("Base rouverte.");
+            }
+        }
+        Message::SelectRecoveryBackup => {
+            return Task::perform(
+                async {
+                    rfd::AsyncFileDialog::new()
+                        .set_title("Restaurer Candilog depuis un backup")
+                        .add_filter("SQLite", &["sqlite"])
+                        .pick_file()
+                        .await
+                        .map(|file| file.path().to_path_buf())
+                },
+                Message::RecoveryBackupSelected,
+            );
+        }
+        Message::RecoveryBackupSelected(path) => {
+            let Some(path) = path else {
+                return Task::none();
+            };
+            // La base active étant inutilisable, la restauration passe par le système de
+            // fichiers : aucun pool n'existe pour y appliquer l'API backup de SQLite.
+            match crate::core::config::AppPaths::discover()
+                .and_then(|paths| crate::core::backup::restore_file(&path, &paths.database))
+            {
+                Ok(()) => {
+                    app.bootstrap();
+                    if app.fatal_error.is_none() {
+                        app.notify_success(
+                            "Backup restauré. Candilog a redémarré sur vos données.",
+                        );
+                    }
+                }
+                Err(error) => {
+                    tracing::error!(erreur = %error, "restauration de secours impossible");
+                    app.fatal_error = Some(error.message_utilisateur());
+                }
+            }
+        }
+        Message::QuarantineDatabase => {
+            match crate::core::config::AppPaths::discover()
+                .and_then(|paths| crate::core::backup::quarantine(&paths.database))
+            {
+                Ok(ancienne) => {
+                    app.bootstrap();
+                    if app.fatal_error.is_none() {
+                        app.notify(
+                            NotificationKind::Warning,
+                            format!(
+                                "Candilog a redémarré sur une base neuve. L'ancienne base est \
+                                 conservée sous « {} » au cas où elle serait récupérable.",
+                                ancienne.file_name().unwrap_or_default().to_string_lossy()
+                            ),
+                        );
+                    }
+                }
+                Err(error) => {
+                    tracing::error!(erreur = %error, "mise de côté impossible");
+                    app.fatal_error = Some(error.message_utilisateur());
+                }
+            }
+        }
         Message::BackupImportSelected(path) => {
             if let Some(path) = path {
                 match crate::core::backup::validate(&path) {
@@ -1067,7 +1235,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                         app.pending_backup_import = Some(path);
                         app.dialog = Some(Dialog::ImportBackup);
                     }
-                    Err(error) => app.notification = Some(error.to_string()),
+                    Err(error) => app.notify_error(&error),
                 }
             }
         }
@@ -1075,44 +1243,47 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             let (Some(backend), Some(path)) =
                 (app.backend.as_ref(), app.pending_backup_import.clone())
             else {
-                app.notification = Some("Aucun backup valide sélectionné.".into());
+                app.notify(
+                    NotificationKind::Warning,
+                    "Aucun backup valide sélectionné.",
+                );
                 return Task::none();
             };
-            match crate::core::backup::import(&backend.sqlite, &path) {
+            match crate::core::backup::import(&backend.sqlite, &backend.db_path, &path) {
                 Ok(()) => {
                     app.pending_backup_import = None;
                     app.dialog = None;
-                    app.reload();
-                    app.notification = Some("Backup restauré avec succès.".into());
+                    app.notify_success("Backup restauré avec succès.");
+                    return recharger(app);
                 }
-                Err(error) => app.notification = Some(error.to_string()),
+                Err(error) => app.notify_error(&error),
             }
         }
         Message::ConfirmDatabaseReset => {
             let Some(backend) = app.backend.as_ref() else {
-                app.notification = Some("La base Candilog n'est pas disponible.".into());
+                app.notify_failure("La base Candilog n'est pas disponible.");
                 return Task::none();
             };
             match crate::core::backup::reset_data(&backend.sqlite) {
                 Ok(()) => {
                     app.dialog = None;
-                    app.reload();
-                    app.notification = Some("Toutes les données ont été réinitialisées.".into());
+                    app.notify_success("Toutes les données ont été réinitialisées.");
+                    return recharger(app);
                 }
-                Err(error) => app.notification = Some(error.to_string()),
+                Err(error) => app.notify_error(&error),
             }
         }
         Message::ConfirmAiCacheReset => {
             let Some(backend) = app.backend.as_ref() else {
-                app.notification = Some("La base Candilog n'est pas disponible.".into());
+                app.notify_failure("La base Candilog n'est pas disponible.");
                 return Task::none();
             };
             match backend.cache_ia.reset() {
                 Ok(()) => {
                     app.dialog = None;
-                    app.notification = Some("Cache IA vidé.".into());
+                    app.notify_success("Cache IA vidé.");
                 }
-                Err(error) => app.notification = Some(error.to_string()),
+                Err(error) => app.notify_error(&error),
             }
         }
         Message::AcceptRecommendation(index) => {
@@ -1151,10 +1322,26 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             }
         }
         Message::StatisticsTabChanged(tab) => app.statistics_tab = tab,
-        Message::AtsPagePrev => app.ats_page = app.ats_page.saturating_sub(1),
-        Message::AtsPageNext => app.ats_page = app.ats_page.saturating_add(1),
-        Message::LlmPagePrev => app.llm_page = app.llm_page.saturating_sub(1),
-        Message::LlmPageNext => app.llm_page = app.llm_page.saturating_add(1),
+        // Les compteurs sont 1-based et bornés **ici**, dans la transition d'état, et non
+        // seulement à l'affichage : borner en aval laissait le compteur dériver sans que rien
+        // ne bouge à l'écran, puis exiger autant de clics en sens inverse pour revenir dans
+        // la plage utile.
+        Message::AtsPagePrev => {
+            app.ats_page = app.ats_page.saturating_sub(1).max(1);
+            return recharger(app);
+        }
+        Message::AtsPageNext => {
+            app.ats_page = app.ats_page.saturating_add(1).min(app.ats_total_pages());
+            return recharger(app);
+        }
+        Message::LlmPagePrev => {
+            app.llm_page = app.llm_page.saturating_sub(1).max(1);
+            return recharger(app);
+        }
+        Message::LlmPageNext => {
+            app.llm_page = app.llm_page.saturating_add(1).min(app.llm_total_pages());
+            return recharger(app);
+        }
         Message::DocumentWidthChanged(width) => app.document_width = width,
         Message::FocusSearch => {
             return iced::widget::text_input::focus(SEARCH_FIELD_ID);
@@ -1165,28 +1352,6 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
 
 /// Identifiant du champ de recherche de l'écran courant, ciblé par `Ctrl+F`.
 pub const SEARCH_FIELD_ID: &str = "candilog-search";
-
-fn save_review_screenshot(screenshot: &iced::window::Screenshot) -> Result<(), String> {
-    let path = std::env::var_os("CANDILOG_CAPTURE_PATH")
-        .ok_or_else(|| "Chemin de capture visuelle absent.".to_string())?;
-    let pixel_count = u64::from(screenshot.size.width) * u64::from(screenshot.size.height);
-    let expected = usize::try_from(pixel_count.saturating_mul(4))
-        .map_err(|_| "Capture visuelle trop volumineuse.".to_string())?;
-    if screenshot.bytes.len() != expected {
-        return Err("Capture visuelle Iced incomplète.".into());
-    }
-    let mut ppm = format!(
-        "P6\n{} {}\n255\n",
-        screenshot.size.width, screenshot.size.height
-    )
-    .into_bytes();
-    ppm.reserve(usize::try_from(pixel_count.saturating_mul(3)).unwrap_or_default());
-    for rgba in screenshot.bytes.chunks_exact(4) {
-        ppm.extend_from_slice(&rgba[..3]);
-    }
-    std::fs::write(path, ppm)
-        .map_err(|error| format!("Impossible d'enregistrer la capture visuelle : {error}"))
-}
 
 fn optional(value: &str) -> Option<String> {
     let trimmed = value.trim();
@@ -1220,112 +1385,6 @@ fn apply_recommendation(
             }
         }
         _ => {}
-    }
-}
-
-fn finish_submit(app: &mut App, result: Result<(), String>, success: &str) {
-    match result {
-        Ok(()) => {
-            app.dialog = None;
-            app.editing_id = None;
-            app.reload();
-            app.notification = Some(success.into());
-            let _ = notify_rust::Notification::new()
-                .summary("Candilog")
-                .body(success)
-                .show();
-        }
-        Err(error) => app.notification = Some(error),
-    }
-}
-
-async fn export_candidatures(
-    rows: Vec<crate::modules::candidatures::model::Candidature>,
-) -> Result<std::path::PathBuf, String> {
-    let Some(file) = rfd::AsyncFileDialog::new()
-        .set_title("Exporter les candidatures")
-        .set_file_name("candidatures.csv")
-        .add_filter("CSV", &["csv"])
-        .save_file()
-        .await
-    else {
-        return Err("Export annulé.".into());
-    };
-    let path = file.path().to_path_buf();
-    let mut writer = csv::WriterBuilder::new()
-        .delimiter(b';')
-        .from_writer(Vec::new());
-    writer
-        .write_record([
-            "poste",
-            "entreprise",
-            "contrat",
-            "statut",
-            "date_envoi",
-            "lien_offre",
-            "notes",
-        ])
-        .map_err(|error| format!("Impossible de préparer le CSV : {error}"))?;
-    for row in rows {
-        writer
-            .write_record([
-                row.poste,
-                row.entreprise_nom.unwrap_or_default(),
-                row.type_contrat.to_string(),
-                row.statut.to_string(),
-                row.date_envoi,
-                row.lien_offre.unwrap_or_default(),
-                row.notes.unwrap_or_default(),
-            ])
-            .map_err(|error| format!("Impossible d'écrire le CSV : {error}"))?;
-    }
-    let bytes = writer
-        .into_inner()
-        .map_err(|error| format!("Impossible de terminer le CSV : {error}"))?;
-    std::fs::write(&path, bytes)
-        .map_err(|error| format!("Impossible d'enregistrer le CSV : {error}"))?;
-    Ok(path)
-}
-
-/// Abonnements desktop : chronomètre et fermeture clavier des surfaces temporaires.
-pub fn subscription(_app: &App) -> Subscription<Message> {
-    Subscription::batch([
-        iced::time::every(Duration::from_secs(1)).map(|_| Message::Tick),
-        keyboard::on_key_press(shortcut),
-        iced::window::resize_events().map(|(_id, size)| Message::WindowResized(size)),
-    ])
-}
-
-/// Traduit une combinaison clavier en message applicatif.
-fn shortcut(key: keyboard::Key, modifiers: keyboard::Modifiers) -> Option<Message> {
-    if matches!(key, keyboard::Key::Named(keyboard::key::Named::Escape)) {
-        return Some(Message::CloseDialog);
-    }
-    if !modifiers.command() {
-        return None;
-    }
-    let keyboard::Key::Character(character) = &key else {
-        return None;
-    };
-    match character.as_str() {
-        "n" => Some(Message::OpenDialog(super::state::Dialog::Candidature)),
-        "f" => Some(Message::FocusSearch),
-        "r" => Some(Message::Reload),
-        digit => digit
-            .chars()
-            .next()
-            .filter(char::is_ascii_digit)
-            .and_then(crate::navigation::Route::from_shortcut)
-            .map(Message::Navigate),
-    }
-}
-
-/// Thème Iced actif.
-pub fn theme(app: &App) -> Theme {
-    if app.is_dark {
-        crate::ui::theme::dark()
-    } else {
-        crate::ui::theme::light()
     }
 }
 

@@ -1,0 +1,52 @@
+# Contrôle de la chaîne d'approvisionnement : licences et avis de sécurité.
+#
+# Le projet déclare `license = "MIT"` et vise une distribution publique multi-plateforme, mais
+# aucune des dépendances transitives n'avait vu sa licence vérifiée.
+#
+#     cargo deny check
+
+[graph]
+all-features = true
+
+[advisories]
+version = 2
+ignore = [
+    # Toutes non maintenues, toutes transitives, aucune vulnérabilité exploitable ici.
+    # Elles se résorberont par une montée de version d'Iced ; à réévaluer à chaque montée.
+    "RUSTSEC-2024-0384", # instant — utilitaire de temps, sans surface d'attaque ici
+    "RUSTSEC-2024-0436", # paste — macro de compilation
+    "RUSTSEC-2026-0206", # rustybuzz — mise en forme du texte d'Iced
+    "RUSTSEC-2026-0192", # ttf-parser — polices embarquées par `include_bytes!`, non tierces
+]
+
+[licenses]
+version = 2
+# Licences permissives compatibles avec une distribution MIT.
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "MPL-2.0",
+    "Unicode-3.0",
+    "CC0-1.0",
+    "BSL-1.0",
+    "Unlicense",
+    # Jeu de racines de certification Mozilla embarqué par `webpki-roots`. Licence de
+    # **données** permissive, sans obligation de réciprocité : compatible avec une
+    # distribution MIT.
+    "CDLA-Permissive-2.0",
+]
+confidence-threshold = 0.9
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

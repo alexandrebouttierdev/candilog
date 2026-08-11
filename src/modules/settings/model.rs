@@ -4,7 +4,7 @@ use crate::shared::llm::LlmConfig;
 use serde::{Deserialize, Serialize};
 
 /// Préférence de thème de l'interface.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ThemePref {
     /// Thème clair.

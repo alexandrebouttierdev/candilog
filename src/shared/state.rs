@@ -1,4 +1,4 @@
-//! État applicatif global injecté dans les commandes Tauri.
+//! État applicatif global : services métier, pool SQLite et coffre à secrets.
 
 use crate::modules::candidatures::repository::SqliteCandidatureRepository;
 use crate::modules::candidatures::service::CandidatureService;

@@ -16,7 +16,7 @@ async fn test_generate_with_options_injecte_num_ctx_num_predict_et_keep_alive() 
         .with_body(r#"{"message":{"content":"{}"}}"#)
         .create_async()
         .await;
-    let p = OllamaProvider::new(server.url(), "gemma3:1b".into(), 0.0);
+    let p = OllamaProvider::new(server.url(), "gemma3:1b".into(), 0.0, None);
     let opts = GenOptions {
         num_ctx: Some(4096),
         num_predict: Some(256),

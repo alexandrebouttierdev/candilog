@@ -36,47 +36,82 @@ pub fn layer(app: &App, dialog: Dialog) -> Element<'_, Message> {
         Dialog::Entreprise => form(
             title(app, "Nouvelle entreprise", "Modifier l'entreprise"),
             entreprise(app),
-            Message::SubmitEntreprise,
+            (!app.entreprise_form.nom.trim().is_empty()).then_some(Message::SubmitEntreprise),
             Size::Form,
         ),
         Dialog::Contact => form(
             title(app, "Nouveau contact", "Modifier le contact"),
             contact(app),
-            Message::SubmitContact,
+            (!app.contact_form.prenom.trim().is_empty() && !app.contact_form.nom.trim().is_empty())
+                .then_some(Message::SubmitContact),
             Size::Form,
         ),
         Dialog::Candidature => form(
             title(app, "Nouvelle candidature", "Modifier la candidature"),
             candidature(app),
-            Message::SubmitCandidature,
+            (!app.candidature_form.poste.trim().is_empty()
+                && app.candidature_form.entreprise_id.is_some()
+                && !app.candidature_form.date_envoi.trim().is_empty())
+            .then_some(Message::SubmitCandidature),
             Size::Form,
         ),
         Dialog::Entretien => form(
             title(app, "Nouvel entretien", "Modifier l'entretien"),
             entretien(app),
-            Message::SubmitEntretien,
+            (app.entretien_form.candidature_id.is_some()
+                && !app.entretien_form.date_entretien.trim().is_empty())
+            .then_some(Message::SubmitEntretien),
             Size::Wide,
         ),
         Dialog::Relance => form(
             title(app, "Nouvelle relance", "Modifier la relance"),
             relance(app),
-            Message::SubmitRelance,
+            (app.relance_form.candidature_id.is_some()
+                && !app.relance_form.date_relance.trim().is_empty())
+            .then_some(Message::SubmitRelance),
             Size::Form,
         ),
         Dialog::Profil => form(
             "Modifier le profil",
             profile(app),
-            Message::SubmitProfile,
+            Some(Message::SubmitProfile),
             Size::Wide,
         ),
-        Dialog::DeleteCandidature(_)
-        | Dialog::DeleteEntreprise(_)
-        | Dialog::DeleteContact(_)
-        | Dialog::DeleteEntretien(_)
-        | Dialog::DeleteRelance(_)
-        | Dialog::DeleteCv(_) => confirm(
-            "Confirmer la suppression",
-            "Cette suppression applique les contraintes SQLite et ne peut pas être annulée.",
+        Dialog::DeleteCandidature(id) => confirm_owned(
+            "Supprimer cette candidature",
+            consequences_candidature(app, id),
+            "Supprimer définitivement",
+            Message::ConfirmDelete,
+        ),
+        Dialog::DeleteEntreprise(id) => confirm_owned(
+            "Supprimer cette entreprise",
+            consequences_entreprise(app, id),
+            "Supprimer définitivement",
+            Message::ConfirmDelete,
+        ),
+        Dialog::DeleteContact(_) => confirm(
+            "Supprimer ce contact",
+            "Le contact sera supprimé. Les candidatures et entretiens auxquels il est associé \
+             sont conservés, et perdent simplement ce rattachement.",
+            "Supprimer définitivement",
+            Message::ConfirmDelete,
+        ),
+        Dialog::DeleteEntretien(_) => confirm(
+            "Supprimer cet entretien",
+            "L'entretien sera supprimé, avec sa date, son lieu, ses notes, son compte rendu et \
+             son analyse IA. La candidature associée est conservée.",
+            "Supprimer définitivement",
+            Message::ConfirmDelete,
+        ),
+        Dialog::DeleteRelance(_) => confirm(
+            "Supprimer cette relance",
+            "La relance sera supprimée. La candidature associée est conservée.",
+            "Supprimer définitivement",
+            Message::ConfirmDelete,
+        ),
+        Dialog::DeleteCv(_) => confirm(
+            "Supprimer cette version de CV",
+            "La version enregistrée sera supprimée. Vos candidatures ne sont pas affectées.",
             "Supprimer définitivement",
             Message::ConfirmDelete,
         ),
@@ -110,12 +145,25 @@ fn title<'a>(app: &App, creation: &'a str, edition: &'a str) -> &'a str {
     }
 }
 
+/// Modale de formulaire. `submit` vaut `None` tant que la saisie est incomplète.
+///
+/// Le message de soumission était auparavant câblé **sans condition** : « Enregistrer » était
+/// rendu dans son style primaire actif alors que des champs marqués obligatoires par un
+/// astérisque étaient vides. La validation n'intervenait qu'après le clic, côté service, et son
+/// résultat n'apparaissait que sous forme de toast dans le coin inférieur droit de la fenêtre —
+/// à l'opposé du champ fautif, sans qu'aucun champ ne soit signalé.
+///
+/// Un `on_press` absent grise le bouton : c'est le mécanisme d'état désactivé d'Iced.
 fn form<'a>(
     heading: &'a str,
     body: Element<'a, Message>,
-    submit: Message,
+    submit: Option<Message>,
     kind: Size,
 ) -> Element<'a, Message> {
+    let mut enregistrer = controls::primary("Enregistrer", Some(Icon::Check));
+    if let Some(message) = submit {
+        enregistrer = enregistrer.on_press(message);
+    }
     overlay::modal(
         heading,
         body,
@@ -123,11 +171,105 @@ fn form<'a>(
             controls::ghost("Annuler", None)
                 .on_press(Message::CloseDialog)
                 .into(),
-            controls::primary("Enregistrer", Some(Icon::Check))
-                .on_press(submit)
-                .into(),
+            enregistrer.into(),
         ]),
         kind,
+        Message::CloseDialog,
+    )
+}
+
+/// Décrit ce que la suppression d'une candidature va réellement emporter.
+///
+/// Les six confirmations partageaient une formulation unique — « Cette suppression applique les
+/// contraintes SQLite et ne peut pas être annulée » — qui expose un détail d'implémentation
+/// sans signification pour l'utilisateur et, surtout, ne dit pas ce qui va disparaître : une
+/// candidature efface en cascade ses relances et ses entretiens, une entreprise référencée voit
+/// au contraire sa suppression refusée. Le texte était identique dans les deux cas.
+fn consequences_candidature(app: &App, id: uuid::Uuid) -> String {
+    let poste = app
+        .data
+        .candidatures
+        .iter()
+        .find(|item| item.id == id)
+        .map_or_else(|| "Cette candidature".to_owned(), |item| item.poste.clone());
+    let relances = app
+        .data
+        .relances
+        .iter()
+        .filter(|item| item.candidature_id == id)
+        .count();
+    let entretiens = app
+        .data
+        .entretiens
+        .iter()
+        .filter(|item| item.candidature_id == id)
+        .count();
+    let mut phrase = format!("« {poste} » sera supprimée");
+    if relances > 0 || entretiens > 0 {
+        phrase.push_str(", ainsi que ");
+        let mut parties = Vec::new();
+        if relances > 0 {
+            parties.push(crate::ui::format::plural(relances, "relance", "relances"));
+        }
+        if entretiens > 0 {
+            parties.push(crate::ui::format::plural(
+                entretiens,
+                "entretien",
+                "entretiens",
+            ));
+        }
+        phrase.push_str(&parties.join(" et "));
+    }
+    phrase.push_str(". Cette action est définitive.");
+    phrase
+}
+
+/// Décrit le refus attendu quand l'entreprise porte encore des candidatures (RESTRICT).
+fn consequences_entreprise(app: &App, id: uuid::Uuid) -> String {
+    let nom = app
+        .data
+        .entreprises
+        .iter()
+        .find(|item| item.id == id)
+        .map_or_else(|| "Cette entreprise".to_owned(), |item| item.nom.clone());
+    let liees = app
+        .data
+        .candidatures
+        .iter()
+        .filter(|item| item.entreprise_id == id)
+        .count();
+    if liees > 0 {
+        format!(
+            "« {nom} » ne peut pas être supprimée : {} y {} encore rattachée{}. Supprimez-les \
+             d'abord, ou conservez l'entreprise.",
+            crate::ui::format::plural(liees, "candidature", "candidatures"),
+            if liees > 1 { "sont" } else { "est" },
+            if liees > 1 { "s" } else { "" },
+        )
+    } else {
+        format!("« {nom} » sera supprimée. Cette action est définitive.")
+    }
+}
+
+/// Variante de [`confirm`] pour un avertissement calculé.
+fn confirm_owned<'a>(
+    heading: &'a str,
+    warning: String,
+    action: &'a str,
+    message: Message,
+) -> Element<'a, Message> {
+    overlay::modal(
+        heading,
+        state::error(warning),
+        overlay::footer([
+            controls::ghost("Annuler", None)
+                .on_press(Message::CloseDialog)
+                .into(),
+            controls::danger(action, Some(Icon::Trash))
+                .on_press(message)
+                .into(),
+        ]),
+        Size::Form,
         Message::CloseDialog,
     )
 }

@@ -63,27 +63,79 @@ pub fn open_pool(path: Option<&Path>) -> AppResult<SqlitePool> {
     .with_init(initialiser_connexion);
     // `min_idle(1)` garde une connexion vivante : une base mémoire partagée est détruite
     // dès que sa dernière connexion se ferme.
+    //
+    // `connection_timeout` redéfinit le défaut de r2d2 (30 s). `build()` étant bloquant et
+    // appelé avant que la première fenêtre ne soit rendue, ce défaut laisserait l'utilisateur
+    // devant un écran vide une demi-minute lorsque la base est illisible ou verrouillée.
     Pool::builder()
         .min_idle(Some(1))
+        .connection_timeout(std::time::Duration::from_secs(2))
         .build(manager)
         .map_err(|e| AppError::Database(e.to_string()))
 }
 
 /// Applique les migrations locales non encore jouées, chacune dans sa propre transaction.
 ///
+/// Les migrations qui recréent une table (procédé imposé par `SQLite`, qui ne sait pas ajouter
+/// de contrainte par `ALTER TABLE`) passent par `DROP TABLE`. Or, clés étrangères actives,
+/// `SQLite` réalise un DELETE implicite avant de supprimer une table : les `ON DELETE CASCADE`
+/// des tables enfants se déclenchent et effacent leur contenu, alors même que la table parente
+/// est aussitôt recréée à l'identique.
+///
+/// On suit donc la procédure officielle de changement de schéma : `foreign_keys` désactivé
+/// **hors** transaction (le `PRAGMA` est sans effet à l'intérieur), `foreign_key_check` avant
+/// de valider, réactivation ensuite — y compris si la migration échoue, la connexion étant
+/// rendue au pool.
+///
 /// # Errors
-/// Retourne `AppError::Database` si une migration échoue.
+/// Retourne `AppError::Database` si une migration échoue ou laisse une référence pendante.
 pub fn run_local_migrations(pool: &SqlitePool) -> AppResult<()> {
     let mut conn = pool.get().map_err(|e| AppError::Database(e.to_string()))?;
     let version: i64 = conn.query_row("PRAGMA user_version", [], |row| row.get(0))?;
-    for (cible, sql) in MIGRATIONS {
-        if *cible <= version {
-            continue;
-        }
+    let a_migrer: Vec<_> = MIGRATIONS.iter().filter(|(c, _)| *c > version).collect();
+    if a_migrer.is_empty() {
+        return Ok(());
+    }
+
+    tracing::info!(depuis = version, jusqu_a = DERNIERE_VERSION, "migration");
+    conn.pragma_update(None, "foreign_keys", "OFF")?;
+    let resultat = appliquer(&mut conn, &a_migrer);
+    // Restaure l'état attendu par le reste de l'application avant de rendre la connexion,
+    // que la migration ait abouti ou non.
+    let reactivation = conn.pragma_update(None, "foreign_keys", "ON");
+    resultat?;
+    reactivation?;
+    Ok(())
+}
+
+/// Corps de `run_local_migrations`, exécuté clés étrangères désactivées.
+fn appliquer(conn: &mut rusqlite::Connection, a_migrer: &[&(i64, &str)]) -> AppResult<()> {
+    for (cible, sql) in a_migrer {
         let transaction = conn.transaction()?;
         transaction.execute_batch(sql)?;
+        verifier_integrite_referentielle(&transaction, *cible)?;
         transaction.pragma_update(None, "user_version", cible)?;
         transaction.commit()?;
+        tracing::info!(version = cible, "migration appliquée");
+    }
+    Ok(())
+}
+
+/// Refuse de valider une migration qui laisserait une référence pendante.
+///
+/// Les clés étrangères étant désactivées le temps de la recréation des tables, ce contrôle
+/// est le seul garde-fou : sans lui, une erreur de recopie passerait inaperçue jusqu'à la
+/// première lecture.
+fn verifier_integrite_referentielle(conn: &rusqlite::Connection, cible: i64) -> AppResult<()> {
+    let violations: i64 =
+        conn.query_row("SELECT count(*) FROM pragma_foreign_key_check", [], |row| {
+            row.get(0)
+        })?;
+    if violations > 0 {
+        tracing::error!(version = cible, violations, "migration incohérente");
+        return Err(AppError::Database(format!(
+            "la migration {cible} laisse {violations} référence(s) pendante(s)"
+        )));
     }
     Ok(())
 }

@@ -13,7 +13,7 @@ async fn test_generate_openai_compat_parse_le_premier_choix() {
         .with_body(r#"{"choices":[{"message":{"content":"Salut"}}]}"#)
         .create_async()
         .await;
-    let p = OpenAiCompatProvider::new(server.url(), "sk-test".into(), "gpt-4o".into(), 0.5);
+    let p = OpenAiCompatProvider::new(server.url(), "sk-test".into(), "gpt-4o".into(), 0.5, None);
     let out = p.generate("x", "s").await.unwrap();
     assert_eq!(out, "Salut");
     m.assert_async().await;

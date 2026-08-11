@@ -8,13 +8,15 @@ use crate::modules::cv::model::CvVersionSummary;
 use crate::modules::entreprises::model::Entreprise;
 use crate::modules::entretiens::model::{Entretien, TypeEntretien};
 use crate::modules::ia::cv_model::{CvGeneration, OfferAnalysis};
-use crate::modules::metriques::model::{AppelLlm, ResumeScoresAts, ScoreAts};
+use crate::modules::metriques::model::{AppelLlm, Page, ResumeScoresAts, ScoreAts};
 use crate::modules::metriques::repository::MetriquesRepository;
 use crate::modules::relances::model::Relance;
 use crate::modules::settings::model::AppSettings;
 use crate::navigation::Route;
+use crate::shared::error::AppError;
 use crate::shared::profile::Profile;
 use crate::shared::state::AppState as BackendState;
+pub use crate::ui::components::notification::Kind as NotificationKind;
 use chrono::{Datelike, Local};
 use std::sync::Arc;
 
@@ -143,6 +145,34 @@ pub struct RelanceForm {
     pub notes: String,
 }
 
+/// Formulaire de l'écran Paramètres, **distinct** de l'instantané de données.
+///
+/// Les huit messages d'édition écrivaient directement dans `app.data.settings`, c'est-à-dire
+/// dans la copie censée refléter le contenu de la base, alors que les cinq autres formulaires
+/// du projet disposent tous d'une structure d'édition séparée. Trois conséquences : un échec
+/// d'enregistrement laissait `app.data.settings` divergé de la base sans qu'aucun rechargement
+/// ne vienne le corriger ; quitter l'écran sans enregistrer conservait les modifications en
+/// mémoire ; et le bandeau de titre annonçait aussitôt un fournisseur qui n'était pas celui
+/// réellement persisté.
+///
+/// La clé API n'y transite que le temps de la saisie — le champ de l'instantané porte la
+/// mention « sans secret en clair », qu'y déposer la clé contredisait.
+#[derive(Debug, Clone, Default)]
+pub struct SettingsForm {
+    /// Valeurs en cours d'édition.
+    pub draft: AppSettings,
+}
+
+impl SettingsForm {
+    /// Initialise le formulaire à l'ouverture de l'écran, depuis l'état persisté.
+    #[must_use]
+    pub fn from_settings(settings: &AppSettings) -> Self {
+        Self {
+            draft: settings.clone(),
+        }
+    }
+}
+
 /// Filtres cumulables des candidatures.
 #[derive(Debug, Clone, Default)]
 pub struct CandidateFilters {
@@ -235,6 +265,85 @@ impl Default for RelanceForm {
     }
 }
 
+/// Le harnais de capture visuelle est-il demandé ?
+///
+/// Toujours faux sans la caractéristique Cargo `capture` : le binaire distribué ne doit ni lire
+/// ces variables, ni écrire de fichier au chemin qu'elles désignent.
+#[must_use]
+pub fn capture_demandee() -> bool {
+    cfg!(feature = "capture") && std::env::var_os("CANDILOG_CAPTURE_PATH").is_some()
+}
+
+/// Charge l'instantané complet et la liste des jeux qui n'ont pas pu être lus.
+///
+/// Fonction **libre** et non méthode : elle ne touche pas à `App`, ce qui lui permet d'être
+/// exécutée sur un fil de travail (`spawn_blocking`) plutôt que sur le fil de rendu.
+#[must_use]
+pub fn charger_instantane(
+    backend: &BackendState,
+    llm_page: u64,
+    ats_page: u64,
+) -> (DataSnapshot, Vec<&'static str>) {
+    let mut echecs: Vec<&'static str> = Vec::new();
+    let taille = crate::modules::metriques::views::PAGE_SIZE;
+    let data = DataSnapshot {
+        candidatures: charger("candidatures", &mut echecs, backend.candidatures.lister()),
+        entreprises: charger("entreprises", &mut echecs, backend.entreprises.lister()),
+        contacts: charger("contacts", &mut echecs, backend.contacts.lister()),
+        entretiens: charger("entretiens", &mut echecs, backend.entretiens.lister()),
+        relances: charger("relances", &mut echecs, backend.relances.lister()),
+        cv_versions: charger("CV", &mut echecs, backend.cv.list()),
+        profile: charger("profil", &mut echecs, backend.profil.get()),
+        settings: charger("paramètres", &mut echecs, backend.settings.get()),
+        llm_calls: charger(
+            "historique IA",
+            &mut echecs,
+            backend.metriques.lister_appels_page(llm_page, taille),
+        ),
+        ats_scores: charger(
+            "scores ATS",
+            &mut echecs,
+            backend.metriques.lister_scores_page(ats_page, taille),
+        ),
+        ats_summary: charger(
+            "synthèse ATS",
+            &mut echecs,
+            backend.metriques.resumer_scores().map(Some),
+        ),
+    };
+    (data, echecs)
+}
+
+/// Charge un jeu de données isolément : un échec est journalisé, recensé, et remplacé par la
+/// valeur par défaut du type plutôt que d'interrompre le chargement des dix autres.
+fn charger<T: Default>(
+    nom: &'static str,
+    echecs: &mut Vec<&'static str>,
+    resultat: Result<T, AppError>,
+) -> T {
+    match resultat {
+        Ok(valeur) => valeur,
+        Err(error) => {
+            tracing::error!(jeu = nom, erreur = %error, "jeu de données illisible");
+            echecs.push(nom);
+            T::default()
+        }
+    }
+}
+
+/// Message adressé à l'utilisateur, **avec** sa nature.
+///
+/// La nature accompagne le texte au lieu d'être redevinée au moment du rendu : toutes les
+/// erreurs étaient converties en `String` dès `update()`, puis reclassées par recherche de
+/// mots-clés, avec `Success` pour cas par défaut — un échec sur deux s'affichait en vert.
+#[derive(Debug, Clone)]
+pub struct Notification {
+    /// Nature, qui détermine le ton et l'icône du toast.
+    pub kind: NotificationKind,
+    /// Texte affiché, déjà destiné à l'utilisateur.
+    pub message: String,
+}
+
 /// Données chargées pour les différents écrans.
 #[derive(Debug, Clone, Default)]
 pub struct DataSnapshot {
@@ -255,9 +364,16 @@ pub struct DataSnapshot {
     /// Paramètres applicatifs sans secret en clair.
     pub settings: AppSettings,
     /// Historique des appels IA.
-    pub llm_calls: Vec<AppelLlm>,
+    ///
+    /// **Page** et non liste complète : `reload()` chargeait tout l'historique en mémoire à
+    /// chaque rechargement — donc après chaque création, modification et suppression — par un
+    /// `SELECT … ORDER BY cree_le DESC` sans `LIMIT`, puis paginait en mémoire à l'affichage.
+    /// Le coût croissait linéairement avec l'ancienneté de l'installation et était payé même
+    /// quand l'écran Statistiques n'était pas ouvert. Les méthodes paginées du dépôt
+    /// existaient déjà et n'étaient appelées que par leurs propres tests.
+    pub llm_calls: Page<AppelLlm>,
     /// Historique des scores ATS.
-    pub ats_scores: Vec<ScoreAts>,
+    pub ats_scores: Page<ScoreAts>,
     /// Agrégats ATS globaux.
     pub ats_summary: Option<ResumeScoresAts>,
 }
@@ -292,8 +408,28 @@ pub struct App {
     pub initialized: bool,
     /// Erreur bloquante d'initialisation.
     pub fatal_error: Option<String>,
+    /// Formulaire d'édition des paramètres, séparé de l'instantané persisté.
+    pub settings_form: SettingsForm,
+    /// Dernier thème système détecté, `None` tant que le système ne s'est pas prononcé.
+    pub system_dark: Option<bool>,
+    /// Numéro de séquence de l'opération IA en cours.
+    ///
+    /// Un seul couple `ai_is_running` / `ai_cancellation` est partagé par les six opérations
+    /// IA. Sans identifiant, le résultat d'une opération abandonnée remettait
+    /// `ai_is_running` à `false` et effaçait `ai_cancellation` quelle que soit l'opération
+    /// réellement en cours : lancer une analyse d'offre, naviguer ailleurs, y lancer une
+    /// extraction de profil, puis voir arriver le résultat de la première faisait disparaître
+    /// l'indicateur d'activité et le bouton d'annulation de la seconde — dont le jeton
+    /// devenait inaccessible.
+    pub ai_sequence: u64,
     /// Notification utilisateur non bloquante.
-    pub notification: Option<String>,
+    pub notification: Option<Notification>,
+    /// Résultat du dernier contrôle de santé du fournisseur IA.
+    ///
+    /// Conservé dans l'état plutôt que déduit de l'activité de l'interface : la pastille du
+    /// bandeau de titre doit refléter ce qui a été **mesuré**, pas le fait qu'aucune opération
+    /// ne tourne. `Unknown` tant qu'aucun contrôle n'a abouti.
+    pub provider_health: crate::ui::components::runtime_status::Health,
     /// Mise à jour disponible.
     pub available_update: Option<crate::core::updater::UpdateInfo>,
     /// Progression du téléchargement de mise à jour.
@@ -391,8 +527,61 @@ pub struct App {
 impl App {
     /// Initialise les chemins, la base et toutes les données visibles.
     pub fn new() -> (Self, iced::Task<Message>) {
+        let mut app = Self::vierge();
+        app.appliquer_harnais_de_capture_avant_ouverture();
+        app.bootstrap();
+        app.appliquer_harnais_de_capture_apres_ouverture();
+        let initial = if capture_demandee() {
+            iced::Task::perform(
+                async {
+                    tokio::time::sleep(std::time::Duration::from_millis(1_200)).await;
+                },
+                |()| super::Message::CaptureForReview,
+            )
+        } else {
+            iced::Task::none()
+        };
+        // La capture visuelle ne maximise pas la fenêtre (dimensions maîtrisées).
+        let maximize = if capture_demandee() {
+            iced::Task::none()
+        } else {
+            iced::Task::done(super::Message::MaximizeWindow)
+        };
+        // Santé du fournisseur mesurée dès le démarrage : la pastille reste grise tant que
+        // rien n'a été vérifié, plutôt que d'afficher un vert non fondé.
+        let sonde = if app.backend.is_some() {
+            iced::Task::done(super::Message::ProbeProviderHealth)
+        } else {
+            iced::Task::none()
+        };
+        // Le thème du système est demandé au démarrage : « Système » doit suivre le système,
+        // pas se comporter comme « Sombre ».
+        let theme = iced::Task::perform(
+            crate::core::theme_systeme::detecter(),
+            super::Message::SystemThemeDetected,
+        );
+        (app, iced::Task::batch([initial, maximize, sonde, theme]))
+    }
+
+    /// Construit l'application **autour d'un backend déjà ouvert**, puis charge les données.
+    ///
+    /// Seul chemin permettant de tester `App` sans effet de bord : `App::new()` résout lui-même
+    /// ses chemins et ouvre lui-même sa base, ce qui obligeait ses tests à dépendre du fichier
+    /// réel `.candilog-dev/candilog.sqlite` du dépôt et à muter `CANDILOG_DATA_DIR` — une
+    /// variable d'environnement du **processus entier**, lue en parallèle par les autres tests.
+    #[must_use]
+    pub fn with_backend(paths: AppPaths, backend: BackendState) -> Self {
+        let mut app = Self::vierge();
+        app.paths = Some(paths);
+        app.backend = Some(Arc::new(backend));
+        app.reload();
+        app
+    }
+
+    /// État initial, avant toute résolution de chemin et toute ouverture de base.
+    fn vierge() -> Self {
         let now = Local::now();
-        let mut app = Self {
+        Self {
             route: Route::Dashboard,
             candidate_view: CandidateView::Kanban,
             candidate_filters: CandidateFilters::default(),
@@ -407,7 +596,11 @@ impl App {
             data: DataSnapshot::default(),
             initialized: false,
             fatal_error: None,
+            settings_form: SettingsForm::default(),
+            system_dark: None,
+            ai_sequence: 0,
             notification: None,
+            provider_health: crate::ui::components::runtime_status::Health::default(),
             available_update: None,
             update_progress: None,
             verified_update_path: None,
@@ -457,9 +650,21 @@ impl App {
                 crate::ui::theme::layout::MIN_WIDTH,
                 crate::ui::theme::layout::MIN_HEIGHT,
             ),
-        };
+        }
+    }
+    /// Réglages du harnais de capture applicables **avant** l'ouverture de la base.
+    ///
+    /// Le harnais sert la revue de design (routes, thèmes, dialogues, états particuliers). Il
+    /// n'est pas destiné aux utilisateurs : ses onze variables d'environnement modifient le
+    /// comportement de l'application, écrivent un fichier au chemin indiqué et fabriquent de
+    /// faux écrans d'erreur. La caractéristique Cargo `capture` le retire du binaire distribué.
+    ///
+    /// `CANDILOG_DATA_DIR` n'en fait pas partie et reste actif en toutes circonstances : c'est
+    /// lui qui permet de travailler sans toucher aux données réelles.
+    #[cfg(feature = "capture")]
+    fn appliquer_harnais_de_capture_avant_ouverture(&mut self) {
         if let Ok(route) = std::env::var("CANDILOG_CAPTURE_ROUTE") {
-            app.route = match route.as_str() {
+            self.route = match route.as_str() {
                 "candidatures" => Route::Candidatures,
                 "cv" => Route::Cv,
                 "entreprises" => Route::Entreprises,
@@ -475,13 +680,13 @@ impl App {
             };
         }
         if std::env::var("CANDILOG_CAPTURE_THEME").as_deref() == Ok("light") {
-            app.is_dark = false;
+            self.is_dark = false;
         }
         if std::env::var("CANDILOG_CAPTURE_CANDIDATE_VIEW").as_deref() == Ok("list") {
-            app.candidate_view = CandidateView::List;
+            self.candidate_view = CandidateView::List;
         }
         if let Ok(dialog) = std::env::var("CANDILOG_CAPTURE_DIALOG") {
-            app.dialog = match dialog.as_str() {
+            self.dialog = match dialog.as_str() {
                 "candidature" => Some(Dialog::Candidature),
                 "entreprise" => Some(Dialog::Entreprise),
                 "contact" => Some(Dialog::Contact),
@@ -491,60 +696,45 @@ impl App {
                 _ => None,
             };
         }
-        match AppPaths::discover() {
-            Ok(paths) => match BackendState::persistent(&paths.database) {
-                Ok(backend) => {
-                    app.paths = Some(paths);
-                    app.backend = Some(Arc::new(backend));
-                    app.reload();
-                }
-                Err(error) => app.fatal_error = Some(error.to_string()),
-            },
-            Err(error) => app.fatal_error = Some(error.to_string()),
-        }
+    }
+
+    /// Réglages du harnais de capture qui supposent les données chargées.
+    #[cfg(feature = "capture")]
+    fn appliquer_harnais_de_capture_apres_ouverture(&mut self) {
         if std::env::var("CANDILOG_CAPTURE_DIALOG").as_deref() == Ok("detail") {
-            app.dialog = app
+            self.dialog = self
                 .data
                 .candidatures
                 .first()
                 .map(|candidate| Dialog::CandidatureDetail(candidate.id));
         }
         match std::env::var("CANDILOG_CAPTURE_CALENDAR_VIEW").as_deref() {
-            Ok("week") => app.calendar_view = CalendarView::Week,
-            Ok("day") => app.calendar_view = CalendarView::Day,
+            Ok("week") => self.calendar_view = CalendarView::Week,
+            Ok("day") => self.calendar_view = CalendarView::Day,
             _ => {}
         }
         if std::env::var_os("CANDILOG_CAPTURE_AI_RUNNING").is_some() {
-            app.ai_is_running = true;
-            app.ai_elapsed_seconds = 18;
+            self.ai_is_running = true;
+            self.ai_elapsed_seconds = 18;
         }
         if let Ok(message) = std::env::var("CANDILOG_CAPTURE_NOTIFICATION") {
-            app.notification = Some(message);
+            self.notify(NotificationKind::Info, message);
         }
         if std::env::var_os("CANDILOG_CAPTURE_FATAL_ERROR").is_some() {
-            app.fatal_error = Some(
-                "Impossible d’ouvrir la base locale. Vérifiez les droits du dossier de données."
+            self.fatal_error = Some(
+                "Impossible d\u{2019}ouvrir la base locale. Vérifiez les droits du dossier de données."
                     .into(),
             );
         }
-        let initial = if std::env::var_os("CANDILOG_CAPTURE_PATH").is_some() {
-            iced::Task::perform(
-                async {
-                    tokio::time::sleep(std::time::Duration::from_millis(1_200)).await;
-                },
-                |()| super::Message::CaptureForReview,
-            )
-        } else {
-            iced::Task::none()
-        };
-        // La capture visuelle ne maximise pas la fenêtre (dimensions maîtrisées).
-        let maximize = if std::env::var_os("CANDILOG_CAPTURE_PATH").is_some() {
-            iced::Task::none()
-        } else {
-            iced::Task::done(super::Message::MaximizeWindow)
-        };
-        (app, iced::Task::batch([initial, maximize]))
     }
+
+    /// Sans la caractéristique `capture`, le harnais n'existe pas dans le binaire.
+    #[cfg(not(feature = "capture"))]
+    const fn appliquer_harnais_de_capture_avant_ouverture(&mut self) {}
+
+    /// Sans la caractéristique `capture`, le harnais n'existe pas dans le binaire.
+    #[cfg(not(feature = "capture"))]
+    const fn appliquer_harnais_de_capture_apres_ouverture(&mut self) {}
 
     /// Décisions de mise en page pour la taille de fenêtre courante.
     #[must_use]
@@ -552,32 +742,106 @@ impl App {
         crate::ui::theme::Layout::from_size(self.window_size)
     }
 
-    /// Recharge les données sans remplacer un instantané valide en cas d'erreur.
+    /// Résout les chemins applicatifs et ouvre la base, puis charge un premier instantané.
+    ///
+    /// Extrait de `App::new()` pour être **rejouable** : l'écran d'erreur fatale proposait un
+    /// bouton « Réessayer » câblé sur `Message::Reload`, dont la première instruction est
+    /// `let Some(backend) = … else { return; }` — le backend n'étant justement jamais construit
+    /// quand l'ouverture a échoué, le bouton ne faisait rien et n'effaçait même pas l'erreur.
+    /// L'utilisateur restait enfermé dans un écran mort.
+    pub fn bootstrap(&mut self) {
+        match AppPaths::discover().and_then(|paths| {
+            let backend = BackendState::persistent(&paths.database)?;
+            Ok((paths, backend))
+        }) {
+            Ok((paths, backend)) => {
+                tracing::info!(base = ?paths.database, "base ouverte");
+                // Le fichier de base vient peut-être d'être créé : ses permissions n'ont pas
+                // pu être posées lors de la résolution des chemins.
+                paths.securiser();
+                self.paths = Some(paths);
+                self.backend = Some(Arc::new(backend));
+                self.fatal_error = None;
+                self.reload();
+            }
+            Err(error) => {
+                tracing::error!(erreur = %error, "démarrage impossible");
+                self.fatal_error = Some(error.message_utilisateur());
+            }
+        }
+    }
+
+    /// Affiche un message d'information ou de succès.
+    pub fn notify(&mut self, kind: NotificationKind, message: impl Into<String>) {
+        self.notification = Some(Notification {
+            kind,
+            message: message.into(),
+        });
+    }
+
+    /// Confirme une opération réussie.
+    pub fn notify_success(&mut self, message: impl Into<String>) {
+        self.notify(NotificationKind::Success, message);
+    }
+
+    /// Signale un échec à partir d'une erreur typée : la nature du toast en découle, le détail
+    /// technique part au journal et l'écran ne reçoit que la reformulation utilisateur.
+    pub fn notify_error(&mut self, error: &AppError) {
+        tracing::error!(erreur = %error, "opération en échec");
+        self.notify(
+            NotificationKind::from_error(error),
+            error.message_utilisateur(),
+        );
+    }
+
+    /// Signale un échec déjà réduit à une chaîne par une couche antérieure. Le message est
+    /// affiché tel quel, mais reste classé comme un échec — jamais comme un succès.
+    pub fn notify_failure(&mut self, message: impl Into<String>) {
+        let message = message.into();
+        tracing::error!(message = %message, "opération en échec");
+        self.notify(NotificationKind::Error, message);
+    }
+
+    /// Recharge les données, **jeu par jeu**.
+    ///
+    /// Le chargement était une closure unique dont chaque appel propageait par `?` : le moindre
+    /// échec sur l'un des onze jeux abandonnait les dix autres et laissait `initialized` à faux,
+    /// ce qui fige *tous* les écrans — Paramètres compris, donc sans accès à la restauration de
+    /// backup — en squelette de chargement permanent. Une seule ligne de profil au JSON non
+    /// conforme suffisait à rendre l'application entière inutilisable.
+    ///
+    /// Chaque jeu est désormais indépendant : ceux qui échouent retombent sur leur valeur par
+    /// défaut, les autres s'affichent, et l'utilisateur est informé de ce qui manque.
     pub fn reload(&mut self) {
-        let Some(backend) = &self.backend else {
+        let Some(backend) = self.backend.clone() else {
             return;
         };
-        let loaded = (|| {
-            Ok::<DataSnapshot, crate::shared::error::AppError>(DataSnapshot {
-                candidatures: backend.candidatures.lister()?,
-                entreprises: backend.entreprises.lister()?,
-                contacts: backend.contacts.lister()?,
-                entretiens: backend.entretiens.lister()?,
-                relances: backend.relances.lister()?,
-                cv_versions: backend.cv.list()?,
-                profile: backend.profil.get()?,
-                settings: backend.settings.get()?,
-                llm_calls: backend.metriques.lister_appels()?,
-                ats_scores: backend.metriques.lister_scores()?,
-                ats_summary: Some(backend.metriques.resumer_scores()?),
-            })
-        })();
-        match loaded {
-            Ok(snapshot) => {
-                self.data = snapshot;
-                self.initialized = true;
-            }
-            Err(error) => self.notification = Some(error.to_string()),
+        let (data, echecs) = charger_instantane(&backend, self.llm_page, self.ats_page);
+        self.appliquer_instantane(data, &echecs);
+    }
+
+    /// Installe un instantané fraîchement chargé et signale ce qui a échoué.
+    ///
+    /// Séparé du chargement lui-même pour être appelable depuis une `Task` : les écritures
+    /// métier rechargent hors du fil de rendu, ce point d'entrée y applique le résultat.
+    pub fn appliquer_instantane(&mut self, data: DataSnapshot, echecs: &[&'static str]) {
+        self.is_dark = crate::core::theme_systeme::resoudre(
+            data.settings.theme,
+            self.system_dark,
+            self.is_dark,
+        );
+        self.settings_form = SettingsForm::from_settings(&data.settings);
+        self.data = data;
+        // L'application reste utilisable même partiellement chargée : c'est le seul moyen
+        // d'atteindre les Paramètres pour restaurer un backup ou réinitialiser la base.
+        self.initialized = true;
+        if !echecs.is_empty() {
+            let message = format!(
+                "Certaines données n'ont pas pu être lues ({}). Le reste de l'application \
+                 reste utilisable ; une restauration de backup est proposée dans les Paramètres.",
+                echecs.join(", ")
+            );
+            self.notify(NotificationKind::Warning, message);
         }
     }
 
@@ -587,15 +851,28 @@ impl App {
         let search = self.search.trim().to_lowercase();
         let position = self.candidate_filters.position.trim().to_lowercase();
         let city = self.candidate_filters.city.trim().to_lowercase();
+        // Index des villes, construit **une seule fois** et **seulement** si le filtre par
+        // ville est actif. La recherche de l'entreprise était auparavant faite pour chaque
+        // candidature — un balayage linéaire complet, inconditionnel, avant même de savoir si
+        // sa valeur servirait — soit un coût O(n×m) payé à chaque cycle de rendu.
+        let villes: std::collections::HashMap<uuid::Uuid, String> = if city.is_empty() {
+            std::collections::HashMap::new()
+        } else {
+            self.data
+                .entreprises
+                .iter()
+                .map(|company| {
+                    (
+                        company.id,
+                        company.ville.as_deref().unwrap_or_default().to_lowercase(),
+                    )
+                })
+                .collect()
+        };
         self.data
             .candidatures
             .iter()
             .filter(|candidate| {
-                let company = self
-                    .data
-                    .entreprises
-                    .iter()
-                    .find(|company| company.id == candidate.entreprise_id);
                 let matches_search = search.is_empty()
                     || candidate.poste.to_lowercase().contains(&search)
                     || candidate
@@ -619,11 +896,9 @@ impl App {
                         .is_none_or(|id| candidate.entreprise_id == id)
                     && (position.is_empty() || candidate.poste.to_lowercase().contains(&position))
                     && (city.is_empty()
-                        || company
-                            .and_then(|item| item.ville.as_deref())
-                            .unwrap_or_default()
-                            .to_lowercase()
-                            .contains(&city))
+                        || villes
+                            .get(&candidate.entreprise_id)
+                            .is_some_and(|ville| ville.contains(&city)))
                     && (self.candidate_filters.date_from.is_empty()
                         || candidate.date_envoi >= self.candidate_filters.date_from)
                     && (self.candidate_filters.date_to.is_empty()
@@ -691,6 +966,44 @@ impl App {
             .and_then(|id| self.data.cv_versions.iter().find(|item| item.id == id))
     }
 
+    /// Ouvre une opération IA et renvoie son numéro de séquence.
+    ///
+    /// Le numéro accompagne le message de résultat : c'est lui qui permet d'ignorer celui
+    /// d'une opération que l'utilisateur a abandonnée au profit d'une autre.
+    pub fn commencer_operation_ia(&mut self, jeton: tokio_util::sync::CancellationToken) -> u64 {
+        self.ai_sequence = self.ai_sequence.wrapping_add(1);
+        self.ai_cancellation = Some(jeton);
+        self.ai_is_running = true;
+        self.ai_elapsed_seconds = 0;
+        self.ai_sequence
+    }
+
+    /// Clôt l'opération `sequence` si elle est bien celle en cours.
+    ///
+    /// Renvoie `false` quand le résultat est périmé : l'appelant doit alors l'écarter sans
+    /// toucher ni à l'indicateur d'activité, ni au jeton d'annulation, ni à l'écran.
+    pub fn terminer_operation_ia(&mut self, sequence: u64) -> bool {
+        if self.ai_sequence != sequence {
+            tracing::debug!(sequence, courante = self.ai_sequence, "résultat IA périmé");
+            return false;
+        }
+        self.ai_is_running = false;
+        self.ai_cancellation = None;
+        true
+    }
+
+    /// Nombre de pages de l'historique des scores ATS, au minimum 1.
+    #[must_use]
+    pub const fn ats_total_pages(&self) -> u64 {
+        self.data.ats_scores.total_pages
+    }
+
+    /// Nombre de pages de l'historique des appels IA, au minimum 1.
+    #[must_use]
+    pub const fn llm_total_pages(&self) -> u64 {
+        self.data.llm_calls.total_pages
+    }
+
     /// Nombre de relances arrivées à échéance à la date donnée.
     #[must_use]
     pub fn due_reminders(&self, today: &str) -> usize {
@@ -713,46 +1026,5 @@ impl App {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::App;
-    use std::sync::Mutex;
-
-    /// `App::new()` lit des variables d'environnement globales : les tests qui
-    /// l'appellent sont sérialisés pour ne pas interférer entre eux.
-    static APP_NEW_LOCK: Mutex<()> = Mutex::new(());
-
-    #[test]
-    fn le_reload_reussi_marque_l_application_initialisee() {
-        // App::new ouvre la base persistante de développement
-        // (.candilog-dev/candilog.sqlite sous le répertoire du projet), pas une
-        // base mémoire. Ce test exige donc une base de développement valide ;
-        // il est sérialisé avec le test d'échec par le verrou.
-        let _guard = APP_NEW_LOCK.lock().unwrap();
-        let (app, _) = App::new();
-        assert!(
-            app.initialized,
-            "le chargement initial a réussi sur la base de développement"
-        );
-    }
-
-    #[test]
-    fn l_echec_d_ouverture_de_la_base_laisse_l_application_non_initialisee() {
-        // Branche d'échec du contrat : quand la base ne peut pas s'ouvrir,
-        // fatal_error est renseigné et initialized reste faux (reload n'est
-        // jamais appelé). On force l'échec sans toucher à la base de
-        // développement réelle : CANDILOG_DATA_DIR pointe sur un fichier
-        // ordinaire, ce qui rend le dossier de données inconstructible.
-        let _guard = APP_NEW_LOCK.lock().unwrap();
-        let marker = std::env::temp_dir().join(format!("candilog-failure-{}", std::process::id()));
-        std::fs::write(&marker, "blocage volontaire").unwrap();
-        std::env::set_var("CANDILOG_DATA_DIR", &marker);
-        let (app, _) = App::new();
-        std::env::remove_var("CANDILOG_DATA_DIR");
-        std::fs::remove_file(&marker).ok();
-        assert!(
-            app.fatal_error.is_some(),
-            "une erreur fatale est signalée quand la base ne peut pas s'ouvrir"
-        );
-        assert!(!app.initialized, "l'application reste non initialisée");
-    }
-}
+#[path = "tests/state/mod.rs"]
+mod tests;

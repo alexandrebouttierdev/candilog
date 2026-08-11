@@ -2,9 +2,23 @@
 name = "candilog"
 version = "0.2.0"
 edition = "2021"
+# Version minimale du compilateur, alignée sur l'image de l'intégration continue
+# (`rust:1.91-bookworm`). Contrainte par `Duration::from_mins` (shared/http.rs), stabilisée en
+# 1.91.0 : Cargo refuse désormais de compiler avec une chaîne plus ancienne, avec un message
+# explicite, au lieu de laisser la divergence n'apparaître qu'en CI.
+rust-version = "1.91"
 description = "Candilog Desktop natif en Rust et Iced"
 authors = ["Candilog"]
 license = "MIT"
+
+[features]
+default = []
+# Harnais de capture visuelle (revue de design) : onze variables d'environnement
+# `CANDILOG_CAPTURE_*` qui pilotent la route, le thème, les dialogues et les états particuliers,
+# puis écrivent un PPM au chemin indiqué avant de quitter. Hors du binaire distribué par défaut :
+# c'est une surface fonctionnelle qui n'est pas destinée aux utilisateurs.
+# `CANDILOG_DATA_DIR` n'en dépend pas et reste disponible en toutes circonstances.
+capture = []
 
 [dependencies]
 iced = { version = "0.13", features = ["tokio", "image", "svg", "canvas", "advanced", "lazy"] }
@@ -29,11 +43,12 @@ csv = "1"
 dirs = "5"
 rfd = "0.15"
 notify-rust = "4"
-lopdf = "0.43"
+lopdf = "0.42"
 semver = "1"
 minisign-verify = "0.2.5"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-appender = "0.2.5"
 
 [dev-dependencies]
 tempfile = "3"
@@ -43,3 +58,9 @@ mockito = "1"
 [profile.release]
 lto = "thin"
 strip = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+ashpd = { version = "0.13.13", default-features = false, features = ["settings", "tokio"] }
+
+[target."cfg(windows)".dependencies]
+winreg = "0.56.0"

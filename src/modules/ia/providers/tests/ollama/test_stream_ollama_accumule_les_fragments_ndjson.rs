@@ -15,7 +15,7 @@ async fn test_stream_ollama_accumule_les_fragments_ndjson() {
         .with_body(body)
         .create_async()
         .await;
-    let p = OllamaProvider::new(server.url(), "gemma3:1b".into(), 0.0);
+    let p = OllamaProvider::new(server.url(), "gemma3:1b".into(), 0.0, None);
     let mut chunks: Vec<String> = Vec::new();
     let full = p
         .stream("cv", "sys", &GenOptions::none(), &mut |c: String| {

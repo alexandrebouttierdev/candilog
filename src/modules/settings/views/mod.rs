@@ -219,7 +219,7 @@ fn header_tile<'a, Message: 'a>(glyph: Icon) -> Element<'a, Message> {
 
 /// Carte Fournisseur : grille de choix, bloc de configuration et actions.
 fn provider_card(app: &App) -> Element<'_, Message> {
-    let llm = &app.data.settings.llm;
+    let llm = &app.settings_form.draft.llm;
 
     let mut grid = row![].spacing(space::SM).width(Length::Fill);
     for provider in providers() {
@@ -433,7 +433,7 @@ fn temperature_value<'a, Message: 'a>(value: f32) -> Element<'a, Message> {
 
 /// Carte Apparence : choix du thème et bascule rapide.
 fn appearance_card(app: &App) -> Element<'_, Message> {
-    let theme = &app.data.settings.theme;
+    let theme = &app.settings_form.draft.theme;
     section_card(
         Icon::Sun,
         "Apparence",
@@ -555,7 +555,7 @@ fn backup_card(app: &App) -> Element<'_, Message> {
 
 /// Carte Connexion : fournisseur courant et test de connexion.
 fn connection_card(app: &App) -> Element<'_, Message> {
-    let llm = &app.data.settings.llm;
+    let llm = &app.settings_form.draft.llm;
     let model = if llm.model.trim().is_empty() {
         "Modèle non défini"
     } else {
@@ -662,8 +662,8 @@ fn about_card(app: &App) -> Element<'_, Message> {
                         "Candidatures suivies",
                         app.data.candidatures.len().to_string(),
                     ),
-                    inspector::property("Appels IA", app.data.llm_calls.len().to_string()),
-                    inspector::property("Scores ATS", app.data.ats_scores.len().to_string()),
+                    inspector::property("Appels IA", app.data.llm_calls.total.to_string()),
+                    inspector::property("Scores ATS", app.data.ats_scores.total.to_string()),
                 ],
             ),
             state::hint("Candilog fonctionne entièrement hors ligne, hors appels IA explicites."),

@@ -21,6 +21,7 @@ fn entry(cle: &str, valeur: &str) -> CacheEntry {
 
 mod test_cache_key_stable_et_sensible_aux_entrees;
 mod test_get_absent_retourne_none;
+mod test_le_cache_est_borne_en_nombre_d_entrees;
 mod test_put_puis_get_retourne_la_valeur;
 mod test_put_remplace_une_cle_existante;
 mod test_reset_vide_le_cache;

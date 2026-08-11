@@ -48,6 +48,12 @@ pub enum UpdateDownloadEvent {
 /// Tous les événements applicatifs.
 #[derive(Debug, Clone)]
 pub enum Message {
+    /// Aucun effet : conclut une `Task` dont seul l'effet de bord importe.
+    Noop,
+    /// Une écriture métier s'est terminée, avec le libellé de succès à afficher.
+    WriteFinished(Result<(), String>, &'static str),
+    /// Un instantané de données chargé hors du fil de rendu est prêt à être appliqué.
+    DataLoaded(Box<crate::app::state::DataSnapshot>, Vec<&'static str>),
     /// Demande une capture native pour la revue visuelle opt-in.
     CaptureForReview,
     /// Fenêtre résolue pour la capture native.
@@ -88,6 +94,13 @@ pub enum Message {
     OpenDialog(Dialog),
     /// Ferme le formulaire en cours.
     CloseDialog,
+    /// Ferme la fiche contact de l'inspecteur Réseau.
+    CloseContactCard,
+    /// Échap : ferme la couche ouverte la plus haute, s'il y en a une.
+    ///
+    /// Routé par un message plutôt que traduit directement en [`Message::CloseDialog`] :
+    /// `shortcut()` n'a pas accès à l'état et ne peut donc pas savoir ce qui est ouvert.
+    DismissTopLayer,
     /// Modifie le nom d'entreprise.
     EntrepriseNomChanged(String),
     /// Modifie le secteur d'entreprise.
@@ -175,11 +188,17 @@ pub enum Message {
     /// Lance l'analyse de l'offre.
     AnalyzeOffer,
     /// Résultat de l'analyse d'offre.
-    OfferAnalyzed(Result<crate::modules::ia::cv_model::OfferAnalysis, String>),
+    OfferAnalyzed(
+        Result<crate::modules::ia::cv_model::OfferAnalysis, String>,
+        u64,
+    ),
     /// Lance la génération du CV depuis l'analyse.
     GenerateCv,
     /// Résultat de la génération du CV.
-    CvGenerated(Result<crate::modules::ia::cv_model::CvGeneration, String>),
+    CvGenerated(
+        Result<crate::modules::ia::cv_model::CvGeneration, String>,
+        u64,
+    ),
     /// Annule l'opération IA active.
     CancelAi,
     /// Ouvre le sélecteur de PDF pour l'analyse externe.
@@ -191,7 +210,10 @@ pub enum Message {
     /// Lance l'analyse du CV externe.
     AnalyzeImportedCv,
     /// Résultat de l'analyse du CV externe.
-    ImportedCvAnalyzed(Result<crate::modules::ia::service::ImportedCvAnalysis, String>),
+    ImportedCvAnalyzed(
+        Result<crate::modules::ia::service::ImportedCvAnalysis, String>,
+        u64,
+    ),
     /// Modifie l'entreprise de la lettre.
     LetterCompanyChanged(String),
     /// Modifie le poste de la lettre.
@@ -205,7 +227,7 @@ pub enum Message {
     /// Lance la génération progressive de lettre.
     GenerateLetter,
     /// Fragment ou résultat terminal du streaming.
-    LetterStream(LetterStreamEvent),
+    LetterStream(LetterStreamEvent, u64),
     /// Modifie le fournisseur IA.
     SettingsProviderChanged(crate::shared::llm::ProviderKind),
     /// Modifie le modèle IA.
@@ -309,13 +331,31 @@ pub enum Message {
     /// Lance l'extraction du profil.
     ExtractProfile,
     /// Résultat de l'extraction de profil.
-    ProfileExtracted(Result<crate::shared::profile::Profile, String>),
+    ProfileExtracted(Result<crate::shared::profile::Profile, String>, u64),
     /// Persiste le profil extrait après validation explicite.
     ApplyExtractedProfile,
     /// Analyse le compte rendu d'un entretien.
     AnalyzeInterview(uuid::Uuid),
     /// Résultat de l'analyse d'entretien.
-    InterviewAnalyzed(Result<crate::shared::types::AnalyseEntretien, String>),
+    InterviewAnalyzed(Result<crate::shared::types::AnalyseEntretien, String>, u64),
+    /// Thème clair/sombre du système, tel que rapporté par la plateforme.
+    SystemThemeDetected(Option<bool>),
+    /// Contrôle silencieux de la santé du fournisseur IA (démarrage, enregistrement).
+    ProbeProviderHealth,
+    /// Résultat du contrôle silencieux : alimente la pastille, sans toast.
+    ProviderHealthChecked(Result<(), String>),
+    /// Rejoue la résolution des chemins et l'ouverture de la base après un échec de démarrage.
+    ///
+    /// Distinct de [`Message::Reload`], qui ne recharge que les données et abandonne
+    /// immédiatement quand le backend n'a pas pu être construit — c'est-à-dire précisément le
+    /// cas où l'utilisateur clique sur « Réessayer ».
+    RetryBootstrap,
+    /// Sélectionne un backup à restaurer depuis l'écran d'erreur fatale, base fermée.
+    SelectRecoveryBackup,
+    /// Backup de secours choisi : restauration au niveau du fichier, puis redémarrage du socle.
+    RecoveryBackupSelected(Option<std::path::PathBuf>),
+    /// Met la base illisible de côté et redémarre sur une base neuve.
+    QuarantineDatabase,
     /// Sélectionne un backup SQLite à restaurer.
     SelectBackupImport,
     /// Backup sélectionné et validé par le dialogue.

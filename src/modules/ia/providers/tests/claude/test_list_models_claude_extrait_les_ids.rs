@@ -11,7 +11,7 @@ async fn test_list_models_claude_extrait_les_ids() {
         .with_body(r#"{"data":[{"id":"claude-sonnet-4"},{"id":"claude-opus-4"}]}"#)
         .create_async()
         .await;
-    let p = ClaudeProvider::new(server.url(), "sk-ant".into(), "m".into(), 0.5);
+    let p = ClaudeProvider::new(server.url(), "sk-ant".into(), "m".into(), 0.5, None);
     let models = p.list_models().await.unwrap();
     assert_eq!(models, vec!["claude-sonnet-4", "claude-opus-4"]);
 }

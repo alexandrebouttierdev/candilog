@@ -12,6 +12,7 @@ use crate::ui::components::icon::{self, Icon};
 use crate::ui::components::score_gauge::{gauge, score_label, tone_pour_score};
 use crate::ui::components::workflow::{steps, StepState, WorkflowStep};
 use crate::ui::components::{badge, document, field, layout, meter, state, surface, typo};
+use crate::ui::format;
 use crate::ui::theme::metrics::{radius, size, space, stroke};
 use crate::ui::theme::styles;
 use crate::ui::theme::tokens::{alpha, tokens};
@@ -247,7 +248,19 @@ fn offer_content(app: &App) -> Element<'_, Message> {
         container(
             row![
                 typo::text_mono(
-                    format!("{} caractères", app.offer_editor.text().chars().count()),
+                    // `Content::text()` renvoie un saut de ligne terminal : sans le retirer,
+                    // un éditeur vide affichait « 1 caractères » — faux compte et accord
+                    // fautif. `format::plural` fait l'accord, comme le fait déjà l'écran
+                    // voisin de la lettre de motivation.
+                    format::plural(
+                        app.offer_editor
+                            .text()
+                            .trim_end_matches('\n')
+                            .chars()
+                            .count(),
+                        "caractère",
+                        "caractères",
+                    ),
                     font::MICRO,
                     font::MONO_REGULAR,
                 ),

@@ -45,6 +45,14 @@ pub fn cache_key(provider: &str, model: &str, mode: &str, operation: &str, input
     format!("{:x}", hasher.finalize())
 }
 
+/// Nombre maximal d'entrées conservées.
+///
+/// Le cache est un accélérateur, pas un archivage : sans borne, le fichier de base croît
+/// indéfiniment avec l'usage — une analyse d'offre ou de CV pèse plusieurs kilo-octets — et
+/// ce poids est recopié à chaque export de backup. Mille entrées couvrent très largement les
+/// ré-analyses utiles tout en plafonnant la place occupée.
+pub const MAX_ENTREES: usize = 1_000;
+
 /// Contrat de persistance du cache `IA`.
 pub trait CacheIaRepository: Send + Sync {
     /// Récupère la valeur `JSON` associée à `cle`, ou `None` si absente.
@@ -64,6 +72,12 @@ pub trait CacheIaRepository: Send + Sync {
     /// # Errors
     /// `AppError::Database` si la requête échoue.
     fn reset(&self) -> AppResult<()>;
+
+    /// Nombre d'entrées actuellement conservées.
+    ///
+    /// # Errors
+    /// `AppError::Database` si la lecture échoue.
+    fn compter(&self) -> AppResult<usize>;
 }
 
 /// Implémentation `SQLite` du cache `IA`.
@@ -110,6 +124,19 @@ impl CacheIaRepository for SqliteCacheIaRepository {
                 entry.cree_le,
             ],
         )?;
+        // Éviction au fil de l'eau : la colonne `cree_le` était déjà renseignée et rendait la
+        // purge triviale, elle n'était simplement jamais exploitée. `rowid` départage les
+        // horodatages égaux, fréquents à la seconde près.
+        let supprimees = conn.execute(
+            "DELETE FROM cache_ia WHERE cle IN (
+                 SELECT cle FROM cache_ia
+                 ORDER BY cree_le DESC, rowid DESC
+                 LIMIT -1 OFFSET ?1)",
+            [MAX_ENTREES],
+        )?;
+        if supprimees > 0 {
+            tracing::debug!(supprimees, "éviction du cache IA");
+        }
         Ok(())
     }
 
@@ -120,6 +147,15 @@ impl CacheIaRepository for SqliteCacheIaRepository {
             .map_err(|e| AppError::Database(e.to_string()))?;
         conn.execute("DELETE FROM cache_ia", [])?;
         Ok(())
+    }
+
+    fn compter(&self) -> AppResult<usize> {
+        let conn = self
+            .pool
+            .get()
+            .map_err(|e| AppError::Database(e.to_string()))?;
+        let total: i64 = conn.query_row("SELECT count(*) FROM cache_ia", [], |row| row.get(0))?;
+        Ok(usize::try_from(total).unwrap_or(usize::MAX))
     }
 }
 

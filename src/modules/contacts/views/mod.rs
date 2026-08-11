@@ -39,7 +39,7 @@ pub fn view(app: &App) -> Element<'_, Message> {
     if app.focused_contact().is_some() {
         stack(vec![
             screen,
-            overlay::drawer(drawer_content(app), Message::CloseDialog),
+            overlay::drawer(drawer_content(app), Message::CloseContactCard),
         ])
         .into()
     } else {
@@ -168,7 +168,7 @@ fn drawer_content(app: &App) -> Element<'_, Message> {
             ]
             .spacing(1),
             layout::spacer(),
-            controls::icon_action(Icon::Close, "Fermer", Message::CloseDialog),
+            controls::icon_action(Icon::Close, "Fermer", Message::CloseContactCard),
         ]
         .spacing(space::MD)
         .align_y(Alignment::Center),

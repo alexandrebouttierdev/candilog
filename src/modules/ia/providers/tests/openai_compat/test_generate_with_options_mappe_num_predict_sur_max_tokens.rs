@@ -15,7 +15,7 @@ async fn test_generate_with_options_mappe_num_predict_sur_max_tokens() {
         .with_body(r#"{"choices":[{"message":{"content":"ok"}}]}"#)
         .create_async()
         .await;
-    let p = OpenAiCompatProvider::new(server.url(), "sk".into(), "gpt-4o".into(), 0.5);
+    let p = OpenAiCompatProvider::new(server.url(), "sk".into(), "gpt-4o".into(), 0.5, None);
     let opts = GenOptions {
         num_ctx: Some(8192),
         num_predict: Some(512),

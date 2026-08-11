@@ -20,13 +20,19 @@ pub struct GeminiProvider {
 impl GeminiProvider {
     /// Construit le fournisseur Gemini.
     #[must_use]
-    pub fn new(endpoint: String, api_key: String, model: String, temperature: f32) -> Self {
+    pub fn new(
+        endpoint: String,
+        api_key: String,
+        model: String,
+        temperature: f32,
+        pin: Option<crate::shared::llm::EndpointPin>,
+    ) -> Self {
         Self {
             endpoint,
             api_key,
             model,
             temperature,
-            http: crate::shared::http::client(),
+            http: crate::shared::http::client_pinned(pin.as_ref()),
         }
     }
 

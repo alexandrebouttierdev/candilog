@@ -108,9 +108,13 @@ pub fn kanban_card<Message: Clone + 'static>(
 ) -> Element<'static, Message> {
     let content = column![
         typo::item(format::truncate(&candidate.poste, 30)),
-        typo::meta(format::or_else(
-            candidate.entreprise_nom.as_deref(),
-            "Entreprise inconnue"
+        // Même politique de débordement que le poste. Le nom d'entreprise était rendu par un
+        // texte ordinaire qui se replie : dans une même carte, le poste était tronqué avec une
+        // ellipse tandis que l'entreprise s'étalait sur deux lignes complètes, d'où une
+        // hauteur de carte variable d'une colonne du Kanban à l'autre.
+        typo::meta(format::truncate(
+            &format::or_else(candidate.entreprise_nom.as_deref(), "Entreprise inconnue"),
+            30,
         )),
         surface::divider(),
         row![

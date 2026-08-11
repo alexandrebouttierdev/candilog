@@ -177,13 +177,25 @@ impl LlmConfig {
 ///
 /// Tous les fournisseurs distants doivent utiliser HTTPS et ne peuvent pas cibler
 /// le réseau local. Ollama conserve volontairement l'accès local nécessaire à son usage.
+/// Adresse retenue lors de la validation d'un endpoint, à épingler sur le client HTTP.
+///
+/// Ferme l'intervalle entre la vérification et l'usage : la connexion emprunte exactement
+/// l'adresse qui a été contrôlée.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EndpointPin {
+    /// Nom d'hôte tel qu'il figure dans l'URL.
+    pub host: String,
+    /// Adresse résolue et validée.
+    pub address: std::net::SocketAddr,
+}
+
 ///
 /// # Errors
 /// Retourne `Validation` si l'URL ou sa destination ne respecte pas la politique réseau.
 #[allow(clippy::unnecessary_lazy_evaluations)]
-pub async fn validate_llm_endpoint(config: &LlmConfig) -> AppResult<()> {
+pub async fn validate_llm_endpoint(config: &LlmConfig) -> AppResult<Option<EndpointPin>> {
     let Some(endpoint) = config.endpoint.as_deref() else {
-        return Ok(());
+        return Ok(None);
     };
     let url = reqwest::Url::parse(endpoint)
         .map_err(|_| AppError::Validation("Endpoint IA invalide".into()))?;
@@ -205,19 +217,30 @@ pub async fn validate_llm_endpoint(config: &LlmConfig) -> AppResult<()> {
             ));
         }
         let port = url.port_or_known_default().unwrap_or_else(|| 443);
-        let addresses = tokio::net::lookup_host((host, port))
+        let addresses: Vec<std::net::SocketAddr> = tokio::net::lookup_host((host, port))
             .await
-            .map_err(|_| AppError::Validation("Impossible de résoudre l'endpoint IA".into()))?;
+            .map_err(|_| AppError::Validation("Impossible de résoudre l'endpoint IA".into()))?
+            .collect();
         if addresses
-            .into_iter()
+            .iter()
             .any(|address| is_local_or_private_ip(address.ip()))
         {
             return Err(AppError::Validation(
                 "L'endpoint IA distant ne peut pas cibler une adresse privée".into(),
             ));
         }
+        // L'adresse validée est renvoyée pour être épinglée sur le client HTTP. Sans cela, la
+        // requête effective referait sa **propre** résolution : rien ne garantirait qu'elle
+        // obtienne la même réponse, et un serveur DNS malveillant pourrait renvoyer une adresse
+        // publique au contrôle puis une adresse privée à la connexion (« DNS rebinding »).
+        if let Some(address) = addresses.first() {
+            return Ok(Some(EndpointPin {
+                host: host.to_owned(),
+                address: *address,
+            }));
+        }
     }
-    Ok(())
+    Ok(None)
 }
 
 #[cfg(test)]

@@ -7,6 +7,7 @@ mod dialogs;
 use super::{App, Message};
 use crate::navigation::Route;
 use crate::ui::components::ambient;
+use crate::ui::components::icon::Icon;
 use crate::ui::components::runtime_status::{app_version, runtime_status, Health};
 use crate::ui::components::sidebar::sidebar;
 use crate::ui::components::skeleton::PageSkeleton;
@@ -19,13 +20,31 @@ use iced::{Element, Length};
 /// Rend l'application complète.
 pub fn view(app: &App) -> Element<'_, Message> {
     if let Some(error) = &app.fatal_error {
-        return state::fatal(error, "Réessayer", Message::Reload);
+        return state::fatal(
+            error,
+            vec![
+                ("Réessayer", Icon::Refresh, Message::RetryBootstrap),
+                (
+                    "Restaurer un backup",
+                    Icon::Download,
+                    Message::SelectRecoveryBackup,
+                ),
+                (
+                    "Redémarrer sur une base neuve",
+                    Icon::Trash,
+                    Message::QuarantineDatabase,
+                ),
+            ],
+        );
     }
 
     let page: Element<'_, Message> = if app.initialized {
         screen(app)
     } else {
-        PageSkeleton::Dashboard.render()
+        // Le squelette annonce la structure à venir : il suit donc la route active. Servir
+        // celui du tableau de bord sur toutes les routes amplifie le saut au chargement au
+        // lieu de l'atténuer.
+        skeleton_for(app.route).render()
     };
 
     let main = container(page)
@@ -41,7 +60,7 @@ pub fn view(app: &App) -> Element<'_, Message> {
                 if app.ai_is_running {
                     Health::Checking
                 } else {
-                    Health::Ok
+                    app.provider_health
                 },
             ),
             app.is_dark,
@@ -61,10 +80,10 @@ pub fn view(app: &App) -> Element<'_, Message> {
     if let Some(dialog) = app.dialog {
         layers.push(dialogs::layer(app, dialog));
     }
-    if let Some(message) = &app.notification {
+    if let Some(notice) = &app.notification {
         layers.push(notification::toast(
-            message.clone(),
-            notification::Kind::infer(message),
+            notice.message.clone(),
+            notice.kind,
             Message::ClearNotification,
         ));
     }
@@ -72,6 +91,23 @@ pub fn view(app: &App) -> Element<'_, Message> {
         .width(Length::Fill)
         .height(Length::Fill)
         .into()
+}
+
+/// Squelette annonçant la structure de la route en cours de chargement.
+///
+/// Calqué sur le `match` de [`screen`] : c'est la même correspondance route → mise en page,
+/// à ceci près qu'elle porte sur la forme d'attente.
+const fn skeleton_for(route: Route) -> PageSkeleton {
+    match route {
+        Route::Dashboard => PageSkeleton::Dashboard,
+        Route::Candidatures => PageSkeleton::Board,
+        Route::Calendrier => PageSkeleton::Calendar,
+        Route::Statistiques => PageSkeleton::Default,
+        Route::Entreprises | Route::Reseau => PageSkeleton::List,
+        Route::Cv => PageSkeleton::Cards,
+        Route::CvGenerator | Route::LettreMotivation | Route::CvImport => PageSkeleton::Default,
+        Route::Profil | Route::Parametres => PageSkeleton::Form,
+    }
 }
 
 fn screen(app: &App) -> Element<'_, Message> {

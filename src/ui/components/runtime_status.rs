@@ -8,14 +8,34 @@ use iced::widget::{container, row, Space};
 use iced::{Alignment, Background, Border, Color, Element, Theme};
 
 /// Santé du fournisseur IA.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+///
+/// La pastille était alimentée par `if ai_is_running { Checking } else { Ok }` : elle passait
+/// donc au vert dès qu'aucune opération n'était en cours, **sans qu'aucune vérification n'ait
+/// jamais eu lieu** — vert et « llama3.2:3b » sur un premier lancement où aucun service Ollama
+/// n'était joignable et aucune clé configurée. L'utilisateur découvrait l'indisponibilité au
+/// moment de lancer une génération, après avoir attendu.
+///
+/// `Unknown` existe pour ne rien affirmer tant que rien n'a été mesuré.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Health {
+    /// Aucune vérification effectuée à ce jour.
+    #[default]
+    Unknown,
     /// Répond normalement.
     Ok,
     /// En cours de vérification ou d'analyse.
     Checking,
     /// Injoignable.
     Error,
+}
+
+const fn color_unknown() -> Color {
+    Color {
+        r: 0.58,
+        g: 0.60,
+        b: 0.64,
+        a: 1.0,
+    }
 }
 
 const fn color_ok() -> Color {
@@ -49,6 +69,7 @@ const fn color_checking() -> Color {
 #[must_use]
 pub fn health_color(health: Health) -> Color {
     match health {
+        Health::Unknown => color_unknown(),
         Health::Ok => color_ok(),
         Health::Checking => color_checking(),
         Health::Error => color_error(),
@@ -136,5 +157,11 @@ mod tests {
         assert_ne!(health_color(Health::Ok), health_color(Health::Checking));
         assert_ne!(health_color(Health::Ok), health_color(Health::Error));
         assert_ne!(health_color(Health::Checking), health_color(Health::Error));
+        // L'état « inconnu » doit se distinguer des trois autres : c'est lui qui évite
+        // d'affirmer que le fournisseur répond alors que rien n'a été vérifié.
+        for autre in [Health::Ok, Health::Checking, Health::Error] {
+            assert_ne!(health_color(Health::Unknown), health_color(autre));
+        }
+        assert_eq!(Health::default(), Health::Unknown);
     }
 }

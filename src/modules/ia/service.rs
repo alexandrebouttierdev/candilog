@@ -6,7 +6,7 @@ use crate::modules::ia::cv_model::{
     AtsAnalysis, CvGeneration, GeneratedCv, LetterGenerationRequest, MatchScore, OfferAnalysis,
     ParsedOffer,
 };
-use crate::modules::ia::factory::build_provider;
+use crate::modules::ia::factory::build_provider_pinned;
 use crate::modules::ia::profile_extraction::profile_is_empty;
 use crate::modules::ia::scoring;
 use crate::shared::error::{AppError, AppResult};
@@ -42,9 +42,12 @@ pub struct ImportedCvAnalysis {
 /// Retourne une erreur de validation, de configuration ou de provider.
 pub async fn analyze_offer(state: &AppState, raw_text: String) -> AppResult<OfferAnalysis> {
     validate_text(&raw_text, "L'offre")?;
-    let settings = configured_settings(state).await?;
+    let (settings, pin) = configured_settings(state).await?;
     let profile = state.profil.get()?;
-    let engine = CvEngine::with_mode(build_provider(&settings.llm), settings.llm.resolved_mode());
+    let engine = CvEngine::with_mode(
+        build_provider_pinned(&settings.llm, pin),
+        settings.llm.resolved_mode(),
+    );
     let parsed = cached(
         state,
         OperationLlm::ParseOffer,
@@ -67,39 +70,55 @@ pub async fn generate_cv(
     score: MatchScore,
     cancellation: CancellationToken,
 ) -> AppResult<CvGeneration> {
-    let settings = configured_settings(state).await?;
+    let (settings, pin) = configured_settings(state).await?;
     let profile = state.profil.get()?;
     if profile_is_empty(&profile) {
         return Err(AppError::Validation(
             "Complétez votre profil avant de générer un CV.".into(),
         ));
     }
-    let engine = CvEngine::with_mode(build_provider(&settings.llm), settings.llm.resolved_mode());
+    let engine = CvEngine::with_mode(
+        build_provider_pinned(&settings.llm, pin),
+        settings.llm.resolved_mode(),
+    );
     let generation = measured(
         state,
         OperationLlm::GenerateCv,
         &settings.llm,
         engine.generate_cv(&profile, &offer, &score),
     );
-    let cv = tokio::select! {
-        result = generation => result?,
-        () = cancellation.cancelled() => return Err(AppError::Cancelled),
+    // L'annulation couvre **toute** la séquence, analyse ATS comprise. Le `select!` ne
+    // protégeait auparavant que la génération : un clic sur « Annuler » pendant la seconde
+    // moitié n'interrompait rien, l'interface affichait « Annulation demandée… » et
+    // l'opération se poursuivait jusqu'à son terme ou jusqu'aux 30 minutes de
+    // `PROVIDER_GENERATION_TIMEOUT`, bouton bloqué et chronomètre tournant.
+    let travail = async {
+        let cv = generation.await?;
+        let cache_input = serde_json::json!({ "cv": cv, "offer": offer }).to_string();
+        let analysis = cached(
+            state,
+            OperationLlm::AnalyzeAts,
+            &settings.llm,
+            &cache_input,
+            engine.analyze_ats(&cv, &offer),
+        )
+        .await?;
+        if let Err(error) = state.metriques.enregistrer_score(&ScoreAts {
+            score: analysis.score,
+            origine: OrigineScore::Genere,
+            cree_le: now(),
+        }) {
+            tracing::warn!(erreur = %error, "score ATS non enregistré");
+        }
+        Ok(CvGeneration { cv, analysis })
     };
-    let cache_input = serde_json::json!({ "cv": cv, "offer": offer }).to_string();
-    let analysis = cached(
-        state,
-        OperationLlm::AnalyzeAts,
-        &settings.llm,
-        &cache_input,
-        engine.analyze_ats(&cv, &offer),
-    )
-    .await?;
-    let _ = state.metriques.enregistrer_score(&ScoreAts {
-        score: analysis.score,
-        origine: OrigineScore::Genere,
-        cree_le: now(),
-    });
-    Ok(CvGeneration { cv, analysis })
+    tokio::select! {
+        resultat = travail => resultat,
+        () = cancellation.cancelled() => {
+            tracing::info!("génération de CV annulée par l'utilisateur");
+            Err(AppError::Cancelled)
+        }
+    }
 }
 
 /// Analyse un PDF existant contre une offre, sans modifier le fichier.
@@ -113,15 +132,17 @@ pub async fn analyze_imported_cv(
     cancellation: CancellationToken,
 ) -> AppResult<ImportedCvAnalysis> {
     validate_text(&offer_text, "L'offre")?;
-    let bytes = read_pdf(pdf_path)?;
-    let extracted = crate::shared::pdf::extract_text(&bytes)?;
+    let extracted = lire_et_extraire_pdf(pdf_path).await?;
     if extracted.chars().count() > MAX_EXTRACTED_CV_CHARS {
         return Err(AppError::Validation(
             "Le texte extrait du PDF dépasse la limite autorisée.".into(),
         ));
     }
-    let settings = configured_settings(state).await?;
-    let engine = CvEngine::with_mode(build_provider(&settings.llm), settings.llm.resolved_mode());
+    let (settings, pin) = configured_settings(state).await?;
+    let engine = CvEngine::with_mode(
+        build_provider_pinned(&settings.llm, pin),
+        settings.llm.resolved_mode(),
+    );
     let work = async {
         let cv = cached(
             state,
@@ -176,20 +197,19 @@ pub async fn extract_profile_from_pdf(
     pdf_path: &Path,
     cancellation: CancellationToken,
 ) -> AppResult<crate::shared::profile::Profile> {
-    let bytes = read_pdf(pdf_path)?;
-    let extracted = crate::shared::pdf::extract_text(&bytes)?;
+    let extracted = lire_et_extraire_pdf(pdf_path).await?;
     if extracted.chars().count() > MAX_EXTRACTED_CV_CHARS {
         return Err(AppError::Validation(
             "Le texte extrait du PDF dépasse la limite autorisée.".into(),
         ));
     }
     let cleaned = crate::shared::pdf::clean_cv_text(&extracted);
-    let settings = configured_settings(state).await?;
+    let (settings, pin) = configured_settings(state).await?;
     let config = LlmConfig {
         temperature: 0.0,
         ..settings.llm
     };
-    let engine = CvEngine::with_mode(build_provider(&config), config.resolved_mode());
+    let engine = CvEngine::with_mode(build_provider_pinned(&config, pin), config.resolved_mode());
     let extraction = cached(
         state,
         OperationLlm::ParseCv,
@@ -220,7 +240,7 @@ pub async fn generate_cover_letter(
     on_chunk: &mut (dyn FnMut(String) + Send),
 ) -> AppResult<String> {
     validate_letter_request(request)?;
-    let settings = configured_settings(state).await?;
+    let (settings, pin) = configured_settings(state).await?;
     let profile = request
         .profile
         .as_ref()
@@ -232,7 +252,10 @@ pub async fn generate_cover_letter(
             "Complétez votre profil avant de générer une lettre.".into(),
         ));
     }
-    let engine = CvEngine::with_mode(build_provider(&settings.llm), settings.llm.resolved_mode());
+    let engine = CvEngine::with_mode(
+        build_provider_pinned(&settings.llm, pin),
+        settings.llm.resolved_mode(),
+    );
     let stream = measured(
         state,
         OperationLlm::CoverLetter,
@@ -263,8 +286,11 @@ pub async fn analyze_interview(
             "Rédigez un compte rendu avant de lancer l'analyse.".into(),
         ));
     }
-    let settings = configured_settings(state).await?;
-    let engine = CvEngine::with_mode(build_provider(&settings.llm), settings.llm.resolved_mode());
+    let (settings, pin) = configured_settings(state).await?;
+    let engine = CvEngine::with_mode(
+        build_provider_pinned(&settings.llm, pin),
+        settings.llm.resolved_mode(),
+    );
     let analysis = tokio::select! {
         result = cached(
             state,
@@ -281,7 +307,16 @@ pub async fn analyze_interview(
     Ok(analysis)
 }
 
-async fn configured_settings(state: &AppState) -> AppResult<crate::shared::state::AppSettings> {
+/// Vérifie la configuration IA et renvoie, avec elle, l'adresse validée de l'endpoint.
+///
+/// L'adresse est épinglée sur le client HTTP du fournisseur : la connexion emprunte exactement
+/// celle qui a passé le contrôle anti-SSRF, au lieu d'être re-résolue au moment de la requête.
+async fn configured_settings(
+    state: &AppState,
+) -> AppResult<(
+    crate::shared::state::AppSettings,
+    Option<crate::shared::llm::EndpointPin>,
+)> {
     let settings = state.secure_settings()?;
     if !settings.llm.est_configure() {
         return Err(AppError::Validation(
@@ -289,8 +324,8 @@ async fn configured_settings(state: &AppState) -> AppResult<crate::shared::state
                 .into(),
         ));
     }
-    validate_llm_endpoint(&settings.llm).await?;
-    Ok(settings)
+    let pin = validate_llm_endpoint(&settings.llm).await?;
+    Ok((settings, pin))
 }
 
 async fn measured<T>(
@@ -302,14 +337,26 @@ async fn measured<T>(
     let started = std::time::Instant::now();
     let result = future.await;
     let elapsed = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
-    let _ = state.metriques.enregistrer_appel(&AppelLlm {
+    // Le contenu de l'appel n'est jamais journalisé : il porte le profil et les offres de
+    // l'utilisateur. Seuls l'opération, le fournisseur, la latence et l'issue le sont.
+    tracing::info!(
+        operation = operation.as_str(),
+        provider = provider_name(&config.provider),
+        modele = %config.model,
+        latence_ms = elapsed,
+        succes = result.is_ok(),
+        "appel IA"
+    );
+    if let Err(error) = state.metriques.enregistrer_appel(&AppelLlm {
         operation,
         provider: provider_name(&config.provider).into(),
         modele: config.model.clone(),
         latence_ms: elapsed,
         succes: result.is_ok(),
         cree_le: now(),
-    });
+    }) {
+        tracing::warn!(erreur = %error, "télémétrie IA non enregistrée");
+    }
     result
 }
 
@@ -331,21 +378,30 @@ where
         operation.as_str(),
         input,
     );
-    if let Ok(Some(raw)) = state.cache_ia.get(&key) {
-        if let Ok(value) = serde_json::from_str(&raw) {
-            return Ok(value);
-        }
+    match state.cache_ia.get(&key) {
+        Ok(Some(raw)) => match serde_json::from_str(&raw) {
+            Ok(value) => {
+                tracing::debug!(operation = operation.as_str(), "cache IA : succès");
+                return Ok(value);
+            }
+            // Entrée illisible : on la traite comme absente et on refait l'appel.
+            Err(error) => tracing::warn!(erreur = %error, "entrée de cache IA illisible"),
+        },
+        Ok(None) => {}
+        Err(error) => tracing::warn!(erreur = %error, "cache IA inaccessible en lecture"),
     }
     let value = measured(state, operation, config, future).await?;
     if let Ok(raw) = serde_json::to_string(&value) {
-        let _ = state.cache_ia.put(&CacheEntry {
+        if let Err(error) = state.cache_ia.put(&CacheEntry {
             cle: key,
             valeur: raw,
             provider: provider.into(),
             modele: config.model.clone(),
             operation: operation.as_str().into(),
             cree_le: now(),
-        });
+        }) {
+            tracing::warn!(erreur = %error, "mise en cache IA impossible");
+        }
     }
     Ok(value)
 }
@@ -374,6 +430,22 @@ fn validate_letter_request(request: &LetterGenerationRequest) -> AppResult<()> {
         return Err(AppError::Validation("Ton de lettre invalide.".into()));
     }
     Ok(())
+}
+
+/// Lit un PDF et en extrait le texte **hors du fil asynchrone**.
+///
+/// La lecture (jusqu'à 10 Mo par `std::fs`) et surtout l'extraction (`pdf::extract_text`, un
+/// traitement CPU non borné) immobilisaient un fil de travail du runtime Tokio pour toute leur
+/// durée, réduisant d'autant le parallélisme disponible aux autres tâches — téléchargements,
+/// appels IA concurrents.
+async fn lire_et_extraire_pdf(path: &Path) -> AppResult<String> {
+    let path = path.to_path_buf();
+    tokio::task::spawn_blocking(move || {
+        let bytes = read_pdf(&path)?;
+        crate::shared::pdf::extract_text(&bytes)
+    })
+    .await
+    .map_err(|error| AppError::Validation(format!("Lecture du PDF interrompue : {error}")))?
 }
 
 fn read_pdf(path: &Path) -> AppResult<Vec<u8>> {

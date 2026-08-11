@@ -30,10 +30,30 @@ pub enum AppError {
 pub type AppResult<T> = Result<T, AppError>;
 
 impl AppError {
-    /// Convertit l'erreur en message destiné au frontend (contrat Tauri `Result<T, String>`).
+    /// Message destiné à l'**utilisateur final**, distinct du `Display` destiné au journal.
+    ///
+    /// `Display` porte le détail technique — chaîne brute de rusqlite ou de r2d2, message de
+    /// serde, chemin absolu du fichier de données. Ce détail est indispensable au diagnostic
+    /// (il part au journal, cf. `tracing`) mais incompréhensible à l'écran, et il divulgue
+    /// l'arborescence locale dans la moindre capture d'écran de support.
+    ///
+    /// Les variantes dont le message est *déjà* rédigé pour l'utilisateur — validation métier,
+    /// erreurs réseau reformulées par `From<reqwest::Error>`, refus d'un fournisseur — sont
+    /// reprises telles quelles : les masquer priverait de toute indication utile.
     #[must_use]
-    pub fn to_command_error(&self) -> String {
-        self.to_string()
+    pub fn message_utilisateur(&self) -> String {
+        match self {
+            Self::Validation(message) | Self::Provider(message) => message.clone(),
+            Self::NotFound(quoi) => format!("Introuvable : {quoi}."),
+            Self::Database(_) => {
+                "Le fichier de données de Candilog est illisible ou endommagé.".into()
+            }
+            Self::Http(message) => format!("Problème réseau : {message}."),
+            Self::Serialization(_) => {
+                "Une donnée enregistrée est illisible : son format n'est pas reconnu.".into()
+            }
+            Self::Cancelled => "Génération annulée.".into(),
+        }
     }
 }
 

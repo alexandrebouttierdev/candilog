@@ -11,7 +11,7 @@ async fn test_list_models_openai_compat_extrait_les_ids() {
         .with_body(r#"{"data":[{"id":"gpt-4o"},{"id":"gpt-4o-mini"}]}"#)
         .create_async()
         .await;
-    let p = OpenAiCompatProvider::new(server.url(), "sk".into(), "m".into(), 0.5);
+    let p = OpenAiCompatProvider::new(server.url(), "sk".into(), "m".into(), 0.5, None);
     let models = p.list_models().await.unwrap();
     assert_eq!(models, vec!["gpt-4o", "gpt-4o-mini"]);
 }

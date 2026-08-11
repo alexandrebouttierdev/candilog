@@ -123,6 +123,13 @@ pub struct Page<T> {
     pub total_pages: u64,
 }
 
+impl<T> Default for Page<T> {
+    /// Page vide : un historique illisible ne doit pas empêcher le reste de s'afficher.
+    fn default() -> Self {
+        Self::new(Vec::new(), 0, 1, 1)
+    }
+}
+
 impl<T> Page<T> {
     /// Construit les métadonnées d'une page à partir de son total.
     #[must_use]

@@ -117,6 +117,23 @@ pub fn columns<'a, Message: 'a>(
     body.into()
 }
 
+/// Rangée de panneaux à **hauteur explicite**, pour un contenu défilable.
+///
+/// [`columns`] réclame `Length::Fill`, ce qui n'a pas de sens dans un conteneur défilable :
+/// la hauteur y est illimitée, et un enfant `Fill` s'y effondre. Une hauteur explicite garantit
+/// au contraire que les panneaux gardent la place nécessaire à leur contenu, le débordement
+/// étant absorbé par le défilement de la page.
+pub fn columns_of_height<'a, Message: 'a>(
+    height: f32,
+    blocks: impl IntoIterator<Item = Element<'a, Message>>,
+) -> Element<'a, Message> {
+    let mut body = row![].spacing(space::LG).height(Length::Fixed(height));
+    for block in blocks {
+        body = body.push(block);
+    }
+    body.into()
+}
+
 /// Espace élastique, pour repousser un élément vers la droite ou le bas.
 pub fn spacer<'a, Message: 'a>() -> Element<'a, Message> {
     Space::with_width(Length::Fill).into()

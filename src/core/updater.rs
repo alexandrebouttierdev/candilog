@@ -3,8 +3,8 @@
 use crate::shared::error::{AppError, AppResult};
 use semver::Version;
 use serde::Deserialize;
-use std::io::Write;
 use std::path::{Path, PathBuf};
+use tokio::io::AsyncWriteExt;
 
 /// URL publique du manifeste de release Candilog.
 pub const MANIFEST_URL: &str =
@@ -61,7 +61,14 @@ pub async fn check(client: &reqwest::Client, current: &Version) -> AppResult<Opt
     }))
 }
 
-/// Télécharge un paquet dans le dossier temporaire et vérifie sa signature minisign.
+/// Sous-dossier du dossier de données recevant les paquets téléchargés.
+pub const DOSSIER_MISES_A_JOUR: &str = "mises-a-jour";
+
+/// Télécharge un paquet **sous le dossier de données** et vérifie sa signature minisign.
+///
+/// Le paquet allait auparavant dans `std::env::temp_dir()`. Comme l'installation n'est pas
+/// automatisée, l'utilisateur doit s'en occuper lui-même — or de nombreux systèmes purgent
+/// `/tmp` au redémarrage : le fichier pouvait avoir disparu avant qu'il n'y arrive.
 ///
 /// `on_progress` reçoit un pourcentage borné à 0–100 quand la taille est connue.
 /// Le fichier n'est renvoyé qu'après validation cryptographique.
@@ -71,6 +78,7 @@ pub async fn check(client: &reqwest::Client, current: &Version) -> AppResult<Opt
 pub async fn download_verified(
     client: &reqwest::Client,
     update: &UpdateInfo,
+    destination_dir: &Path,
     mut on_progress: impl FnMut(u8),
 ) -> AppResult<PathBuf> {
     use iced::futures::StreamExt;
@@ -85,15 +93,24 @@ pub async fn download_verified(
         .download_url
         .rsplit_once('/')
         .map_or("candilog-update.bin", |(_, name)| name);
-    let path = std::env::temp_dir().join(format!("candilog-{}-{extension}", update.version));
-    let mut file = std::fs::File::create(&path).map_err(|error| {
+    let dossier = destination_dir.join(DOSSIER_MISES_A_JOUR);
+    tokio::fs::create_dir_all(&dossier).await.map_err(|error| {
+        AppError::Database(format!(
+            "Création du dossier de mise à jour impossible : {error}"
+        ))
+    })?;
+    let path = dossier.join(format!("candilog-{}-{extension}", update.version));
+    // `tokio::fs` plutôt que `std::fs` : chaque écriture bloquante immobiliserait un fil de
+    // travail du runtime pour la durée de l'E/S, réduisant d'autant le parallélisme
+    // disponible aux autres tâches asynchrones.
+    let mut file = tokio::fs::File::create(&path).await.map_err(|error| {
         AppError::Database(format!("Création du téléchargement impossible : {error}"))
     })?;
     let mut received = 0_u64;
     let mut stream = response.bytes_stream();
     while let Some(chunk) = stream.next().await {
         let chunk = chunk?;
-        file.write_all(&chunk).map_err(|error| {
+        file.write_all(&chunk).await.map_err(|error| {
             AppError::Database(format!("Écriture du téléchargement impossible : {error}"))
         })?;
         received = received.saturating_add(u64::try_from(chunk.len()).unwrap_or_default());
@@ -105,17 +122,26 @@ pub async fn download_verified(
             on_progress(u8::try_from(percentage.min(100)).unwrap_or(100));
         }
     }
-    file.sync_all().map_err(|error| {
+    file.sync_all().await.map_err(|error| {
         AppError::Database(format!(
             "Synchronisation du téléchargement impossible : {error}"
         ))
     })?;
     drop(file);
-    if let Err(error) = verify_package(&path, &update.signature) {
-        let _ = std::fs::remove_file(&path);
+    // La vérification relit le fichier entier et calcule un condensat : travail bloquant et
+    // gourmand en CPU, donc confié à un fil dédié.
+    let paquet = path.clone();
+    let signature = update.signature.clone();
+    let verification = tokio::task::spawn_blocking(move || verify_package(&paquet, &signature))
+        .await
+        .map_err(|error| AppError::Database(format!("Vérification interrompue : {error}")))?;
+    if let Err(error) = verification {
+        let _ = tokio::fs::remove_file(&path).await;
+        tracing::error!(erreur = %error, "signature du paquet invalide, fichier supprimé");
         return Err(error);
     }
     on_progress(100);
+    tracing::info!(version = %update.version, "mise à jour téléchargée et vérifiée");
     Ok(path)
 }
 

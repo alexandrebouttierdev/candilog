@@ -91,7 +91,12 @@ fn data_row<'a>(app: &App, candidate: &'a Candidature, columns: &[Column]) -> El
         ),
         table::cell(
             columns[1],
-            typo::meta(format::or_dash(candidate.entreprise_nom.as_deref())),
+            // La colonne ENTREPRISE se repliait sur deux lignes quand POSTE était tronquée :
+            // la hauteur des lignes du tableau variait selon la longueur du nom.
+            typo::meta(format::truncate(
+                &format::or_dash(candidate.entreprise_nom.as_deref()),
+                46,
+            )),
         ),
         table::cell(columns[2], status_badge(candidate.statut)),
         table::cell(

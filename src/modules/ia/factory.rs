@@ -23,6 +23,15 @@ pub fn default_endpoint(kind: &ProviderKind) -> &'static str {
 /// Construit le fournisseur LLM correspondant à la configuration.
 #[must_use]
 pub fn build_provider(config: &LlmConfig) -> Arc<dyn LlmProvider> {
+    build_provider_pinned(config, None)
+}
+
+/// Variante épinglée sur l'adresse validée par `validate_llm_endpoint`.
+#[must_use]
+pub fn build_provider_pinned(
+    config: &LlmConfig,
+    pin: Option<crate::shared::llm::EndpointPin>,
+) -> Arc<dyn LlmProvider> {
     let endpoint = config
         .endpoint
         .clone()
@@ -31,15 +40,15 @@ pub fn build_provider(config: &LlmConfig) -> Arc<dyn LlmProvider> {
     let model = config.model.clone();
     let temp = config.temperature;
     match config.provider {
-        ProviderKind::Ollama => Arc::new(OllamaProvider::new(endpoint, model, temp)),
+        ProviderKind::Ollama => Arc::new(OllamaProvider::new(endpoint, model, temp, pin)),
         ProviderKind::OpenAI
         | ProviderKind::Mistral
         | ProviderKind::Nvidia
         | ProviderKind::Custom(_) => {
-            Arc::new(OpenAiCompatProvider::new(endpoint, key, model, temp))
+            Arc::new(OpenAiCompatProvider::new(endpoint, key, model, temp, pin))
         }
-        ProviderKind::Claude => Arc::new(ClaudeProvider::new(endpoint, key, model, temp)),
-        ProviderKind::Gemini => Arc::new(GeminiProvider::new(endpoint, key, model, temp)),
+        ProviderKind::Claude => Arc::new(ClaudeProvider::new(endpoint, key, model, temp, pin)),
+        ProviderKind::Gemini => Arc::new(GeminiProvider::new(endpoint, key, model, temp, pin)),
     }
 }
 

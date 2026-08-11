@@ -6,7 +6,7 @@ use crate::app::{App, Message};
 use crate::modules::candidatures::components::{column_label, status_tone, PIPELINE};
 use crate::modules::candidatures::model::Candidature;
 use crate::modules::metriques::components::PipelineCounts;
-use crate::modules::metriques::model::{AppelLlm, OrigineScore, ResumeScoresAts, ScoreAts};
+use crate::modules::metriques::model::{OrigineScore, ResumeScoresAts};
 use crate::ui::components::icon::{self, Icon, Ink};
 use crate::ui::components::table::Column as TableColumn;
 use crate::ui::components::tabs::Tab;
@@ -24,7 +24,7 @@ use iced::widget::{column, container, row, Container, Space, Stack};
 use iced::{Alignment, Element, Length, Padding};
 
 /// Nombre de lignes par page des historiques ATS et IA.
-const PAGE_SIZE: u64 = 10;
+pub const PAGE_SIZE: u64 = 10;
 
 /// Colonnes de l'historique des scores ATS.
 const ATS_COLUMNS: [TableColumn; 3] = [
@@ -86,10 +86,16 @@ pub fn view(app: &App) -> Element<'_, Message> {
 // Onglet Candidatures
 // --------------------------------------------------------------------------
 
+/// Hauteur réservée à la rangée de panneaux graphiques.
+///
+/// Couvre l'en-tête de panneau, son filet, ses marges et le tracé lui-même (`.height(176.0)`),
+/// de sorte que le graphique ne soit jamais rogné quelle que soit la hauteur de la fenêtre.
+const HAUTEUR_PANNEAUX: f32 = 300.0;
+
 fn candidatures_tab<'a>(app: &'a App, counts: &PipelineCounts) -> Element<'a, Message> {
     let today = chrono::Local::now().date_naive();
     let due = app.due_reminders(&today.format("%Y-%m-%d").to_string());
-    column![
+    let corps = column![
         row![
             stat_card::metric_icon_tinted(
                 "Candidatures",
@@ -117,17 +123,25 @@ fn candidatures_tab<'a>(app: &'a App, counts: &PipelineCounts) -> Element<'a, Me
             ),
         ]
         .spacing(space::MD),
-        layout::columns([
-            activity_panel(app, today)
-                .width(Length::FillPortion(3))
-                .into(),
-            funnel_panel(counts).width(Length::FillPortion(2)).into(),
-        ]),
+        layout::columns_of_height(
+            HAUTEUR_PANNEAUX,
+            [
+                activity_panel(app, today)
+                    .width(Length::FillPortion(3))
+                    .into(),
+                funnel_panel(counts).width(Length::FillPortion(2)).into(),
+            ],
+        ),
         reminders_band(app, today, due),
     ]
-    .spacing(space::LG)
-    .height(Length::Fill)
-    .into()
+    .spacing(space::LG);
+    // L'onglet défile au lieu de comprimer. Les trois blocs étaient empilés dans une colonne
+    // de hauteur `Fill` : la rangée de graphiques, seul enfant élastique, ne recevait que
+    // l'espace laissé par le bandeau des relances, dont la hauteur croît avec le nombre de
+    // relances dues. Passé cinq relances, elle devenait plus courte que la hauteur fixe du
+    // graphique et le contenu était **rogné sans le moindre indice** : ni ellipse, ni barre de
+    // défilement, ni message — les deux panneaux finissaient vides, réduits à leur titre.
+    surface::scroll(corps).height(Length::Fill).into()
 }
 
 /// Panneau des barres : candidatures envoyées sur les 8 dernières semaines.
@@ -317,7 +331,7 @@ fn alert_icon<'a, Message: 'a>() -> Element<'a, Message> {
 
 fn performance_tab<'a>(app: &'a App) -> Element<'a, Message> {
     let summary = app.data.ats_summary.as_ref();
-    column![
+    let corps = column![
         row![
             stat_card::metric_icon_tinted(
                 "Score moyen",
@@ -345,17 +359,20 @@ fn performance_tab<'a>(app: &'a App) -> Element<'a, Message> {
             ),
         ]
         .spacing(space::MD),
-        layout::columns([
-            distribution_panel(summary)
-                .width(Length::FillPortion(1))
-                .into(),
-            history_panel(app).width(Length::FillPortion(2)).into(),
-        ]),
+        layout::columns_of_height(
+            HAUTEUR_PANNEAUX,
+            [
+                distribution_panel(summary)
+                    .width(Length::FillPortion(1))
+                    .into(),
+                history_panel(app).width(Length::FillPortion(2)).into(),
+            ],
+        ),
         calls_panel(app),
     ]
-    .spacing(space::LG)
-    .height(Length::Fill)
-    .into()
+    .spacing(space::LG);
+    // Même structure à trois blocs que `candidatures_tab`, donc même correctif.
+    surface::scroll(corps).height(Length::Fill).into()
 }
 
 /// Répartition des scores ATS en quatre tranches colorées.
@@ -408,13 +425,14 @@ fn distribution_panel<'a>(summary: Option<&ResumeScoresAts>) -> Container<'a, Me
 
 /// Historique des scores ATS : table paginée, date, origine et score.
 fn history_panel<'a>(app: &'a App) -> Container<'a, Message> {
+    // La page vient de la base (`LIMIT`/`OFFSET`) : plus de découpage en mémoire d'un
+    // historique intégralement chargé.
     let all = &app.data.ats_scores;
-    let body: Element<'a, Message> = if all.is_empty() {
+    let body: Element<'a, Message> = if all.items.is_empty() {
         state::empty_slot("Aucun score ATS enregistré.")
     } else {
-        let page = page_scores(all, app.ats_page, PAGE_SIZE);
         let mut rows = column![];
-        for score in page {
+        for score in &all.items {
             rows = rows.push(table::row_static(
                 app.layout(),
                 [
@@ -437,12 +455,12 @@ fn history_panel<'a>(app: &'a App) -> Container<'a, Message> {
                 ],
             ));
         }
-        let total = all.len() as u64;
-        let footer: Element<'a, Message> = if total.div_ceil(PAGE_SIZE) > 1 {
+        let total = all.total;
+        let footer: Element<'a, Message> = if all.total_pages > 1 {
             let (first, last) = pagination::window(app.ats_page, PAGE_SIZE, total);
             pagination::pagination(
                 app.ats_page,
-                total.div_ceil(PAGE_SIZE),
+                all.total_pages,
                 Message::AtsPagePrev,
                 Message::AtsPageNext,
                 first,
@@ -463,7 +481,10 @@ fn history_panel<'a>(app: &'a App) -> Container<'a, Message> {
 
     surface::panel(
         column![
-            surface::section_header("Historique des scores", badge::count(all.len())),
+            surface::section_header(
+                "Historique des scores",
+                badge::count(usize::try_from(all.total).unwrap_or(usize::MAX))
+            ),
             surface::divider(),
             body,
         ]
@@ -477,12 +498,11 @@ fn history_panel<'a>(app: &'a App) -> Container<'a, Message> {
 /// modèle, latence et succès.
 fn calls_panel<'a>(app: &'a App) -> Container<'a, Message> {
     let all = &app.data.llm_calls;
-    let body: Element<'a, Message> = if all.is_empty() {
+    let body: Element<'a, Message> = if all.items.is_empty() {
         state::empty_slot("Aucun appel IA enregistré.")
     } else {
-        let page = page_appels(all, app.llm_page, PAGE_SIZE);
         let mut rows = column![];
-        for call in page {
+        for call in &all.items {
             let status = if call.succes {
                 icon::icon(Icon::Check, icon::SM, Ink::Toned(Tone::Success))
             } else {
@@ -506,12 +526,12 @@ fn calls_panel<'a>(app: &'a App) -> Container<'a, Message> {
                 ],
             ));
         }
-        let total = all.len() as u64;
-        let footer: Element<'a, Message> = if total.div_ceil(PAGE_SIZE) > 1 {
+        let total = all.total;
+        let footer: Element<'a, Message> = if all.total_pages > 1 {
             let (first, last) = pagination::window(app.llm_page, PAGE_SIZE, total);
             pagination::pagination(
                 app.llm_page,
-                total.div_ceil(PAGE_SIZE),
+                all.total_pages,
                 Message::LlmPagePrev,
                 Message::LlmPageNext,
                 first,
@@ -532,7 +552,10 @@ fn calls_panel<'a>(app: &'a App) -> Container<'a, Message> {
 
     surface::panel(
         column![
-            surface::section_header("Appels IA", badge::count(all.len())),
+            surface::section_header(
+                "Appels IA",
+                badge::count(usize::try_from(all.total).unwrap_or(usize::MAX))
+            ),
             surface::divider(),
             body,
         ]
@@ -620,35 +643,11 @@ fn recent_actions(candidates: &[Candidature], today: NaiveDate) -> usize {
         .count()
 }
 
-/// Fenêtre paginée d'appels LLM (données déjà en mémoire, page 1-based).
-fn page_appels(all: &[AppelLlm], page: u64, page_size: u64) -> Vec<&AppelLlm> {
-    page_slice(all, page, page_size)
-}
-
-/// Fenêtre paginée de scores ATS (données déjà en mémoire, page 1-based).
-fn page_scores(all: &[ScoreAts], page: u64, page_size: u64) -> Vec<&ScoreAts> {
-    page_slice(all, page, page_size)
-}
-
-/// Découpe une tranche de page en conservant l'ordre source ; la page hors
-/// limites est ramenée à la première ou à la dernière page.
-fn page_slice<T>(all: &[T], page: u64, page_size: u64) -> Vec<&T> {
-    if all.is_empty() {
-        return Vec::new();
-    }
-    let page_size = page_size.max(1);
-    let total_pages = (all.len() as u64).div_ceil(page_size);
-    let page = page.clamp(1, total_pages);
-    let start = ((page - 1) * page_size) as usize;
-    all.iter().skip(start).take(page_size as usize).collect()
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{interview_rate, page_appels, page_scores, weekly_counts};
+    use super::{interview_rate, weekly_counts};
     use crate::modules::candidatures::model::{Candidature, StatutCandidature, TypeContrat};
     use crate::modules::metriques::components::PipelineCounts;
-    use crate::modules::metriques::model::{AppelLlm, OperationLlm, OrigineScore, ScoreAts};
     use chrono::NaiveDate;
 
     fn candidature(date: &str) -> Candidature {
@@ -665,25 +664,6 @@ mod tests {
             notes: None,
             created_at: date.into(),
             updated_at: date.into(),
-        }
-    }
-
-    fn appel(index: usize) -> AppelLlm {
-        AppelLlm {
-            operation: OperationLlm::ParseOffer,
-            provider: format!("provider-{index}"),
-            modele: "test".into(),
-            latence_ms: 100,
-            succes: true,
-            cree_le: "2026-08-01T00:00:00Z".into(),
-        }
-    }
-
-    fn score(index: usize) -> ScoreAts {
-        ScoreAts {
-            score: (index as u8) % 100,
-            origine: OrigineScore::Genere,
-            cree_le: "2026-08-01T00:00:00Z".into(),
         }
     }
 
@@ -741,41 +721,5 @@ mod tests {
             ..PipelineCounts::default()
         };
         assert_eq!(interview_rate(&complet), 100);
-    }
-
-    #[test]
-    fn les_pages_d_appels_decoupent_sans_reordonner() {
-        let calls: Vec<AppelLlm> = (0..25).map(appel).collect();
-        let first = page_appels(&calls, 1, 10);
-        assert_eq!(first.len(), 10);
-        assert_eq!(first[0].provider, "provider-0");
-        let second = page_appels(&calls, 2, 10);
-        assert_eq!(
-            second[0].provider, "provider-10",
-            "l'ordre source est préservé"
-        );
-        let last = page_appels(&calls, 3, 10);
-        assert_eq!(last.len(), 5);
-        assert_eq!(last[4].provider, "provider-24");
-    }
-
-    #[test]
-    fn les_pages_de_scores_clamgent_la_page_hors_limites() {
-        let scores: Vec<ScoreAts> = (0..25).map(score).collect();
-        assert_eq!(
-            page_scores(&scores, 0, 10).len(),
-            10,
-            "page zéro ramenée à la première"
-        );
-        assert_eq!(
-            page_scores(&scores, 9, 10).len(),
-            5,
-            "page trop haute ramenée à la dernière"
-        );
-        assert!(
-            !page_scores(&scores, 1, 0).is_empty(),
-            "page_size nul ramené à 1"
-        );
-        assert!(page_scores(&[], 1, 10).is_empty());
     }
 }

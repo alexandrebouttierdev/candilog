@@ -13,7 +13,7 @@ async fn test_list_models_gemini_retire_le_prefixe_models() {
         )
         .create_async()
         .await;
-    let p = GeminiProvider::new(server.url(), "key".into(), "m".into(), 0.5);
+    let p = GeminiProvider::new(server.url(), "key".into(), "m".into(), 0.5, None);
     let models = p.list_models().await.unwrap();
     assert_eq!(models, vec!["gemini-2.5-flash", "gemini-2.5-pro"]);
 }

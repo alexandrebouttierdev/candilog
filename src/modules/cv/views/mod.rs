@@ -78,8 +78,12 @@ fn grid(app: &App) -> Element<'_, Message> {
                     Message::LoadCvVersion(version.id),
                     Message::OpenDialog(Dialog::DeleteCv(version.id)),
                 ))
-                .width(Length::FillPortion(1))
-                .max_width(240.0),
+                // Largeur **fixe** : dans une rangée repliable, un enfant `FillPortion`
+                // réclame toute la largeur restante, si bien que chaque carte consommait une
+                // ligne entière tout en n'étant dessinée que sur 240 px — la bibliothèque
+                // annoncée en grille se comportait en liste à une colonne, moitié de panneau
+                // perdue et défilement inutile dès la deuxième version.
+                .width(Length::Fixed(240.0)),
             );
         }
         surface::scroll(cards.wrap()).height(Length::Fill).into()

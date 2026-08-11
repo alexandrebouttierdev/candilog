@@ -29,7 +29,7 @@ pub fn view(app: &App) -> Element<'_, Message> {
         ),
         stat_card::metric_icon_tinted(
             "Candidatures liées",
-            total_candidatures(&app.data.candidatures, app.selected_company).to_string(),
+            total_candidatures(&app.data.candidatures, &app.data.entreprises).to_string(),
             Tone::Info,
             Icon::Applications,
         ),
@@ -252,15 +252,22 @@ fn detail(app: &App) -> Element<'_, Message> {
     .into()
 }
 
-/// Nombre de candidatures liées à l'entreprise sélectionnée.
+/// Nombre de candidatures rattachées à une entreprise suivie.
+///
+/// Indicateur **global**, comme les deux tuiles qui l'encadrent (« Entreprises suivies »,
+/// « Contacts enregistrés »). Il dépendait auparavant de la sélection et renvoyait 0 tant
+/// qu'aucune entreprise n'était choisie — c'est-à-dire à l'arrivée sur l'écran : la tuile
+/// affichait « Candidatures liées 0 » juste au-dessus d'une liste dont les badges totalisaient
+/// 37, dans une rangée d'indicateurs par ailleurs globaux et sans distinction visuelle.
 #[must_use]
-fn total_candidatures(candidates: &[Candidature], selected: Option<uuid::Uuid>) -> usize {
-    let Some(id) = selected else {
-        return 0;
-    };
+fn total_candidatures(candidates: &[Candidature], companies: &[Entreprise]) -> usize {
     candidates
         .iter()
-        .filter(|item| item.entreprise_id == id)
+        .filter(|item| {
+            companies
+                .iter()
+                .any(|company| company.id == item.entreprise_id)
+        })
         .count()
 }
 
@@ -268,6 +275,7 @@ fn total_candidatures(candidates: &[Candidature], selected: Option<uuid::Uuid>) 
 mod tests {
     use super::total_candidatures;
     use crate::modules::candidatures::model::{Candidature, StatutCandidature, TypeContrat};
+    use crate::modules::entreprises::model::Entreprise;
     use uuid::Uuid;
 
     fn candidature(entreprise_id: Uuid) -> Candidature {
@@ -287,17 +295,47 @@ mod tests {
         }
     }
 
-    #[test]
-    fn sans_selection_aucune_candidature_n_est_comptee() {
-        assert_eq!(total_candidatures(&[], None), 0);
+    fn entreprise(id: Uuid) -> Entreprise {
+        Entreprise {
+            id,
+            nom: "Agrial".into(),
+            secteur: None,
+            type_: None,
+            site_web: None,
+            ville: None,
+            adresse: None,
+            notes: None,
+            created_at: "2026-08-01".into(),
+            updated_at: "2026-08-01".into(),
+        }
     }
 
     #[test]
-    fn ne_comptent_que_les_candidatures_de_l_entreprise_selectionnee() {
+    fn le_compteur_est_global_et_ne_depend_pas_de_la_selection() {
+        // Le défaut observé : la tuile affichait 0 à l'arrivée sur l'écran, alors que la
+        // liste juste en dessous totalisait 37 candidatures liées.
+        let premiere = Uuid::new_v4();
+        let seconde = Uuid::new_v4();
+        let candidates = vec![
+            candidature(premiere),
+            candidature(premiere),
+            candidature(seconde),
+        ];
+        let companies = vec![entreprise(premiere), entreprise(seconde)];
+        assert_eq!(total_candidatures(&candidates, &companies), 3);
+    }
+
+    #[test]
+    fn sans_entreprise_aucune_candidature_n_est_comptee() {
+        assert_eq!(total_candidatures(&[], &[]), 0);
+    }
+
+    #[test]
+    fn ne_comptent_que_les_candidatures_rattachees_a_une_entreprise_suivie() {
         let target = Uuid::new_v4();
         let other = Uuid::new_v4();
         let candidates = vec![candidature(target), candidature(target), candidature(other)];
-        assert_eq!(total_candidatures(&candidates, Some(target)), 2);
-        assert_eq!(total_candidatures(&candidates, Some(other)), 1);
+        assert_eq!(total_candidatures(&candidates, &[entreprise(target)]), 2);
+        assert_eq!(total_candidatures(&candidates, &[entreprise(other)]), 1);
     }
 }

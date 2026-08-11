@@ -12,7 +12,13 @@ async fn test_generate_claude_parse_le_texte() {
         .with_body(r#"{"content":[{"type":"text","text":"Réponse"}]}"#)
         .create_async()
         .await;
-    let p = ClaudeProvider::new(server.url(), "sk-ant".into(), "claude-sonnet-4".into(), 0.5);
+    let p = ClaudeProvider::new(
+        server.url(),
+        "sk-ant".into(),
+        "claude-sonnet-4".into(),
+        0.5,
+        None,
+    );
     let out = p.generate("x", "s").await.unwrap();
     assert_eq!(out, "Réponse");
     m.assert_async().await;

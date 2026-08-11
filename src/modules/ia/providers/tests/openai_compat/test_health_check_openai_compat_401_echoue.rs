@@ -10,6 +10,6 @@ async fn test_health_check_openai_compat_401_echoue() {
         .with_status(401)
         .create_async()
         .await;
-    let p = OpenAiCompatProvider::new(server.url(), "bad".into(), "m".into(), 0.5);
+    let p = OpenAiCompatProvider::new(server.url(), "bad".into(), "m".into(), 0.5, None);
     assert!(p.health_check().await.is_err());
 }

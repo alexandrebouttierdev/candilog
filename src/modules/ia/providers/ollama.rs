@@ -46,12 +46,17 @@ fn model_disables_thinking(model: &str) -> bool {
 impl OllamaProvider {
     /// Construit le fournisseur Ollama.
     #[must_use]
-    pub fn new(endpoint: String, model: String, temperature: f32) -> Self {
+    pub fn new(
+        endpoint: String,
+        model: String,
+        temperature: f32,
+        pin: Option<crate::shared::llm::EndpointPin>,
+    ) -> Self {
         Self {
             endpoint,
             model,
             temperature,
-            http: crate::shared::http::client(),
+            http: crate::shared::http::client_pinned(pin.as_ref()),
         }
     }
 

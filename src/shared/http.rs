@@ -13,9 +13,40 @@ pub const PROVIDER_GENERATION_TIMEOUT: std::time::Duration = std::time::Duration
 /// Construit un client avec délais bornés et redirections limitées.
 #[must_use]
 pub fn client() -> reqwest::Client {
-    reqwest::Client::builder()
+    client_pinned(None)
+}
+
+/// Variante épinglée sur l'adresse validée par `validate_llm_endpoint`.
+///
+/// L'épinglage supprime la seconde résolution DNS qu'effectuerait la requête : la connexion
+/// emprunte exactement l'adresse contrôlée, ce qui ferme la fenêtre de « DNS rebinding » entre
+/// la vérification anti-SSRF et l'usage.
+#[must_use]
+pub fn client_pinned(pin: Option<&crate::shared::llm::EndpointPin>) -> reqwest::Client {
+    let mut builder = reqwest::Client::builder()
         .connect_timeout(std::time::Duration::from_secs(8))
         .timeout(std::time::Duration::from_secs(45))
+        .redirect(reqwest::redirect::Policy::none())
+        .user_agent("Candilog/0.1");
+    if let Some(pin) = pin {
+        builder = builder.resolve(&pin.host, pin.address);
+    }
+    builder.build().unwrap_or_else(|_| reqwest::Client::new())
+}
+
+/// Client de téléchargement de gros fichiers.
+///
+/// Conserve les protections de [`client`] — délai de connexion et refus des redirections — mais
+/// abandonne le délai **global**, incompatible avec un paquet de plusieurs dizaines de
+/// mégaoctets sur une liaison lente.
+///
+/// Le refus des redirections importe particulièrement ici : c'est la seule requête du projet
+/// dont le résultat aboutit à l'exécution d'un binaire.
+#[must_use]
+pub fn download_client() -> reqwest::Client {
+    reqwest::Client::builder()
+        .connect_timeout(std::time::Duration::from_secs(8))
+        .read_timeout(std::time::Duration::from_secs(60))
         .redirect(reqwest::redirect::Policy::none())
         .user_agent("Candilog/0.1")
         .build()

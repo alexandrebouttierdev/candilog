@@ -48,28 +48,19 @@ impl Kind {
         }
     }
 
-    /// Déduit la nature d'un message métier sans imposer de refonte des
-    /// services : un message d'erreur ne doit pas s'afficher en vert.
+    /// Nature d'une notification portant une erreur, **dérivée de la variante** et non
+    /// devinée à partir du texte.
+    ///
+    /// La version précédente recherchait huit mots-clés français dans le message et retombait
+    /// sur `Success` par défaut : les préfixes réellement produits par `AppError`
+    /// (« Validation : », « Base de données : », « Sérialisation : »…) n'en contenant aucun,
+    /// les échecs s'affichaient en vert avec une icône de coche.
     #[must_use]
-    pub fn infer(message: &str) -> Self {
-        let lowered = message.to_lowercase();
-        const FAILURES: [&str; 8] = [
-            "erreur",
-            "impossible",
-            "échec",
-            "echec",
-            "invalide",
-            "introuvable",
-            "refus",
-            "timeout",
-        ];
-        const CAUTIONS: [&str; 4] = ["attention", "annulé", "annule", "expiré"];
-        if FAILURES.iter().any(|needle| lowered.contains(needle)) {
-            Self::Error
-        } else if CAUTIONS.iter().any(|needle| lowered.contains(needle)) {
-            Self::Warning
-        } else {
-            Self::Success
+    pub const fn from_error(error: &crate::shared::error::AppError) -> Self {
+        match error {
+            // Une annulation est une décision de l'utilisateur, pas une panne.
+            crate::shared::error::AppError::Cancelled => Self::Warning,
+            _ => Self::Error,
         }
     }
 }
@@ -128,26 +119,54 @@ pub fn toast<'a, Message: Clone + 'a>(
 #[cfg(test)]
 mod tests {
     use super::Kind;
+    use crate::shared::error::AppError;
     use crate::ui::theme::Tone;
 
-    #[test]
-    fn une_erreur_ne_s_affiche_jamais_comme_un_succes() {
-        assert_eq!(Kind::infer("Erreur : provider IA injoignable"), Kind::Error);
-        assert_eq!(Kind::infer("Impossible d'ouvrir la base"), Kind::Error);
-        assert_eq!(Kind::infer("Fichier introuvable"), Kind::Error);
-        assert_eq!(Kind::infer("Échec de l'export PDF"), Kind::Error);
+    /// Les sept variantes réellement produites par le code, et non des chaînes fabriquées
+    /// pour l'occasion. L'ancienne version de ce test devinait la nature par mots-clés
+    /// français et passait au vert alors que « Sérialisation : missing field 'first_name' »
+    /// s'affichait à l'écran avec l'icône de succès : aucun des huit mots recherchés ne
+    /// figure dans les préfixes d'`AppError`.
+    fn toutes_les_variantes() -> [AppError; 7] {
+        [
+            AppError::Validation("le poste est obligatoire".into()),
+            AppError::NotFound("candidature".into()),
+            AppError::Database("file is not a database".into()),
+            AppError::Http("délai réseau dépassé".into()),
+            AppError::Serialization("missing field `first_name` at line 1 column 344".into()),
+            AppError::Provider("quota dépassé".into()),
+            AppError::Cancelled,
+        ]
     }
 
     #[test]
-    fn un_avertissement_est_distingue_d_une_erreur() {
-        assert_eq!(Kind::infer("Opération annulée"), Kind::Warning);
-        assert_eq!(Kind::infer("Attention : profil incomplet"), Kind::Warning);
+    fn aucune_erreur_ne_s_affiche_jamais_comme_un_succes() {
+        for erreur in toutes_les_variantes() {
+            let kind = Kind::from_error(&erreur);
+            assert_ne!(
+                kind,
+                Kind::Success,
+                "{erreur:?} s'afficherait en vert avec une icône de coche"
+            );
+            assert_ne!(
+                kind,
+                Kind::Info,
+                "{erreur:?} passerait pour une information"
+            );
+        }
     }
 
     #[test]
-    fn une_operation_reussie_reste_positive() {
-        assert_eq!(Kind::infer("Candidature enregistrée"), Kind::Success);
-        assert_eq!(Kind::infer("Backup exporté"), Kind::Success);
+    fn une_annulation_est_un_avertissement_pas_une_erreur() {
+        assert_eq!(Kind::from_error(&AppError::Cancelled), Kind::Warning);
+    }
+
+    #[test]
+    fn un_echec_reel_est_une_erreur() {
+        assert_eq!(
+            Kind::from_error(&AppError::Database("file is not a database".into())),
+            Kind::Error
+        );
     }
 
     #[test]
@@ -160,11 +179,5 @@ mod tests {
         }
         assert_eq!(Kind::Error.tone(), Tone::Danger);
         assert_eq!(Kind::default(), Kind::Info);
-    }
-
-    #[test]
-    fn la_detection_ignore_la_casse_et_les_accents_courants() {
-        assert_eq!(Kind::infer("ERREUR SQLITE"), Kind::Error);
-        assert_eq!(Kind::infer("Echec du téléchargement"), Kind::Error);
     }
 }
