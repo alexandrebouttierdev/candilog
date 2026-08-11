@@ -153,6 +153,8 @@ pub enum Message {
     SubmitCandidature,
     /// Persiste le statut d'une candidature existante.
     MoveCandidature(uuid::Uuid, StatutCandidature),
+    /// Résultat du changement de statut depuis la fiche, sans fermer l'inspecteur.
+    CandidatureStatusUpdated(Result<(), String>),
     /// Lie un entretien à une candidature.
     EntretienCandidatureChanged(uuid::Uuid),
     /// Lie un entretien à un contact.
@@ -165,8 +167,8 @@ pub enum Message {
     EntretienLieuChanged(String),
     /// Modifie les notes d'entretien.
     EntretienNotesChanged(String),
-    /// Modifie le compte rendu.
-    EntretienCompteRenduChanged(String),
+    /// Modifie le compte rendu multiligne.
+    EntretienCompteRenduChanged(iced::widget::text_editor::Action),
     /// Soumet un entretien.
     SubmitEntretien,
     /// Lie une relance à une candidature.
@@ -232,6 +234,10 @@ pub enum Message {
     SettingsProviderChanged(crate::shared::llm::ProviderKind),
     /// Modifie le modèle IA.
     SettingsModelChanged(String),
+    /// Demande au fournisseur la liste de ses modèles disponibles.
+    RefreshLlmModels,
+    /// Résultat du chargement des modèles du fournisseur.
+    LlmModelsLoaded(Result<Vec<String>, String>),
     /// Modifie l'endpoint IA.
     SettingsEndpointChanged(String),
     /// Modifie la clé API transitoire.
@@ -250,6 +256,10 @@ pub enum Message {
     TestLlmConnection,
     /// Résultat du test provider.
     LlmConnectionTested(Result<(), String>),
+    /// Ouvre le site de l'auteur dans le navigateur système.
+    OpenAuthorWebsite,
+    /// Résultat de l'ouverture du site de l'auteur.
+    AuthorWebsiteOpened(Result<(), String>),
     /// Exporte une sauvegarde SQLite cohérente.
     ExportBackup,
     /// Résultat de la sauvegarde SQLite.

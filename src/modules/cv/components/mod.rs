@@ -233,7 +233,7 @@ mod tests {
             version("V2", "2026-08-09T10:15:00+02:00"),
             version("V3", "2026-08-05T18:30:00+02:00"),
         ];
-        assert_eq!(latest_version_date(&versions), "09/08/2026 · 10:15");
+        assert_eq!(latest_version_date(&versions), "09-08-2026 · 10:15");
     }
 
     #[test]

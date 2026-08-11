@@ -81,7 +81,7 @@ impl Section {
             Self::Relations => "Entreprises et réseau",
             Self::Documents => "CV et lettres de motivation",
             Self::Analyse => "Statistiques",
-            Self::Reglages => "Profil et paramètres",
+            Self::Reglages => "Profil et intelligence artificielle",
         }
     }
 
@@ -161,7 +161,7 @@ impl Route {
             Self::LettreMotivation => "Lettre de motivation",
             Self::CvImport => "Analyser un CV",
             Self::Profil => "Profil",
-            Self::Parametres => "Paramètres",
+            Self::Parametres => "Intelligence artificielle",
         }
     }
 

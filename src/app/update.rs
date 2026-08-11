@@ -15,6 +15,7 @@ use crate::modules::entreprises::model::NouvelleEntreprise;
 use crate::modules::entretiens::model::NouvelEntretien;
 use crate::modules::ia::cache::CacheIaRepository;
 use crate::modules::relances::model::NouvelleRelance;
+use crate::ui::format as ui_format;
 use chrono::{Datelike, Local};
 use iced::futures::SinkExt;
 use iced::Task;
@@ -298,12 +299,22 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 app.notify(NotificationKind::Warning, "Sélectionnez une entreprise.");
                 return Task::none();
             };
+            let date_envoi = match ui_format::date_to_storage(&app.candidature_form.date_envoi) {
+                Ok(date) => date,
+                Err(error) => {
+                    app.notify(
+                        NotificationKind::Warning,
+                        format!("Date d'envoi invalide. {error}"),
+                    );
+                    return Task::none();
+                }
+            };
             let input = NouvelleCandidature {
                 poste: app.candidature_form.poste.clone(),
                 entreprise_id,
                 type_contrat: app.candidature_form.type_contrat,
                 statut: app.candidature_form.statut,
-                date_envoi: app.candidature_form.date_envoi.clone(),
+                date_envoi,
                 lien_offre: optional(&app.candidature_form.lien_offre),
                 notes: optional(&app.candidature_form.notes),
             };
@@ -319,14 +330,32 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             });
         }
         Message::MoveCandidature(id, status) => {
-            return ecrire(app, "Statut mis à jour.", move |backend| {
-                backend
-                    .candidatures
-                    .changer_statut(id, status)
-                    .map(|_| ())
-                    .map_err(|error| error.to_string())
-            });
+            let Some(backend) = app.backend.clone() else {
+                app.notify_failure("La base Candilog n'est pas disponible.");
+                return Task::none();
+            };
+            return Task::perform(
+                async move {
+                    tokio::task::spawn_blocking(move || {
+                        backend
+                            .candidatures
+                            .changer_statut(id, status)
+                            .map(|_| ())
+                            .map_err(|error| error.to_string())
+                    })
+                    .await
+                    .unwrap_or_else(|error| Err(format!("Opération interrompue : {error}")))
+                },
+                Message::CandidatureStatusUpdated,
+            );
         }
+        Message::CandidatureStatusUpdated(result) => match result {
+            Ok(()) => {
+                app.notify_success("Statut de la candidature mis à jour.");
+                return recharger(app);
+            }
+            Err(error) => app.notify_failure(error),
+        },
         Message::EntretienCandidatureChanged(value) => {
             app.entretien_form.candidature_id = Some(value)
         }
@@ -335,20 +364,34 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
         Message::EntretienTypeChanged(value) => app.entretien_form.type_entretien = value,
         Message::EntretienLieuChanged(value) => app.entretien_form.lieu = value,
         Message::EntretienNotesChanged(value) => app.entretien_form.notes = value,
-        Message::EntretienCompteRenduChanged(value) => app.entretien_form.compte_rendu = value,
+        Message::EntretienCompteRenduChanged(action) => {
+            app.entretien_form.compte_rendu.perform(action);
+        }
         Message::SubmitEntretien => {
             let Some(candidature_id) = app.entretien_form.candidature_id else {
                 app.notify(NotificationKind::Warning, "Sélectionnez une candidature.");
                 return Task::none();
             };
+            let date_entretien =
+                match ui_format::datetime_to_storage(&app.entretien_form.date_entretien) {
+                    Ok(date) => date,
+                    Err(error) => {
+                        app.notify(
+                            NotificationKind::Warning,
+                            format!("Date d'entretien invalide. {error}"),
+                        );
+                        return Task::none();
+                    }
+                };
+            let compte_rendu = app.entretien_form.compte_rendu.text();
             let input = NouvelEntretien {
                 candidature_id,
                 contact_id: app.entretien_form.contact_id,
-                date_entretien: app.entretien_form.date_entretien.clone(),
+                date_entretien,
                 type_entretien: app.entretien_form.type_entretien,
                 lieu: optional(&app.entretien_form.lieu),
                 notes: optional(&app.entretien_form.notes),
-                compte_rendu: optional(&app.entretien_form.compte_rendu),
+                compte_rendu: optional(&compte_rendu),
             };
             let edition = app.editing_id;
             return ecrire(app, "Entretien enregistré.", move |backend| {
@@ -370,9 +413,19 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 app.notify(NotificationKind::Warning, "Sélectionnez une candidature.");
                 return Task::none();
             };
+            let date_relance = match ui_format::date_to_storage(&app.relance_form.date_relance) {
+                Ok(date) => date,
+                Err(error) => {
+                    app.notify(
+                        NotificationKind::Warning,
+                        format!("Date de relance invalide. {error}"),
+                    );
+                    return Task::none();
+                }
+            };
             let input = NouvelleRelance {
                 candidature_id,
-                date_relance: app.relance_form.date_relance.clone(),
+                date_relance,
                 type_relance: app.relance_form.type_relance.clone(),
                 notes: optional(&app.relance_form.notes),
             };
@@ -594,6 +647,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
         // persistée.
         Message::SettingsProviderChanged(provider) => {
             app.settings_form.draft.llm.provider = provider;
+            app.available_models.clear();
             if matches!(
                 app.settings_form.draft.llm.provider,
                 crate::shared::llm::ProviderKind::Ollama
@@ -603,6 +657,40 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             }
         }
         Message::SettingsModelChanged(value) => app.settings_form.draft.llm.model = value,
+        Message::RefreshLlmModels => {
+            let config = app.settings_form.draft.llm.clone();
+            app.provider_health = crate::ui::components::runtime_status::Health::Checking;
+            return Task::perform(
+                async move {
+                    let pin = crate::shared::llm::validate_llm_endpoint(&config)
+                        .await
+                        .map_err(|error| error.to_string())?;
+                    crate::modules::ia::factory::build_provider_pinned(&config, pin)
+                        .list_models()
+                        .await
+                        .map_err(|error| error.to_string())
+                },
+                Message::LlmModelsLoaded,
+            );
+        }
+        Message::LlmModelsLoaded(result) => match result {
+            Ok(mut models) => {
+                models.sort();
+                models.dedup();
+                if !app.settings_form.draft.llm.model.trim().is_empty()
+                    && !models.contains(&app.settings_form.draft.llm.model)
+                {
+                    models.insert(0, app.settings_form.draft.llm.model.clone());
+                }
+                app.available_models = models;
+                app.provider_health = crate::ui::components::runtime_status::Health::Ok;
+                app.notify_success("Liste des modèles actualisée.");
+            }
+            Err(error) => {
+                app.provider_health = crate::ui::components::runtime_status::Health::Error;
+                app.notify_failure(format!("Modèles indisponibles : {error}"));
+            }
+        },
         Message::SettingsEndpointChanged(value) => {
             app.settings_form.draft.llm.endpoint = optional(&value);
         }
@@ -685,6 +773,23 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 app.notify_failure(format!("Connexion IA impossible : {error}"));
             }
         },
+        Message::OpenAuthorWebsite => {
+            return Task::perform(
+                async {
+                    tokio::task::spawn_blocking(|| {
+                        crate::core::external::open_https("https://www.alexandrebouttier.fr")
+                    })
+                    .await
+                    .unwrap_or_else(|error| Err(format!("Ouverture interrompue : {error}")))
+                },
+                Message::AuthorWebsiteOpened,
+            );
+        }
+        Message::AuthorWebsiteOpened(result) => {
+            if let Err(error) = result {
+                app.notify_failure(error);
+            }
+        }
         Message::ExportBackup => {
             let Some(backend) = app.backend.clone() else {
                 app.notify_failure("La base Candilog n'est pas disponible.");
@@ -942,7 +1047,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                     poste: item.poste.clone(),
                     type_contrat: item.type_contrat,
                     statut: item.statut,
-                    date_envoi: item.date_envoi.clone(),
+                    date_envoi: ui_format::date_for_input(&item.date_envoi),
                     lien_offre: item.lien_offre.clone().unwrap_or_default(),
                     notes: item.notes.clone().unwrap_or_default(),
                 };
@@ -955,11 +1060,13 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 app.entretien_form = EntretienForm {
                     candidature_id: Some(item.candidature_id),
                     contact_id: item.contact_id,
-                    date_entretien: item.date_entretien.clone(),
+                    date_entretien: ui_format::datetime_for_input(&item.date_entretien),
                     type_entretien: item.type_entretien,
                     lieu: item.lieu.clone().unwrap_or_default(),
                     notes: item.notes.clone().unwrap_or_default(),
-                    compte_rendu: item.compte_rendu.clone().unwrap_or_default(),
+                    compte_rendu: iced::widget::text_editor::Content::with_text(
+                        item.compte_rendu.as_deref().unwrap_or_default(),
+                    ),
                 };
                 app.editing_id = Some(id);
                 app.dialog = Some(Dialog::Entretien);
@@ -969,7 +1076,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             if let Some(item) = app.data.relances.iter().find(|item| item.id == id) {
                 app.relance_form = RelanceForm {
                     candidature_id: Some(item.candidature_id),
-                    date_relance: item.date_relance.clone(),
+                    date_relance: ui_format::date_for_input(&item.date_relance),
                     type_relance: item.type_relance.clone(),
                     notes: item.notes.clone().unwrap_or_default(),
                 };

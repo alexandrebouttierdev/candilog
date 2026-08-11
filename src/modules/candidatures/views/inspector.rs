@@ -2,12 +2,13 @@
 
 use crate::app::state::Dialog;
 use crate::app::{App, Message};
-use crate::modules::candidatures::components::{activity_row, move_controls, status_badge};
+use crate::modules::candidatures::components::{activity_row, status_tone, PIPELINE};
 use crate::ui::components::button as controls;
-use crate::ui::components::icon::Icon;
-use crate::ui::components::{inspector, layout, state, surface, typo};
+use crate::ui::components::icon::{self, Icon};
+use crate::ui::components::{field, inspector, layout, state, surface, typo};
 use crate::ui::format;
 use crate::ui::theme::metrics::space;
+use crate::ui::theme::styles;
 use crate::ui::theme::Tone;
 use iced::widget::{column, container, row};
 use iced::{Alignment, Element, Length};
@@ -41,6 +42,14 @@ pub fn view(app: &App, id: uuid::Uuid) -> Element<'_, Message> {
     let header = container(
         column![
             row![
+                container(icon::toned(
+                    Icon::Applications,
+                    status_tone(candidate.statut),
+                ))
+                .width(44.0)
+                .height(44.0)
+                .center(Length::Fixed(44.0))
+                .style(styles::toned(status_tone(candidate.statut))),
                 column![
                     typo::title(candidate.poste.clone()),
                     typo::meta(format::or_else(
@@ -52,25 +61,29 @@ pub fn view(app: &App, id: uuid::Uuid) -> Element<'_, Message> {
                 layout::spacer(),
                 controls::icon_action(Icon::Close, "Fermer", Message::CloseDialog),
             ]
-            .align_y(Alignment::Start),
-            row![
-                status_badge(candidate.statut),
-                move_controls(candidate.statut, move |target| Message::MoveCandidature(
-                    id, target
-                )),
-                layout::spacer(),
-                controls::ghost("Modifier", Some(Icon::Edit))
-                    .on_press(Message::EditCandidature(id)),
-                controls::icon_danger(
-                    Icon::Trash,
-                    "Supprimer",
-                    Message::OpenDialog(Dialog::DeleteCandidature(id)),
-                ),
-            ]
-            .spacing(space::SM)
+            .spacing(space::MD)
             .align_y(Alignment::Center),
+            container(
+                row![
+                    column![
+                        typo::label("Statut de la candidature"),
+                        typo::caption("Choisissez directement l'étape du suivi"),
+                    ]
+                    .spacing(1),
+                    layout::spacer(),
+                    field::select(PIPELINE.to_vec(), Some(candidate.statut), move |target| {
+                        Message::MoveCandidature(id, target)
+                    },)
+                    .width(Length::Fixed(188.0)),
+                ]
+                .spacing(space::MD)
+                .align_y(Alignment::Center),
+            )
+            .padding([space::SM, space::MD])
+            .width(Length::Fill)
+            .style(styles::sunken),
         ]
-        .spacing(space::LG),
+        .spacing(space::MD),
     )
     .padding(space::XL);
 
@@ -152,13 +165,27 @@ pub fn view(app: &App, id: uuid::Uuid) -> Element<'_, Message> {
         column![typo::label("Activité"), surface::divider(), activity_block,].spacing(space::XS),
         inspector::note("Notes", candidate.notes.clone()),
     ]
-    .spacing(space::XXL)
+    .spacing(space::XL)
     .padding([0.0, space::XL]);
 
     column![
         header,
         surface::divider(),
         surface::scroll(container(body).padding([space::XL, 0.0])).height(Length::Fill),
+        surface::divider(),
+        container(
+            row![
+                controls::danger("Supprimer", Some(Icon::Trash))
+                    .on_press(Message::OpenDialog(Dialog::DeleteCandidature(id))),
+                layout::spacer(),
+                controls::secondary("Modifier", Some(Icon::Edit))
+                    .on_press(Message::EditCandidature(id)),
+            ]
+            .spacing(space::MD)
+            .align_y(Alignment::Center),
+        )
+        .padding([space::LG, space::XL])
+        .width(Length::Fill),
     ]
     .height(Length::Fill)
     .into()

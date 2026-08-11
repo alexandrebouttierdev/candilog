@@ -124,7 +124,7 @@ pub fn workspace_tab_controls<'a, Message: Clone + 'a>(
     let routes = Route::of_section(active.section());
     for route in routes {
         let selected = route == active;
-        let control = button(
+        let control = button(crate::ui::components::button::vcenter(
             row![
                 icon::icon(
                     route.icon(),
@@ -139,8 +139,8 @@ pub fn workspace_tab_controls<'a, Message: Clone + 'a>(
             ]
             .spacing(space::SM)
             .align_y(Alignment::Center),
-        )
-        .height(30.0)
+        ))
+        .height(size::ACTION)
         .padding([0.0, space::MD])
         .style(move |theme: &Theme, status| context_tab_style(theme, status, selected))
         .on_press(on_navigate(route));

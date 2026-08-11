@@ -443,9 +443,10 @@ fn candidature(app: &App) -> Element<'_, Message> {
             ),
         ]),
         field::form_row([
-            field::text_field(
+            field::date_field(
                 "Date d'envoi *",
                 &app.candidature_form.date_envoi,
+                None,
                 Message::CandidatureDateChanged,
             ),
             field::text_field(
@@ -459,7 +460,7 @@ fn candidature(app: &App) -> Element<'_, Message> {
             &app.candidature_form.notes,
             Message::CandidatureNotesChanged,
         ),
-        typo::caption("Le format attendu pour la date est AAAA-MM-JJ."),
+        typo::caption("Toutes les dates sont saisies au format JJ-MM-AAAA."),
     ]
     .spacing(space::LG)
     .into()
@@ -511,9 +512,10 @@ fn entretien(app: &App) -> Element<'_, Message> {
             ),
         ]),
         field::form_row([
-            field::text_field(
+            field::datetime_field(
                 "Date et heure *",
                 &app.entretien_form.date_entretien,
+                None,
                 Message::EntretienDateChanged,
             ),
             field::text_field(
@@ -527,12 +529,16 @@ fn entretien(app: &App) -> Element<'_, Message> {
             &app.entretien_form.notes,
             Message::EntretienNotesChanged
         ),
-        field::text_field(
+        field::labeled(
             "Compte rendu",
-            &app.entretien_form.compte_rendu,
-            Message::EntretienCompteRenduChanged,
+            field::editor(
+                &app.entretien_form.compte_rendu,
+                "Décrivez les échanges, les questions et les prochaines étapes…",
+            )
+            .on_action(Message::EntretienCompteRenduChanged)
+            .height(iced::Length::Fixed(132.0)),
         ),
-        typo::caption("Le format attendu est AAAA-MM-JJTHH:MM."),
+        typo::caption("Date et heure attendues : JJ-MM-AAAA HH:MM."),
     ]
     .spacing(space::LG)
     .into()
@@ -550,9 +556,10 @@ fn relance(app: &App) -> Element<'_, Message> {
             .width(iced::Length::Fill),
         ),
         field::form_row([
-            field::text_field(
+            field::date_field(
                 "Date *",
                 &app.relance_form.date_relance,
+                None,
                 Message::RelanceDateChanged,
             ),
             field::labeled(

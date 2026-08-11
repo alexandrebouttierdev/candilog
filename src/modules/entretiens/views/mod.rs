@@ -181,7 +181,7 @@ fn period_label(app: &App) -> String {
         CalendarView::Week => {
             let monday = week_start(app.calendar_date);
             let sunday = monday + chrono::Duration::days(6);
-            format!("{} – {}", monday.format("%d/%m"), sunday.format("%d/%m/%Y"))
+            format!("{} – {}", monday.format("%d-%m"), sunday.format("%d-%m-%Y"))
         }
         CalendarView::Day => format!(
             "{} {} {}",
@@ -304,7 +304,7 @@ fn week_view(app: &App) -> Element<'_, Message> {
                     date.weekday().num_days_from_monday()
                 )),
                 layout::spacer(),
-                typo::caption(date.format("%d/%m").to_string()),
+                typo::caption(date.format("%d-%m").to_string()),
             ]
             .align_y(Alignment::Center),
         )

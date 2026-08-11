@@ -55,7 +55,10 @@ where
     iced::widget::pick_list(options, selected, on_selected)
         .placeholder("Sélectionner…")
         .text_size(font::BODY)
-        .padding([0.0, space::SM])
+        .text_line_height(iced::widget::text::LineHeight::Absolute(
+            size::FIELD_CONTROL.into(),
+        ))
+        .padding([0.0, space::MD])
         .handle(iced::widget::pick_list::Handle::Arrow {
             size: Some(icon::SM.into()),
         })
@@ -137,7 +140,30 @@ pub fn date_field<'a, Message: Clone + 'a>(
 ) -> Element<'a, Message> {
     let mut group = column![
         typo::label(label),
-        input(label, value).on_input(on_input).width(Length::Fill),
+        input("JJ-MM-AAAA", value)
+            .on_input(on_input)
+            .width(Length::Fill),
+    ]
+    .spacing(space::XS)
+    .width(Length::Fill);
+    if let Some(message) = error {
+        group = group.push(typo::meta_toned(message, Tone::Danger));
+    }
+    group.into()
+}
+
+/// Champ de date et heure au masque `JJ-MM-AAAA HH:MM`.
+pub fn datetime_field<'a, Message: Clone + 'a>(
+    label: &'a str,
+    value: &'a str,
+    error: Option<&'a str>,
+    on_input: impl Fn(String) -> Message + 'a,
+) -> Element<'a, Message> {
+    let mut group = column![
+        typo::label(label),
+        input("JJ-MM-AAAA HH:MM", value)
+            .on_input(on_input)
+            .width(Length::Fill),
     ]
     .spacing(space::XS)
     .width(Length::Fill);

@@ -32,47 +32,8 @@ pub fn view(app: &App) -> Element<'_, Message> {
             Message::Navigate,
             actions,
         ),
-        layout::workspace(
-            column![
-                command_bar(app),
-                layout::columns([directory(app), detail(app)]),
-            ]
-            .spacing(space::MD)
-            .height(Length::Fill),
-        ),
+        layout::workspace(layout::columns([directory(app), detail(app)])),
     )
-}
-
-/// Recherche et synthèse du répertoire sur une seule bande de commande.
-fn command_bar(app: &App) -> Element<'_, Message> {
-    container(
-        row![
-            field::search(
-                "Rechercher une entreprise…",
-                &app.search,
-                Message::SearchChanged,
-                Length::Fixed(360.0),
-            ),
-            typo::caption(format::plural(
-                app.data.entreprises.len(),
-                "entreprise",
-                "entreprises",
-            )),
-            layout::spacer(),
-            typo::caption(format!(
-                "{} candidatures · {} contacts",
-                total_candidatures(&app.data.candidatures, &app.data.entreprises),
-                app.data.contacts.len(),
-            )),
-        ]
-        .spacing(space::MD)
-        .align_y(Alignment::Center),
-    )
-    .height(52.0)
-    .padding([0.0, space::LG])
-    .width(Length::Fill)
-    .style(styles::panel_flat)
-    .into()
 }
 
 /// Panneau du répertoire : recherche, puis liste des entreprises filtrées.
@@ -111,7 +72,31 @@ fn directory(app: &App) -> Element<'_, Message> {
         surface::scroll(rows).height(Length::Fill).into()
     };
 
-    container(column![body].height(Length::Fill))
+    let toolbar = container(
+        column![
+            row![
+                typo::label("Répertoire"),
+                layout::spacer(),
+                typo::caption(format!(
+                    "{} · {} candidatures",
+                    format::plural(app.data.entreprises.len(), "entreprise", "entreprises"),
+                    total_candidatures(&app.data.candidatures, &app.data.entreprises),
+                )),
+            ]
+            .align_y(Alignment::Center),
+            field::search(
+                "Rechercher une entreprise…",
+                &app.search,
+                Message::SearchChanged,
+                Length::Fill,
+            ),
+        ]
+        .spacing(space::SM),
+    )
+    .padding(space::LG)
+    .width(Length::Fill);
+
+    container(column![toolbar, surface::divider(), body].height(Length::Fill))
         .width(Length::Fill)
         .height(Length::Fill)
         .style(styles::panel_flat)

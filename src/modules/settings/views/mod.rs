@@ -3,7 +3,7 @@
 
 use crate::app::state::Dialog;
 use crate::app::{App, Message};
-use crate::modules::settings::components::{actions, setting, setting_stacked};
+use crate::modules::settings::components::{actions, setting_stacked};
 use crate::modules::settings::model::ThemePref;
 use crate::navigation::Route;
 use crate::shared::llm::{AnalysisMode, ProviderKind};
@@ -11,8 +11,7 @@ use crate::ui::components::button as controls;
 use crate::ui::components::header;
 use crate::ui::components::icon::{self, Icon, Ink};
 use crate::ui::components::provider_icon::provider_icon;
-use crate::ui::components::tabs::Tab;
-use crate::ui::components::{badge, field, inspector, layout, state, surface, tabs, typo};
+use crate::ui::components::{badge, field, layout, state, surface, typo};
 use crate::ui::theme::metrics::{radius, size, space, stroke};
 use crate::ui::theme::styles;
 use crate::ui::theme::tokens::{alpha, tokens, DAY, NIGHT};
@@ -22,9 +21,9 @@ use iced::widget::{button, column, container, row, slider, stack, text, Space};
 use iced::{Alignment, Background, Border, Color, Element, Length, Shadow, Theme};
 
 /// Largeur maximale du corps de la page (`max-w-[980px]`).
-const BODY_MAX_WIDTH: f32 = 980.0;
-/// Largeur de la colonne latérale (`w-[280px]`).
-const SIDE_WIDTH: f32 = 280.0;
+const BODY_MAX_WIDTH: f32 = 1120.0;
+/// Largeur de la colonne latérale.
+const SIDE_WIDTH: f32 = 320.0;
 /// Largeur d'une carte fournisseur de la grille (`max-w-[200px]`).
 const PROVIDER_CARD_WIDTH: f32 = 200.0;
 /// Couleurs réelles des plans de travail présentés dans le choix de thème.
@@ -83,87 +82,72 @@ pub fn view(app: &App) -> Element<'_, Message> {
     layout::screen(
         header::route_header(
             Icon::Settings,
-            "Paramètres",
+            "Intelligence artificielle",
             Route::Parametres,
             Message::Navigate,
-            local_data_pill(),
+            controls::primary("Enregistrer", Some(Icon::Save))
+                .on_press(Message::SaveSettings)
+                .into(),
         ),
-        layout::workspace(surface::scroll(
-            container(
-                container(
-                    row![
-                        container(main_column(app)).width(Length::FillPortion(1)),
-                        container(side_column(app)).width(Length::Fixed(SIDE_WIDTH)),
-                    ]
-                    .spacing(space::LG)
-                    .align_y(Alignment::Start)
-                    .width(Length::Fill),
+        layout::workspace(
+            column![
+                surface::scroll(
+                    container(
+                        row![
+                            container(main_column(app)).width(Length::FillPortion(1)),
+                            container(side_column(app)).width(Length::Fixed(SIDE_WIDTH)),
+                        ]
+                        .spacing(space::LG)
+                        .align_y(Alignment::Start)
+                        .width(Length::Fill),
+                    )
+                    .max_width(BODY_MAX_WIDTH)
+                    .center_x(Length::Fill),
                 )
-                .max_width(BODY_MAX_WIDTH),
-            )
-            .width(Length::Fill)
-            .align_x(Alignment::Center),
-        )),
+                .height(Length::Fill),
+                container(footer_info())
+                    .max_width(BODY_MAX_WIDTH)
+                    .center_x(Length::Fill),
+            ]
+            .spacing(space::MD)
+            .height(Length::Fill),
+        ),
     )
 }
 
-/// Pill « Données locales » : point émeraude de 8 px et libellé.
-fn local_data_pill<'a, Message: 'a>() -> Element<'a, Message> {
-    container(
-        row![
-            container(Space::new(8.0, 8.0)).style(|theme: &Theme| {
-                let palette = tokens(theme);
-                container::Style {
-                    background: Some(Background::Color(palette.success)),
-                    border: Border {
-                        radius: radius::PILL.into(),
-                        ..Border::default()
-                    },
-                    ..container::Style::default()
-                }
-            }),
-            typo::caption("Données locales"),
-        ]
-        .spacing(space::SM)
-        .align_y(Alignment::Center),
-    )
-    .padding([space::XS, space::MD])
-    .style(|theme: &Theme| {
-        let palette = tokens(theme);
-        container::Style {
-            background: Some(Background::Color(alpha(palette.panel, 0.45))),
-            border: Border {
-                color: palette.border,
-                width: stroke::HAIRLINE,
-                radius: radius::PILL.into(),
-            },
-            ..container::Style::default()
-        }
-    })
-    .into()
-}
-
-/// Colonne principale : fournisseurs, mises à jour et à propos.
+/// Colonne principale dédiée à la configuration IA.
 fn main_column(app: &App) -> Element<'_, Message> {
-    column![provider_card(app), updates_card(app), about_card(app),]
+    column![provider_card(app)]
         .spacing(space::LG)
         .width(Length::Fill)
         .into()
 }
 
-/// Colonne latérale : apparence, sauvegarde, connexion, enregistrement.
+/// Colonne latérale : apparence, sauvegardes et mises à jour.
 fn side_column(app: &App) -> Element<'_, Message> {
-    column![
-        appearance_card(app),
-        backup_card(app),
-        connection_card(app),
-        controls::primary("Enregistrer", Some(Icon::Save))
-            .on_press(Message::SaveSettings)
-            .width(Length::Fill)
-            .height(40.0),
-    ]
-    .spacing(space::LG)
+    column![appearance_card(app), backup_card(), updates_card(app),]
+        .spacing(space::LG)
+        .width(Length::Fill)
+        .into()
+}
+
+/// Informations essentielles, discrètes et toujours placées en bas de page.
+fn footer_info<'a>() -> Element<'a, Message> {
+    container(
+        row![
+            typo::caption(format!("Candilog v{}", env!("CARGO_PKG_VERSION"))),
+            layout::spacer(),
+            typo::caption("Créé par Alexandre Bouttier"),
+            controls::ghost("alexandrebouttier.fr", Some(Icon::Link))
+                .on_press(Message::OpenAuthorWebsite),
+        ]
+        .spacing(space::MD)
+        .align_y(Alignment::Center),
+    )
+    .height(48.0)
+    .padding([0.0, space::LG])
     .width(Length::Fill)
+    .style(styles::panel_flat)
     .into()
 }
 
@@ -221,6 +205,8 @@ fn header_tile<'a, Message: 'a>(glyph: Icon) -> Element<'a, Message> {
 /// Carte Fournisseur : grille de choix, bloc de configuration et actions.
 fn provider_card(app: &App) -> Element<'_, Message> {
     let llm = &app.settings_form.draft.llm;
+    let models = model_options(app);
+    let selected_model = (!llm.model.trim().is_empty()).then(|| llm.model.clone());
 
     let mut grid = row![].spacing(space::SM).width(Length::Fill);
     for provider in providers() {
@@ -237,7 +223,17 @@ fn provider_card(app: &App) -> Element<'_, Message> {
             grid.wrap(),
             container(
                 column![
-                    field::text_field("Modèle", &llm.model, Message::SettingsModelChanged),
+                    field::labeled(
+                        "Modèle",
+                        row![
+                            field::select(models, selected_model, Message::SettingsModelChanged,)
+                                .width(Length::Fill),
+                            controls::secondary("Actualiser", Some(Icon::Refresh))
+                                .on_press(Message::RefreshLlmModels),
+                        ]
+                        .spacing(space::SM)
+                        .align_y(Alignment::Center),
+                    ),
                     field::text_field(
                         "Endpoint",
                         llm.endpoint.as_deref().unwrap_or_default(),
@@ -249,31 +245,33 @@ fn provider_card(app: &App) -> Element<'_, Message> {
                         "Stockée dans le coffre système, jamais en clair dans la base.",
                         Message::SettingsApiKeyChanged,
                     ),
-                    column![
-                        typo::label("Mode d'analyse"),
-                        tabs::segmented(
-                            MODES.map(|mode| Tab::new(mode.to_string(), llm.mode == mode)),
-                            |index| Message::SettingsModeChanged(MODES[index]),
-                        ),
-                    ]
-                    .spacing(space::XS),
-                    column![
-                        typo::label("Température"),
-                        row![
-                            slider(
-                                0.0..=2.0,
-                                llm.temperature,
-                                Message::SettingsTemperatureChanged,
+                    field::form_row([
+                        field::labeled(
+                            "Mode d'analyse",
+                            field::select(
+                                MODES.to_vec(),
+                                Some(llm.mode),
+                                Message::SettingsModeChanged,
                             )
-                            .step(0.1_f32)
-                            .style(styles::range)
                             .width(Length::Fill),
-                            temperature_value(llm.temperature),
-                        ]
-                        .spacing(space::MD)
-                        .align_y(Alignment::Center),
-                    ]
-                    .spacing(space::XS),
+                        ),
+                        field::labeled(
+                            "Température",
+                            row![
+                                slider(
+                                    0.0..=2.0,
+                                    llm.temperature,
+                                    Message::SettingsTemperatureChanged,
+                                )
+                                .step(0.1_f32)
+                                .style(styles::range)
+                                .width(Length::Fill),
+                                temperature_value(llm.temperature),
+                            ]
+                            .spacing(space::MD)
+                            .align_y(Alignment::Center),
+                        ),
+                    ]),
                 ]
                 .spacing(space::LG),
             )
@@ -285,15 +283,25 @@ fn provider_card(app: &App) -> Element<'_, Message> {
                     .on_press(Message::TestLlmConnection),
                 controls::ghost("Vider le cache IA", Some(Icon::Trash))
                     .on_press(Message::OpenDialog(Dialog::ResetAiCache)),
-                layout::spacer(),
-                controls::primary("Enregistrer", Some(Icon::Save)).on_press(Message::SaveSettings),
             ]
+            .spacing(space::SM)
             .align_y(Alignment::Center),
         ]
         .spacing(space::LG)
         .padding([space::LG, 0.0])
         .width(Length::Fill),
     )
+}
+
+/// Modèles disponibles dans le select : le modèle courant reste toujours visible,
+/// puis viennent ceux réellement annoncés par le fournisseur.
+fn model_options(app: &App) -> Vec<String> {
+    let current = app.settings_form.draft.llm.model.trim();
+    let mut models = app.available_models.clone();
+    if !current.is_empty() && !models.iter().any(|model| model == current) {
+        models.insert(0, current.to_owned());
+    }
+    models
 }
 
 /// Carte d'un fournisseur : logo, nom, état actif.
@@ -516,13 +524,8 @@ fn swatch<'a, Message: 'a>(
         .into()
 }
 
-/// Carte Sauvegarde : exports, réinitialisation et compteurs locaux.
-fn backup_card(app: &App) -> Element<'_, Message> {
-    let database = app.paths.as_ref().map_or_else(
-        || "Non résolue".to_owned(),
-        |paths| paths.database.display().to_string(),
-    );
-
+/// Carte Sauvegarde : uniquement les actions utiles.
+fn backup_card<'a>() -> Element<'a, Message> {
     section_card(
         Icon::Document,
         "Sauvegarde",
@@ -539,72 +542,21 @@ fn backup_card(app: &App) -> Element<'_, Message> {
             controls::danger("Réinitialiser la base", Some(Icon::Trash))
                 .on_press(Message::OpenDialog(Dialog::ResetDatabase))
                 .width(Length::Fill),
-            surface::divider(),
-            typo::label("Base locale"),
-            typo::caption(database),
-            surface::divider(),
-            typo::label("Données suivies"),
-            typo::caption(format!("{} candidatures", app.data.candidatures.len())),
-            typo::caption(format!("{} entreprises", app.data.entreprises.len())),
-            typo::caption(format!("{} contacts", app.data.contacts.len())),
-            typo::caption(format!("{} versions de CV", app.data.cv_versions.len())),
         ]
         .spacing(space::SM)
         .width(Length::Fill),
     )
 }
 
-/// Carte Connexion : fournisseur courant et test de connexion.
-fn connection_card(app: &App) -> Element<'_, Message> {
-    let llm = &app.settings_form.draft.llm;
-    let model = if llm.model.trim().is_empty() {
-        "Modèle non défini"
-    } else {
-        llm.model.trim()
-    };
-
-    section_card(
-        Icon::Link,
-        "Connexion",
-        column![
-            row![
-                logo_tile(provider_key(&llm.provider)),
-                column![
-                    typo::body(provider_label(&llm.provider)),
-                    typo::caption(model),
-                ]
-                .spacing(1)
-                .align_x(Alignment::Start),
-            ]
-            .spacing(space::MD)
-            .align_y(Alignment::Center),
-            controls::secondary("Tester la connexion", Some(Icon::Refresh))
-                .on_press(Message::TestLlmConnection)
-                .width(Length::Fill),
-        ]
-        .spacing(space::LG)
-        .width(Length::Fill),
-    )
-}
-
-/// Carte Mises à jour : canal, vérification, téléchargement et progression.
+/// Carte Mises à jour : vérification, téléchargement et progression.
 fn updates_card(app: &App) -> Element<'_, Message> {
-    let mut body = column![
-        setting(
-            "Canal",
-            "Canal public GitLab, manifeste signé avec minisign.",
-            badge::badge("Stable", Tone::Accent),
-        ),
-        actions(
-            "Vérification",
-            "Recherche une version plus récente et vérifie sa signature.",
-            [
-                controls::secondary("Rechercher une mise à jour", Some(Icon::Refresh))
-                    .on_press(Message::CheckUpdate)
-                    .into(),
-            ],
-        ),
-    ]
+    let mut body = column![setting_stacked(
+        "Vérification",
+        "Recherche une version plus récente de Candilog.",
+        controls::secondary("Rechercher une mise à jour", Some(Icon::Refresh))
+            .on_press(Message::CheckUpdate)
+            .width(Length::Fill),
+    )]
     .width(Length::Fill);
 
     if let Some(update) = &app.available_update {
@@ -640,39 +592,6 @@ fn updates_card(app: &App) -> Element<'_, Message> {
     }
 
     section_card(Icon::Download, "Mises à jour", body)
-}
-
-/// Carte À propos : version, moteur, stockage et contenu suivi.
-fn about_card(app: &App) -> Element<'_, Message> {
-    section_card(
-        Icon::Info,
-        "À propos",
-        column![
-            inspector::group(
-                "Application",
-                [
-                    inspector::property("Version", env!("CARGO_PKG_VERSION")),
-                    inspector::property("Moteur", "Rust + Iced"),
-                    inspector::property("Stockage", "SQLite local"),
-                ],
-            ),
-            inspector::group(
-                "Contenu",
-                [
-                    inspector::property(
-                        "Candidatures suivies",
-                        app.data.candidatures.len().to_string(),
-                    ),
-                    inspector::property("Appels IA", app.data.llm_calls.total.to_string()),
-                    inspector::property("Scores ATS", app.data.ats_scores.total.to_string()),
-                ],
-            ),
-            state::hint("Candilog fonctionne entièrement hors ligne, hors appels IA explicites."),
-        ]
-        .spacing(space::XXL)
-        .padding([space::LG, 0.0])
-        .width(Length::Fill),
-    )
 }
 
 #[cfg(test)]

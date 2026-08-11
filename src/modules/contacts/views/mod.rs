@@ -30,11 +30,7 @@ pub fn view(app: &App) -> Element<'_, Message> {
             Message::Navigate,
             actions(),
         ),
-        layout::workspace(
-            column![command_bar(app), directory(app)]
-                .spacing(space::MD)
-                .height(Length::Fill),
-        ),
+        layout::workspace(directory(app)),
     );
 
     if app.focused_contact().is_some() {
@@ -53,39 +49,6 @@ fn actions() -> Element<'static, Message> {
     controls::primary("Nouveau contact", Some(Icon::Plus))
         .on_press(Message::OpenDialog(Dialog::Contact))
         .into()
-}
-
-/// Recherche et synthèse du réseau sur une seule bande de commande.
-fn command_bar(app: &App) -> Element<'_, Message> {
-    let today = chrono::Local::now().format("%Y-%m-%d").to_string();
-    container(
-        row![
-            field::search(
-                "Rechercher un contact…",
-                &app.search,
-                Message::SearchChanged,
-                Length::Fixed(360.0),
-            ),
-            typo::caption(format::plural(
-                app.data.contacts.len(),
-                "contact",
-                "contacts",
-            )),
-            layout::spacer(),
-            typo::caption(format!(
-                "{} candidatures liées · {} entretiens planifiés",
-                total_candidatures_liees(&app.data.candidatures),
-                entretiens_planifies(&app.data.entretiens, &today),
-            )),
-        ]
-        .spacing(space::MD)
-        .align_y(Alignment::Center),
-    )
-    .height(52.0)
-    .padding([0.0, space::LG])
-    .width(Length::Fill)
-    .style(styles::panel_flat)
-    .into()
 }
 
 /// Panneau de recherche puis grille de cartes contacts.
@@ -120,7 +83,35 @@ fn directory(app: &App) -> Element<'_, Message> {
             .into()
     };
 
-    container(column![body].height(Length::Fill))
+    let today = chrono::Local::now().format("%Y-%m-%d").to_string();
+    let toolbar = container(
+        row![
+            field::search(
+                "Rechercher un contact…",
+                &app.search,
+                Message::SearchChanged,
+                Length::Fixed(360.0),
+            ),
+            typo::caption(format::plural(
+                app.data.contacts.len(),
+                "contact",
+                "contacts",
+            )),
+            layout::spacer(),
+            typo::caption(format!(
+                "{} candidatures liées · {} entretiens planifiés",
+                total_candidatures_liees(&app.data.candidatures),
+                entretiens_planifies(&app.data.entretiens, &today),
+            )),
+        ]
+        .spacing(space::MD)
+        .align_y(Alignment::Center),
+    )
+    .height(52.0)
+    .padding([0.0, space::LG])
+    .width(Length::Fill);
+
+    container(column![toolbar, surface::divider(), body].height(Length::Fill))
         .width(Length::Fill)
         .height(Length::Fill)
         .style(styles::panel_flat)
@@ -217,7 +208,7 @@ fn drawer_content(app: &App) -> Element<'_, Message> {
         inspector::group("Entretiens planifiés", agenda_rows),
         inspector::note("Notes", contact.notes.clone()),
     ]
-    .spacing(space::XXL)
+    .spacing(space::XL)
     .padding([0.0, space::XL]);
 
     column![
@@ -225,17 +216,19 @@ fn drawer_content(app: &App) -> Element<'_, Message> {
         surface::divider(),
         surface::scroll(container(body).padding([space::XL, 0.0])).height(Length::Fill),
         surface::divider(),
-        container(inspector::actions([
-            controls::ghost("Modifier", Some(Icon::Edit))
-                .on_press(Message::EditContact(contact.id))
-                .into(),
-            controls::icon_danger(
-                Icon::Trash,
-                "Supprimer",
-                Message::OpenDialog(Dialog::DeleteContact(contact.id)),
-            ),
-        ]))
-        .padding([space::LG, space::XL]),
+        container(
+            row![
+                controls::danger("Supprimer", Some(Icon::Trash))
+                    .on_press(Message::OpenDialog(Dialog::DeleteContact(contact.id))),
+                layout::spacer(),
+                controls::secondary("Modifier", Some(Icon::Edit))
+                    .on_press(Message::EditContact(contact.id)),
+            ]
+            .spacing(space::MD)
+            .align_y(Alignment::Center),
+        )
+        .padding([space::LG, space::XL])
+        .width(Length::Fill),
     ]
     .height(Length::Fill)
     .into()

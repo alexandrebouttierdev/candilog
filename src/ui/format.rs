@@ -3,7 +3,7 @@
 //! Fonctions pures, sans dépendance à l'état ni au thème : elles transforment
 //! des valeurs déjà chargées en chaînes lisibles dans une interface dense.
 
-/// Transforme une date ISO en valeur courte adaptée aux listes desktop.
+/// Transforme une date ISO en valeur courte française `JJ-MM-AAAA`.
 #[must_use]
 pub fn compact_date(value: &str) -> String {
     let date = value.get(..10).unwrap_or(value);
@@ -12,10 +12,62 @@ pub fn compact_date(value: &str) -> String {
         (Some(year), Some(month), Some(day), None)
             if year.len() == 4 && month.len() == 2 && day.len() == 2 =>
         {
-            format!("{day}/{month}/{year}")
+            format!("{day}-{month}-{year}")
         }
         _ => value.to_owned(),
     }
+}
+
+/// Prépare une date persistée pour un champ de formulaire français.
+#[must_use]
+pub fn date_for_input(value: &str) -> String {
+    if chrono::NaiveDate::parse_from_str(value, "%d-%m-%Y").is_ok() {
+        return value.to_owned();
+    }
+    value
+        .get(..10)
+        .and_then(|date| chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d").ok())
+        .map_or_else(
+            || value.to_owned(),
+            |date| date.format("%d-%m-%Y").to_string(),
+        )
+}
+
+/// Convertit la saisie française d'une date vers le format ISO conservé en base.
+pub fn date_to_storage(value: &str) -> Result<String, String> {
+    let value = value.trim();
+    for format in ["%d-%m-%Y", "%Y-%m-%d"] {
+        if let Ok(date) = chrono::NaiveDate::parse_from_str(value, format) {
+            return Ok(date.format("%Y-%m-%d").to_string());
+        }
+    }
+    Err("Utilisez le format JJ-MM-AAAA.".to_owned())
+}
+
+/// Prépare un horodatage persisté pour un champ `JJ-MM-AAAA HH:MM`.
+#[must_use]
+pub fn datetime_for_input(value: &str) -> String {
+    if chrono::NaiveDateTime::parse_from_str(value, "%d-%m-%Y %H:%M").is_ok() {
+        return value.to_owned();
+    }
+    value
+        .get(..16)
+        .and_then(|datetime| chrono::NaiveDateTime::parse_from_str(datetime, "%Y-%m-%dT%H:%M").ok())
+        .map_or_else(
+            || value.to_owned(),
+            |datetime| datetime.format("%d-%m-%Y %H:%M").to_string(),
+        )
+}
+
+/// Convertit une saisie `JJ-MM-AAAA HH:MM` vers l'horodatage ISO conservé en base.
+pub fn datetime_to_storage(value: &str) -> Result<String, String> {
+    let value = value.trim();
+    for format in ["%d-%m-%Y %H:%M", "%Y-%m-%dT%H:%M"] {
+        if let Ok(datetime) = chrono::NaiveDateTime::parse_from_str(value, format) {
+            return Ok(datetime.format("%Y-%m-%dT%H:%M").to_string());
+        }
+    }
+    Err("Utilisez le format JJ-MM-AAAA HH:MM.".to_owned())
 }
 
 /// Extrait l'heure `HH:MM` d'un horodatage ISO.
@@ -145,14 +197,15 @@ pub fn plural(count: usize, singular: &str, plural: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        compact_date, compact_datetime, long_date, month_name, or_dash, or_else, percent, plural,
-        time_part, truncate, weekday_abbrev, weekday_name,
+        compact_date, compact_datetime, date_for_input, date_to_storage, datetime_for_input,
+        datetime_to_storage, long_date, month_name, or_dash, or_else, percent, plural, time_part,
+        truncate, weekday_abbrev, weekday_name,
     };
 
     #[test]
     fn date_iso_est_formatee_pour_une_liste_desktop() {
-        assert_eq!(compact_date("2026-08-09T10:15:00+02:00"), "09/08/2026");
-        assert_eq!(compact_date("2026-08-09"), "09/08/2026");
+        assert_eq!(compact_date("2026-08-09T10:15:00+02:00"), "09-08-2026");
+        assert_eq!(compact_date("2026-08-09"), "09-08-2026");
     }
 
     #[test]
@@ -164,9 +217,22 @@ mod tests {
     fn horodatage_iso_est_formate_pour_un_inspecteur() {
         assert_eq!(
             compact_datetime("2026-08-09T10:15:00+02:00"),
-            "09/08/2026 · 10:15"
+            "09-08-2026 · 10:15"
         );
-        assert_eq!(compact_datetime("2026-08-09"), "09/08/2026");
+        assert_eq!(compact_datetime("2026-08-09"), "09-08-2026");
+    }
+
+    #[test]
+    fn dates_de_formulaire_font_un_aller_retour_sans_changer_le_stockage() {
+        assert_eq!(date_for_input("2026-08-09"), "09-08-2026");
+        assert_eq!(date_to_storage("09-08-2026").unwrap(), "2026-08-09");
+        assert_eq!(datetime_for_input("2026-08-09T10:15"), "09-08-2026 10:15");
+        assert_eq!(
+            datetime_to_storage("09-08-2026 10:15").unwrap(),
+            "2026-08-09T10:15"
+        );
+        assert!(date_to_storage("09/08/2026").is_err());
+        assert!(datetime_to_storage("09-08-2026").is_err());
     }
 
     #[test]

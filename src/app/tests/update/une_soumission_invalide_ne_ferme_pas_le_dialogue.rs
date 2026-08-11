@@ -33,3 +33,19 @@ fn une_soumission_invalide_ne_ferme_pas_le_dialogue() {
         "un échec ne doit jamais s'afficher comme un succès"
     );
 }
+
+#[test]
+fn une_date_non_francaise_est_refusee_avant_l_ecriture() {
+    let mut app = app_de_test();
+    app.dialog = Some(Dialog::Candidature);
+    app.candidature_form.entreprise_id = Some(uuid::Uuid::new_v4());
+    app.candidature_form.poste = "Développeur".into();
+    app.candidature_form.date_envoi = "2026/08/11".into();
+
+    envoyer(&mut app, [Message::SubmitCandidature]);
+
+    assert_eq!(app.dialog, Some(Dialog::Candidature));
+    let notice = app.notification.as_ref().expect("date invalide signalée");
+    assert_eq!(notice.kind, crate::app::state::NotificationKind::Warning);
+    assert!(notice.message.contains("JJ-MM-AAAA"));
+}

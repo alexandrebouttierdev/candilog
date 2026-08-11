@@ -103,7 +103,7 @@ impl Default for CandidatureForm {
             poste: String::new(),
             type_contrat: TypeContrat::Cdi,
             statut: StatutCandidature::EnAttente,
-            date_envoi: chrono::Local::now().format("%Y-%m-%d").to_string(),
+            date_envoi: chrono::Local::now().format("%d-%m-%Y").to_string(),
             lien_offre: String::new(),
             notes: String::new(),
         }
@@ -111,7 +111,7 @@ impl Default for CandidatureForm {
 }
 
 /// État du formulaire entretien.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct EntretienForm {
     pub candidature_id: Option<uuid::Uuid>,
     pub contact_id: Option<uuid::Uuid>,
@@ -119,7 +119,7 @@ pub struct EntretienForm {
     pub type_entretien: TypeEntretien,
     pub lieu: String,
     pub notes: String,
-    pub compte_rendu: String,
+    pub compte_rendu: iced::widget::text_editor::Content,
 }
 
 impl Default for EntretienForm {
@@ -127,11 +127,11 @@ impl Default for EntretienForm {
         Self {
             candidature_id: None,
             contact_id: None,
-            date_entretien: chrono::Local::now().format("%Y-%m-%dT%H:%M").to_string(),
+            date_entretien: chrono::Local::now().format("%d-%m-%Y %H:%M").to_string(),
             type_entretien: TypeEntretien::Presentiel,
             lieu: String::new(),
             notes: String::new(),
-            compte_rendu: String::new(),
+            compte_rendu: iced::widget::text_editor::Content::new(),
         }
     }
 }
@@ -258,7 +258,7 @@ impl Default for RelanceForm {
     fn default() -> Self {
         Self {
             candidature_id: None,
-            date_relance: chrono::Local::now().format("%Y-%m-%d").to_string(),
+            date_relance: chrono::Local::now().format("%d-%m-%Y").to_string(),
             type_relance: "Email".into(),
             notes: String::new(),
         }
@@ -430,6 +430,8 @@ pub struct App {
     /// bandeau de titre doit refléter ce qui a été **mesuré**, pas le fait qu'aucune opération
     /// ne tourne. `Unknown` tant qu'aucun contrôle n'a abouti.
     pub provider_health: crate::ui::components::runtime_status::Health,
+    /// Modèles réellement annoncés par le fournisseur configuré.
+    pub available_models: Vec<String>,
     /// Mise à jour disponible.
     pub available_update: Option<crate::core::updater::UpdateInfo>,
     /// Progression du téléchargement de mise à jour.
@@ -614,6 +616,7 @@ impl App {
             ai_sequence: 0,
             notification: None,
             provider_health: crate::ui::components::runtime_status::Health::default(),
+            available_models: Vec::new(),
             available_update: None,
             update_progress: None,
             verified_update_path: None,
@@ -728,6 +731,9 @@ impl App {
                 .candidatures
                 .first()
                 .map(|candidate| Dialog::CandidatureDetail(candidate.id));
+        }
+        if std::env::var("CANDILOG_CAPTURE_DIALOG").as_deref() == Ok("contact-detail") {
+            self.selected_contact = self.data.contacts.first().map(|contact| contact.id);
         }
         match std::env::var("CANDILOG_CAPTURE_CALENDAR_VIEW").as_deref() {
             Ok("week") => self.calendar_view = CalendarView::Week,
@@ -872,6 +878,8 @@ impl App {
         let search = self.search.trim().to_lowercase();
         let position = self.candidate_filters.position.trim().to_lowercase();
         let city = self.candidate_filters.city.trim().to_lowercase();
+        let date_from = crate::ui::format::date_to_storage(&self.candidate_filters.date_from).ok();
+        let date_to = crate::ui::format::date_to_storage(&self.candidate_filters.date_to).ok();
         // Index des villes, construit **une seule fois** et **seulement** si le filtre par
         // ville est actif. La recherche de l'entreprise était auparavant faite pour chaque
         // candidature — un balayage linéaire complet, inconditionnel, avant même de savoir si
@@ -920,10 +928,12 @@ impl App {
                         || villes
                             .get(&candidate.entreprise_id)
                             .is_some_and(|ville| ville.contains(&city)))
-                    && (self.candidate_filters.date_from.is_empty()
-                        || candidate.date_envoi >= self.candidate_filters.date_from)
-                    && (self.candidate_filters.date_to.is_empty()
-                        || candidate.date_envoi <= self.candidate_filters.date_to)
+                    && date_from
+                        .as_deref()
+                        .is_none_or(|from| candidate.date_envoi.as_str() >= from)
+                    && date_to
+                        .as_deref()
+                        .is_none_or(|to| candidate.date_envoi.as_str() <= to)
             })
             .collect()
     }

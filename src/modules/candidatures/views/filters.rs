@@ -213,14 +213,16 @@ pub fn sheet<'a>(app: &'a App, companies: Vec<Choice>) -> Element<'a, Message> {
                 field::form_row([
                     field::text_field("Ville", &filters.city, Message::CandidateFilterCity),
                     field::text_field("Poste", &filters.position, Message::CandidateFilterPosition),
-                    field::text_field(
+                    field::date_field(
                         "Depuis",
                         &filters.date_from,
+                        None,
                         Message::CandidateFilterDateFrom,
                     ),
-                    field::text_field(
+                    field::date_field(
                         "Jusqu'au",
                         &filters.date_to,
+                        None,
                         Message::CandidateFilterDateTo,
                     ),
                 ]),
@@ -291,7 +293,7 @@ mod tests {
             company_id: Some(company),
             city: "  Rennes  ".into(),
             position: String::new(),
-            date_from: "2026-01-01".into(),
+            date_from: "01-01-2026".into(),
             date_to: String::new(),
         };
         let companies = vec![Choice::new(company, "Agrial")];

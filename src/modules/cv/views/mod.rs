@@ -28,43 +28,8 @@ pub fn view(app: &App) -> Element<'_, Message> {
             Message::Navigate,
             actions,
         ),
-        layout::workspace(
-            column![command_bar(app), layout::split(grid(app), preview(app))]
-                .spacing(space::MD)
-                .height(Length::Fill),
-        ),
+        layout::workspace(layout::split(grid(app), preview(app))),
     )
-}
-
-/// Recherche et état de la bibliothèque dans une bande de commande compacte.
-fn command_bar(app: &App) -> Element<'_, Message> {
-    container(
-        row![
-            field::search(
-                "Rechercher une version…",
-                &app.search,
-                Message::SearchChanged,
-                Length::Fixed(340.0),
-            ),
-            typo::caption(format::plural(
-                app.data.cv_versions.len(),
-                "version sauvegardée",
-                "versions sauvegardées",
-            )),
-            layout::spacer(),
-            typo::caption(format!(
-                "Dernière mise à jour : {}",
-                components::latest_version_date(&app.data.cv_versions),
-            )),
-        ]
-        .spacing(space::MD)
-        .align_y(Alignment::Center),
-    )
-    .height(52.0)
-    .padding([0.0, space::LG])
-    .width(Length::Fill)
-    .style(styles::panel_flat)
-    .into()
 }
 
 /// Grille des versions filtrées par la recherche.
@@ -103,7 +68,31 @@ fn grid(app: &App) -> Element<'_, Message> {
         surface::scroll(cards.wrap()).height(Length::Fill).into()
     };
 
-    container(column![body].height(Length::Fill))
+    let toolbar = container(
+        column![
+            row![
+                typo::label("Bibliothèque"),
+                layout::spacer(),
+                typo::caption(format!(
+                    "{} · dernière mise à jour {}",
+                    format::plural(app.data.cv_versions.len(), "version", "versions",),
+                    components::latest_version_date(&app.data.cv_versions),
+                )),
+            ]
+            .align_y(Alignment::Center),
+            field::search(
+                "Rechercher une version…",
+                &app.search,
+                Message::SearchChanged,
+                Length::Fill,
+            ),
+        ]
+        .spacing(space::SM),
+    )
+    .padding(space::LG)
+    .width(Length::Fill);
+
+    container(column![toolbar, surface::divider(), body].height(Length::Fill))
         .width(Length::Fill)
         .height(Length::Fill)
         .style(styles::panel_flat)
