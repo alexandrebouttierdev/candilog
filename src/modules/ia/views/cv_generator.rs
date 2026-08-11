@@ -3,21 +3,22 @@
 
 use crate::app::state::RecommendationStatus;
 use crate::app::{App, Message};
+use crate::modules::entreprises::model::Entreprise;
 use crate::modules::ia::components::{recommendation, skill_list};
 use crate::modules::ia::cv_model::{CvGeneration, MatchScore, OfferAnalysis};
 use crate::ui::components::button as controls;
 use crate::ui::components::header;
-use crate::ui::components::icon::Icon;
+use crate::ui::components::icon::{self, Icon};
 use crate::ui::components::score_gauge::{gauge, score_label, tone_pour_score};
 use crate::ui::components::workflow::{steps, StepState, WorkflowStep};
 use crate::ui::components::{badge, document, field, layout, meter, state, surface, typo};
-use crate::ui::theme::metrics::{space, stroke};
+use crate::ui::theme::metrics::{radius, size, space, stroke};
 use crate::ui::theme::styles;
-use crate::ui::theme::tokens::tokens;
+use crate::ui::theme::tokens::{alpha, tokens};
 use crate::ui::theme::typography as font;
 use crate::ui::theme::Tone;
 use iced::widget::{column, container, row, Stack};
-use iced::{Alignment, Border, Element, Length, Shadow, Theme, Vector};
+use iced::{Alignment, Background, Border, Element, Length, Shadow, Theme, Vector};
 
 /// Rend l'écran du générateur de CV.
 pub fn view(app: &App) -> Element<'_, Message> {
@@ -39,9 +40,14 @@ pub fn view(app: &App) -> Element<'_, Message> {
     )
 }
 
-/// Actions de l'en-tête, révélées par l'avancée du parcours.
+/// En-tête : badge « IA », entreprise détectée puis actions révélées par l'avancée.
 fn actions(app: &App) -> Element<'_, Message> {
-    let mut actions = row![].spacing(space::SM).align_y(Alignment::Center);
+    let mut actions = row![badge::badge("IA", Tone::Accent)]
+        .spacing(space::SM)
+        .align_y(Alignment::Center);
+    if let Some(company) = detected_company(&app.offer_editor.text(), &app.data.entreprises) {
+        actions = actions.push(company_pill(company));
+    }
     if app.ai_is_running {
         actions = actions
             .push(controls::ghost("Tout annuler", Some(Icon::Stop)).on_press(Message::CancelAi));
@@ -58,6 +64,34 @@ fn actions(app: &App) -> Element<'_, Message> {
         );
     }
     actions.into()
+}
+
+/// Pastille « entreprise détectée » : bâtiment et nom, en ton neutre.
+fn company_pill<'a, Message: 'a>(company: String) -> Element<'a, Message> {
+    container(
+        row![
+            icon::icon(Icon::Building, icon::SM, icon::Ink::Muted),
+            typo::caption(company),
+        ]
+        .spacing(space::XS)
+        .align_y(Alignment::Center),
+    )
+    .height(size::TAG)
+    .padding([space::XXS, space::SM])
+    .align_y(Alignment::Center)
+    .style(styles::toned(Tone::Neutral))
+    .into()
+}
+
+/// Détecte une entreprise connue citée dans le texte de l'offre.
+fn detected_company(offer_text: &str, companies: &[Entreprise]) -> Option<String> {
+    let needle = offer_text.to_lowercase();
+    companies
+        .iter()
+        .map(|company| company.nom.trim())
+        .filter(|nom| !nom.is_empty())
+        .find(|nom| needle.contains(&nom.to_lowercase()))
+        .map(str::to_owned)
 }
 
 /// Bandeau sous l'en-tête : étapes du parcours à gauche, jauge ATS à droite.
@@ -132,8 +166,79 @@ fn workbench(app: &App) -> Element<'_, Message> {
         .into()
 }
 
-/// Étape 1 : l'offre à analyser, avec compteur et action principale.
+/// Étape 1 : carte info d'aide à gauche, offre à analyser à droite (grille 0.72fr/1.28fr).
 fn offer_panel(app: &App) -> Element<'_, Message> {
+    row![
+        container(info_panel(app))
+            .width(Length::FillPortion(72))
+            .height(Length::Fill)
+            .padding(space::XL)
+            .style(primary_info_style),
+        container(offer_content(app))
+            .width(Length::FillPortion(128))
+            .height(Length::Fill)
+            .padding(space::XL)
+            .style(styles::glass_card),
+    ]
+    .spacing(space::LG)
+    .into()
+}
+
+/// Carte info de l'étape 1 : ce que l'analyse produira, et contexte de l'offre.
+fn info_panel(app: &App) -> Element<'_, Message> {
+    let mut content =
+        column![
+        surface::section_header("Analyse de l'offre", badge::badge("3 étapes", Tone::Neutral)),
+        surface::divider(),
+        info_row(
+            Icon::Target,
+            "Compétences",
+            "Les compétences de l'offre sont comparées à votre profil, présentes ou manquantes.",
+        ),
+        info_row(
+            Icon::Chart,
+            "Score ATS",
+            "Une jauge 0–100 mesure la correspondance entre l'offre et votre profil.",
+        ),
+        info_row(
+            Icon::Sparkles,
+            "Suggestions",
+            "Des recommandations ciblées préparent l'amélioration puis l'export du CV.",
+        ),
+    ]
+        .spacing(space::LG);
+
+    if let Some(company) = detected_company(&app.offer_editor.text(), &app.data.entreprises) {
+        content = content.push(surface::divider()).push(
+            row![
+                icon::icon(Icon::Building, icon::MD, icon::Ink::Toned(Tone::Accent)),
+                column![typo::label("Entreprise détectée"), typo::body(company),]
+                    .spacing(1)
+                    .align_x(Alignment::Start),
+            ]
+            .spacing(space::MD)
+            .align_y(Alignment::Start),
+        );
+    }
+
+    content.into()
+}
+
+/// Ligne d'information d'une carte : icône teintée, intitulé et description.
+fn info_row<'a>(glyph: Icon, title: &'a str, detail: &'a str) -> Element<'a, Message> {
+    row![
+        icon::icon(glyph, icon::MD, icon::Ink::Toned(Tone::Accent)),
+        column![typo::label(title), typo::caption(detail),]
+            .spacing(1)
+            .align_x(Alignment::Start),
+    ]
+    .spacing(space::MD)
+    .align_y(Alignment::Start)
+    .into()
+}
+
+/// Carte offre de l'étape 1 : en-tête, éditeur et pied d'action.
+fn offer_content(app: &App) -> Element<'_, Message> {
     let footer: Element<'_, Message> = if app.ai_is_running {
         state::running(
             "Analyse de l'offre",
@@ -158,7 +263,7 @@ fn offer_panel(app: &App) -> Element<'_, Message> {
         .width(Length::Fill)
         .into()
     };
-    let content = column![
+    column![
         surface::section_header(
             "Offre ciblée",
             typo::caption("Collez le texte complet de l'annonce"),
@@ -169,11 +274,24 @@ fn offer_panel(app: &App) -> Element<'_, Message> {
             .height(Length::Fixed(245.0)),
         footer,
     ]
-    .spacing(space::LG);
-    container(content)
-        .padding(space::XL)
-        .style(styles::glass_card)
-        .into()
+    .spacing(space::LG)
+    .into()
+}
+
+/// Carte info de l'étape 1 : fond d'accent discret et filet doux
+/// (`bg-primary/3.5`, `border-primary/15`), rayon de carte standard.
+fn primary_info_style(theme: &Theme) -> container::Style {
+    let palette = tokens(theme);
+    container::Style {
+        background: Some(Background::Color(alpha(palette.accent, 0.035))),
+        text_color: Some(palette.text),
+        border: Border {
+            color: alpha(palette.accent, 0.15),
+            width: stroke::HAIRLINE,
+            radius: radius::CARD.into(),
+        },
+        ..container::Style::default()
+    }
 }
 
 /// Étape 2 : correspondance profil × offre, suggestions ATS et version.
@@ -437,8 +555,24 @@ fn clean_skills(skills: &[String]) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{missing_skills, present_skills};
+    use super::{detected_company, missing_skills, present_skills};
+    use crate::modules::entreprises::model::Entreprise;
     use crate::modules::ia::cv_model::MatchScore;
+
+    fn entreprise(nom: &str) -> Entreprise {
+        Entreprise {
+            id: uuid::Uuid::nil(),
+            nom: nom.to_owned(),
+            secteur: None,
+            type_: None,
+            site_web: None,
+            ville: None,
+            adresse: None,
+            notes: None,
+            created_at: String::new(),
+            updated_at: String::new(),
+        }
+    }
 
     fn score(matched: &[&str], missing: &[&str]) -> MatchScore {
         MatchScore {
@@ -481,5 +615,48 @@ mod tests {
         let analysis = score(&[], &[]);
         assert!(present_skills(&analysis).is_empty());
         assert!(missing_skills(&analysis).is_empty());
+    }
+
+    #[test]
+    fn detecte_une_entreprise_citee_dans_l_offre() {
+        let companies = vec![entreprise("Acme Corp"), entreprise("Globex")];
+        assert_eq!(
+            detected_company("Rejoignez Acme Corp à Paris.", &companies),
+            Some("Acme Corp".to_owned())
+        );
+    }
+
+    #[test]
+    fn la_detection_ignore_la_casse() {
+        let companies = vec![entreprise("Acme Corp")];
+        assert_eq!(
+            detected_company("Stage développeur chez ACME CORP.", &companies),
+            Some("Acme Corp".to_owned())
+        );
+    }
+
+    #[test]
+    fn un_texte_vide_ne_detecte_rien() {
+        let companies = vec![entreprise("Acme Corp")];
+        assert_eq!(detected_company("", &companies), None);
+        assert_eq!(detected_company("   ", &companies), None);
+    }
+
+    #[test]
+    fn aucune_entreprise_connue_ne_detecte_rien() {
+        let companies = vec![entreprise("Acme Corp")];
+        assert_eq!(
+            detected_company("Poste au sein d'une startup inconnue.", &companies),
+            None
+        );
+    }
+
+    #[test]
+    fn la_premiere_entreprise_trouvee_est_retournee() {
+        let companies = vec![entreprise("Acme Corp"), entreprise("Corp Global")];
+        assert_eq!(
+            detected_company("Chez Corp Global comme chez Acme Corp.", &companies),
+            Some("Acme Corp".to_owned())
+        );
     }
 }

@@ -532,6 +532,9 @@ fn backup_card(app: &App) -> Element<'_, Message> {
             controls::secondary("Importer un backup", Some(Icon::Import))
                 .on_press(Message::SelectBackupImport)
                 .width(Length::Fill),
+            controls::secondary("Recharger", Some(Icon::Refresh))
+                .on_press(Message::Reload)
+                .width(Length::Fill),
             controls::danger("Réinitialiser la base", Some(Icon::Trash))
                 .on_press(Message::OpenDialog(Dialog::ResetDatabase))
                 .width(Length::Fill),
