@@ -8,7 +8,7 @@
 
 use crate::app::state::Dialog;
 use crate::app::{App, Message};
-use crate::modules::candidatures::components::status_badge;
+use crate::modules::candidatures::components::{glyph, status_badge};
 use crate::modules::candidatures::model::Candidature;
 use crate::modules::metriques::components::PipelineCounts;
 use crate::navigation::Route;
@@ -253,21 +253,22 @@ fn recent_panel(app: &App) -> Container<'_, Message> {
     recent.sort_by(|left, right| right.updated_at.cmp(&left.updated_at));
 
     for candidate in recent.iter().take(5) {
-        items = items.push(list::row_static(
-            column![
-                typo::item(format::truncate(&candidate.poste, 34)),
-                typo::caption(format::or_else(
-                    candidate.entreprise_nom.as_deref(),
-                    "Entreprise inconnue"
-                )),
+        items = items.push(list::row_item(
+            glyph(candidate.statut),
+            candidate.poste.clone(),
+            format::or_else(candidate.entreprise_nom.as_deref(), "Entreprise inconnue"),
+            row![
+                status_badge(candidate.statut),
+                typo::text_mono(
+                    format::compact_date(&candidate.updated_at),
+                    11.0,
+                    font::MONO_REGULAR,
+                ),
             ]
-            .spacing(space::XXS),
-            status_badge(candidate.statut),
-            typo::text_mono(
-                format::compact_date(&candidate.updated_at),
-                11.0,
-                font::MONO_REGULAR,
-            ),
+            .spacing(space::SM)
+            .align_y(Alignment::Center),
+            app.selected_candidate == Some(candidate.id),
+            Message::OpenDialog(Dialog::CandidatureDetail(candidate.id)),
         ));
     }
 
