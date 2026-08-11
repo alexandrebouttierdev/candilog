@@ -1,6 +1,7 @@
 //! Accès aux candidatures (base locale `SQLite`).
 
 use crate::modules::candidatures::model::{Candidature, NouvelleCandidature, StatutCandidature};
+use crate::modules::metriques::model::Page;
 use crate::shared::db::SqlitePool;
 use crate::shared::error::{AppError, AppResult};
 use crate::shared::sqlite::{
@@ -8,6 +9,34 @@ use crate::shared::sqlite::{
     traduire_erreur, uuid_colonne, uuid_colonne_opt,
 };
 use uuid::Uuid;
+
+/// Critères appliqués par SQLite avant pagination.
+#[derive(Debug, Clone, Default)]
+pub struct CandidaturePageQuery {
+    pub search: String,
+    pub status: Option<StatutCandidature>,
+    pub contract: Option<crate::modules::candidatures::model::TypeContrat>,
+    pub company_id: Option<Uuid>,
+    pub city: String,
+    pub position: String,
+    pub date_from: Option<String>,
+    pub date_to: Option<String>,
+    pub sort: String,
+    pub descending: bool,
+}
+
+/// Agrégats globaux calculés sans charger les candidatures individuelles.
+#[derive(Debug, Clone, Default)]
+pub struct CandidatureStats {
+    pub total: u64,
+    pub pending: u64,
+    pub followed_up: u64,
+    pub interviews: u64,
+    pub rejected: u64,
+    pub linked_contacts: u64,
+    /// Comptes journaliers des 56 derniers jours, au format ISO.
+    pub activity_by_day: Vec<(String, u64)>,
+}
 
 /// Contrat d'accès aux candidatures.
 pub trait CandidatureRepository: Send + Sync {
@@ -21,6 +50,74 @@ pub trait CandidatureRepository: Send + Sync {
     /// # Errors
     /// Retourne `AppError::Database` si la requête échoue.
     fn list(&self) -> AppResult<Vec<Candidature>>;
+    /// Liste une page après recherche, filtrage et tri dans SQLite.
+    fn list_page(
+        &self,
+        page: u64,
+        page_size: u64,
+        query: &CandidaturePageQuery,
+    ) -> AppResult<Page<Candidature>> {
+        let mut items = self.list()?;
+        let needle = query.search.trim().to_lowercase();
+        items.retain(|item| {
+            (needle.is_empty()
+                || item.poste.to_lowercase().contains(&needle)
+                || item
+                    .entreprise_nom
+                    .as_deref()
+                    .unwrap_or_default()
+                    .to_lowercase()
+                    .contains(&needle))
+                && query.status.is_none_or(|value| item.statut == value)
+                && query
+                    .contract
+                    .is_none_or(|value| item.type_contrat == value)
+                && query
+                    .company_id
+                    .is_none_or(|value| item.entreprise_id == value)
+                && (query.position.trim().is_empty()
+                    || item
+                        .poste
+                        .to_lowercase()
+                        .contains(&query.position.trim().to_lowercase()))
+                && query
+                    .date_from
+                    .as_deref()
+                    .is_none_or(|value| item.date_envoi.as_str() >= value)
+                && query
+                    .date_to
+                    .as_deref()
+                    .is_none_or(|value| item.date_envoi.as_str() <= value)
+        });
+        let total = items.len() as u64;
+        let start = page.saturating_sub(1).saturating_mul(page_size) as usize;
+        Ok(Page::new(
+            items
+                .into_iter()
+                .skip(start)
+                .take(page_size as usize)
+                .collect(),
+            total,
+            page,
+            page_size,
+        ))
+    }
+    /// Calcule les indicateurs globaux avec des agrégats SQL dans l'implémentation réelle.
+    fn stats(&self) -> AppResult<CandidatureStats> {
+        let items = self.list()?;
+        let mut stats = CandidatureStats::default();
+        for item in items {
+            stats.total += 1;
+            match item.statut {
+                StatutCandidature::EnAttente => stats.pending += 1,
+                StatutCandidature::Relancee => stats.followed_up += 1,
+                StatutCandidature::Entretien => stats.interviews += 1,
+                StatutCandidature::Refus => stats.rejected += 1,
+            }
+            stats.linked_contacts += u64::from(item.contact_id.is_some());
+        }
+        Ok(stats)
+    }
     /// Met à jour tous les champs éditables d'une candidature.
     ///
     /// # Errors
@@ -136,6 +233,204 @@ impl CandidatureRepository for SqliteCandidatureRepository {
             candidatures.push(ligne_vers_candidature(row)?);
         }
         Ok(candidatures)
+    }
+
+    fn list_page(
+        &self,
+        page: u64,
+        page_size: u64,
+        query: &CandidaturePageQuery,
+    ) -> AppResult<Page<Candidature>> {
+        use rusqlite::types::Value;
+
+        let conn = connexion(&self.pool)?;
+        let page = page.max(1);
+        let page_size = page_size.max(1);
+        let mut clauses = Vec::<String>::new();
+        let mut values = Vec::<Value>::new();
+        fn push_clause(
+            clauses: &mut Vec<String>,
+            values: &mut Vec<Value>,
+            clause: &str,
+            value: Value,
+        ) {
+            values.push(value);
+            clauses.push(clause.replace('?', &format!("?{}", values.len())));
+        }
+
+        if !query.search.trim().is_empty() {
+            let needle = Value::Text(format!("%{}%", query.search.trim().to_lowercase()));
+            values.push(needle.clone());
+            let first = values.len();
+            values.push(needle);
+            let second = values.len();
+            clauses.push(format!(
+                "(lower(c.poste) LIKE ?{first} OR lower(coalesce(e.nom, '')) LIKE ?{second})"
+            ));
+        }
+        if let Some(status) = query.status {
+            push_clause(
+                &mut clauses,
+                &mut values,
+                "c.statut = ?",
+                Value::Text(texte_depuis_enum(&status)?),
+            );
+        }
+        if let Some(contract) = query.contract {
+            push_clause(
+                &mut clauses,
+                &mut values,
+                "c.type_contrat = ?",
+                Value::Text(texte_depuis_enum(&contract)?),
+            );
+        }
+        if let Some(company_id) = query.company_id {
+            push_clause(
+                &mut clauses,
+                &mut values,
+                "c.entreprise_id = ?",
+                Value::Text(company_id.to_string()),
+            );
+        }
+        if !query.city.trim().is_empty() {
+            push_clause(
+                &mut clauses,
+                &mut values,
+                "lower(coalesce(e.ville, '')) LIKE ?",
+                Value::Text(format!("%{}%", query.city.trim().to_lowercase())),
+            );
+        }
+        if !query.position.trim().is_empty() {
+            push_clause(
+                &mut clauses,
+                &mut values,
+                "lower(c.poste) LIKE ?",
+                Value::Text(format!("%{}%", query.position.trim().to_lowercase())),
+            );
+        }
+        if let Some(value) = &query.date_from {
+            push_clause(
+                &mut clauses,
+                &mut values,
+                "c.date_envoi >= ?",
+                Value::Text(value.clone()),
+            );
+        }
+        if let Some(value) = &query.date_to {
+            push_clause(
+                &mut clauses,
+                &mut values,
+                "c.date_envoi <= ?",
+                Value::Text(value.clone()),
+            );
+        }
+
+        let where_sql = if clauses.is_empty() {
+            String::new()
+        } else {
+            format!(" WHERE {}", clauses.join(" AND "))
+        };
+        let total: u64 = conn
+            .query_row(
+                &format!("SELECT count(*) {DEPUIS}{where_sql}"),
+                rusqlite::params_from_iter(values.iter()),
+                |row| row.get(0),
+            )
+            .map_err(|e| traduire_erreur(e, "candidatures"))?;
+
+        let order_column = match query.sort.as_str() {
+            "poste" => "lower(c.poste)",
+            "entreprise" => "lower(coalesce(e.nom, ''))",
+            "statut" => "c.statut",
+            _ => "c.date_envoi",
+        };
+        let direction = if query.descending { "DESC" } else { "ASC" };
+        values.push(Value::Integer(i64::try_from(page_size).unwrap_or(i64::MAX)));
+        let limit_index = values.len();
+        let offset = page.saturating_sub(1).saturating_mul(page_size);
+        values.push(Value::Integer(i64::try_from(offset).unwrap_or(i64::MAX)));
+        let offset_index = values.len();
+        let sql = format!(
+            "SELECT {COLONNES} {DEPUIS}{where_sql} ORDER BY {order_column} {direction}, c.created_at DESC LIMIT ?{limit_index} OFFSET ?{offset_index}"
+        );
+        let mut statement = conn
+            .prepare(&sql)
+            .map_err(|e| traduire_erreur(e, "candidatures"))?;
+        let mut rows = statement
+            .query(rusqlite::params_from_iter(values.iter()))
+            .map_err(|e| traduire_erreur(e, "candidatures"))?;
+        let mut items = Vec::new();
+        while let Some(row) = rows
+            .next()
+            .map_err(|e| traduire_erreur(e, "candidatures"))?
+        {
+            items.push(ligne_vers_candidature(row)?);
+        }
+        Ok(Page::new(items, total, page, page_size))
+    }
+
+    fn stats(&self) -> AppResult<CandidatureStats> {
+        let conn = connexion(&self.pool)?;
+        let statuses = [
+            texte_depuis_enum(&StatutCandidature::EnAttente)?,
+            texte_depuis_enum(&StatutCandidature::Relancee)?,
+            texte_depuis_enum(&StatutCandidature::Entretien)?,
+            texte_depuis_enum(&StatutCandidature::Refus)?,
+        ];
+        let (total, pending, followed_up, interviews, rejected, linked_contacts): (
+            u64,
+            u64,
+            u64,
+            u64,
+            u64,
+            u64,
+        ) = conn
+            .query_row(
+                "SELECT count(*),
+                    coalesce(sum(CASE WHEN statut = ?1 THEN 1 ELSE 0 END), 0),
+                    coalesce(sum(CASE WHEN statut = ?2 THEN 1 ELSE 0 END), 0),
+                    coalesce(sum(CASE WHEN statut = ?3 THEN 1 ELSE 0 END), 0),
+                    coalesce(sum(CASE WHEN statut = ?4 THEN 1 ELSE 0 END), 0),
+                    coalesce(sum(CASE WHEN contact_id IS NOT NULL THEN 1 ELSE 0 END), 0)
+                 FROM candidatures",
+                statuses,
+                |row| {
+                    Ok((
+                        row.get(0)?,
+                        row.get(1)?,
+                        row.get(2)?,
+                        row.get(3)?,
+                        row.get(4)?,
+                        row.get(5)?,
+                    ))
+                },
+            )
+            .map_err(|e| traduire_erreur(e, "statistiques candidatures"))?;
+        let threshold = (chrono::Local::now().date_naive() - chrono::Duration::days(55))
+            .format("%Y-%m-%d")
+            .to_string();
+        let mut statement = conn
+            .prepare(
+                "SELECT substr(date_envoi, 1, 10), count(*) FROM candidatures
+                 WHERE date_envoi >= ?1 GROUP BY substr(date_envoi, 1, 10) ORDER BY 1 ASC",
+            )
+            .map_err(|e| traduire_erreur(e, "activité candidatures"))?;
+        let rows = statement
+            .query_map([threshold], |row| Ok((row.get(0)?, row.get(1)?)))
+            .map_err(|e| traduire_erreur(e, "activité candidatures"))?;
+        let mut activity_by_day = Vec::new();
+        for row in rows {
+            activity_by_day.push(row.map_err(|e| traduire_erreur(e, "activité candidatures"))?);
+        }
+        Ok(CandidatureStats {
+            total,
+            pending,
+            followed_up,
+            interviews,
+            rejected,
+            linked_contacts,
+            activity_by_day,
+        })
     }
 
     fn update(&self, id: Uuid, input: &NouvelleCandidature) -> AppResult<Candidature> {

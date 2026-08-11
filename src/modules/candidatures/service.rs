@@ -1,7 +1,10 @@
 //! Logique métier des candidatures.
 
 use crate::modules::candidatures::model::{Candidature, NouvelleCandidature, StatutCandidature};
-use crate::modules::candidatures::repository::CandidatureRepository;
+use crate::modules::candidatures::repository::{
+    CandidaturePageQuery, CandidatureRepository, CandidatureStats,
+};
+use crate::modules::metriques::model::Page;
 use crate::shared::error::{AppError, AppResult};
 use crate::shared::validation::validate_optional_http_url;
 use uuid::Uuid;
@@ -34,6 +37,21 @@ impl<R: CandidatureRepository> CandidatureService<R> {
     /// Propage l'erreur du dépôt.
     pub fn lister(&self) -> AppResult<Vec<Candidature>> {
         self.repo.list()
+    }
+
+    /// Charge une page filtrée sans matérialiser tout le pipeline.
+    pub fn lister_page(
+        &self,
+        page: u64,
+        page_size: u64,
+        query: &CandidaturePageQuery,
+    ) -> AppResult<Page<Candidature>> {
+        self.repo.list_page(page, page_size, query)
+    }
+
+    /// Renvoie les agrégats globaux sans charger toutes les lignes.
+    pub fn statistiques(&self) -> AppResult<CandidatureStats> {
+        self.repo.stats()
     }
 
     /// Valide les champs puis met à jour la candidature.

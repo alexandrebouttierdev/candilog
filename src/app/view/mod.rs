@@ -2,6 +2,7 @@
 //!
 //! Aucun écran métier n'est rendu ici : chaque module expose sa propre vue.
 
+mod date_picker;
 mod dialogs;
 
 use super::{App, Message};
@@ -71,6 +72,7 @@ pub fn view(app: &App) -> Element<'_, Message> {
             app.is_dark,
             Message::ToggleTheme,
             app_version(),
+            Message::Navigate(Route::APropos),
         ),
         content,
     ]
@@ -80,6 +82,9 @@ pub fn view(app: &App) -> Element<'_, Message> {
     let mut layers: Vec<Element<'_, Message>> = vec![shell_body.into()];
     if let Some(dialog) = app.dialog {
         layers.push(dialogs::layer(app, dialog));
+    }
+    if app.date_picker.is_some() {
+        layers.push(date_picker::layer(app));
     }
     if let Some(notice) = &app.notification {
         layers.push(notification::toast(
@@ -106,7 +111,11 @@ const fn skeleton_for(route: Route) -> PageSkeleton {
         Route::Entreprises | Route::Reseau => PageSkeleton::List,
         Route::Cv => PageSkeleton::Cards,
         Route::CvGenerator | Route::LettreMotivation | Route::CvImport => PageSkeleton::Default,
-        Route::Profil | Route::Parametres => PageSkeleton::Form,
+        Route::Profil
+        | Route::Parametres
+        | Route::Sauvegardes
+        | Route::MisesAJour
+        | Route::APropos => PageSkeleton::Form,
     }
 }
 
@@ -124,6 +133,9 @@ fn screen(app: &App) -> Element<'_, Message> {
         Route::CvImport => crate::modules::ia::views::cv_import::view(app),
         Route::Profil => crate::modules::profil::views::view(app),
         Route::Parametres => crate::modules::settings::views::view(app),
+        Route::Sauvegardes => crate::modules::settings::views::backup_view(app),
+        Route::MisesAJour => crate::modules::settings::views::updates_view(app),
+        Route::APropos => crate::modules::settings::views::about_view(app),
     }
 }
 

@@ -5,8 +5,8 @@ use super::commandes::{ecrire, finish_submit, notifier_le_bureau, recharger};
 use super::export::export_candidatures;
 use super::message::{LetterStreamEvent, UpdateDownloadEvent};
 use super::state::{
-    CandidatureForm, ContactForm, Dialog, EntrepriseForm, EntretienForm, NotificationKind,
-    RelanceForm,
+    CandidatureForm, ContactForm, DatePickerState, DatePickerTarget, Dialog, EntrepriseForm,
+    EntretienForm, NotificationKind, ProfileCollection, RelanceForm,
 };
 use super::{App, Message};
 use crate::modules::candidatures::model::NouvelleCandidature;
@@ -29,7 +29,11 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             finish_submit(app, result, succes);
             return recharger(app);
         }
-        Message::DataLoaded(data, echecs) => app.appliquer_instantane(*data, &echecs),
+        Message::DataLoaded(data, echecs, sequence) => {
+            if sequence == app.data_request_sequence {
+                app.appliquer_instantane(*data, &echecs);
+            }
+        }
         Message::CaptureForReview => {
             return iced::window::get_latest().map(Message::CaptureWindow);
         }
@@ -69,55 +73,108 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             }
             app.route = route;
             app.search.clear();
+            app.candidate_page = 1;
+            app.company_page = 1;
+            app.contact_page = 1;
+            return recharger(app);
         }
         Message::Reload => return recharger(app),
-        Message::SearchChanged(value) => app.search = value,
+        Message::SearchChanged(value) => {
+            app.search = value;
+            match app.route {
+                crate::navigation::Route::Candidatures => app.candidate_page = 1,
+                crate::navigation::Route::Entreprises => app.company_page = 1,
+                crate::navigation::Route::Reseau => app.contact_page = 1,
+                _ => {}
+            }
+            return recharger(app);
+        }
+        Message::CandidatePagePrev => {
+            app.candidate_page = app.candidate_page.saturating_sub(1).max(1);
+            return recharger(app);
+        }
+        Message::CandidatePageNext => {
+            app.candidate_page = app
+                .candidate_page
+                .saturating_add(1)
+                .min(app.candidate_total_pages());
+            return recharger(app);
+        }
+        Message::CompanyPagePrev => {
+            app.company_page = app.company_page.saturating_sub(1).max(1);
+            return recharger(app);
+        }
+        Message::CompanyPageNext => {
+            app.company_page = app
+                .company_page
+                .saturating_add(1)
+                .min(app.company_total_pages());
+            return recharger(app);
+        }
+        Message::ContactPagePrev => {
+            app.contact_page = app.contact_page.saturating_sub(1).max(1);
+            return recharger(app);
+        }
+        Message::ContactPageNext => {
+            app.contact_page = app
+                .contact_page
+                .saturating_add(1)
+                .min(app.contact_total_pages());
+            return recharger(app);
+        }
         Message::CandidateViewChanged(mode) => app.candidate_view = mode,
-        Message::PreviousMonth => match app.calendar_view {
-            super::message::CalendarView::Month => {
-                if app.calendar_month == 1 {
-                    app.calendar_month = 12;
-                    app.calendar_year -= 1;
-                } else {
-                    app.calendar_month -= 1;
+        Message::PreviousMonth => {
+            match app.calendar_view {
+                super::message::CalendarView::Month => {
+                    if app.calendar_month == 1 {
+                        app.calendar_month = 12;
+                        app.calendar_year -= 1;
+                    } else {
+                        app.calendar_month -= 1;
+                    }
+                }
+                super::message::CalendarView::Week => {
+                    app.calendar_date -= chrono::Duration::days(7);
+                    app.calendar_year = app.calendar_date.year();
+                    app.calendar_month = app.calendar_date.month();
+                }
+                super::message::CalendarView::Day => {
+                    app.calendar_date -= chrono::Duration::days(1);
+                    app.calendar_year = app.calendar_date.year();
+                    app.calendar_month = app.calendar_date.month();
                 }
             }
-            super::message::CalendarView::Week => {
-                app.calendar_date -= chrono::Duration::days(7);
-                app.calendar_year = app.calendar_date.year();
-                app.calendar_month = app.calendar_date.month();
-            }
-            super::message::CalendarView::Day => {
-                app.calendar_date -= chrono::Duration::days(1);
-                app.calendar_year = app.calendar_date.year();
-                app.calendar_month = app.calendar_date.month();
-            }
-        },
-        Message::NextMonth => match app.calendar_view {
-            super::message::CalendarView::Month => {
-                if app.calendar_month == 12 {
-                    app.calendar_month = 1;
-                    app.calendar_year += 1;
-                } else {
-                    app.calendar_month += 1;
+            return recharger(app);
+        }
+        Message::NextMonth => {
+            match app.calendar_view {
+                super::message::CalendarView::Month => {
+                    if app.calendar_month == 12 {
+                        app.calendar_month = 1;
+                        app.calendar_year += 1;
+                    } else {
+                        app.calendar_month += 1;
+                    }
+                }
+                super::message::CalendarView::Week => {
+                    app.calendar_date += chrono::Duration::days(7);
+                    app.calendar_year = app.calendar_date.year();
+                    app.calendar_month = app.calendar_date.month();
+                }
+                super::message::CalendarView::Day => {
+                    app.calendar_date += chrono::Duration::days(1);
+                    app.calendar_year = app.calendar_date.year();
+                    app.calendar_month = app.calendar_date.month();
                 }
             }
-            super::message::CalendarView::Week => {
-                app.calendar_date += chrono::Duration::days(7);
-                app.calendar_year = app.calendar_date.year();
-                app.calendar_month = app.calendar_date.month();
-            }
-            super::message::CalendarView::Day => {
-                app.calendar_date += chrono::Duration::days(1);
-                app.calendar_year = app.calendar_date.year();
-                app.calendar_month = app.calendar_date.month();
-            }
-        },
+            return recharger(app);
+        }
         Message::CurrentMonth => {
             let now = Local::now();
             app.calendar_year = now.year();
             app.calendar_month = now.month();
             app.calendar_date = now.date_naive();
+            return recharger(app);
         }
         Message::ToggleTheme => {
             // La bascule rapide et le sélecteur à trois valeurs pilotent la même chose : la
@@ -172,28 +229,30 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 Dialog::Candidature => {
                     app.candidature_form = CandidatureForm::default();
                     app.candidature_form.entreprise_id =
-                        app.data.entreprises.first().map(|item| item.id);
+                        app.data.company_options.first().map(|item| item.id);
                 }
                 Dialog::Entretien => {
                     app.entretien_form = EntretienForm::default();
                     app.entretien_form.candidature_id =
-                        app.data.candidatures.first().map(|item| item.id);
+                        app.data.candidate_options.first().map(|item| item.id);
                 }
                 Dialog::Relance => {
                     app.relance_form = RelanceForm::default();
                     app.relance_form.candidature_id =
-                        app.data.candidatures.first().map(|item| item.id);
+                        app.data.candidate_options.first().map(|item| item.id);
                 }
                 Dialog::Profil => {
                     app.profile_personal_form = app.data.profile.personal.clone();
-                    app.profile_skills_form = app
-                        .data
-                        .profile
-                        .skills
-                        .iter()
-                        .map(|skill| skill.name.as_str())
-                        .collect::<Vec<_>>()
-                        .join(", ");
+                    app.profile_draft = app.data.profile.clone();
+                    app.profile_summary_editor = iced::widget::text_editor::Content::with_text(
+                        app.data
+                            .profile
+                            .personal
+                            .summary
+                            .as_deref()
+                            .unwrap_or_default(),
+                    );
+                    app.profile_skills_form.clear();
                 }
                 Dialog::DeleteCandidature(_)
                 | Dialog::DeleteEntreprise(_)
@@ -220,7 +279,9 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             // condition, il désélectionnait le contact affiché dans l'inspecteur du Réseau —
             // et lui seul, ni la candidature, ni l'entreprise, ni le CV sélectionnés — alors
             // même qu'aucun dialogue n'était ouvert.
-            if app.dialog.is_some() {
+            if app.date_picker.is_some() {
+                app.date_picker = None;
+            } else if app.dialog.is_some() {
                 app.dialog = None;
                 app.editing_id = None;
             } else if app.selected_contact.is_some() {
@@ -261,7 +322,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
         Message::ContactEmailChanged(value) => app.contact_form.email = value,
         Message::ContactTelephoneChanged(value) => app.contact_form.telephone = value,
         Message::ContactLinkedinChanged(value) => app.contact_form.linkedin = value,
-        Message::ContactNotesChanged(value) => app.contact_form.notes = value,
+        Message::ContactNotesChanged(action) => app.contact_form.notes.perform(action),
         Message::ContactEntrepriseChanged(value) => app.contact_form.entreprise_id = value,
         Message::SubmitContact => {
             let input = NouveauContact {
@@ -272,7 +333,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 email: optional(&app.contact_form.email),
                 telephone: optional(&app.contact_form.telephone),
                 linkedin: optional(&app.contact_form.linkedin),
-                notes: optional(&app.contact_form.notes),
+                notes: optional(&app.contact_form.notes.text()),
             };
             let edition = app.editing_id;
             return ecrire(app, "Contact enregistré.", move |backend| {
@@ -440,9 +501,93 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                     .map_err(|error| error.to_string())
             });
         }
+        Message::OpenDatePicker(target) => {
+            let value = match target {
+                DatePickerTarget::Candidature => &app.candidature_form.date_envoi,
+                DatePickerTarget::Entretien => &app.entretien_form.date_entretien,
+                DatePickerTarget::Relance => &app.relance_form.date_relance,
+                DatePickerTarget::FiltreDebut => &app.candidate_filters.date_from,
+                DatePickerTarget::FiltreFin => &app.candidate_filters.date_to,
+            };
+            let date_text = value.get(..10).unwrap_or(value);
+            let selected = chrono::NaiveDate::parse_from_str(date_text, "%d-%m-%Y")
+                .unwrap_or_else(|_| Local::now().date_naive());
+            app.date_picker = Some(DatePickerState {
+                target,
+                year: selected.year(),
+                month: selected.month(),
+            });
+        }
+        Message::CloseDatePicker => app.date_picker = None,
+        Message::DatePickerPreviousMonth => {
+            if let Some(picker) = app.date_picker.as_mut() {
+                if picker.month == 1 {
+                    picker.month = 12;
+                    picker.year -= 1;
+                } else {
+                    picker.month -= 1;
+                }
+            }
+        }
+        Message::DatePickerNextMonth => {
+            if let Some(picker) = app.date_picker.as_mut() {
+                if picker.month == 12 {
+                    picker.month = 1;
+                    picker.year += 1;
+                } else {
+                    picker.month += 1;
+                }
+            }
+        }
+        Message::DatePickerSelected(date) => {
+            let Some(target) = app.date_picker.take().map(|picker| picker.target) else {
+                return Task::none();
+            };
+            let formatted = date.format("%d-%m-%Y").to_string();
+            match target {
+                DatePickerTarget::Candidature => app.candidature_form.date_envoi = formatted,
+                DatePickerTarget::Entretien => {
+                    let time = app
+                        .entretien_form
+                        .date_entretien
+                        .split_once(' ')
+                        .map_or("09:00", |(_, time)| time);
+                    app.entretien_form.date_entretien = format!("{formatted} {time}");
+                }
+                DatePickerTarget::Relance => app.relance_form.date_relance = formatted,
+                DatePickerTarget::FiltreDebut => {
+                    app.candidate_filters.date_from = formatted;
+                    app.candidate_page = 1;
+                    return recharger(app);
+                }
+                DatePickerTarget::FiltreFin => {
+                    app.candidate_filters.date_to = formatted;
+                    app.candidate_page = 1;
+                    return recharger(app);
+                }
+            }
+        }
         Message::ExportCandidatures => {
-            let rows = app.filtered_candidates().into_iter().cloned().collect();
-            return Task::perform(export_candidatures(rows), Message::CandidaturesExported);
+            let Some(backend) = app.backend.clone() else {
+                app.notify_failure("La base Candilog n'est pas disponible.");
+                return Task::none();
+            };
+            let query = app.snapshot_request().candidate_query();
+            return Task::perform(
+                async move {
+                    let rows = tokio::task::spawn_blocking(move || {
+                        backend
+                            .candidatures
+                            .lister_page(1, u64::MAX, &query)
+                            .map(|page| page.items)
+                            .map_err(|error| error.to_string())
+                    })
+                    .await
+                    .map_err(|error| format!("Export interrompu : {error}"))??;
+                    export_candidatures(rows).await
+                },
+                Message::CandidaturesExported,
+            );
         }
         Message::CandidaturesExported(result) => match result {
             Ok(path) => app.notify_success(format!("Export créé : {}", path.display())),
@@ -913,20 +1058,43 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
         Message::ProfileHeadlineChanged(value) => {
             app.profile_personal_form.headline = optional(&value)
         }
-        Message::ProfileSummaryChanged(value) => {
-            app.profile_personal_form.summary = optional(&value)
-        }
+        Message::ProfileSummaryChanged(action) => app.profile_summary_editor.perform(action),
         Message::ProfileSkillsChanged(value) => app.profile_skills_form = value,
+        Message::ProfileSkillAdded => {
+            let value = app.profile_skills_form.trim();
+            if !value.is_empty()
+                && !app
+                    .profile_draft
+                    .skills
+                    .iter()
+                    .any(|skill| skill.name.eq_ignore_ascii_case(value))
+            {
+                app.profile_draft
+                    .skills
+                    .push(crate::shared::profile::Skill {
+                        name: value.to_owned(),
+                    });
+                app.profile_skills_form.clear();
+            }
+        }
+        Message::ProfileSkillRemoved(index) => {
+            if index < app.profile_draft.skills.len() {
+                app.profile_draft.skills.remove(index);
+            }
+        }
+        Message::ProfileItemAdded(collection) => {
+            add_profile_item(&mut app.profile_draft, collection);
+        }
+        Message::ProfileItemRemoved(collection, index) => {
+            remove_profile_item(&mut app.profile_draft, collection, index);
+        }
+        Message::ProfileItemChanged(collection, index, field, value) => {
+            update_profile_item(&mut app.profile_draft, collection, index, field, value);
+        }
         Message::SubmitProfile => {
-            let mut profile = app.data.profile.clone();
+            let mut profile = app.profile_draft.clone();
             profile.personal = app.profile_personal_form.clone();
-            profile.skills = app
-                .profile_skills_form
-                .split(',')
-                .map(str::trim)
-                .filter(|name| !name.is_empty())
-                .map(|name| crate::shared::profile::Skill { name: name.into() })
-                .collect();
+            profile.personal.summary = optional(&app.profile_summary_editor.text());
             return ecrire(app, "Profil enregistré.", move |backend| {
                 backend
                     .profil
@@ -980,15 +1148,45 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 }
             },
         },
-        Message::CandidateFilterStatus(value) => app.candidate_filters.status = value,
-        Message::CandidateFilterContract(value) => app.candidate_filters.contract = value,
-        Message::CandidateFilterCompany(value) => app.candidate_filters.company_id = value,
-        Message::CandidateFilterCity(value) => app.candidate_filters.city = value,
-        Message::CandidateFilterPosition(value) => app.candidate_filters.position = value,
-        Message::CandidateFilterDateFrom(value) => app.candidate_filters.date_from = value,
-        Message::CandidateFilterDateTo(value) => app.candidate_filters.date_to = value,
+        Message::CandidateFilterStatus(value) => {
+            app.candidate_filters.status = value;
+            app.candidate_page = 1;
+            return recharger(app);
+        }
+        Message::CandidateFilterContract(value) => {
+            app.candidate_filters.contract = value;
+            app.candidate_page = 1;
+            return recharger(app);
+        }
+        Message::CandidateFilterCompany(value) => {
+            app.candidate_filters.company_id = value;
+            app.candidate_page = 1;
+            return recharger(app);
+        }
+        Message::CandidateFilterCity(value) => {
+            app.candidate_filters.city = value;
+            app.candidate_page = 1;
+            return recharger(app);
+        }
+        Message::CandidateFilterPosition(value) => {
+            app.candidate_filters.position = value;
+            app.candidate_page = 1;
+            return recharger(app);
+        }
+        Message::CandidateFilterDateFrom(value) => {
+            app.candidate_filters.date_from = value;
+            app.candidate_page = 1;
+            return recharger(app);
+        }
+        Message::CandidateFilterDateTo(value) => {
+            app.candidate_filters.date_to = value;
+            app.candidate_page = 1;
+            return recharger(app);
+        }
         Message::ResetCandidateFilters => {
             app.candidate_filters = super::state::CandidateFilters::default();
+            app.candidate_page = 1;
+            return recharger(app);
         }
         Message::ConfirmDelete => {
             let Some(dialog) = app.dialog else {
@@ -1034,7 +1232,9 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                     email: item.email.clone().unwrap_or_default(),
                     telephone: item.telephone.clone().unwrap_or_default(),
                     linkedin: item.linkedin.clone().unwrap_or_default(),
-                    notes: item.notes.clone().unwrap_or_default(),
+                    notes: iced::widget::text_editor::Content::with_text(
+                        item.notes.as_deref().unwrap_or_default(),
+                    ),
                 };
                 app.editing_id = Some(id);
                 app.dialog = Some(Dialog::Contact);
@@ -1484,6 +1684,8 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                     app.candidate_sort = sort;
                     app.candidate_sort_descending = false;
                 }
+                app.candidate_page = 1;
+                return recharger(app);
             }
         }
         Message::StatisticsTabChanged(tab) => app.statistics_tab = tab,
@@ -1521,6 +1723,115 @@ pub const SEARCH_FIELD_ID: &str = "candilog-search";
 fn optional(value: &str) -> Option<String> {
     let trimmed = value.trim();
     (!trimmed.is_empty()).then(|| trimmed.to_owned())
+}
+
+fn add_profile_item(profile: &mut crate::shared::profile::Profile, kind: ProfileCollection) {
+    use crate::shared::profile::{Certification, Education, Experience, Language, Project};
+    match kind {
+        ProfileCollection::Experience => profile.experiences.push(Experience::default()),
+        ProfileCollection::Formation => profile.education.push(Education::default()),
+        ProfileCollection::Langue => profile.languages.push(Language::default()),
+        ProfileCollection::Projet => profile.projects.push(Project::default()),
+        ProfileCollection::Certification => {
+            profile.certifications.push(Certification::default());
+        }
+    }
+}
+
+fn remove_profile_item(
+    profile: &mut crate::shared::profile::Profile,
+    kind: ProfileCollection,
+    index: usize,
+) {
+    match kind {
+        ProfileCollection::Experience if index < profile.experiences.len() => {
+            profile.experiences.remove(index);
+        }
+        ProfileCollection::Formation if index < profile.education.len() => {
+            profile.education.remove(index);
+        }
+        ProfileCollection::Langue if index < profile.languages.len() => {
+            profile.languages.remove(index);
+        }
+        ProfileCollection::Projet if index < profile.projects.len() => {
+            profile.projects.remove(index);
+        }
+        ProfileCollection::Certification if index < profile.certifications.len() => {
+            profile.certifications.remove(index);
+        }
+        _ => {}
+    }
+}
+
+fn update_profile_item(
+    profile: &mut crate::shared::profile::Profile,
+    kind: ProfileCollection,
+    index: usize,
+    field: usize,
+    value: String,
+) {
+    match kind {
+        ProfileCollection::Experience => {
+            if let Some(item) = profile.experiences.get_mut(index) {
+                match field {
+                    0 => item.title = value,
+                    1 => item.company = value,
+                    2 => item.location = optional(&value),
+                    3 => item.start_date = value,
+                    4 => {
+                        item.end_date = optional(&value);
+                        item.current = item.end_date.is_none();
+                    }
+                    5 => item.description = optional(&value),
+                    _ => {}
+                }
+            }
+        }
+        ProfileCollection::Formation => {
+            if let Some(item) = profile.education.get_mut(index) {
+                match field {
+                    0 => item.degree = value,
+                    1 => item.school = value,
+                    2 => item.location = optional(&value),
+                    3 => item.start_date = optional(&value),
+                    4 => item.end_date = optional(&value),
+                    5 => item.description = optional(&value),
+                    _ => {}
+                }
+            }
+        }
+        ProfileCollection::Langue => {
+            if let Some(item) = profile.languages.get_mut(index) {
+                match field {
+                    0 => item.name = value,
+                    1 => item.level = value,
+                    _ => {}
+                }
+            }
+        }
+        ProfileCollection::Projet => {
+            if let Some(item) = profile.projects.get_mut(index) {
+                match field {
+                    0 => item.name = value,
+                    1 => item.url = optional(&value),
+                    2 => item.technologies = optional(&value),
+                    3 => item.description = optional(&value),
+                    _ => {}
+                }
+            }
+        }
+        ProfileCollection::Certification => {
+            if let Some(item) = profile.certifications.get_mut(index) {
+                match field {
+                    0 => item.name = value,
+                    1 => item.issuer = optional(&value),
+                    2 => item.date = optional(&value),
+                    3 => item.url = optional(&value),
+                    _ => {}
+                }
+            }
+        }
+    }
 }
 
 fn apply_recommendation(

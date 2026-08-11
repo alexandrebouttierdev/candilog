@@ -2,7 +2,6 @@
 
 use crate::app::state::Dialog;
 use crate::app::{App, Message};
-use crate::modules::candidatures::model::Candidature;
 use crate::modules::contacts::components as people;
 use crate::modules::contacts::model::Contact;
 use crate::modules::entretiens::model::Entretien;
@@ -12,7 +11,7 @@ use crate::ui::components::button as controls;
 use crate::ui::components::header;
 use crate::ui::components::icon::{self, Icon};
 use crate::ui::components::overlay;
-use crate::ui::components::{field, inspector, layout, list, state, surface, typo};
+use crate::ui::components::{field, inspector, layout, list, pagination, state, surface, typo};
 use crate::ui::format;
 use crate::ui::theme::metrics::space;
 use crate::ui::theme::styles;
@@ -93,14 +92,14 @@ fn directory(app: &App) -> Element<'_, Message> {
                 Length::Fixed(360.0),
             ),
             typo::caption(format::plural(
-                app.data.contacts.len(),
+                usize::try_from(app.data.contacts_total).unwrap_or(usize::MAX),
                 "contact",
                 "contacts",
             )),
             layout::spacer(),
             typo::caption(format!(
                 "{} candidatures liées · {} entretiens planifiés",
-                total_candidatures_liees(&app.data.candidatures),
+                app.data.candidature_stats.linked_contacts,
                 entretiens_planifies(&app.data.entretiens, &today),
             )),
         ]
@@ -111,7 +110,28 @@ fn directory(app: &App) -> Element<'_, Message> {
     .padding([0.0, space::LG])
     .width(Length::Fill);
 
-    container(column![toolbar, surface::divider(), body].height(Length::Fill))
+    let footer: Element<'_, Message> = if app.data.contacts_total_pages > 1 {
+        let (first, last) = pagination::window(
+            app.contact_page,
+            crate::app::state::BUSINESS_PAGE_SIZE,
+            app.data.contacts_total,
+        );
+        container(pagination::pagination(
+            app.contact_page,
+            app.data.contacts_total_pages,
+            Message::ContactPagePrev,
+            Message::ContactPageNext,
+            first,
+            last,
+            app.data.contacts_total,
+        ))
+        .padding(space::MD)
+        .into()
+    } else {
+        iced::widget::Space::with_height(0).into()
+    };
+
+    container(column![toolbar, surface::divider(), body, footer].height(Length::Fill))
         .width(Length::Fill)
         .height(Length::Fill)
         .style(styles::panel_flat)
@@ -236,7 +256,10 @@ fn drawer_content(app: &App) -> Element<'_, Message> {
 
 /// Nombre total de candidatures liées à au moins un contact.
 #[must_use]
-fn total_candidatures_liees(candidates: &[Candidature]) -> usize {
+#[cfg(test)]
+fn total_candidatures_liees(
+    candidates: &[crate::modules::candidatures::model::Candidature],
+) -> usize {
     candidates
         .iter()
         .filter(|item| item.contact_id.is_some())

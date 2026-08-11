@@ -13,7 +13,7 @@ use crate::ui::components::choice::Choice;
 use crate::ui::components::header;
 use crate::ui::components::icon::Icon;
 use crate::ui::components::sidebar::workspace_tab_controls;
-use crate::ui::components::{badge, field, layout, typo};
+use crate::ui::components::{badge, field, layout, pagination, typo};
 use crate::ui::format;
 use crate::ui::theme::metrics::{radius, size, space, stroke};
 use crate::ui::theme::tokens::tokens;
@@ -53,6 +53,7 @@ pub fn view(app: &App) -> Element<'_, Message> {
         .width(Length::Fill)
         .height(Length::Fill)
         .padding([space::LG, space::LG]),
+        candidate_pagination(app),
     ]
     .spacing(0)
     .height(Length::Fill);
@@ -68,6 +69,28 @@ pub fn view(app: &App) -> Element<'_, Message> {
     )
 }
 
+fn candidate_pagination(app: &App) -> Element<'_, Message> {
+    if app.data.candidatures_total_pages <= 1 {
+        return iced::widget::Space::with_height(0).into();
+    }
+    let (first, last) = pagination::window(
+        app.candidate_page,
+        crate::app::state::BUSINESS_PAGE_SIZE,
+        app.data.candidatures_total,
+    );
+    container(pagination::pagination(
+        app.candidate_page,
+        app.data.candidatures_total_pages,
+        Message::CandidatePagePrev,
+        Message::CandidatePageNext,
+        first,
+        last,
+        app.data.candidatures_total,
+    ))
+    .padding([space::SM, space::LG])
+    .into()
+}
+
 /// Barre de commandes compacte : recherche, filtres et mode d'affichage.
 fn command_bar(app: &App) -> Element<'_, Message> {
     let toolbar = row![
@@ -78,7 +101,7 @@ fn command_bar(app: &App) -> Element<'_, Message> {
             Length::Fixed(size::SEARCH),
         ),
         typo::caption(format::plural(
-            app.filtered_candidates().len(),
+            usize::try_from(app.data.candidatures_total).unwrap_or(usize::MAX),
             "résultat",
             "résultats",
         )),
@@ -124,7 +147,7 @@ pub fn company_choices(app: &App) -> Vec<Choice> {
     std::iter::once(Choice::any("Toutes les entreprises"))
         .chain(
             app.data
-                .entreprises
+                .company_options
                 .iter()
                 .map(|item| Choice::new(item.id, item.nom.clone())),
         )
@@ -135,7 +158,7 @@ pub fn company_choices(app: &App) -> Vec<Choice> {
 #[must_use]
 pub fn candidate_choices(app: &App) -> Vec<Choice> {
     app.data
-        .candidatures
+        .candidate_options
         .iter()
         .map(|item| {
             Choice::new(

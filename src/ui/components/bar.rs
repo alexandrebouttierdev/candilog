@@ -24,7 +24,7 @@ pub fn proportions(ratio: f32) -> (u16, u16) {
 
 /// Barre de proportion verticalement compacte.
 pub fn barre<'a, Message: 'a>(
-    label: &'a str,
+    label: impl Into<String>,
     valeur: impl Into<String>,
     ratio: f32,
     tone: Tone,
@@ -63,7 +63,7 @@ pub fn barre<'a, Message: 'a>(
 
     column![
         row![
-            typo::body(label),
+            typo::body(label.into()),
             Space::with_width(Length::Fill),
             typo::caption(valeur.into()),
         ]

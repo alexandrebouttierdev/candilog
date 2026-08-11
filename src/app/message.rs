@@ -1,6 +1,6 @@
 //! Messages produits par les vues Iced.
 
-use super::state::{Dialog, StatisticsTab};
+use super::state::{DatePickerTarget, Dialog, ProfileCollection, StatisticsTab};
 use crate::modules::candidatures::model::{StatutCandidature, TypeContrat};
 use crate::modules::entretiens::model::TypeEntretien;
 use crate::navigation::Route;
@@ -53,7 +53,7 @@ pub enum Message {
     /// Une écriture métier s'est terminée, avec le libellé de succès à afficher.
     WriteFinished(Result<(), String>, &'static str),
     /// Un instantané de données chargé hors du fil de rendu est prêt à être appliqué.
-    DataLoaded(Box<crate::app::state::DataSnapshot>, Vec<&'static str>),
+    DataLoaded(Box<crate::app::state::DataSnapshot>, Vec<&'static str>, u64),
     /// Demande une capture native pour la revue visuelle opt-in.
     CaptureForReview,
     /// Fenêtre résolue pour la capture native.
@@ -72,6 +72,13 @@ pub enum Message {
     Reload,
     /// Modifie la recherche globale de la page courante.
     SearchChanged(String),
+    /// Navigation paginée des listes métier.
+    CandidatePagePrev,
+    CandidatePageNext,
+    CompanyPagePrev,
+    CompanyPageNext,
+    ContactPagePrev,
+    ContactPageNext,
     /// Bascule le rendu candidatures.
     CandidateViewChanged(CandidateView),
     /// Affiche le mois précédent du calendrier.
@@ -130,7 +137,7 @@ pub enum Message {
     /// Modifie le profil LinkedIn du contact.
     ContactLinkedinChanged(String),
     /// Modifie les notes du contact.
-    ContactNotesChanged(String),
+    ContactNotesChanged(iced::widget::text_editor::Action),
     /// Lie le contact à une entreprise.
     ContactEntrepriseChanged(Option<uuid::Uuid>),
     /// Soumet un contact.
@@ -181,6 +188,12 @@ pub enum Message {
     RelanceNotesChanged(String),
     /// Soumet une relance.
     SubmitRelance,
+    /// Ouvre et pilote le calendrier natif des champs de date.
+    OpenDatePicker(DatePickerTarget),
+    CloseDatePicker,
+    DatePickerPreviousMonth,
+    DatePickerNextMonth,
+    DatePickerSelected(chrono::NaiveDate),
     /// Demande l'export CSV filtré.
     ExportCandidatures,
     /// Résultat de l'export CSV.
@@ -297,9 +310,14 @@ pub enum Message {
     /// Modifie le titre professionnel.
     ProfileHeadlineChanged(String),
     /// Modifie le résumé du profil.
-    ProfileSummaryChanged(String),
-    /// Modifie la liste de compétences.
+    ProfileSummaryChanged(iced::widget::text_editor::Action),
+    /// Modifie la compétence en cours d'ajout.
     ProfileSkillsChanged(String),
+    ProfileSkillAdded,
+    ProfileSkillRemoved(usize),
+    ProfileItemAdded(ProfileCollection),
+    ProfileItemRemoved(ProfileCollection, usize),
+    ProfileItemChanged(ProfileCollection, usize, usize, String),
     /// Enregistre le profil.
     SubmitProfile,
     /// Télécharge et vérifie la mise à jour disponible.

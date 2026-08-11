@@ -9,7 +9,6 @@
 use crate::app::state::Dialog;
 use crate::app::{App, Message};
 use crate::modules::candidatures::components::{contract_short, status_badge};
-use crate::modules::candidatures::model::Candidature;
 use crate::modules::metriques::components::PipelineCounts;
 use crate::navigation::Route;
 use crate::ui::components::button as controls;
@@ -17,15 +16,14 @@ use crate::ui::components::header;
 use crate::ui::components::icon::{self, Icon, Ink};
 use crate::ui::components::stat_card;
 use crate::ui::components::table::{self, Column};
-use crate::ui::components::{badge, layout, list, sparkline, state, surface, typo};
+use crate::ui::components::{badge, bar, layout, list, state, surface, typo};
 use crate::ui::format;
 use crate::ui::theme::metrics::space;
 use crate::ui::theme::styles;
 use crate::ui::theme::typography as font;
 use crate::ui::theme::Tone;
-use chrono::Datelike;
-use iced::widget::{column, container, row, Container, Space, Stack};
-use iced::{Alignment, Element, Length, Padding};
+use iced::widget::{column, container, row, Container};
+use iced::{Alignment, Element, Length};
 
 const RECENT_COLUMNS: [Column; 4] = [
     Column::text("POSTE", 4),
@@ -37,7 +35,7 @@ const RECENT_COLUMNS: [Column; 4] = [
 /// Rend le tableau de bord.
 pub fn view(app: &App) -> Element<'_, Message> {
     let today = chrono::Local::now().format("%Y-%m-%d").to_string();
-    let counts = PipelineCounts::from_candidates(&app.data.candidatures);
+    let counts = PipelineCounts::from_stats(&app.data.candidature_stats);
     let due = app.due_reminders(&today);
     let upcoming = app.upcoming_interviews(&today);
 
@@ -206,46 +204,31 @@ fn upcoming_panel<'a>(app: &'a App, today: &str, upcoming: usize) -> Container<'
 /// Panneau « Activité récente » : les envois des sept derniers jours en
 /// barres, avec la valeur et le jour superposés à chaque barre.
 fn activity_panel(app: &App) -> Container<'_, Message> {
-    let days = last_seven_days(&app.data.candidatures);
-    let mut counts = [0_usize; 7];
-    for (slot, (_, count)) in counts.iter_mut().zip(&days) {
-        *slot = *count;
-    }
-    let heights = sparkline::bar_heights(counts);
-
-    let mut overlay = row![].width(Length::Fill).height(Length::Fill);
+    let days = last_seven_days(&app.data.candidature_stats.activity_by_day);
+    let maximum = days
+        .iter()
+        .map(|(_, count)| *count)
+        .max()
+        .unwrap_or(1)
+        .max(1);
+    let mut chart = column![].spacing(space::SM).width(Length::Fill);
     for (date, count) in &days {
-        overlay = overlay.push(
-            column![
-                typo::text_mono(count.to_string(), 11.0, font::MONO_REGULAR),
-                Space::with_height(Length::Fill),
-                typo::caption(day_letter(date.weekday().num_days_from_monday())),
-            ]
-            .width(Length::FillPortion(1))
-            .height(Length::Fill)
-            .align_x(Alignment::Center),
-        );
+        chart = chart.push(bar::barre(
+            format::compact_date(&date.format("%Y-%m-%d").to_string()),
+            format::plural(*count, "envoi", "envois"),
+            (*count as f32 / maximum as f32) * 100.0,
+            Tone::Accent,
+        ));
     }
-
-    // Un seul canvas dessine les barres ; une grille de textes par-dessus lui
-    // ajoute la valeur (en haut) et le jour (en bas). Le canvas réserve le
-    // bas de sa zone pour que les barres ne touchent pas les jours.
-    let chart = Stack::with_children(vec![
-        container(sparkline::bar_chart(heights))
-            .width(Length::Fill)
-            .height(176.0)
-            .padding(Padding::new(0.0).bottom(space::LG))
-            .into(),
-        overlay.into(),
-    ])
-    .width(Length::Fill)
-    .height(176.0);
 
     surface::panel(
         column![
-            surface::section_header("Activité récente", Space::with_width(0)),
+            surface::section_header(
+                "Activité récente",
+                badge::badge("7 derniers jours", Tone::Neutral),
+            ),
             surface::divider(),
-            container(chart).padding([space::LG, 0.0]),
+            container(chart).padding([space::MD, 0.0]),
         ]
         .height(Length::Fill),
     )
@@ -334,34 +317,23 @@ fn event_icon<'a, Message: 'a>(glyph: Icon, tone: Tone) -> Element<'a, Message> 
         .into()
 }
 
-/// Abréviation d'un jour de la semaine en une lettre (L, M, M, J, V, S, D).
-const fn day_letter(index: u32) -> &'static str {
-    match index {
-        0 => "L",
-        1 => "M",
-        2 => "M",
-        3 => "J",
-        4 => "V",
-        5 => "S",
-        _ => "D",
-    }
-}
-
 /// Dates des sept derniers jours avec le compte de candidatures envoyées
 /// chaque jour, depuis le jour le plus ancien jusqu'à aujourd'hui.
 ///
 /// La comparaison se fait sur le préfixe `AAAA-MM-JJ` : les lignes reprises
 /// de l'ancienne base portent un horodatage complet qui commence par la date.
-fn last_seven_days(candidates: &[Candidature]) -> Vec<(chrono::NaiveDate, usize)> {
+fn last_seven_days(activity: &[(String, u64)]) -> Vec<(chrono::NaiveDate, usize)> {
     let today = chrono::Local::now().date_naive();
     let mut days = Vec::with_capacity(7);
     let mut cursor = today.checked_sub_days(chrono::Days::new(6));
     while let Some(date) = cursor {
         let prefix = date.format("%Y-%m-%d").to_string();
-        let count = candidates
+        let count = activity
             .iter()
-            .filter(|item| item.date_envoi.starts_with(&prefix))
-            .count();
+            .find(|(date, _)| date == &prefix)
+            .map_or(0, |(_, count)| {
+                usize::try_from(*count).unwrap_or(usize::MAX)
+            });
         days.push((date, count));
         cursor = date.succ_opt().filter(|next| next <= &today);
     }
@@ -371,25 +343,6 @@ fn last_seven_days(candidates: &[Candidature]) -> Vec<(chrono::NaiveDate, usize)
 #[cfg(test)]
 mod tests {
     use super::last_seven_days;
-    use crate::modules::candidatures::model::{Candidature, StatutCandidature, TypeContrat};
-    use uuid::Uuid;
-
-    fn candidature(date: &str) -> Candidature {
-        Candidature {
-            id: Uuid::new_v4(),
-            poste: "Développeur".into(),
-            entreprise_id: Uuid::new_v4(),
-            entreprise_nom: Some("Agrial".into()),
-            contact_id: None,
-            type_contrat: TypeContrat::Cdi,
-            statut: StatutCandidature::EnAttente,
-            date_envoi: date.into(),
-            lien_offre: None,
-            notes: None,
-            created_at: date.into(),
-            updated_at: date.into(),
-        }
-    }
 
     #[test]
     fn les_sept_jours_sont_consecutifs_et_finissent_aujourd_hui() {
@@ -408,12 +361,8 @@ mod tests {
     #[test]
     fn les_comptes_ne_portent_que_les_candidatures_de_la_fenetre() {
         let today = chrono::Local::now().format("%Y-%m-%d").to_string();
-        let candidates = vec![
-            candidature(&today),
-            candidature(&today),
-            candidature("2020-01-01"),
-        ];
-        let days = last_seven_days(&candidates);
+        let activity = vec![(today, 2), ("2020-01-01".into(), 1)];
+        let days = last_seven_days(&activity);
         assert_eq!(days.last().unwrap().1, 2, "les envois du jour");
         assert_eq!(days.first().unwrap().1, 0, "hors fenêtre");
         assert_eq!(

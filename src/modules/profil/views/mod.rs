@@ -175,30 +175,27 @@ fn completion_panel<'a, Message: 'a>(score: u8) -> Element<'a, Message> {
     .into()
 }
 
-/// Grille des sections : colonne large `1.55fr` à gauche, étroite `0.85fr`
-/// à droite.
+/// Composition éditoriale du profil : identité et compétences en premier,
+/// parcours au centre, éléments complémentaires ensuite.
 fn sections_grid(app: &App) -> Element<'_, Message> {
-    let left = column![
-        identity_section(app),
-        experiences_section(app),
-        skills_section(app),
-        formations_section(app),
+    column![
+        row![
+            container(identity_section(app)).width(Length::FillPortion(3)),
+            container(skills_section(app)).width(Length::FillPortion(2)),
+        ]
+        .spacing(space::LG),
+        row![
+            container(experiences_section(app)).width(Length::FillPortion(1)),
+            container(formations_section(app)).width(Length::FillPortion(1)),
+        ]
+        .spacing(space::LG),
+        row![
+            container(languages_section(app)).width(Length::FillPortion(1)),
+            container(projects_section(app)).width(Length::FillPortion(1)),
+            container(certifications_section(app)).width(Length::FillPortion(1)),
+        ]
+        .spacing(space::LG),
         import_section(app),
-    ]
-    .spacing(space::LG)
-    .width(Length::Fill);
-
-    let right = column![
-        languages_section(app),
-        projects_section(app),
-        certifications_section(app),
-    ]
-    .spacing(space::LG)
-    .width(Length::Fill);
-
-    row![
-        container(left).width(Length::FillPortion(155)),
-        container(right).width(Length::FillPortion(85)),
     ]
     .spacing(space::LG)
     .width(Length::Fill)

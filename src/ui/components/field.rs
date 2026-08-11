@@ -137,12 +137,18 @@ pub fn date_field<'a, Message: Clone + 'a>(
     value: &'a str,
     error: Option<&'a str>,
     on_input: impl Fn(String) -> Message + 'a,
+    on_pick: Message,
 ) -> Element<'a, Message> {
     let mut group = column![
         typo::label(label),
-        input("JJ-MM-AAAA", value)
-            .on_input(on_input)
-            .width(Length::Fill),
+        row![
+            input("JJ-MM-AAAA", value)
+                .on_input(on_input)
+                .width(Length::Fill),
+            crate::ui::components::button::icon_action(Icon::Calendar, "Choisir une date", on_pick),
+        ]
+        .spacing(space::SM)
+        .align_y(Alignment::Center),
     ]
     .spacing(space::XS)
     .width(Length::Fill);
@@ -158,12 +164,18 @@ pub fn datetime_field<'a, Message: Clone + 'a>(
     value: &'a str,
     error: Option<&'a str>,
     on_input: impl Fn(String) -> Message + 'a,
+    on_pick: Message,
 ) -> Element<'a, Message> {
     let mut group = column![
         typo::label(label),
-        input("JJ-MM-AAAA HH:MM", value)
-            .on_input(on_input)
-            .width(Length::Fill),
+        row![
+            input("JJ-MM-AAAA HH:MM", value)
+                .on_input(on_input)
+                .width(Length::Fill),
+            crate::ui::components::button::icon_action(Icon::Calendar, "Choisir une date", on_pick),
+        ]
+        .spacing(space::SM)
+        .align_y(Alignment::Center),
     ]
     .spacing(space::XS)
     .width(Length::Fill);

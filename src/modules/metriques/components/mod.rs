@@ -19,6 +19,17 @@ pub struct PipelineCounts {
 }
 
 impl PipelineCounts {
+    /// Construit les effectifs depuis les agrégats globaux calculés par SQLite.
+    #[must_use]
+    pub fn from_stats(stats: &crate::modules::candidatures::repository::CandidatureStats) -> Self {
+        Self {
+            total: usize::try_from(stats.total).unwrap_or(usize::MAX),
+            pending: usize::try_from(stats.pending).unwrap_or(usize::MAX),
+            followed_up: usize::try_from(stats.followed_up).unwrap_or(usize::MAX),
+            interviews: usize::try_from(stats.interviews).unwrap_or(usize::MAX),
+            rejected: usize::try_from(stats.rejected).unwrap_or(usize::MAX),
+        }
+    }
     /// Agrège les statuts d'une collection de candidatures.
     #[must_use]
     pub fn from_candidates<'a>(candidates: impl IntoIterator<Item = &'a Candidature>) -> Self {

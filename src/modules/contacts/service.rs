@@ -2,6 +2,7 @@
 
 use crate::modules::contacts::model::{Contact, MajContact, NouveauContact};
 use crate::modules::contacts::repository::ContactRepository;
+use crate::modules::metriques::model::Page;
 use crate::shared::error::{AppError, AppResult};
 use crate::shared::validation::validate_optional_http_url;
 
@@ -23,6 +24,11 @@ impl<R: ContactRepository> ContactService<R> {
     /// Propage l'erreur du dépôt.
     pub fn lister(&self) -> AppResult<Vec<Contact>> {
         self.repo.list()
+    }
+
+    /// Charge une page filtrée sans matérialiser tout le réseau.
+    pub fn lister_page(&self, page: u64, page_size: u64, search: &str) -> AppResult<Page<Contact>> {
+        self.repo.list_page(page, page_size, search)
     }
 
     /// Valide (prénom + nom requis) puis crée le contact.

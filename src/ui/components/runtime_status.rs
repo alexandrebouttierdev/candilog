@@ -87,6 +87,7 @@ pub fn runtime_status<'a, Message: 'a>(
         container(provider_icon::provider_icon(provider, 12.0))
             .width(22.0)
             .height(22.0)
+            .center(iced::Length::Fixed(22.0))
             .style(move |theme: &Theme| {
                 let palette = tokens(theme);
                 container::Style {

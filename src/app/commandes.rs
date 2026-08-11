@@ -31,21 +31,23 @@ where
 }
 
 /// Recharge l'instantané hors du fil de rendu.
-pub(super) fn recharger(app: &App) -> Task<Message> {
+pub(super) fn recharger(app: &mut App) -> Task<Message> {
     let Some(backend) = app.backend.clone() else {
         return Task::none();
     };
-    let (llm_page, ats_page) = (app.llm_page, app.ats_page);
+    app.data_request_sequence = app.data_request_sequence.wrapping_add(1);
+    let request = app.snapshot_request();
+    let sequence = request.sequence;
     Task::perform(
         async move {
             tokio::task::spawn_blocking(move || {
-                crate::app::state::charger_instantane(&backend, llm_page, ats_page)
+                crate::app::state::charger_instantane(&backend, &request)
             })
             .await
             .ok()
         },
-        |charge| match charge {
-            Some((data, echecs)) => Message::DataLoaded(Box::new(data), echecs),
+        move |charge| match charge {
+            Some((data, echecs)) => Message::DataLoaded(Box::new(data), echecs, sequence),
             None => Message::Noop,
         },
     )

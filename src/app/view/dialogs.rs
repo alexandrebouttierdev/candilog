@@ -1,6 +1,6 @@
 //! Dialogues métier : formulaires, confirmations et inspecteur latéral.
 
-use crate::app::state::Dialog;
+use crate::app::state::{Dialog, ProfileCollection};
 use crate::app::{App, Message};
 use crate::modules::candidatures::components::PIPELINE;
 use crate::modules::candidatures::model::TypeContrat;
@@ -10,11 +10,11 @@ use crate::ui::components::button as controls;
 use crate::ui::components::choice::Choice;
 use crate::ui::components::icon::Icon;
 use crate::ui::components::overlay::{self, Size};
-use crate::ui::components::{field, state, typo};
+use crate::ui::components::{badge, field, layout, state, surface, typo};
 use crate::ui::theme::metrics::space;
 use crate::ui::theme::Tone;
-use iced::widget::column;
-use iced::Element;
+use iced::widget::{column, container, row};
+use iced::{Alignment, Element, Length};
 
 /// Canaux de relance proposés.
 fn channels() -> Vec<String> {
@@ -383,10 +383,14 @@ fn contact(app: &App) -> Element<'_, Message> {
                 Message::ContactLinkedinChanged,
             ),
         ]),
-        field::text_field(
+        field::labeled(
             "Notes",
-            &app.contact_form.notes,
-            Message::ContactNotesChanged
+            field::editor(
+                &app.contact_form.notes,
+                "Contexte, historique et informations utiles…"
+            )
+            .on_action(Message::ContactNotesChanged)
+            .height(iced::Length::Fixed(120.0)),
         ),
     ]
     .spacing(space::LG)
@@ -448,6 +452,7 @@ fn candidature(app: &App) -> Element<'_, Message> {
                 &app.candidature_form.date_envoi,
                 None,
                 Message::CandidatureDateChanged,
+                Message::OpenDatePicker(crate::app::state::DatePickerTarget::Candidature),
             ),
             field::text_field(
                 "Lien de l'offre",
@@ -471,7 +476,7 @@ fn entretien(app: &App) -> Element<'_, Message> {
     let selected_candidate = Choice::find(&candidates, app.entretien_form.candidature_id);
     let contacts: Vec<Choice> = app
         .data
-        .contacts
+        .contact_options
         .iter()
         .map(|item| Choice::new(item.id, format!("{} {}", item.prenom, item.nom)))
         .collect();
@@ -517,6 +522,7 @@ fn entretien(app: &App) -> Element<'_, Message> {
                 &app.entretien_form.date_entretien,
                 None,
                 Message::EntretienDateChanged,
+                Message::OpenDatePicker(crate::app::state::DatePickerTarget::Entretien),
             ),
             field::text_field(
                 "Lieu ou lien",
@@ -561,6 +567,7 @@ fn relance(app: &App) -> Element<'_, Message> {
                 &app.relance_form.date_relance,
                 None,
                 Message::RelanceDateChanged,
+                Message::OpenDatePicker(crate::app::state::DatePickerTarget::Relance),
             ),
             field::labeled(
                 "Canal",
@@ -585,6 +592,7 @@ fn relance(app: &App) -> Element<'_, Message> {
 fn profile(app: &App) -> Element<'_, Message> {
     let personal = &app.profile_personal_form;
     column![
+        profile_heading("Identité", None),
         field::form_row([
             field::text_field(
                 "Prénom",
@@ -613,17 +621,29 @@ fn profile(app: &App) -> Element<'_, Message> {
                 Message::ProfileHeadlineChanged,
             ),
         ]),
-        field::text_field(
+        field::labeled(
             "Résumé",
-            personal.summary.as_deref().unwrap_or_default(),
-            Message::ProfileSummaryChanged,
+            field::editor(
+                &app.profile_summary_editor,
+                "Présentez votre parcours, vos points forts et votre objectif…"
+            )
+            .on_action(Message::ProfileSummaryChanged)
+            .height(Length::Fixed(132.0)),
         ),
-        field::text_field(
-            "Compétences",
-            &app.profile_skills_form,
-            Message::ProfileSkillsChanged,
-        ),
-        state::hint("Séparez les compétences par des virgules."),
+        surface::divider(),
+        profile_heading("Compétences", None),
+        row![
+            field::input("Nouvelle compétence", &app.profile_skills_form)
+                .on_input(Message::ProfileSkillsChanged)
+                .on_submit(Message::ProfileSkillAdded)
+                .width(Length::Fill),
+            controls::secondary("Ajouter", Some(Icon::Plus)).on_press(Message::ProfileSkillAdded),
+        ]
+        .spacing(space::SM)
+        .align_y(Alignment::Center),
+        skills_editor(app),
+        surface::divider(),
+        profile_collection_editors(app),
         typo::meta_toned(
             "Ces informations alimentent le générateur de CV et le score ATS.",
             Tone::Neutral,
@@ -631,4 +651,318 @@ fn profile(app: &App) -> Element<'_, Message> {
     ]
     .spacing(space::LG)
     .into()
+}
+
+fn profile_heading<'a>(title: &'a str, add: Option<Message>) -> Element<'a, Message> {
+    let mut line = row![typo::title(title), layout::spacer()].align_y(Alignment::Center);
+    if let Some(message) = add {
+        line = line.push(controls::secondary("Ajouter", Some(Icon::Plus)).on_press(message));
+    }
+    line.into()
+}
+
+fn skills_editor(app: &App) -> Element<'_, Message> {
+    if app.profile_draft.skills.is_empty() {
+        return state::empty_slot("Ajoutez vos compétences une par une.");
+    }
+    let mut line = row![].spacing(space::SM).width(Length::Fill);
+    for (index, skill) in app.profile_draft.skills.iter().enumerate() {
+        line = line.push(
+            row![
+                badge::badge(skill.name.clone(), Tone::Accent),
+                controls::icon_danger(Icon::Close, "Retirer", Message::ProfileSkillRemoved(index),),
+            ]
+            .spacing(space::XXS)
+            .align_y(Alignment::Center),
+        );
+    }
+    line.wrap().into()
+}
+
+fn profile_collection_editors(app: &App) -> Element<'_, Message> {
+    column![
+        collection_editor(
+            "Expériences",
+            ProfileCollection::Experience,
+            app.profile_draft
+                .experiences
+                .iter()
+                .enumerate()
+                .map(|(index, item)| profile_item(
+                    ProfileCollection::Experience,
+                    index,
+                    vec![
+                        profile_value(
+                            "Poste",
+                            &item.title,
+                            ProfileCollection::Experience,
+                            index,
+                            0
+                        ),
+                        profile_value(
+                            "Entreprise",
+                            &item.company,
+                            ProfileCollection::Experience,
+                            index,
+                            1
+                        ),
+                        profile_value(
+                            "Lieu",
+                            item.location.as_deref().unwrap_or_default(),
+                            ProfileCollection::Experience,
+                            index,
+                            2
+                        ),
+                        profile_value(
+                            "Début",
+                            &item.start_date,
+                            ProfileCollection::Experience,
+                            index,
+                            3
+                        ),
+                        profile_value(
+                            "Fin (vide = en cours)",
+                            item.end_date.as_deref().unwrap_or_default(),
+                            ProfileCollection::Experience,
+                            index,
+                            4
+                        ),
+                        profile_value(
+                            "Description",
+                            item.description.as_deref().unwrap_or_default(),
+                            ProfileCollection::Experience,
+                            index,
+                            5
+                        ),
+                    ],
+                ))
+                .collect(),
+        ),
+        collection_editor(
+            "Formations",
+            ProfileCollection::Formation,
+            app.profile_draft
+                .education
+                .iter()
+                .enumerate()
+                .map(|(index, item)| profile_item(
+                    ProfileCollection::Formation,
+                    index,
+                    vec![
+                        profile_value(
+                            "Diplôme",
+                            &item.degree,
+                            ProfileCollection::Formation,
+                            index,
+                            0
+                        ),
+                        profile_value(
+                            "Établissement",
+                            &item.school,
+                            ProfileCollection::Formation,
+                            index,
+                            1
+                        ),
+                        profile_value(
+                            "Lieu",
+                            item.location.as_deref().unwrap_or_default(),
+                            ProfileCollection::Formation,
+                            index,
+                            2
+                        ),
+                        profile_value(
+                            "Début",
+                            item.start_date.as_deref().unwrap_or_default(),
+                            ProfileCollection::Formation,
+                            index,
+                            3
+                        ),
+                        profile_value(
+                            "Fin",
+                            item.end_date.as_deref().unwrap_or_default(),
+                            ProfileCollection::Formation,
+                            index,
+                            4
+                        ),
+                        profile_value(
+                            "Description",
+                            item.description.as_deref().unwrap_or_default(),
+                            ProfileCollection::Formation,
+                            index,
+                            5
+                        ),
+                    ],
+                ))
+                .collect(),
+        ),
+        collection_editor(
+            "Langues",
+            ProfileCollection::Langue,
+            app.profile_draft
+                .languages
+                .iter()
+                .enumerate()
+                .map(|(index, item)| profile_item(
+                    ProfileCollection::Langue,
+                    index,
+                    vec![
+                        profile_value("Langue", &item.name, ProfileCollection::Langue, index, 0),
+                        profile_value("Niveau", &item.level, ProfileCollection::Langue, index, 1),
+                    ],
+                ))
+                .collect(),
+        ),
+        collection_editor(
+            "Projets",
+            ProfileCollection::Projet,
+            app.profile_draft
+                .projects
+                .iter()
+                .enumerate()
+                .map(|(index, item)| profile_item(
+                    ProfileCollection::Projet,
+                    index,
+                    vec![
+                        profile_value("Nom", &item.name, ProfileCollection::Projet, index, 0),
+                        profile_value(
+                            "Lien",
+                            item.url.as_deref().unwrap_or_default(),
+                            ProfileCollection::Projet,
+                            index,
+                            1
+                        ),
+                        profile_value(
+                            "Technologies",
+                            item.technologies.as_deref().unwrap_or_default(),
+                            ProfileCollection::Projet,
+                            index,
+                            2
+                        ),
+                        profile_value(
+                            "Description",
+                            item.description.as_deref().unwrap_or_default(),
+                            ProfileCollection::Projet,
+                            index,
+                            3
+                        ),
+                    ],
+                ))
+                .collect(),
+        ),
+        collection_editor(
+            "Certifications",
+            ProfileCollection::Certification,
+            app.profile_draft
+                .certifications
+                .iter()
+                .enumerate()
+                .map(|(index, item)| profile_item(
+                    ProfileCollection::Certification,
+                    index,
+                    vec![
+                        profile_value(
+                            "Nom",
+                            &item.name,
+                            ProfileCollection::Certification,
+                            index,
+                            0
+                        ),
+                        profile_value(
+                            "Organisme",
+                            item.issuer.as_deref().unwrap_or_default(),
+                            ProfileCollection::Certification,
+                            index,
+                            1
+                        ),
+                        profile_value(
+                            "Date",
+                            item.date.as_deref().unwrap_or_default(),
+                            ProfileCollection::Certification,
+                            index,
+                            2
+                        ),
+                        profile_value(
+                            "Lien",
+                            item.url.as_deref().unwrap_or_default(),
+                            ProfileCollection::Certification,
+                            index,
+                            3
+                        ),
+                    ],
+                ))
+                .collect(),
+        ),
+    ]
+    .spacing(space::XL)
+    .into()
+}
+
+fn collection_editor<'a>(
+    title: &'a str,
+    kind: ProfileCollection,
+    items: Vec<Element<'a, Message>>,
+) -> Element<'a, Message> {
+    let content = if items.is_empty() {
+        state::empty_slot("Aucune entrée pour le moment.")
+    } else {
+        let mut list = column![].spacing(space::SM);
+        for item in items {
+            list = list.push(item);
+        }
+        list.into()
+    };
+    column![
+        profile_heading(title, Some(Message::ProfileItemAdded(kind))),
+        content,
+    ]
+    .spacing(space::SM)
+    .into()
+}
+
+fn profile_item<'a>(
+    kind: ProfileCollection,
+    index: usize,
+    fields: Vec<Element<'a, Message>>,
+) -> Element<'a, Message> {
+    let mut body = column![].spacing(space::SM);
+    let mut fields = fields.into_iter();
+    while let Some(first) = fields.next() {
+        let mut pair = vec![first];
+        if let Some(second) = fields.next() {
+            pair.push(second);
+        }
+        body = body.push(field::form_row(pair));
+    }
+    container(
+        column![
+            row![
+                typo::caption(format!("Entrée {}", index + 1)),
+                layout::spacer(),
+                controls::icon_danger(
+                    Icon::Trash,
+                    "Supprimer",
+                    Message::ProfileItemRemoved(kind, index),
+                ),
+            ]
+            .align_y(Alignment::Center),
+            body,
+        ]
+        .spacing(space::SM),
+    )
+    .padding(space::MD)
+    .width(Length::Fill)
+    .style(crate::ui::theme::styles::sunken)
+    .into()
+}
+
+fn profile_value<'a>(
+    label: &'a str,
+    value: &'a str,
+    kind: ProfileCollection,
+    index: usize,
+    field_index: usize,
+) -> Element<'a, Message> {
+    field::text_field(label, value, move |value| {
+        Message::ProfileItemChanged(kind, index, field_index, value)
+    })
 }

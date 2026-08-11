@@ -1,6 +1,7 @@
 //! Accès aux contacts (base locale `SQLite`).
 
 use crate::modules::contacts::model::{Contact, NouveauContact};
+use crate::modules::metriques::model::Page;
 use crate::shared::db::SqlitePool;
 use crate::shared::error::{AppError, AppResult};
 use crate::shared::sqlite::{
@@ -14,6 +15,39 @@ pub trait ContactRepository: Send + Sync {
     /// # Errors
     /// Retourne `AppError::Database` si la requête échoue.
     fn list(&self) -> AppResult<Vec<Contact>>;
+    /// Liste une page de contacts et applique la recherche dans SQLite.
+    fn list_page(&self, page: u64, page_size: u64, search: &str) -> AppResult<Page<Contact>> {
+        let needle = search.trim().to_lowercase();
+        let items: Vec<_> = self
+            .list()?
+            .into_iter()
+            .filter(|item| {
+                needle.is_empty()
+                    || item.prenom.to_lowercase().contains(&needle)
+                    || item.nom.to_lowercase().contains(&needle)
+                    || item
+                        .poste
+                        .as_deref()
+                        .unwrap_or_default()
+                        .to_lowercase()
+                        .contains(&needle)
+                    || item
+                        .email
+                        .as_deref()
+                        .unwrap_or_default()
+                        .to_lowercase()
+                        .contains(&needle)
+            })
+            .collect();
+        let total = items.len() as u64;
+        let start = page.saturating_sub(1).saturating_mul(page_size) as usize;
+        let page_items = items
+            .into_iter()
+            .skip(start)
+            .take(page_size as usize)
+            .collect();
+        Ok(Page::new(page_items, total, page, page_size))
+    }
     /// Crée un contact.
     ///
     /// # Errors
@@ -84,6 +118,38 @@ impl ContactRepository for SqliteContactRepository {
             contacts.push(ligne.map_err(|e| traduire_erreur(e, "contacts"))?);
         }
         Ok(contacts)
+    }
+
+    fn list_page(&self, page: u64, page_size: u64, search: &str) -> AppResult<Page<Contact>> {
+        let conn = connexion(&self.pool)?;
+        let page = page.max(1);
+        let page_size = page_size.max(1);
+        let needle = format!("%{}%", search.trim().to_lowercase());
+        let filtre = "WHERE ?1 = '%%' OR lower(prenom) LIKE ?1 OR lower(nom) LIKE ?1 OR lower(coalesce(poste, '')) LIKE ?1 OR lower(coalesce(email, '')) LIKE ?1";
+        let total: u64 = conn
+            .query_row(
+                &format!("SELECT count(*) FROM contacts {filtre}"),
+                [&needle],
+                |row| row.get(0),
+            )
+            .map_err(|e| traduire_erreur(e, "contacts"))?;
+        let offset = page.saturating_sub(1).saturating_mul(page_size);
+        let mut requete = conn
+            .prepare(&format!(
+                "SELECT {COLONNES} FROM contacts {filtre} ORDER BY nom COLLATE NOCASE ASC, prenom COLLATE NOCASE ASC LIMIT ?2 OFFSET ?3"
+            ))
+            .map_err(|e| traduire_erreur(e, "contacts"))?;
+        let lignes = requete
+            .query_map(
+                rusqlite::params![needle, page_size, offset],
+                ligne_vers_contact,
+            )
+            .map_err(|e| traduire_erreur(e, "contacts"))?;
+        let mut items = Vec::new();
+        for ligne in lignes {
+            items.push(ligne.map_err(|e| traduire_erreur(e, "contacts"))?);
+        }
+        Ok(Page::new(items, total, page, page_size))
     }
 
     fn create(&self, input: &NouveauContact) -> AppResult<Contact> {

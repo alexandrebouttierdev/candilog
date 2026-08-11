@@ -218,12 +218,14 @@ pub fn sheet<'a>(app: &'a App, companies: Vec<Choice>) -> Element<'a, Message> {
                         &filters.date_from,
                         None,
                         Message::CandidateFilterDateFrom,
+                        Message::OpenDatePicker(crate::app::state::DatePickerTarget::FiltreDebut),
                     ),
                     field::date_field(
                         "Jusqu'au",
                         &filters.date_to,
                         None,
                         Message::CandidateFilterDateTo,
+                        Message::OpenDatePicker(crate::app::state::DatePickerTarget::FiltreFin),
                     ),
                 ]),
             ]

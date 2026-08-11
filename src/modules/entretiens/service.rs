@@ -25,6 +25,11 @@ impl<R: EntretienRepository> EntretienService<R> {
         self.repo.list()
     }
 
+    /// Charge une fenêtre temporelle bornée pour le calendrier et le tableau de bord.
+    pub fn lister_entre(&self, from: &str, to: &str) -> AppResult<Vec<Entretien>> {
+        self.repo.list_between(from, to)
+    }
+
     /// Récupère un entretien par son identifiant.
     ///
     /// # Errors

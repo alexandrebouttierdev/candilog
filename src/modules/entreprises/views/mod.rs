@@ -2,7 +2,6 @@
 
 use crate::app::state::Dialog;
 use crate::app::{App, Message};
-use crate::modules::candidatures::model::Candidature;
 use crate::modules::entreprises::components as directory_entry;
 use crate::modules::entreprises::model::Entreprise;
 use crate::navigation::Route;
@@ -10,7 +9,9 @@ use crate::ui::components::avatar;
 use crate::ui::components::button as controls;
 use crate::ui::components::header;
 use crate::ui::components::icon::Icon;
-use crate::ui::components::{badge, field, inspector, layout, list, state, surface, typo};
+use crate::ui::components::{
+    badge, field, inspector, layout, list, pagination, stat_card, state, surface, typo,
+};
 use crate::ui::format;
 use crate::ui::theme::metrics::space;
 use crate::ui::theme::styles;
@@ -79,8 +80,12 @@ fn directory(app: &App) -> Element<'_, Message> {
                 layout::spacer(),
                 typo::caption(format!(
                     "{} · {} candidatures",
-                    format::plural(app.data.entreprises.len(), "entreprise", "entreprises"),
-                    total_candidatures(&app.data.candidatures, &app.data.entreprises),
+                    format::plural(
+                        usize::try_from(app.data.entreprises_total).unwrap_or(usize::MAX),
+                        "entreprise",
+                        "entreprises"
+                    ),
+                    app.data.candidature_stats.total,
                 )),
             ]
             .align_y(Alignment::Center),
@@ -96,7 +101,28 @@ fn directory(app: &App) -> Element<'_, Message> {
     .padding(space::LG)
     .width(Length::Fill);
 
-    container(column![toolbar, surface::divider(), body].height(Length::Fill))
+    let footer: Element<'_, Message> = if app.data.entreprises_total_pages > 1 {
+        let (first, last) = pagination::window(
+            app.company_page,
+            crate::app::state::BUSINESS_PAGE_SIZE,
+            app.data.entreprises_total,
+        );
+        container(pagination::pagination(
+            app.company_page,
+            app.data.entreprises_total_pages,
+            Message::CompanyPagePrev,
+            Message::CompanyPageNext,
+            first,
+            last,
+            app.data.entreprises_total,
+        ))
+        .padding(space::MD)
+        .into()
+    } else {
+        iced::widget::Space::with_height(0).into()
+    };
+
+    container(column![toolbar, surface::divider(), body, footer].height(Length::Fill))
         .width(Length::Fill)
         .height(Length::Fill)
         .style(styles::panel_flat)
@@ -144,7 +170,8 @@ fn detail(app: &App) -> Element<'_, Message> {
         .spacing(space::MD)
         .align_y(Alignment::Center),
     )
-    .padding(space::XL);
+    .padding(space::XL)
+    .style(styles::sunken);
 
     let mut linked = column![].spacing(0);
     for candidature in candidatures.iter().take(8) {
@@ -176,6 +203,21 @@ fn detail(app: &App) -> Element<'_, Message> {
     };
 
     let body = column![
+        row![
+            stat_card::metric_icon_tinted(
+                "Candidatures",
+                candidatures.len().to_string(),
+                Tone::Accent,
+                Icon::Applications,
+            ),
+            stat_card::metric_icon_tinted(
+                "Contacts",
+                contacts.len().to_string(),
+                Tone::Neutral,
+                Icon::Network,
+            ),
+        ]
+        .spacing(space::MD),
         inspector::group(
             "Coordonnées",
             [
@@ -218,14 +260,12 @@ fn detail(app: &App) -> Element<'_, Message> {
             surface::scroll(container(body).padding([space::XL, 0.0])).height(Length::Fill),
             surface::divider(),
             container(inspector::actions([
-                controls::ghost("Modifier", Some(Icon::Edit))
+                controls::secondary("Modifier", Some(Icon::Edit))
                     .on_press(Message::EditEntreprise(company.id))
                     .into(),
-                controls::icon_danger(
-                    Icon::Trash,
-                    "Supprimer",
-                    Message::OpenDialog(Dialog::DeleteEntreprise(company.id)),
-                ),
+                controls::danger("Supprimer", Some(Icon::Trash))
+                    .on_press(Message::OpenDialog(Dialog::DeleteEntreprise(company.id)))
+                    .into(),
             ]))
             .padding([space::LG, space::XL]),
         ]
@@ -246,7 +286,11 @@ fn detail(app: &App) -> Element<'_, Message> {
 /// affichait « Candidatures liées 0 » juste au-dessus d'une liste dont les badges totalisaient
 /// 37, dans une rangée d'indicateurs par ailleurs globaux et sans distinction visuelle.
 #[must_use]
-fn total_candidatures(candidates: &[Candidature], companies: &[Entreprise]) -> usize {
+#[cfg(test)]
+fn total_candidatures(
+    candidates: &[crate::modules::candidatures::model::Candidature],
+    companies: &[Entreprise],
+) -> usize {
     candidates
         .iter()
         .filter(|item| {

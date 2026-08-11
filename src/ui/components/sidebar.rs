@@ -8,6 +8,7 @@ use crate::navigation::{Route, Section};
 use crate::ui::components::icon::{self, Icon, Ink};
 use crate::ui::components::typo;
 use crate::ui::theme::metrics::{radius, size, space, stroke};
+use crate::ui::theme::styles;
 use crate::ui::theme::tokens::{alpha, tokens};
 use crate::ui::theme::typography as font;
 use iced::widget::{button, column, container, horizontal_rule, row, text, Space};
@@ -34,6 +35,7 @@ pub fn sidebar<'a, Message: Clone + 'a>(
     is_dark: bool,
     on_toggle_theme: Message,
     footer: Element<'a, Message>,
+    on_about: Message,
 ) -> Element<'a, Message> {
     let mut navigation = column![]
         .spacing(space::XXS)
@@ -49,18 +51,30 @@ pub fn sidebar<'a, Message: Clone + 'a>(
         ));
     }
 
-    let brand = container(
+    let brand = button(container(
         column![
             icon::brand(34.0),
             typo::body("Candilog").font(font::SEMIBOLD),
         ]
         .spacing(space::XS)
         .align_x(Alignment::Center),
-    )
+    ))
     .height(BRAND_HEIGHT)
     .width(Length::Fill)
-    .align_x(Alignment::Center)
-    .align_y(Alignment::Center);
+    .padding(0)
+    .style(styles::ghost)
+    .on_press(on_about.clone());
+
+    let footer = button(
+        container(footer)
+            .center_x(Length::Fill)
+            .center_y(Length::Fill),
+    )
+    .height(20.0)
+    .width(Length::Fill)
+    .padding(0)
+    .style(styles::ghost)
+    .on_press(on_about);
 
     let theme = tile(
         if is_dark { Icon::Sun } else { Icon::Moon },
@@ -77,10 +91,7 @@ pub fn sidebar<'a, Message: Clone + 'a>(
             Space::with_height(Length::Fill),
             horizontal_rule(stroke::HAIRLINE).style(crate::ui::theme::styles::divider),
             container(theme).padding([space::XS, space::XS]),
-            container(footer)
-                .height(20.0)
-                .width(Length::Fill)
-                .align_x(Alignment::Center),
+            footer,
         ]
         .height(Length::Fill)
         .width(Length::Fill)
@@ -314,6 +325,7 @@ mod tests {
             true,
             (),
             iced::widget::Space::with_width(0).into(),
+            (),
         );
     }
 

@@ -124,6 +124,12 @@ pub enum Route {
     Profil,
     /// Paramètres.
     Parametres,
+    /// Sauvegarde et restauration des données.
+    Sauvegardes,
+    /// Recherche et installation des mises à jour.
+    MisesAJour,
+    /// Informations sur l'application et son auteur.
+    APropos,
 }
 
 impl Route {
@@ -143,6 +149,9 @@ impl Route {
             Self::CvImport => Icon::Import,
             Self::Profil => Icon::Profile,
             Self::Parametres => Icon::Settings,
+            Self::Sauvegardes => Icon::Save,
+            Self::MisesAJour => Icon::Download,
+            Self::APropos => Icon::Info,
         }
     }
 
@@ -162,6 +171,9 @@ impl Route {
             Self::CvImport => "Analyser un CV",
             Self::Profil => "Profil",
             Self::Parametres => "Intelligence artificielle",
+            Self::Sauvegardes => "Sauvegardes",
+            Self::MisesAJour => "Mises à jour",
+            Self::APropos => "À propos",
         }
     }
 
@@ -176,7 +188,11 @@ impl Route {
                 Section::Documents
             }
             Self::Statistiques => Section::Analyse,
-            Self::Profil | Self::Parametres => Section::Reglages,
+            Self::Profil
+            | Self::Parametres
+            | Self::Sauvegardes
+            | Self::MisesAJour
+            | Self::APropos => Section::Reglages,
         }
     }
 
@@ -215,7 +231,7 @@ impl Route {
     }
 
     /// Toutes les routes, dans l'ordre de la barre latérale.
-    pub const ALL: [Self; 12] = [
+    pub const ALL: [Self; 15] = [
         Self::Dashboard,
         Self::Candidatures,
         Self::Calendrier,
@@ -228,6 +244,9 @@ impl Route {
         Self::Statistiques,
         Self::Profil,
         Self::Parametres,
+        Self::Sauvegardes,
+        Self::MisesAJour,
+        Self::APropos,
     ];
 }
 

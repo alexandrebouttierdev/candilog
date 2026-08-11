@@ -35,7 +35,7 @@ fn shell<'a, Message: Clone + 'a>(
 ) -> Element<'a, Message> {
     let mut group = row![].spacing(space::XS);
     for (index, tab) in entries.into_iter().enumerate() {
-        let control = button(
+        let control = button(crate::ui::components::button::vcenter(
             iced::widget::text(tab.label)
                 .size(if panel_style { 12.5 } else { font::BODY })
                 .font(if tab.active {
@@ -43,7 +43,7 @@ fn shell<'a, Message: Clone + 'a>(
                 } else {
                     font::REGULAR
                 }),
-        )
+        ))
         .height(size::ACTION)
         .padding([0.0, space::MD])
         .style(if tab.active {

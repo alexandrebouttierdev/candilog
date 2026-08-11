@@ -4,7 +4,6 @@
 use crate::app::state::Dialog;
 use crate::app::{App, Message};
 use crate::modules::settings::components::{actions, setting_stacked};
-use crate::modules::settings::model::ThemePref;
 use crate::navigation::Route;
 use crate::shared::llm::{AnalysisMode, ProviderKind};
 use crate::ui::components::button as controls;
@@ -14,21 +13,16 @@ use crate::ui::components::provider_icon::provider_icon;
 use crate::ui::components::{badge, field, layout, state, surface, typo};
 use crate::ui::theme::metrics::{radius, size, space, stroke};
 use crate::ui::theme::styles;
-use crate::ui::theme::tokens::{alpha, tokens, DAY, NIGHT};
+use crate::ui::theme::tokens::{alpha, tokens};
 use crate::ui::theme::typography as font;
 use crate::ui::theme::Tone;
-use iced::widget::{button, column, container, row, slider, stack, text, Space};
+use iced::widget::{button, column, container, row, slider, stack, text};
 use iced::{Alignment, Background, Border, Color, Element, Length, Shadow, Theme};
 
 /// Largeur maximale du corps de la page (`max-w-[980px]`).
 const BODY_MAX_WIDTH: f32 = 1120.0;
-/// Largeur de la colonne latérale.
-const SIDE_WIDTH: f32 = 320.0;
 /// Largeur d'une carte fournisseur de la grille (`max-w-[200px]`).
 const PROVIDER_CARD_WIDTH: f32 = 200.0;
-/// Couleurs réelles des plans de travail présentés dans le choix de thème.
-const SWATCH_LIGHT: Color = DAY.canvas;
-const SWATCH_DARK: Color = NIGHT.canvas;
 
 /// Fournisseurs IA proposés.
 fn providers() -> Vec<ProviderKind> {
@@ -90,25 +84,12 @@ pub fn view(app: &App) -> Element<'_, Message> {
                 .into(),
         ),
         layout::workspace(
-            column![
-                surface::scroll(
-                    container(
-                        row![
-                            container(main_column(app)).width(Length::FillPortion(1)),
-                            container(side_column(app)).width(Length::Fixed(SIDE_WIDTH)),
-                        ]
-                        .spacing(space::LG)
-                        .align_y(Alignment::Start)
-                        .width(Length::Fill),
-                    )
+            column![surface::scroll(
+                container(main_column(app))
                     .max_width(BODY_MAX_WIDTH)
                     .center_x(Length::Fill),
-                )
-                .height(Length::Fill),
-                container(footer_info())
-                    .max_width(BODY_MAX_WIDTH)
-                    .center_x(Length::Fill),
-            ]
+            )
+            .height(Length::Fill),]
             .spacing(space::MD)
             .height(Length::Fill),
         ),
@@ -121,34 +102,6 @@ fn main_column(app: &App) -> Element<'_, Message> {
         .spacing(space::LG)
         .width(Length::Fill)
         .into()
-}
-
-/// Colonne latérale : apparence, sauvegardes et mises à jour.
-fn side_column(app: &App) -> Element<'_, Message> {
-    column![appearance_card(app), backup_card(), updates_card(app),]
-        .spacing(space::LG)
-        .width(Length::Fill)
-        .into()
-}
-
-/// Informations essentielles, discrètes et toujours placées en bas de page.
-fn footer_info<'a>() -> Element<'a, Message> {
-    container(
-        row![
-            typo::caption(format!("Candilog v{}", env!("CARGO_PKG_VERSION"))),
-            layout::spacer(),
-            typo::caption("Créé par Alexandre Bouttier"),
-            controls::ghost("alexandrebouttier.fr", Some(Icon::Link))
-                .on_press(Message::OpenAuthorWebsite),
-        ]
-        .spacing(space::MD)
-        .align_y(Alignment::Center),
-    )
-    .height(48.0)
-    .padding([0.0, space::LG])
-    .width(Length::Fill)
-    .style(styles::panel_flat)
-    .into()
 }
 
 /// Carte d'une section des paramètres : en-tête (icône, titre) et contenu.
@@ -440,90 +393,6 @@ fn temperature_value<'a, Message: 'a>(value: f32) -> Element<'a, Message> {
     .into()
 }
 
-/// Carte Apparence : choix du thème et bascule rapide.
-fn appearance_card(app: &App) -> Element<'_, Message> {
-    let theme = &app.settings_form.draft.theme;
-    section_card(
-        Icon::Sun,
-        "Apparence",
-        column![
-            row![
-                theme_choice(ThemePref::System, "Système", *theme == ThemePref::System),
-                theme_choice(ThemePref::Light, "Clair", *theme == ThemePref::Light),
-                theme_choice(ThemePref::Dark, "Sombre", *theme == ThemePref::Dark),
-            ]
-            .spacing(space::SM),
-            surface::divider(),
-            controls::secondary(
-                if app.is_dark {
-                    "Passer en clair"
-                } else {
-                    "Passer en sombre"
-                },
-                Some(if app.is_dark { Icon::Sun } else { Icon::Moon }),
-            )
-            .on_press(Message::ToggleTheme)
-            .width(Length::Fill),
-        ]
-        .spacing(space::LG)
-        .width(Length::Fill),
-    )
-}
-
-/// Bouton d'un choix de thème : aperçu coloré et libellé.
-fn theme_choice<'a>(pref: ThemePref, label: &'a str, active: bool) -> Element<'a, Message> {
-    button(
-        column![theme_preview(&pref), typo::caption(label),]
-            .spacing(space::SM)
-            .align_x(Alignment::Center),
-    )
-    .width(Length::FillPortion(1))
-    .padding(space::SM)
-    .style(choice_style(active, 1.0, 0.08))
-    .on_press(Message::SettingsThemeChanged(pref))
-    .into()
-}
-
-/// Aperçu coloré d'un thème (`h-10 rounded-md`), bicolore pour le système.
-fn theme_preview<'a, Message: 'a>(pref: &ThemePref) -> Element<'a, Message> {
-    match pref {
-        ThemePref::System => row![
-            swatch(SWATCH_LIGHT, true, false),
-            swatch(SWATCH_DARK, false, true),
-        ]
-        .width(Length::Fill)
-        .height(40.0)
-        .into(),
-        ThemePref::Light => swatch(SWATCH_LIGHT, true, true),
-        ThemePref::Dark => swatch(SWATCH_DARK, true, true),
-    }
-}
-
-/// Pastille de couleur d'un aperçu de thème.
-fn swatch<'a, Message: 'a>(
-    color: Color,
-    rounded_left: bool,
-    rounded_right: bool,
-) -> Element<'a, Message> {
-    container(Space::new(0.0, 0.0))
-        .width(Length::FillPortion(1))
-        .height(40.0)
-        .style(move |_theme| container::Style {
-            background: Some(Background::Color(color)),
-            border: Border {
-                radius: iced::border::Radius {
-                    top_left: if rounded_left { radius::CONTROL } else { 0.0 },
-                    bottom_left: if rounded_left { radius::CONTROL } else { 0.0 },
-                    top_right: if rounded_right { radius::CONTROL } else { 0.0 },
-                    bottom_right: if rounded_right { radius::CONTROL } else { 0.0 },
-                },
-                ..Border::default()
-            },
-            ..container::Style::default()
-        })
-        .into()
-}
-
 /// Carte Sauvegarde : uniquement les actions utiles.
 fn backup_card<'a>() -> Element<'a, Message> {
     section_card(
@@ -592,6 +461,80 @@ fn updates_card(app: &App) -> Element<'_, Message> {
     }
 
     section_card(Icon::Download, "Mises à jour", body)
+}
+
+/// Écran dédié à la sauvegarde et à la restauration.
+pub fn backup_view(_app: &App) -> Element<'_, Message> {
+    layout::screen(
+        header::route_header(
+            Icon::Save,
+            "Sauvegardes",
+            Route::Sauvegardes,
+            Message::Navigate,
+            iced::widget::Space::with_width(0).into(),
+        ),
+        layout::workspace(
+            container(backup_card())
+                .width(Length::Fill)
+                .max_width(760.0)
+                .center_x(Length::Fill),
+        ),
+    )
+}
+
+/// Écran dédié au cycle de mise à jour.
+pub fn updates_view(app: &App) -> Element<'_, Message> {
+    layout::screen(
+        header::route_header(
+            Icon::Download,
+            "Mises à jour",
+            Route::MisesAJour,
+            Message::Navigate,
+            typo::caption(format!("Version actuelle {}", env!("CARGO_PKG_VERSION"))).into(),
+        ),
+        layout::workspace(
+            container(updates_card(app))
+                .width(Length::Fill)
+                .max_width(760.0)
+                .center_x(Length::Fill),
+        ),
+    )
+}
+
+/// Écran À propos, accessible depuis les deux zones de marque du rail.
+pub fn about_view(_app: &App) -> Element<'_, Message> {
+    let card = section_card(
+        Icon::Info,
+        "Candilog",
+        column![
+            typo::title("Votre copilote de candidature, pensé pour le bureau."),
+            typo::body(format!("Version {}", env!("CARGO_PKG_VERSION"))),
+            surface::divider(),
+            typo::label("Auteur"),
+            typo::body("Alexandre Bouttier"),
+            controls::secondary("alexandrebouttier.fr", Some(Icon::Link))
+                .on_press(Message::OpenAuthorWebsite),
+            surface::divider(),
+            controls::primary("Vérifier les mises à jour", Some(Icon::Download))
+                .on_press(Message::Navigate(Route::MisesAJour)),
+        ]
+        .spacing(space::LG),
+    );
+    layout::screen(
+        header::route_header(
+            Icon::Info,
+            "À propos",
+            Route::APropos,
+            Message::Navigate,
+            iced::widget::Space::with_width(0).into(),
+        ),
+        layout::workspace(
+            container(card)
+                .width(Length::Fill)
+                .max_width(760.0)
+                .center_x(Length::Fill),
+        ),
+    )
 }
 
 #[cfg(test)]

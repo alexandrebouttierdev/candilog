@@ -17,6 +17,16 @@ pub trait EntretienRepository: Send + Sync {
     /// # Errors
     /// Retourne `AppError::Database` si la requête échoue.
     fn list(&self) -> AppResult<Vec<Entretien>>;
+    /// Liste uniquement les entretiens compris dans une fenêtre ISO inclusive.
+    fn list_between(&self, from: &str, to: &str) -> AppResult<Vec<Entretien>> {
+        Ok(self
+            .list()?
+            .into_iter()
+            .filter(|item| {
+                item.date_entretien.as_str() >= from && item.date_entretien.as_str() <= to
+            })
+            .collect())
+    }
     /// Crée un entretien.
     ///
     /// # Errors
@@ -110,6 +120,23 @@ impl EntretienRepository for SqliteEntretienRepository {
             entretiens.push(ligne_vers_entretien(row)?);
         }
         Ok(entretiens)
+    }
+
+    fn list_between(&self, from: &str, to: &str) -> AppResult<Vec<Entretien>> {
+        let conn = connexion(&self.pool)?;
+        let mut statement = conn
+            .prepare(&format!(
+                "SELECT {COLONNES} FROM entretiens WHERE date_entretien >= ?1 AND date_entretien <= ?2 ORDER BY date_entretien ASC"
+            ))
+            .map_err(|e| traduire_erreur(e, "entretiens"))?;
+        let mut rows = statement
+            .query([from, to])
+            .map_err(|e| traduire_erreur(e, "entretiens"))?;
+        let mut items = Vec::new();
+        while let Some(row) = rows.next().map_err(|e| traduire_erreur(e, "entretiens"))? {
+            items.push(ligne_vers_entretien(row)?);
+        }
+        Ok(items)
     }
 
     fn create(&self, input: &NouvelEntretien) -> AppResult<Entretien> {

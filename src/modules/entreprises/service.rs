@@ -2,6 +2,7 @@
 
 use crate::modules::entreprises::model::{Entreprise, MajEntreprise, NouvelleEntreprise};
 use crate::modules::entreprises::repository::EntrepriseRepository;
+use crate::modules::metriques::model::Page;
 use crate::shared::error::{AppError, AppResult};
 use crate::shared::validation::validate_optional_http_url;
 
@@ -23,6 +24,16 @@ impl<R: EntrepriseRepository> EntrepriseService<R> {
     /// Propage l'erreur du dépôt.
     pub fn lister(&self) -> AppResult<Vec<Entreprise>> {
         self.repo.list()
+    }
+
+    /// Charge une page filtrée sans matérialiser tout le répertoire.
+    pub fn lister_page(
+        &self,
+        page: u64,
+        page_size: u64,
+        search: &str,
+    ) -> AppResult<Page<Entreprise>> {
+        self.repo.list_page(page, page_size, search)
     }
 
     /// Valide le nom puis crée l'entreprise.

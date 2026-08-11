@@ -59,6 +59,33 @@ pub enum Dialog {
     CandidatureDetail(uuid::Uuid),
 }
 
+/// Champ auquel le calendrier flottant doit appliquer la date choisie.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DatePickerTarget {
+    Candidature,
+    Entretien,
+    Relance,
+    FiltreDebut,
+    FiltreFin,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct DatePickerState {
+    pub target: DatePickerTarget,
+    pub year: i32,
+    pub month: u32,
+}
+
+/// Collections structurées éditables dans le profil.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProfileCollection {
+    Experience,
+    Formation,
+    Langue,
+    Projet,
+    Certification,
+}
+
 /// État du formulaire entreprise.
 #[derive(Debug, Clone, Default)]
 pub struct EntrepriseForm {
@@ -72,7 +99,7 @@ pub struct EntrepriseForm {
 }
 
 /// État du formulaire contact.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Default)]
 pub struct ContactForm {
     pub entreprise_id: Option<uuid::Uuid>,
     pub prenom: String,
@@ -81,7 +108,7 @@ pub struct ContactForm {
     pub email: String,
     pub telephone: String,
     pub linkedin: String,
-    pub notes: String,
+    pub notes: iced::widget::text_editor::Content,
 }
 
 /// État du formulaire candidature.
@@ -213,6 +240,58 @@ pub enum CandidateSort {
     Date,
 }
 
+/// Paramètres immuables d'un rechargement paginé.
+#[derive(Debug, Clone)]
+pub struct SnapshotRequest {
+    pub sequence: u64,
+    pub route: Route,
+    pub search: String,
+    pub candidate_filters: CandidateFilters,
+    pub candidate_sort: CandidateSort,
+    pub candidate_sort_descending: bool,
+    pub candidate_page: u64,
+    pub company_page: u64,
+    pub contact_page: u64,
+    pub calendar_year: i32,
+    pub calendar_month: u32,
+    pub llm_page: u64,
+    pub ats_page: u64,
+}
+
+impl SnapshotRequest {
+    /// Traduit l'état d'écran en critères SQL, également réutilisés par l'export complet.
+    #[must_use]
+    pub fn candidate_query(
+        &self,
+    ) -> crate::modules::candidatures::repository::CandidaturePageQuery {
+        crate::modules::candidatures::repository::CandidaturePageQuery {
+            search: if self.route == Route::Candidatures {
+                self.search.clone()
+            } else {
+                String::new()
+            },
+            status: self.candidate_filters.status,
+            contract: self.candidate_filters.contract,
+            company_id: self.candidate_filters.company_id,
+            city: self.candidate_filters.city.clone(),
+            position: self.candidate_filters.position.clone(),
+            date_from: crate::ui::format::date_to_storage(&self.candidate_filters.date_from).ok(),
+            date_to: crate::ui::format::date_to_storage(&self.candidate_filters.date_to).ok(),
+            sort: match self.candidate_sort {
+                CandidateSort::Poste => "poste",
+                CandidateSort::Entreprise => "entreprise",
+                CandidateSort::Statut => "statut",
+                CandidateSort::Date => "date",
+            }
+            .into(),
+            descending: self.candidate_sort_descending,
+        }
+    }
+}
+
+/// Taille des pages métier. Suffisamment dense pour le desktop, mais toujours bornée en SQL.
+pub const BUSINESS_PAGE_SIZE: u64 = 24;
+
 impl CandidateSort {
     /// Colonnes triables, dans l'ordre d'affichage de la table.
     pub const ALL: [Self; 4] = [Self::Poste, Self::Entreprise, Self::Statut, Self::Date];
@@ -281,16 +360,100 @@ pub fn capture_demandee() -> bool {
 #[must_use]
 pub fn charger_instantane(
     backend: &BackendState,
-    llm_page: u64,
-    ats_page: u64,
+    request: &SnapshotRequest,
 ) -> (DataSnapshot, Vec<&'static str>) {
     let mut echecs: Vec<&'static str> = Vec::new();
     let taille = crate::modules::metriques::views::PAGE_SIZE;
+    let company_search = if request.route == Route::Entreprises {
+        request.search.as_str()
+    } else {
+        ""
+    };
+    let contact_search = if request.route == Route::Reseau {
+        request.search.as_str()
+    } else {
+        ""
+    };
+    let candidate_query = request.candidate_query();
+    let candidate_page = charger(
+        "candidatures",
+        &mut echecs,
+        backend.candidatures.lister_page(
+            request.candidate_page,
+            BUSINESS_PAGE_SIZE,
+            &candidate_query,
+        ),
+    );
+    let company_page = charger(
+        "entreprises",
+        &mut echecs,
+        backend
+            .entreprises
+            .lister_page(request.company_page, BUSINESS_PAGE_SIZE, company_search),
+    );
+    let contact_page = charger(
+        "contacts",
+        &mut echecs,
+        backend
+            .contacts
+            .lister_page(request.contact_page, BUSINESS_PAGE_SIZE, contact_search),
+    );
+    // Catalogues de sélecteurs explicitement bornés : ils préservent les formulaires liés sans
+    // réintroduire un `SELECT *` non limité dans l'instantané global.
+    let company_options = charger(
+        "options entreprises",
+        &mut echecs,
+        backend.entreprises.lister_page(1, 200, ""),
+    );
+    let candidate_options = charger(
+        "options candidatures",
+        &mut echecs,
+        backend.candidatures.lister_page(
+            1,
+            200,
+            &crate::modules::candidatures::repository::CandidaturePageQuery::default(),
+        ),
+    );
+    let contact_options = charger(
+        "options contacts",
+        &mut echecs,
+        backend.contacts.lister_page(1, 200, ""),
+    );
+    let month_start = chrono::NaiveDate::from_ymd_opt(
+        request.calendar_year,
+        request.calendar_month.clamp(1, 12),
+        1,
+    )
+    .unwrap_or_else(|| chrono::Local::now().date_naive());
+    let from = (month_start - chrono::Duration::days(8))
+        .format("%Y-%m-%d")
+        .to_string();
+    let to = (month_start + chrono::Duration::days(40))
+        .format("%Y-%m-%dT23:59")
+        .to_string();
     let data = DataSnapshot {
-        candidatures: charger("candidatures", &mut echecs, backend.candidatures.lister()),
-        entreprises: charger("entreprises", &mut echecs, backend.entreprises.lister()),
-        contacts: charger("contacts", &mut echecs, backend.contacts.lister()),
-        entretiens: charger("entretiens", &mut echecs, backend.entretiens.lister()),
+        candidatures: candidate_page.items,
+        candidatures_total: candidate_page.total,
+        candidatures_total_pages: candidate_page.total_pages,
+        candidature_stats: charger(
+            "statistiques candidatures",
+            &mut echecs,
+            backend.candidatures.statistiques(),
+        ),
+        entreprises: company_page.items,
+        entreprises_total: company_page.total,
+        entreprises_total_pages: company_page.total_pages,
+        contacts: contact_page.items,
+        contacts_total: contact_page.total,
+        contacts_total_pages: contact_page.total_pages,
+        company_options: company_options.items,
+        candidate_options: candidate_options.items,
+        contact_options: contact_options.items,
+        entretiens: charger(
+            "entretiens",
+            &mut echecs,
+            backend.entretiens.lister_entre(&from, &to),
+        ),
         relances: charger("relances", &mut echecs, backend.relances.lister()),
         cv_versions: charger("CV", &mut echecs, backend.cv.list()),
         profile: charger("profil", &mut echecs, backend.profil.get()),
@@ -298,12 +461,16 @@ pub fn charger_instantane(
         llm_calls: charger(
             "historique IA",
             &mut echecs,
-            backend.metriques.lister_appels_page(llm_page, taille),
+            backend
+                .metriques
+                .lister_appels_page(request.llm_page, taille),
         ),
         ats_scores: charger(
             "scores ATS",
             &mut echecs,
-            backend.metriques.lister_scores_page(ats_page, taille),
+            backend
+                .metriques
+                .lister_scores_page(request.ats_page, taille),
         ),
         ats_summary: charger(
             "synthèse ATS",
@@ -349,10 +516,22 @@ pub struct Notification {
 pub struct DataSnapshot {
     /// Candidatures.
     pub candidatures: Vec<Candidature>,
+    pub candidatures_total: u64,
+    pub candidatures_total_pages: u64,
+    /// Agrégats globaux indépendants de la page affichée.
+    pub candidature_stats: crate::modules::candidatures::repository::CandidatureStats,
     /// Entreprises.
     pub entreprises: Vec<Entreprise>,
+    pub entreprises_total: u64,
+    pub entreprises_total_pages: u64,
     /// Contacts.
     pub contacts: Vec<Contact>,
+    pub contacts_total: u64,
+    pub contacts_total_pages: u64,
+    /// Catalogues bornés pour les relations des formulaires.
+    pub company_options: Vec<Entreprise>,
+    pub candidate_options: Vec<Candidature>,
+    pub contact_options: Vec<Contact>,
     /// Entretiens.
     pub entretiens: Vec<Entretien>,
     /// Relances.
@@ -442,6 +621,8 @@ pub struct App {
     pub pending_backup_import: Option<std::path::PathBuf>,
     /// Dialogue métier ouvert.
     pub dialog: Option<Dialog>,
+    /// Calendrier flottant au-dessus du formulaire ou des filtres.
+    pub date_picker: Option<DatePickerState>,
     /// Identifiant édité par le formulaire courant, absent en création.
     pub editing_id: Option<uuid::Uuid>,
     /// Formulaire entreprise.
@@ -500,7 +681,11 @@ pub struct App {
     pub hovered_card: Option<uuid::Uuid>,
     /// Informations personnelles éditées.
     pub profile_personal_form: crate::shared::profile::PersonalInfo,
-    /// Compétences éditées, séparées par des virgules.
+    /// Copie structurée des collections du profil pendant l'édition.
+    pub profile_draft: crate::shared::profile::Profile,
+    /// Résumé édité dans une zone multiligne.
+    pub profile_summary_editor: iced::widget::text_editor::Content,
+    /// Nouvelle compétence à ajouter sous forme de jeton.
     pub profile_skills_form: String,
     /// PDF choisi pour importer le profil.
     pub profile_import_path: Option<std::path::PathBuf>,
@@ -520,6 +705,10 @@ pub struct App {
     pub candidate_sort: CandidateSort,
     /// Sens de tri de la vue Liste.
     pub candidate_sort_descending: bool,
+    /// Pages des trois répertoires métier, indexées à partir de 1.
+    pub candidate_page: u64,
+    pub company_page: u64,
+    pub contact_page: u64,
     /// Onglet actif de l'écran Statistiques.
     pub statistics_tab: StatisticsTab,
     /// Page courante de l'historique des scores ATS (1-based).
@@ -530,6 +719,8 @@ pub struct App {
     pub document_width: f32,
     /// Dernière taille connue de la fenêtre, source des décisions de mise en page.
     pub window_size: iced::Size,
+    /// Séquence des recherches/rechargements pour ignorer les réponses devenues obsolètes.
+    pub data_request_sequence: u64,
 }
 
 impl App {
@@ -622,6 +813,7 @@ impl App {
             verified_update_path: None,
             pending_backup_import: None,
             dialog: None,
+            date_picker: None,
             editing_id: None,
             entreprise_form: EntrepriseForm::default(),
             contact_form: ContactForm::default(),
@@ -651,6 +843,8 @@ impl App {
             drag_target_status: None,
             hovered_card: None,
             profile_personal_form: crate::shared::profile::PersonalInfo::default(),
+            profile_draft: crate::shared::profile::Profile::default(),
+            profile_summary_editor: iced::widget::text_editor::Content::new(),
             profile_skills_form: String::new(),
             profile_import_path: None,
             extracted_profile: None,
@@ -661,6 +855,9 @@ impl App {
             filters_open: false,
             candidate_sort: CandidateSort::default(),
             candidate_sort_descending: true,
+            candidate_page: 1,
+            company_page: 1,
+            contact_page: 1,
             statistics_tab: StatisticsTab::default(),
             ats_page: 1,
             llm_page: 1,
@@ -669,6 +866,7 @@ impl App {
                 crate::ui::theme::layout::MIN_WIDTH,
                 crate::ui::theme::layout::MIN_HEIGHT,
             ),
+            data_request_sequence: 0,
         }
     }
     /// Réglages du harnais de capture applicables **avant** l'ouverture de la base.
@@ -695,6 +893,9 @@ impl App {
                 "cv-import" => Route::CvImport,
                 "profil" => Route::Profil,
                 "parametres" => Route::Parametres,
+                "sauvegardes" => Route::Sauvegardes,
+                "mises-a-jour" => Route::MisesAJour,
+                "a-propos" => Route::APropos,
                 _ => Route::Dashboard,
             };
         }
@@ -735,10 +936,36 @@ impl App {
         if std::env::var("CANDILOG_CAPTURE_DIALOG").as_deref() == Ok("contact-detail") {
             self.selected_contact = self.data.contacts.first().map(|contact| contact.id);
         }
+        if std::env::var("CANDILOG_CAPTURE_DIALOG").as_deref() == Ok("company-detail") {
+            self.selected_company = self.data.entreprises.first().map(|company| company.id);
+        }
+        if self.dialog == Some(Dialog::Profil) {
+            self.profile_personal_form = self.data.profile.personal.clone();
+            self.profile_draft = self.data.profile.clone();
+            self.profile_summary_editor = iced::widget::text_editor::Content::with_text(
+                self.data
+                    .profile
+                    .personal
+                    .summary
+                    .as_deref()
+                    .unwrap_or_default(),
+            );
+        }
+        if std::env::var("CANDILOG_CAPTURE_DATE_PICKER").as_deref() == Ok("candidature") {
+            let today = chrono::Local::now().date_naive();
+            self.date_picker = Some(DatePickerState {
+                target: DatePickerTarget::Candidature,
+                year: today.year(),
+                month: today.month(),
+            });
+        }
         match std::env::var("CANDILOG_CAPTURE_CALENDAR_VIEW").as_deref() {
             Ok("week") => self.calendar_view = CalendarView::Week,
             Ok("day") => self.calendar_view = CalendarView::Day,
             _ => {}
+        }
+        if std::env::var("CANDILOG_CAPTURE_STATISTICS_TAB").as_deref() == Ok("performance") {
+            self.statistics_tab = StatisticsTab::PerformanceCv;
         }
         if std::env::var_os("CANDILOG_CAPTURE_AI_RUNNING").is_some() {
             self.ai_is_running = true;
@@ -843,8 +1070,44 @@ impl App {
         let Some(backend) = self.backend.clone() else {
             return;
         };
-        let (data, echecs) = charger_instantane(&backend, self.llm_page, self.ats_page);
+        let request = self.snapshot_request();
+        let (data, echecs) = charger_instantane(&backend, &request);
         self.appliquer_instantane(data, &echecs);
+    }
+
+    /// Capture les paramètres nécessaires au chargement hors du fil de rendu.
+    #[must_use]
+    pub fn snapshot_request(&self) -> SnapshotRequest {
+        SnapshotRequest {
+            sequence: self.data_request_sequence,
+            route: self.route,
+            search: self.search.clone(),
+            candidate_filters: self.candidate_filters.clone(),
+            candidate_sort: self.candidate_sort,
+            candidate_sort_descending: self.candidate_sort_descending,
+            candidate_page: self.candidate_page,
+            company_page: self.company_page,
+            contact_page: self.contact_page,
+            calendar_year: self.calendar_year,
+            calendar_month: self.calendar_month,
+            llm_page: self.llm_page,
+            ats_page: self.ats_page,
+        }
+    }
+
+    #[must_use]
+    pub fn candidate_total_pages(&self) -> u64 {
+        self.data.candidatures_total_pages.max(1)
+    }
+
+    #[must_use]
+    pub fn company_total_pages(&self) -> u64 {
+        self.data.entreprises_total_pages.max(1)
+    }
+
+    #[must_use]
+    pub fn contact_total_pages(&self) -> u64 {
+        self.data.contacts_total_pages.max(1)
     }
 
     /// Installe un instantané fraîchement chargé et signale ce qui a échoué.

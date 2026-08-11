@@ -4,6 +4,7 @@
 use crate::app::state::StatisticsTab;
 use crate::app::{App, Message};
 use crate::modules::candidatures::components::{column_label, status_tone, PIPELINE};
+#[cfg(test)]
 use crate::modules::candidatures::model::Candidature;
 use crate::modules::metriques::components::PipelineCounts;
 use crate::modules::metriques::model::{OrigineScore, ResumeScoresAts};
@@ -11,8 +12,8 @@ use crate::ui::components::icon::{self, Icon, Ink};
 use crate::ui::components::table::Column as TableColumn;
 use crate::ui::components::tabs::Tab;
 use crate::ui::components::{
-    badge, bar, donut, header, layout, list, pagination, sparkline, stat_card, state, surface,
-    table, tabs, typo,
+    badge, bar, donut, header, layout, list, pagination, stat_card, state, surface, table, tabs,
+    typo,
 };
 use crate::ui::format;
 use crate::ui::theme::metrics::space;
@@ -21,7 +22,7 @@ use crate::ui::theme::typography as font;
 use crate::ui::theme::Tone;
 use chrono::{Days, NaiveDate};
 use iced::widget::{column, container, row, Container, Space, Stack};
-use iced::{Alignment, Element, Length, Padding};
+use iced::{Alignment, Element, Length};
 
 /// Nombre de lignes par page des historiques ATS et IA.
 pub const PAGE_SIZE: u64 = 10;
@@ -44,7 +45,7 @@ const LLM_COLUMNS: [TableColumn; 5] = [
 
 /// Rend l'écran des statistiques.
 pub fn view(app: &App) -> Element<'_, Message> {
-    let counts = PipelineCounts::from_candidates(&app.data.candidatures);
+    let counts = PipelineCounts::from_stats(&app.data.candidature_stats);
     let section_tabs = tabs::segmented(
         [
             Tab::new(
@@ -124,6 +125,27 @@ fn candidatures_tab<'a>(app: &'a App, counts: &PipelineCounts) -> Element<'a, Me
             ),
         ]
         .spacing(space::MD),
+        row![
+            stat_card::metric_icon_tinted(
+                "Candidatures actives",
+                counts.active().to_string(),
+                Tone::Accent,
+                Icon::Target,
+            ),
+            stat_card::metric_icon_tinted(
+                "Taux de réponse",
+                format!("{} %", counts.response_rate()),
+                Tone::Success,
+                Icon::Chart,
+            ),
+            stat_card::metric_icon_tinted(
+                "Refus reçus",
+                counts.rejected.to_string(),
+                Tone::Danger,
+                Icon::Close,
+            ),
+        ]
+        .spacing(space::MD),
         layout::columns_of_height(
             HAUTEUR_PANNEAUX,
             [
@@ -147,35 +169,17 @@ fn candidatures_tab<'a>(app: &'a App, counts: &PipelineCounts) -> Element<'a, Me
 
 /// Panneau des barres : candidatures envoyées sur les 8 dernières semaines.
 fn activity_panel<'a>(app: &'a App, today: NaiveDate) -> Container<'a, Message> {
-    let counts = weekly_counts(&app.data.candidatures, today);
-    let heights = sparkline::bar_heights(counts);
-
-    let mut overlay = row![].width(Length::Fill).height(Length::Fill);
+    let counts = weekly_counts_from_activity(&app.data.candidature_stats.activity_by_day, today);
+    let maximum = counts.iter().copied().max().unwrap_or(1).max(1);
+    let mut chart = column![].spacing(space::SM).width(Length::Fill);
     for (index, count) in counts.iter().enumerate() {
-        overlay = overlay.push(
-            column![
-                typo::text_mono(count.to_string(), 11.0, font::MONO_REGULAR),
-                Space::with_height(Length::Fill),
-                typo::caption(week_label(today, index)),
-            ]
-            .width(Length::FillPortion(1))
-            .height(Length::Fill)
-            .align_x(Alignment::Center),
-        );
+        chart = chart.push(bar::barre(
+            week_label(today, index),
+            format::plural(*count, "candidature", "candidatures"),
+            (*count as f32 / maximum as f32) * 100.0,
+            Tone::Accent,
+        ));
     }
-
-    // Un seul canvas dessine les barres ; une grille de textes par-dessus lui
-    // ajoute la valeur (en haut) et le début de semaine (en bas).
-    let chart = Stack::with_children(vec![
-        container(sparkline::bar_chart_n(&heights))
-            .width(Length::Fill)
-            .height(176.0)
-            .padding(Padding::new(0.0).bottom(space::LG))
-            .into(),
-        overlay.into(),
-    ])
-    .width(Length::Fill)
-    .height(176.0);
 
     surface::panel(
         column![
@@ -184,13 +188,16 @@ fn activity_panel<'a>(app: &'a App, today: NaiveDate) -> Container<'a, Message> 
                 badge::badge(
                     format!(
                         "{} actions · 30 j",
-                        recent_actions(&app.data.candidatures, today)
+                        recent_actions_from_activity(
+                            &app.data.candidature_stats.activity_by_day,
+                            today,
+                        )
                     ),
                     Tone::Neutral,
                 ),
             ),
             surface::divider(),
-            container(chart).padding([space::LG, 0.0]),
+            container(chart).padding([space::MD, 0.0]),
         ]
         .height(Length::Fill),
     )
@@ -369,7 +376,7 @@ fn performance_tab<'a>(app: &'a App) -> Element<'a, Message> {
                 history_panel(app).width(Length::FillPortion(2)).into(),
             ],
         ),
-        calls_panel(app),
+        calls_panel(app).height(Length::Fixed(HAUTEUR_PANNEAUX)),
     ]
     .spacing(space::LG);
     // Même structure à trois blocs que `candidatures_tab`, donc même correctif.
@@ -609,6 +616,7 @@ fn week_label(today: NaiveDate, index: usize) -> String {
 /// Chaque fenêtre couvre 7 jours glissants : l'index 7 est la semaine
 /// courante, l'index 0 la plus ancienne de la fenêtre. La comparaison se
 /// fait sur le préfixe `AAAA-MM-JJ` pour les horodatages complets.
+#[cfg(test)]
 fn weekly_counts(candidates: &[Candidature], today: NaiveDate) -> [usize; 8] {
     let mut counts = [0_usize; 8];
     for candidate in candidates {
@@ -624,6 +632,21 @@ fn weekly_counts(candidates: &[Candidature], today: NaiveDate) -> [usize; 8] {
     counts
 }
 
+fn weekly_counts_from_activity(activity: &[(String, u64)], today: NaiveDate) -> [usize; 8] {
+    let mut counts = [0_usize; 8];
+    for (value, count) in activity {
+        let Some(date) = candidate_date(value) else {
+            continue;
+        };
+        let days = (today - date).num_days();
+        if (0..56).contains(&days) {
+            counts[7 - days as usize / 7] = counts[7 - days as usize / 7]
+                .saturating_add(usize::try_from(*count).unwrap_or(usize::MAX));
+        }
+    }
+    counts
+}
+
 /// Taux d'entretien (0-100), arrondi.
 fn interview_rate(counts: &PipelineCounts) -> u8 {
     if counts.total == 0 {
@@ -633,15 +656,14 @@ fn interview_rate(counts: &PipelineCounts) -> u8 {
 }
 
 /// Candidatures envoyées au cours des 30 derniers jours.
-fn recent_actions(candidates: &[Candidature], today: NaiveDate) -> usize {
+fn recent_actions_from_activity(activity: &[(String, u64)], today: NaiveDate) -> usize {
     let threshold = today.checked_sub_days(Days::new(30)).unwrap_or(today);
-    candidates
+    activity
         .iter()
-        .filter(|candidate| {
-            candidate_date(&candidate.date_envoi)
-                .is_some_and(|date| date >= threshold && date <= today)
-        })
-        .count()
+        .filter_map(|(value, count)| candidate_date(value).map(|date| (date, count)))
+        .filter(|(date, _)| *date >= threshold && *date <= today)
+        .map(|(_, count)| usize::try_from(*count).unwrap_or(usize::MAX))
+        .sum()
 }
 
 #[cfg(test)]
