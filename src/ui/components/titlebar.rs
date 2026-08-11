@@ -2,12 +2,11 @@
 
 use super::icon::{self, Icon, Ink};
 use super::typo;
-use crate::ui::theme::metrics::{radius, size, space};
+use crate::ui::theme::metrics::{size, space};
 use crate::ui::theme::styles;
-use crate::ui::theme::tokens::tokens;
 use crate::ui::theme::typography as font;
-use iced::widget::{button, container, row, Space};
-use iced::{Alignment, Background, Border, Element, Length, Theme};
+use iced::widget::{button, row, Space};
+use iced::{Alignment, Element, Length};
 
 /// Barre de titre de fenêtre (42 px).
 pub fn titlebar<'a, Message: Clone + 'a>(
@@ -17,20 +16,7 @@ pub fn titlebar<'a, Message: Clone + 'a>(
 ) -> Element<'a, Message> {
     row![
         row![
-            container(icon::icon(Icon::Sparkles, 14.0, Ink::OnAccent))
-                .width(22.0)
-                .height(22.0)
-                .style(move |theme: &Theme| {
-                    let palette = tokens(theme);
-                    container::Style {
-                        background: Some(Background::Color(palette.accent_fill)),
-                        border: Border {
-                            radius: radius::CONTROL.into(),
-                            ..Border::default()
-                        },
-                        ..container::Style::default()
-                    }
-                }),
+            icon::brand(22.0),
             typo::body("Candilog").font(font::SEMIBOLD),
         ]
         .spacing(7.0)
@@ -58,10 +44,17 @@ pub fn titlebar<'a, Message: Clone + 'a>(
 
 #[cfg(test)]
 mod tests {
+    use super::titlebar;
     use crate::ui::theme::metrics::size;
 
     #[test]
     fn la_barre_de_titre_fait_42_pixels() {
         assert_eq!(size::TITLEBAR, 42.0);
+    }
+
+    #[test]
+    fn la_barre_de_titre_s_instancie() {
+        let _: iced::Element<'_, ()> =
+            titlebar(iced::widget::Space::with_width(0).into(), true, ());
     }
 }
