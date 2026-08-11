@@ -7,12 +7,10 @@ use crate::navigation::Route;
 use crate::ui::components::button as controls;
 use crate::ui::components::header;
 use crate::ui::components::icon::Icon;
-use crate::ui::components::stat_card;
 use crate::ui::components::{document, field, layout, meter, state, surface, typo};
 use crate::ui::format;
 use crate::ui::theme::metrics::space;
 use crate::ui::theme::styles;
-use crate::ui::theme::Tone;
 use iced::widget::{column, container, row};
 use iced::{Alignment, Element, Length};
 
@@ -22,35 +20,51 @@ pub fn view(app: &App) -> Element<'_, Message> {
         .on_press(Message::Navigate(Route::CvGenerator))
         .into();
 
-    let metrics = row![
-        stat_card::metric_icon_tinted(
-            "Versions sauvegardées",
-            app.data.cv_versions.len().to_string(),
-            Tone::Accent,
-            Icon::Document,
-        ),
-        stat_card::metric_icon_tinted(
-            "Dernière mise à jour",
-            components::latest_version_date(&app.data.cv_versions),
-            Tone::Info,
-            Icon::Clock,
-        ),
-    ]
-    .spacing(space::MD);
-
     layout::screen(
-        header::page_header(
+        header::route_header(
             Icon::Document,
-            "Mes CV",
-            "Votre bibliothèque de versions",
+            "Documents professionnels",
+            Route::Cv,
+            Message::Navigate,
             actions,
         ),
         layout::workspace(
-            column![metrics, layout::split(grid(app), preview(app))]
-                .spacing(space::LG)
+            column![command_bar(app), layout::split(grid(app), preview(app))]
+                .spacing(space::MD)
                 .height(Length::Fill),
         ),
     )
+}
+
+/// Recherche et état de la bibliothèque dans une bande de commande compacte.
+fn command_bar(app: &App) -> Element<'_, Message> {
+    container(
+        row![
+            field::search(
+                "Rechercher une version…",
+                &app.search,
+                Message::SearchChanged,
+                Length::Fixed(340.0),
+            ),
+            typo::caption(format::plural(
+                app.data.cv_versions.len(),
+                "version sauvegardée",
+                "versions sauvegardées",
+            )),
+            layout::spacer(),
+            typo::caption(format!(
+                "Dernière mise à jour : {}",
+                components::latest_version_date(&app.data.cv_versions),
+            )),
+        ]
+        .spacing(space::MD)
+        .align_y(Alignment::Center),
+    )
+    .height(52.0)
+    .padding([0.0, space::LG])
+    .width(Length::Fill)
+    .style(styles::panel_flat)
+    .into()
 }
 
 /// Grille des versions filtrées par la recherche.
@@ -89,24 +103,11 @@ fn grid(app: &App) -> Element<'_, Message> {
         surface::scroll(cards.wrap()).height(Length::Fill).into()
     };
 
-    container(
-        column![
-            container(field::search(
-                "Rechercher une version…",
-                &app.search,
-                Message::SearchChanged,
-                Length::Fill,
-            ))
-            .padding(space::LG),
-            surface::divider(),
-            body,
-        ]
-        .height(Length::Fill),
-    )
-    .width(Length::Fill)
-    .height(Length::Fill)
-    .style(styles::glass_card)
-    .into()
+    container(column![body].height(Length::Fill))
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .style(styles::panel_flat)
+        .into()
 }
 
 /// Aperçu du document de la version sélectionnée.

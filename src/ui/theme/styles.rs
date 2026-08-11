@@ -47,25 +47,18 @@ pub fn primary(theme: &Theme, status: button::Status) -> button::Style {
     let background = match status {
         button::Status::Hovered => palette.accent_hover,
         button::Status::Pressed => press(palette.accent_fill, &palette),
-        button::Status::Disabled => alpha(palette.accent_fill, 0.45),
+        button::Status::Disabled => mix(palette.accent_fill, palette.panel, 0.24),
         button::Status::Active => palette.accent_fill,
     };
     button::Style {
         background: Some(Background::Color(background)),
         text_color: if matches!(status, button::Status::Disabled) {
-            alpha(palette.on_accent, 0.7)
+            palette.text_muted
         } else {
             palette.on_accent
         },
         border: no_border(radius::CONTROL),
-        shadow: Shadow {
-            color: Color {
-                a: 0.35,
-                ..palette.accent_fill
-            },
-            offset: Vector::new(0.0, 3.0),
-            blur_radius: 12.0,
-        },
+        shadow: Shadow::default(),
     }
 }
 
@@ -187,15 +180,16 @@ pub fn selected(theme: &Theme, status: button::Status) -> button::Style {
     }
 }
 
-/// Segment actif : inversion totale (texte = fond, fond = texte) — Tabs candilog-desktop.
+/// Segment actif : fond cognac discret, texte et filet d'accent.
 pub fn selected_inverse(theme: &Theme, _status: button::Status) -> button::Style {
     let palette = tokens(theme);
     button::Style {
-        background: Some(Background::Color(palette.text)),
-        text_color: palette.canvas,
+        background: Some(Background::Color(palette.selection)),
+        text_color: palette.accent,
         border: Border {
+            color: alpha(palette.accent, 0.45),
+            width: stroke::HAIRLINE,
             radius: radius::CONTROL.into(),
-            ..Border::default()
         },
         shadow: Shadow::default(),
     }
@@ -250,7 +244,7 @@ pub fn row_item(selected_row: bool) -> impl Fn(&Theme, button::Status) -> button
     }
 }
 
-/// Carte Kanban : verre léger, saisissable, ombre subtile au repos.
+/// Carte Kanban opaque et saisissable, sans élévation décorative.
 pub fn card(theme: &Theme, status: button::Status) -> button::Style {
     let palette = tokens(theme);
     let engaged = matches!(status, button::Status::Hovered | button::Status::Pressed);
@@ -258,7 +252,7 @@ pub fn card(theme: &Theme, status: button::Status) -> button::Style {
         background: Some(Background::Color(if engaged {
             palette.raised
         } else {
-            mix_panel(palette.panel, palette.canvas, 0.75)
+            palette.panel
         })),
         text_color: palette.text,
         border: Border {
@@ -270,19 +264,7 @@ pub fn card(theme: &Theme, status: button::Status) -> button::Style {
             width: stroke::HAIRLINE,
             radius: radius::CARD.into(),
         },
-        shadow: if engaged {
-            Shadow {
-                color: alpha(palette.shadow, palette.shadow.a * 0.5),
-                offset: Vector::new(0.0, 3.0),
-                blur_radius: 10.0,
-            }
-        } else {
-            Shadow {
-                color: alpha(palette.shadow, palette.shadow.a * 0.35),
-                offset: Vector::new(0.0, 1.0),
-                blur_radius: 4.0,
-            }
-        },
+        shadow: Shadow::default(),
     }
 }
 
@@ -309,7 +291,7 @@ pub fn kanban_card(selected: bool, hovered: bool) -> impl Fn(&Theme) -> containe
             background: Some(Background::Color(if selected || engaged {
                 palette.raised
             } else {
-                mix_panel(palette.panel, palette.canvas, 0.75)
+                palette.panel
             })),
             text_color: Some(palette.text),
             border: Border {
@@ -346,66 +328,29 @@ pub fn canvas(theme: &Theme) -> container::Style {
     }
 }
 
-/// Panneau de contenu principal : verre dépoli approximé (card 55 %, sombre 48 %).
+/// Ancien nom conservé pour compatibilité : panneau principal désormais opaque.
 pub fn glass_panel(theme: &Theme) -> container::Style {
     let palette = tokens(theme);
-    let ratio = if palette.is_dark { 0.48 } else { 0.55 };
-    let background = mix(palette.panel, palette.canvas, ratio);
     container::Style {
-        background: Some(Background::Color(background)),
+        background: Some(Background::Color(palette.panel)),
         text_color: Some(palette.text),
         border: Border {
-            color: if palette.is_dark {
-                Color {
-                    a: 0.10,
-                    ..Color {
-                        r: 1.0,
-                        g: 1.0,
-                        b: 1.0,
-                        a: 1.0,
-                    }
-                }
-            } else {
-                Color {
-                    a: 0.70,
-                    ..palette.border
-                }
-            },
+            color: palette.border,
             width: stroke::HAIRLINE,
             radius: radius::PANEL.into(),
         },
-        shadow: Shadow {
-            color: palette.shadow,
-            offset: Vector::new(0.0, elevation::GLASS_OFFSET),
-            blur_radius: elevation::GLASS_BLUR,
-        },
+        shadow: Shadow::default(),
     }
 }
 
-/// Carte en verre (sidebar, cartes de contenu) : card 55 %, bordure 60 %.
+/// Ancien nom conservé pour compatibilité : carte compacte et opaque.
 pub fn glass_card(theme: &Theme) -> container::Style {
     let palette = tokens(theme);
-    let background = mix(palette.panel, palette.canvas, 0.55);
     container::Style {
-        background: Some(Background::Color(background)),
+        background: Some(Background::Color(palette.panel)),
         text_color: Some(palette.text),
         border: Border {
-            color: if palette.is_dark {
-                Color {
-                    a: 0.08,
-                    ..Color {
-                        r: 1.0,
-                        g: 1.0,
-                        b: 1.0,
-                        a: 1.0,
-                    }
-                }
-            } else {
-                Color {
-                    a: 0.60,
-                    ..palette.border
-                }
-            },
+            color: palette.border,
             width: stroke::HAIRLINE,
             radius: radius::CARD.into(),
         },
@@ -454,11 +399,7 @@ pub fn panel(theme: &Theme) -> container::Style {
             width: stroke::HAIRLINE,
             radius: radius::PANEL.into(),
         },
-        shadow: Shadow {
-            color: palette.shadow,
-            offset: Vector::new(0.0, 18.0),
-            blur_radius: 55.0,
-        },
+        shadow: Shadow::default(),
     }
 }
 
@@ -473,20 +414,17 @@ pub fn panel_flat(theme: &Theme) -> container::Style {
     }
 }
 
-/// État vide : bordure pointillée sur fond de carte.
+/// État vide intégré : aucune carte supplémentaire à l'intérieur du panneau parent.
 pub fn dashed(theme: &Theme) -> container::Style {
     let palette = tokens(theme);
     container::Style {
-        background: Some(Background::Color(Color {
-            a: 0.35,
-            ..palette.panel
-        })),
+        background: None,
         border: Border {
-            color: palette.border_strong,
-            width: stroke::HAIRLINE,
+            color: Color::TRANSPARENT,
+            width: 0.0,
             radius: radius::PANEL.into(),
-            // Iced 0.13 ne supporte pas les pointillés : filet simple renforcé.
         },
+        text_color: Some(palette.text),
         ..container::Style::default()
     }
 }
@@ -517,15 +455,11 @@ pub fn sunken_flat(theme: &Theme) -> container::Style {
     }
 }
 
-/// Colonne Kanban : verre léger, bordure discrète, sans ombre.
+/// Colonne Kanban : fond de plan de travail, bordure discrète, sans ombre.
 pub fn kanban_column(theme: &Theme) -> container::Style {
     let palette = tokens(theme);
     container::Style {
-        background: Some(Background::Color(mix_panel(
-            palette.panel,
-            palette.canvas,
-            0.20,
-        ))),
+        background: Some(Background::Color(palette.canvas)),
         text_color: Some(palette.text),
         border: Border {
             color: palette.border,
@@ -557,15 +491,11 @@ pub fn drop_zone(active: bool) -> impl Fn(&Theme) -> container::Style {
     }
 }
 
-/// Bande d'en-tête d'une liste en verre : creux adouci, coins carrés.
+/// Bande d'en-tête d'une liste : creux opaque, coins carrés.
 pub fn list_header(theme: &Theme) -> container::Style {
     let palette = tokens(theme);
     container::Style {
-        background: Some(Background::Color(mix_panel(
-            palette.sunken,
-            palette.canvas,
-            0.25,
-        ))),
+        background: Some(Background::Color(palette.sunken)),
         text_color: Some(palette.text_secondary),
         border: Border {
             color: palette.border_strong,
@@ -730,6 +660,7 @@ pub fn editor(theme: &Theme, status: text_editor::Status) -> text_editor::Style 
 /// Sélecteur assorti aux champs texte.
 pub fn select(theme: &Theme, status: pick_list::Status) -> pick_list::Style {
     let palette = tokens(theme);
+    let opened = matches!(status, pick_list::Status::Opened);
     let engaged = matches!(
         status,
         pick_list::Status::Hovered | pick_list::Status::Opened
@@ -745,7 +676,11 @@ pub fn select(theme: &Theme, status: pick_list::Status) -> pick_list::Style {
             } else {
                 palette.border_strong
             },
-            width: stroke::HAIRLINE,
+            width: if opened {
+                stroke::FOCUS
+            } else {
+                stroke::HAIRLINE
+            },
             radius: radius::CONTROL.into(),
         },
     }
@@ -985,18 +920,13 @@ mod tests {
     }
 
     #[test]
-    fn la_carte_porte_une_ombre_subtile_au_repos() {
+    fn les_cartes_metier_restent_plates() {
         for theme in [dark(), light()] {
             let repos = card(&theme, button::Status::Active);
             let survol = card(&theme, button::Status::Hovered);
-            assert!(
-                repos.shadow.blur_radius > 0.0,
-                "carte au repos sans ombre subtile"
-            );
-            assert!(
-                repos.shadow.blur_radius < survol.shadow.blur_radius,
-                "ombre de survol pas plus marquée que celle du repos"
-            );
+            assert!(repos.shadow.blur_radius.abs() < f32::EPSILON);
+            assert!(survol.shadow.blur_radius.abs() < f32::EPSILON);
+            assert_ne!(repos.background, survol.background);
         }
     }
 
@@ -1004,7 +934,13 @@ mod tests {
     fn seules_les_surfaces_flottantes_portent_une_ombre() {
         for theme in [dark(), light()] {
             assert!(raised(&theme).shadow.blur_radius > 0.0);
-            assert!(card(&theme, button::Status::Hovered).shadow.blur_radius > 0.0);
+            assert!(
+                card(&theme, button::Status::Hovered)
+                    .shadow
+                    .blur_radius
+                    .abs()
+                    < f32::EPSILON
+            );
         }
     }
 
@@ -1023,14 +959,12 @@ mod tests {
         }
     }
 
-    /// Le panneau porte désormais l'ombre douce du handoff (0 18px 55px).
+    /// Les panneaux intégrés ne flottent pas au-dessus du plan de travail.
     #[test]
-    fn le_panneau_porte_une_ombre_douce() {
+    fn le_panneau_reste_sans_ombre() {
         for theme in [dark(), light()] {
             let style = panel(&theme);
-            assert_eq!(style.shadow.offset.y, 18.0);
-            assert_eq!(style.shadow.blur_radius, 55.0);
-            assert!(style.shadow.color.a > 0.0, "ombre transparente");
+            assert!(style.shadow.blur_radius.abs() < f32::EPSILON);
         }
     }
 
@@ -1051,67 +985,48 @@ mod tests {
     }
 
     #[test]
-    fn segment_actif_inverse_le_texte_et_le_fond() {
+    fn segment_actif_reprend_l_accent_sans_inversion_brutale() {
         for theme in [dark(), light()] {
             let palette = tokens(&theme);
             let style = selected_inverse(&theme, button::Status::Active);
             assert_eq!(
                 style.background,
-                Some(iced::Background::Color(palette.text))
+                Some(iced::Background::Color(palette.selection))
             );
-            assert_eq!(style.text_color, palette.canvas);
+            assert_eq!(style.text_color, palette.accent);
+            assert_eq!(
+                style.border.width,
+                crate::ui::theme::metrics::stroke::HAIRLINE
+            );
         }
     }
 
     #[test]
-    fn surfaces_en_verre_melangent_panneau_et_canvas() {
-        let palette = tokens(&dark());
-        assert_eq!(
-            glass_panel(&dark()).background,
-            Some(iced::Background::Color(mix_panel(
-                palette.panel,
-                palette.canvas,
-                0.48
-            )))
-        );
-        assert_eq!(
-            glass_card(&dark()).background,
-            Some(iced::Background::Color(mix_panel(
-                palette.panel,
-                palette.canvas,
-                0.55
-            )))
-        );
-        let palette = tokens(&light());
-        assert_eq!(
-            glass_panel(&light()).background,
-            Some(iced::Background::Color(mix_panel(
-                palette.panel,
-                palette.canvas,
-                0.55
-            )))
-        );
+    fn les_anciens_alias_de_verre_sont_desormais_opaques() {
+        for theme in [dark(), light()] {
+            let palette = tokens(&theme);
+            assert_eq!(
+                glass_panel(&theme).background,
+                Some(iced::Background::Color(palette.panel))
+            );
+            assert_eq!(
+                glass_card(&theme).background,
+                Some(iced::Background::Color(palette.panel))
+            );
+        }
     }
 
     #[test]
-    fn colonne_kanban_et_bande_de_liste_melangent_leurs_surfaces() {
+    fn colonne_kanban_et_bande_de_liste_utilisent_des_surfaces_opaques() {
         for theme in [dark(), light()] {
             let palette = tokens(&theme);
             assert_eq!(
                 kanban_column(&theme).background,
-                Some(iced::Background::Color(mix_panel(
-                    palette.panel,
-                    palette.canvas,
-                    0.20
-                )))
+                Some(iced::Background::Color(palette.canvas))
             );
             assert_eq!(
                 list_header(&theme).background,
-                Some(iced::Background::Color(mix_panel(
-                    palette.sunken,
-                    palette.canvas,
-                    0.25
-                )))
+                Some(iced::Background::Color(palette.sunken))
             );
         }
     }

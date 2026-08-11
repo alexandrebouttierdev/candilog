@@ -13,7 +13,7 @@ use crate::ui::theme::typography as font;
 use iced::border::Radius;
 use iced::widget::button::{self, Status};
 use iced::widget::{column, container, row, text};
-use iced::{Alignment, Background, Border, Color, Element, Length, Shadow, Theme, Vector};
+use iced::{Alignment, Background, Border, Color, Element, Length, Shadow, Theme};
 
 /// Carte d'une version de CV : vignette blanche, nom, date, actions.
 ///
@@ -182,16 +182,10 @@ fn accent_ghost(theme: &Theme, status: Status) -> button::Style {
     }
 }
 
-/// Ombre du bouton carte : légère au repos, montée et étalée au survol.
-fn card_lift(theme: &Theme, status: Status) -> button::Style {
-    let palette = tokens(theme);
-    let engaged = matches!(status, Status::Hovered | Status::Pressed);
+/// Carte interactive plate : la vignette interne porte déjà son filet et sa surface.
+fn card_lift(_theme: &Theme, _status: Status) -> button::Style {
     button::Style {
-        shadow: Shadow {
-            color: palette.shadow,
-            offset: Vector::new(0.0, if engaged { 14.0 } else { 3.0 }),
-            blur_radius: if engaged { 28.0 } else { 10.0 },
-        },
+        shadow: Shadow::default(),
         ..button::Style::default()
     }
 }

@@ -9,6 +9,7 @@ use crate::modules::relances::model::Relance;
 use crate::ui::components::button as controls;
 use crate::ui::components::header;
 use crate::ui::components::icon::Icon;
+use crate::ui::components::sidebar::workspace_tab_controls;
 use crate::ui::components::stat_card;
 use crate::ui::components::{badge, inspector, layout, list, state, surface, table, typo};
 use crate::ui::format;
@@ -46,15 +47,15 @@ pub fn view(app: &App) -> Element<'_, Message> {
 
     layout::screen(
         column![
-            header::page_header(
+            header::workspace_header(
                 Icon::Calendar,
-                "Calendrier",
-                format::long_date(app.calendar_date),
+                "Calendrier et échéances",
+                workspace_tab_controls(app.route, Message::Navigate),
                 actions,
             ),
             nav_band(app),
         ]
-        .spacing(space::MD),
+        .spacing(0),
         layout::workspace(
             column![metrics_row(app), calendar]
                 .spacing(space::LG)
@@ -63,7 +64,7 @@ pub fn view(app: &App) -> Element<'_, Message> {
     )
 }
 
-/// Bande verre de navigation : période précédente/suivante, aujourd'hui,
+/// Barre de navigation : période précédente/suivante, aujourd'hui,
 /// libellé de période et granularité du calendrier.
 fn nav_band(app: &App) -> Element<'_, Message> {
     container(
@@ -89,9 +90,9 @@ fn nav_band(app: &App) -> Element<'_, Message> {
         .spacing(space::SM)
         .align_y(Alignment::Center),
     )
-    .padding(space::SM)
+    .padding([space::SM, space::LG])
     .width(Length::Fill)
-    .style(styles::glass_card)
+    .style(styles::panel_flat)
     .into()
 }
 
@@ -113,7 +114,7 @@ fn metrics_row(app: &App) -> Element<'_, Message> {
         stat_card::metric_icon_tinted(
             "Entretiens",
             interviews.to_string(),
-            Tone::Violet,
+            Tone::Success,
             Icon::Calendar,
         ),
         stat_card::metric_icon_tinted(
@@ -149,11 +150,11 @@ fn month_counts(
     (interviews + reminders, interviews, reminders)
 }
 
-/// Légende des couleurs de la grille : entretiens en violet, relances en ambre.
+/// Légende des couleurs de la grille : entretiens en vert, relances en ambre.
 fn legend<'a>() -> Element<'a, Message> {
     row![
         row![
-            badge::marker(Tone::Violet, Marker::Solid),
+            badge::marker(Tone::Success, Marker::Solid),
             typo::caption("Entretiens"),
         ]
         .spacing(space::SM)

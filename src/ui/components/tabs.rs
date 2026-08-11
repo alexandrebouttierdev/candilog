@@ -1,4 +1,4 @@
-//! Onglets et contrôle segmenté : cadre arrondi, actif en inversion totale.
+//! Onglets et contrôle segmenté : cadre compact, actif teinté par l'accent.
 
 use crate::ui::theme::metrics::{radius, size, space};
 use crate::ui::theme::styles;

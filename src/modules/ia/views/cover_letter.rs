@@ -1,6 +1,7 @@
 //! Lettre de motivation : brief à gauche, document au centre, itération à droite.
 
 use crate::app::{App, Message};
+use crate::navigation::Route;
 use crate::ui::components::button as controls;
 use crate::ui::components::header;
 use crate::ui::components::icon::Icon;
@@ -61,10 +62,11 @@ fn char_count(text: &str) -> usize {
 /// Rend l'écran de génération de lettre.
 pub fn view(app: &App) -> Element<'_, Message> {
     layout::screen(
-        header::page_header(
+        header::route_header(
             Icon::Letter,
             "Lettre de motivation",
-            "Brief à gauche, document au centre, itération à droite",
+            Route::LettreMotivation,
+            Message::Navigate,
             Space::with_width(0).into(),
         ),
         layout::workspace(

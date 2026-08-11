@@ -23,7 +23,7 @@ impl EventKind {
     #[must_use]
     pub const fn tone(self) -> Tone {
         match self {
-            Self::Interview => Tone::Violet,
+            Self::Interview => Tone::Success,
             Self::Reminder => Tone::Warning,
         }
     }
@@ -150,7 +150,7 @@ pub fn month_cell<'a, Message: Clone + 'a>(
             } else if matches!(status, button::Status::Hovered) {
                 palette.hover
             } else if !in_month {
-                alpha(palette.text_muted, 0.40)
+                palette.sunken
             } else if is_today {
                 alpha(palette.selection, 0.08)
             } else if is_weekend {
@@ -186,7 +186,7 @@ mod tests {
     fn les_deux_natures_d_evenement_sont_distinguables() {
         assert_ne!(EventKind::Interview.tone(), EventKind::Reminder.tone());
         assert_ne!(EventKind::Interview.label(), EventKind::Reminder.label());
-        assert_eq!(EventKind::Interview.tone(), Tone::Violet);
+        assert_eq!(EventKind::Interview.tone(), Tone::Success);
         assert_eq!(EventKind::Reminder.tone(), Tone::Warning);
     }
 }

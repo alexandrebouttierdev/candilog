@@ -5,11 +5,11 @@ use crate::app::{App, Message};
 use crate::modules::candidatures::model::Candidature;
 use crate::modules::entreprises::components as directory_entry;
 use crate::modules::entreprises::model::Entreprise;
+use crate::navigation::Route;
 use crate::ui::components::avatar;
 use crate::ui::components::button as controls;
 use crate::ui::components::header;
 use crate::ui::components::icon::Icon;
-use crate::ui::components::stat_card;
 use crate::ui::components::{badge, field, inspector, layout, list, state, surface, typo};
 use crate::ui::format;
 use crate::ui::theme::metrics::space;
@@ -20,45 +20,59 @@ use iced::{Alignment, Element, Length};
 
 /// Rend l'écran des entreprises.
 pub fn view(app: &App) -> Element<'_, Message> {
-    let metrics = row![
-        stat_card::metric_icon_tinted(
-            "Entreprises suivies",
-            app.data.entreprises.len().to_string(),
-            Tone::Accent,
-            Icon::Building,
-        ),
-        stat_card::metric_icon_tinted(
-            "Candidatures liées",
-            total_candidatures(&app.data.candidatures, &app.data.entreprises).to_string(),
-            Tone::Info,
-            Icon::Applications,
-        ),
-        stat_card::metric_icon_tinted(
-            "Contacts enregistrés",
-            app.data.contacts.len().to_string(),
-            Tone::Success,
-            Icon::Profile,
-        ),
-    ]
-    .spacing(space::MD);
-
     let actions = controls::primary("Nouvelle entreprise", Some(Icon::Plus))
         .on_press(Message::OpenDialog(Dialog::Entreprise))
         .into();
 
     layout::screen(
-        header::page_header(
+        header::route_header(
             Icon::Building,
-            "Entreprises",
-            "Votre répertoire professionnel",
+            "Relations professionnelles",
+            Route::Entreprises,
+            Message::Navigate,
             actions,
         ),
         layout::workspace(
-            column![metrics, layout::columns([directory(app), detail(app)]),]
-                .spacing(space::LG)
-                .height(Length::Fill),
+            column![
+                command_bar(app),
+                layout::columns([directory(app), detail(app)]),
+            ]
+            .spacing(space::MD)
+            .height(Length::Fill),
         ),
     )
+}
+
+/// Recherche et synthèse du répertoire sur une seule bande de commande.
+fn command_bar(app: &App) -> Element<'_, Message> {
+    container(
+        row![
+            field::search(
+                "Rechercher une entreprise…",
+                &app.search,
+                Message::SearchChanged,
+                Length::Fixed(360.0),
+            ),
+            typo::caption(format::plural(
+                app.data.entreprises.len(),
+                "entreprise",
+                "entreprises",
+            )),
+            layout::spacer(),
+            typo::caption(format!(
+                "{} candidatures · {} contacts",
+                total_candidatures(&app.data.candidatures, &app.data.entreprises),
+                app.data.contacts.len(),
+            )),
+        ]
+        .spacing(space::MD)
+        .align_y(Alignment::Center),
+    )
+    .height(52.0)
+    .padding([0.0, space::LG])
+    .width(Length::Fill)
+    .style(styles::panel_flat)
+    .into()
 }
 
 /// Panneau du répertoire : recherche, puis liste des entreprises filtrées.
@@ -97,24 +111,11 @@ fn directory(app: &App) -> Element<'_, Message> {
         surface::scroll(rows).height(Length::Fill).into()
     };
 
-    container(
-        column![
-            container(field::search(
-                "Rechercher une entreprise…",
-                &app.search,
-                Message::SearchChanged,
-                Length::Fill,
-            ))
-            .padding(space::LG),
-            surface::divider(),
-            body,
-        ]
-        .height(Length::Fill),
-    )
-    .width(Length::Fill)
-    .height(Length::Fill)
-    .style(styles::glass_card)
-    .into()
+    container(column![body].height(Length::Fill))
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .style(styles::panel_flat)
+        .into()
 }
 
 /// Fiche de l'entreprise sélectionnée.
@@ -125,7 +126,7 @@ fn detail(app: &App) -> Element<'_, Message> {
         ))
         .width(Length::Fill)
         .height(Length::Fill)
-        .style(styles::glass_card)
+        .style(styles::panel_flat)
         .into();
     };
 
@@ -248,7 +249,7 @@ fn detail(app: &App) -> Element<'_, Message> {
     )
     .width(Length::Fill)
     .height(Length::Fill)
-    .style(styles::glass_card)
+    .style(styles::panel_flat)
     .into()
 }
 

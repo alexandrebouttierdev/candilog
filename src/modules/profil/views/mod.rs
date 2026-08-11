@@ -4,6 +4,7 @@
 use crate::app::state::Dialog;
 use crate::app::{App, Message};
 use crate::modules::profil::components as rows;
+use crate::navigation::Route;
 use crate::shared::profile::{PersonalInfo, Profile};
 use crate::ui::components::button as controls;
 use crate::ui::components::header;
@@ -55,10 +56,11 @@ fn identity_complete(personal: &PersonalInfo) -> bool {
 /// Rend l'écran du profil.
 pub fn view(app: &App) -> Element<'_, Message> {
     layout::screen(
-        header::page_header(
+        header::route_header(
             Icon::Profile,
-            "Mon Profil",
-            "Source structurée des CV et analyses IA",
+            "Profil professionnel",
+            Route::Profil,
+            Message::Navigate,
             controls::ghost("Modifier", Some(Icon::Edit))
                 .on_press(Message::OpenDialog(Dialog::Profil))
                 .into(),

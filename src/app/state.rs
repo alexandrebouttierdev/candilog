@@ -562,10 +562,17 @@ impl App {
         };
         // Le thème du système est demandé au démarrage : « Système » doit suivre le système,
         // pas se comporter comme « Sombre ».
-        let theme = iced::Task::perform(
-            crate::core::theme_systeme::detecter(),
-            super::Message::SystemThemeDetected,
-        );
+        let theme = if capture_demandee() {
+            // Le harnais impose un thème déterministe. Une détection système lancée en
+            // parallèle pouvait le réécraser avant la capture et produire deux images
+            // sombres malgré `CANDILOG_CAPTURE_THEME=light`.
+            iced::Task::none()
+        } else {
+            iced::Task::perform(
+                crate::core::theme_systeme::detecter(),
+                super::Message::SystemThemeDetected,
+            )
+        };
         (app, iced::Task::batch([initial, maximize, sonde, theme]))
     }
 
@@ -710,6 +717,11 @@ impl App {
     /// Réglages du harnais de capture qui supposent les données chargées.
     #[cfg(feature = "capture")]
     fn appliquer_harnais_de_capture_apres_ouverture(&mut self) {
+        // `bootstrap` recharge le thème persisté ; l'override de capture doit donc être
+        // réappliqué après l'ouverture de la base pour rester prioritaire.
+        if std::env::var("CANDILOG_CAPTURE_THEME").as_deref() == Ok("light") {
+            self.is_dark = false;
+        }
         if std::env::var("CANDILOG_CAPTURE_DIALOG").as_deref() == Ok("detail") {
             self.dialog = self
                 .data

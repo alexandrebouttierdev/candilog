@@ -45,40 +45,41 @@ const LLM_COLUMNS: [TableColumn; 5] = [
 /// Rend l'écran des statistiques.
 pub fn view(app: &App) -> Element<'_, Message> {
     let counts = PipelineCounts::from_candidates(&app.data.candidatures);
+    let section_tabs = tabs::segmented(
+        [
+            Tab::new(
+                "Candidatures",
+                app.statistics_tab == StatisticsTab::Candidatures,
+            ),
+            Tab::new(
+                "Performance CV",
+                app.statistics_tab == StatisticsTab::PerformanceCv,
+            ),
+        ],
+        |index| {
+            Message::StatisticsTabChanged(if index == 0 {
+                StatisticsTab::Candidatures
+            } else {
+                StatisticsTab::PerformanceCv
+            })
+        },
+    );
     layout::screen(
-        header::page_header(
+        header::workspace_header(
             Icon::Chart,
-            "Statistiques",
-            format::plural(counts.total, "candidature suivie", "candidatures suivies"),
-            Space::with_width(0).into(),
+            "Analyses et performance",
+            section_tabs,
+            typo::caption(format::plural(
+                counts.total,
+                "candidature suivie",
+                "candidatures suivies",
+            ))
+            .into(),
         ),
-        layout::workspace(
-            column![
-                tabs::tabs(
-                    [
-                        Tab::new(
-                            "Candidatures",
-                            app.statistics_tab == StatisticsTab::Candidatures,
-                        ),
-                        Tab::new(
-                            "Performance CV",
-                            app.statistics_tab == StatisticsTab::PerformanceCv,
-                        ),
-                    ],
-                    |index| Message::StatisticsTabChanged(if index == 0 {
-                        StatisticsTab::Candidatures
-                    } else {
-                        StatisticsTab::PerformanceCv
-                    }),
-                ),
-                match app.statistics_tab {
-                    StatisticsTab::Candidatures => candidatures_tab(app, &counts),
-                    StatisticsTab::PerformanceCv => performance_tab(app),
-                },
-            ]
-            .spacing(space::LG)
-            .height(Length::Fill),
-        ),
+        layout::workspace(match app.statistics_tab {
+            StatisticsTab::Candidatures => candidatures_tab(app, &counts),
+            StatisticsTab::PerformanceCv => performance_tab(app),
+        }),
     )
 }
 
@@ -106,7 +107,7 @@ fn candidatures_tab<'a>(app: &'a App, counts: &PipelineCounts) -> Element<'a, Me
             stat_card::metric_icon_tinted(
                 "Entretiens",
                 counts.interviews.to_string(),
-                Tone::Violet,
+                Tone::Success,
                 Icon::Calendar,
             ),
             stat_card::metric_icon_tinted(
@@ -342,7 +343,7 @@ fn performance_tab<'a>(app: &'a App) -> Element<'a, Message> {
             stat_card::metric_icon_tinted(
                 "Scores évalués",
                 summary.map_or(0, |item| item.nombre).to_string(),
-                Tone::Violet,
+                Tone::Info,
                 Icon::Document,
             ),
             stat_card::metric_icon_tinted(

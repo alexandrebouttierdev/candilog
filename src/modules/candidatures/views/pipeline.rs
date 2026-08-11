@@ -14,7 +14,7 @@ use iced::{Alignment, Element, Length};
 /// Largeur d'une colonne : elle occupe l'espace disponible sur un grand écran
 /// et retombe sur sa largeur minimale, avec défilement, sur une petite fenêtre.
 fn column_width(available: f32) -> f32 {
-    let gaps = space::LG * (PIPELINE.len() - 1) as f32;
+    let gaps = space::MD * (PIPELINE.len() - 1) as f32;
     let share = (available - gaps) / PIPELINE.len() as f32;
     share.max(size::KANBAN_COLUMN)
 }
@@ -34,7 +34,7 @@ pub fn view<'a>(app: &'a App, candidates: &[&'a Candidature]) -> Element<'a, Mes
 
     responsive(move |viewport| {
         let width = column_width(viewport.width);
-        let mut board = row![].spacing(space::LG).height(Length::Fill);
+        let mut board = row![].spacing(space::MD).height(Length::Fill);
         for (index, status) in PIPELINE.into_iter().enumerate() {
             let is_target =
                 app.dragging_candidate.is_some() && app.drag_target_status == Some(status);
@@ -75,7 +75,7 @@ fn pipeline_column<'a>(
         .spacing(space::MD)
         .align_y(Alignment::Center),
     )
-    .height(40.0)
+    .height(38.0)
     .padding([0.0, space::MD])
     .align_y(Alignment::Center);
 
@@ -86,7 +86,7 @@ fn pipeline_column<'a>(
             "Aucune candidature"
         })
     } else {
-        let mut cards = column![].spacing(space::MD).padding(space::LG);
+        let mut cards = column![].spacing(space::SM).padding(space::MD);
         for candidate in candidates {
             cards = cards.push(kanban_card(
                 candidate,
@@ -136,7 +136,7 @@ mod tests {
             width > size::KANBAN_COLUMN,
             "l'espace libre doit être utilisé"
         );
-        let total = 4.0f32.mul_add(width, 3.0 * space::LG);
+        let total = 4.0f32.mul_add(width, 3.0 * space::MD);
         assert!(
             (total - 1560.0).abs() < 1.0,
             "le pipeline doit remplir la largeur"

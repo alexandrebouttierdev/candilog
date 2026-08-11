@@ -8,7 +8,7 @@
 
 use crate::app::state::Dialog;
 use crate::app::{App, Message};
-use crate::modules::candidatures::components::{glyph, status_badge};
+use crate::modules::candidatures::components::{contract_short, status_badge};
 use crate::modules::candidatures::model::Candidature;
 use crate::modules::metriques::components::PipelineCounts;
 use crate::navigation::Route;
@@ -16,6 +16,7 @@ use crate::ui::components::button as controls;
 use crate::ui::components::header;
 use crate::ui::components::icon::{self, Icon, Ink};
 use crate::ui::components::stat_card;
+use crate::ui::components::table::{self, Column};
 use crate::ui::components::{badge, layout, list, sparkline, state, surface, typo};
 use crate::ui::format;
 use crate::ui::theme::metrics::space;
@@ -25,6 +26,13 @@ use crate::ui::theme::Tone;
 use chrono::Datelike;
 use iced::widget::{column, container, row, Container, Space, Stack};
 use iced::{Alignment, Element, Length, Padding};
+
+const RECENT_COLUMNS: [Column; 4] = [
+    Column::text("POSTE", 4),
+    Column::text("ENTREPRISE", 3).secondary(),
+    Column::centered("STATUT", 126.0).secondary(),
+    Column::trailing("MISE À JOUR", 104.0).secondary(),
+];
 
 /// Rend le tableau de bord.
 pub fn view(app: &App) -> Element<'_, Message> {
@@ -84,7 +92,7 @@ fn metric_cards<'a>(
         stat_card::metric_icon_tinted(
             "Entretiens à venir",
             upcoming.to_string(),
-            Tone::Violet,
+            Tone::Accent,
             Icon::Calendar,
         ),
         stat_card::metric_icon_tinted(
@@ -132,7 +140,7 @@ fn upcoming_panel<'a>(app: &'a App, today: &str, upcoming: usize) -> Container<'
     for interview in interviews.into_iter().take(4) {
         count += 1;
         rows = rows.push(list::row_static(
-            event_icon(Icon::Calendar, Tone::Violet),
+            event_icon(Icon::Calendar, Tone::Success),
             column![
                 typo::item(interview.type_entretien.to_string()),
                 typo::text_mono(
@@ -248,25 +256,40 @@ fn activity_panel(app: &App) -> Container<'_, Message> {
 /// Panneau « Candidatures récentes » : les cinq plus récentes mises à jour,
 /// avec le statut et la date de chaque candidature.
 fn recent_panel(app: &App) -> Container<'_, Message> {
-    let mut items = column![].spacing(0);
+    let mut items = column![];
     let mut recent: Vec<_> = app.data.candidatures.iter().collect();
     recent.sort_by(|left, right| right.updated_at.cmp(&left.updated_at));
 
     for candidate in recent.iter().take(5) {
-        items = items.push(list::row_item(
-            glyph(candidate.statut),
-            candidate.poste.clone(),
-            format::or_else(candidate.entreprise_nom.as_deref(), "Entreprise inconnue"),
-            row![
-                status_badge(candidate.statut),
+        let cells = vec![
+            table::cell(
+                RECENT_COLUMNS[0],
+                column![
+                    typo::item(format::truncate(&candidate.poste, 46)),
+                    typo::caption(contract_short(candidate.type_contrat)),
+                ]
+                .spacing(0),
+            ),
+            table::cell(
+                RECENT_COLUMNS[1],
+                typo::meta(format::truncate(
+                    &format::or_else(candidate.entreprise_nom.as_deref(), "Entreprise inconnue"),
+                    42,
+                )),
+            ),
+            table::cell(RECENT_COLUMNS[2], status_badge(candidate.statut)),
+            table::cell(
+                RECENT_COLUMNS[3],
                 typo::text_mono(
                     format::compact_date(&candidate.updated_at),
                     11.0,
                     font::MONO_REGULAR,
                 ),
-            ]
-            .spacing(space::SM)
-            .align_y(Alignment::Center),
+            ),
+        ];
+        items = items.push(table::row_button(
+            app.layout(),
+            cells,
             app.selected_candidate == Some(candidate.id),
             Message::OpenDialog(Dialog::CandidatureDetail(candidate.id)),
         ));
@@ -283,14 +306,16 @@ fn recent_panel(app: &App) -> Container<'_, Message> {
         surface::scroll(items).height(Length::Fill).into()
     };
 
-    surface::panel(
+    surface::panel_bare(
         column![
-            surface::section_header(
+            container(surface::section_header(
                 "Candidatures récentes",
                 controls::ghost("Tout voir", Some(Icon::ChevronRight))
                     .on_press(Message::Navigate(Route::Candidatures)),
-            ),
+            ))
+            .padding([0.0, space::LG]),
             surface::divider(),
+            table::header(app.layout(), &RECENT_COLUMNS),
             body,
         ]
         .height(Length::Fill),

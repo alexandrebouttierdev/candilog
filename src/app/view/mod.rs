@@ -1,4 +1,4 @@
-//! Coquille de l'application : fond ambiant, barre de titre, barre latérale et panneau.
+//! Coquille de l'application : rail, barre d'état, navigation contextuelle et contenu.
 //!
 //! Aucun écran métier n'est rendu ici : chaque module expose sa propre vue.
 
@@ -6,7 +6,6 @@ mod dialogs;
 
 use super::{App, Message};
 use crate::navigation::Route;
-use crate::ui::components::ambient;
 use crate::ui::components::icon::Icon;
 use crate::ui::components::runtime_status::{app_version, runtime_status, Health};
 use crate::ui::components::sidebar::sidebar;
@@ -50,33 +49,35 @@ pub fn view(app: &App) -> Element<'_, Message> {
     let main = container(page)
         .width(Length::Fill)
         .height(Length::Fill)
-        .style(styles::glass_panel);
+        .style(styles::canvas);
 
-    let shell_body = column![
-        titlebar(
-            runtime_status(
-                provider_label(app),
-                model_label(app),
-                if app.ai_is_running {
-                    Health::Checking
-                } else {
-                    app.provider_health
-                },
-            ),
+    let runtime = runtime_status(
+        provider_label(app),
+        model_label(app),
+        if app.ai_is_running {
+            Health::Checking
+        } else {
+            app.provider_health
+        },
+    );
+    let content = column![titlebar(runtime), main,]
+        .width(Length::Fill)
+        .height(Length::Fill);
+
+    let shell_body = row![
+        sidebar(
+            app.route,
+            Message::Navigate,
             app.is_dark,
             Message::ToggleTheme,
+            app_version(),
         ),
-        row![sidebar(app.route, Message::Navigate, app_version()), main,]
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .spacing(8.0)
-            .padding(iced::Padding::default().right(8.0).bottom(8.0)),
+        content,
     ]
     .width(Length::Fill)
     .height(Length::Fill);
 
-    let mut layers: Vec<Element<'_, Message>> =
-        vec![stack(vec![ambient::ambient(), shell_body.into()]).into()];
+    let mut layers: Vec<Element<'_, Message>> = vec![shell_body.into()];
     if let Some(dialog) = app.dialog {
         layers.push(dialogs::layer(app, dialog));
     }

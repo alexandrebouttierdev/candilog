@@ -6,6 +6,7 @@ use crate::app::{App, Message};
 use crate::modules::entreprises::model::Entreprise;
 use crate::modules::ia::components::{recommendation, skill_list};
 use crate::modules::ia::cv_model::{CvGeneration, MatchScore, OfferAnalysis};
+use crate::navigation::Route;
 use crate::ui::components::button as controls;
 use crate::ui::components::header;
 use crate::ui::components::icon::{self, Icon};
@@ -19,15 +20,16 @@ use crate::ui::theme::tokens::{alpha, tokens};
 use crate::ui::theme::typography as font;
 use crate::ui::theme::Tone;
 use iced::widget::{column, container, row, Stack};
-use iced::{Alignment, Background, Border, Element, Length, Shadow, Theme, Vector};
+use iced::{Alignment, Background, Border, Element, Length, Theme};
 
 /// Rend l'écran du générateur de CV.
 pub fn view(app: &App) -> Element<'_, Message> {
     layout::screen(
-        header::page_header(
+        header::route_header(
             Icon::Sparkles,
-            "CV Generator",
-            "Offre → analyse → CV optimisé",
+            "Générateur de CV",
+            Route::CvGenerator,
+            Message::Navigate,
             actions(app),
         ),
         layout::workspace(
@@ -398,15 +400,11 @@ fn preview(app: &App) -> Element<'_, Message> {
     .style(|theme: &Theme| {
         let palette = tokens(theme);
         container::Style {
+            background: Some(Background::Color(palette.panel)),
             border: Border {
                 color: palette.border,
                 width: stroke::HAIRLINE,
                 ..Border::default()
-            },
-            shadow: Shadow {
-                color: palette.shadow,
-                offset: Vector::new(0.0, 10.0),
-                blur_radius: 28.0,
             },
             ..container::Style::default()
         }

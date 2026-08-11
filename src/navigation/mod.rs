@@ -2,31 +2,34 @@
 
 use crate::ui::components::icon::Icon;
 
-/// Regroupement d'écrans dans la barre latérale (libellés candilog-desktop).
+/// Espaces de travail de premier niveau affichés dans le rail desktop.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Section {
-    /// Tableau de bord, sans intitulé de groupe.
+    /// Vue d'ensemble.
     Dashboard,
-    /// Candidatures et CV.
-    Pipeline,
-    /// Entreprises, réseau et calendrier.
+    /// Pipeline et calendrier.
+    Suivi,
+    /// Entreprises et réseau.
     Relations,
-    /// Statistiques.
+    /// Bibliothèque et outils documentaires.
+    Documents,
+    /// Statistiques métier.
     Analyse,
-    /// Outils de carrière, profil et paramètres.
-    Carriere,
+    /// Profil et préférences locales.
+    Reglages,
 }
 
 impl Section {
-    /// Intitulé discret affiché au-dessus du groupe, absent pour le tableau de bord.
+    /// Intitulé de l'espace, réutilisé par les surfaces de navigation contextuelle.
     #[must_use]
     pub const fn label(self) -> Option<&'static str> {
         match self {
             Self::Dashboard => None,
-            Self::Pipeline => Some("Pipeline"),
+            Self::Suivi => Some("Suivi"),
             Self::Relations => Some("Relations"),
-            Self::Analyse => Some("Analyse"),
-            Self::Carriere => Some("Espace carrière"),
+            Self::Documents => Some("Documents"),
+            Self::Analyse => Some("Analyses"),
+            Self::Reglages => Some("Réglages"),
         }
     }
 
@@ -35,10 +38,11 @@ impl Section {
     pub const fn icon(self) -> Icon {
         match self {
             Self::Dashboard => Icon::Dashboard,
-            Self::Pipeline => Icon::Applications,
+            Self::Suivi => Icon::Applications,
             Self::Relations => Icon::Network,
+            Self::Documents => Icon::Document,
             Self::Analyse => Icon::Chart,
-            Self::Carriere => Icon::Sparkles,
+            Self::Reglages => Icon::Settings,
         }
     }
 
@@ -47,10 +51,11 @@ impl Section {
     pub const fn default_route(self) -> Route {
         match self {
             Self::Dashboard => Route::Dashboard,
-            Self::Pipeline => Route::Candidatures,
+            Self::Suivi => Route::Candidatures,
             Self::Relations => Route::Entreprises,
+            Self::Documents => Route::Cv,
             Self::Analyse => Route::Statistiques,
-            Self::Carriere => Route::CvGenerator,
+            Self::Reglages => Route::Profil,
         }
     }
 
@@ -59,10 +64,11 @@ impl Section {
     pub const fn short_label(self) -> &'static str {
         match self {
             Self::Dashboard => "Accueil",
-            Self::Pipeline => "Pipeline",
+            Self::Suivi => "Suivi",
             Self::Relations => "Relations",
-            Self::Analyse => "Analyse",
-            Self::Carriere => "Carrière",
+            Self::Documents => "Documents",
+            Self::Analyse => "Analyses",
+            Self::Reglages => "Réglages",
         }
     }
 
@@ -71,20 +77,22 @@ impl Section {
     pub const fn long_label(self) -> &'static str {
         match self {
             Self::Dashboard => "Tableau de bord",
-            Self::Pipeline => "Candidatures et CV",
-            Self::Relations => "Entreprises, réseau et calendrier",
+            Self::Suivi => "Candidatures et calendrier",
+            Self::Relations => "Entreprises et réseau",
+            Self::Documents => "CV et lettres de motivation",
             Self::Analyse => "Statistiques",
-            Self::Carriere => "CV, profil et paramètres",
+            Self::Reglages => "Profil et paramètres",
         }
     }
 
     /// Sections dans l'ordre de la barre latérale.
-    pub const ALL: [Self; 5] = [
+    pub const ALL: [Self; 6] = [
         Self::Dashboard,
-        Self::Pipeline,
+        Self::Suivi,
         Self::Relations,
+        Self::Documents,
         Self::Analyse,
-        Self::Carriere,
+        Self::Reglages,
     ];
 }
 
@@ -149,10 +157,10 @@ impl Route {
             Self::Entreprises => "Entreprises",
             Self::Reseau => "Réseau",
             Self::Cv => "Mes CV",
-            Self::CvGenerator => "CV Generator",
+            Self::CvGenerator => "Générer un CV",
             Self::LettreMotivation => "Lettre de motivation",
-            Self::CvImport => "Analysez un CV",
-            Self::Profil => "Mon Profil",
+            Self::CvImport => "Analyser un CV",
+            Self::Profil => "Profil",
             Self::Parametres => "Paramètres",
         }
     }
@@ -162,14 +170,13 @@ impl Route {
     pub const fn section(self) -> Section {
         match self {
             Self::Dashboard => Section::Dashboard,
-            Self::Candidatures | Self::Cv => Section::Pipeline,
-            Self::Entreprises | Self::Reseau | Self::Calendrier => Section::Relations,
+            Self::Candidatures | Self::Calendrier => Section::Suivi,
+            Self::Entreprises | Self::Reseau => Section::Relations,
+            Self::Cv | Self::CvGenerator | Self::LettreMotivation | Self::CvImport => {
+                Section::Documents
+            }
             Self::Statistiques => Section::Analyse,
-            Self::CvGenerator
-            | Self::LettreMotivation
-            | Self::CvImport
-            | Self::Profil
-            | Self::Parametres => Section::Carriere,
+            Self::Profil | Self::Parametres => Section::Reglages,
         }
     }
 
@@ -211,14 +218,14 @@ impl Route {
     pub const ALL: [Self; 12] = [
         Self::Dashboard,
         Self::Candidatures,
-        Self::Cv,
+        Self::Calendrier,
         Self::Entreprises,
         Self::Reseau,
-        Self::Calendrier,
-        Self::Statistiques,
+        Self::Cv,
         Self::CvGenerator,
         Self::LettreMotivation,
         Self::CvImport,
+        Self::Statistiques,
         Self::Profil,
         Self::Parametres,
     ];

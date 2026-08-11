@@ -6,8 +6,8 @@ use crate::ui::theme::metrics::space;
 use crate::ui::theme::styles;
 use crate::ui::theme::typography as font;
 use crate::ui::theme::Tone;
-use iced::widget::{column, container, row, Space};
-use iced::{Alignment, Color, Element, Length};
+use iced::widget::{column, container, row};
+use iced::{Alignment, Background, Border, Color, Element, Length, Theme};
 
 /// Carte d'indicateur simple : label, valeur mono, couleur.
 pub fn metric<'a, Message: 'a>(
@@ -29,31 +29,47 @@ pub fn metric<'a, Message: 'a>(
     .into()
 }
 
-/// Carte d'indicateur sur verre avec icône du ton posée en filigrane à droite.
+/// Indicateur desktop compact : puits d'icône à gauche, valeur et libellé.
 pub fn metric_icon_tinted<'a, Message: 'a>(
     label: &'a str,
     value: String,
     tone: Tone,
     glyph: Icon,
 ) -> Element<'a, Message> {
+    let mut value = typo::text_mono(value, font::METRIC, font::MONO_SEMIBOLD);
+    if tone != Tone::Accent {
+        value = value.style(styles::toned_text(tone));
+    }
+
     container(
         row![
-            column![typo::caption(label), toned_value(value, tone)].spacing(space::XXS),
-            Space::with_width(Length::Fill),
-            icon::icon(glyph, 24.0, Ink::Toned(tone)),
+            container(icon::icon(glyph, icon::MD, Ink::Toned(tone)))
+                .width(36.0)
+                .height(36.0)
+                .align_x(Alignment::Center)
+                .align_y(Alignment::Center)
+                .style(move |theme: &Theme| {
+                    let palette = crate::ui::theme::tokens::tokens(theme);
+                    container::Style {
+                        background: Some(Background::Color(tone.surface(&palette))),
+                        border: Border {
+                            color: tone.edge(&palette),
+                            width: 1.0,
+                            radius: crate::ui::theme::metrics::radius::CONTROL.into(),
+                        },
+                        ..container::Style::default()
+                    }
+                }),
+            column![typo::caption(label), value].spacing(space::XXS),
         ]
         .spacing(space::MD)
         .align_y(Alignment::Center),
     )
-    .padding(space::XL)
+    .height(84.0)
+    .padding(space::LG)
     .width(Length::Fill)
     .style(styles::glass_card)
     .into()
-}
-
-/// Valeur mono 28 px semibold, colorée par un ton sémantique.
-fn toned_value<'a>(value: String, tone: Tone) -> iced::widget::Text<'a> {
-    typo::text_mono(value, font::METRIC, font::MONO_SEMIBOLD).style(styles::toned_text(tone))
 }
 
 #[cfg(test)]

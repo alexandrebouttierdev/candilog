@@ -147,7 +147,7 @@ pub fn kanban_card<'a, Message: Clone + 'a>(
     mouse_area(
         container(content)
             .width(Length::Fill)
-            .padding(14.0)
+            .padding(12.0)
             .style(styles::kanban_card(selected, hovered)),
     )
     .on_press(on_press)

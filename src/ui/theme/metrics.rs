@@ -11,11 +11,11 @@ pub mod space {
     /// Gouttière courante d'une ligne composée.
     pub const MD: f32 = 12.0;
     /// Écart entre deux blocs proches.
-    pub const LG: f32 = 16.0;
+    pub const LG: f32 = 14.0;
     /// Padding intérieur d'un panneau, gouttière entre groupes de toolbar.
-    pub const XL: f32 = 24.0;
+    pub const XL: f32 = 16.0;
     /// Padding d'un dialogue, respiration d'une section importante.
-    pub const XXL: f32 = 24.0;
+    pub const XXL: f32 = 20.0;
     /// Padding horizontal d'une page de contenu (`px-7`).
     pub const PAGE: f32 = 28.0;
     /// Padding vertical d'une page de contenu (`py-6`).
@@ -24,7 +24,7 @@ pub mod space {
     pub const MAX: f32 = 32.0;
     /// Padding horizontal d'un plan de travail (workspace) : `XXL` resserré
     /// de 2 px pour équilibrer visuellement avec le padding vertical `XL`.
-    pub const WORKSPACE_X: f32 = 22.0;
+    pub const WORKSPACE_X: f32 = 14.0;
 }
 
 /// Rayons par rôle de surface.
@@ -43,11 +43,11 @@ pub mod radius {
     /// Champs de saisie.
     pub const FIELD: f32 = 8.0;
     /// Panneaux et cartes réellement autonomes.
-    pub const PANEL: f32 = 10.0;
-    /// Cartes en verre, cartes de contenu.
-    pub const CARD: f32 = 16.0;
+    pub const PANEL: f32 = 8.0;
+    /// Cartes de contenu compactes.
+    pub const CARD: f32 = 8.0;
     /// Modales, drawers, menus.
-    pub const DIALOG: f32 = 16.0;
+    pub const DIALOG: f32 = 12.0;
     /// Jetons de statut, compteurs, points.
     pub const PILL: f32 = 999.0;
 }
@@ -115,11 +115,11 @@ pub mod size {
     /// Largeur du champ de recherche d'une toolbar.
     pub const SEARCH: f32 = 260.0;
     /// Largeur d'une colonne Kanban.
-    pub const KANBAN_COLUMN: f32 = 282.0;
-    /// Largeur de la barre latérale de navigation.
-    pub const SIDEBAR: f32 = 216.0;
+    pub const KANBAN_COLUMN: f32 = 280.0;
+    /// Largeur du rail de navigation desktop.
+    pub const SIDEBAR: f32 = 96.0;
     /// Hauteur de la barre de titre de fenêtre.
-    pub const TITLEBAR: f32 = 42.0;
+    pub const TITLEBAR: f32 = 36.0;
 
     /// Largeur de la modale standard candilog-desktop (max-w-[34rem]).
     pub const MODAL_WIDTH: f32 = 544.0;
@@ -177,8 +177,8 @@ mod tests {
 
     #[test]
     fn gabarits_de_la_coquille_sont_definis() {
-        assert_eq!(size::SIDEBAR, 216.0);
-        assert_eq!(size::TITLEBAR, 42.0);
+        assert_eq!(size::SIDEBAR, 96.0);
+        assert_eq!(size::TITLEBAR, 36.0);
         assert_eq!(size::MODAL_WIDTH, 544.0);
         assert_eq!(size::DRAWER, 460.0);
     }

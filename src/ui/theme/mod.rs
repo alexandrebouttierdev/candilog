@@ -66,9 +66,20 @@ mod tests {
     fn le_mode_clair_n_est_pas_une_inversion_du_mode_sombre() {
         let night = tokens(&dark());
         let day = tokens(&light());
-        // Une inversion mécanique produirait des écarts de surface identiques.
-        let night_gap = night.panel.r - night.canvas.r;
-        let day_gap = day.canvas.r - day.panel.r;
-        assert!((night_gap + day_gap).abs() > 0.005);
+        // Une inversion mécanique produirait les mêmes écarts sur les trois canaux.
+        let night_gap = [
+            night.panel.r - night.canvas.r,
+            night.panel.g - night.canvas.g,
+            night.panel.b - night.canvas.b,
+        ];
+        let day_gap = [
+            day.panel.r - day.canvas.r,
+            day.panel.g - day.canvas.g,
+            day.panel.b - day.canvas.b,
+        ];
+        assert!(night_gap
+            .into_iter()
+            .zip(day_gap)
+            .any(|(night, day)| (night - day).abs() > 0.005));
     }
 }

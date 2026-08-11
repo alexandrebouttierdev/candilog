@@ -2,16 +2,19 @@
 
 use super::button as controls;
 use super::icon::{self, Icon, Ink};
+use super::sidebar::workspace_tab_controls;
 use super::typo;
+use crate::navigation::Route;
 use crate::ui::theme::metrics::{radius, space};
+use crate::ui::theme::styles;
 use crate::ui::theme::tokens::tokens;
 use crate::ui::theme::typography as font;
 use iced::widget::text::IntoFragment;
-use iced::widget::{column, container, row, text};
-use iced::{Alignment, Background, Border, Color, Element, Length, Theme};
+use iced::widget::{column, container, row, text, vertical_rule};
+use iced::{Alignment, Background, Border, Element, Length, Theme};
 
-/// Rayon de l'en-tête de page (rounded-2xl).
-pub const PAGE_HEADER_RADIUS: f32 = 16.0;
+/// La toolbar touche les bords de la zone de contenu.
+pub const PAGE_HEADER_RADIUS: f32 = 0.0;
 
 /// En-tête de page : icône, titre, description, actions.
 pub fn page_header<'a, Message: 'a>(
@@ -22,40 +25,26 @@ pub fn page_header<'a, Message: 'a>(
 ) -> Element<'a, Message> {
     container(
         row![
-            container(icon::icon(glyph, icon::LG, Ink::OnAccent))
-                .width(44.0)
-                .height(44.0)
-                .align_x(Alignment::Center)
-                .align_y(Alignment::Center)
-                .style(move |theme: &Theme| {
-                    let palette = tokens(theme);
-                    container::Style {
-                        background: Some(Background::Color(palette.accent_fill)),
-                        border: Border {
-                            radius: radius::CONTROL.into(),
-                            ..Border::default()
-                        },
-                        ..container::Style::default()
-                    }
-                }),
-            column![typo::title(title), typo::meta(description),].spacing(space::XS),
+            icon::icon(glyph, icon::MD, Ink::Accent),
+            typo::title(title),
+            container(vertical_rule(1).style(styles::divider)).height(18.0),
+            typo::meta(description),
             iced::widget::Space::with_width(Length::Fill),
             actions,
         ]
-        .spacing(space::MD)
+        .spacing(space::LG)
         .align_y(Alignment::Center),
     )
-    .padding([space::XL, space::XXL])
+    .height(58.0)
+    .padding([0.0, space::XXL])
     .width(Length::Fill)
+    .align_y(Alignment::Center)
     .style(move |theme: &Theme| {
         let palette = tokens(theme);
         container::Style {
-            background: Some(Background::Color(palette.panel)),
+            background: Some(Background::Color(palette.canvas)),
             border: Border {
-                color: Color {
-                    a: 0.60,
-                    ..palette.border
-                },
+                color: palette.border,
                 width: 1.0,
                 radius: PAGE_HEADER_RADIUS.into(),
             },
@@ -63,6 +52,61 @@ pub fn page_header<'a, Message: 'a>(
         }
     })
     .into()
+}
+
+/// Toolbar d'un espace : titre, routes sœurs et actions métier sur une seule ligne.
+pub fn workspace_header<'a, Message: 'a>(
+    glyph: Icon,
+    title: &'a str,
+    tabs: Element<'a, Message>,
+    actions: Element<'a, Message>,
+) -> Element<'a, Message> {
+    container(
+        row![
+            icon::icon(glyph, icon::MD, Ink::Accent),
+            typo::title(title),
+            container(vertical_rule(1).style(styles::divider)).height(18.0),
+            tabs,
+            iced::widget::Space::with_width(Length::Fill),
+            actions,
+        ]
+        .spacing(space::LG)
+        .align_y(Alignment::Center),
+    )
+    .height(58.0)
+    .padding([0.0, space::XXL])
+    .width(Length::Fill)
+    .align_y(Alignment::Center)
+    .style(move |theme: &Theme| {
+        let palette = tokens(theme);
+        container::Style {
+            background: Some(Background::Color(palette.canvas)),
+            border: Border {
+                color: palette.border,
+                width: 1.0,
+                radius: PAGE_HEADER_RADIUS.into(),
+            },
+            ..container::Style::default()
+        }
+    })
+    .into()
+}
+
+/// Toolbar d'un écran rattaché à un espace : les routes sœurs sont intégrées
+/// au même niveau que le titre et les actions métier.
+pub fn route_header<'a, Message: Clone + 'a>(
+    glyph: Icon,
+    title: &'a str,
+    active: Route,
+    on_navigate: impl Fn(Route) -> Message + Copy + 'a,
+    actions: Element<'a, Message>,
+) -> Element<'a, Message> {
+    workspace_header(
+        glyph,
+        title,
+        workspace_tab_controls(active, on_navigate),
+        actions,
+    )
 }
 
 /// En-tête de modale : icône, titre, description, bouton fermer.
@@ -107,7 +151,7 @@ mod tests {
     use super::PAGE_HEADER_RADIUS;
 
     #[test]
-    fn le_rayon_du_header_de_page_suit_le_handoff() {
-        assert_eq!(PAGE_HEADER_RADIUS, 16.0);
+    fn le_header_de_page_est_une_toolbar_sans_carte_arrondie() {
+        assert_eq!(PAGE_HEADER_RADIUS, 0.0);
     }
 }

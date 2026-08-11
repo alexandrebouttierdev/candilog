@@ -6,6 +6,15 @@
 
 use iced::{Color, Theme};
 
+/// Construit une couleur opaque depuis une valeur hexadécimale RGB.
+const fn hex(value: u32) -> Color {
+    Color::from_rgb(
+        ((value >> 16) & 0xff) as f32 / 255.0,
+        ((value >> 8) & 0xff) as f32 / 255.0,
+        (value & 0xff) as f32 / 255.0,
+    )
+}
+
 /// Convertit une teinte `hsl(h s% l%)` (h en degrés, s et l en %) en couleur opaque.
 ///
 /// Recette sRGB standard ; les valeurs sont celles du handoff candilog-desktop.
@@ -69,11 +78,11 @@ pub struct Tokens {
     /// Texte désactivé ou indicatif.
     pub text_muted: Color,
 
-    /// Accent pétrole pour les textes, icônes et filets actifs.
+    /// Accent cognac pour les textes, icônes et filets actifs.
     pub accent: Color,
-    /// Accent pétrole pour les surfaces pleines.
+    /// Accent cognac pour les surfaces pleines.
     pub accent_fill: Color,
-    /// Accent pétrole au survol d'une surface pleine.
+    /// Accent cognac au survol d'une surface pleine.
     pub accent_hover: Color,
     /// Texte posé sur une surface d'accent pleine.
     pub on_accent: Color,
@@ -88,7 +97,7 @@ pub struct Tokens {
     pub danger: Color,
     /// Information neutre.
     pub info: Color,
-    /// Violet des statuts Entretien et des événements de calendrier.
+    /// Vert sauge secondaire des entretiens et événements.
     pub violet: Color,
 
     /// Papier d'un aperçu de document, constant dans les deux thèmes.
@@ -106,43 +115,43 @@ pub struct Tokens {
     pub shadow: Color,
 }
 
-/// Jetons du thème sombre (candilog-desktop `.dark`).
+/// Thème sombre « Graphite & Champagne ».
 pub const NIGHT: Tokens = Tokens {
     is_dark: true,
 
-    chrome: hsl(240.0, 14.0, 10.0), // --app
-    canvas: hsl(240.0, 14.0, 10.0), // --app (fond ambiant)
-    panel: hsl(240.0, 11.0, 17.0),  // --card
-    sunken: hsl(240.0, 9.0, 22.0),  // --secondary / --muted
-    raised: hsl(240.0, 11.0, 17.0), // --popover = --card
-    hover: hsl(240.0, 9.0, 26.0),   // secondary éclairci (hover)
+    chrome: hex(0x0b0d0c),
+    canvas: hex(0x111412),
+    panel: hex(0x1e211f),
+    sunken: hex(0x0f1210),
+    raised: hex(0x272b27),
+    hover: hex(0x2d322c),
 
-    border: hsl(240.0, 9.0, 26.0),        // --border
-    border_strong: hsl(240.0, 9.0, 28.0), // --input
+    border: hex(0x383d37),
+    border_strong: hex(0x50574e),
 
-    text: hsl(240.0, 12.0, 95.0),          // --foreground
-    text_secondary: hsl(240.0, 7.0, 68.0), // --muted-foreground
-    text_muted: hsl(240.0, 7.0, 52.0),
+    text: hex(0xf4f1e8),
+    text_secondary: hex(0xb2b0a8),
+    text_muted: hex(0x7f827a),
 
-    accent: hsl(245.0, 75.0, 70.0), // --primary
-    accent_fill: hsl(245.0, 75.0, 70.0),
-    accent_hover: hsl(245.0, 75.0, 66.0),
-    on_accent: hsl(0.0, 0.0, 100.0), // --primary-foreground
+    accent: hex(0xe5a24b),
+    accent_fill: hex(0xd89035),
+    accent_hover: hex(0xe3a04a),
+    on_accent: hex(0x1b140b),
     selection: Color {
-        a: 0.14,
-        ..hsl(245.0, 75.0, 70.0)
+        a: 0.16,
+        ..hex(0xe5a24b)
     },
 
-    success: hsl(142.0, 71.0, 45.0), // --status-success
-    warning: hsl(38.0, 92.0, 50.0),  // --status-warning
-    danger: hsl(0.0, 84.0, 60.0),    // --status-danger
-    info: hsl(199.0, 89.0, 48.0),    // --status-info
-    violet: hsl(271.0, 91.0, 65.0),  // --status-violet
+    success: hex(0x55b978),
+    warning: hex(0xd89a3d),
+    danger: hex(0xe06f67),
+    info: hex(0x71a49a),
+    violet: hex(0x83aa71),
 
-    paper: hsl(0.0, 0.0, 100.0),
-    paper_ink: hsl(240.0, 10.0, 12.0),
-    paper_ink_muted: hsl(240.0, 4.0, 40.0),
-    paper_rule: hsl(240.0, 6.0, 88.0),
+    paper: hex(0xfbfaf6),
+    paper_ink: hex(0x1d211d),
+    paper_ink_muted: hex(0x62675f),
+    paper_rule: hex(0xd8d4ca),
 
     scrim: Color {
         a: 0.45,
@@ -164,43 +173,43 @@ pub const NIGHT: Tokens = Tokens {
     },
 };
 
-/// Jetons du thème clair (candilog-desktop `:root`).
+/// Thème clair « Ivoire & Cognac ».
 pub const DAY: Tokens = Tokens {
     is_dark: false,
 
-    chrome: hsl(240.0, 8.0, 95.0), // --app
-    canvas: hsl(240.0, 8.0, 95.0), // --app (fond ambiant)
-    panel: hsl(0.0, 0.0, 100.0),   // --card / --background
-    sunken: hsl(240.0, 6.0, 95.0), // --secondary / --muted
-    raised: hsl(0.0, 0.0, 100.0),  // --popover
-    hover: hsl(240.0, 5.0, 93.0),  // secondary légèrement appuyé
+    chrome: hex(0xe9e3d8),
+    canvas: hex(0xf3efe6),
+    panel: hex(0xfffefa),
+    sunken: hex(0xeee9df),
+    raised: hex(0xffffff),
+    hover: hex(0xe8e1d5),
 
-    border: hsl(240.0, 6.0, 90.0),        // --border
-    border_strong: hsl(240.0, 6.0, 88.0), // --input
+    border: hex(0xd7cfc1),
+    border_strong: hex(0xbeb3a2),
 
-    text: hsl(240.0, 10.0, 10.0),          // --foreground
-    text_secondary: hsl(240.0, 4.0, 47.0), // --muted-foreground
-    text_muted: hsl(240.0, 4.0, 58.0),
+    text: hex(0x1d211d),
+    text_secondary: hex(0x5f655f),
+    text_muted: hex(0x858a82),
 
-    accent: hsl(245.0, 52.0, 50.0), // --primary
-    accent_fill: hsl(245.0, 52.0, 50.0),
-    accent_hover: hsl(245.0, 52.0, 46.0),
-    on_accent: hsl(0.0, 0.0, 100.0), // --primary-foreground
+    accent: hex(0xa8662d),
+    accent_fill: hex(0xa8662d),
+    accent_hover: hex(0x915623),
+    on_accent: hex(0xfffcf6),
     selection: Color {
-        a: 0.10,
-        ..hsl(245.0, 52.0, 50.0)
+        a: 0.12,
+        ..hex(0xa8662d)
     },
 
-    success: hsl(142.0, 71.0, 45.0),
-    warning: hsl(38.0, 92.0, 50.0),
-    danger: hsl(0.0, 84.0, 60.0),
-    info: hsl(199.0, 89.0, 48.0),
-    violet: hsl(271.0, 91.0, 65.0),
+    success: hex(0x2e7a4d),
+    warning: hex(0x95680f),
+    danger: hex(0xb94842),
+    info: hex(0x477a72),
+    violet: hex(0x5e844f),
 
-    paper: hsl(0.0, 0.0, 100.0),
-    paper_ink: hsl(240.0, 10.0, 12.0),
-    paper_ink_muted: hsl(240.0, 4.0, 40.0),
-    paper_rule: hsl(240.0, 6.0, 88.0),
+    paper: hex(0xfffefa),
+    paper_ink: hex(0x1d211d),
+    paper_ink_muted: hex(0x62675f),
+    paper_rule: hex(0xd8d4ca),
 
     scrim: Color {
         a: 0.45,
@@ -282,18 +291,25 @@ mod tests {
     }
 
     #[test]
-    fn la_palette_respecte_les_valeurs_du_handoff() {
-        // Indigo primaire : hsl(245 52% 50%) → rgb(0.28, 0.24, 0.76) (clair),
-        // hsl(245 75% 70%) → r ≈ 0.51 (sombre, plus clair que le jour).
+    fn la_palette_respecte_la_direction_graphite_et_cognac() {
         let day = DAY;
         let night = NIGHT;
-        assert!((day.accent.r - 0.31).abs() < 0.05 && (day.accent.b - 0.76).abs() < 0.05);
-        assert!(night.accent.r > 0.50, "indigo sombre trop sombre");
-        // Statut violet : hsl(271 91% 65%) → g ≈ 0.33.
-        assert!((day.violet.g - 0.33).abs() < 0.1);
+        assert!(day.accent.r > day.accent.g, "le cognac doit rester chaud");
         assert!(
-            ecart_max(night.violet, day.violet) < 0.01,
-            "statuts identiques clair/sombre"
+            night.accent.r > night.accent.g,
+            "le champagne doit rester chaud"
+        );
+        assert!(
+            night.accent.g > day.accent.g,
+            "accent nocturne pas assez lumineux"
+        );
+        assert!(
+            day.canvas.r > day.canvas.b,
+            "le thème clair doit rester ivoire"
+        );
+        assert!(
+            ecart_max(night.violet, day.violet) > 0.05,
+            "le vert sauge doit être adapté à chaque thème"
         );
     }
 

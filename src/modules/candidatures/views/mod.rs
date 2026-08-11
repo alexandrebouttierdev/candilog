@@ -6,71 +6,70 @@ pub mod list;
 pub mod pipeline;
 
 use crate::app::message::CandidateView;
+use crate::app::state::Dialog;
 use crate::app::{App, Message};
-use crate::modules::metriques::components::PipelineCounts;
 use crate::ui::components::button as controls;
 use crate::ui::components::choice::Choice;
 use crate::ui::components::header;
 use crate::ui::components::icon::Icon;
+use crate::ui::components::sidebar::workspace_tab_controls;
 use crate::ui::components::{badge, field, layout, typo};
 use crate::ui::format;
-use crate::ui::theme::metrics::{size, space};
-use crate::ui::theme::styles;
-use crate::ui::theme::typography::MONO_SEMIBOLD;
-use crate::ui::theme::{Marker, Tone};
+use crate::ui::theme::metrics::{radius, size, space, stroke};
+use crate::ui::theme::tokens::tokens;
+use crate::ui::theme::Tone;
 use iced::widget::{column, container, row};
-use iced::{Alignment, Element, Length};
+use iced::{Alignment, Background, Border, Element, Length, Theme};
 
 /// Rend l'écran complet des candidatures.
 pub fn view(app: &App) -> Element<'_, Message> {
     let candidates = app.sorted_candidates();
     let companies = company_choices(app);
 
-    let meta = format::plural(
-        app.filtered_candidates().len(),
-        "candidature suivie",
-        "candidatures suivies",
-    );
-    let actions = controls::ghost("Exporter", Some(Icon::Download))
-        .on_press(Message::ExportCandidatures)
-        .into();
+    let actions = row![
+        controls::ghost("Exporter", Some(Icon::Download)).on_press(Message::ExportCandidatures),
+        controls::primary("Nouvelle candidature", Some(Icon::Plus))
+            .on_press(Message::OpenDialog(Dialog::Candidature)),
+    ]
+    .spacing(space::SM)
+    .align_y(Alignment::Center)
+    .into();
+
+    let filter_sheet: Element<'_, Message> = if app.filters_open {
+        container(filters::sheet(app, companies))
+            .padding([space::SM, space::LG])
+            .into()
+    } else {
+        iced::widget::Space::with_height(0).into()
+    };
 
     let body = column![
-        control_strip(app),
-        if app.filters_open {
-            filters::sheet(app, companies)
-        } else {
-            iced::widget::Space::with_height(0).into()
-        },
+        command_bar(app),
+        filter_sheet,
         container(match app.candidate_view {
             CandidateView::Kanban => pipeline::view(app, &candidates),
             CandidateView::List => list::view(app, &candidates),
         })
         .width(Length::Fill)
         .height(Length::Fill)
-        .padding([space::XL, space::XXL - 2.0]),
+        .padding([space::LG, space::LG]),
     ]
-    .spacing(space::LG)
+    .spacing(0)
     .height(Length::Fill);
 
     layout::screen(
-        header::page_header(Icon::Applications, "Candidatures", meta, actions),
-        layout::workspace(body),
+        header::workspace_header(
+            Icon::Applications,
+            "Suivi des candidatures",
+            workspace_tab_controls(app.route, Message::Navigate),
+            actions,
+        ),
+        body,
     )
 }
 
-/// Bande de pilotage : 4 mini-statuts puis la toolbar de recherche et de bascule.
-fn control_strip(app: &App) -> Element<'_, Message> {
-    let counts = PipelineCounts::from_candidates(&app.data.candidatures);
-
-    let statuses = row![
-        mini_status("En attente", counts.pending, Tone::Info),
-        mini_status("Relancées", counts.followed_up, Tone::Warning),
-        mini_status("Entretien", counts.interviews, Tone::Violet),
-        mini_status("Refus", counts.rejected, Tone::Danger),
-    ]
-    .spacing(space::MD);
-
+/// Barre de commandes compacte : recherche, filtres et mode d'affichage.
+fn command_bar(app: &App) -> Element<'_, Message> {
     let toolbar = row![
         field::search(
             "Rechercher un poste, une entreprise…",
@@ -83,7 +82,7 @@ fn control_strip(app: &App) -> Element<'_, Message> {
             "résultat",
             "résultats",
         )),
-        controls::ghost("Filtres", None).on_press(Message::ToggleFilters),
+        controls::ghost("Filtres", Some(Icon::Filter)).on_press(Message::ToggleFilters),
         badge::count_toned(app.candidate_filters.active_count(), Tone::Accent),
         iced::widget::Space::with_width(Length::Fill),
         controls::segmented([
@@ -96,34 +95,27 @@ fn control_strip(app: &App) -> Element<'_, Message> {
     .spacing(space::SM)
     .align_y(Alignment::Center);
 
-    container(
-        column![statuses, toolbar]
-            .spacing(space::MD)
-            .padding(space::LG),
-    )
-    .width(Length::Fill)
-    .style(styles::glass_card)
-    .into()
+    container(toolbar)
+        .height(52.0)
+        .padding([space::SM, space::LG])
+        .width(Length::Fill)
+        .align_y(Alignment::Center)
+        .style(command_bar_style)
+        .into()
 }
 
-/// Carte mini-statut : pastille de statut, libellé et compteur mono.
-fn mini_status<'a>(label: &'a str, count: usize, tone: Tone) -> Element<'a, Message> {
-    container(
-        row![
-            badge::marker(tone, Marker::Solid),
-            column![
-                typo::caption(label),
-                typo::text_mono(count.to_string(), 20.0, MONO_SEMIBOLD),
-            ]
-            .spacing(0),
-        ]
-        .spacing(space::MD)
-        .align_y(Alignment::Center),
-    )
-    .padding(space::LG)
-    .width(Length::FillPortion(1))
-    .style(styles::glass_card)
-    .into()
+fn command_bar_style(theme: &Theme) -> container::Style {
+    let palette = tokens(theme);
+    container::Style {
+        background: Some(Background::Color(palette.canvas)),
+        text_color: Some(palette.text),
+        border: Border {
+            color: palette.border,
+            width: stroke::HAIRLINE,
+            radius: radius::NONE.into(),
+        },
+        ..container::Style::default()
+    }
 }
 
 /// Options de sélection d'entreprise, précédées d'une option « toutes ».

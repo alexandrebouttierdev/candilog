@@ -5,6 +5,7 @@ use crate::app::state::Dialog;
 use crate::app::{App, Message};
 use crate::modules::settings::components::{actions, setting, setting_stacked};
 use crate::modules::settings::model::ThemePref;
+use crate::navigation::Route;
 use crate::shared::llm::{AnalysisMode, ProviderKind};
 use crate::ui::components::button as controls;
 use crate::ui::components::header;
@@ -14,7 +15,7 @@ use crate::ui::components::tabs::Tab;
 use crate::ui::components::{badge, field, inspector, layout, state, surface, tabs, typo};
 use crate::ui::theme::metrics::{radius, size, space, stroke};
 use crate::ui::theme::styles;
-use crate::ui::theme::tokens::{alpha, tokens};
+use crate::ui::theme::tokens::{alpha, tokens, DAY, NIGHT};
 use crate::ui::theme::typography as font;
 use crate::ui::theme::Tone;
 use iced::widget::{button, column, container, row, slider, stack, text, Space};
@@ -26,10 +27,9 @@ const BODY_MAX_WIDTH: f32 = 980.0;
 const SIDE_WIDTH: f32 = 280.0;
 /// Largeur d'une carte fournisseur de la grille (`max-w-[200px]`).
 const PROVIDER_CARD_WIDTH: f32 = 200.0;
-/// Couleur de l'aperçu clair d'un choix de thème (`#f4f4f7`).
-const SWATCH_LIGHT: Color = Color::from_rgb(0.957, 0.957, 0.969);
-/// Couleur de l'aperçu sombre d'un choix de thème (`#202026`).
-const SWATCH_DARK: Color = Color::from_rgb(0.125, 0.125, 0.149);
+/// Couleurs réelles des plans de travail présentés dans le choix de thème.
+const SWATCH_LIGHT: Color = DAY.canvas;
+const SWATCH_DARK: Color = NIGHT.canvas;
 
 /// Fournisseurs IA proposés.
 fn providers() -> Vec<ProviderKind> {
@@ -81,10 +81,11 @@ const MODES: [AnalysisMode; 4] = [
 /// Rend l'écran des paramètres.
 pub fn view(app: &App) -> Element<'_, Message> {
     layout::screen(
-        header::page_header(
+        header::route_header(
             Icon::Settings,
             "Paramètres",
-            "Configuration locale de Candilog",
+            Route::Parametres,
+            Message::Navigate,
             local_data_pill(),
         ),
         layout::workspace(surface::scroll(

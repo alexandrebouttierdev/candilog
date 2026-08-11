@@ -6,12 +6,12 @@ use crate::modules::candidatures::model::Candidature;
 use crate::modules::contacts::components as people;
 use crate::modules::contacts::model::Contact;
 use crate::modules::entretiens::model::Entretien;
+use crate::navigation::Route;
 use crate::ui::components::avatar;
 use crate::ui::components::button as controls;
 use crate::ui::components::header;
 use crate::ui::components::icon::{self, Icon};
 use crate::ui::components::overlay;
-use crate::ui::components::stat_card;
 use crate::ui::components::{field, inspector, layout, list, state, surface, typo};
 use crate::ui::format;
 use crate::ui::theme::metrics::space;
@@ -23,15 +23,16 @@ use iced::{Alignment, Element, Length};
 /// Rend l'écran du réseau professionnel.
 pub fn view(app: &App) -> Element<'_, Message> {
     let screen: Element<'_, Message> = layout::screen(
-        header::page_header(
+        header::route_header(
             Icon::Network,
-            "Réseau",
-            "Votre réseau professionnel",
+            "Réseau professionnel",
+            Route::Reseau,
+            Message::Navigate,
             actions(),
         ),
         layout::workspace(
-            column![metrics(app), directory(app)]
-                .spacing(space::LG)
+            column![command_bar(app), directory(app)]
+                .spacing(space::MD)
                 .height(Length::Fill),
         ),
     );
@@ -54,30 +55,36 @@ fn actions() -> Element<'static, Message> {
         .into()
 }
 
-/// Les trois cartes métriques de l'écran.
-fn metrics(app: &App) -> Element<'_, Message> {
+/// Recherche et synthèse du réseau sur une seule bande de commande.
+fn command_bar(app: &App) -> Element<'_, Message> {
     let today = chrono::Local::now().format("%Y-%m-%d").to_string();
-    row![
-        stat_card::metric_icon_tinted(
-            "Contacts enregistrés",
-            app.data.contacts.len().to_string(),
-            Tone::Success,
-            Icon::Profile,
-        ),
-        stat_card::metric_icon_tinted(
-            "Candidatures liées",
-            total_candidatures_liees(&app.data.candidatures).to_string(),
-            Tone::Info,
-            Icon::Applications,
-        ),
-        stat_card::metric_icon_tinted(
-            "Entretiens planifiés",
-            entretiens_planifies(&app.data.entretiens, &today).to_string(),
-            Tone::Violet,
-            Icon::Calendar,
-        ),
-    ]
-    .spacing(space::MD)
+    container(
+        row![
+            field::search(
+                "Rechercher un contact…",
+                &app.search,
+                Message::SearchChanged,
+                Length::Fixed(360.0),
+            ),
+            typo::caption(format::plural(
+                app.data.contacts.len(),
+                "contact",
+                "contacts",
+            )),
+            layout::spacer(),
+            typo::caption(format!(
+                "{} candidatures liées · {} entretiens planifiés",
+                total_candidatures_liees(&app.data.candidatures),
+                entretiens_planifies(&app.data.entretiens, &today),
+            )),
+        ]
+        .spacing(space::MD)
+        .align_y(Alignment::Center),
+    )
+    .height(52.0)
+    .padding([0.0, space::LG])
+    .width(Length::Fill)
+    .style(styles::panel_flat)
     .into()
 }
 
@@ -113,24 +120,11 @@ fn directory(app: &App) -> Element<'_, Message> {
             .into()
     };
 
-    container(
-        column![
-            container(field::search(
-                "Rechercher un contact…",
-                &app.search,
-                Message::SearchChanged,
-                Length::Fill,
-            ))
-            .padding(space::LG),
-            surface::divider(),
-            body,
-        ]
-        .height(Length::Fill),
-    )
-    .width(Length::Fill)
-    .height(Length::Fill)
-    .style(styles::glass_card)
-    .into()
+    container(column![body].height(Length::Fill))
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .style(styles::panel_flat)
+        .into()
 }
 
 /// Contenu du drawer de la fiche contact.
