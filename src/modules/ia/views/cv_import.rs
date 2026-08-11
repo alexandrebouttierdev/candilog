@@ -239,8 +239,12 @@ fn result_card(app: &App) -> Element<'_, Message> {
             ),
             cards::metric_icon_tinted(
                 "Expérience",
-                format!("{} / 100", result.score.experience),
-                tone_pour_score(result.score.experience),
+                experience_label(result.score.experience),
+                if result.score.experience == 0 {
+                    Tone::Neutral
+                } else {
+                    tone_pour_score(result.score.experience)
+                },
                 Icon::Clock,
             ),
             cards::metric_icon_tinted(
@@ -295,9 +299,22 @@ fn result_card(app: &App) -> Element<'_, Message> {
     .into()
 }
 
+/// Libellé de la métrique d'expérience d'un CV importé.
+///
+/// L'expérience n'est pas évaluable sur un CV importé (aucune date) :
+/// `score_imported` la force à `0`. Un « 0 / 100 » serait trompeur, on affiche
+/// donc « Non évaluée » tant que le sous-score vaut `0`.
+fn experience_label(experience: u8) -> String {
+    if experience == 0 {
+        "Non évaluée".to_owned()
+    } else {
+        format!("{experience} / 100")
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::skill_split;
+    use super::{experience_label, skill_split};
     use crate::modules::ia::cv_model::{AtsAnalysis, GeneratedCv, MatchScore, ParsedOffer};
     use crate::modules::ia::service::ImportedCvAnalysis;
 
@@ -346,5 +363,16 @@ mod tests {
     fn sans_competences_les_listes_sont_vides() {
         let result = analysis(&[], &[]);
         assert_eq!(skill_split(&result), (Vec::new(), Vec::new()));
+    }
+
+    #[test]
+    fn lexperience_non_evaluee_naffiche_pas_un_zero_trompeur() {
+        assert_eq!(experience_label(0), "Non évaluée");
+    }
+
+    #[test]
+    fn lexperience_evaluee_conserve_le_format_sur_cent() {
+        assert_eq!(experience_label(100), "100 / 100");
+        assert_eq!(experience_label(42), "42 / 100");
     }
 }

@@ -110,8 +110,6 @@ pub mod size {
     pub const MASTER: f32 = 320.0;
     /// Largeur minimale du volet liste.
     pub const MASTER_MIN: f32 = 260.0;
-    /// Largeur du sommaire des paramètres.
-    pub const SUMMARY: f32 = 220.0;
     /// Largeur du drawer d'inspecteur.
     pub const DRAWER: f32 = 460.0;
     /// Largeur du champ de recherche d'une toolbar.

@@ -35,7 +35,6 @@ pub mod surface;
 pub mod table;
 pub mod tabs;
 pub mod titlebar;
-pub mod toolbar;
 pub mod tooltip;
 pub mod typo;
 pub mod workflow;

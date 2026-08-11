@@ -18,11 +18,6 @@ pub const CONTENT_MAX: f32 = 1560.0;
 const TABLE_SECONDARY: f32 = 1280.0;
 /// Largeur à partir de laquelle le tableau de bord se met sur deux colonnes.
 const DASHBOARD_TWO_COLUMNS: f32 = 1320.0;
-/// Largeur à partir de laquelle les actions de toolbar affichent leur
-/// libellé à côté de l'icône. En dessous, il n'y a plus la place pour le
-/// texte sans le faire retomber à la ligne : l'action se replie sur son
-/// icône seule.
-const TOOLBAR_ACTION_LABELS: f32 = 1200.0;
 
 /// Décisions de mise en page dérivées de la taille de la fenêtre.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -56,14 +51,6 @@ impl Layout {
         self.width >= DASHBOARD_TWO_COLUMNS
     }
 
-    /// Actions de toolbar avec leur libellé affiché à côté de l'icône. En
-    /// dessous, une action iconique se replie sur son icône seule, son
-    /// intitulé restitué en infobulle au survol.
-    #[must_use]
-    pub fn toolbar_action_labels(&self) -> bool {
-        self.width >= TOOLBAR_ACTION_LABELS
-    }
-
     /// Largeur maximale du contenu ; au-delà, il gagne des marges latérales.
     #[must_use]
     pub fn content_max_width(&self) -> f32 {
@@ -94,18 +81,10 @@ mod tests {
         let large = Layout::from_size(Size::new(1600.0, 900.0));
         assert!(large.table_secondary_columns());
         assert!(large.dashboard_two_columns());
-        assert!(large.toolbar_action_labels());
 
         let minimal = Layout::from_size(Size::new(MIN_WIDTH, MIN_HEIGHT));
         assert!(!minimal.table_secondary_columns());
         assert!(!minimal.dashboard_two_columns());
-        assert!(!minimal.toolbar_action_labels());
-    }
-
-    #[test]
-    fn les_libelles_d_action_de_toolbar_disparaissent_sous_leur_seuil() {
-        assert!(!Layout::from_size(Size::new(1100.0, 800.0)).toolbar_action_labels());
-        assert!(Layout::from_size(Size::new(1300.0, 800.0)).toolbar_action_labels());
     }
 
     #[test]

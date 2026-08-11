@@ -74,26 +74,6 @@ pub fn split<'a, Message: 'a>(
     .into()
 }
 
-/// Deux volets dont la largeur du premier est imposée par l'appelant.
-pub fn split_sized<'a, Message: 'a>(
-    master_width: f32,
-    master: impl Into<Element<'a, Message>>,
-    detail: impl Into<Element<'a, Message>>,
-) -> Element<'a, Message> {
-    row![
-        container(master.into())
-            .width(Length::Fixed(master_width))
-            .height(Length::Fill),
-        super::surface::split_rule(),
-        container(detail.into())
-            .width(Length::Fill)
-            .height(Length::Fill),
-    ]
-    .width(Length::Fill)
-    .height(Length::Fill)
-    .into()
-}
-
 /// Deux volets proportionnels, pour un atelier (édition / aperçu).
 pub fn split_portions<'a, Message: 'a>(
     left_portion: u16,
