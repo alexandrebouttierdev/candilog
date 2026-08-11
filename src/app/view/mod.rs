@@ -14,7 +14,7 @@ use crate::ui::components::skeleton::PageSkeleton;
 use crate::ui::components::titlebar::titlebar;
 use crate::ui::components::{notification, overlay, state};
 use crate::ui::theme::styles;
-use iced::widget::{column, container, row, stack};
+use iced::widget::{column, container, mouse_area, row, stack};
 use iced::{Element, Length};
 
 /// Rend l'application complète.
@@ -87,9 +87,8 @@ pub fn view(app: &App) -> Element<'_, Message> {
             Message::ClearNotification,
         ));
     }
-    stack(layers)
-        .width(Length::Fill)
-        .height(Length::Fill)
+    mouse_area(stack(layers).width(Length::Fill).height(Length::Fill))
+        .on_release(Message::CandidateDragCancelled)
         .into()
 }
 
