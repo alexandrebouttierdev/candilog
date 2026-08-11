@@ -1,6 +1,6 @@
 //! Messages produits par les vues Iced.
 
-use super::state::{Dialog, SettingsSection, StatisticsTab};
+use super::state::{Dialog, StatisticsTab};
 use crate::modules::candidatures::model::{StatutCandidature, TypeContrat};
 use crate::modules::entretiens::model::TypeEntretien;
 use crate::navigation::Route;
@@ -342,8 +342,6 @@ pub enum Message {
     ToggleFilters,
     /// Trie la vue Liste sur la colonne d'index donné.
     SortCandidates(usize),
-    /// Change la section active des paramètres.
-    SettingsSectionChanged(SettingsSection),
     /// Change l'onglet actif des statistiques.
     StatisticsTabChanged(StatisticsTab),
     /// Page précédente de l'historique des scores ATS.

@@ -203,45 +203,6 @@ impl CandidateSort {
     }
 }
 
-/// Sections de l'écran Paramètres.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum SettingsSection {
-    /// Apparence de l'application.
-    #[default]
-    Apparence,
-    /// Fournisseur et réglages IA.
-    Ia,
-    /// Base locale, exports et sauvegardes.
-    Donnees,
-    /// Canal de mise à jour.
-    MisesAJour,
-    /// Informations sur l'application.
-    APropos,
-}
-
-impl SettingsSection {
-    /// Sections dans l'ordre du sommaire.
-    pub const ALL: [Self; 5] = [
-        Self::Apparence,
-        Self::Ia,
-        Self::Donnees,
-        Self::MisesAJour,
-        Self::APropos,
-    ];
-
-    /// Intitulé affiché dans le sommaire et l'en-tête.
-    #[must_use]
-    pub const fn label(self) -> &'static str {
-        match self {
-            Self::Apparence => "Apparence",
-            Self::Ia => "Intelligence artificielle",
-            Self::Donnees => "Données locales",
-            Self::MisesAJour => "Mises à jour",
-            Self::APropos => "À propos",
-        }
-    }
-}
-
 /// Onglet actif de l'écran Statistiques.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum StatisticsTab {
@@ -415,8 +376,6 @@ pub struct App {
     pub candidate_sort: CandidateSort,
     /// Sens de tri de la vue Liste.
     pub candidate_sort_descending: bool,
-    /// Section active de l'écran Paramètres.
-    pub settings_section: SettingsSection,
     /// Onglet actif de l'écran Statistiques.
     pub statistics_tab: StatisticsTab,
     /// Page courante de l'historique des scores ATS (1-based).
@@ -490,7 +449,6 @@ impl App {
             filters_open: false,
             candidate_sort: CandidateSort::default(),
             candidate_sort_descending: true,
-            settings_section: SettingsSection::default(),
             statistics_tab: StatisticsTab::default(),
             ats_page: 1,
             llm_page: 1,
