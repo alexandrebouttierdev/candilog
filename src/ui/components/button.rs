@@ -16,13 +16,33 @@ use iced::{Alignment, Background, Border, Element, Length, Theme};
 /// Compose une icône et un libellé dans l'ordre et l'espacement canoniques.
 fn face<'a, Message: 'a>(kind: Option<Icon>, ink: Ink, label: &'a str) -> Element<'a, Message> {
     let text_part = text(label).size(font::BODY);
-    match kind {
+    let face: Element<'a, Message> = match kind {
         Some(kind) => row![icon::icon(kind, icon::SM, ink), text_part]
             .spacing(space::SM)
             .align_y(Alignment::Center)
             .into(),
         None => text_part.into(),
-    }
+    };
+    vcenter(face)
+}
+
+/// Centre verticalement le contenu d'un bouton de hauteur fixe.
+pub fn vcenter<'a, Message: 'a>(content: impl Into<Element<'a, Message>>) -> Element<'a, Message> {
+    container(content)
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .align_y(Alignment::Center)
+        .into()
+}
+
+/// Centre le contenu d'un bouton purement iconique sur les deux axes.
+pub fn centered<'a, Message: 'a>(content: impl Into<Element<'a, Message>>) -> Element<'a, Message> {
+    container(content)
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .align_x(Alignment::Center)
+        .align_y(Alignment::Center)
+        .into()
 }
 
 /// Action principale de l'écran, avec icône optionnelle.
@@ -63,7 +83,7 @@ pub fn danger<'a, Message: 'a>(label: &'a str, kind: Option<Icon>) -> Button<'a,
 
 /// Confirmation destructive d'un dialogue.
 pub fn danger_filled<'a, Message: 'a>(label: &'a str) -> Button<'a, Message> {
-    iced::widget::button(text(label).size(font::BODY))
+    iced::widget::button(vcenter(text(label).size(font::BODY)))
         .height(size::ACTION)
         .padding([0.0, 13.0])
         .style(styles::danger_filled)
@@ -75,11 +95,11 @@ pub fn danger_filled<'a, Message: 'a>(label: &'a str) -> Button<'a, Message> {
 /// l'espace pris par le padding du cadre `segmented` qui l'enveloppe : la
 /// somme des deux retombe sur `size::CONTROL`.
 pub fn segment<'a, Message: 'a>(label: impl Into<String>, active: bool) -> Button<'a, Message> {
-    iced::widget::button(text(label.into()).size(font::BODY).font(if active {
-        font::MEDIUM
-    } else {
-        font::REGULAR
-    }))
+    iced::widget::button(vcenter(
+        text(label.into())
+            .size(font::BODY)
+            .font(if active { font::MEDIUM } else { font::REGULAR }),
+    ))
     .height(size::CONTROL - 2.0 * space::XXS)
     .padding([0.0, space::SM + space::XXS])
     .style(if active {
@@ -121,7 +141,7 @@ pub fn icon_action<'a, Message: Clone + 'a>(
     on_press: Message,
 ) -> Element<'a, Message> {
     with_hint(
-        iced::widget::button(icon::icon(kind, icon::SM, Ink::Muted))
+        iced::widget::button(centered(icon::icon(kind, icon::SM, Ink::Muted)))
             .width(size::ICON_BUTTON)
             .height(size::ICON_BUTTON)
             .padding(0)
@@ -138,7 +158,7 @@ pub fn icon_primary<'a, Message: Clone + 'a>(
     on_press: Message,
 ) -> Element<'a, Message> {
     with_hint(
-        iced::widget::button(icon::icon(kind, icon::SM, Ink::OnAccent))
+        iced::widget::button(centered(icon::icon(kind, icon::SM, Ink::OnAccent)))
             .width(size::ICON_BUTTON)
             .height(size::ICON_BUTTON)
             .padding(0)
@@ -155,7 +175,7 @@ pub fn icon_danger<'a, Message: Clone + 'a>(
     on_press: Message,
 ) -> Element<'a, Message> {
     with_hint(
-        iced::widget::button(icon::icon(kind, icon::SM, Ink::Muted))
+        iced::widget::button(centered(icon::icon(kind, icon::SM, Ink::Muted)))
             .width(size::ICON_BUTTON)
             .height(size::ICON_BUTTON)
             .padding(0)
@@ -180,4 +200,23 @@ pub fn with_hint<'a, Message: 'a>(
 /// Bouton occupant toute la largeur de son conteneur, pour un volet latéral.
 pub fn wide<'a, Message: 'a>(label: &'a str, kind: Option<Icon>) -> Button<'a, Message> {
     secondary(label, kind).width(Length::Fill)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use iced::Element;
+
+    #[test]
+    fn chaque_fabrique_de_bouton_s_instancie() {
+        let _: Element<'_, ()> = primary("Libellé", Some(Icon::Plus)).into();
+        let _: Element<'_, ()> = secondary("Libellé", None).into();
+        let _: Element<'_, ()> = ghost("Libellé", Some(Icon::Filter)).into();
+        let _: Element<'_, ()> = danger("Libellé", Some(Icon::Trash)).into();
+        let _: Element<'_, ()> = danger_filled("Confirmer").into();
+        let _: Element<'_, ()> = segment("Mois", true).into();
+        let _: Element<'_, ()> = icon_action(Icon::Edit, "Modifier", ());
+        let _: Element<'_, ()> = icon_primary(Icon::Plus, "Ajouter", ());
+        let _: Element<'_, ()> = icon_danger(Icon::Trash, "Supprimer", ());
+    }
 }
