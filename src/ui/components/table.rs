@@ -204,11 +204,11 @@ pub fn header_sortable_styled<'a, Message: Clone + 'a>(
                 Ink::Accent,
             ));
         }
-        let control = button(
+        let control = button(crate::ui::components::button::vcenter(
             container(label)
                 .width(Length::Fill)
                 .align_x(column.align.alignment()),
-        )
+        ))
         .padding(0)
         .height(size::TABLE_HEADER)
         .width(column.width.length())
@@ -336,7 +336,7 @@ pub fn row_button<'a, Message: Clone + 'a>(
         size::ROW
     };
     column![
-        button(content)
+        button(crate::ui::components::button::vcenter(content))
             .width(Length::Fill)
             .height(height)
             .padding([0.0, 20.0 - stroke::MARKER])

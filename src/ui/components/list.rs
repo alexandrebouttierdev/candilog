@@ -29,7 +29,7 @@ pub fn row_item<'a, Message: Clone + 'a>(
     .align_y(Alignment::Center);
 
     column![
-        button(body)
+        button(crate::ui::components::button::vcenter(body))
             .width(Length::Fill)
             .height(size::ROW_COMFORTABLE)
             .padding([0.0, space::LG])
@@ -59,7 +59,7 @@ pub fn row_compact<'a, Message: Clone + 'a>(
     .align_y(Alignment::Center);
 
     column![
-        button(body)
+        button(crate::ui::components::button::vcenter(body))
             .width(Length::Fill)
             .height(size::ROW)
             .padding([0.0, space::LG])
