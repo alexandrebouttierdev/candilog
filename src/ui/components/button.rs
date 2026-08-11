@@ -29,7 +29,7 @@ fn face<'a, Message: 'a>(kind: Option<Icon>, ink: Ink, label: &'a str) -> Elemen
 /// Centre verticalement le contenu d'un bouton de hauteur fixe.
 pub fn vcenter<'a, Message: 'a>(content: impl Into<Element<'a, Message>>) -> Element<'a, Message> {
     container(content)
-        .width(Length::Fill)
+        .width(Length::Shrink)
         .height(Length::Fill)
         .align_y(Alignment::Center)
         .into()
