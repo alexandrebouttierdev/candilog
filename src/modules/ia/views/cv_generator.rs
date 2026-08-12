@@ -437,6 +437,32 @@ fn analysis_panel<'a>(app: &'a App, analysis: &'a OfferAnalysis) -> Element<'a, 
         .into()
 }
 
+/// Action offerte en pied du panneau d'analyse, entre analyse et génération.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PanelFooterState {
+    /// Rien à proposer : pas d'analyse, ou une génération est déjà affichée.
+    None,
+    /// Analyse terminée sans génération : proposer « Améliorer le CV ».
+    ProposeGeneration,
+    /// Génération en cours : montrer la progression et l'arrêt.
+    Generating,
+}
+
+/// Décide du pied du panneau d'analyse.
+///
+/// Une génération déjà affichée prime : pendant une régénération, les suggestions
+/// restent visibles et le pied ne reprend pas la main.
+#[must_use]
+fn panel_footer_state(analysed: bool, running: bool, generated: bool) -> PanelFooterState {
+    if !analysed || generated {
+        PanelFooterState::None
+    } else if running {
+        PanelFooterState::Generating
+    } else {
+        PanelFooterState::ProposeGeneration
+    }
+}
+
 /// Aperçu du document A4, posé sur son plan de travail.
 fn preview(app: &App) -> Element<'_, Message> {
     let bar = document::workbench_bar(
@@ -628,7 +654,9 @@ fn clean_skills(skills: &[String]) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{detected_company, missing_skills, present_skills};
+    use super::{
+        detected_company, missing_skills, panel_footer_state, present_skills, PanelFooterState,
+    };
     use crate::modules::entreprises::model::Entreprise;
     use crate::modules::ia::cv_model::MatchScore;
 
@@ -667,6 +695,51 @@ mod tests {
         let analysis = score(&["Rust", "Rust", "Go"], &["SQL", "SQL"]);
         assert_eq!(present_skills(&analysis), owned(&["Rust", "Go"]));
         assert_eq!(missing_skills(&analysis), owned(&["SQL"]));
+    }
+
+    #[test]
+    fn sans_analyse_le_pied_est_vide() {
+        assert_eq!(
+            panel_footer_state(false, false, false),
+            PanelFooterState::None
+        );
+        assert_eq!(
+            panel_footer_state(false, true, false),
+            PanelFooterState::None
+        );
+        assert_eq!(
+            panel_footer_state(false, false, true),
+            PanelFooterState::None
+        );
+    }
+
+    #[test]
+    fn analyse_seule_propose_la_generation() {
+        assert_eq!(
+            panel_footer_state(true, false, false),
+            PanelFooterState::ProposeGeneration
+        );
+    }
+
+    #[test]
+    fn generation_en_cours_affiche_la_progression() {
+        assert_eq!(
+            panel_footer_state(true, true, false),
+            PanelFooterState::Generating
+        );
+    }
+
+    #[test]
+    fn generation_terminee_laisse_place_aux_suggestions() {
+        assert_eq!(
+            panel_footer_state(true, false, true),
+            PanelFooterState::None
+        );
+    }
+
+    #[test]
+    fn regeneration_conserve_les_suggestions_affichees() {
+        assert_eq!(panel_footer_state(true, true, true), PanelFooterState::None);
     }
 
     #[test]
