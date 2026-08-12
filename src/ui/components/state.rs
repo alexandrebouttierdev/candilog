@@ -50,6 +50,7 @@ pub fn empty<'a, Message: 'a>(title: &'a str, hint: &'a str) -> Element<'a, Mess
                 .align_x(iced::alignment::Horizontal::Center),
         ]
         .spacing(space::MD)
+        .width(Length::Fill)
         .align_x(Alignment::Center)
         .into(),
     ))

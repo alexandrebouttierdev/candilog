@@ -1,7 +1,7 @@
 //! Écran Profil : identité, complétion et sections en cartes sur une seule
 //! page défilante, dans l'esprit candilog-desktop.
 
-use crate::app::state::Dialog;
+use crate::app::state::{Dialog, ProfileCollection, ProfileSection};
 use crate::app::{App, Message};
 use crate::modules::profil::components as rows;
 use crate::navigation::Route;
@@ -59,12 +59,10 @@ pub fn view(app: &App) -> Element<'_, Message> {
             "Profil professionnel",
             Route::Profil,
             Message::Navigate,
-            controls::ghost("Modifier", Some(Icon::Edit))
-                .on_press(Message::OpenDialog(Dialog::Profil))
-                .into(),
+            iced::widget::Space::with_width(0).into(),
         ),
         layout::workspace(surface::scroll(
-            column![identity_card(app), sections_grid(app),]
+            column![identity_card(app), import_section(app), sections_grid(app),]
                 .spacing(space::LG)
                 .width(Length::Fill),
         )),
@@ -188,7 +186,6 @@ fn sections_grid(app: &App) -> Element<'_, Message> {
             .width(Length::FillPortion(1)),
         ]
         .spacing(space::LG),
-        import_section(app),
     ]
     .spacing(space::LG)
     .width(Length::Fill)
@@ -200,7 +197,7 @@ fn section_card<'a>(
     glyph: Icon,
     title: &'a str,
     count: Option<usize>,
-    pencil: bool,
+    edit: Option<ProfileSection>,
     content: Element<'a, Message>,
 ) -> Element<'a, Message> {
     let mut header = row![
@@ -217,11 +214,11 @@ fn section_card<'a>(
             font::MONO_SEMIBOLD,
         ));
     }
-    if pencil {
+    if let Some(section) = edit {
         header = header.push(controls::icon_action(
             Icon::Edit,
             "Modifier",
-            Message::OpenDialog(Dialog::Profil),
+            Message::OpenDialog(Dialog::Profil(section)),
         ));
     }
 
@@ -308,7 +305,7 @@ fn identity_section(app: &App) -> Element<'_, Message> {
         Icon::Profile,
         "Identité",
         Some(count),
-        true,
+        Some(ProfileSection::Identite),
         container(
             row![
                 container(inspector::group(
@@ -357,7 +354,7 @@ fn experiences_section(app: &App) -> Element<'_, Message> {
         Icon::Applications,
         "Expériences",
         Some(experiences.len()),
-        true,
+        Some(ProfileSection::Collection(ProfileCollection::Experience)),
         rows_or_empty(
             experiences.iter().map(rows::experience_row).collect(),
             "Aucune expérience — importez un CV ou ouvrez le dialogue Profil.",
@@ -381,7 +378,7 @@ fn skills_section(app: &App) -> Element<'_, Message> {
         Icon::Target,
         "Compétences",
         Some(skills.len()),
-        true,
+        Some(ProfileSection::Competences),
         content,
     )
 }
@@ -395,7 +392,7 @@ fn formations_section(app: &App) -> Element<'_, Message> {
         Icon::Document,
         "Formations",
         Some(profile.education.len()),
-        true,
+        Some(ProfileSection::Collection(ProfileCollection::Formation)),
         rows_or_empty(items, "Aucune formation — ajoutez vos diplômes."),
     )
 }
@@ -407,7 +404,7 @@ fn languages_section(app: &App) -> Element<'_, Message> {
         Icon::Link,
         "Langues",
         Some(languages.len()),
-        true,
+        Some(ProfileSection::Collection(ProfileCollection::Langue)),
         rows_or_empty(
             languages.iter().map(rows::language_row).collect(),
             "Aucune langue — précisez vos langues et leur niveau.",
@@ -422,7 +419,7 @@ fn projects_section(app: &App) -> Element<'_, Message> {
         Icon::Network,
         "Projets",
         Some(projects.len()),
-        true,
+        Some(ProfileSection::Collection(ProfileCollection::Projet)),
         rows_or_empty(
             projects.iter().map(rows::project_row).collect(),
             "Aucun projet — ajoutez vos réalisations.",
@@ -437,7 +434,7 @@ fn certifications_section(app: &App) -> Element<'_, Message> {
         Icon::Check,
         "Certifications",
         Some(certifications.len()),
-        true,
+        Some(ProfileSection::Collection(ProfileCollection::Certification)),
         rows_or_empty(
             certifications.iter().map(rows::certification_row).collect(),
             "Aucune certification — ajoutez vos attestations.",
@@ -524,7 +521,7 @@ fn import_section(app: &App) -> Element<'_, Message> {
         Icon::Import,
         "Importer un CV",
         None,
-        false,
+        None,
         container(body).into(),
     )
 }

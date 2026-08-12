@@ -650,8 +650,9 @@ pub fn about_view(_app: &App) -> Element<'_, Message> {
         layout::workspace(
             container(card)
                 .width(Length::Fill)
+                .height(Length::Fill)
                 .max_width(880.0)
-                .center_x(Length::Fill),
+                .center(Length::Fill),
         ),
     )
 }

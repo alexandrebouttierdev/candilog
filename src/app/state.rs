@@ -36,8 +36,8 @@ pub enum Dialog {
     Entretien,
     /// Création d'une relance.
     Relance,
-    /// Édition du profil personnel et des compétences.
-    Profil,
+    /// Édition d'une seule section du profil.
+    Profil(ProfileSection),
     /// Confirmation de suppression d'une candidature.
     DeleteCandidature(uuid::Uuid),
     /// Confirmation de suppression d'une entreprise.
@@ -85,6 +85,14 @@ pub enum ProfileCollection {
     Langue,
     Projet,
     Certification,
+}
+
+/// Partie du profil affichée dans la modale d'édition courante.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProfileSection {
+    Identite,
+    Competences,
+    Collection(ProfileCollection),
 }
 
 /// État du formulaire entreprise.
@@ -955,7 +963,11 @@ impl App {
                 "contact" => Some(Dialog::Contact),
                 "entretien" => Some(Dialog::Entretien),
                 "relance" => Some(Dialog::Relance),
-                "profil" => Some(Dialog::Profil),
+                "profil" => Some(Dialog::Profil(ProfileSection::Identite)),
+                "profil-competences" => Some(Dialog::Profil(ProfileSection::Competences)),
+                "profil-experiences" => Some(Dialog::Profil(ProfileSection::Collection(
+                    ProfileCollection::Experience,
+                ))),
                 _ => None,
             };
         }
@@ -982,7 +994,7 @@ impl App {
         if std::env::var("CANDILOG_CAPTURE_DIALOG").as_deref() == Ok("company-detail") {
             self.selected_company = self.data.entreprises.first().map(|company| company.id);
         }
-        if self.dialog == Some(Dialog::Profil) {
+        if matches!(self.dialog, Some(Dialog::Profil(_))) {
             self.profile_personal_form = self.data.profile.personal.clone();
             self.profile_draft = self.data.profile.clone();
             self.profile_summary_editor = iced::widget::text_editor::Content::with_text(

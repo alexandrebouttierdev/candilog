@@ -38,14 +38,27 @@ impl Size {
     }
 }
 
-/// Modale centrée, contenue dans la fenêtre, fermable par le voile.
+/// Modale centrée, contenue dans la fenêtre.
+///
+/// Le voile est volontairement inerte : un clic imprécis hors du panneau ne doit jamais
+/// jeter une saisie en cours. La croix, le bouton Annuler et Échap restent explicites.
 pub fn modal<'a, Message: Clone + 'a>(
     title: &'a str,
     body: impl Into<Element<'a, Message>>,
     footer: impl Into<Element<'a, Message>>,
     kind: Size,
     on_dismiss: Message,
+    on_outside: Message,
 ) -> Element<'a, Message> {
+    let body = surface::scroll(container(body.into()).padding([space::XL, 0.0]));
+    let body: Element<'a, Message> = if kind == Size::Confirm {
+        body.height(Length::Shrink).into()
+    } else {
+        // Les formulaires denses conservent toujours leur pied d'action visible. Sans cette
+        // hauteur élastique, le contenu imposait sa hauteur intrinsèque à la colonne puis le
+        // `max_height` rognait précisément les boutons Annuler / Enregistrer.
+        body.height(Length::Fill).into()
+    };
     let panel = container(
         column![
             row![
@@ -55,13 +68,17 @@ pub fn modal<'a, Message: Clone + 'a>(
             ]
             .align_y(Alignment::Center),
             surface::divider(),
-            surface::scroll(container(body.into()).padding([space::XL, 0.0]))
-                .height(Length::Shrink),
+            body,
             footer.into(),
         ]
         .spacing(space::LG),
     )
     .width(kind.width())
+    .height(if kind == Size::Confirm {
+        Length::Shrink
+    } else {
+        Length::Fixed(MIN_HEIGHT)
+    })
     .max_height(MIN_HEIGHT)
     .padding(space::XXL)
     .style(move |theme: &Theme| {
@@ -92,7 +109,7 @@ pub fn modal<'a, Message: Clone + 'a>(
             .padding(space::MAX)
             .style(styles::scrim),
     )
-    .on_press(on_dismiss)
+    .on_press(on_outside)
     .into()
 }
 

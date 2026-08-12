@@ -104,6 +104,7 @@ pub fn layer(app: &App) -> Element<'_, Message> {
         ]),
         Size::Confirm,
         Message::CloseDatePicker,
+        Message::Noop,
     )
 }
 

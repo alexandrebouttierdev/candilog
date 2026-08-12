@@ -28,9 +28,8 @@ fn test_statistiques_distinguent_entretiens_et_conversions() {
 
     let stats = repo.stats().unwrap();
     assert_eq!(stats.interviews, 0, "le statut final est Refus");
-    assert_eq!(stats.interviews_total, 2, "chaque entretien est compté");
     assert_eq!(
         stats.converted_candidates, 1,
-        "une candidature convertie ne doit être comptée qu'une fois"
+        "les rendez-vous et changements ultérieurs ne doivent pas la compter plusieurs fois"
     );
 }

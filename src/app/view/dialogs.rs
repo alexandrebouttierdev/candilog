@@ -1,6 +1,6 @@
 //! Dialogues métier : formulaires, confirmations et inspecteur latéral.
 
-use crate::app::state::{Dialog, ProfileCollection};
+use crate::app::state::{Dialog, ProfileCollection, ProfileSection};
 use crate::app::{App, Message};
 use crate::modules::candidatures::components::PIPELINE;
 use crate::modules::candidatures::model::TypeContrat;
@@ -10,7 +10,7 @@ use crate::ui::components::button as controls;
 use crate::ui::components::choice::Choice;
 use crate::ui::components::icon::Icon;
 use crate::ui::components::overlay::{self, Size};
-use crate::ui::components::{badge, field, layout, state, surface, typo};
+use crate::ui::components::{badge, field, layout, state, typo};
 use crate::ui::theme::metrics::space;
 use crate::ui::theme::Tone;
 use iced::widget::{column, container, row};
@@ -71,9 +71,9 @@ pub fn layer(app: &App, dialog: Dialog) -> Element<'_, Message> {
             .then_some(Message::SubmitRelance),
             Size::Form,
         ),
-        Dialog::Profil => form(
-            "Modifier le profil",
-            profile(app),
+        Dialog::Profil(section) => form(
+            profile_dialog_title(section),
+            profile(app, section),
             Some(Message::SubmitProfile),
             Size::Wide,
         ),
@@ -175,6 +175,7 @@ fn form<'a>(
         ]),
         kind,
         Message::CloseDialog,
+        Message::Noop,
     )
 }
 
@@ -271,6 +272,7 @@ fn confirm_owned<'a>(
         ]),
         Size::Form,
         Message::CloseDialog,
+        Message::Noop,
     )
 }
 
@@ -291,6 +293,7 @@ fn confirm<'a>(
         ]),
         Size::Confirm,
         Message::CloseDialog,
+        Message::Noop,
     )
 }
 
@@ -616,10 +619,31 @@ fn relance(app: &App) -> Element<'_, Message> {
     .into()
 }
 
-fn profile(app: &App) -> Element<'_, Message> {
+fn profile_dialog_title(section: ProfileSection) -> &'static str {
+    match section {
+        ProfileSection::Identite => "Modifier l'identité",
+        ProfileSection::Competences => "Modifier les compétences",
+        ProfileSection::Collection(ProfileCollection::Experience) => "Modifier les expériences",
+        ProfileSection::Collection(ProfileCollection::Formation) => "Modifier les formations",
+        ProfileSection::Collection(ProfileCollection::Langue) => "Modifier les langues",
+        ProfileSection::Collection(ProfileCollection::Projet) => "Modifier les projets",
+        ProfileSection::Collection(ProfileCollection::Certification) => {
+            "Modifier les certifications"
+        }
+    }
+}
+
+fn profile(app: &App, section: ProfileSection) -> Element<'_, Message> {
+    match section {
+        ProfileSection::Identite => profile_identity(app),
+        ProfileSection::Competences => profile_skills(app),
+        ProfileSection::Collection(collection) => profile_collection_editor(app, collection),
+    }
+}
+
+fn profile_identity(app: &App) -> Element<'_, Message> {
     let personal = &app.profile_personal_form;
     column![
-        profile_heading("Identité", None),
         field::form_row([
             field::text_field(
                 "Prénom",
@@ -648,6 +672,23 @@ fn profile(app: &App) -> Element<'_, Message> {
                 Message::ProfileHeadlineChanged,
             ),
         ]),
+        field::form_row([
+            field::text_field(
+                "LinkedIn",
+                personal.linkedin.as_deref().unwrap_or_default(),
+                Message::ProfileLinkedinChanged,
+            ),
+            field::text_field(
+                "GitHub",
+                personal.github.as_deref().unwrap_or_default(),
+                Message::ProfileGithubChanged,
+            ),
+        ]),
+        field::text_field(
+            "Site web",
+            personal.website.as_deref().unwrap_or_default(),
+            Message::ProfileWebsiteChanged,
+        ),
         field::labeled(
             "Résumé",
             field::editor(
@@ -657,8 +698,17 @@ fn profile(app: &App) -> Element<'_, Message> {
             .on_action(Message::ProfileSummaryChanged)
             .height(Length::Fixed(132.0)),
         ),
-        surface::divider(),
-        profile_heading("Compétences", None),
+        typo::meta_toned(
+            "Ces informations alimentent le générateur de CV et le score ATS.",
+            Tone::Neutral,
+        ),
+    ]
+    .spacing(space::LG)
+    .into()
+}
+
+fn profile_skills(app: &App) -> Element<'_, Message> {
+    column![
         row![
             field::input("Nouvelle compétence", &app.profile_skills_form)
                 .on_input(Message::ProfileSkillsChanged)
@@ -669,8 +719,6 @@ fn profile(app: &App) -> Element<'_, Message> {
         .spacing(space::SM)
         .align_y(Alignment::Center),
         skills_editor(app),
-        surface::divider(),
-        profile_collection_editors(app),
         typo::meta_toned(
             "Ces informations alimentent le générateur de CV et le score ATS.",
             Tone::Neutral,
@@ -706,222 +754,187 @@ fn skills_editor(app: &App) -> Element<'_, Message> {
     line.wrap().into()
 }
 
-fn profile_collection_editors(app: &App) -> Element<'_, Message> {
-    column![
-        collection_editor(
-            "Expériences",
-            ProfileCollection::Experience,
-            app.profile_draft
-                .experiences
-                .iter()
-                .enumerate()
-                .map(|(index, item)| profile_item(
-                    ProfileCollection::Experience,
+fn profile_collection_editor(app: &App, kind: ProfileCollection) -> Element<'_, Message> {
+    let items = match kind {
+        ProfileCollection::Experience => app
+            .profile_draft
+            .experiences
+            .iter()
+            .enumerate()
+            .map(|(index, item)| {
+                profile_item(
+                    kind,
                     index,
                     vec![
-                        profile_value(
-                            "Poste",
-                            &item.title,
-                            ProfileCollection::Experience,
-                            index,
-                            0
-                        ),
-                        profile_value(
-                            "Entreprise",
-                            &item.company,
-                            ProfileCollection::Experience,
-                            index,
-                            1
-                        ),
+                        profile_value("Poste", &item.title, kind, index, 0),
+                        profile_value("Entreprise", &item.company, kind, index, 1),
                         profile_value(
                             "Lieu",
                             item.location.as_deref().unwrap_or_default(),
-                            ProfileCollection::Experience,
+                            kind,
                             index,
-                            2
+                            2,
                         ),
-                        profile_value(
-                            "Début",
-                            &item.start_date,
-                            ProfileCollection::Experience,
-                            index,
-                            3
-                        ),
+                        profile_value("Début", &item.start_date, kind, index, 3),
                         profile_value(
                             "Fin (vide = en cours)",
                             item.end_date.as_deref().unwrap_or_default(),
-                            ProfileCollection::Experience,
+                            kind,
                             index,
-                            4
+                            4,
                         ),
                         profile_value(
                             "Description",
                             item.description.as_deref().unwrap_or_default(),
-                            ProfileCollection::Experience,
+                            kind,
                             index,
-                            5
+                            5,
                         ),
                     ],
-                ))
-                .collect(),
-        ),
-        collection_editor(
-            "Formations",
-            ProfileCollection::Formation,
-            app.profile_draft
-                .education
-                .iter()
-                .enumerate()
-                .map(|(index, item)| profile_item(
-                    ProfileCollection::Formation,
+                )
+            })
+            .collect(),
+        ProfileCollection::Formation => app
+            .profile_draft
+            .education
+            .iter()
+            .enumerate()
+            .map(|(index, item)| {
+                profile_item(
+                    kind,
                     index,
                     vec![
-                        profile_value(
-                            "Diplôme",
-                            &item.degree,
-                            ProfileCollection::Formation,
-                            index,
-                            0
-                        ),
-                        profile_value(
-                            "Établissement",
-                            &item.school,
-                            ProfileCollection::Formation,
-                            index,
-                            1
-                        ),
+                        profile_value("Diplôme", &item.degree, kind, index, 0),
+                        profile_value("Établissement", &item.school, kind, index, 1),
                         profile_value(
                             "Lieu",
                             item.location.as_deref().unwrap_or_default(),
-                            ProfileCollection::Formation,
+                            kind,
                             index,
-                            2
+                            2,
                         ),
                         profile_value(
                             "Début",
                             item.start_date.as_deref().unwrap_or_default(),
-                            ProfileCollection::Formation,
+                            kind,
                             index,
-                            3
+                            3,
                         ),
                         profile_value(
                             "Fin",
                             item.end_date.as_deref().unwrap_or_default(),
-                            ProfileCollection::Formation,
+                            kind,
                             index,
-                            4
+                            4,
                         ),
                         profile_value(
                             "Description",
                             item.description.as_deref().unwrap_or_default(),
-                            ProfileCollection::Formation,
+                            kind,
                             index,
-                            5
+                            5,
                         ),
                     ],
-                ))
-                .collect(),
-        ),
-        collection_editor(
-            "Langues",
-            ProfileCollection::Langue,
-            app.profile_draft
-                .languages
-                .iter()
-                .enumerate()
-                .map(|(index, item)| profile_item(
-                    ProfileCollection::Langue,
+                )
+            })
+            .collect(),
+        ProfileCollection::Langue => app
+            .profile_draft
+            .languages
+            .iter()
+            .enumerate()
+            .map(|(index, item)| {
+                profile_item(
+                    kind,
                     index,
                     vec![
-                        profile_value("Langue", &item.name, ProfileCollection::Langue, index, 0),
-                        profile_value("Niveau", &item.level, ProfileCollection::Langue, index, 1),
+                        profile_value("Langue", &item.name, kind, index, 0),
+                        profile_value("Niveau", &item.level, kind, index, 1),
                     ],
-                ))
-                .collect(),
-        ),
-        collection_editor(
-            "Projets",
-            ProfileCollection::Projet,
-            app.profile_draft
-                .projects
-                .iter()
-                .enumerate()
-                .map(|(index, item)| profile_item(
-                    ProfileCollection::Projet,
+                )
+            })
+            .collect(),
+        ProfileCollection::Projet => app
+            .profile_draft
+            .projects
+            .iter()
+            .enumerate()
+            .map(|(index, item)| {
+                profile_item(
+                    kind,
                     index,
                     vec![
-                        profile_value("Nom", &item.name, ProfileCollection::Projet, index, 0),
+                        profile_value("Nom", &item.name, kind, index, 0),
                         profile_value(
                             "Lien",
                             item.url.as_deref().unwrap_or_default(),
-                            ProfileCollection::Projet,
+                            kind,
                             index,
-                            1
+                            1,
                         ),
                         profile_value(
                             "Technologies",
                             item.technologies.as_deref().unwrap_or_default(),
-                            ProfileCollection::Projet,
+                            kind,
                             index,
-                            2
+                            2,
                         ),
                         profile_value(
                             "Description",
                             item.description.as_deref().unwrap_or_default(),
-                            ProfileCollection::Projet,
+                            kind,
                             index,
-                            3
+                            3,
                         ),
                     ],
-                ))
-                .collect(),
-        ),
-        collection_editor(
-            "Certifications",
-            ProfileCollection::Certification,
-            app.profile_draft
-                .certifications
-                .iter()
-                .enumerate()
-                .map(|(index, item)| profile_item(
-                    ProfileCollection::Certification,
+                )
+            })
+            .collect(),
+        ProfileCollection::Certification => app
+            .profile_draft
+            .certifications
+            .iter()
+            .enumerate()
+            .map(|(index, item)| {
+                profile_item(
+                    kind,
                     index,
                     vec![
-                        profile_value(
-                            "Nom",
-                            &item.name,
-                            ProfileCollection::Certification,
-                            index,
-                            0
-                        ),
+                        profile_value("Nom", &item.name, kind, index, 0),
                         profile_value(
                             "Organisme",
                             item.issuer.as_deref().unwrap_or_default(),
-                            ProfileCollection::Certification,
+                            kind,
                             index,
-                            1
+                            1,
                         ),
                         profile_value(
                             "Date",
                             item.date.as_deref().unwrap_or_default(),
-                            ProfileCollection::Certification,
+                            kind,
                             index,
-                            2
+                            2,
                         ),
                         profile_value(
                             "Lien",
                             item.url.as_deref().unwrap_or_default(),
-                            ProfileCollection::Certification,
+                            kind,
                             index,
-                            3
+                            3,
                         ),
                     ],
-                ))
-                .collect(),
-        ),
-    ]
-    .spacing(space::XL)
-    .into()
+                )
+            })
+            .collect(),
+    };
+    let title = match kind {
+        ProfileCollection::Experience => "Expériences",
+        ProfileCollection::Formation => "Formations",
+        ProfileCollection::Langue => "Langues",
+        ProfileCollection::Projet => "Projets",
+        ProfileCollection::Certification => "Certifications",
+    };
+    collection_editor(title, kind, items)
 }
 
 fn collection_editor<'a>(

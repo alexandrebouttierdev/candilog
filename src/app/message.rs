@@ -295,6 +295,8 @@ pub enum Message {
     CandidateDropped(StatutCandidature),
     /// Annule le glisser en cours (lâcher hors colonne ou hors carte).
     CandidateDragCancelled,
+    /// Ouvre depuis les statistiques la candidature à relancer et son contexte de suivi.
+    OpenCandidateFromStats(uuid::Uuid),
     /// Change la granularité du calendrier.
     CalendarViewChanged(CalendarView),
     /// Sélectionne une date dans le calendrier.
@@ -311,6 +313,12 @@ pub enum Message {
     ProfileCityChanged(String),
     /// Modifie le titre professionnel.
     ProfileHeadlineChanged(String),
+    /// Modifie le profil LinkedIn.
+    ProfileLinkedinChanged(String),
+    /// Modifie le profil GitHub.
+    ProfileGithubChanged(String),
+    /// Modifie le site personnel.
+    ProfileWebsiteChanged(String),
     /// Modifie le résumé du profil.
     ProfileSummaryChanged(iced::widget::text_editor::Action),
     /// Modifie la compétence en cours d'ajout.

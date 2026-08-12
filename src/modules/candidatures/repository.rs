@@ -35,8 +35,6 @@ pub struct CandidatureStats {
     pub interviews: u64,
     pub rejected: u64,
     pub linked_contacts: u64,
-    /// Nombre total d'entretiens enregistrés, plusieurs pouvant concerner la même candidature.
-    pub interviews_total: u64,
     /// Candidatures ayant déjà atteint l'étape entretien, même si leur statut a changé ensuite.
     pub converted_candidates: u64,
     /// Candidatures sans réponse depuis au moins sept jours.
@@ -118,7 +116,10 @@ pub trait CandidatureRepository: Send + Sync {
             match item.statut {
                 StatutCandidature::EnAttente => stats.pending += 1,
                 StatutCandidature::Relancee => stats.followed_up += 1,
-                StatutCandidature::Entretien => stats.interviews += 1,
+                StatutCandidature::Entretien => {
+                    stats.interviews += 1;
+                    stats.converted_candidates += 1;
+                }
                 StatutCandidature::Refus => stats.rejected += 1,
             }
             stats.linked_contacts += u64::from(item.contact_id.is_some());
@@ -472,9 +473,6 @@ impl CandidatureRepository for SqliteCandidatureRepository {
         for row in rows {
             activity_by_day.push(row.map_err(|e| traduire_erreur(e, "activité candidatures"))?);
         }
-        let interviews_total: u64 = conn
-            .query_row("SELECT count(*) FROM entretiens", [], |row| row.get(0))
-            .map_err(|e| traduire_erreur(e, "statistiques entretiens"))?;
         let converted_candidates: u64 = conn
             .query_row(
                 "SELECT count(*) FROM candidatures c
@@ -508,7 +506,6 @@ impl CandidatureRepository for SqliteCandidatureRepository {
             interviews,
             rejected,
             linked_contacts,
-            interviews_total,
             converted_candidates,
             to_follow_up,
             activity_by_day,

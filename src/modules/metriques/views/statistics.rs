@@ -97,8 +97,6 @@ const HAUTEUR_PANNEAUX: f32 = 300.0;
 fn candidatures_tab<'a>(app: &'a App, counts: &PipelineCounts) -> Element<'a, Message> {
     let today = chrono::Local::now().date_naive();
     let due = usize::try_from(app.data.candidature_stats.to_follow_up).unwrap_or(usize::MAX);
-    let interviews =
-        usize::try_from(app.data.candidature_stats.interviews_total).unwrap_or(usize::MAX);
     let conversions =
         usize::try_from(app.data.candidature_stats.converted_candidates).unwrap_or(usize::MAX);
     let corps = column![
@@ -111,8 +109,8 @@ fn candidatures_tab<'a>(app: &'a App, counts: &PipelineCounts) -> Element<'a, Me
             ),
             stat_card::metric_icon_tinted(
                 "Entretiens",
-                interviews.to_string(),
-                Tone::Violet,
+                conversions.to_string(),
+                Tone::Info,
                 Icon::Calendar,
             ),
             stat_card::metric_icon_tinted(
@@ -139,7 +137,7 @@ fn candidatures_tab<'a>(app: &'a App, counts: &PipelineCounts) -> Element<'a, Me
             stat_card::metric_icon_tinted(
                 "Taux de réponse",
                 format!("{} %", counts.response_rate()),
-                Tone::Violet,
+                Tone::Info,
                 Icon::Chart,
             ),
             stat_card::metric_icon_tinted(
@@ -278,23 +276,18 @@ fn funnel_panel<'a>(app: &App, counts: &PipelineCounts) -> Container<'a, Message
 fn reminders_band<'a>(app: &'a App, due: usize) -> Element<'a, Message> {
     let mut rows = column![].spacing(0);
     for candidate in app.data.follow_up_candidates.iter().take(5) {
-        rows = rows.push(list::row_static(
+        rows = rows.push(list::row_item(
             alert_icon(),
-            column![
-                typo::item(format::truncate(&candidate.poste, 30)),
-                typo::text_mono(
-                    format::compact_date(&candidate.date_envoi),
-                    11.0,
-                    font::MONO_REGULAR,
-                ),
-            ]
-            .spacing(space::XXS),
+            format::truncate(&candidate.poste, 30),
+            format::compact_date(&candidate.date_envoi),
             typo::caption(
                 candidate
                     .entreprise_nom
                     .clone()
                     .unwrap_or_else(|| "Entreprise non renseignée".to_owned()),
             ),
+            false,
+            Message::OpenCandidateFromStats(candidate.id),
         ));
     }
 

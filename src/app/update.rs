@@ -267,7 +267,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                     app.relance_form.candidature_id =
                         app.data.candidate_options.first().map(|item| item.id);
                 }
-                Dialog::Profil => {
+                Dialog::Profil(_) => {
                     app.profile_personal_form = app.data.profile.personal.clone();
                     app.profile_draft = app.data.profile.clone();
                     app.profile_summary_editor = iced::widget::text_editor::Content::with_text(
@@ -1075,6 +1075,24 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             app.dragging_candidate = None;
             app.drag_target_status = None;
         }
+        Message::OpenCandidateFromStats(id) => {
+            if let Some(candidate) = app
+                .data
+                .follow_up_candidates
+                .iter()
+                .find(|candidate| candidate.id == id)
+            {
+                app.search.clone_from(&candidate.poste);
+            }
+            // Une relance reste ouvrable même si des filtres incompatibles étaient encore
+            // actifs sur le suivi des candidatures. La recherche ciblée suffit à retrouver
+            // la candidature après le rechargement paginé.
+            app.candidate_filters = super::state::CandidateFilters::default();
+            app.route = crate::navigation::Route::Candidatures;
+            app.candidate_page = 1;
+            app.dialog = Some(Dialog::CandidatureDetail(id));
+            return recharger(app);
+        }
         Message::CalendarViewChanged(view) => app.calendar_view = view,
         Message::CalendarDateSelected(date) => {
             app.calendar_date = date;
@@ -1089,6 +1107,13 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
         Message::ProfileCityChanged(value) => app.profile_personal_form.city = optional(&value),
         Message::ProfileHeadlineChanged(value) => {
             app.profile_personal_form.headline = optional(&value)
+        }
+        Message::ProfileLinkedinChanged(value) => {
+            app.profile_personal_form.linkedin = optional(&value)
+        }
+        Message::ProfileGithubChanged(value) => app.profile_personal_form.github = optional(&value),
+        Message::ProfileWebsiteChanged(value) => {
+            app.profile_personal_form.website = optional(&value)
         }
         Message::ProfileSummaryChanged(action) => app.profile_summary_editor.perform(action),
         Message::ProfileSkillsChanged(value) => app.profile_skills_form = value,
