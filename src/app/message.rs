@@ -211,6 +211,10 @@ pub enum Message {
     CandidaturesExported(Result<std::path::PathBuf, String>),
     /// Modifie le texte de l'offre dans l'éditeur natif.
     OfferEditorAction(iced::widget::text_editor::Action),
+    /// Demande le contenu texte du presse-papiers pour l'offre ciblée.
+    PasteOfferFromClipboard,
+    /// Contenu texte lu depuis le presse-papiers.
+    OfferClipboardRead(Option<String>),
     /// Lance l'analyse de l'offre.
     AnalyzeOffer,
     /// Résultat de l'analyse d'offre.

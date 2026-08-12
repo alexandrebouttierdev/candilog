@@ -93,8 +93,62 @@ fn detected_company(offer_text: &str, companies: &[Entreprise]) -> Option<String
         .iter()
         .map(|company| company.nom.trim())
         .filter(|nom| !nom.is_empty())
-        .find(|nom| needle.contains(&nom.to_lowercase()))
-        .map(str::to_owned)
+        // Les noms courts (ex. « IT », « Dev » ou « SA ») ne doivent pas être
+        // reconnus au milieu d'un autre mot. Les noms composés et précis sont
+        // testés en premier pour éviter qu'un sous-nom masque la bonne société.
+        .filter(|nom| nom.chars().count() >= 3)
+        .filter_map(|nom| {
+            whole_phrase_position(&needle, &nom.to_lowercase()).and_then(|position| {
+                company_context_score(&needle, &nom.to_lowercase(), position)
+                    .map(|score| (score, position, nom))
+            })
+        })
+        .max_by_key(|(score, position, nom)| {
+            (*score, std::cmp::Reverse(*position), nom.chars().count())
+        })
+        .map(|(_, _, nom)| nom.to_owned())
+}
+
+fn whole_phrase_position(text: &str, phrase: &str) -> Option<usize> {
+    text.match_indices(phrase).find_map(|(start, _)| {
+        let end = start + phrase.len();
+        let before = text[..start].chars().next_back();
+        let after = text[end..].chars().next();
+        (!before.is_some_and(char::is_alphanumeric) && !after.is_some_and(char::is_alphanumeric))
+            .then_some(start)
+    })
+}
+
+/// Évite de prendre une entreprise citée comme exemple, client ou concurrent.
+/// Une détection est retenue uniquement si le nom est dans un contexte explicite
+/// (`chez`, `rejoignez`, `notre client`...) ou s'il forme un en-tête proche du début.
+fn company_context_score(text: &str, phrase: &str, position: usize) -> Option<u8> {
+    let before_start = position.saturating_sub(96);
+    let before = format!(" {}", &text[before_start..position]);
+    let line_start = text[..position].rfind('\n').map_or(0, |index| index + 1);
+    let line_end = text[position..]
+        .find('\n')
+        .map_or(text.len(), |index| position + index);
+    let line = text[line_start..line_end].trim();
+    let explicit_markers = [
+        " chez ",
+        " rejoignez ",
+        " au sein de ",
+        " notre client ",
+        " l'entreprise ",
+        " pour ",
+        " entreprise ",
+    ];
+    if explicit_markers
+        .iter()
+        .any(|marker| before.contains(marker))
+    {
+        return Some(3);
+    }
+    if position < 400 && line.to_lowercase().starts_with(phrase) && line.chars().count() <= 120 {
+        return Some(2);
+    }
+    None
 }
 
 /// Bandeau sous l'en-tête : étapes du parcours à gauche, jauge ATS à droite.
@@ -282,6 +336,13 @@ fn offer_content(app: &App) -> Element<'_, Message> {
             typo::caption("Collez le texte complet de l'annonce"),
         ),
         surface::divider(),
+        row![
+            typo::label("Texte intégral de l'offre"),
+            layout::spacer(),
+            controls::secondary("Coller depuis le presse-papiers", Some(Icon::Copy))
+                .on_press(Message::PasteOfferFromClipboard),
+        ]
+        .align_y(Alignment::Center),
         field::editor(&app.offer_editor, "Collez ici le texte complet de l'offre…")
             .on_action(Message::OfferEditorAction)
             .height(Length::Fixed(245.0)),
@@ -661,11 +722,29 @@ mod tests {
     }
 
     #[test]
-    fn la_premiere_entreprise_trouvee_est_retournee() {
+    fn l_entreprise_la_plus_tot_est_retournee() {
         let companies = vec![entreprise("Acme Corp"), entreprise("Corp Global")];
         assert_eq!(
             detected_company("Chez Corp Global comme chez Acme Corp.", &companies),
-            Some("Acme Corp".to_owned())
+            Some("Corp Global".to_owned())
+        );
+    }
+
+    #[test]
+    fn la_detection_ne_reconnait_pas_un_nom_court_dans_un_mot() {
+        let companies = vec![entreprise("Dev"), entreprise("Globex")];
+        assert_eq!(
+            detected_company("Développeur backend chez Globex.", &companies),
+            Some("Globex".to_owned())
+        );
+    }
+
+    #[test]
+    fn le_nom_compose_prime_sur_un_sous_nom() {
+        let companies = vec![entreprise("Corp"), entreprise("Corp Global")];
+        assert_eq!(
+            detected_company("Rejoignez Corp Global.", &companies),
+            Some("Corp Global".to_owned())
         );
     }
 }

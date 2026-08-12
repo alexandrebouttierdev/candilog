@@ -687,6 +687,19 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             Err(error) => app.notify_failure(error),
         },
         Message::OfferEditorAction(action) => app.offer_editor.perform(action),
+        Message::PasteOfferFromClipboard => {
+            return iced::clipboard::read().map(Message::OfferClipboardRead);
+        }
+        Message::OfferClipboardRead(value) => match value {
+            Some(value) if !value.trim().is_empty() => {
+                app.offer_editor = iced::widget::text_editor::Content::with_text(&value);
+                app.offer_analysis = None;
+                app.cv_generation = None;
+                app.notify_success("Offre collée depuis le presse-papiers.");
+            }
+            Some(_) => app.notify(NotificationKind::Warning, "Le presse-papiers est vide."),
+            None => app.notify_failure("Impossible de lire le presse-papiers."),
+        },
         Message::AnalyzeOffer => {
             let Some(backend) = app.backend.clone() else {
                 app.notify_failure("La base Candilog n'est pas disponible.");

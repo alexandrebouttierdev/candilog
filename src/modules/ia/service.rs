@@ -20,7 +20,6 @@ use std::path::Path;
 use tokio_util::sync::CancellationToken;
 
 const MAX_PDF_BYTES: usize = 10 * 1024 * 1024;
-const MAX_TEXT_CHARS: usize = 200_000;
 const MAX_EXTRACTED_CV_CHARS: usize = 1_000_000;
 
 /// Résultat complet d'une analyse de CV importé.
@@ -408,9 +407,9 @@ where
 
 fn validate_text(value: &str, label: &str) -> AppResult<()> {
     let count = value.chars().count();
-    if count == 0 || count > MAX_TEXT_CHARS {
+    if count == 0 {
         return Err(AppError::Validation(format!(
-            "{label} doit contenir entre 1 et 200 000 caractères."
+            "{label} doit contenir au moins un caractère."
         )));
     }
     Ok(())
