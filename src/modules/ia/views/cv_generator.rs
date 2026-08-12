@@ -390,6 +390,37 @@ fn analysis_panel<'a>(app: &'a App, analysis: &'a OfferAnalysis) -> Element<'a, 
     ]
     .spacing(space::LG);
 
+    match panel_footer_state(
+        app.offer_analysis.is_some(),
+        app.ai_is_running,
+        app.cv_generation.is_some(),
+    ) {
+        PanelFooterState::ProposeGeneration => {
+            content = content
+                .push(surface::divider())
+                .push(
+                    controls::primary("Améliorer le CV", Some(Icon::Sparkles))
+                        .on_press(Message::GenerateCv)
+                        .width(Length::Fill),
+                )
+                .push(
+                    container(typo::caption(
+                        "Vous pourrez accepter ou refuser chaque suggestion.",
+                    ))
+                    .width(Length::Fill)
+                    .center_x(Length::Fill),
+                );
+        }
+        PanelFooterState::Generating => {
+            content = content.push(surface::divider()).push(state::running(
+                "Génération du CV…",
+                app.ai_elapsed_seconds,
+                Message::CancelAi,
+            ));
+        }
+        PanelFooterState::None => {}
+    }
+
     if let Some(generation) = &app.cv_generation {
         content = content
             .push(surface::divider())
