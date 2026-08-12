@@ -167,6 +167,23 @@ impl AppState {
         Ok(settings)
     }
 
+    /// Version asynchrone du chargement des paramètres avec coffre système.
+    pub async fn secure_settings_async(
+        &self,
+    ) -> AppResult<crate::modules::settings::model::AppSettings> {
+        let mut settings = self.settings.get()?;
+        if let Some(legacy_key) = settings.llm.api_key.take() {
+            self.secrets
+                .store_api_key_async(Some(legacy_key.clone()))
+                .await?;
+            self.settings.persist(&settings)?;
+            settings.llm.api_key = Some(legacy_key);
+        } else {
+            settings.llm.api_key = self.secrets.load_api_key_async().await?;
+        }
+        Ok(settings)
+    }
+
     /// Valide puis sauvegarde les préférences (base locale) sans jamais persister la clé IA en
     /// clair : elle est déplacée vers le coffre natif du système.
     ///
@@ -183,12 +200,14 @@ impl AppState {
             .filter(|key| !key.trim().is_empty());
         let effective_key = match submitted_key {
             Some(key) => Some(key),
-            None => self.secrets.load_api_key()?,
+            None => self.secrets.load_api_key_async().await?,
         };
         settings.llm.api_key = effective_key.clone();
         SettingsService::<SqliteSettingsRepository>::validate(&settings)?;
         crate::shared::llm::validate_llm_endpoint(&settings.llm).await?;
-        self.secrets.store_api_key(effective_key.as_deref())?;
+        self.secrets
+            .store_api_key_async(effective_key.clone())
+            .await?;
         settings.llm.api_key = None;
         let mut saved = self.settings.persist(&settings)?;
         saved.llm.api_key = None;

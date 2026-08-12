@@ -52,4 +52,24 @@ impl SecretStore {
             },
         }
     }
+
+    /// Variante sûre pour les appels depuis une tâche Tokio.
+    pub async fn load_api_key_async(&self) -> AppResult<Option<String>> {
+        let store = self.clone();
+        tokio::task::spawn_blocking(move || store.load_api_key())
+            .await
+            .map_err(|error| {
+                AppError::Provider(format!("Lecture du coffre interrompue : {error}"))
+            })?
+    }
+
+    /// Variante sûre pour les appels depuis une tâche Tokio.
+    pub async fn store_api_key_async(&self, secret: Option<String>) -> AppResult<()> {
+        let store = self.clone();
+        tokio::task::spawn_blocking(move || store.store_api_key(secret.as_deref()))
+            .await
+            .map_err(|error| {
+                AppError::Provider(format!("Écriture du coffre interrompue : {error}"))
+            })?
+    }
 }

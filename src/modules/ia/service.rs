@@ -317,7 +317,7 @@ async fn configured_settings(
     crate::shared::state::AppSettings,
     Option<crate::shared::llm::EndpointPin>,
 )> {
-    let settings = state.secure_settings()?;
+    let settings = state.secure_settings_async().await?;
     if !settings.llm.est_configure() {
         return Err(AppError::Validation(
             "IA non configurée : ouvrez les Paramètres pour choisir un fournisseur et un modèle."
