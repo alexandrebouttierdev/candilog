@@ -67,8 +67,14 @@ async fn reproduire_ameliorer_le_cv() {
     println!("  expériences = {}", generation.cv.experiences.len());
     println!("  compétences = {}", generation.cv.skills.len());
     println!("  score ATS = {}", generation.analysis.score);
-    println!("  recommandations = {}", generation.analysis.recommandations.len());
+    println!(
+        "  recommandations = {}",
+        generation.analysis.recommandations.len()
+    );
     for (index, rec) in generation.analysis.recommandations.iter().enumerate() {
-        println!("  rec[{index}] section={} impact={}", rec.section, rec.impact);
+        println!(
+            "  rec[{index}] section={} impact={}",
+            rec.section, rec.impact
+        );
     }
 }
