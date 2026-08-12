@@ -10,7 +10,7 @@ mod commandes;
 mod coquille;
 mod export;
 pub mod message;
-mod profile_edit;
+pub(crate) mod profile_edit;
 mod snapshot;
 pub mod state;
 mod update;

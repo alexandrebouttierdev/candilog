@@ -31,6 +31,12 @@ pub fn layer(app: &App, dialog: Dialog) -> Element<'_, Message> {
     if let Dialog::CandidatureDetail(id) = dialog {
         return super::inspector_layer(app, id);
     }
+    if dialog == Dialog::ProfileImport {
+        return overlay::wide_drawer(
+            crate::modules::profil::views::import_review_drawer(app),
+            Message::Noop,
+        );
+    }
 
     match dialog {
         Dialog::Entreprise => form(
@@ -83,6 +89,7 @@ pub fn layer(app: &App, dialog: Dialog) -> Element<'_, Message> {
             Some(Message::SubmitProfile),
             Size::Wide,
         ),
+        Dialog::ProfileImport => unreachable!("traité comme un drawer avant le match"),
         Dialog::DeleteCandidature(id) => confirm_owned(
             app,
             "Supprimer cette candidature",

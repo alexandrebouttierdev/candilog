@@ -118,8 +118,24 @@ pub fn drawer<'a, Message: Clone + 'a>(
     content: impl Into<Element<'a, Message>>,
     on_dismiss: Message,
 ) -> Element<'a, Message> {
+    drawer_with_width(content, size::DRAWER, on_dismiss)
+}
+
+/// Grand drawer de travail, utilisé quand le contenu demande comparaison et validation.
+pub fn wide_drawer<'a, Message: Clone + 'a>(
+    content: impl Into<Element<'a, Message>>,
+    on_dismiss: Message,
+) -> Element<'a, Message> {
+    drawer_with_width(content, size::DIALOG_WIDE, on_dismiss)
+}
+
+fn drawer_with_width<'a, Message: Clone + 'a>(
+    content: impl Into<Element<'a, Message>>,
+    width: f32,
+    on_dismiss: Message,
+) -> Element<'a, Message> {
     let panel = container(content.into())
-        .width(size::DRAWER)
+        .width(width)
         .height(Length::Fill)
         .style(|theme: &Theme| {
             let palette = tokens(theme);
@@ -267,5 +283,10 @@ mod tests {
     #[test]
     fn une_confirmation_reste_etroite() {
         assert!(Size::Confirm.width() <= size::DIALOG_CONFIRM);
+    }
+
+    #[test]
+    fn le_grand_drawer_s_instancie_pour_un_espace_de_validation() {
+        let _: iced::Element<'_, ()> = super::wide_drawer(iced::widget::text("Validation"), ());
     }
 }

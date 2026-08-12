@@ -40,6 +40,8 @@ pub enum Dialog {
     Relance,
     /// Édition d'une seule section du profil.
     Profil(ProfileSection),
+    /// Validation des informations extraites d'un CV.
+    ProfileImport,
     /// Confirmation de suppression d'une candidature.
     DeleteCandidature(uuid::Uuid),
     /// Confirmation de suppression d'une entreprise.
@@ -517,6 +519,8 @@ pub struct App {
     pub profile_import_path: Option<std::path::PathBuf>,
     /// Profil extrait en attente de validation explicite.
     pub extracted_profile: Option<crate::shared::profile::Profile>,
+    /// Entrées extraites explicitement refusées par l'utilisateur.
+    pub profile_import_excluded: std::collections::HashSet<String>,
     /// Candidature sélectionnée dans la liste ou le pipeline.
     pub selected_candidate: Option<uuid::Uuid>,
     /// Entreprise sélectionnée dans le répertoire.
@@ -682,6 +686,7 @@ impl App {
             profile_skills_form: String::new(),
             profile_import_path: None,
             extracted_profile: None,
+            profile_import_excluded: std::collections::HashSet::new(),
             selected_candidate: None,
             selected_company: None,
             selected_contact: None,
@@ -757,6 +762,7 @@ impl App {
                 "profil-experiences" => Some(Dialog::Profil(ProfileSection::Collection(
                     ProfileCollection::Experience,
                 ))),
+                "profil-import" => Some(Dialog::ProfileImport),
                 _ => None,
             };
         }
@@ -794,6 +800,11 @@ impl App {
                     .as_deref()
                     .unwrap_or_default(),
             );
+        }
+        if std::env::var_os("CANDILOG_CAPTURE_PROFILE_IMPORT").is_some() {
+            self.extracted_profile = Some(profile_import_capture_fixture());
+            self.profile_import_path = Some(std::path::PathBuf::from("CV_Alexandre_Bouttier.pdf"));
+            self.dialog = Some(Dialog::ProfileImport);
         }
         if std::env::var("CANDILOG_CAPTURE_DATE_PICKER").as_deref() == Ok("candidature") {
             let today = chrono::Local::now().date_naive();
@@ -1093,6 +1104,57 @@ impl App {
             .iter()
             .filter(|item| item.date_entretien.as_str() >= today)
             .count()
+    }
+}
+
+#[cfg(feature = "capture")]
+fn profile_import_capture_fixture() -> crate::shared::profile::Profile {
+    use crate::shared::profile::{Education, Experience, Language, PersonalInfo, Skill};
+
+    crate::shared::profile::Profile {
+        personal: PersonalInfo {
+            first_name: "Alexandre".into(),
+            last_name: "Bouttier".into(),
+            email: "alexandre@example.fr".into(),
+            phone: Some("06 12 34 56 78".into()),
+            city: Some("Rennes".into()),
+            headline: Some("Administrateur systèmes et réseaux".into()),
+            summary: Some("Technicien passionné par l'administration Linux, la virtualisation et la sécurisation des infrastructures.".into()),
+            linkedin: Some("linkedin.com/in/alexandrebouttier".into()),
+            github: Some("github.com/alexandrebouttierdev".into()),
+            website: Some("alexandrebouttier.fr".into()),
+        },
+        experiences: vec![
+            Experience {
+                title: "Technicien systèmes et réseaux".into(),
+                company: "Entreprise Démo".into(),
+                start_date: "2025-01".into(),
+                current: true,
+                ..Experience::default()
+            },
+            Experience {
+                title: "Support informatique".into(),
+                company: "Atelier numérique".into(),
+                start_date: "2024-03".into(),
+                ..Experience::default()
+            },
+        ],
+        skills: vec![
+            Skill { name: "Linux".into() },
+            Skill { name: "Docker".into() },
+            Skill { name: "Réseaux TCP/IP".into() },
+            Skill { name: "Active Directory".into() },
+        ],
+        education: vec![Education {
+            degree: "Titre professionnel TSSR".into(),
+            school: "Centre de formation".into(),
+            ..Education::default()
+        }],
+        languages: vec![
+            Language { name: "Français".into(), level: "Natif".into() },
+            Language { name: "Anglais".into(), level: "B2".into() },
+        ],
+        ..crate::shared::profile::Profile::default()
     }
 }
 

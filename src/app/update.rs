@@ -5,7 +5,8 @@ use super::commandes::{ecrire, finish_submit, notifier_le_bureau, recharger};
 use super::export::export_candidatures;
 use super::message::{LetterStreamEvent, UpdateDownloadEvent};
 use super::profile_edit::{
-    add_profile_item, apply_recommendation, remove_profile_item, update_profile_item,
+    add_profile_item, all_import_item_keys, apply_recommendation, filter_imported_profile,
+    merge_imported_profile, remove_profile_item, update_profile_item,
 };
 use super::state::{
     CandidatureForm, ContactForm, DatePickerState, DatePickerTarget, Dialog, EntrepriseForm,
@@ -334,6 +335,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                     );
                     app.profile_skills_form.clear();
                 }
+                Dialog::ProfileImport => {}
                 Dialog::DeleteCandidature(_)
                 | Dialog::DeleteEntreprise(_)
                 | Dialog::DeleteContact(_)
@@ -908,10 +910,23 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
         }
         Message::SettingsModelChanged(value) => app.settings_form.draft.llm.model = value,
         Message::RefreshLlmModels => {
-            let config = app.settings_form.draft.llm.clone();
+            let Some(backend) = app.backend.clone() else {
+                app.notify_failure("La base Candilog n'est pas disponible.");
+                return Task::none();
+            };
+            let draft = app.settings_form.draft.llm.clone();
             app.provider_health = crate::ui::components::runtime_status::Health::Checking;
             return Task::perform(
                 async move {
+                    let mut config = draft;
+                    if config.api_key.is_none() {
+                        config.api_key = backend
+                            .secure_settings_async()
+                            .await
+                            .map_err(|error| error.to_string())?
+                            .llm
+                            .api_key;
+                    }
                     let pin = crate::shared::llm::validate_llm_endpoint(&config)
                         .await
                         .map_err(|error| error.to_string())?;
@@ -1534,7 +1549,16 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 Message::ProfilePdfSelected,
             );
         }
-        Message::ProfilePdfSelected(path) => app.profile_import_path = path,
+        Message::ProfilePdfSelected(path) => {
+            if path.is_some() {
+                app.extracted_profile = None;
+                app.profile_import_excluded.clear();
+                if app.dialog == Some(Dialog::ProfileImport) {
+                    app.dialog = None;
+                }
+            }
+            app.profile_import_path = path;
+        }
         Message::ExtractProfile => {
             let (Some(backend), Some(path)) =
                 (app.backend.clone(), app.profile_import_path.clone())
@@ -1561,6 +1585,8 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             match result {
                 Ok(profile) => {
                     app.extracted_profile = Some(profile);
+                    app.profile_import_excluded.clear();
+                    app.dialog = Some(Dialog::ProfileImport);
                     app.notify_success(format!(
                         "Profil extrait en {} s. Vérifiez-le avant validation.",
                         app.ai_elapsed_seconds
@@ -1568,6 +1594,18 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 }
                 Err(error) => app.notify_failure(error),
             }
+        }
+        Message::ToggleProfileImportItem(key) => {
+            if !app.profile_import_excluded.remove(&key) {
+                app.profile_import_excluded.insert(key);
+            }
+        }
+        Message::AcceptAllProfileImportItems => app.profile_import_excluded.clear(),
+        Message::RejectAllProfileImportItems => {
+            app.profile_import_excluded = app
+                .extracted_profile
+                .as_ref()
+                .map_or_else(std::collections::HashSet::new, all_import_item_keys);
         }
         Message::ApplyExtractedProfile => {
             let Some(profile) = app.extracted_profile.clone() else {
@@ -1577,18 +1615,22 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 );
                 return Task::none();
             };
+            let filtered = filter_imported_profile(&profile, &app.profile_import_excluded);
+            let merged = merge_imported_profile(&app.data.profile, &filtered);
             let result = app.backend.as_ref().map_or_else(
                 || Err("La base Candilog n'est pas disponible.".into()),
                 |backend| {
                     backend
                         .profil
-                        .update(&profile)
+                        .update(&merged)
                         .map_err(|error| error.to_string())
                 },
             );
             match result {
                 Ok(_) => {
                     app.extracted_profile = None;
+                    app.profile_import_excluded.clear();
+                    app.dialog = None;
                     app.notify_success("Profil importé après validation.");
                     return recharger(app);
                 }
@@ -1637,10 +1679,18 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             );
         }
         Message::ProbeProviderHealth => {
-            let config = app.data.settings.llm.clone();
+            let Some(backend) = app.backend.clone() else {
+                app.provider_health = crate::ui::components::runtime_status::Health::Error;
+                return Task::none();
+            };
             app.provider_health = crate::ui::components::runtime_status::Health::Checking;
             return Task::perform(
                 async move {
+                    let settings = backend
+                        .secure_settings_async()
+                        .await
+                        .map_err(|error| error.to_string())?;
+                    let config = settings.llm;
                     let pin = crate::shared::llm::validate_llm_endpoint(&config)
                         .await
                         .map_err(|error| error.to_string())?;

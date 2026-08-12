@@ -389,6 +389,12 @@ pub enum Message {
     ExtractProfile,
     /// Résultat de l'extraction de profil.
     ProfileExtracted(Result<crate::shared::profile::Profile, String>, u64),
+    /// Accepte ou refuse une entrée extraite avant son ajout au profil.
+    ToggleProfileImportItem(String),
+    /// Sélectionne toutes les propositions d'import du profil.
+    AcceptAllProfileImportItems,
+    /// Refuse toutes les propositions d'import du profil.
+    RejectAllProfileImportItems,
     /// Persiste le profil extrait après validation explicite.
     ApplyExtractedProfile,
     /// Analyse le compte rendu d'un entretien.
