@@ -18,13 +18,12 @@ cargo deny check          # licences et avis RustSec (voir deny.toml)
 
 ## Dépendances d'exécution
 
-Candilog utilise le renderer logiciel `tiny-skia` d'Iced. Ce choix garde le rendu déterministe,
-retire la chaîne `iced_glyphon -> lru 0.12.5` concernée par deux avis RustSec et évite d'imposer
-Vulkan/Metal/DirectX pour cette interface 2D.
+Candilog utilise le renderer graphique par défaut d'Iced. Sous Linux, il sélectionne le backend
+compatible avec la session Wayland ou X11 et le pilote graphique disponibles.
 
 | Plateforme | Requis |
 |---|---|
-| Linux | `libxkbcommon`, `libwayland-client` (session Wayland) ou `libX11`, et `libdbus-1` |
+| Linux | `libxkbcommon`, `libwayland-client` (session Wayland) ou `libX11`, `libdbus-1` et un pilote Vulkan fonctionnel |
 | Windows | Bibliothèques système standard |
 | macOS | Bibliothèques système standard |
 
