@@ -45,7 +45,9 @@ pub fn empty<'a, Message: 'a>(title: &'a str, hint: &'a str) -> Element<'a, Mess
         column![
             icon::icon(Icon::Inbox, 48.0, Ink::Muted),
             typo::body(title).size(crate::ui::theme::typography::ITEM),
-            typo::caption(hint),
+            typo::caption(hint)
+                .width(Length::Fill)
+                .align_x(iced::alignment::Horizontal::Center),
         ]
         .spacing(space::MD)
         .align_x(Alignment::Center)

@@ -18,6 +18,20 @@ fn main() -> iced::Result {
         Size::new(1440.0, 900.0)
     };
 
+    let mut window = window::Settings {
+        size: window_size,
+        min_size: Some(Size::new(800.0, 600.0)),
+        // Icône de fenêtre embarquée pour X11/Windows et les sélecteurs qui la lisent.
+        icon: candilog::core::logging::icone_application(),
+        ..window::Settings::default()
+    };
+    #[cfg(target_os = "linux")]
+    {
+        // Sous Wayland, le shell retrouve l'icône via l'identifiant du fichier
+        // `candilog.desktop` plutôt que via l'icône attachée à la fenêtre.
+        window.platform_specific.application_id = "candilog".to_owned();
+    }
+
     iced::application("Candilog", app::update, app::view)
         .font(include_bytes!("../assets/fonts/Geist[wght].ttf").as_slice())
         .font(include_bytes!("../assets/fonts/GeistMono[wght].ttf").as_slice())
@@ -25,13 +39,6 @@ fn main() -> iced::Result {
         .antialiasing(true)
         .theme(app::theme)
         .subscription(app::subscription)
-        .window(window::Settings {
-            size: window_size,
-            min_size: Some(Size::new(800.0, 600.0)),
-            // Sans icône, la fenêtre n'en a aucune dans la barre des tâches et le sélecteur
-            // de fenêtres, alors que le jeu d'icônes de l'application existe au dépôt.
-            icon: candilog::core::logging::icone_application(),
-            ..window::Settings::default()
-        })
+        .window(window)
         .run_with(App::new)
 }

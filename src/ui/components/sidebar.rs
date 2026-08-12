@@ -333,7 +333,7 @@ mod tests {
     }
 
     #[test]
-    fn le_rail_affiche_six_espaces_dont_un_actif() {
+    fn le_rail_affiche_tous_les_espaces_dont_un_actif() {
         let entries = rail_entries(Route::CvGenerator);
         assert_eq!(entries.len(), Section::ALL.len());
         assert_eq!(entries.iter().filter(|(_, active)| *active).count(), 1);

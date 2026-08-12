@@ -97,7 +97,10 @@ const HAUTEUR_PANNEAUX: f32 = 300.0;
 fn candidatures_tab<'a>(app: &'a App, counts: &PipelineCounts) -> Element<'a, Message> {
     let today = chrono::Local::now().date_naive();
     let due = usize::try_from(app.data.candidature_stats.to_follow_up).unwrap_or(usize::MAX);
-    let interviews = effective_interviews(app, counts);
+    let interviews =
+        usize::try_from(app.data.candidature_stats.interviews_total).unwrap_or(usize::MAX);
+    let conversions =
+        usize::try_from(app.data.candidature_stats.converted_candidates).unwrap_or(usize::MAX);
     let corps = column![
         row![
             stat_card::metric_icon_tinted(
@@ -109,13 +112,13 @@ fn candidatures_tab<'a>(app: &'a App, counts: &PipelineCounts) -> Element<'a, Me
             stat_card::metric_icon_tinted(
                 "Entretiens",
                 interviews.to_string(),
-                Tone::Success,
+                Tone::Violet,
                 Icon::Calendar,
             ),
             stat_card::metric_icon_tinted(
-                "Taux d'entretien",
-                format!("{} %", interview_rate(counts.total, interviews)),
-                Tone::Success,
+                "Taux de conversion",
+                format!("{} %", interview_rate(counts.total, conversions)),
+                Tone::Violet,
                 Icon::Chart,
             ),
             stat_card::metric_icon_tinted(
@@ -136,7 +139,7 @@ fn candidatures_tab<'a>(app: &'a App, counts: &PipelineCounts) -> Element<'a, Me
             stat_card::metric_icon_tinted(
                 "Taux de réponse",
                 format!("{} %", counts.response_rate()),
-                Tone::Success,
+                Tone::Violet,
                 Icon::Chart,
             ),
             stat_card::metric_icon_tinted(
@@ -208,7 +211,7 @@ fn activity_panel<'a>(app: &'a App, today: NaiveDate) -> Container<'a, Message> 
     .height(Length::Fill)
 }
 
-/// Panneau donut + entonnoir : le taux d'entretien au centre, la répartition
+/// Panneau donut + entonnoir : le taux de conversion au centre, la répartition
 /// par statut en barres.
 fn funnel_panel<'a>(app: &App, counts: &PipelineCounts) -> Container<'a, Message> {
     let body: Element<'a, Message> = if counts.total == 0 {
@@ -217,9 +220,10 @@ fn funnel_panel<'a>(app: &App, counts: &PipelineCounts) -> Container<'a, Message
             "L'entonnoir apparaîtra dès la première candidature enregistrée.",
         )
     } else {
-        let interviews = effective_interviews(app, counts);
-        let rate = interview_rate(counts.total, interviews);
-        let ratio = interviews as f32 / counts.total as f32;
+        let conversions =
+            usize::try_from(app.data.candidature_stats.converted_candidates).unwrap_or(usize::MAX);
+        let rate = interview_rate(counts.total, conversions);
+        let ratio = conversions.min(counts.total) as f32 / counts.total as f32;
         let mut bars = column![].spacing(space::LG);
         for status in PIPELINE {
             let value = match status {
@@ -241,7 +245,7 @@ fn funnel_panel<'a>(app: &App, counts: &PipelineCounts) -> Container<'a, Message
         }
         row![
             Stack::with_children(vec![
-                container(donut::donut(ratio, 112.0, Tone::Success)).into(),
+                container(donut::donut(ratio, 112.0, Tone::Violet)).into(),
                 container(donut::center(format!("{rate} %")))
                     .width(112.0)
                     .height(112.0)
@@ -647,14 +651,6 @@ fn interview_rate(total: usize, interviews: usize) -> u8 {
         return 0;
     }
     ((interviews.min(total) as f64 / total as f64) * 100.0).round() as u8
-}
-
-/// Une candidature est comptée comme entretien dès qu'elle porte ce statut ou qu'un entretien
-/// lui est réellement rattaché. Les anciennes données n'avaient pas toujours synchronisé les deux.
-fn effective_interviews(app: &App, counts: &PipelineCounts) -> usize {
-    counts
-        .interviews
-        .max(usize::try_from(app.data.candidature_stats.interview_candidates).unwrap_or(usize::MAX))
 }
 
 /// Candidatures envoyées au cours des 30 derniers jours.

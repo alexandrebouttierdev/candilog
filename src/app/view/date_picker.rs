@@ -6,8 +6,10 @@ use crate::ui::components::icon::Icon;
 use crate::ui::components::overlay::{self, Size};
 use crate::ui::components::{layout, typo};
 use crate::ui::theme::metrics::space;
+use crate::ui::theme::styles;
 use chrono::{Datelike, NaiveDate};
-use iced::widget::{column, container, row, Space};
+use iced::alignment::Horizontal;
+use iced::widget::{button, column, container, row, Space};
 use iced::{Alignment, Element, Length};
 
 pub fn layer(app: &App) -> Element<'_, Message> {
@@ -48,11 +50,11 @@ pub fn layer(app: &App) -> Element<'_, Message> {
             }
             let day = slot - offset + 1;
             let date = NaiveDate::from_ymd_opt(picker.year, picker.month, day).unwrap_or(first);
-            line = line.push(
-                controls::segment(day.to_string(), date == chrono::Local::now().date_naive())
-                    .width(38.0)
-                    .on_press(Message::DatePickerSelected(date)),
-            );
+            line = line.push(day_cell(
+                day,
+                date == chrono::Local::now().date_naive(),
+                date,
+            ));
         }
         calendar = calendar.push(line);
     }
@@ -106,9 +108,35 @@ pub fn layer(app: &App) -> Element<'_, Message> {
 }
 
 fn day_label<'a>(label: &'a str) -> Element<'a, Message> {
-    container(typo::caption(label))
-        .width(38.0)
-        .height(24.0)
-        .center_x(Length::Fill)
-        .into()
+    container(
+        typo::caption(label)
+            .width(Length::Fill)
+            .align_x(Horizontal::Center),
+    )
+    .width(38.0)
+    .height(24.0)
+    .center_x(38.0)
+    .center_y(24.0)
+    .into()
+}
+
+/// Cellule à dimensions fixes : le chiffre et l'en-tête partagent la même colonne.
+fn day_cell(day: u32, active: bool, date: NaiveDate) -> Element<'static, Message> {
+    button(
+        container(typo::body(day.to_string()))
+            .width(Length::Fill)
+            .height(34.0)
+            .center_x(Length::Fill)
+            .center_y(34.0),
+    )
+    .width(38.0)
+    .height(34.0)
+    .padding(0)
+    .style(if active {
+        styles::selected_inverse
+    } else {
+        styles::ghost
+    })
+    .on_press(Message::DatePickerSelected(date))
+    .into()
 }

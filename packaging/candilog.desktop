@@ -9,3 +9,4 @@ Terminal=false
 Categories=Office;ProjectManagement;
 Keywords=candidature;emploi;CV;entretien;recrutement;
 StartupWMClass=candilog
+StartupNotify=true

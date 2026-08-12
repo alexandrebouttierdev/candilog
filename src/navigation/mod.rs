@@ -15,7 +15,9 @@ pub enum Section {
     Documents,
     /// Statistiques métier.
     Analyse,
-    /// Profil et préférences locales.
+    /// Profil professionnel.
+    Profil,
+    /// Préférences locales et maintenance.
     Reglages,
 }
 
@@ -29,6 +31,7 @@ impl Section {
             Self::Relations => Some("Relations"),
             Self::Documents => Some("Documents"),
             Self::Analyse => Some("Analyses"),
+            Self::Profil => Some("Profil"),
             Self::Reglages => Some("Réglages"),
         }
     }
@@ -42,6 +45,7 @@ impl Section {
             Self::Relations => Icon::Network,
             Self::Documents => Icon::Document,
             Self::Analyse => Icon::Chart,
+            Self::Profil => Icon::Profile,
             Self::Reglages => Icon::Settings,
         }
     }
@@ -55,7 +59,8 @@ impl Section {
             Self::Relations => Route::Entreprises,
             Self::Documents => Route::Cv,
             Self::Analyse => Route::Statistiques,
-            Self::Reglages => Route::Profil,
+            Self::Profil => Route::Profil,
+            Self::Reglages => Route::Parametres,
         }
     }
 
@@ -68,6 +73,7 @@ impl Section {
             Self::Relations => "Relations",
             Self::Documents => "Documents",
             Self::Analyse => "Analyses",
+            Self::Profil => "Profil",
             Self::Reglages => "Réglages",
         }
     }
@@ -81,17 +87,19 @@ impl Section {
             Self::Relations => "Entreprises et réseau",
             Self::Documents => "CV et lettres de motivation",
             Self::Analyse => "Statistiques",
-            Self::Reglages => "Profil et intelligence artificielle",
+            Self::Profil => "Profil professionnel",
+            Self::Reglages => "Intelligence artificielle et maintenance",
         }
     }
 
     /// Sections dans l'ordre de la barre latérale.
-    pub const ALL: [Self; 6] = [
+    pub const ALL: [Self; 7] = [
         Self::Dashboard,
         Self::Suivi,
         Self::Relations,
         Self::Documents,
         Self::Analyse,
+        Self::Profil,
         Self::Reglages,
     ];
 }
@@ -188,11 +196,10 @@ impl Route {
                 Section::Documents
             }
             Self::Statistiques => Section::Analyse,
-            Self::Profil
-            | Self::Parametres
-            | Self::Sauvegardes
-            | Self::MisesAJour
-            | Self::APropos => Section::Reglages,
+            Self::Profil => Section::Profil,
+            Self::Parametres | Self::Sauvegardes | Self::MisesAJour | Self::APropos => {
+                Section::Reglages
+            }
         }
     }
 

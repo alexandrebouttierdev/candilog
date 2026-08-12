@@ -295,6 +295,25 @@ fn confirm<'a>(
 }
 
 fn entreprise(app: &App) -> Element<'_, Message> {
+    let mut company_types = vec![
+        "PME".to_owned(),
+        "GROUPE".to_owned(),
+        "ESN".to_owned(),
+        "STARTUP".to_owned(),
+        "TPE".to_owned(),
+        "ETI".to_owned(),
+        "ASSOCIATION".to_owned(),
+        "PUBLIC".to_owned(),
+        "CABINET".to_owned(),
+        "AUTRE".to_owned(),
+    ];
+    if !app.entreprise_form.type_.trim().is_empty()
+        && !company_types.contains(&app.entreprise_form.type_)
+    {
+        company_types.insert(0, app.entreprise_form.type_.clone());
+    }
+    let selected_type =
+        (!app.entreprise_form.type_.trim().is_empty()).then(|| app.entreprise_form.type_.clone());
     column![
         field::text_field(
             "Nom *",
@@ -307,10 +326,10 @@ fn entreprise(app: &App) -> Element<'_, Message> {
                 &app.entreprise_form.secteur,
                 Message::EntrepriseSecteurChanged,
             ),
-            field::text_field(
+            field::labeled(
                 "Type",
-                &app.entreprise_form.type_,
-                Message::EntrepriseTypeChanged,
+                field::select(company_types, selected_type, Message::EntrepriseTypeChanged,)
+                    .width(iced::Length::Fill),
             ),
         ]),
         field::form_row([

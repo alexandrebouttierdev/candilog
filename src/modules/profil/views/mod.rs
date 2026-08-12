@@ -9,18 +9,16 @@ use crate::shared::profile::{PersonalInfo, Profile};
 use crate::ui::components::button as controls;
 use crate::ui::components::header;
 use crate::ui::components::icon::{self, Icon, Ink};
-use crate::ui::components::{avatar, badge, inspector, layout, list, state, surface, typo};
+use crate::ui::components::{badge, inspector, layout, list, state, surface, typo};
 use crate::ui::format;
 use crate::ui::theme::metrics::{radius, size, space, stroke};
 use crate::ui::theme::styles;
 use crate::ui::theme::tokens::{alpha, tokens};
 use crate::ui::theme::typography as font;
 use crate::ui::theme::Tone;
-use iced::widget::{column, container, progress_bar, row, text, Space};
+use iced::widget::{column, container, progress_bar, row, text};
 use iced::{Alignment, Background, Border, Element, Length, Theme};
 
-/// Largeur maximale de la carte d'identité (`max-w-[980px]`).
-const IDENTITY_MAX_WIDTH: f32 = 980.0;
 /// Largeur de la colonne de complétion, à droite de la carte d'identité
 /// (`w-36`).
 const COMPLETION_WIDTH: f32 = 144.0;
@@ -66,20 +64,14 @@ pub fn view(app: &App) -> Element<'_, Message> {
                 .into(),
         ),
         layout::workspace(surface::scroll(
-            column![
-                container(identity_card(app))
-                    .max_width(IDENTITY_MAX_WIDTH)
-                    .center_x(Length::Fill),
-                sections_grid(app),
-            ]
-            .spacing(space::LG)
-            .width(Length::Fill),
+            column![identity_card(app), sections_grid(app),]
+                .spacing(space::LG)
+                .width(Length::Fill),
         )),
     )
 }
 
-/// Carte d'identité : avatar, nom, accroche, jetons de contact et barre de
-/// complétion.
+/// Carte d'identité : nom, accroche, contacts et complétion, sans emplacement photo.
 fn identity_card(app: &App) -> Element<'_, Message> {
     let profile = &app.data.profile;
     let personal = &profile.personal;
@@ -90,7 +82,6 @@ fn identity_card(app: &App) -> Element<'_, Message> {
 
     container(
         row![
-            avatar::avatar(avatar::initials_of(&name), 76.0, Tone::Accent),
             column![
                 typo::title(if name.is_empty() {
                     "Profil à compléter".to_owned()
@@ -179,20 +170,22 @@ fn completion_panel<'a, Message: 'a>(score: u8) -> Element<'a, Message> {
 /// parcours au centre, éléments complémentaires ensuite.
 fn sections_grid(app: &App) -> Element<'_, Message> {
     column![
+        identity_section(app),
         row![
-            container(identity_section(app)).width(Length::FillPortion(3)),
-            container(skills_section(app)).width(Length::FillPortion(2)),
-        ]
-        .spacing(space::LG),
-        row![
-            container(experiences_section(app)).width(Length::FillPortion(1)),
-            container(formations_section(app)).width(Length::FillPortion(1)),
-        ]
-        .spacing(space::LG),
-        row![
-            container(languages_section(app)).width(Length::FillPortion(1)),
-            container(projects_section(app)).width(Length::FillPortion(1)),
-            container(certifications_section(app)).width(Length::FillPortion(1)),
+            column![
+                experiences_section(app),
+                skills_section(app),
+                languages_section(app),
+            ]
+            .spacing(space::LG)
+            .width(Length::FillPortion(1)),
+            column![
+                formations_section(app),
+                projects_section(app),
+                certifications_section(app),
+            ]
+            .spacing(space::LG)
+            .width(Length::FillPortion(1)),
         ]
         .spacing(space::LG),
         import_section(app),
@@ -316,27 +309,42 @@ fn identity_section(app: &App) -> Element<'_, Message> {
         "Identité",
         Some(count),
         true,
-        column![
-            Space::with_height(space::MD),
-            inspector::group(
-                "Coordonnées",
-                [
-                    inspector::property("E-mail", format::or_dash(Some(&personal.email))),
-                    inspector::property("Téléphone", format::or_dash(personal.phone.as_deref())),
-                    inspector::property("Ville", format::or_dash(personal.city.as_deref())),
-                ],
-            ),
-            inspector::group(
-                "Présence en ligne",
-                [
-                    inspector::property("LinkedIn", format::or_dash(personal.linkedin.as_deref())),
-                    inspector::property("GitHub", format::or_dash(personal.github.as_deref())),
-                    inspector::property("Site web", format::or_dash(personal.website.as_deref())),
-                ],
-            ),
-            inspector::note("Résumé", personal.summary.clone()),
-        ]
-        .spacing(space::XXL)
+        container(
+            row![
+                container(inspector::group(
+                    "Coordonnées",
+                    [
+                        inspector::property("E-mail", format::or_dash(Some(&personal.email))),
+                        inspector::property(
+                            "Téléphone",
+                            format::or_dash(personal.phone.as_deref()),
+                        ),
+                        inspector::property("Ville", format::or_dash(personal.city.as_deref())),
+                    ],
+                ))
+                .width(Length::FillPortion(1)),
+                container(inspector::group(
+                    "Présence en ligne",
+                    [
+                        inspector::property(
+                            "LinkedIn",
+                            format::or_dash(personal.linkedin.as_deref()),
+                        ),
+                        inspector::property("GitHub", format::or_dash(personal.github.as_deref())),
+                        inspector::property(
+                            "Site web",
+                            format::or_dash(personal.website.as_deref()),
+                        ),
+                    ],
+                ))
+                .width(Length::FillPortion(1)),
+                container(inspector::note("Résumé", personal.summary.clone()))
+                    .width(Length::FillPortion(1)),
+            ]
+            .spacing(space::XXL)
+            .align_y(Alignment::Start),
+        )
+        .padding([space::MD, 0.0])
         .into(),
     )
 }

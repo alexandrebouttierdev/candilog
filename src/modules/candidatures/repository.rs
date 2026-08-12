@@ -8,6 +8,7 @@ use crate::shared::sqlite::{
     connexion, enum_depuis_texte, maintenant_iso, texte_depuis_enum, traduire_contrainte,
     traduire_erreur, uuid_colonne, uuid_colonne_opt,
 };
+use rusqlite::OptionalExtension;
 use uuid::Uuid;
 
 /// Critères appliqués par SQLite avant pagination.
@@ -34,8 +35,10 @@ pub struct CandidatureStats {
     pub interviews: u64,
     pub rejected: u64,
     pub linked_contacts: u64,
-    /// Candidatures ayant au moins un entretien enregistré, quel que soit leur statut actuel.
-    pub interview_candidates: u64,
+    /// Nombre total d'entretiens enregistrés, plusieurs pouvant concerner la même candidature.
+    pub interviews_total: u64,
+    /// Candidatures ayant déjà atteint l'étape entretien, même si leur statut a changé ensuite.
+    pub converted_candidates: u64,
     /// Candidatures sans réponse depuis au moins sept jours.
     pub to_follow_up: u64,
     /// Comptes journaliers des 56 derniers jours, au format ISO.
@@ -194,12 +197,38 @@ fn ligne_vers_candidature(row: &rusqlite::Row) -> AppResult<Candidature> {
     })
 }
 
+/// Ajoute une étape à l'historique sans dépendre du statut final de la candidature.
+fn enregistrer_statut(
+    conn: &rusqlite::Connection,
+    candidature_id: Uuid,
+    statut: &str,
+    changed_at: &str,
+) -> AppResult<()> {
+    conn.execute(
+        "INSERT INTO statut_history (id, candidature_id, statut, changed_at)
+         VALUES (?1, ?2, ?3, ?4)",
+        rusqlite::params![
+            Uuid::new_v4().to_string(),
+            candidature_id.to_string(),
+            statut,
+            changed_at,
+        ],
+    )
+    .map(|_| ())
+    .map_err(|e| traduire_erreur(e, "historique du statut"))
+}
+
 impl CandidatureRepository for SqliteCandidatureRepository {
     fn create(&self, input: &NouvelleCandidature) -> AppResult<Candidature> {
-        let conn = connexion(&self.pool)?;
+        let mut conn = connexion(&self.pool)?;
         let id = Uuid::new_v4();
         let maintenant = maintenant_iso();
-        conn.execute(
+        let statut = texte_depuis_enum(&input.statut)?;
+        let transaction = conn
+            .transaction()
+            .map_err(|e| traduire_erreur(e, "création de la candidature"))?;
+        transaction
+            .execute(
             "INSERT INTO candidatures (id, entreprise_id, contact_id, poste, type_contrat, statut,
                 date_envoi, lien_offre, notes, created_at, updated_at)
              VALUES (?1, ?2, NULL, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?9)",
@@ -208,20 +237,24 @@ impl CandidatureRepository for SqliteCandidatureRepository {
                 input.entreprise_id.to_string(),
                 input.poste,
                 texte_depuis_enum(&input.type_contrat)?,
-                texte_depuis_enum(&input.statut)?,
+                statut,
                 input.date_envoi,
                 input.lien_offre,
                 input.notes,
                 maintenant
             ],
-        )
-        .map_err(|e| {
+            )
+            .map_err(|e| {
             traduire_contrainte(
                 e,
                 "L'entreprise liée à cette candidature est introuvable",
                 "candidature",
             )
-        })?;
+            })?;
+        enregistrer_statut(&transaction, id, &statut, &maintenant)?;
+        transaction
+            .commit()
+            .map_err(|e| traduire_erreur(e, "création de la candidature"))?;
         conn.query_row(
             &format!("SELECT {COLONNES} {DEPUIS} WHERE c.id = ?1"),
             [id.to_string()],
@@ -393,6 +426,7 @@ impl CandidatureRepository for SqliteCandidatureRepository {
             texte_depuis_enum(&StatutCandidature::Refus)?,
         ];
         let pending_status = statuses[0].clone();
+        let interview_status = statuses[2].clone();
         let (total, pending, followed_up, interviews, rejected, linked_contacts): (
             u64,
             u64,
@@ -438,13 +472,24 @@ impl CandidatureRepository for SqliteCandidatureRepository {
         for row in rows {
             activity_by_day.push(row.map_err(|e| traduire_erreur(e, "activité candidatures"))?);
         }
-        let interview_candidates: u64 = conn
+        let interviews_total: u64 = conn
+            .query_row("SELECT count(*) FROM entretiens", [], |row| row.get(0))
+            .map_err(|e| traduire_erreur(e, "statistiques entretiens"))?;
+        let converted_candidates: u64 = conn
             .query_row(
-                "SELECT count(DISTINCT candidature_id) FROM entretiens",
-                [],
+                "SELECT count(*) FROM candidatures c
+                 WHERE c.statut = ?1
+                    OR EXISTS (
+                        SELECT 1 FROM statut_history h
+                        WHERE h.candidature_id = c.id AND h.statut = ?1
+                    )
+                    OR EXISTS (
+                        SELECT 1 FROM entretiens e WHERE e.candidature_id = c.id
+                    )",
+                [interview_status],
                 |row| row.get(0),
             )
-            .map_err(|e| traduire_erreur(e, "statistiques entretiens"))?;
+            .map_err(|e| traduire_erreur(e, "conversions en entretien"))?;
         let follow_up_before = (chrono::Local::now().date_naive() - chrono::Duration::days(7))
             .format("%Y-%m-%d")
             .to_string();
@@ -463,7 +508,8 @@ impl CandidatureRepository for SqliteCandidatureRepository {
             interviews,
             rejected,
             linked_contacts,
-            interview_candidates,
+            interviews_total,
+            converted_candidates,
             to_follow_up,
             activity_by_day,
         })
@@ -493,8 +539,24 @@ impl CandidatureRepository for SqliteCandidatureRepository {
     }
 
     fn update(&self, id: Uuid, input: &NouvelleCandidature) -> AppResult<Candidature> {
-        let conn = connexion(&self.pool)?;
-        let modifiees = conn
+        let mut conn = connexion(&self.pool)?;
+        let ancien_statut: Option<String> = conn
+            .query_row(
+                "SELECT statut FROM candidatures WHERE id = ?1",
+                [id.to_string()],
+                |row| row.get(0),
+            )
+            .optional()
+            .map_err(|e| traduire_erreur(e, "candidature"))?;
+        let Some(ancien_statut) = ancien_statut else {
+            return Err(AppError::NotFound(format!("candidature {id}")));
+        };
+        let nouveau_statut = texte_depuis_enum(&input.statut)?;
+        let maintenant = maintenant_iso();
+        let transaction = conn
+            .transaction()
+            .map_err(|e| traduire_erreur(e, "modification de la candidature"))?;
+        let modifiees = transaction
             .execute(
                 "UPDATE candidatures SET entreprise_id = ?2, poste = ?3, type_contrat = ?4, statut = ?5,
                     date_envoi = ?6, lien_offre = ?7, notes = ?8, updated_at = ?9
@@ -504,11 +566,11 @@ impl CandidatureRepository for SqliteCandidatureRepository {
                     input.entreprise_id.to_string(),
                     input.poste,
                     texte_depuis_enum(&input.type_contrat)?,
-                    texte_depuis_enum(&input.statut)?,
+                    nouveau_statut,
                     input.date_envoi,
                     input.lien_offre,
                     input.notes,
-                    maintenant_iso()
+                    maintenant
                 ],
             )
             .map_err(|e| {
@@ -521,6 +583,12 @@ impl CandidatureRepository for SqliteCandidatureRepository {
         if modifiees == 0 {
             return Err(AppError::NotFound(format!("candidature {id}")));
         }
+        if ancien_statut != nouveau_statut {
+            enregistrer_statut(&transaction, id, &nouveau_statut, &maintenant)?;
+        }
+        transaction
+            .commit()
+            .map_err(|e| traduire_erreur(e, "modification de la candidature"))?;
         conn.query_row(
             &format!("SELECT {COLONNES} {DEPUIS} WHERE c.id = ?1"),
             [id.to_string()],
@@ -530,20 +598,38 @@ impl CandidatureRepository for SqliteCandidatureRepository {
     }
 
     fn update_statut(&self, id: Uuid, statut: StatutCandidature) -> AppResult<Candidature> {
-        let conn = connexion(&self.pool)?;
-        let modifiees = conn
+        let mut conn = connexion(&self.pool)?;
+        let ancien_statut: Option<String> = conn
+            .query_row(
+                "SELECT statut FROM candidatures WHERE id = ?1",
+                [id.to_string()],
+                |row| row.get(0),
+            )
+            .optional()
+            .map_err(|e| traduire_erreur(e, "candidature"))?;
+        let Some(ancien_statut) = ancien_statut else {
+            return Err(AppError::NotFound(format!("candidature {id}")));
+        };
+        let nouveau_statut = texte_depuis_enum(&statut)?;
+        let maintenant = maintenant_iso();
+        let transaction = conn
+            .transaction()
+            .map_err(|e| traduire_erreur(e, "changement du statut"))?;
+        let modifiees = transaction
             .execute(
                 "UPDATE candidatures SET statut = ?2, updated_at = ?3 WHERE id = ?1",
-                rusqlite::params![
-                    id.to_string(),
-                    texte_depuis_enum(&statut)?,
-                    maintenant_iso()
-                ],
+                rusqlite::params![id.to_string(), nouveau_statut, maintenant],
             )
             .map_err(|e| traduire_erreur(e, "candidature invalide"))?;
         if modifiees == 0 {
             return Err(AppError::NotFound(format!("candidature {id}")));
         }
+        if ancien_statut != nouveau_statut {
+            enregistrer_statut(&transaction, id, &nouveau_statut, &maintenant)?;
+        }
+        transaction
+            .commit()
+            .map_err(|e| traduire_erreur(e, "changement du statut"))?;
         conn.query_row(
             &format!("SELECT {COLONNES} {DEPUIS} WHERE c.id = ?1"),
             [id.to_string()],
