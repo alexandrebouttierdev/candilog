@@ -345,7 +345,10 @@ fn offer_content(app: &App) -> Element<'_, Message> {
         .align_y(Alignment::Center),
         field::editor(&app.offer_editor, "Collez ici le texte complet de l'offre…")
             .on_action(Message::OfferEditorAction)
-            .height(Length::Fixed(245.0)),
+            // Zone volontairement haute : une offre longue reste lisible sans
+            // donner l'impression d'être tronquée. L'éditeur conserve son
+            // défilement interne au-delà de cette hauteur.
+            .height(Length::Fixed(480.0)),
         footer,
     ]
     .spacing(space::LG)
