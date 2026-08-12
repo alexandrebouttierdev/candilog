@@ -79,6 +79,15 @@ pub enum Message {
     CompanyPageNext,
     ContactPagePrev,
     ContactPageNext,
+    CompanyOptionSearchChanged(String),
+    CandidateOptionSearchChanged(String),
+    ContactOptionSearchChanged(String),
+    CompanyOptionPagePrev,
+    CompanyOptionPageNext,
+    CandidateOptionPagePrev,
+    CandidateOptionPageNext,
+    ContactOptionPagePrev,
+    ContactOptionPageNext,
     /// Bascule le rendu candidatures.
     CandidateViewChanged(CandidateView),
     /// Affiche le mois précédent du calendrier.

@@ -7,7 +7,7 @@ use super::*;
 /// Entreprises, Réseau, pourtant parfaitement lisibles en base — en squelette de chargement
 /// permanent, avec pour seule indication un toast en bas à droite.
 ///
-/// `reload()` chargeait les onze jeux dans une closure unique où chaque appel propageait par
+/// `reload()` chargeait tous les jeux dans une closure unique où chaque appel propageait par
 /// `?` : le moindre échec abandonnait les dix autres et laissait `initialized` à faux, ce qui
 /// fige la totalité de l'interface. L'écran Paramètres étant lui aussi un squelette,
 /// l'utilisateur n'avait plus aucun moyen de restaurer un backup — et un redémarrage n'y

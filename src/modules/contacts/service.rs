@@ -26,6 +26,11 @@ impl<R: ContactRepository> ContactService<R> {
         self.repo.list()
     }
 
+    /// Récupère un contact par identifiant.
+    pub fn obtenir(&self, id: uuid::Uuid) -> AppResult<Contact> {
+        self.repo.get(id)
+    }
+
     /// Charge une page filtrée sans matérialiser tout le réseau.
     pub fn lister_page(&self, page: u64, page_size: u64, search: &str) -> AppResult<Page<Contact>> {
         self.repo.list_page(page, page_size, search)

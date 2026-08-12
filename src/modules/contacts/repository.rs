@@ -15,6 +15,13 @@ pub trait ContactRepository: Send + Sync {
     /// # Errors
     /// Retourne `AppError::Database` si la requête échoue.
     fn list(&self) -> AppResult<Vec<Contact>>;
+    /// Récupère un contact par identifiant.
+    fn get(&self, id: uuid::Uuid) -> AppResult<Contact> {
+        self.list()?
+            .into_iter()
+            .find(|item| item.id == id)
+            .ok_or_else(|| AppError::NotFound(format!("contact {id}")))
+    }
     /// Liste une page de contacts et applique la recherche dans SQLite.
     fn list_page(&self, page: u64, page_size: u64, search: &str) -> AppResult<Page<Contact>> {
         let needle = search.trim().to_lowercase();
@@ -118,6 +125,19 @@ impl ContactRepository for SqliteContactRepository {
             contacts.push(ligne.map_err(|e| traduire_erreur(e, "contacts"))?);
         }
         Ok(contacts)
+    }
+
+    fn get(&self, id: uuid::Uuid) -> AppResult<Contact> {
+        let conn = connexion(&self.pool)?;
+        conn.query_row(
+            &format!("SELECT {COLONNES} FROM contacts WHERE id = ?1"),
+            [id.to_string()],
+            ligne_vers_contact,
+        )
+        .map_err(|error| match error {
+            rusqlite::Error::QueryReturnedNoRows => AppError::NotFound(format!("contact {id}")),
+            other => traduire_erreur(other, "contact"),
+        })
     }
 
     fn list_page(&self, page: u64, page_size: u64, search: &str) -> AppResult<Page<Contact>> {

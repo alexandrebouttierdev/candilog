@@ -26,6 +26,7 @@ fn compter(conn: &rusqlite::Connection, table: &str) -> i64 {
 mod test_connexion_du_pool_active_les_cles_etrangeres;
 mod test_migration_005_conserve_les_valeurs_d_enum_heritees;
 mod test_migration_005_preserve_les_donnees_metier_liees;
+mod test_migration_006_indexe_les_dates;
 mod test_migration_metier_cree_toutes_les_tables;
 mod test_migrations_base_heritee_ne_rejoue_pas_les_versions_deja_appliquees;
 mod test_migrations_base_heritee_version_zero_purge_et_supprime_les_tables_retirees;

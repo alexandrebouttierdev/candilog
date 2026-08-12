@@ -39,6 +39,11 @@ impl<R: CandidatureRepository> CandidatureService<R> {
         self.repo.list()
     }
 
+    /// Récupère une candidature par identifiant.
+    pub fn obtenir(&self, id: Uuid) -> AppResult<Candidature> {
+        self.repo.get(id)
+    }
+
     /// Charge une page filtrée sans matérialiser tout le pipeline.
     pub fn lister_page(
         &self,

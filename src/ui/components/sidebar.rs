@@ -1,6 +1,6 @@
 //! Rail de navigation desktop et onglets contextuels des espaces de travail.
 //!
-//! Le rail ne liste volontairement pas les douze routes : il expose six espaces
+//! Le rail ne liste volontairement pas toutes les routes : il expose sept espaces
 //! stables, à la manière d'un logiciel de création. Les routes d'un espace
 //! restent toutes accessibles dans la bande d'onglets placée au-dessus de la vue.
 

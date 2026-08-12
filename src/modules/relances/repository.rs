@@ -14,6 +14,14 @@ pub trait RelanceRepository: Send + Sync {
     /// # Errors
     /// Retourne `AppError::Database` si la requête échoue.
     fn list(&self) -> AppResult<Vec<Relance>>;
+    /// Liste uniquement les relances comprises dans une fenêtre ISO inclusive.
+    fn list_between(&self, from: &str, to: &str) -> AppResult<Vec<Relance>> {
+        Ok(self
+            .list()?
+            .into_iter()
+            .filter(|item| item.date_relance.as_str() >= from && item.date_relance.as_str() <= to)
+            .collect())
+    }
     /// Crée une relance.
     ///
     /// # Errors
@@ -77,6 +85,24 @@ impl RelanceRepository for SqliteRelanceRepository {
             relances.push(ligne.map_err(|e| traduire_erreur(e, "relances"))?);
         }
         Ok(relances)
+    }
+
+    fn list_between(&self, from: &str, to: &str) -> AppResult<Vec<Relance>> {
+        let conn = connexion(&self.pool)?;
+        let mut statement = conn
+            .prepare(&format!(
+                "SELECT {COLONNES} FROM relances
+                 WHERE date_relance >= ?1 AND date_relance <= ?2 ORDER BY date_relance ASC"
+            ))
+            .map_err(|error| traduire_erreur(error, "relances"))?;
+        let rows = statement
+            .query_map([from, to], ligne_vers_relance)
+            .map_err(|error| traduire_erreur(error, "relances"))?;
+        let mut items = Vec::new();
+        for row in rows {
+            items.push(row.map_err(|error| traduire_erreur(error, "relances"))?);
+        }
+        Ok(items)
     }
 
     fn create(&self, input: &NouvelleRelance) -> AppResult<Relance> {

@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [dev, master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  quality:
+    name: Qualité Linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.91.0
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Dépendances système
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends pkg-config libssl-dev libxkbcommon-dev libwayland-dev libx11-dev libdbus-1-dev
+      - name: Format
+        run: cargo fmt --all -- --check
+      - name: Vérification
+        run: cargo check --locked --all-targets --all-features
+      - name: Clippy
+        run: cargo clippy --locked --all-targets --all-features -- -D warnings
+      - name: Tests
+        run: cargo test --locked --all-targets --all-features
+      - name: Doc-tests
+        run: cargo test --locked --doc --all-features
+      - name: Release
+        run: cargo build --locked --release --all-features
+      - name: Audit
+        uses: rustsec/audit-check@v2
+      - name: Licences, sources et avis autorisés
+        uses: EmbarkStudios/cargo-deny-action@v2
+
+  macos-build:
+    name: Build macOS
+    runs-on: macos-latest
+    needs: quality
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.91.0
+      - name: Build release
+        run: cargo build --locked --release --all-features
+
+  windows-build:
+    name: Build Windows
+    runs-on: windows-latest
+    needs: quality
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.91.0
+      - name: Build release
+        run: cargo build --locked --release --all-features

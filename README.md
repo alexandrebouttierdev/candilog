@@ -18,21 +18,15 @@ cargo deny check          # licences et avis RustSec (voir deny.toml)
 
 ## Dépendances d'exécution
 
-`ldd` ne les montre pas : `winit` et `wgpu` les chargent à la demande via `libloading`, ce qui
-les rend invisibles aux outils d'inspection habituels. En leur absence, l'échec survient à
-l'initialisation de la fenêtre.
+Candilog utilise le renderer logiciel `tiny-skia` d'Iced. Ce choix garde le rendu déterministe,
+retire la chaîne `iced_glyphon -> lru 0.12.5` concernée par deux avis RustSec et évite d'imposer
+Vulkan/Metal/DirectX pour cette interface 2D.
 
 | Plateforme | Requis |
 |---|---|
-| Linux | `libxkbcommon`, `libwayland-client` (session Wayland) ou `libX11` (session X11), `libdbus-1`, et un pilote graphique **Vulkan** (`mesa-vulkan-drivers`, `vulkan-loader`) |
-| Windows | Pilote graphique à jour (DirectX 12 ou Vulkan) |
-| macOS | Aucune : Metal est fourni par le système |
-
-Sans pilote Vulkan utilisable, forcer un autre backend `wgpu` :
-
-```bash
-WGPU_BACKEND=gl cargo run     # repli OpenGL
-```
+| Linux | `libxkbcommon`, `libwayland-client` (session Wayland) ou `libX11`, et `libdbus-1` |
+| Windows | Bibliothèques système standard |
+| macOS | Bibliothèques système standard |
 
 Les paquets `.deb` et `.rpm` déclarent ces dépendances automatiquement.
 

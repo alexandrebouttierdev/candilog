@@ -66,6 +66,16 @@ impl<R: EntretienRepository> EntretienService<R> {
         self.repo.update(id, input)
     }
 
+    /// Enregistre l'entretien et le statut associé dans une transaction unique.
+    pub fn enregistrer_avec_statut(
+        &self,
+        id: Option<uuid::Uuid>,
+        input: &NouvelEntretien,
+    ) -> AppResult<Entretien> {
+        Self::valider(input)?;
+        self.repo.save_and_mark_candidate(id, input)
+    }
+
     /// Supprime un entretien.
     ///
     /// # Errors

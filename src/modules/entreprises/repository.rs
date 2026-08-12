@@ -15,6 +15,13 @@ pub trait EntrepriseRepository: Send + Sync {
     /// # Errors
     /// Retourne `AppError::Database` si la requête échoue.
     fn list(&self) -> AppResult<Vec<Entreprise>>;
+    /// Récupère une entreprise par identifiant.
+    fn get(&self, id: uuid::Uuid) -> AppResult<Entreprise> {
+        self.list()?
+            .into_iter()
+            .find(|item| item.id == id)
+            .ok_or_else(|| AppError::NotFound(format!("entreprise {id}")))
+    }
     /// Liste une page d'entreprises et applique la recherche dans SQLite.
     fn list_page(&self, page: u64, page_size: u64, search: &str) -> AppResult<Page<Entreprise>> {
         let needle = search.trim().to_lowercase();
@@ -113,6 +120,19 @@ impl EntrepriseRepository for SqliteEntrepriseRepository {
             entreprises.push(ligne.map_err(|e| traduire_erreur(e, "entreprises"))?);
         }
         Ok(entreprises)
+    }
+
+    fn get(&self, id: uuid::Uuid) -> AppResult<Entreprise> {
+        let conn = connexion(&self.pool)?;
+        conn.query_row(
+            &format!("SELECT {COLONNES} FROM entreprises WHERE id = ?1"),
+            [id.to_string()],
+            ligne_vers_entreprise,
+        )
+        .map_err(|error| match error {
+            rusqlite::Error::QueryReturnedNoRows => AppError::NotFound(format!("entreprise {id}")),
+            other => traduire_erreur(other, "entreprise"),
+        })
     }
 
     fn list_page(&self, page: u64, page_size: u64, search: &str) -> AppResult<Page<Entreprise>> {

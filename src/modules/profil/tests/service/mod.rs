@@ -23,4 +23,5 @@ fn service() -> ProfilService<StubRepo> {
 
 mod test_update_email_invalide_retourne_erreur;
 mod test_update_experience_sans_titre_retourne_erreur;
+mod test_update_formation_vide_retourne_erreur;
 mod test_update_profil_valide_persiste;

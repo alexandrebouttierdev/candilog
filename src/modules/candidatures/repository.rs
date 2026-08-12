@@ -55,6 +55,13 @@ pub trait CandidatureRepository: Send + Sync {
     /// # Errors
     /// Retourne `AppError::Database` si la requête échoue.
     fn list(&self) -> AppResult<Vec<Candidature>>;
+    /// Récupère une candidature par identifiant.
+    fn get(&self, id: Uuid) -> AppResult<Candidature> {
+        self.list()?
+            .into_iter()
+            .find(|item| item.id == id)
+            .ok_or_else(|| AppError::NotFound(format!("candidature {id}")))
+    }
     /// Liste une page après recherche, filtrage et tri dans SQLite.
     fn list_page(
         &self,
@@ -282,6 +289,19 @@ impl CandidatureRepository for SqliteCandidatureRepository {
             candidatures.push(ligne_vers_candidature(row)?);
         }
         Ok(candidatures)
+    }
+
+    fn get(&self, id: Uuid) -> AppResult<Candidature> {
+        let conn = connexion(&self.pool)?;
+        conn.query_row(
+            &format!("SELECT {COLONNES} {DEPUIS} WHERE c.id = ?1"),
+            [id.to_string()],
+            |row| Ok(ligne_vers_candidature(row)),
+        )
+        .map_err(|error| match error {
+            rusqlite::Error::QueryReturnedNoRows => AppError::NotFound(format!("candidature {id}")),
+            other => traduire_erreur(other, "candidature"),
+        })?
     }
 
     fn list_page(

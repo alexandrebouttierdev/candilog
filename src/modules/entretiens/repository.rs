@@ -39,6 +39,14 @@ pub trait EntretienRepository: Send + Sync {
     /// `AppError::NotFound` si l'identifiant est inconnu ; `AppError::Validation` si la
     /// candidature ou le contact lié est introuvable.
     fn update(&self, id: Uuid, input: &NouvelEntretien) -> AppResult<Entretien>;
+    /// Crée ou modifie un entretien et marque sa candidature en entretien atomiquement.
+    fn save_and_mark_candidate(
+        &self,
+        id: Option<Uuid>,
+        input: &NouvelEntretien,
+    ) -> AppResult<Entretien> {
+        id.map_or_else(|| self.create(input), |id| self.update(id, input))
+    }
     /// Supprime un entretien par identifiant.
     ///
     /// # Errors
@@ -209,6 +217,89 @@ impl EntretienRepository for SqliteEntretienRepository {
             |row| Ok(ligne_vers_entretien(row)),
         )
         .map_err(|e| traduire_erreur(e, "entretien"))?
+    }
+
+    fn save_and_mark_candidate(
+        &self,
+        id: Option<Uuid>,
+        input: &NouvelEntretien,
+    ) -> AppResult<Entretien> {
+        let mut conn = connexion(&self.pool)?;
+        let entretien_id = id.unwrap_or_else(Uuid::new_v4);
+        let maintenant = maintenant_iso();
+        let transaction = conn.transaction()?;
+        let type_entretien = texte_depuis_enum(&input.type_entretien)?;
+        let affected =
+            if id.is_some() {
+                transaction.execute(
+                "UPDATE entretiens SET candidature_id = ?2, contact_id = ?3, date_entretien = ?4,
+                    type = ?5, lieu = ?6, notes = ?7, compte_rendu = ?8, updated_at = ?9
+                 WHERE id = ?1",
+                rusqlite::params![
+                    entretien_id.to_string(), input.candidature_id.to_string(),
+                    input.contact_id.map(|value| value.to_string()), input.date_entretien,
+                    type_entretien, input.lieu, input.notes, input.compte_rendu, maintenant,
+                ],
+            )?
+            } else {
+                transaction.execute(
+                    "INSERT INTO entretiens (id, candidature_id, contact_id, date_entretien, type,
+                    lieu, notes, compte_rendu, created_at, updated_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?9)",
+                    rusqlite::params![
+                        entretien_id.to_string(),
+                        input.candidature_id.to_string(),
+                        input.contact_id.map(|value| value.to_string()),
+                        input.date_entretien,
+                        type_entretien,
+                        input.lieu,
+                        input.notes,
+                        input.compte_rendu,
+                        maintenant,
+                    ],
+                )?
+            };
+        if affected == 0 {
+            return Err(AppError::NotFound(format!("entretien {entretien_id}")));
+        }
+
+        let interview_status = crate::shared::sqlite::texte_depuis_enum(
+            &crate::modules::candidatures::model::StatutCandidature::Entretien,
+        )?;
+        let previous_status: String = transaction
+            .query_row(
+                "SELECT statut FROM candidatures WHERE id = ?1",
+                [input.candidature_id.to_string()],
+                |row| row.get(0),
+            )
+            .map_err(|error| match error {
+                rusqlite::Error::QueryReturnedNoRows => AppError::Validation(
+                    "La candidature liée à cet entretien est introuvable".into(),
+                ),
+                other => traduire_erreur(other, "candidature"),
+            })?;
+        transaction.execute(
+            "UPDATE candidatures SET statut = ?2, updated_at = ?3 WHERE id = ?1",
+            rusqlite::params![
+                input.candidature_id.to_string(),
+                interview_status,
+                maintenant
+            ],
+        )?;
+        if previous_status != interview_status {
+            transaction.execute(
+                "INSERT INTO statut_history (id, candidature_id, statut, changed_at)
+                 VALUES (?1, ?2, ?3, ?4)",
+                rusqlite::params![
+                    Uuid::new_v4().to_string(),
+                    input.candidature_id.to_string(),
+                    interview_status,
+                    maintenant,
+                ],
+            )?;
+        }
+        transaction.commit()?;
+        self.get(entretien_id)
     }
 
     fn delete(&self, id: Uuid) -> AppResult<()> {

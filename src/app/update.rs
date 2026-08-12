@@ -4,12 +4,15 @@ use super::capture::save_review_screenshot;
 use super::commandes::{ecrire, finish_submit, notifier_le_bureau, recharger};
 use super::export::export_candidatures;
 use super::message::{LetterStreamEvent, UpdateDownloadEvent};
+use super::profile_edit::{
+    add_profile_item, apply_recommendation, remove_profile_item, update_profile_item,
+};
 use super::state::{
     CandidatureForm, ContactForm, DatePickerState, DatePickerTarget, Dialog, EntrepriseForm,
-    EntretienForm, NotificationKind, ProfileCollection, RelanceForm,
+    EntretienForm, NotificationKind, RelanceForm,
 };
 use super::{App, Message};
-use crate::modules::candidatures::model::{NouvelleCandidature, StatutCandidature};
+use crate::modules::candidatures::model::NouvelleCandidature;
 use crate::modules::contacts::model::NouveauContact;
 use crate::modules::entreprises::model::NouvelleEntreprise;
 use crate::modules::entretiens::model::NouvelEntretien;
@@ -26,6 +29,9 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
     match message {
         Message::Noop => {}
         Message::WriteFinished(result, succes) => {
+            if result.is_ok() && app.dialog == Some(Dialog::ImportBackup) {
+                app.pending_backup_import = None;
+            }
             finish_submit(app, result, succes);
             return recharger(app);
         }
@@ -120,6 +126,54 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 .contact_page
                 .saturating_add(1)
                 .min(app.contact_total_pages());
+            return recharger(app);
+        }
+        Message::CompanyOptionSearchChanged(value) => {
+            app.company_option_search = value;
+            app.company_option_page = 1;
+            return recharger(app);
+        }
+        Message::CandidateOptionSearchChanged(value) => {
+            app.candidate_option_search = value;
+            app.candidate_option_page = 1;
+            return recharger(app);
+        }
+        Message::ContactOptionSearchChanged(value) => {
+            app.contact_option_search = value;
+            app.contact_option_page = 1;
+            return recharger(app);
+        }
+        Message::CompanyOptionPagePrev => {
+            app.company_option_page = app.company_option_page.saturating_sub(1).max(1);
+            return recharger(app);
+        }
+        Message::CompanyOptionPageNext => {
+            app.company_option_page = app
+                .company_option_page
+                .saturating_add(1)
+                .min(app.data.company_options_total_pages.max(1));
+            return recharger(app);
+        }
+        Message::CandidateOptionPagePrev => {
+            app.candidate_option_page = app.candidate_option_page.saturating_sub(1).max(1);
+            return recharger(app);
+        }
+        Message::CandidateOptionPageNext => {
+            app.candidate_option_page = app
+                .candidate_option_page
+                .saturating_add(1)
+                .min(app.data.candidate_options_total_pages.max(1));
+            return recharger(app);
+        }
+        Message::ContactOptionPagePrev => {
+            app.contact_option_page = app.contact_option_page.saturating_sub(1).max(1);
+            return recharger(app);
+        }
+        Message::ContactOptionPageNext => {
+            app.contact_option_page = app
+                .contact_option_page
+                .saturating_add(1)
+                .min(app.data.contact_options_total_pages.max(1));
             return recharger(app);
         }
         Message::CandidateViewChanged(mode) => app.candidate_view = mode,
@@ -249,24 +303,18 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
         Message::OpenDialog(dialog) => {
             app.dialog = Some(dialog);
             app.editing_id = None;
+            app.company_option_search.clear();
+            app.candidate_option_search.clear();
+            app.contact_option_search.clear();
+            app.company_option_page = 1;
+            app.candidate_option_page = 1;
+            app.contact_option_page = 1;
             match dialog {
                 Dialog::Entreprise => app.entreprise_form = EntrepriseForm::default(),
                 Dialog::Contact => app.contact_form = ContactForm::default(),
-                Dialog::Candidature => {
-                    app.candidature_form = CandidatureForm::default();
-                    app.candidature_form.entreprise_id =
-                        app.data.company_options.first().map(|item| item.id);
-                }
-                Dialog::Entretien => {
-                    app.entretien_form = EntretienForm::default();
-                    app.entretien_form.candidature_id =
-                        app.data.candidate_options.first().map(|item| item.id);
-                }
-                Dialog::Relance => {
-                    app.relance_form = RelanceForm::default();
-                    app.relance_form.candidature_id =
-                        app.data.candidate_options.first().map(|item| item.id);
-                }
+                Dialog::Candidature => app.candidature_form = CandidatureForm::default(),
+                Dialog::Entretien => app.entretien_form = EntretienForm::default(),
+                Dialog::Relance => app.relance_form = RelanceForm::default(),
                 Dialog::Profil(_) => {
                     app.profile_personal_form = app.data.profile.personal.clone();
                     app.profile_draft = app.data.profile.clone();
@@ -291,8 +339,17 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 | Dialog::ResetAiCache
                 | Dialog::CandidatureDetail(_) => {}
             }
+            if matches!(
+                dialog,
+                Dialog::Contact | Dialog::Candidature | Dialog::Entretien | Dialog::Relance
+            ) {
+                return recharger(app);
+            }
         }
         Message::CloseDialog => {
+            if app.write_in_progress {
+                return Task::none();
+            }
             app.dialog = None;
             app.editing_id = None;
             // `selected_contact` n'est plus effacé ici : `CloseDialog` sert les six modales,
@@ -301,6 +358,9 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
         }
         Message::CloseContactCard => app.selected_contact = None,
         Message::DismissTopLayer => {
+            if app.write_in_progress {
+                return Task::none();
+            }
             // Échap ferme ce qui est ouvert, et rien d'autre. Intercepté globalement et sans
             // condition, il désélectionnait le contact affiché dans l'inspecteur du Réseau —
             // et lui seul, ni la candidature, ni l'entreprise, ni le CV sélectionnés — alors
@@ -483,16 +543,9 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             };
             let edition = app.editing_id;
             return ecrire(app, "Entretien enregistré.", move |backend| {
-                edition
-                    .map_or_else(
-                        || backend.entretiens.creer(&input),
-                        |id| backend.entretiens.modifier(id, &input),
-                    )
-                    .and_then(|_| {
-                        backend
-                            .candidatures
-                            .changer_statut(candidature_id, StatutCandidature::Entretien)
-                    })
+                backend
+                    .entretiens
+                    .enregistrer_avec_statut(edition, &input)
                     .map(|_| ())
                     .map_err(|error| error.to_string())
             });
@@ -1666,51 +1719,32 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             }
         }
         Message::ConfirmBackupImport => {
-            let (Some(backend), Some(path)) =
-                (app.backend.as_ref(), app.pending_backup_import.clone())
-            else {
+            let Some(path) = app.pending_backup_import.clone() else {
                 app.notify(
                     NotificationKind::Warning,
                     "Aucun backup valide sélectionné.",
                 );
                 return Task::none();
             };
-            match crate::core::backup::import(&backend.sqlite, &backend.db_path, &path) {
-                Ok(()) => {
-                    app.pending_backup_import = None;
-                    app.dialog = None;
-                    app.notify_success("Backup restauré avec succès.");
-                    return recharger(app);
-                }
-                Err(error) => app.notify_error(&error),
-            }
+            return ecrire(app, "Backup restauré avec succès.", move |backend| {
+                crate::core::backup::import(&backend.sqlite, &backend.db_path, &path)
+                    .map_err(|error| error.to_string())
+            });
         }
         Message::ConfirmDatabaseReset => {
-            let Some(backend) = app.backend.as_ref() else {
-                app.notify_failure("La base Candilog n'est pas disponible.");
-                return Task::none();
-            };
-            match crate::core::backup::reset_data(&backend.sqlite) {
-                Ok(()) => {
-                    app.dialog = None;
-                    app.notify_success("Toutes les données ont été réinitialisées.");
-                    return recharger(app);
-                }
-                Err(error) => app.notify_error(&error),
-            }
+            return ecrire(
+                app,
+                "Toutes les données ont été réinitialisées.",
+                |backend| {
+                    crate::core::backup::reset_data(&backend.sqlite)
+                        .map_err(|error| error.to_string())
+                },
+            );
         }
         Message::ConfirmAiCacheReset => {
-            let Some(backend) = app.backend.as_ref() else {
-                app.notify_failure("La base Candilog n'est pas disponible.");
-                return Task::none();
-            };
-            match backend.cache_ia.reset() {
-                Ok(()) => {
-                    app.dialog = None;
-                    app.notify_success("Cache IA vidé.");
-                }
-                Err(error) => app.notify_error(&error),
-            }
+            return ecrire(app, "Cache IA vidé.", |backend| {
+                backend.cache_ia.reset().map_err(|error| error.to_string())
+            });
         }
         Message::AcceptRecommendation(index) => {
             let recommendation = app
@@ -1784,145 +1818,6 @@ pub const SEARCH_FIELD_ID: &str = "candilog-search";
 fn optional(value: &str) -> Option<String> {
     let trimmed = value.trim();
     (!trimmed.is_empty()).then(|| trimmed.to_owned())
-}
-
-fn add_profile_item(profile: &mut crate::shared::profile::Profile, kind: ProfileCollection) {
-    use crate::shared::profile::{Certification, Education, Experience, Language, Project};
-    match kind {
-        ProfileCollection::Experience => profile.experiences.push(Experience::default()),
-        ProfileCollection::Formation => profile.education.push(Education::default()),
-        ProfileCollection::Langue => profile.languages.push(Language::default()),
-        ProfileCollection::Projet => profile.projects.push(Project::default()),
-        ProfileCollection::Certification => {
-            profile.certifications.push(Certification::default());
-        }
-    }
-}
-
-fn remove_profile_item(
-    profile: &mut crate::shared::profile::Profile,
-    kind: ProfileCollection,
-    index: usize,
-) {
-    match kind {
-        ProfileCollection::Experience if index < profile.experiences.len() => {
-            profile.experiences.remove(index);
-        }
-        ProfileCollection::Formation if index < profile.education.len() => {
-            profile.education.remove(index);
-        }
-        ProfileCollection::Langue if index < profile.languages.len() => {
-            profile.languages.remove(index);
-        }
-        ProfileCollection::Projet if index < profile.projects.len() => {
-            profile.projects.remove(index);
-        }
-        ProfileCollection::Certification if index < profile.certifications.len() => {
-            profile.certifications.remove(index);
-        }
-        _ => {}
-    }
-}
-
-fn update_profile_item(
-    profile: &mut crate::shared::profile::Profile,
-    kind: ProfileCollection,
-    index: usize,
-    field: usize,
-    value: String,
-) {
-    match kind {
-        ProfileCollection::Experience => {
-            if let Some(item) = profile.experiences.get_mut(index) {
-                match field {
-                    0 => item.title = value,
-                    1 => item.company = value,
-                    2 => item.location = optional(&value),
-                    3 => item.start_date = value,
-                    4 => {
-                        item.end_date = optional(&value);
-                        item.current = item.end_date.is_none();
-                    }
-                    5 => item.description = optional(&value),
-                    _ => {}
-                }
-            }
-        }
-        ProfileCollection::Formation => {
-            if let Some(item) = profile.education.get_mut(index) {
-                match field {
-                    0 => item.degree = value,
-                    1 => item.school = value,
-                    2 => item.location = optional(&value),
-                    3 => item.start_date = optional(&value),
-                    4 => item.end_date = optional(&value),
-                    5 => item.description = optional(&value),
-                    _ => {}
-                }
-            }
-        }
-        ProfileCollection::Langue => {
-            if let Some(item) = profile.languages.get_mut(index) {
-                match field {
-                    0 => item.name = value,
-                    1 => item.level = value,
-                    _ => {}
-                }
-            }
-        }
-        ProfileCollection::Projet => {
-            if let Some(item) = profile.projects.get_mut(index) {
-                match field {
-                    0 => item.name = value,
-                    1 => item.url = optional(&value),
-                    2 => item.technologies = optional(&value),
-                    3 => item.description = optional(&value),
-                    _ => {}
-                }
-            }
-        }
-        ProfileCollection::Certification => {
-            if let Some(item) = profile.certifications.get_mut(index) {
-                match field {
-                    0 => item.name = value,
-                    1 => item.issuer = optional(&value),
-                    2 => item.date = optional(&value),
-                    3 => item.url = optional(&value),
-                    _ => {}
-                }
-            }
-        }
-    }
-}
-
-fn apply_recommendation(
-    cv: &mut crate::modules::ia::cv_model::GeneratedCv,
-    recommendation: &crate::modules::ia::cv_model::RecommandationAts,
-) {
-    match recommendation.section.as_str() {
-        "resume" | "summary" => cv.summary.clone_from(&recommendation.texte_propose),
-        "competences" | "skills" => {
-            cv.skills = recommendation
-                .texte_propose
-                .split([',', ';', '\n'])
-                .map(str::trim)
-                .filter(|value| !value.is_empty())
-                .map(str::to_owned)
-                .collect();
-        }
-        section if section.starts_with("experience_") => {
-            let index = section
-                .trim_start_matches("experience_")
-                .parse::<usize>()
-                .ok();
-            if let Some(experience) = index.and_then(|index| cv.experiences.get_mut(index)) {
-                experience
-                    .description
-                    .clone_from(&recommendation.texte_propose);
-            }
-        }
-        _ => {}
-    }
 }
 
 /// Seuil de déplacement (px) au-delà duquel un appui sur une carte devient un glisser.

@@ -45,5 +45,6 @@ mod test_delete_supprime_l_entretien;
 mod test_enregistrer_analyse_puis_get_restitue_l_analyse;
 mod test_get_identifiant_inconnu_retourne_not_found;
 mod test_list_trie_par_date_croissante;
+mod test_save_and_mark_candidate_est_atomique;
 mod test_update_modifie_le_compte_rendu;
 mod test_update_preserve_l_analyse_ia_enregistree;

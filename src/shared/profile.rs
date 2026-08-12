@@ -46,11 +46,25 @@ pub struct Experience {
     pub description: Option<String>,
 }
 
+impl Experience {
+    #[must_use]
+    pub fn is_complete(&self) -> bool {
+        !self.title.trim().is_empty() && !self.company.trim().is_empty()
+    }
+}
+
 /// Compétence.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Skill {
     /// Nom de la compétence.
     pub name: String,
+}
+
+impl Skill {
+    #[must_use]
+    pub fn is_complete(&self) -> bool {
+        !self.name.trim().is_empty()
+    }
 }
 
 /// Formation.
@@ -70,6 +84,13 @@ pub struct Education {
     pub description: Option<String>,
 }
 
+impl Education {
+    #[must_use]
+    pub fn is_complete(&self) -> bool {
+        !self.degree.trim().is_empty() && !self.school.trim().is_empty()
+    }
+}
+
 /// Langue parlée.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Language {
@@ -77,6 +98,13 @@ pub struct Language {
     pub name: String,
     /// Niveau (texte libre, ex. « C1 », « natif »).
     pub level: String,
+}
+
+impl Language {
+    #[must_use]
+    pub fn is_complete(&self) -> bool {
+        !self.name.trim().is_empty() && !self.level.trim().is_empty()
+    }
 }
 
 /// Projet personnel ou professionnel.
@@ -92,6 +120,13 @@ pub struct Project {
     pub technologies: Option<String>,
 }
 
+impl Project {
+    #[must_use]
+    pub fn is_complete(&self) -> bool {
+        !self.name.trim().is_empty()
+    }
+}
+
 /// Certification.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Certification {
@@ -103,6 +138,13 @@ pub struct Certification {
     pub date: Option<String>,
     /// Lien.
     pub url: Option<String>,
+}
+
+impl Certification {
+    #[must_use]
+    pub fn is_complete(&self) -> bool {
+        !self.name.trim().is_empty()
+    }
 }
 
 /// Profil complet de l'utilisateur (persisté en `JSON` dans `profiles.data`).

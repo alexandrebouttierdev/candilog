@@ -6,7 +6,6 @@ pub mod contacts;
 pub mod cv_engine;
 pub mod cv_model;
 pub mod cv_sections;
-pub mod dtos;
 pub mod factory;
 pub mod grounding;
 pub mod mode;

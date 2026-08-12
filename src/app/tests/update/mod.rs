@@ -40,4 +40,5 @@ mod le_theme_sidebar_resiste_aux_rechargements;
 mod recommandation_experience_cible_uniquement_la_ligne_demandee;
 mod recommandation_resume_modifie_le_modele_commun;
 mod un_deplacement_de_5_px_est_un_glisser;
+mod une_double_soumission_est_ignoree;
 mod une_soumission_invalide_ne_ferme_pas_le_dialogue;

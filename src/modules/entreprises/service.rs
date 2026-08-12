@@ -26,6 +26,11 @@ impl<R: EntrepriseRepository> EntrepriseService<R> {
         self.repo.list()
     }
 
+    /// Récupère une entreprise par identifiant.
+    pub fn obtenir(&self, id: uuid::Uuid) -> AppResult<Entreprise> {
+        self.repo.get(id)
+    }
+
     /// Charge une page filtrée sans matérialiser tout le répertoire.
     pub fn lister_page(
         &self,

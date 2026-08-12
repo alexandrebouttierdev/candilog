@@ -13,7 +13,7 @@ license = "MIT"
 
 [features]
 default = []
-# Harnais de capture visuelle (revue de design) : onze variables d'environnement
+# Harnais de capture visuelle (revue de design) : variables d'environnement
 # `CANDILOG_CAPTURE_*` qui pilotent la route, le thème, les dialogues et les états particuliers,
 # puis écrivent un PPM au chemin indiqué avant de quitter. Hors du binaire distribué par défaut :
 # c'est une surface fonctionnelle qui n'est pas destinée aux utilisateurs.
@@ -21,7 +21,7 @@ default = []
 capture = []
 
 [dependencies]
-iced = { version = "0.13", features = ["tokio", "image", "svg", "canvas", "advanced", "lazy"] }
+iced = { version = "0.13", default-features = false, features = ["tiny-skia", "tokio", "image", "svg", "canvas", "advanced", "lazy"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "net", "time"] }
 tokio-util = "0.7"
 rusqlite = { version = "0.32", features = ["bundled", "backup"] }

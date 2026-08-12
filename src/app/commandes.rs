@@ -7,7 +7,7 @@ use iced::Task;
 ///
 /// `docs/ARCHITECTURE.md` prescrit « Message → app/update.rs → Task Tokio → Service →
 /// Repository → SQLite ». Les neuf écritures métier s'exécutaient en réalité de façon
-/// synchrone sur le fil de l'interface, chacune suivie d'un rechargement de onze requêtes
+/// synchrone sur le fil de l'interface, chacune suivie d'un rechargement global
 /// SQL : le rendu était bloqué pendant toute la séquence. Imperceptible sur une base locale
 /// saine, la durée devient arbitraire si le fichier est sur un support lent ou distant, ou si
 /// une autre connexion détient un verrou — `busy_timeout` valant 5 secondes, une contention
@@ -16,10 +16,14 @@ pub(super) fn ecrire<F>(app: &mut App, succes: &'static str, travail: F) -> Task
 where
     F: FnOnce(&crate::shared::state::AppState) -> Result<(), String> + Send + 'static,
 {
+    if app.write_in_progress {
+        return Task::none();
+    }
     let Some(backend) = app.backend.clone() else {
         app.notify_failure("La base Candilog n'est pas disponible.");
         return Task::none();
     };
+    app.write_in_progress = true;
     Task::perform(
         async move {
             tokio::task::spawn_blocking(move || travail(&backend))
@@ -63,6 +67,7 @@ pub(super) fn recharger(app: &mut App) -> Task<Message> {
 /// son délai d'expiration (25 s dans l'implémentation de référence) et figer l'interface
 /// d'autant. Voir [`notifier_le_bureau`] pour les opérations qui la justifient.
 pub(super) fn finish_submit(app: &mut App, result: Result<(), String>, success: &str) {
+    app.write_in_progress = false;
     match result {
         Ok(()) => {
             app.dialog = None;

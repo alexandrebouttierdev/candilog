@@ -9,7 +9,7 @@ use crate::modules::candidatures::model::{StatutCandidature, TypeContrat};
 use crate::ui::components::button as controls;
 use crate::ui::components::choice::Choice;
 use crate::ui::components::icon::Icon;
-use crate::ui::components::{badge, field, layout, surface, typo};
+use crate::ui::components::{badge, field, layout, pagination, surface, typo};
 use crate::ui::theme::metrics::space;
 use crate::ui::theme::styles;
 use crate::ui::theme::Tone;
@@ -204,10 +204,35 @@ pub fn sheet<'a>(app: &'a App, companies: Vec<Choice>) -> Element<'a, Message> {
                     ),
                     field::labeled(
                         "Entreprise",
-                        field::select(companies, selected_company, |choice| {
-                            Message::CandidateFilterCompany(choice.value())
-                        })
-                        .width(Length::Fill),
+                        column![
+                            field::search(
+                                "Rechercher une entreprise…",
+                                &app.company_option_search,
+                                Message::CompanyOptionSearchChanged,
+                                Length::Fill,
+                            ),
+                            field::select(companies, selected_company, |choice| {
+                                Message::CandidateFilterCompany(choice.value())
+                            })
+                            .width(Length::Fill),
+                            {
+                                let (first, last) = pagination::window(
+                                    app.company_option_page,
+                                    crate::app::state::RELATION_PAGE_SIZE,
+                                    app.data.company_options_total,
+                                );
+                                pagination::pagination(
+                                    app.company_option_page,
+                                    app.data.company_options_total_pages.max(1),
+                                    Message::CompanyOptionPagePrev,
+                                    Message::CompanyOptionPageNext,
+                                    first,
+                                    last,
+                                    app.data.company_options_total,
+                                )
+                            },
+                        ]
+                        .spacing(space::SM),
                     ),
                 ]),
                 field::form_row([

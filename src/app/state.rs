@@ -10,7 +10,6 @@ use crate::modules::entretiens::model::{Entretien, TypeEntretien};
 use crate::modules::ia::cv_model::{CvGeneration, OfferAnalysis};
 use crate::modules::metriques::components::PipelineCounts;
 use crate::modules::metriques::model::{AppelLlm, Page, ResumeScoresAts, ScoreAts};
-use crate::modules::metriques::repository::MetriquesRepository;
 use crate::modules::relances::model::Relance;
 use crate::modules::settings::model::AppSettings;
 use crate::navigation::Route;
@@ -22,6 +21,9 @@ use chrono::{Datelike, Local};
 use std::sync::Arc;
 
 use super::message::{CalendarView, CandidateView, Message};
+pub use super::snapshot::{
+    charger_instantane, SnapshotRequest, BUSINESS_PAGE_SIZE, RELATION_PAGE_SIZE,
+};
 
 /// Formulaire ou dialogue actuellement ouvert.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -249,58 +251,6 @@ pub enum CandidateSort {
     Date,
 }
 
-/// Paramètres immuables d'un rechargement paginé.
-#[derive(Debug, Clone)]
-pub struct SnapshotRequest {
-    pub sequence: u64,
-    pub route: Route,
-    pub search: String,
-    pub candidate_filters: CandidateFilters,
-    pub candidate_sort: CandidateSort,
-    pub candidate_sort_descending: bool,
-    pub candidate_page: u64,
-    pub company_page: u64,
-    pub contact_page: u64,
-    pub calendar_year: i32,
-    pub calendar_month: u32,
-    pub llm_page: u64,
-    pub ats_page: u64,
-}
-
-impl SnapshotRequest {
-    /// Traduit l'état d'écran en critères SQL, également réutilisés par l'export complet.
-    #[must_use]
-    pub fn candidate_query(
-        &self,
-    ) -> crate::modules::candidatures::repository::CandidaturePageQuery {
-        crate::modules::candidatures::repository::CandidaturePageQuery {
-            search: if self.route == Route::Candidatures {
-                self.search.clone()
-            } else {
-                String::new()
-            },
-            status: self.candidate_filters.status,
-            contract: self.candidate_filters.contract,
-            company_id: self.candidate_filters.company_id,
-            city: self.candidate_filters.city.clone(),
-            position: self.candidate_filters.position.clone(),
-            date_from: crate::ui::format::date_to_storage(&self.candidate_filters.date_from).ok(),
-            date_to: crate::ui::format::date_to_storage(&self.candidate_filters.date_to).ok(),
-            sort: match self.candidate_sort {
-                CandidateSort::Poste => "poste",
-                CandidateSort::Entreprise => "entreprise",
-                CandidateSort::Statut => "statut",
-                CandidateSort::Date => "date",
-            }
-            .into(),
-            descending: self.candidate_sort_descending,
-        }
-    }
-}
-
-/// Taille des pages métier. Suffisamment dense pour le desktop, mais toujours bornée en SQL.
-pub const BUSINESS_PAGE_SIZE: u64 = 24;
-
 impl CandidateSort {
     /// Colonnes triables, dans l'ordre d'affichage de la table.
     pub const ALL: [Self; 4] = [Self::Poste, Self::Entreprise, Self::Statut, Self::Date];
@@ -362,189 +312,6 @@ pub fn capture_demandee() -> bool {
     cfg!(feature = "capture") && std::env::var_os("CANDILOG_CAPTURE_PATH").is_some()
 }
 
-/// Charge l'instantané complet et la liste des jeux qui n'ont pas pu être lus.
-///
-/// Fonction **libre** et non méthode : elle ne touche pas à `App`, ce qui lui permet d'être
-/// exécutée sur un fil de travail (`spawn_blocking`) plutôt que sur le fil de rendu.
-#[must_use]
-pub fn charger_instantane(
-    backend: &BackendState,
-    request: &SnapshotRequest,
-) -> (DataSnapshot, Vec<&'static str>) {
-    let mut echecs: Vec<&'static str> = Vec::new();
-    let taille = crate::modules::metriques::views::PAGE_SIZE;
-    let company_search = if request.route == Route::Entreprises {
-        request.search.as_str()
-    } else {
-        ""
-    };
-    let contact_search = if request.route == Route::Reseau {
-        request.search.as_str()
-    } else {
-        ""
-    };
-    let candidate_query = request.candidate_query();
-    let candidate_page = charger(
-        "candidatures",
-        &mut echecs,
-        backend.candidatures.lister_page(
-            request.candidate_page,
-            BUSINESS_PAGE_SIZE,
-            &candidate_query,
-        ),
-    );
-    let filtered_candidate_counts = charger(
-        "compteurs filtrés du pipeline",
-        &mut echecs,
-        compter_pipeline_filtre(backend, &candidate_query),
-    );
-    let company_page = charger(
-        "entreprises",
-        &mut echecs,
-        backend
-            .entreprises
-            .lister_page(request.company_page, BUSINESS_PAGE_SIZE, company_search),
-    );
-    let contact_page = charger(
-        "contacts",
-        &mut echecs,
-        backend
-            .contacts
-            .lister_page(request.contact_page, BUSINESS_PAGE_SIZE, contact_search),
-    );
-    // Catalogues de sélecteurs explicitement bornés : ils préservent les formulaires liés sans
-    // réintroduire un `SELECT *` non limité dans l'instantané global.
-    let company_options = charger(
-        "options entreprises",
-        &mut echecs,
-        backend.entreprises.lister_page(1, 200, ""),
-    );
-    let candidate_options = charger(
-        "options candidatures",
-        &mut echecs,
-        backend.candidatures.lister_page(
-            1,
-            200,
-            &crate::modules::candidatures::repository::CandidaturePageQuery::default(),
-        ),
-    );
-    let contact_options = charger(
-        "options contacts",
-        &mut echecs,
-        backend.contacts.lister_page(1, 200, ""),
-    );
-    let month_start = chrono::NaiveDate::from_ymd_opt(
-        request.calendar_year,
-        request.calendar_month.clamp(1, 12),
-        1,
-    )
-    .unwrap_or_else(|| chrono::Local::now().date_naive());
-    let from = (month_start - chrono::Duration::days(8))
-        .format("%Y-%m-%d")
-        .to_string();
-    let to = (month_start + chrono::Duration::days(40))
-        .format("%Y-%m-%dT23:59")
-        .to_string();
-    let follow_up_before = (chrono::Local::now().date_naive() - chrono::Duration::days(7))
-        .format("%Y-%m-%d")
-        .to_string();
-    let data = DataSnapshot {
-        candidatures: candidate_page.items,
-        candidatures_total: candidate_page.total,
-        candidatures_total_pages: candidate_page.total_pages,
-        filtered_candidate_counts,
-        candidature_stats: charger(
-            "statistiques candidatures",
-            &mut echecs,
-            backend.candidatures.statistiques(),
-        ),
-        follow_up_candidates: charger(
-            "candidatures à relancer",
-            &mut echecs,
-            backend.candidatures.a_relancer(&follow_up_before, 6),
-        ),
-        entreprises: company_page.items,
-        entreprises_total: company_page.total,
-        entreprises_total_pages: company_page.total_pages,
-        contacts: contact_page.items,
-        contacts_total: contact_page.total,
-        contacts_total_pages: contact_page.total_pages,
-        company_options: company_options.items,
-        candidate_options: candidate_options.items,
-        contact_options: contact_options.items,
-        entretiens: charger(
-            "entretiens",
-            &mut echecs,
-            backend.entretiens.lister_entre(&from, &to),
-        ),
-        relances: charger("relances", &mut echecs, backend.relances.lister()),
-        cv_versions: charger("CV", &mut echecs, backend.cv.list()),
-        profile: charger("profil", &mut echecs, backend.profil.get()),
-        settings: charger("paramètres", &mut echecs, backend.settings.get()),
-        llm_calls: charger(
-            "historique IA",
-            &mut echecs,
-            backend
-                .metriques
-                .lister_appels_page(request.llm_page, taille),
-        ),
-        ats_scores: charger(
-            "scores ATS",
-            &mut echecs,
-            backend
-                .metriques
-                .lister_scores_page(request.ats_page, taille),
-        ),
-        ats_summary: charger(
-            "synthèse ATS",
-            &mut echecs,
-            backend.metriques.resumer_scores().map(Some),
-        ),
-    };
-    (data, echecs)
-}
-
-fn compter_pipeline_filtre(
-    backend: &BackendState,
-    query: &crate::modules::candidatures::repository::CandidaturePageQuery,
-) -> Result<PipelineCounts, AppError> {
-    let mut counts = PipelineCounts::default();
-    for status in crate::modules::candidatures::components::PIPELINE {
-        if query.status.is_some_and(|selected| selected != status) {
-            continue;
-        }
-        let mut status_query = query.clone();
-        status_query.status = Some(status);
-        let total = backend.candidatures.lister_page(1, 1, &status_query)?.total;
-        let total = usize::try_from(total).unwrap_or(usize::MAX);
-        match status {
-            StatutCandidature::EnAttente => counts.pending = total,
-            StatutCandidature::Relancee => counts.followed_up = total,
-            StatutCandidature::Entretien => counts.interviews = total,
-            StatutCandidature::Refus => counts.rejected = total,
-        }
-        counts.total = counts.total.saturating_add(total);
-    }
-    Ok(counts)
-}
-
-/// Charge un jeu de données isolément : un échec est journalisé, recensé, et remplacé par la
-/// valeur par défaut du type plutôt que d'interrompre le chargement des dix autres.
-fn charger<T: Default>(
-    nom: &'static str,
-    echecs: &mut Vec<&'static str>,
-    resultat: Result<T, AppError>,
-) -> T {
-    match resultat {
-        Ok(valeur) => valeur,
-        Err(error) => {
-            tracing::error!(jeu = nom, erreur = %error, "jeu de données illisible");
-            echecs.push(nom);
-            T::default()
-        }
-    }
-}
-
 /// Message adressé à l'utilisateur, **avec** sa nature.
 ///
 /// La nature accompagne le texte au lieu d'être redevinée au moment du rendu : toutes les
@@ -579,10 +346,16 @@ pub struct DataSnapshot {
     pub contacts: Vec<Contact>,
     pub contacts_total: u64,
     pub contacts_total_pages: u64,
-    /// Catalogues bornés pour les relations des formulaires.
+    /// Pages recherchables pour les relations des formulaires.
     pub company_options: Vec<Entreprise>,
+    pub company_options_total: u64,
+    pub company_options_total_pages: u64,
     pub candidate_options: Vec<Candidature>,
+    pub candidate_options_total: u64,
+    pub candidate_options_total_pages: u64,
     pub contact_options: Vec<Contact>,
+    pub contact_options_total: u64,
+    pub contact_options_total_pages: u64,
     /// Entretiens.
     pub entretiens: Vec<Entretien>,
     /// Relances.
@@ -672,6 +445,8 @@ pub struct App {
     pub pending_backup_import: Option<std::path::PathBuf>,
     /// Dialogue métier ouvert.
     pub dialog: Option<Dialog>,
+    /// Une écriture métier ou de maintenance est en cours.
+    pub write_in_progress: bool,
     /// Calendrier flottant au-dessus du formulaire ou des filtres.
     pub date_picker: Option<DatePickerState>,
     /// Identifiant édité par le formulaire courant, absent en création.
@@ -760,6 +535,13 @@ pub struct App {
     pub candidate_page: u64,
     pub company_page: u64,
     pub contact_page: u64,
+    /// Recherche et page indépendantes des sélecteurs relationnels.
+    pub company_option_search: String,
+    pub candidate_option_search: String,
+    pub contact_option_search: String,
+    pub company_option_page: u64,
+    pub candidate_option_page: u64,
+    pub contact_option_page: u64,
     /// Onglet actif de l'écran Statistiques.
     pub statistics_tab: StatisticsTab,
     /// Page courante de l'historique des scores ATS (1-based).
@@ -864,6 +646,7 @@ impl App {
             verified_update_path: None,
             pending_backup_import: None,
             dialog: None,
+            write_in_progress: false,
             date_picker: None,
             editing_id: None,
             entreprise_form: EntrepriseForm::default(),
@@ -909,6 +692,12 @@ impl App {
             candidate_page: 1,
             company_page: 1,
             contact_page: 1,
+            company_option_search: String::new(),
+            candidate_option_search: String::new(),
+            contact_option_search: String::new(),
+            company_option_page: 1,
+            candidate_option_page: 1,
+            contact_option_page: 1,
             statistics_tab: StatisticsTab::default(),
             ats_page: 1,
             llm_page: 1,
@@ -923,7 +712,7 @@ impl App {
     /// Réglages du harnais de capture applicables **avant** l'ouverture de la base.
     ///
     /// Le harnais sert la revue de design (routes, thèmes, dialogues, états particuliers). Il
-    /// n'est pas destiné aux utilisateurs : ses onze variables d'environnement modifient le
+    /// n'est pas destiné aux utilisateurs : ses variables d'environnement modifient le
     /// comportement de l'application, écrivent un fichier au chemin indiqué et fabriquent de
     /// faux écrans d'erreur. La caractéristique Cargo `capture` le retire du binaire distribué.
     ///
@@ -1114,7 +903,7 @@ impl App {
     /// Recharge les données, **jeu par jeu**.
     ///
     /// Le chargement était une closure unique dont chaque appel propageait par `?` : le moindre
-    /// échec sur l'un des onze jeux abandonnait les dix autres et laissait `initialized` à faux,
+    /// échec sur un seul jeu abandonnait tous les autres et laissait `initialized` à faux,
     /// ce qui fige *tous* les écrans — Paramètres compris, donc sans accès à la restauration de
     /// backup — en squelette de chargement permanent. Une seule ligne de profil au JSON non
     /// conforme suffisait à rendre l'application entière inutilisable.
@@ -1143,6 +932,25 @@ impl App {
             candidate_page: self.candidate_page,
             company_page: self.company_page,
             contact_page: self.contact_page,
+            company_option_search: self.company_option_search.clone(),
+            candidate_option_search: self.candidate_option_search.clone(),
+            contact_option_search: self.contact_option_search.clone(),
+            company_option_page: self.company_option_page,
+            candidate_option_page: self.candidate_option_page,
+            contact_option_page: self.contact_option_page,
+            selected_company_option: match self.dialog {
+                Some(Dialog::Contact) => self.contact_form.entreprise_id,
+                Some(Dialog::Candidature) => self.candidature_form.entreprise_id,
+                _ => self.candidate_filters.company_id,
+            },
+            selected_candidate_option: match self.dialog {
+                Some(Dialog::Entretien) => self.entretien_form.candidature_id,
+                Some(Dialog::Relance) => self.relance_form.candidature_id,
+                _ => None,
+            },
+            selected_contact_option: matches!(self.dialog, Some(Dialog::Entretien))
+                .then_some(self.entretien_form.contact_id)
+                .flatten(),
             calendar_year: self.calendar_year,
             calendar_month: self.calendar_month,
             llm_page: self.llm_page,
@@ -1195,101 +1003,10 @@ impl App {
         }
     }
 
-    /// Applique la recherche et les six catégories de filtres aux candidatures.
-    #[must_use]
-    pub fn filtered_candidates(&self) -> Vec<&Candidature> {
-        let search = self.search.trim().to_lowercase();
-        let position = self.candidate_filters.position.trim().to_lowercase();
-        let city = self.candidate_filters.city.trim().to_lowercase();
-        let date_from = crate::ui::format::date_to_storage(&self.candidate_filters.date_from).ok();
-        let date_to = crate::ui::format::date_to_storage(&self.candidate_filters.date_to).ok();
-        // Index des villes, construit **une seule fois** et **seulement** si le filtre par
-        // ville est actif. La recherche de l'entreprise était auparavant faite pour chaque
-        // candidature — un balayage linéaire complet, inconditionnel, avant même de savoir si
-        // sa valeur servirait — soit un coût O(n×m) payé à chaque cycle de rendu.
-        let villes: std::collections::HashMap<uuid::Uuid, String> = if city.is_empty() {
-            std::collections::HashMap::new()
-        } else {
-            self.data
-                .entreprises
-                .iter()
-                .map(|company| {
-                    (
-                        company.id,
-                        company.ville.as_deref().unwrap_or_default().to_lowercase(),
-                    )
-                })
-                .collect()
-        };
-        self.data
-            .candidatures
-            .iter()
-            .filter(|candidate| {
-                let matches_search = search.is_empty()
-                    || candidate.poste.to_lowercase().contains(&search)
-                    || candidate
-                        .entreprise_nom
-                        .as_deref()
-                        .unwrap_or_default()
-                        .to_lowercase()
-                        .contains(&search);
-                matches_search
-                    && self
-                        .candidate_filters
-                        .status
-                        .is_none_or(|status| candidate.statut == status)
-                    && self
-                        .candidate_filters
-                        .contract
-                        .is_none_or(|contract| candidate.type_contrat == contract)
-                    && self
-                        .candidate_filters
-                        .company_id
-                        .is_none_or(|id| candidate.entreprise_id == id)
-                    && (position.is_empty() || candidate.poste.to_lowercase().contains(&position))
-                    && (city.is_empty()
-                        || villes
-                            .get(&candidate.entreprise_id)
-                            .is_some_and(|ville| ville.contains(&city)))
-                    && date_from
-                        .as_deref()
-                        .is_none_or(|from| candidate.date_envoi.as_str() >= from)
-                    && date_to
-                        .as_deref()
-                        .is_none_or(|to| candidate.date_envoi.as_str() <= to)
-            })
-            .collect()
-    }
-
-    /// Applique le tri de la vue Liste aux candidatures déjà filtrées.
+    /// Renvoie la page déjà filtrée et triée par SQLite.
     #[must_use]
     pub fn sorted_candidates(&self) -> Vec<&Candidature> {
-        let mut candidates = self.filtered_candidates();
-        candidates.sort_by(|left, right| {
-            let ordering = match self.candidate_sort {
-                CandidateSort::Poste => left.poste.to_lowercase().cmp(&right.poste.to_lowercase()),
-                CandidateSort::Entreprise => left
-                    .entreprise_nom
-                    .as_deref()
-                    .unwrap_or_default()
-                    .to_lowercase()
-                    .cmp(
-                        &right
-                            .entreprise_nom
-                            .as_deref()
-                            .unwrap_or_default()
-                            .to_lowercase(),
-                    ),
-                CandidateSort::Statut => left.statut.to_string().cmp(&right.statut.to_string()),
-                CandidateSort::Date => left.date_envoi.cmp(&right.date_envoi),
-            };
-            if self.candidate_sort_descending {
-                ordering.reverse()
-            } else {
-                ordering
-            }
-        });
-        candidates
+        self.data.candidatures.iter().collect()
     }
 
     /// Candidature couramment mise en avant par la sélection ou le tri.

@@ -24,6 +24,11 @@ impl<R: RelanceRepository> RelanceService<R> {
         self.repo.list()
     }
 
+    /// Charge une fenêtre temporelle bornée pour le calendrier.
+    pub fn lister_entre(&self, from: &str, to: &str) -> AppResult<Vec<Relance>> {
+        self.repo.list_between(from, to)
+    }
+
     /// Valide (candidature + date requises) puis crée la relance.
     ///
     /// # Errors

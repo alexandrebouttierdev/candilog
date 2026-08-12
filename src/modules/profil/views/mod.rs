@@ -30,12 +30,12 @@ const HEADER_TILE: f32 = 28.0;
 pub fn completion_score(profile: &Profile) -> u8 {
     let complete = [
         identity_complete(&profile.personal),
-        !profile.experiences.is_empty(),
-        !profile.skills.is_empty(),
-        !profile.education.is_empty(),
-        !profile.languages.is_empty(),
-        !profile.projects.is_empty(),
-        !profile.certifications.is_empty(),
+        profile.experiences.iter().any(|item| item.is_complete()),
+        profile.skills.iter().any(|item| item.is_complete()),
+        profile.education.iter().any(|item| item.is_complete()),
+        profile.languages.iter().any(|item| item.is_complete()),
+        profile.projects.iter().any(|item| item.is_complete()),
+        profile.certifications.iter().any(|item| item.is_complete()),
     ]
     .into_iter()
     .filter(|complete| *complete)
@@ -545,22 +545,41 @@ mod tests {
             };
         }
         if count >= 2 {
-            profile.experiences.push(Experience::default());
+            profile.experiences.push(Experience {
+                title: "Développeuse".into(),
+                company: "ACME".into(),
+                ..Experience::default()
+            });
         }
         if count >= 3 {
-            profile.skills.push(Skill::default());
+            profile.skills.push(Skill {
+                name: "Rust".into(),
+            });
         }
         if count >= 4 {
-            profile.education.push(Education::default());
+            profile.education.push(Education {
+                degree: "Master".into(),
+                school: "Université".into(),
+                ..Education::default()
+            });
         }
         if count >= 5 {
-            profile.languages.push(Language::default());
+            profile.languages.push(Language {
+                name: "Français".into(),
+                level: "Natif".into(),
+            });
         }
         if count >= 6 {
-            profile.projects.push(Project::default());
+            profile.projects.push(Project {
+                name: "Candilog".into(),
+                ..Project::default()
+            });
         }
         if count >= 7 {
-            profile.certifications.push(Certification::default());
+            profile.certifications.push(Certification {
+                name: "Certification".into(),
+                ..Certification::default()
+            });
         }
         profile
     }

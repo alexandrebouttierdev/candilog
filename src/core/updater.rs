@@ -63,6 +63,8 @@ pub async fn check(client: &reqwest::Client, current: &Version) -> AppResult<Opt
 
 /// Sous-dossier du dossier de données recevant les paquets téléchargés.
 pub const DOSSIER_MISES_A_JOUR: &str = "mises-a-jour";
+/// Taille maximale acceptée pour un paquet natif signé (256 MiB).
+pub const MAX_UPDATE_BYTES: u64 = 256 * 1024 * 1024;
 
 /// Télécharge un paquet **sous le dossier de données** et vérifie sa signature minisign.
 ///
@@ -89,6 +91,9 @@ pub async fn download_verified(
         .await?
         .error_for_status()?;
     let total = response.content_length();
+    if let Some(length) = total {
+        verifier_taille_paquet(length)?;
+    }
     let extension = update
         .download_url
         .rsplit_once('/')
@@ -110,6 +115,11 @@ pub async fn download_verified(
     let mut stream = response.bytes_stream();
     while let Some(chunk) = stream.next().await {
         let chunk = chunk?;
+        if let Err(error) = verifier_taille_paquet(received.saturating_add(chunk.len() as u64)) {
+            drop(file);
+            let _ = tokio::fs::remove_file(&path).await;
+            return Err(error);
+        }
         file.write_all(&chunk).await.map_err(|error| {
             AppError::Database(format!("Écriture du téléchargement impossible : {error}"))
         })?;
@@ -145,6 +155,15 @@ pub async fn download_verified(
     Ok(path)
 }
 
+fn verifier_taille_paquet(length: u64) -> AppResult<()> {
+    if length > MAX_UPDATE_BYTES {
+        return Err(AppError::Validation(
+            "Le paquet de mise à jour dépasse la taille maximale autorisée.".into(),
+        ));
+    }
+    Ok(())
+}
+
 /// Vérifie un paquet avec la clé publique historique de Candilog.
 ///
 /// # Errors
@@ -156,11 +175,20 @@ pub fn verify_package(path: &Path, signature_text: &str) -> AppResult<()> {
     let signature = minisign_verify::Signature::decode(signature_text).map_err(|error| {
         AppError::Validation(format!("Signature de mise à jour invalide : {error}"))
     })?;
-    let bytes = std::fs::read(path).map_err(|error| {
-        AppError::Database(format!("Lecture de la mise à jour impossible : {error}"))
-    })?;
     public_key
-        .verify(&bytes, &signature, false)
+        .verify_stream(&signature)
+        .and_then(|mut verifier| {
+            let mut file = std::fs::File::open(path)?;
+            let mut buffer = [0_u8; 64 * 1024];
+            loop {
+                let read = std::io::Read::read(&mut file, &mut buffer)?;
+                if read == 0 {
+                    break;
+                }
+                verifier.update(&buffer[..read]);
+            }
+            verifier.finalize()
+        })
         .map_err(|error| {
             AppError::Validation(format!(
                 "La signature de la mise à jour ne correspond pas : {error}"
@@ -180,3 +208,7 @@ fn current_platform_key() -> &'static str {
     #[allow(unreachable_code)]
     "unsupported"
 }
+
+#[cfg(test)]
+#[path = "tests/updater/mod.rs"]
+mod tests;

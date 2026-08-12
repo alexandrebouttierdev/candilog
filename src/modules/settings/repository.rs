@@ -44,13 +44,22 @@ impl SettingsRepository for SqliteSettingsRepository {
             })
             .optional()
             .map_err(|e| traduire_erreur(e, "parametres"))?;
-        // Les paramètres sont lus au démarrage de l'application : contrairement au profil, un
-        // JSON corrompu ne doit jamais empêcher l'application de s'ouvrir. On retombe donc
-        // silencieusement sur les valeurs par défaut plutôt que de remonter une erreur — ce
-        // repli est délibéré, pas une erreur avalée par négligence.
-        Ok(contenu_texte
-            .and_then(|texte| serde_json::from_str(&texte).ok())
-            .unwrap_or_default())
+        let Some(texte) = contenu_texte else {
+            return Ok(AppSettings::default());
+        };
+        match serde_json::from_str(&texte) {
+            Ok(settings) => Ok(settings),
+            Err(error) => {
+                tracing::warn!(%error, "paramètres illisibles, copie de secours conservée");
+                conn.execute(
+                    "INSERT INTO app_kv (cle, valeur) VALUES ('parametres_corrompus', ?1)
+                     ON CONFLICT(cle) DO UPDATE SET valeur = excluded.valeur",
+                    [&texte],
+                )
+                .map_err(|error| traduire_erreur(error, "sauvegarde des paramètres illisibles"))?;
+                Ok(AppSettings::default())
+            }
+        }
     }
 
     fn upsert(&self, settings: &AppSettings) -> AppResult<AppSettings> {

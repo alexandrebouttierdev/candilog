@@ -42,11 +42,36 @@ fn validate(profil: &Profile) -> AppResult<()> {
         return Err(AppError::Validation("L'adresse email est invalide".into()));
     }
     for exp in &profil.experiences {
-        if exp.title.trim().is_empty() || exp.company.trim().is_empty() {
+        if !exp.is_complete() {
             return Err(AppError::Validation(
                 "Chaque expérience nécessite un intitulé et une entreprise".into(),
             ));
         }
+    }
+    if profil.skills.iter().any(|item| !item.is_complete()) {
+        return Err(AppError::Validation(
+            "Chaque compétence nécessite un nom".into(),
+        ));
+    }
+    if profil.education.iter().any(|item| !item.is_complete()) {
+        return Err(AppError::Validation(
+            "Chaque formation nécessite un diplôme et un établissement".into(),
+        ));
+    }
+    if profil.languages.iter().any(|item| !item.is_complete()) {
+        return Err(AppError::Validation(
+            "Chaque langue nécessite un nom et un niveau".into(),
+        ));
+    }
+    if profil.projects.iter().any(|item| !item.is_complete()) {
+        return Err(AppError::Validation(
+            "Chaque projet nécessite un nom".into(),
+        ));
+    }
+    if profil.certifications.iter().any(|item| !item.is_complete()) {
+        return Err(AppError::Validation(
+            "Chaque certification nécessite un nom".into(),
+        ));
     }
     Ok(())
 }

@@ -10,7 +10,7 @@ use crate::ui::components::button as controls;
 use crate::ui::components::choice::Choice;
 use crate::ui::components::icon::Icon;
 use crate::ui::components::overlay::{self, Size};
-use crate::ui::components::{badge, field, layout, state, typo};
+use crate::ui::components::{badge, field, layout, pagination, state, typo};
 use crate::ui::theme::metrics::space;
 use crate::ui::theme::Tone;
 use iced::widget::{column, container, row};
@@ -34,12 +34,14 @@ pub fn layer(app: &App, dialog: Dialog) -> Element<'_, Message> {
 
     match dialog {
         Dialog::Entreprise => form(
+            app,
             title(app, "Nouvelle entreprise", "Modifier l'entreprise"),
             entreprise(app),
             (!app.entreprise_form.nom.trim().is_empty()).then_some(Message::SubmitEntreprise),
             Size::Form,
         ),
         Dialog::Contact => form(
+            app,
             title(app, "Nouveau contact", "Modifier le contact"),
             contact(app),
             (!app.contact_form.prenom.trim().is_empty() && !app.contact_form.nom.trim().is_empty())
@@ -47,6 +49,7 @@ pub fn layer(app: &App, dialog: Dialog) -> Element<'_, Message> {
             Size::Form,
         ),
         Dialog::Candidature => form(
+            app,
             title(app, "Nouvelle candidature", "Modifier la candidature"),
             candidature(app),
             (!app.candidature_form.poste.trim().is_empty()
@@ -56,6 +59,7 @@ pub fn layer(app: &App, dialog: Dialog) -> Element<'_, Message> {
             Size::Form,
         ),
         Dialog::Entretien => form(
+            app,
             title(app, "Nouvel entretien", "Modifier l'entretien"),
             entretien(app),
             (app.entretien_form.candidature_id.is_some()
@@ -64,6 +68,7 @@ pub fn layer(app: &App, dialog: Dialog) -> Element<'_, Message> {
             Size::Wide,
         ),
         Dialog::Relance => form(
+            app,
             title(app, "Nouvelle relance", "Modifier la relance"),
             relance(app),
             (app.relance_form.candidature_id.is_some()
@@ -72,24 +77,28 @@ pub fn layer(app: &App, dialog: Dialog) -> Element<'_, Message> {
             Size::Form,
         ),
         Dialog::Profil(section) => form(
+            app,
             profile_dialog_title(section),
             profile(app, section),
             Some(Message::SubmitProfile),
             Size::Wide,
         ),
         Dialog::DeleteCandidature(id) => confirm_owned(
+            app,
             "Supprimer cette candidature",
             consequences_candidature(app, id),
             "Supprimer définitivement",
             Message::ConfirmDelete,
         ),
         Dialog::DeleteEntreprise(id) => confirm_owned(
+            app,
             "Supprimer cette entreprise",
             consequences_entreprise(app, id),
             "Supprimer définitivement",
             Message::ConfirmDelete,
         ),
         Dialog::DeleteContact(_) => confirm(
+            app,
             "Supprimer ce contact",
             "Le contact sera supprimé. Les candidatures et entretiens auxquels il est associé \
              sont conservés, et perdent simplement ce rattachement.",
@@ -97,6 +106,7 @@ pub fn layer(app: &App, dialog: Dialog) -> Element<'_, Message> {
             Message::ConfirmDelete,
         ),
         Dialog::DeleteEntretien(_) => confirm(
+            app,
             "Supprimer cet entretien",
             "L'entretien sera supprimé, avec sa date, son lieu, ses notes, son compte rendu et \
              son analyse IA. La candidature associée est conservée.",
@@ -104,30 +114,35 @@ pub fn layer(app: &App, dialog: Dialog) -> Element<'_, Message> {
             Message::ConfirmDelete,
         ),
         Dialog::DeleteRelance(_) => confirm(
+            app,
             "Supprimer cette relance",
             "La relance sera supprimée. La candidature associée est conservée.",
             "Supprimer définitivement",
             Message::ConfirmDelete,
         ),
         Dialog::DeleteCv(_) => confirm(
+            app,
             "Supprimer cette version de CV",
             "La version enregistrée sera supprimée. Vos candidatures ne sont pas affectées.",
             "Supprimer définitivement",
             Message::ConfirmDelete,
         ),
         Dialog::ImportBackup => confirm(
+            app,
             "Restaurer le backup",
             "Toutes les données actuelles seront remplacées par le backup validé.",
             "Restaurer maintenant",
             Message::ConfirmBackupImport,
         ),
         Dialog::ResetDatabase => confirm(
+            app,
             "Réinitialiser Candilog",
             "Toutes les données locales seront définitivement supprimées.",
             "Tout réinitialiser",
             Message::ConfirmDatabaseReset,
         ),
         Dialog::ResetAiCache => confirm(
+            app,
             "Vider le cache IA",
             "Les résultats IA mémorisés seront supprimés. Les données métier sont conservées.",
             "Vider le cache",
@@ -145,6 +160,43 @@ fn title<'a>(app: &App, creation: &'a str, edition: &'a str) -> &'a str {
     }
 }
 
+#[derive(Debug, Clone)]
+struct RelationNavigation {
+    page: u64,
+    total_pages: u64,
+    total: u64,
+    previous: Message,
+    next: Message,
+}
+
+fn relation_page<'a>(
+    search: &'a str,
+    on_search: impl Fn(String) -> Message + 'a,
+    navigation: RelationNavigation,
+    select: Element<'a, Message>,
+) -> Element<'a, Message> {
+    let (first, last) = pagination::window(
+        navigation.page,
+        crate::app::state::RELATION_PAGE_SIZE,
+        navigation.total,
+    );
+    column![
+        field::search("Rechercher…", search, on_search, iced::Length::Fill,),
+        select,
+        pagination::pagination(
+            navigation.page,
+            navigation.total_pages.max(1),
+            navigation.previous,
+            navigation.next,
+            first,
+            last,
+            navigation.total,
+        ),
+    ]
+    .spacing(space::SM)
+    .into()
+}
+
 /// Modale de formulaire. `submit` vaut `None` tant que la saisie est incomplète.
 ///
 /// Le message de soumission était auparavant câblé **sans condition** : « Enregistrer » était
@@ -155,26 +207,30 @@ fn title<'a>(app: &App, creation: &'a str, edition: &'a str) -> &'a str {
 ///
 /// Un `on_press` absent grise le bouton : c'est le mécanisme d'état désactivé d'Iced.
 fn form<'a>(
+    app: &App,
     heading: &'a str,
     body: Element<'a, Message>,
     submit: Option<Message>,
     kind: Size,
 ) -> Element<'a, Message> {
     let mut enregistrer = controls::primary("Enregistrer", Some(Icon::Check));
-    if let Some(message) = submit {
+    if let Some(message) = submit.filter(|_| !app.write_in_progress) {
         enregistrer = enregistrer.on_press(message);
+    }
+    let mut annuler = controls::ghost("Annuler", None);
+    if !app.write_in_progress {
+        annuler = annuler.on_press(Message::CloseDialog);
     }
     overlay::modal(
         heading,
         body,
-        overlay::footer([
-            controls::ghost("Annuler", None)
-                .on_press(Message::CloseDialog)
-                .into(),
-            enregistrer.into(),
-        ]),
+        overlay::footer([annuler.into(), enregistrer.into()]),
         kind,
-        Message::CloseDialog,
+        if app.write_in_progress {
+            Message::Noop
+        } else {
+            Message::CloseDialog
+        },
         Message::Noop,
     )
 }
@@ -254,45 +310,63 @@ fn consequences_entreprise(app: &App, id: uuid::Uuid) -> String {
 
 /// Variante de [`confirm`] pour un avertissement calculé.
 fn confirm_owned<'a>(
+    app: &App,
     heading: &'a str,
     warning: String,
     action: &'a str,
     message: Message,
 ) -> Element<'a, Message> {
+    let mut annuler = controls::ghost("Annuler", None);
+    if !app.write_in_progress {
+        annuler = annuler.on_press(Message::CloseDialog);
+    }
     overlay::modal(
         heading,
         state::error(warning),
-        overlay::footer([
-            controls::ghost("Annuler", None)
-                .on_press(Message::CloseDialog)
-                .into(),
-            controls::danger(action, Some(Icon::Trash))
-                .on_press(message)
-                .into(),
-        ]),
+        overlay::footer([annuler.into(), {
+            let mut action_button = controls::danger(action, Some(Icon::Trash));
+            if !app.write_in_progress {
+                action_button = action_button.on_press(message);
+            }
+            action_button.into()
+        }]),
         Size::Form,
-        Message::CloseDialog,
+        if app.write_in_progress {
+            Message::Noop
+        } else {
+            Message::CloseDialog
+        },
         Message::Noop,
     )
 }
 
 fn confirm<'a>(
+    app: &App,
     heading: &'a str,
     warning: &'a str,
     action: &'a str,
     message: Message,
 ) -> Element<'a, Message> {
+    let mut annuler = controls::ghost("Annuler", None);
+    if !app.write_in_progress {
+        annuler = annuler.on_press(Message::CloseDialog);
+    }
     overlay::modal(
         heading,
         state::error(warning),
-        overlay::footer([
-            controls::ghost("Annuler", None)
-                .on_press(Message::CloseDialog)
-                .into(),
-            controls::danger_filled(action).on_press(message).into(),
-        ]),
+        overlay::footer([annuler.into(), {
+            let mut action_button = controls::danger_filled(action);
+            if !app.write_in_progress {
+                action_button = action_button.on_press(message);
+            }
+            action_button.into()
+        }]),
         Size::Confirm,
-        Message::CloseDialog,
+        if app.write_in_progress {
+            Message::Noop
+        } else {
+            Message::CloseDialog
+        },
         Message::Noop,
     )
 }
@@ -380,10 +454,22 @@ fn contact(app: &App) -> Element<'_, Message> {
         ]),
         field::labeled(
             "Entreprise",
-            field::select(companies, selected, |choice| {
-                Message::ContactEntrepriseChanged(choice.value())
-            })
-            .width(iced::Length::Fill),
+            relation_page(
+                &app.company_option_search,
+                Message::CompanyOptionSearchChanged,
+                RelationNavigation {
+                    page: app.company_option_page,
+                    total_pages: app.data.company_options_total_pages,
+                    total: app.data.company_options_total,
+                    previous: Message::CompanyOptionPagePrev,
+                    next: Message::CompanyOptionPageNext,
+                },
+                field::select(companies, selected, |choice| {
+                    Message::ContactEntrepriseChanged(choice.value())
+                })
+                .width(iced::Length::Fill)
+                .into(),
+            ),
         ),
         field::form_row([
             field::text_field(
@@ -447,10 +533,22 @@ fn candidature(app: &App) -> Element<'_, Message> {
         ),
         field::labeled(
             "Entreprise *",
-            field::select(companies, selected, |choice| {
-                Message::CandidatureEntrepriseChanged(choice.id)
-            })
-            .width(iced::Length::Fill),
+            relation_page(
+                &app.company_option_search,
+                Message::CompanyOptionSearchChanged,
+                RelationNavigation {
+                    page: app.company_option_page,
+                    total_pages: app.data.company_options_total_pages,
+                    total: app.data.company_options_total,
+                    previous: Message::CompanyOptionPagePrev,
+                    next: Message::CompanyOptionPageNext,
+                },
+                field::select(companies, selected, |choice| {
+                    Message::CandidatureEntrepriseChanged(choice.id)
+                })
+                .width(iced::Length::Fill)
+                .into(),
+            ),
         ),
         field::form_row([
             field::labeled(
@@ -519,18 +617,42 @@ fn entretien(app: &App) -> Element<'_, Message> {
     column![
         field::labeled(
             "Candidature *",
-            field::select(candidates, selected_candidate, |choice| {
-                Message::EntretienCandidatureChanged(choice.id)
-            })
-            .width(iced::Length::Fill),
+            relation_page(
+                &app.candidate_option_search,
+                Message::CandidateOptionSearchChanged,
+                RelationNavigation {
+                    page: app.candidate_option_page,
+                    total_pages: app.data.candidate_options_total_pages,
+                    total: app.data.candidate_options_total,
+                    previous: Message::CandidateOptionPagePrev,
+                    next: Message::CandidateOptionPageNext,
+                },
+                field::select(candidates, selected_candidate, |choice| {
+                    Message::EntretienCandidatureChanged(choice.id)
+                })
+                .width(iced::Length::Fill)
+                .into(),
+            ),
         ),
         field::form_row([
             field::labeled(
                 "Contact",
-                field::select(contacts, selected_contact, |choice| {
-                    Message::EntretienContactChanged(choice.value())
-                })
-                .width(iced::Length::Fill),
+                relation_page(
+                    &app.contact_option_search,
+                    Message::ContactOptionSearchChanged,
+                    RelationNavigation {
+                        page: app.contact_option_page,
+                        total_pages: app.data.contact_options_total_pages,
+                        total: app.data.contact_options_total,
+                        previous: Message::ContactOptionPagePrev,
+                        next: Message::ContactOptionPageNext,
+                    },
+                    field::select(contacts, selected_contact, |choice| {
+                        Message::EntretienContactChanged(choice.value())
+                    })
+                    .width(iced::Length::Fill)
+                    .into(),
+                ),
             ),
             field::labeled(
                 "Type",
@@ -586,10 +708,22 @@ fn relance(app: &App) -> Element<'_, Message> {
     column![
         field::labeled(
             "Candidature *",
-            field::select(candidates, selected, |choice| {
-                Message::RelanceCandidatureChanged(choice.id)
-            })
-            .width(iced::Length::Fill),
+            relation_page(
+                &app.candidate_option_search,
+                Message::CandidateOptionSearchChanged,
+                RelationNavigation {
+                    page: app.candidate_option_page,
+                    total_pages: app.data.candidate_options_total_pages,
+                    total: app.data.candidate_options_total,
+                    previous: Message::CandidateOptionPagePrev,
+                    next: Message::CandidateOptionPageNext,
+                },
+                field::select(candidates, selected, |choice| {
+                    Message::RelanceCandidatureChanged(choice.id)
+                })
+                .width(iced::Length::Fill)
+                .into(),
+            ),
         ),
         field::form_row([
             field::date_field(

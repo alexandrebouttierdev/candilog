@@ -20,8 +20,8 @@ shells Linux, et l'identifiant Wayland `candilog` correspond exactement au nom d
 
 ## Dépendances à déclarer
 
-- `.deb` : `libxkbcommon0`, `libwayland-client0`, `libx11-6`, `libdbus-1-3`, `libvulkan1`
-- `.rpm` : `libxkbcommon`, `libwayland-client`, `libX11`, `dbus-libs`, `vulkan-loader`
+- `.deb` : `libxkbcommon0`, `libwayland-client0`, `libx11-6`, `libdbus-1-3`
+- `.rpm` : `libxkbcommon`, `libwayland-client`, `libX11`, `dbus-libs`
 
 ## Signature de code
 

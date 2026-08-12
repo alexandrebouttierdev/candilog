@@ -22,10 +22,11 @@ const MIGRATIONS: &[(i64, &str)] = &[
     (3, include_str!("../../migrations/003_drop_offres.sql")),
     (4, include_str!("../../migrations/004_schema_metier.sql")),
     (5, include_str!("../../migrations/005_contraintes_enum.sql")),
+    (6, include_str!("../../migrations/006_index_dates.sql")),
 ];
 
 /// Version de schéma atteinte après application de toutes les migrations.
-pub const DERNIERE_VERSION: i64 = 5;
+pub const DERNIERE_VERSION: i64 = 6;
 
 /// Applique les réglages indispensables à **chaque** connexion du pool.
 ///
