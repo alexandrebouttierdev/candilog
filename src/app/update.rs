@@ -71,6 +71,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             app.window_size = size;
         }
         Message::Navigate(route) => {
+            let refresh_models = route == crate::navigation::Route::Parametres;
             if route == crate::navigation::Route::Parametres {
                 // Le brouillon repart de l'état persisté : quitter l'écran sans enregistrer
                 // ne doit pas laisser de modification en mémoire.
@@ -82,7 +83,12 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             app.candidate_page = 1;
             app.company_page = 1;
             app.contact_page = 1;
-            return recharger(app);
+            let reload = recharger(app);
+            return if refresh_models {
+                Task::batch([reload, Task::done(Message::RefreshLlmModels)])
+            } else {
+                reload
+            };
         }
         Message::Reload => return recharger(app),
         Message::SearchChanged(value) => {
@@ -884,6 +890,20 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             ) && app.settings_form.draft.llm.endpoint.is_none()
             {
                 app.settings_form.draft.llm.endpoint = Some("http://localhost:11434".into());
+            }
+            if app
+                .settings_form
+                .draft
+                .llm
+                .api_key
+                .as_deref()
+                .is_some_and(|key| !key.trim().is_empty())
+                || matches!(
+                    app.settings_form.draft.llm.provider,
+                    crate::shared::llm::ProviderKind::Ollama
+                )
+            {
+                return Task::done(Message::RefreshLlmModels);
             }
         }
         Message::SettingsModelChanged(value) => app.settings_form.draft.llm.model = value,
