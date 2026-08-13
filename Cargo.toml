@@ -20,6 +20,15 @@ default = []
 # `CANDILOG_DATA_DIR` n'en dépend pas et reste disponible en toutes circonstances.
 capture = []
 
+# Correctif local de `pdf-extract` 0.12.0 (voir `vendor/pdf-extract-0.12.0/README`).
+# `pdf-extract` lisait `c_last` et `c_width` depuis `w[i]` au lieu de `w[i + 1]` et
+# `w[i + 2]` dans le tableau `/W` des polices CID : les largeurs déclarées au format
+# range (`c_first c_last w`, utilisé par LibreOffice) n'étaient jamais appliquées, et
+# l'extraction fabriquait un espace parasite (« D éveloppeur » au lieu de
+# « Développeur »). Le correctif est vendored pour ne pas dépendre d'un fork non publié.
+[patch.crates-io]
+pdf-extract = { path = "vendor/pdf-extract-0.12.0" }
+
 [dependencies]
 iced = { version = "0.13", features = ["tokio", "image", "svg", "canvas", "advanced", "lazy"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "net", "time"] }
