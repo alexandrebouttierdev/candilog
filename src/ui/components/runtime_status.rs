@@ -121,7 +121,7 @@ pub fn runtime_status<'a, Message: Clone + 'a>(
 
     mouse_area(
         container(content)
-            .padding([4.0, space::MD])
+            .padding([space::XXS, space::MD])
             .max_width(220.0)
             .style(move |theme: &Theme| {
                 let palette = tokens(theme);
