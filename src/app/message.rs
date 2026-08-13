@@ -108,6 +108,9 @@ pub enum Message {
     UpdateChecked(Result<Option<crate::core::updater::UpdateInfo>, String>),
     /// Efface la notification courante.
     ClearNotification,
+    /// Battement du compte à rebours d'un toast : l'expiration est décidée dans
+    /// `update()` en comparant l'horodatage à `DURATION_AFFICHAGE_TOAST`.
+    NotificationCountdown,
     /// Ouvre un formulaire métier.
     OpenDialog(Dialog),
     /// Ferme le formulaire en cours.

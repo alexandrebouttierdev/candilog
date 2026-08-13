@@ -20,6 +20,15 @@ pub fn subscription(app: &App) -> Subscription<Message> {
     if app.ai_is_running {
         abonnements.push(iced::time::every(Duration::from_secs(1)).map(|_| Message::Tick));
     }
+    // Le compte à rebours du toast n'est abonné que lorsqu'un toast est affiché : sans
+    // notification, aucun message périodique ne tourne en arrière-plan (même principe que
+    // le chronomètre IA ci-dessus). La précision réelle vient de `Instant`, la période de
+    // 500 ms ne fait que cadencer la vérification.
+    if app.notification.is_some() {
+        abonnements.push(
+            iced::time::every(Duration::from_millis(500)).map(|_| Message::NotificationCountdown),
+        );
+    }
     Subscription::batch(abonnements)
 }
 
