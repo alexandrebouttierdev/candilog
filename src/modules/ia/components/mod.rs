@@ -4,11 +4,11 @@ use crate::app::state::RecommendationStatus;
 use crate::ui::components::button as controls;
 use crate::ui::components::icon::{self, Icon};
 use crate::ui::components::{badge, layout, typo};
-use crate::ui::theme::metrics::{radius, space, stroke};
+use crate::ui::theme::metrics::{radius, size, space, stroke};
 use crate::ui::theme::styles;
 use crate::ui::theme::tokens::tokens;
 use crate::ui::theme::Tone;
-use iced::widget::{column, container, row, Space};
+use iced::widget::{column, container, row};
 use iced::{Alignment, Background, Border, Element, Length, Theme};
 
 /// Ton et libellé associés à la décision prise sur une recommandation.
@@ -72,16 +72,7 @@ pub fn recommendation<'a, Message: Clone + 'a>(
 /// Texte proposé dans une encoche teintée succès, filet vertical à gauche.
 fn proposed_box<'a, Message: 'a>(proposed: String) -> Element<'a, Message> {
     row![
-        container(Space::new(stroke::MARKER, Length::Fill)).style(|theme: &Theme| {
-            container::Style {
-                background: Some(Background::Color(Tone::Success.color(&tokens(theme)))),
-                border: Border {
-                    radius: radius::MARKER.into(),
-                    ..Border::default()
-                },
-                ..container::Style::default()
-            }
-        }),
+        badge::accent_bar(Tone::Success, size::MARKER),
         container(typo::body(proposed))
             .padding([space::SM, space::MD])
             .width(Length::Fill)
@@ -99,6 +90,7 @@ fn proposed_box<'a, Message: 'a>(proposed: String) -> Element<'a, Message> {
             }),
     ]
     .spacing(space::SM)
+    .align_y(Alignment::Center)
     .into()
 }
 
@@ -133,7 +125,7 @@ pub fn skill_list<'a, Message: 'a>(
 
 #[cfg(test)]
 mod tests {
-    use super::recommendation_state;
+    use super::{recommendation, recommendation_state};
     use crate::app::state::RecommendationStatus;
     use crate::ui::theme::Tone;
 
@@ -164,5 +156,23 @@ mod tests {
             recommendation_state(RecommendationStatus::Pending).1,
             Tone::Neutral
         );
+    }
+
+    #[test]
+    fn une_recommandation_ne_remplit_pas_la_hauteur() {
+        // Le marqueur vertical de la proposition doit épouser la hauteur du texte
+        // sans demander `Length::Fill` : cette hauteur fluide remontait jusqu'au
+        // `scrollable` du plan de travail et faisait paniquer Iced.
+        let element = recommendation(
+            "Résumé".to_owned(),
+            3,
+            "Texte original".to_owned(),
+            "Texte proposé".to_owned(),
+            RecommendationStatus::Pending,
+            crate::app::Message::Noop,
+            crate::app::Message::Noop,
+        );
+        let hauteur = element.as_widget().size_hint().height;
+        assert!(!hauteur.is_fill());
     }
 }
