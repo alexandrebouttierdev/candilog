@@ -1,7 +1,7 @@
 //! Traitement des messages Iced.
 
 use super::capture::save_review_screenshot;
-use super::commandes::{ecrire, finish_submit, notifier_le_bureau, recharger};
+use super::commandes::{ecrire, finish_submit, notifier_le_bureau, recharger, sonner_fin_analyse};
 use super::export::export_candidatures;
 use super::message::{LetterStreamEvent, UpdateDownloadEvent};
 use super::profile_edit::{
@@ -742,6 +742,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 Ok(analysis) => {
                     app.offer_analysis = Some(analysis);
                     app.notify_success(format!("Offre analysée en {} s.", app.ai_elapsed_seconds));
+                    return sonner_fin_analyse();
                 }
                 Err(error) => app.notify_failure(error),
             }
@@ -781,7 +782,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                     app.cv_generation = Some(generation);
                     let corps = format!("CV généré en {} s.", app.ai_elapsed_seconds);
                     app.notify_success(corps.clone());
-                    return notifier_le_bureau(corps);
+                    return sonner_fin_analyse().chain(notifier_le_bureau(corps));
                 }
                 Err(error) => app.notify_failure(error),
             }
@@ -838,7 +839,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                     app.imported_cv_analysis = Some(analysis);
                     let corps = format!("CV analysé en {} s.", app.ai_elapsed_seconds);
                     app.notify_success(corps.clone());
-                    return notifier_le_bureau(corps);
+                    return sonner_fin_analyse().chain(notifier_le_bureau(corps));
                 }
                 Err(error) => app.notify_failure(error),
             }
@@ -899,7 +900,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                         app.letter_output = letter;
                         let corps = format!("Lettre générée en {} s.", app.ai_elapsed_seconds);
                         app.notify_success(corps.clone());
-                        return notifier_le_bureau(corps);
+                        return sonner_fin_analyse().chain(notifier_le_bureau(corps));
                     }
                     Err(error) => app.notify_failure(error),
                 }
@@ -1616,6 +1617,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                         "Profil extrait en {} s. Vérifiez-le avant validation.",
                         app.ai_elapsed_seconds
                     ));
+                    return sonner_fin_analyse();
                 }
                 Err(error) => app.notify_failure(error),
             }
@@ -1685,7 +1687,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             match result {
                 Ok(_) => {
                     app.notify_success("Compte rendu analysé et enregistré.");
-                    return recharger(app);
+                    return sonner_fin_analyse().chain(recharger(app));
                 }
                 Err(error) => app.notify_failure(error),
             }

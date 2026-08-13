@@ -103,3 +103,20 @@ pub(super) fn notifier_le_bureau(corps: String) -> Task<Message> {
         |()| Message::Noop,
     )
 }
+
+/// Joue le son de fin d'analyse IA, hors du fil de l'interface.
+///
+/// Conclut chaque opération IA longue (analyse d'offre, génération de CV, analyse de CV
+/// importé, lettre, extraction de profil, analyse d'entretien). L'échec est journalisé plutôt
+/// qu'écarté, comme pour [`notifier_le_bureau`] : le son est un confort, pas un contrat.
+pub(super) fn sonner_fin_analyse() -> Task<Message> {
+    Task::perform(
+        async move {
+            match tokio::task::spawn_blocking(crate::core::external::jouer_son_analyse).await {
+                Ok(()) => {}
+                Err(error) => tracing::warn!(erreur = %error, "son de fin d'analyse interrompu"),
+            }
+        },
+        |()| Message::Noop,
+    )
+}
