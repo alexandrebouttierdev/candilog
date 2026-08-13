@@ -6,6 +6,7 @@
 use super::button as controls;
 use super::icon::{self, Icon, Ink};
 use super::typo;
+use crate::ui::format;
 use crate::ui::theme::metrics::{size, space};
 use crate::ui::theme::styles;
 use crate::ui::theme::Tone;
@@ -119,7 +120,7 @@ pub fn running<'a, Message: Clone + 'a>(
                 icon::toned(Icon::Sparkles, Tone::Accent),
                 typo::body(step),
                 Space::with_width(Length::Fill),
-                typo::caption(format!("{elapsed_seconds} s")),
+                typo::caption(format::duree(elapsed_seconds)),
                 controls::ghost("Arrêter", Some(Icon::Stop)).on_press(on_cancel),
             ]
             .spacing(space::MD)

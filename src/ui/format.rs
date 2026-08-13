@@ -194,12 +194,32 @@ pub fn plural(count: usize, singular: &str, plural: &str) -> String {
     }
 }
 
+/// Formate une durée en secondes pour l'interface.
+///
+/// Sous la minute, la durée reste en secondes ; au-delà, elle s'exprime en
+/// minutes (et secondes restantes) pour rester lisible pendant les longues
+/// opérations IA.
+#[must_use]
+pub fn duree(seconds: u64) -> String {
+    if seconds < 60 {
+        format!("{seconds} s")
+    } else {
+        let minutes = seconds / 60;
+        let reste = seconds % 60;
+        if reste == 0 {
+            format!("{minutes} min")
+        } else {
+            format!("{minutes} min {reste} s")
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
         compact_date, compact_datetime, date_for_input, date_to_storage, datetime_for_input,
-        datetime_to_storage, long_date, month_name, or_dash, or_else, percent, plural, time_part,
-        truncate, weekday_abbrev, weekday_name,
+        datetime_to_storage, duree, long_date, month_name, or_dash, or_else, percent, plural,
+        time_part, truncate, weekday_abbrev, weekday_name,
     };
 
     #[test]
@@ -288,5 +308,16 @@ mod tests {
         assert_eq!(plural(0, "candidature", "candidatures"), "0 candidature");
         assert_eq!(plural(1, "candidature", "candidatures"), "1 candidature");
         assert_eq!(plural(2, "candidature", "candidatures"), "2 candidatures");
+    }
+
+    #[test]
+    fn la_duree_bascule_en_minutes_apres_soixante_secondes() {
+        assert_eq!(duree(0), "0 s");
+        assert_eq!(duree(1), "1 s");
+        assert_eq!(duree(59), "59 s");
+        assert_eq!(duree(60), "1 min");
+        assert_eq!(duree(61), "1 min 1 s");
+        assert_eq!(duree(120), "2 min");
+        assert_eq!(duree(153), "2 min 33 s");
     }
 }

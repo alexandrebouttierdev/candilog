@@ -741,7 +741,10 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             match result {
                 Ok(analysis) => {
                     app.offer_analysis = Some(analysis);
-                    app.notify_success(format!("Offre analysée en {} s.", app.ai_elapsed_seconds));
+                    app.notify_success(format!(
+                        "Offre analysée en {}.",
+                        ui_format::duree(app.ai_elapsed_seconds)
+                    ));
                     return sonner_fin_analyse();
                 }
                 Err(error) => app.notify_failure(error),
@@ -780,7 +783,8 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                         generation.analysis.recommandations.len()
                     ];
                     app.cv_generation = Some(generation);
-                    let corps = format!("CV généré en {} s.", app.ai_elapsed_seconds);
+                    let corps =
+                        format!("CV généré en {}.", ui_format::duree(app.ai_elapsed_seconds));
                     app.notify_success(corps.clone());
                     return sonner_fin_analyse().chain(notifier_le_bureau(corps));
                 }
@@ -837,7 +841,10 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             match result {
                 Ok(analysis) => {
                     app.imported_cv_analysis = Some(analysis);
-                    let corps = format!("CV analysé en {} s.", app.ai_elapsed_seconds);
+                    let corps = format!(
+                        "CV analysé en {}.",
+                        ui_format::duree(app.ai_elapsed_seconds)
+                    );
                     app.notify_success(corps.clone());
                     return sonner_fin_analyse().chain(notifier_le_bureau(corps));
                 }
@@ -898,7 +905,10 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 match result {
                     Ok(letter) => {
                         app.letter_output = letter;
-                        let corps = format!("Lettre générée en {} s.", app.ai_elapsed_seconds);
+                        let corps = format!(
+                            "Lettre générée en {}.",
+                            ui_format::duree(app.ai_elapsed_seconds)
+                        );
                         app.notify_success(corps.clone());
                         return sonner_fin_analyse().chain(notifier_le_bureau(corps));
                     }
@@ -1614,8 +1624,8 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                     app.profile_import_excluded.clear();
                     app.dialog = Some(Dialog::ProfileImport);
                     app.notify_success(format!(
-                        "Profil extrait en {} s. Vérifiez-le avant validation.",
-                        app.ai_elapsed_seconds
+                        "Profil extrait en {}. Vérifiez-le avant validation.",
+                        ui_format::duree(app.ai_elapsed_seconds)
                     ));
                     return sonner_fin_analyse();
                 }
