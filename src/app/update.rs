@@ -306,7 +306,19 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             Ok(None) => app.notify(NotificationKind::Info, "Candilog est à jour."),
             Err(error) => app.notify_failure(format!("Vérification impossible : {error}")),
         },
-        Message::ClearNotification => app.notification = None,
+        Message::ClearNotification => {
+            app.notification = None;
+            app.notification_shown_at = None;
+        }
+        Message::NotificationCountdown => {
+            let expire = app
+                .notification_shown_at
+                .is_some_and(|pose| pose.elapsed() >= crate::app::state::DURATION_AFFICHAGE_TOAST);
+            if expire {
+                app.notification = None;
+                app.notification_shown_at = None;
+            }
+        }
         Message::OpenDialog(dialog) => {
             app.dialog = Some(dialog);
             app.editing_id = None;

@@ -322,7 +322,7 @@ pub fn capture_demandee() -> bool {
 /// La nature accompagne le texte au lieu d'être redevinée au moment du rendu : toutes les
 /// erreurs étaient converties en `String` dès `update()`, puis reclassées par recherche de
 /// mots-clés, avec `Success` pour cas par défaut — un échec sur deux s'affichait en vert.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Notification {
     /// Nature, qui détermine le ton et l'icône du toast.
     pub kind: NotificationKind,
