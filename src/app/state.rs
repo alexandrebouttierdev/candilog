@@ -17,6 +17,9 @@ use crate::shared::error::AppError;
 use crate::shared::profile::Profile;
 use crate::shared::state::AppState as BackendState;
 pub use crate::ui::components::notification::Kind as NotificationKind;
+
+/// Durée d'affichage d'un toast avant disparition automatique.
+pub const DURATION_AFFICHAGE_TOAST: std::time::Duration = std::time::Duration::from_secs(4);
 use chrono::{Datelike, Local};
 use std::sync::Arc;
 
@@ -429,6 +432,9 @@ pub struct App {
     pub ai_sequence: u64,
     /// Notification utilisateur non bloquante.
     pub notification: Option<Notification>,
+    /// Instant de pose de la notification courante, source du compte à rebours
+    /// automatique. `None` quand aucun toast n'est affiché.
+    pub notification_shown_at: Option<std::time::Instant>,
     /// Résultat du dernier contrôle de santé du fournisseur IA.
     ///
     /// Conservé dans l'état plutôt que déduit de l'activité de l'interface : la pastille du
@@ -643,6 +649,7 @@ impl App {
             system_dark: None,
             ai_sequence: 0,
             notification: None,
+            notification_shown_at: None,
             provider_health: crate::ui::components::runtime_status::Health::default(),
             available_models: Vec::new(),
             available_update: None,
@@ -886,6 +893,8 @@ impl App {
             kind,
             message: message.into(),
         });
+        // Chaque nouveau toast réarme le compte à rebours de 4 secondes.
+        self.notification_shown_at = Some(std::time::Instant::now());
     }
 
     /// Confirme une opération réussie.
