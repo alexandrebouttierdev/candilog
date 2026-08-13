@@ -82,3 +82,10 @@ version = "2.6.2"
 
 [profile.release]
 debug = 2
+
+# Les dépendances de registre sont compilées avec `--cap-lints allow`, ce qui masque leurs
+# warnings ; une dépendance vendored (chemin local) les affiche au contraire à chaque build.
+# Ces warnings préexistent dans le code amont et ne concernent pas candilog : on les éteint
+# au niveau de la crate, sans modifier son code source.
+[lints.rust]
+warnings = "allow"
