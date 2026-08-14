@@ -253,6 +253,10 @@ pub enum Message {
     LetterJobTitleChanged(String),
     /// Modifie le contexte de la lettre.
     LetterEditorAction(iced::widget::text_editor::Action),
+    /// Demande le contenu texte du presse-papiers pour le contexte de la lettre.
+    PasteLetterFromClipboard,
+    /// Contenu texte lu depuis le presse-papiers.
+    LetterClipboardRead(Option<String>),
     /// Modifie le ton de la lettre.
     LetterToneChanged(String),
     /// Modifie la longueur de la lettre.

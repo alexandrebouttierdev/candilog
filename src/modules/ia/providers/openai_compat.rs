@@ -168,6 +168,27 @@ impl LlmProvider for OpenAiCompatProvider {
             .map_err(provider_err)?
             .error_for_status()
             .map_err(provider_err)?;
+        // Certains endpoints compatibles ignorent `stream: true` et renvoient une
+        // complétion `JSON` classique : sans ce repli, le flux `SSE` était lu ligne à
+        // ligne, aucun `data:` n'était reconnu, et la lettre sortait vide.
+        let est_json = response
+            .headers()
+            .get(reqwest::header::CONTENT_TYPE)
+            .and_then(|valeur| valeur.to_str().ok())
+            .is_some_and(|valeur| valeur.contains("application/json"));
+        if est_json {
+            let reponse: ChatResponse = json_limited(response, MAX_PROVIDER_RESPONSE_BYTES)
+                .await
+                .map_err(provider_err)?;
+            let contenu = reponse
+                .choices
+                .into_iter()
+                .next()
+                .map(|choix| choix.message.content)
+                .ok_or_else(|| provider_err("réponse sans choix"))?;
+            on_chunk(contenu.clone());
+            return Ok(contenu);
+        }
         let mut full = String::new();
         read_lines_stream(response, |line| {
             if let Some(data) = sse_data(line) {
@@ -186,6 +207,13 @@ impl LlmProvider for OpenAiCompatProvider {
             }
         })
         .await?;
+        if full.is_empty() {
+            // Le flux SSE n'a produit aucun contenu (format inattendu) : repli sur la
+            // complétion classique, qui reste fonctionnelle sur tous les endpoints.
+            let contenu = self.complete(prompt, system, options.num_predict).await?;
+            on_chunk(contenu.clone());
+            return Ok(contenu);
+        }
         Ok(full)
     }
 

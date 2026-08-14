@@ -71,9 +71,9 @@ pub fn view(app: &App) -> Element<'_, Message> {
         ),
         layout::workspace(
             column![layout::columns([
-                brief_panel(app).width(Length::FillPortion(290)).into(),
-                document_panel(app).width(Length::FillPortion(1)).into(),
-                chat_panel().width(Length::FillPortion(330)).into(),
+                brief_panel(app).width(Length::Fixed(290.0)).into(),
+                document_panel(app).width(Length::Fill).into(),
+                chat_panel().width(Length::Fixed(330.0)).into(),
             ]),]
             .spacing(space::LG)
             .height(Length::Fill),
@@ -116,12 +116,19 @@ fn brief_panel(app: &App) -> Container<'_, Message> {
         ),
         surface::section_header("Contexte", typo::caption("Offre ou consignes")),
         surface::divider(),
+        row![
+            typo::label("Texte de l'offre ou consignes"),
+            layout::spacer(),
+            controls::secondary("Coller", Some(Icon::Copy))
+                .on_press(Message::PasteLetterFromClipboard),
+        ]
+        .align_y(iced::Alignment::Center),
         field::editor(
             &app.letter_editor,
             "Collez l'offre ou décrivez la candidature…",
         )
         .on_action(Message::LetterEditorAction)
-        .height(Length::Fixed(190.0)),
+        .height(Length::Fixed(280.0)),
     ]
     .spacing(space::LG);
 

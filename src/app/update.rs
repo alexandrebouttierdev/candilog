@@ -854,6 +854,17 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
         Message::LetterCompanyChanged(value) => app.letter_company = value,
         Message::LetterJobTitleChanged(value) => app.letter_job_title = value,
         Message::LetterEditorAction(action) => app.letter_editor.perform(action),
+        Message::PasteLetterFromClipboard => {
+            return iced::clipboard::read().map(Message::LetterClipboardRead);
+        }
+        Message::LetterClipboardRead(value) => match value {
+            Some(value) if !value.trim().is_empty() => {
+                app.letter_editor = iced::widget::text_editor::Content::with_text(&value);
+                app.notify_success("Contexte collé depuis le presse-papiers.");
+            }
+            Some(_) => app.notify(NotificationKind::Warning, "Le presse-papiers est vide."),
+            None => app.notify_failure("Impossible de lire le presse-papiers."),
+        },
         Message::LetterToneChanged(value) => app.letter_tone = value,
         Message::LetterLengthChanged(value) => app.letter_length = value,
         Message::GenerateLetter => {
