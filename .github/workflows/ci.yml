@@ -20,7 +20,7 @@ jobs:
     name: Qualité Linux
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@1.91.0
         with:
           components: rustfmt, clippy
@@ -47,7 +47,7 @@ jobs:
     runs-on: macos-latest
     needs: quality
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@1.91.0
       - name: Build release
         run: cargo build --locked --release --all-features
@@ -57,7 +57,7 @@ jobs:
     runs-on: windows-latest
     needs: quality
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@1.91.0
       - name: Build release
         run: cargo build --locked --release --all-features
