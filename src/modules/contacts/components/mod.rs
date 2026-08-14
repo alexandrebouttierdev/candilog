@@ -10,6 +10,8 @@ use crate::ui::theme::Tone;
 use iced::widget::{button, column, container, row};
 use iced::{Alignment, Element, Length};
 
+pub mod form;
+
 /// Nom affichable d'un contact.
 #[must_use]
 pub fn full_name(contact: &Contact) -> String {
@@ -74,49 +76,5 @@ pub fn contact_card<'a, Message: Clone + 'a>(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::{full_name, matches};
-    use crate::modules::contacts::model::Contact;
-
-    fn contact(poste: Option<&str>, email: Option<&str>) -> Contact {
-        Contact {
-            id: uuid::Uuid::new_v4(),
-            entreprise_id: None,
-            prenom: "Alex".into(),
-            nom: "Bouttier".into(),
-            poste: poste.map(str::to_owned),
-            email: email.map(str::to_owned),
-            telephone: None,
-            linkedin: None,
-            notes: None,
-            created_at: "2026-08-01".into(),
-            updated_at: "2026-08-01".into(),
-        }
-    }
-
-    #[test]
-    fn le_nom_complet_est_normalise() {
-        assert_eq!(full_name(&contact(None, None)), "Alex Bouttier");
-    }
-
-    #[test]
-    fn la_recherche_couvre_nom_fonction_et_courriel() {
-        let contact = contact(Some("Responsable RH"), Some("alex@agrial.fr"));
-        assert!(matches(&contact, ""));
-        assert!(matches(&contact, "bouttier"));
-        assert!(matches(&contact, "responsable"));
-        assert!(matches(&contact, "agrial"));
-        assert!(!matches(&contact, "dupont"));
-    }
-
-    #[test]
-    fn la_carte_de_contact_s_instancie_avec_et_sans_coordonnees() {
-        use super::contact_card;
-        use iced::Element;
-
-        let bare = contact(None, None);
-        let _: Element<'_, ()> = contact_card(&bare, ());
-        let complete = contact(Some("DRH"), Some("a@b.fr"));
-        let _: Element<'_, ()> = contact_card(&complete, ());
-    }
-}
+#[path = "tests/mod/mod.rs"]
+mod tests;

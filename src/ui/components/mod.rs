@@ -24,6 +24,7 @@ pub mod notification;
 pub mod overlay;
 pub mod pagination;
 pub mod provider_icon;
+pub mod relation;
 pub mod runtime_status;
 pub mod score_gauge;
 pub mod sidebar;

@@ -9,6 +9,8 @@ use chrono::{Datelike, NaiveDate};
 use iced::widget::{button, column, container, row, Space};
 use iced::{Alignment, Background, Border, Element, Length, Theme};
 
+pub mod form;
+
 /// Nature d'un événement d'agenda.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EventKind {
@@ -178,15 +180,5 @@ pub fn month_cell<'a, Message: Clone + 'a>(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::EventKind;
-    use crate::ui::theme::Tone;
-
-    #[test]
-    fn les_deux_natures_d_evenement_sont_distinguables() {
-        assert_ne!(EventKind::Interview.tone(), EventKind::Reminder.tone());
-        assert_ne!(EventKind::Interview.label(), EventKind::Reminder.label());
-        assert_eq!(EventKind::Interview.tone(), Tone::Success);
-        assert_eq!(EventKind::Reminder.tone(), Tone::Warning);
-    }
-}
+#[path = "tests/mod/mod.rs"]
+mod tests;

@@ -1,0 +1,226 @@
+//! Écrans de maintenance : sauvegardes, mises à jour et à propos.
+
+use crate::app::state::Dialog;
+use crate::app::{App, Message};
+use crate::navigation::Route;
+use crate::ui::components::button as controls;
+use crate::ui::components::header;
+use crate::ui::components::icon::{self, Icon};
+use crate::ui::components::{badge, layout, state, surface, typo};
+use crate::ui::theme::metrics::space;
+use crate::ui::theme::styles;
+use crate::ui::theme::Tone;
+use iced::widget::{column, container, row};
+use iced::{Alignment, Element, Length};
+
+use super::{action_card, section_card, settings_hero, BODY_MAX_WIDTH};
+
+pub fn backup_view(_app: &App) -> Element<'_, Message> {
+    let content = column![
+        settings_hero(
+            Icon::Save,
+            "VOS DONNÉES",
+            "Une copie sûre, quand vous le décidez.",
+            "Exportez ou restaurez toute votre base Candilog depuis un fichier local.",
+        ),
+        row![
+            action_card(
+                Icon::Download,
+                "Créer une sauvegarde",
+                "Générez une archive complète et conservez-la où vous le souhaitez.",
+                controls::primary("Exporter", Some(Icon::Download))
+                    .on_press(Message::ExportBackup)
+                    .width(Length::Fill)
+                    .into(),
+            ),
+            action_card(
+                Icon::Import,
+                "Restaurer une sauvegarde",
+                "Choisissez un fichier Candilog existant avant de confirmer la restauration.",
+                controls::secondary("Choisir un fichier", Some(Icon::Import))
+                    .on_press(Message::SelectBackupImport)
+                    .width(Length::Fill)
+                    .into(),
+            ),
+        ]
+        .spacing(space::LG),
+        section_card(
+            Icon::Settings,
+            "Maintenance locale",
+            row![
+                column![
+                    typo::body("Rafraîchir les données"),
+                    typo::caption("Relit la base sans modifier son contenu."),
+                ]
+                .spacing(space::XS),
+                layout::spacer(),
+                controls::secondary("Recharger", Some(Icon::Refresh)).on_press(Message::Reload),
+                controls::danger("Réinitialiser", Some(Icon::Trash))
+                    .on_press(Message::OpenDialog(Dialog::ResetDatabase)),
+            ]
+            .spacing(space::MD)
+            .align_y(Alignment::Center)
+            .padding([space::LG, 0.0]),
+        ),
+    ]
+    .spacing(space::LG)
+    .width(Length::Fill);
+    layout::screen(
+        header::route_header(
+            Icon::Save,
+            "Sauvegardes",
+            Route::Sauvegardes,
+            Message::Navigate,
+            iced::widget::Space::with_width(0).into(),
+        ),
+        layout::workspace(surface::scroll(
+            container(content)
+                .width(Length::Fill)
+                .max_width(BODY_MAX_WIDTH)
+                .center_x(Length::Fill),
+        )),
+    )
+}
+
+/// Écran dédié au cycle de mise à jour.
+pub fn updates_view(app: &App) -> Element<'_, Message> {
+    let status: Element<'_, Message> = if let Some(update) = &app.available_update {
+        column![
+            badge::badge(
+                format!("Version {} disponible", update.version),
+                Tone::Success
+            ),
+            controls::primary("Télécharger la mise à jour", Some(Icon::Download))
+                .on_press(Message::DownloadUpdate),
+        ]
+        .spacing(space::MD)
+        .into()
+    } else {
+        column![
+            badge::badge("Aucune mise à jour en attente", Tone::Neutral),
+            controls::primary("Rechercher maintenant", Some(Icon::Refresh))
+                .on_press(Message::CheckUpdate),
+        ]
+        .spacing(space::MD)
+        .into()
+    };
+    let mut content = column![
+        settings_hero(
+            Icon::Download,
+            "VERSION ACTUELLE",
+            env!("CARGO_PKG_VERSION"),
+            "Candilog vérifie les nouvelles versions uniquement lorsque vous le demandez.",
+        ),
+        row![
+            action_card(
+                Icon::Refresh,
+                "Disponibilité",
+                "Interrogez la source officielle et comparez-la à votre version installée.",
+                status,
+            ),
+            action_card(
+                Icon::Check,
+                "Installation maîtrisée",
+                "Le paquet est téléchargé puis sa signature est vérifiée avant utilisation.",
+                typo::caption("Aucune installation silencieuse").into(),
+            ),
+        ]
+        .spacing(space::LG),
+    ]
+    .spacing(space::LG)
+    .width(Length::Fill);
+    if let Some(progress) = app.update_progress {
+        content = content.push(section_card(
+            Icon::Download,
+            "Téléchargement",
+            container(state::progress_step(
+                "Téléchargement et vérification du paquet",
+                f32::from(progress) / 100.0,
+            ))
+            .padding([space::LG, 0.0]),
+        ));
+    }
+    if let Some(path) = &app.verified_update_path {
+        content = content.push(section_card(
+            Icon::Check,
+            "Paquet prêt",
+            column![
+                typo::body("La signature est valide. Le paquet peut maintenant être installé."),
+                typo::caption(path.display().to_string()),
+            ]
+            .spacing(space::SM)
+            .padding([space::LG, 0.0]),
+        ));
+    }
+    layout::screen(
+        header::route_header(
+            Icon::Download,
+            "Mises à jour",
+            Route::MisesAJour,
+            Message::Navigate,
+            typo::caption(format!("Version actuelle {}", env!("CARGO_PKG_VERSION"))).into(),
+        ),
+        layout::workspace(surface::scroll(
+            container(content)
+                .width(Length::Fill)
+                .max_width(BODY_MAX_WIDTH)
+                .center_x(Length::Fill),
+        )),
+    )
+}
+
+/// Écran À propos, accessible depuis les deux zones de marque du rail.
+pub fn about_view(_app: &App) -> Element<'_, Message> {
+    let card = container(
+        column![
+            icon::brand(84.0),
+            typo::title("Candilog"),
+            typo::body("Le cockpit desktop pour piloter votre recherche d'emploi."),
+            badge::badge(
+                format!("Version {}", env!("CARGO_PKG_VERSION")),
+                Tone::Neutral
+            ),
+            container(
+                row![
+                    column![
+                        typo::meta_toned("CONÇU ET DÉVELOPPÉ PAR", Tone::Accent),
+                        typo::label("Alexandre Bouttier"),
+                        typo::caption("Produit indépendant, pensé pour rester local."),
+                    ]
+                    .spacing(space::XS),
+                    layout::spacer(),
+                    controls::secondary("Visiter le site", Some(Icon::Link))
+                        .on_press(Message::OpenAuthorWebsite),
+                ]
+                .align_y(Alignment::Center),
+            )
+            .padding(space::LG)
+            .width(Length::Fill)
+            .style(styles::sunken),
+            controls::primary("Vérifier les mises à jour", Some(Icon::Download))
+                .on_press(Message::Navigate(Route::MisesAJour)),
+        ]
+        .spacing(space::LG)
+        .align_x(Alignment::Center)
+        .width(Length::Fill),
+    )
+    .padding([space::XXL, 56.0])
+    .width(Length::Fill)
+    .style(styles::glass_card);
+    layout::screen(
+        header::route_header(
+            Icon::Info,
+            "À propos",
+            Route::APropos,
+            Message::Navigate,
+            iced::widget::Space::with_width(0).into(),
+        ),
+        layout::workspace(
+            container(card)
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .max_width(880.0)
+                .center(Length::Fill),
+        ),
+    )
+}

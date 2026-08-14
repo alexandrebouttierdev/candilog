@@ -2,7 +2,7 @@
 
 use crate::modules::profil::repository::ProfilRepository;
 use crate::shared::error::{AppError, AppResult};
-use crate::shared::profile::Profile;
+use crate::shared::profile::{PersonalInfo, Profile};
 
 /// Service métier du profil, générique sur le dépôt (testable via mock).
 pub struct ProfilService<R: ProfilRepository> {
@@ -33,6 +33,35 @@ impl<R: ProfilRepository> ProfilService<R> {
         validate(profil)?;
         self.repo.upsert(profil)
     }
+}
+
+/// Score de complétion du profil (0-100), 7 sections pondérées également.
+///
+/// Règle métier exposée à l'écran Profil ; indépendante du dépôt afin de rester
+/// testable sans persistance.
+#[must_use]
+pub fn completion_score(profile: &Profile) -> u8 {
+    let complete = [
+        identity_complete(&profile.personal),
+        profile.experiences.iter().any(|item| item.is_complete()),
+        profile.skills.iter().any(|item| item.is_complete()),
+        profile.education.iter().any(|item| item.is_complete()),
+        profile.languages.iter().any(|item| item.is_complete()),
+        profile.projects.iter().any(|item| item.is_complete()),
+        profile.certifications.iter().any(|item| item.is_complete()),
+    ]
+    .into_iter()
+    .filter(|complete| *complete)
+    .count() as u16;
+    // Arrondi au plus proche : `+ 3` (moitié de 7) avant la division.
+    ((complete * 100 + 3) / 7) as u8
+}
+
+/// La section identité est complète quand nom, prénom et e-mail sont remplis.
+fn identity_complete(personal: &PersonalInfo) -> bool {
+    !personal.first_name.trim().is_empty()
+        && !personal.last_name.trim().is_empty()
+        && !personal.email.trim().is_empty()
 }
 
 /// Valide un profil (email si fourni, expériences complètes).

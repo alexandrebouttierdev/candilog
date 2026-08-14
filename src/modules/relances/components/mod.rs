@@ -1,1 +1,3 @@
-//! Composants natifs des événements et formulaires relance.
+//! Composants natifs des relances : formulaire de création/édition.
+
+pub mod form;

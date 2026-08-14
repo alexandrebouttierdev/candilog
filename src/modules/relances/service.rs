@@ -1,6 +1,6 @@
 //! Logique métier des relances (validation + délégation au dépôt).
 
-use crate::modules::relances::model::{MajRelance, NouvelleRelance, Relance};
+use crate::modules::relances::model::{NouvelleRelance, Relance};
 use crate::modules::relances::repository::RelanceRepository;
 use crate::shared::error::{AppError, AppResult};
 
@@ -45,7 +45,7 @@ impl<R: RelanceRepository> RelanceService<R> {
     /// `AppError::Validation` si la candidature est nulle, la date vide, ou si la candidature
     /// liée est introuvable ; `AppError::NotFound` si l'identifiant est inconnu ; sinon l'erreur
     /// du dépôt.
-    pub fn modifier(&self, id: uuid::Uuid, input: &MajRelance) -> AppResult<Relance> {
+    pub fn modifier(&self, id: uuid::Uuid, input: &NouvelleRelance) -> AppResult<Relance> {
         Self::valider(input)?;
         self.repo.update(id, input)
     }

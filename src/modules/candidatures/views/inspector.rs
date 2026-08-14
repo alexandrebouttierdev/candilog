@@ -32,12 +32,6 @@ pub fn view(app: &App, id: uuid::Uuid) -> Element<'_, Message> {
         .iter()
         .filter(|item| item.candidature_id == id)
         .collect();
-    let reminders: Vec<_> = app
-        .data
-        .relances
-        .iter()
-        .filter(|item| item.candidature_id == id)
-        .collect();
 
     let header = container(
         column![
@@ -99,18 +93,16 @@ pub fn view(app: &App, id: uuid::Uuid) -> Element<'_, Message> {
             Tone::Success,
         ));
     }
-    for reminder in &reminders {
-        activity = activity.push(activity_row(
-            "Relance",
-            format!(
-                "{} · {}",
-                format::compact_date(&reminder.date_relance),
-                reminder.type_relance
-            ),
-            Tone::Warning,
-        ));
+    for row in crate::modules::relances::views::activity_rows(app, id) {
+        activity = activity.push(row);
     }
-    let activity_block: Element<'_, Message> = if interviews.is_empty() && reminders.is_empty() {
+    let activity_block: Element<'_, Message> = if interviews.is_empty()
+        && !app
+            .data
+            .relances
+            .iter()
+            .any(|item| item.candidature_id == id)
+    {
         state::empty_slot("Aucun entretien ni relance rattaché.")
     } else {
         activity.into()

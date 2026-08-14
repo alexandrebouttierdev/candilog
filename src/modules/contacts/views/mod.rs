@@ -6,17 +6,19 @@ use crate::modules::contacts::components as people;
 use crate::modules::contacts::model::Contact;
 use crate::modules::entretiens::model::Entretien;
 use crate::navigation::Route;
-use crate::ui::components::avatar;
 use crate::ui::components::button as controls;
 use crate::ui::components::header;
-use crate::ui::components::icon::{self, Icon};
+use crate::ui::components::icon::Icon;
 use crate::ui::components::overlay;
-use crate::ui::components::{field, inspector, layout, list, pagination, state, surface, typo};
+use crate::ui::components::{field, layout, pagination, state, surface, typo};
 use crate::ui::format;
 use crate::ui::theme::metrics::space;
 use crate::ui::theme::styles;
-use crate::ui::theme::Tone;
 use iced::widget::{column, container, row, stack};
+
+pub mod drawer;
+
+use drawer::drawer_content;
 use iced::{Alignment, Element, Length};
 
 /// Rend l'écran du réseau professionnel.
@@ -138,122 +140,6 @@ fn directory(app: &App) -> Element<'_, Message> {
         .into()
 }
 
-/// Contenu du drawer de la fiche contact.
-fn drawer_content(app: &App) -> Element<'_, Message> {
-    let Some(contact) = app.focused_contact() else {
-        return state::no_selection("Ce contact n'existe plus.");
-    };
-
-    let interviews: Vec<_> = app
-        .data
-        .entretiens
-        .iter()
-        .filter(|item| item.contact_id == Some(contact.id))
-        .collect();
-    let candidatures: Vec<_> = app
-        .data
-        .candidatures
-        .iter()
-        .filter(|item| item.contact_id == Some(contact.id))
-        .collect();
-
-    let header = container(
-        row![
-            avatar::avatar(
-                avatar::initials_of(&people::full_name(contact)),
-                48.0,
-                Tone::Accent,
-            ),
-            column![
-                typo::title(people::full_name(contact)),
-                typo::meta(format::or_else(
-                    contact.poste.as_deref(),
-                    "Poste non renseigné"
-                )),
-            ]
-            .spacing(1),
-            layout::spacer(),
-            controls::icon_action(Icon::Close, "Fermer", Message::CloseContactCard),
-        ]
-        .spacing(space::MD)
-        .align_y(Alignment::Center),
-    )
-    .padding(space::XL);
-
-    let linked_rows: Vec<Element<'_, Message>> = if candidatures.is_empty() {
-        vec![state::empty_slot("Aucune candidature liée.")]
-    } else {
-        candidatures
-            .iter()
-            .take(8)
-            .map(|candidature| {
-                list::row_static(
-                    crate::modules::candidatures::components::glyph(candidature.statut),
-                    typo::body(format::truncate(&candidature.poste, 40)),
-                    typo::caption(format::compact_date(&candidature.date_envoi)),
-                )
-            })
-            .collect()
-    };
-
-    let agenda_rows: Vec<Element<'_, Message>> = if interviews.is_empty() {
-        vec![state::empty_slot(
-            "Aucun entretien planifié avec ce contact.",
-        )]
-    } else {
-        interviews
-            .iter()
-            .take(8)
-            .map(|interview| {
-                list::row_static(
-                    icon::muted(Icon::Calendar),
-                    typo::body(interview.type_entretien.to_string()),
-                    typo::caption(format::compact_datetime(&interview.date_entretien)),
-                )
-            })
-            .collect()
-    };
-
-    let body = column![
-        inspector::group(
-            "Coordonnées",
-            [
-                inspector::property("Poste", format::or_dash(contact.poste.as_deref())),
-                inspector::property("E-mail", format::or_dash(contact.email.as_deref())),
-                inspector::property("Téléphone", format::or_dash(contact.telephone.as_deref())),
-                inspector::property("LinkedIn", format::or_dash(contact.linkedin.as_deref())),
-            ],
-        ),
-        inspector::group("Candidatures liées", linked_rows),
-        inspector::group("Entretiens planifiés", agenda_rows),
-        inspector::note("Notes", contact.notes.clone()),
-    ]
-    .spacing(space::XL)
-    .padding([0.0, space::XL]);
-
-    column![
-        header,
-        surface::divider(),
-        surface::scroll(container(body).padding([space::XL, 0.0])).height(Length::Fill),
-        surface::divider(),
-        container(
-            row![
-                controls::danger("Supprimer", Some(Icon::Trash))
-                    .on_press(Message::OpenDialog(Dialog::DeleteContact(contact.id))),
-                layout::spacer(),
-                controls::secondary("Modifier", Some(Icon::Edit))
-                    .on_press(Message::EditContact(contact.id)),
-            ]
-            .spacing(space::MD)
-            .align_y(Alignment::Center),
-        )
-        .padding([space::LG, space::XL])
-        .width(Length::Fill),
-    ]
-    .height(Length::Fill)
-    .into()
-}
-
 /// Nombre total de candidatures liées à au moins un contact.
 #[must_use]
 #[cfg(test)]
@@ -276,68 +162,5 @@ fn entretiens_planifies(interviews: &[Entretien], today: &str) -> usize {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::{entretiens_planifies, total_candidatures_liees};
-    use crate::modules::candidatures::model::{Candidature, StatutCandidature, TypeContrat};
-    use crate::modules::entretiens::model::{Entretien, TypeEntretien};
-    use uuid::Uuid;
-
-    fn candidature(contact_id: Option<Uuid>) -> Candidature {
-        Candidature {
-            id: Uuid::new_v4(),
-            poste: "Développeur".into(),
-            entreprise_id: Uuid::new_v4(),
-            entreprise_nom: Some("Agrial".into()),
-            contact_id,
-            type_contrat: TypeContrat::Cdi,
-            statut: StatutCandidature::EnAttente,
-            date_envoi: "2026-08-01".into(),
-            lien_offre: None,
-            notes: None,
-            created_at: "2026-08-01".into(),
-            updated_at: "2026-08-01".into(),
-        }
-    }
-
-    fn entretien(contact_id: Option<Uuid>, date: &str) -> Entretien {
-        Entretien {
-            id: Uuid::new_v4(),
-            candidature_id: Uuid::new_v4(),
-            contact_id,
-            date_entretien: date.into(),
-            type_entretien: TypeEntretien::Visio,
-            lieu: None,
-            notes: None,
-            compte_rendu: None,
-            analyse_ia: None,
-            created_at: date.into(),
-            updated_at: date.into(),
-        }
-    }
-
-    #[test]
-    fn les_candidatures_liees_comptent_toutes_celles_qui_ont_un_contact() {
-        let target = Uuid::new_v4();
-        let other = Uuid::new_v4();
-        let candidates = vec![
-            candidature(Some(target)),
-            candidature(Some(target)),
-            candidature(Some(other)),
-            candidature(None),
-        ];
-        assert_eq!(total_candidatures_liees(&candidates), 3);
-        assert_eq!(total_candidatures_liees(&[]), 0);
-    }
-
-    #[test]
-    fn les_entretiens_planifies_sont_globaux_a_partir_d_aujourd_hui() {
-        let interviews = vec![
-            entretien(Some(Uuid::new_v4()), "2026-08-12T09:00:00"),
-            entretien(Some(Uuid::new_v4()), "2026-08-08T09:00:00"),
-            entretien(None, "2026-08-20T09:00:00"),
-        ];
-        assert_eq!(entretiens_planifies(&interviews, "2026-08-10"), 2);
-        assert_eq!(entretiens_planifies(&interviews, "2026-08-13"), 1);
-        assert_eq!(entretiens_planifies(&[], "2026-08-10"), 0);
-    }
-}
+#[path = "tests/mod/mod.rs"]
+mod tests;

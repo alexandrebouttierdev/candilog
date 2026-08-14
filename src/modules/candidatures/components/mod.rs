@@ -13,6 +13,8 @@ use crate::ui::theme::{Marker, Tone};
 use iced::widget::{column, container, mouse_area, row, Space};
 use iced::{mouse, Alignment, Element, Length};
 
+pub mod form;
+
 /// Ton sémantique associé à un statut de candidature.
 #[must_use]
 pub const fn status_tone(status: StatutCandidature) -> Tone {
@@ -206,104 +208,5 @@ pub fn glyph<'a, Message: 'a>(status: StatutCandidature) -> Element<'a, Message>
 }
 
 #[cfg(test)]
-mod tests {
-    use super::{
-        column_label, contract_short, next_status, previous_status, status_marker, status_tone,
-        PIPELINE,
-    };
-    use crate::modules::candidatures::model::{StatutCandidature, TypeContrat};
-    use crate::ui::theme::{Marker, Tone};
-
-    #[test]
-    fn chaque_statut_porte_un_ton_et_une_forme_propres() {
-        let mut tones = Vec::new();
-        let mut markers = Vec::new();
-        for status in PIPELINE {
-            tones.push(status_tone(status));
-            markers.push(status_marker(status));
-        }
-        for index in 0..PIPELINE.len() {
-            for other in index + 1..PIPELINE.len() {
-                assert_ne!(tones[index], tones[other], "tons de statut identiques");
-                assert_ne!(
-                    markers[index], markers[other],
-                    "formes de statut identiques"
-                );
-            }
-        }
-    }
-
-    #[test]
-    fn l_attente_reste_neutre_pour_ne_pas_saturer_le_pipeline() {
-        assert_eq!(status_tone(StatutCandidature::EnAttente), Tone::Neutral);
-        assert_eq!(status_marker(StatutCandidature::EnAttente), Marker::Hollow);
-    }
-
-    #[test]
-    fn le_refus_est_le_seul_statut_barre() {
-        assert_eq!(status_marker(StatutCandidature::Refus), Marker::Barred);
-        assert_eq!(status_tone(StatutCandidature::Refus), Tone::Danger);
-    }
-
-    #[test]
-    fn le_pipeline_est_parcourable_dans_les_deux_sens() {
-        assert_eq!(
-            next_status(StatutCandidature::EnAttente),
-            Some(StatutCandidature::Relancee)
-        );
-        assert_eq!(next_status(StatutCandidature::Refus), None);
-        assert_eq!(previous_status(StatutCandidature::EnAttente), None);
-        assert_eq!(
-            previous_status(StatutCandidature::Entretien),
-            Some(StatutCandidature::Relancee)
-        );
-    }
-
-    #[test]
-    fn chaque_colonne_porte_un_libelle_distinct() {
-        let labels: std::collections::BTreeSet<_> = PIPELINE
-            .iter()
-            .map(|status| column_label(*status))
-            .collect();
-        assert_eq!(labels.len(), PIPELINE.len());
-    }
-
-    #[test]
-    fn les_contrats_ont_une_abreviation_courte() {
-        for contract in [
-            TypeContrat::Cdi,
-            TypeContrat::Cdd,
-            TypeContrat::Freelance,
-            TypeContrat::Stage,
-            TypeContrat::Alternance,
-            TypeContrat::Interim,
-            TypeContrat::Autre,
-        ] {
-            let short = contract_short(contract);
-            assert!(!short.is_empty());
-            assert!(short.chars().count() <= 10, "abréviation trop longue");
-        }
-    }
-
-    #[test]
-    fn la_carte_du_pipeline_s_instancie() {
-        use crate::modules::candidatures::model::Candidature;
-        use uuid::Uuid;
-        let candidature = Candidature {
-            id: Uuid::new_v4(),
-            poste: "Développeur Rust".into(),
-            entreprise_id: Uuid::new_v4(),
-            entreprise_nom: Some("Agrial".into()),
-            contact_id: None,
-            type_contrat: TypeContrat::Cdi,
-            statut: StatutCandidature::EnAttente,
-            date_envoi: "2026-08-01".into(),
-            lien_offre: None,
-            notes: None,
-            created_at: "2026-08-01".into(),
-            updated_at: "2026-08-01".into(),
-        };
-        let _: iced::Element<'_, ()> =
-            super::kanban_card(&candidature, false, false, (), |_| (), (), (), ());
-    }
-}
+#[path = "tests/mod/mod.rs"]
+mod tests;

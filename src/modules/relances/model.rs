@@ -33,6 +33,3 @@ pub struct NouvelleRelance {
     /// Notes libres.
     pub notes: Option<String>,
 }
-
-/// Champs d'édition d'une relance (remplacement complet, identique à la création).
-pub type MajRelance = NouvelleRelance;

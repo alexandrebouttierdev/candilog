@@ -10,6 +10,8 @@ use crate::ui::theme::typography as font;
 use iced::widget::container;
 use iced::{Background, Border, Element, Theme};
 
+pub mod form;
+
 /// Période lisible d'une expérience.
 #[must_use]
 pub fn experience_period(experience: &Experience) -> String {
@@ -104,39 +106,5 @@ pub fn certification_row<'a, Message: 'a>(certification: &Certification) -> Elem
 }
 
 #[cfg(test)]
-mod tests {
-    use super::experience_period;
-    use crate::shared::profile::Experience;
-
-    #[test]
-    fn un_poste_en_cours_est_signale_explicitement() {
-        let experience = Experience {
-            start_date: "2023-06".into(),
-            current: true,
-            ..Experience::default()
-        };
-        assert_eq!(experience_period(&experience), "2023-06 → aujourd'hui");
-    }
-
-    #[test]
-    fn une_periode_close_affiche_sa_date_de_fin() {
-        let experience = Experience {
-            start_date: "2020-01".into(),
-            end_date: Some("2022-12".into()),
-            current: false,
-            ..Experience::default()
-        };
-        assert_eq!(experience_period(&experience), "2020-01 → 2022-12");
-    }
-
-    #[test]
-    fn une_periode_incomplete_reste_lisible() {
-        let experience = Experience {
-            start_date: "2019".into(),
-            end_date: None,
-            current: false,
-            ..Experience::default()
-        };
-        assert_eq!(experience_period(&experience), "2019 → —");
-    }
-}
+#[path = "tests/mod/mod.rs"]
+mod tests;

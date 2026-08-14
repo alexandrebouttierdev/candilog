@@ -154,7 +154,7 @@ end"
                 "Tj",
                 vec![Object::String(vec![0x00, 0x27], StringFormat::Hexadecimal)],
             ),
-            Operation::new("Td", vec![Object::Real(7.9551392), Object::Integer(0)]),
+            Operation::new("Td", vec![Object::Real(7.955_139), Object::Integer(0)]),
             Operation::new(
                 "Tj",
                 vec![Object::String(vec![0x00, 0xAB], StringFormat::Hexadecimal)],
