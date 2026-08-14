@@ -1,8 +1,67 @@
 # Releases natives
 
-Les releases ciblent Linux, Windows et macOS sans Node. Le dépôt public `candilog-releases` garde `latest.json` et les paquets signés. Le client compare SemVer, télécharge **sous le dossier de données** (sous-dossier `mises-à-jour`, et non `/tmp`, que beaucoup de systèmes purgent au redémarrage), puis vérifie la signature minisign avec la clé publique embarquée. Un paquet dont la signature ne correspond pas est supprimé.
+Les releases sont publiées sur le dépôt public GitHub
+[`alexandrebouttierdev/candilog-releases`](https://github.com/alexandrebouttierdev/candilog-releases),
+**distinct** du dépôt source `alexandrebouttierdev/candilog`. Le dépôt source ne contient que
+le code et sa CI ; le dépôt des releases héberge le workflow de build et les binaires publiés.
 
-La mise à jour est **assistée, pas automatique** : l'installation par plateforme et le redémarrage ne sont pas implémentés. Une fois le paquet vérifié, Candilog indique où il se trouve et l'utilisateur l'installe comme toute application de son système. Cette limite est délibérément énoncée ici plutôt que promise : annoncer une chaîne complète qui s'arrête à mi-parcours laisse l'utilisateur avec un fichier dont il ne sait que faire.
+## Déclenchement : un push sur le dépôt source
 
-Une mise à jour dont la signature ne correspond pas doit être supprimée et refusée. Linux distribue AppImage/deb/rpm, Windows un installateur, macOS une archive d'application. Les certificats de signature de code restent distincts de minisign.
+Le workflow [`.github/workflows/release-dispatch.yml`](../.github/workflows/release-dispatch.yml)
+du dépôt source s'exécute à chaque push sur `dev` ou `master`. Il lit la version de
+`Cargo.toml`, vérifie que la release `v<version>` n'existe pas encore sur `candilog-releases`
+et, le cas échéant, envoie un événement `repository_dispatch` (type `release-build`) à ce
+dépôt. Le workflow de build n'est donc **pas** hébergé ici : il tourne dans
+`candilog-releases` et construit le commit exact qui vient d'être poussé.
 
+Cette indirection exige un jeton avec le périmètre `repo` sur `candilog-releases`, stocké dans
+les secrets du dépôt source sous le nom `CANDILOG_RELEASES_TOKEN`. Il sert **uniquement** à
+déclencher le workflow distant : la publication des releases utilise le `GITHUB_TOKEN` du
+dépôt des releases, qui possède les droits d'écriture sur ses propres releases.
+
+## Workflow de `candilog-releases`
+
+Le workflow [`.github/workflows/release.yml`](https://github.com/alexandrebouttierdev/candilog-releases/blob/main/.github/workflows/release.yml)
+du dépôt des releases s'exécute sur l'événement `repository_dispatch` (ou manuellement via
+`workflow_dispatch`, avec une référence source au choix). Il :
+
+1. vérifie la qualité du source (format, clippy strict, tests, audit RustSec, licences) ;
+2. construit les paquets :
+
+| Plateforme | Paquets |
+|---|---|
+| Ubuntu/Debian | `.deb` (`cargo deb`) + AppImage (best effort) |
+| Fedora/RHEL | `.rpm` (`cargo generate-rpm`) |
+| macOS | `.dmg` universel (aarch64 + x86_64 fusionnés par `lipo`) |
+| Windows | `.exe` |
+
+3. publie la release sur `candilog-releases` avec le tag `v<version>`. Chaque asset est
+   publié sous deux noms :
+   - le nom stable `-latest` (`candilog-ubuntu-latest.deb`) : URL immuable de la landing page
+     (`releases/latest/download/...`) ;
+   - le nom versionné (`candilog-ubuntu-0.2.0.deb`) : référence immuable de la mise à jour,
+     retrouvé par l'application selon l'extension de sa plateforme.
+
+Si le tag `v<version>` existe déjà, la publication est sautée : pousser sans monter la version
+ne crée pas de doublon et ne relance même pas le workflow distant.
+
+## Côté application
+
+Candilog interroge l'API GitHub (`releases/latest` de `candilog-releases`) pour comparer la
+version distante à la version locale, choisit l'asset adapté au système (`.deb` ou `.rpm`
+selon la famille Linux, `.exe` Windows, `.dmg` macOS), le télécharge dans le dossier
+Téléchargements puis le lance avec le programme d'installation par défaut du système.
+
+La mise à jour est **assistée, pas automatique** : l'installation et le redémarrage restent
+entre les mains de l'utilisateur. Aucune mise à jour silencieuse n'est exécutée. La signature
+de code Windows (SmartScreen) et macOS (Gatekeeper) reste traitée séparément, comme le prévoit
+[`packaging/README.md`](../packaging/README.md).
+
+## Procédure de release
+
+1. Monter `version` dans `Cargo.toml` (et `Cargo.lock` via `cargo build`).
+2. Pousser sur `dev` (ou `master`) : le workflow distant se déclenche automatiquement.
+   Alternative : lancer manuellement `Build & Release` depuis l'onglet Actions de
+   `candilog-releases`.
+3. Vérifier la release créée sur `candilog-releases` : tag `v<version>`, assets `-latest` et
+   versionnés pour chaque plateforme.

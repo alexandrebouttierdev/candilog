@@ -91,7 +91,6 @@ impl App {
             available_models: Vec::new(),
             available_update: None,
             update_progress: None,
-            verified_update_path: None,
             pending_backup_import: None,
             dialog: None,
             write_in_progress: false,

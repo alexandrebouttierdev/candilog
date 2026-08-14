@@ -121,7 +121,8 @@ pub fn updates_view(app: &App) -> Element<'_, Message> {
             action_card(
                 Icon::Check,
                 "Installation maîtrisée",
-                "Le paquet est téléchargé puis sa signature est vérifiée avant utilisation.",
+                "L'installeur adapté à votre système est téléchargé puis lancé avec le \
+                 programme d'installation par défaut.",
                 typo::caption("Aucune installation silencieuse").into(),
             ),
         ]
@@ -137,18 +138,6 @@ pub fn updates_view(app: &App) -> Element<'_, Message> {
                 "Téléchargement et vérification du paquet",
                 f32::from(progress) / 100.0,
             ))
-            .padding([space::LG, 0.0]),
-        ));
-    }
-    if let Some(path) = &app.verified_update_path {
-        content = content.push(section_card(
-            Icon::Check,
-            "Paquet prêt",
-            column![
-                typo::body("La signature est valide. Le paquet peut maintenant être installé."),
-                typo::caption(path.display().to_string()),
-            ]
-            .spacing(space::SM)
             .padding([space::LG, 0.0]),
         ));
     }

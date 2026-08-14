@@ -100,8 +100,6 @@ pub struct App {
     pub available_update: Option<crate::core::updater::UpdateInfo>,
     /// Progression du téléchargement de mise à jour.
     pub update_progress: Option<u8>,
-    /// Paquet de mise à jour téléchargé et vérifié.
-    pub verified_update_path: Option<std::path::PathBuf>,
     /// Backup sélectionné avant confirmation de restauration.
     pub pending_backup_import: Option<std::path::PathBuf>,
     /// Dialogue métier ouvert.

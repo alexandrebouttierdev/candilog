@@ -11,6 +11,40 @@ description = "Candilog Desktop natif en Rust et Iced"
 authors = ["Candilog"]
 license = "MIT"
 
+[package.metadata]
+repository = "https://github.com/alexandrebouttierdev/candilog"
+keywords = ["candidature", "emploi", "cv", "desktop", "sqlite"]
+categories = ["gui"]
+
+[package.metadata.deb]
+maintainer = "Alexandre Bouttier <alexandrebouttierdev@users.noreply.github.com>"
+section = "utils"
+priority = "optional"
+depends = "$auto, libxkbcommon0, libwayland-client0, libx11-6, libdbus-1-3, libvulkan1"
+assets = [
+  ["target/release/candilog", "usr/bin/", "755"],
+  ["packaging/candilog.desktop", "usr/share/applications/", "644"],
+  ["packaging/icons/hicolor/16x16/apps/candilog.png", "usr/share/icons/hicolor/16x16/apps/candilog.png", "644"],
+  ["packaging/icons/hicolor/32x32/apps/candilog.png", "usr/share/icons/hicolor/32x32/apps/candilog.png", "644"],
+  ["packaging/icons/hicolor/48x48/apps/candilog.png", "usr/share/icons/hicolor/48x48/apps/candilog.png", "644"],
+  ["packaging/icons/hicolor/64x64/apps/candilog.png", "usr/share/icons/hicolor/64x64/apps/candilog.png", "644"],
+  ["packaging/icons/hicolor/128x128/apps/candilog.png", "usr/share/icons/hicolor/128x128/apps/candilog.png", "644"],
+  ["packaging/icons/hicolor/256x256/apps/candilog.png", "usr/share/icons/hicolor/256x256/apps/candilog.png", "644"],
+  ["packaging/icons/hicolor/512x512/apps/candilog.png", "usr/share/icons/hicolor/512x512/apps/candilog.png", "644"],
+]
+
+[package.metadata.generate-rpm]
+name = "candilog"
+summary = "Suivi de candidatures, entretiens et relances avec assistance IA locale"
+license = "MIT"
+url = "https://github.com/alexandrebouttierdev/candilog"
+requires = "libxkbcommon, libwayland-client, libX11, dbus-libs, vulkan-loader"
+assets = [
+  { source = "target/release/candilog", dest = "/usr/bin/candilog", mode = "755" },
+  { source = "packaging/candilog.desktop", dest = "/usr/share/applications/candilog.desktop", mode = "644" },
+  { source = "packaging/icons/hicolor/256x256/apps/candilog.png", dest = "/usr/share/icons/hicolor/256x256/apps/candilog.png", mode = "644" },
+]
+
 [features]
 default = []
 # Harnais de capture visuelle (revue de design) : variables d'environnement
@@ -54,7 +88,6 @@ rfd = "0.15"
 notify-rust = "4"
 lopdf = "0.42"
 semver = "1"
-minisign-verify = "0.2.5"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-appender = "0.2.5"

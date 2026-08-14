@@ -42,4 +42,7 @@ capture visuelle destiné à la revue de design. Elle est absente du binaire dis
 ## Documentation
 
 L'architecture, le modèle de données et le processus de publication sont décrits dans
-[`docs/`](docs/).
+[`docs/`](docs/). Les mises à jour et les releases sont documentées dans
+[`docs/RELEASES.md`](docs/RELEASES.md) : les binaires sont publiés sur le dépôt dédié
+`alexandrebouttierdev/candilog-releases`, dont le workflow de build est déclenché à chaque
+push sur ce dépôt source.

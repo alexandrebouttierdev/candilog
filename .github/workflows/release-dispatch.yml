@@ -1,0 +1,50 @@
+name: Déclencher la release sur candilog-releases
+
+on:
+  push:
+    branches: [dev, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dispatch:
+    name: Lancer le workflow de candilog-releases
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lire la version
+        id: version
+        run: |
+          VERSION=$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -1)
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Vérifier le jeton et décider de la publication
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.CANDILOG_RELEASES_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::Le secret CANDILOG_RELEASES_TOKEN est absent. Créez un jeton GitHub classique (périmètre repo) sur alexandrebouttierdev/candilog-releases et stockez-le dans les secrets de ce dépôt."
+            exit 1
+          fi
+          TAG="v${{ steps.version.outputs.version }}"
+          if gh release view "$TAG" --repo alexandrebouttierdev/candilog-releases >/dev/null 2>&1; then
+            echo "La release $TAG existe déjà : aucune nouvelle publication."
+            echo "should_dispatch=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_dispatch=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Déclencher le workflow de candilog-releases
+        if: steps.check.outputs.should_dispatch == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.CANDILOG_RELEASES_TOKEN }}
+        run: |
+          gh api -X POST \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/alexandrebouttierdev/candilog-releases/dispatches" \
+            -f event_type="release-build" \
+            -f "client_payload[sha]=${GITHUB_SHA}"

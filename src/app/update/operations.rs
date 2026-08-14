@@ -68,15 +68,27 @@ pub(super) fn update(app: &mut App, message: Message) -> Task<Message> {
             UpdateDownloadEvent::Finished(result) => match result {
                 Ok(path) => {
                     app.update_progress = Some(100);
-                    app.verified_update_path = Some(path.clone());
-                    let corps = format!(
-                        "Mise à jour téléchargée et signature vérifiée. Le paquet est dans \
-                         le dossier « {} » de vos données Candilog ; installez-le comme vous \
-                         le feriez pour toute application de votre système.",
-                        crate::core::updater::DOSSIER_MISES_A_JOUR
-                    );
-                    app.notify_success(corps.clone());
-                    return notifier_le_bureau(corps);
+                    let nom = path
+                        .file_name()
+                        .map(|nom| nom.to_string_lossy().to_string())
+                        .unwrap_or_else(|| "installeur".to_string());
+                    match crate::core::updater::ouvrir_fichier(&path) {
+                        Ok(()) => {
+                            app.available_update = None;
+                            let corps = format!(
+                                "Mise à jour téléchargée ({nom}). Lancement de l'installation."
+                            );
+                            app.notify_success(corps.clone());
+                            return notifier_le_bureau(corps);
+                        }
+                        Err(error) => {
+                            app.update_progress = None;
+                            app.notify_failure(format!(
+                                "Mise à jour téléchargée ({nom}), mais lancement impossible : \
+                                 {error}"
+                            ));
+                        }
+                    }
                 }
                 Err(error) => {
                     app.update_progress = None;

@@ -36,7 +36,7 @@ pub enum LetterStreamEvent {
     Finished(Result<String, String>),
 }
 
-/// Progression du téléchargement signé d'une mise à jour.
+/// Progression du téléchargement d'un installeur de mise à jour.
 #[derive(Debug, Clone)]
 pub enum UpdateDownloadEvent {
     /// Pourcentage téléchargé.
@@ -356,7 +356,7 @@ pub enum Message {
     ProfileItemChanged(ProfileCollection, usize, usize, String),
     /// Enregistre le profil.
     SubmitProfile,
-    /// Télécharge et vérifie la mise à jour disponible.
+    /// Télécharge et lance l'installeur de la mise à jour disponible.
     DownloadUpdate,
     /// Progression ou résultat du téléchargement.
     UpdateDownload(UpdateDownloadEvent),

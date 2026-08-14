@@ -209,21 +209,30 @@ pub(super) fn update(app: &mut App, message: Message) -> Task<Message> {
                 app.notify(NotificationKind::Info, "Aucune mise à jour disponible.");
                 return Task::none();
             };
+            let Some(asset) = update.asset.clone() else {
+                // Aucun asset pour ce système : on ouvre la page de la release, qui liste les
+                // paquets publiés et permet un téléchargement manuel.
+                if let Err(error) = crate::core::updater::ouvrir_page(&update.page_url) {
+                    app.notify_failure(format!(
+                        "Impossible d'ouvrir la page de la release : {error}"
+                    ));
+                }
+                return Task::none();
+            };
             app.update_progress = Some(0);
-            app.verified_update_path = None;
-            let dossier = app
-                .paths
-                .as_ref()
-                .map_or_else(std::env::temp_dir, |paths| paths.data_dir.clone());
             let stream = iced::stream::channel(32, move |mut sender| async move {
                 let client = crate::shared::http::download_client();
                 let mut progress_sender = sender.clone();
-                let result =
-                    crate::core::updater::download_verified(&client, &update, &dossier, |value| {
+                let result = crate::core::updater::telecharger_installeur(
+                    &client,
+                    &asset.url,
+                    &asset.name,
+                    |value| {
                         let _ = progress_sender.try_send(UpdateDownloadEvent::Progress(value));
-                    })
-                    .await
-                    .map_err(|error| error.to_string());
+                    },
+                )
+                .await
+                .map_err(|error| error.to_string());
                 let _ = sender.send(UpdateDownloadEvent::Finished(result)).await;
             });
             return Task::run(stream, Message::UpdateDownload);

@@ -36,18 +36,18 @@ pub fn client_pinned(pin: Option<&crate::shared::llm::EndpointPin>) -> reqwest::
 
 /// Client de téléchargement de gros fichiers.
 ///
-/// Conserve les protections de [`client`] — délai de connexion et refus des redirections — mais
-/// abandonne le délai **global**, incompatible avec un paquet de plusieurs dizaines de
-/// mégaoctets sur une liaison lente.
+/// Conserve les protections de [`client`] — délai de connexion — mais abandonne le délai
+/// **global**, incompatible avec un paquet de plusieurs dizaines de mégaoctets sur une liaison
+/// lente.
 ///
-/// Le refus des redirections importe particulièrement ici : c'est la seule requête du projet
-/// dont le résultat aboutit à l'exécution d'un binaire.
+/// Les redirections sont **suivies** : les assets d'une release GitHub sont servis après une
+/// redirection vers le CDN propriétaire (`objects.githubusercontent.com`). L'URL provient de
+/// la réponse de l'API GitHub, elle-même reçue en HTTPS.
 #[must_use]
 pub fn download_client() -> reqwest::Client {
     reqwest::Client::builder()
         .connect_timeout(std::time::Duration::from_secs(8))
         .read_timeout(std::time::Duration::from_secs(60))
-        .redirect(reqwest::redirect::Policy::none())
         .user_agent("Candilog/0.1")
         .build()
         .unwrap_or_else(|_| reqwest::Client::new())

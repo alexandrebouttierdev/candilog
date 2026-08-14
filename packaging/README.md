@@ -1,7 +1,8 @@
 # Empaquetage
 
-Fichiers requis par les formats de paquets Linux. La tâche d'intégration continue qui les
-assemble en `.deb`, `.rpm` et AppImage est hors du périmètre courant (voir `docs/RELEASES.md`).
+Fichiers requis par les formats de paquets Linux. Le workflow de build hébergé sur
+`candilog-releases` les assemble en `.deb`, `.rpm` et AppImage puis publie les paquets sur ce
+même dépôt (voir `docs/RELEASES.md`).
 
 | Fichier | Destination |
 |---|---|
@@ -26,4 +27,5 @@ shells Linux, et l'identifiant Wayland `candilog` correspond exactement au nom d
 ## Signature de code
 
 Windows (SmartScreen) et macOS (Gatekeeper) rejettent un binaire non signé. La signature est
-traitée séparément, comme le prévoit `docs/RELEASES.md`.
+traitée séparément, comme le prévoit `docs/RELEASES.md` : elle reste indépendante de la
+vérification de mise à jour de l'application.

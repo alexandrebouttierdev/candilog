@@ -666,7 +666,6 @@ dependencies = [
  "jsonrepair-rs",
  "keyring",
  "lopdf 0.42.0",
- "minisign-verify",
  "mockito",
  "notify-rust",
  "pdf-extract",
@@ -3098,12 +3097,6 @@ dependencies = [
  "objc",
  "paste",
 ]
-
-[[package]]
-name = "minisign-verify"
-version = "0.2.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "22f9645cb765ea72b8111f36c522475d2daa0d22c957a9826437e97534bc4e9e"
 
 [[package]]
 name = "miniz_oxide"
