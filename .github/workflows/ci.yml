@@ -39,10 +39,6 @@ jobs:
         run: cargo test --locked --doc --all-features
       - name: Release
         run: cargo build --locked --release --all-features
-      - name: Audit
-        uses: rustsec/audit-check@v2
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Licences, sources et avis autorisés
         uses: EmbarkStudios/cargo-deny-action@v2
 
