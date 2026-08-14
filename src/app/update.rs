@@ -1534,20 +1534,8 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 );
                 return Task::none();
             };
-            let profile = &app.data.profile.personal;
-            let mut lines = vec![generation.cv.summary.clone()];
-            lines.extend(generation.cv.experiences.iter().flat_map(|experience| {
-                [
-                    format!("{} - {}", experience.title, experience.company),
-                    experience.description.clone(),
-                ]
-            }));
-            lines.push(format!("Compétences : {}", generation.cv.skills.join(", ")));
-            let layout = crate::core::cv_pdf::CvLayout {
-                name: format!("{} {}", profile.first_name, profile.last_name),
-                headline: profile.headline.clone().unwrap_or_default(),
-                lines,
-            };
+            let document =
+                crate::modules::ia::cv_document::construire(&app.data.profile, generation);
             return Task::perform(
                 async move {
                     let Some(file) = rfd::AsyncFileDialog::new()
@@ -1560,7 +1548,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                         return Err("Export annulé.".into());
                     };
                     let path = file.path().to_path_buf();
-                    layout
+                    document
                         .render_pdf(&path)
                         .map_err(|error| error.to_string())?;
                     Ok(path)

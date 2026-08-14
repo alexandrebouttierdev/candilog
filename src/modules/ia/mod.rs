@@ -3,6 +3,7 @@
 pub mod cache;
 pub mod components;
 pub mod contacts;
+pub mod cv_document;
 pub mod cv_engine;
 pub mod cv_model;
 pub mod cv_sections;

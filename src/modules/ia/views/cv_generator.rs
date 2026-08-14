@@ -3,6 +3,7 @@
 
 use crate::app::state::RecommendationStatus;
 use crate::app::{App, Message};
+use crate::core::cv_pdf::{CvExperience, CvPdf, CvProject};
 use crate::modules::entreprises::model::Entreprise;
 use crate::modules::ia::components::{recommendation, skill_list};
 use crate::modules::ia::cv_model::{CvGeneration, MatchScore, OfferAnalysis};
@@ -19,8 +20,8 @@ use crate::ui::theme::styles;
 use crate::ui::theme::tokens::{alpha, tokens};
 use crate::ui::theme::typography as font;
 use crate::ui::theme::Tone;
-use iced::widget::{column, container, row, Stack};
-use iced::{Alignment, Background, Border, Element, Length, Theme};
+use iced::widget::{column, container, horizontal_rule, row, rule, text, Stack};
+use iced::{Alignment, Background, Border, Color, Element, Length, Theme};
 
 /// Rend l'écran du générateur de CV.
 pub fn view(app: &App) -> Element<'_, Message> {
@@ -547,61 +548,261 @@ fn zoom_controls(app: &App) -> Element<'_, Message> {
     controls::segmented(segments)
 }
 
-/// Contenu de la page A4 pour une génération donnée.
+/// Contenu de la page A4, fidèle au design du PDF exporté.
 pub fn page_content<'a>(
     app: &'a App,
     generation: &'a CvGeneration,
     _title: String,
 ) -> Element<'a, Message> {
-    let profile = &app.data.profile.personal;
+    let document = crate::modules::ia::cv_document::construire(&app.data.profile, generation);
     let mut page = column![
-        document::heading(format!("{} {}", profile.first_name, profile.last_name).trim()),
-        document::subheading(crate::ui::format::or_else(
-            profile.headline.as_deref(),
-            "Titre professionnel"
-        )),
-        document::body_muted(contact_line(app)),
-        iced::widget::Space::with_height(space::LG),
-        document::rubric("Profil"),
-        document::body(generation.cv.summary.clone()),
+        cv_nom(document.name.clone()),
+        cv_sous_titre(document.subtitle.clone()),
+        cv_contact(&document),
+        iced::widget::Space::with_height(space::SM),
+        cv_section("Profil"),
+        cv_paragraphe(document.profil.clone()),
     ]
     .spacing(space::SM)
     .width(Length::Fill);
 
-    if !generation.cv.skills.is_empty() {
+    if !document.skills.is_empty() {
         page = page
             .push(iced::widget::Space::with_height(space::SM))
-            .push(document::rubric("Compétences"))
-            .push(document::body(generation.cv.skills.join(" · ")));
+            .push(cv_section("Compétences techniques"))
+            .push(cv_chips(document.skills.clone()));
     }
 
-    if !generation.cv.experiences.is_empty() {
+    if !document.experiences.is_empty() {
         page = page
             .push(iced::widget::Space::with_height(space::SM))
-            .push(document::rubric("Expériences"));
-        for experience in &generation.cv.experiences {
-            page = page.push(document::entry(
-                format!("{} — {}", experience.title, experience.company),
-                String::new(),
-                experience.description.clone(),
-            ));
+            .push(cv_section("Expérience professionnelle"));
+        for experience in &document.experiences {
+            page = page.push(cv_experience(experience.clone()));
         }
     }
 
-    if !generation.cv.education.is_empty() {
+    if !document.projects.is_empty() {
         page = page
             .push(iced::widget::Space::with_height(space::SM))
-            .push(document::rubric("Formation"));
-        for education in &generation.cv.education {
-            page = page.push(document::entry(
-                education.degree.clone(),
-                String::new(),
-                education.school.clone(),
-            ));
+            .push(cv_section("Projets techniques"));
+        for projet in &document.projects {
+            page = page.push(cv_projet(projet.clone()));
         }
+    }
+
+    if !document.education.is_empty() || !document.languages.is_empty() {
+        page = page
+            .push(iced::widget::Space::with_height(space::SM))
+            .push(cv_formation_langues(document));
     }
 
     page.into()
+}
+
+fn cv_accent() -> Color {
+    Color::from_rgb8(0x00, 0x66, 0xcc)
+}
+
+fn cv_texte() -> Color {
+    Color::from_rgb8(0x1a, 0x1a, 0x1a)
+}
+
+fn cv_secondaire() -> Color {
+    Color::from_rgb8(0x3f, 0x3f, 0x46)
+}
+
+fn cv_muted() -> Color {
+    Color::from_rgb8(0x55, 0x55, 0x5a)
+}
+
+fn cv_chip_bg() -> Color {
+    Color::from_rgb8(0xf5, 0xf5, 0xf7)
+}
+
+fn cv_nom(nom: String) -> Element<'static, Message> {
+    text(nom)
+        .size(20.0)
+        .font(font::SEMIBOLD)
+        .color(cv_texte())
+        .into()
+}
+
+fn cv_sous_titre(sous_titre: String) -> Element<'static, Message> {
+    text(sous_titre)
+        .size(10.0)
+        .font(font::MEDIUM)
+        .color(cv_accent())
+        .into()
+}
+
+fn cv_contact(document: &CvPdf) -> Element<'static, Message> {
+    let contact = [
+        document.phone.as_deref(),
+        Some(document.email.as_str()),
+        document.city.as_deref(),
+        document.linkedin.as_deref(),
+        document.website.as_deref(),
+    ]
+    .into_iter()
+    .flatten()
+    .filter(|valeur| !valeur.trim().is_empty())
+    .collect::<Vec<_>>()
+    .join(" · ");
+    text(contact)
+        .size(8.0)
+        .font(font::REGULAR)
+        .color(cv_secondaire())
+        .into()
+}
+
+fn cv_section(titre: &'static str) -> Element<'static, Message> {
+    column![
+        text(titre.to_uppercase())
+            .size(8.0)
+            .font(font::SEMIBOLD)
+            .color(cv_accent()),
+        horizontal_rule(2).style(|_| rule::Style {
+            color: cv_accent(),
+            width: 2,
+            radius: 0.0.into(),
+            fill_mode: rule::FillMode::Full,
+        }),
+    ]
+    .spacing(2.0)
+    .into()
+}
+
+fn cv_paragraphe(valeur: String) -> Element<'static, Message> {
+    text(valeur)
+        .size(8.5)
+        .font(font::REGULAR)
+        .color(cv_secondaire())
+        .into()
+}
+
+fn cv_chips(competences: Vec<String>) -> Element<'static, Message> {
+    let mut ligne = row![].spacing(4.0);
+    for competence in competences {
+        ligne = ligne.push(
+            container(
+                text(competence)
+                    .size(7.0)
+                    .font(font::MEDIUM)
+                    .color(cv_texte()),
+            )
+            .padding([2.0, 5.0])
+            .style(|_| container::Style {
+                background: Some(Background::Color(cv_chip_bg())),
+                border: Border {
+                    radius: 3.0.into(),
+                    ..Border::default()
+                },
+                ..container::Style::default()
+            }),
+        );
+    }
+    ligne.wrap().into()
+}
+
+fn cv_experience(experience: CvExperience) -> Element<'static, Message> {
+    let mut meta = experience.company.clone();
+    if !experience.meta.is_empty() {
+        meta = format!("{} · {}", meta, experience.meta);
+    }
+    let mut bloc = column![
+        text(experience.title)
+            .size(9.0)
+            .font(font::SEMIBOLD)
+            .color(cv_texte()),
+        text(meta)
+            .size(8.0)
+            .font(font::REGULAR)
+            .color(cv_secondaire()),
+    ]
+    .spacing(2.0);
+    for puce in experience.bullets {
+        bloc = bloc.push(cv_puce(puce));
+    }
+    bloc.into()
+}
+
+fn cv_projet(projet: CvProject) -> Element<'static, Message> {
+    let mut bloc = column![text(projet.name)
+        .size(9.0)
+        .font(font::SEMIBOLD)
+        .color(cv_texte())]
+    .spacing(2.0);
+    if !projet.meta.is_empty() {
+        bloc = bloc.push(
+            text(projet.meta)
+                .size(8.0)
+                .font(font::REGULAR)
+                .color(cv_secondaire()),
+        );
+    }
+    for puce in projet.bullets {
+        bloc = bloc.push(cv_puce(puce));
+    }
+    bloc.into()
+}
+
+fn cv_puce(valeur: String) -> Element<'static, Message> {
+    row![
+        text("·").size(7.5).font(font::REGULAR).color(cv_muted()),
+        text(valeur)
+            .size(7.5)
+            .font(font::REGULAR)
+            .color(cv_secondaire())
+            .width(Length::Fill),
+    ]
+    .spacing(4.0)
+    .align_y(Alignment::Start)
+    .into()
+}
+
+fn cv_formation_langues(document: CvPdf) -> Element<'static, Message> {
+    let mut gauche = column![cv_section("Formation")].spacing(4.0);
+    for education in document.education {
+        let mut bloc = column![
+            text(education.degree)
+                .size(8.5)
+                .font(font::SEMIBOLD)
+                .color(cv_texte()),
+            text(education.school)
+                .size(7.5)
+                .font(font::REGULAR)
+                .color(cv_secondaire()),
+        ]
+        .spacing(1.5);
+        if !education.date.is_empty() {
+            bloc = bloc.push(
+                text(education.date)
+                    .size(7.0)
+                    .font(font::REGULAR)
+                    .color(cv_muted()),
+            );
+        }
+        gauche = gauche.push(bloc);
+    }
+
+    let mut droite = column![cv_section("Disponibilité & langues")].spacing(4.0);
+    for langue in document.languages {
+        droite = droite.push(
+            text(format!("{} · {}", langue.name, langue.level))
+                .size(8.5)
+                .font(font::SEMIBOLD)
+                .color(cv_texte()),
+        );
+    }
+
+    row![
+        gauche.width(Length::FillPortion(1)),
+        droite.width(Length::FillPortion(1)),
+    ]
+    .spacing(16.0)
+    .align_y(Alignment::Start)
+    .into()
 }
 
 fn placeholder(app: &App) -> Element<'_, Message> {
