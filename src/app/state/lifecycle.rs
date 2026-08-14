@@ -193,8 +193,10 @@ impl App {
                 _ => Route::Dashboard,
             };
         }
-        if std::env::var("CANDILOG_CAPTURE_THEME").as_deref() == Ok("light") {
-            self.is_dark = false;
+        match std::env::var("CANDILOG_CAPTURE_THEME").as_deref() {
+            Ok("light") => self.is_dark = false,
+            Ok("dark") => self.is_dark = true,
+            _ => {}
         }
         if std::env::var("CANDILOG_CAPTURE_CANDIDATE_VIEW").as_deref() == Ok("list") {
             self.candidate_view = CandidateView::List;
@@ -222,8 +224,10 @@ impl App {
     fn appliquer_harnais_de_capture_apres_ouverture(&mut self) {
         // `bootstrap` recharge le thème persisté ; l'override de capture doit donc être
         // réappliqué après l'ouverture de la base pour rester prioritaire.
-        if std::env::var("CANDILOG_CAPTURE_THEME").as_deref() == Ok("light") {
-            self.is_dark = false;
+        match std::env::var("CANDILOG_CAPTURE_THEME").as_deref() {
+            Ok("light") => self.is_dark = false,
+            Ok("dark") => self.is_dark = true,
+            _ => {}
         }
         if std::env::var("CANDILOG_CAPTURE_DIALOG").as_deref() == Ok("detail") {
             self.dialog = self

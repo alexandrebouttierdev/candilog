@@ -107,7 +107,7 @@ fn grid(app: &App) -> Element<'_, Message> {
     container(column![toolbar, surface::divider(), body].height(Length::Fill))
         .width(Length::Fill)
         .height(Length::Fill)
-        .style(styles::panel_flat)
+        .style(styles::glass_card)
         .into()
 }
 
@@ -124,6 +124,7 @@ fn preview(app: &App) -> Element<'_, Message> {
             .spacing(space::LG),
         )
         .center(Length::Fill)
+        .style(styles::glass_card)
         .into();
     };
 
@@ -171,12 +172,17 @@ fn preview(app: &App) -> Element<'_, Message> {
         None => empty_page(version.name.clone()),
     };
 
-    column![
-        container(bar).width(Length::Fill),
-        surface::divider(),
-        document::workspace(document::page_unpadded(app.document_width, page)),
-    ]
+    container(
+        column![
+            container(bar).width(Length::Fill),
+            surface::divider(),
+            document::workspace(document::page_unpadded(app.document_width, page)),
+        ]
+        .height(Length::Fill),
+    )
+    .width(Length::Fill)
     .height(Length::Fill)
+    .style(styles::glass_card)
     .into()
 }
 

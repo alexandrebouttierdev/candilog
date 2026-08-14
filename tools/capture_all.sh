@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Produit la couverture visuelle complète de Candilog : 13 routes x 2 thèmes x 2 largeurs,
+# Produit la couverture visuelle complète de Candilog : 16 routes x 2 thèmes x 2 largeurs,
 # plus une poignée d'états particuliers (modale de formulaire, inspecteur en colonne et en
 # drawer, toast, écran d'erreur fatale, vue liste des candidatures). Rejouable à chaque
 # étape de la refonte du design system, pour comparer les captures avant/après.
@@ -9,11 +9,12 @@
 # Valeurs acceptées par le harnais de capture (src/app/state.rs:527-595, src/main.rs:14-18) :
 #   CANDILOG_CAPTURE_ROUTE   : candidatures | cv | entreprises | reseau | calendrier |
 #                              statistiques | cv-generator | lettres | lettre | cv-import | profil |
-#                              parametres. Toute autre valeur (dont "dashboard") retombe
+#                              parametres | sauvegardes | mises-a-jour | a-propos. Toute autre
+#                              valeur (dont "dashboard") retombe
 #                              sur le tableau de bord — c'est le comportement voulu.
 #   CANDILOG_CAPTURE_SIZE    : small (1100x700) | large (1800x1100). Absente => 1440x900.
 #                              Aucune autre valeur n'est reconnue (pas de dimensions littérales).
-#   CANDILOG_CAPTURE_THEME   : light bascule en thème clair. Absente => thème sombre.
+#   CANDILOG_CAPTURE_THEME   : light | dark, prioritaire sur le thème persisté.
 #   CANDILOG_DATA_DIR        : dossier de données. Doit pointer .candilog-dev pour capturer
 #                              sur des données réelles, sinon la base est vide.
 #   CANDILOG_CAPTURE_DIALOG  : candidature | entreprise | contact | entretien | relance |
@@ -37,14 +38,14 @@ BIN="$PROJECT_ROOT/target/release/candilog"
 # ouverte est vide et tous les écrans paraissent déserts sur les captures.
 DATA_DIR="$PROJECT_ROOT/.candilog-dev"
 
-# Les 13 routes couvertes : 12 valeurs explicites reconnues par le harnais, plus
+# Les 16 routes couvertes : 15 valeurs explicites reconnues par le harnais, plus
 # "dashboard" qui retombe sur le tableau de bord par le repli par défaut.
 ROUTES=(dashboard candidatures cv entreprises reseau calendrier statistiques \
-        cv-generator lettres lettre cv-import profil parametres)
+        cv-generator lettres lettre cv-import profil parametres sauvegardes mises-a-jour a-propos)
 SIZES=(small large)
 
-echo "Compilation en mode release…"
-(cd "$PROJECT_ROOT" && cargo build --release)
+echo "Compilation du harnais en mode release…"
+(cd "$PROJECT_ROOT" && cargo build --release --features capture --offline)
 
 if [[ ! -x "$BIN" ]]; then
   echo "Binaire introuvable : $BIN" >&2
@@ -62,9 +63,7 @@ capture() {
     "CANDILOG_CAPTURE_ROUTE=$route"
     "CANDILOG_DATA_DIR=$DATA_DIR"
   )
-  if [[ "$theme" == "light" ]]; then
-    env_args+=("CANDILOG_CAPTURE_THEME=light")
-  fi
+  env_args+=("CANDILOG_CAPTURE_THEME=$theme")
   if [[ "$size" != "defaut" ]]; then
     env_args+=("CANDILOG_CAPTURE_SIZE=$size")
   fi
@@ -73,7 +72,7 @@ capture() {
   env "${env_args[@]}" "$BIN"
 }
 
-# --- 52 captures : 13 routes x 2 thèmes x 2 largeurs ---
+# --- 64 captures : 16 routes x 2 thèmes x 2 largeurs ---
 for route in "${ROUTES[@]}"; do
   for theme in dark light; do
     for size in "${SIZES[@]}"; do

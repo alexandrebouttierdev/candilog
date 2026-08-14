@@ -11,19 +11,21 @@ use crate::ui::components::header;
 use crate::ui::components::icon::{self, Icon, Ink};
 use crate::ui::components::score_gauge::{gauge, score_label, tone_pour_score};
 use crate::ui::components::stat_card as cards;
-use crate::ui::components::{badge, field, inspector, layout, list, state, surface, typo};
-use crate::ui::theme::metrics::{radius, space};
+use crate::ui::components::{
+    badge, field, inspector, layout, list, skeleton, state, surface, typo,
+};
+use crate::ui::theme::metrics::space;
 use crate::ui::theme::styles;
 use crate::ui::theme::tokens::{alpha, tokens};
 use crate::ui::theme::typography as font;
 use crate::ui::theme::Tone;
 use iced::widget::{button, column, container, row, Space, Stack};
-use iced::{Alignment, Background, Border, Element, Length, Shadow, Theme};
+use iced::{Alignment, Background, Element, Length, Shadow, Theme};
 
 /// Largeur maximale du corps de l'écran (`max-w-[960px]`).
 const BODY_MAX_WIDTH: f32 = 1080.0;
 /// Hauteur partagée de la zone de dépôt et de l'éditeur d'offre (`min-h-[210px]`).
-const DROP_HEIGHT: f32 = 210.0;
+const DROP_HEIGHT: f32 = 232.0;
 
 /// Compétences présentes vs à renforcer depuis une analyse importée.
 ///
@@ -54,18 +56,11 @@ fn clean_skills(skills: &[String]) -> Vec<String> {
 /// Rend l'écran d'analyse d'un CV externe.
 pub fn view(app: &App) -> Element<'_, Message> {
     let body: Element<'_, Message> = if app.ai_is_running {
-        container(state::ai_progress(
-            "Analyse du CV",
-            app.ai_elapsed_seconds,
-            Message::CancelAi,
-        ))
-        .height(Length::Fill)
-        .center_y(Length::Fill)
-        .into()
+        container(loading_card(app)).center(Length::Fill).into()
     } else if app.imported_cv_analysis.is_some() {
         result_card(app)
     } else {
-        source_card(app)
+        container(source_card(app)).center(Length::Fill).into()
     };
 
     layout::screen(
@@ -85,6 +80,87 @@ pub fn view(app: &App) -> Element<'_, Message> {
     )
 }
 
+/// État d'attente complet : progression indéterminée et squelette du diagnostic à venir.
+fn loading_card(app: &App) -> Element<'_, Message> {
+    let header = row![
+        container(icon::icon(Icon::Sparkles, 28.0, Ink::Accent))
+            .width(58.0)
+            .height(58.0)
+            .center(Length::Fixed(58.0))
+            .style(styles::icon_tile(Tone::Accent)),
+        column![
+            typo::meta_toned("ANALYSE EN COURS", Tone::Accent),
+            typo::title("Votre CV passe au crible"),
+            typo::caption(
+                "Lecture du document, comparaison ATS et préparation des recommandations.",
+            ),
+        ]
+        .spacing(space::XS),
+        layout::spacer(),
+        badge::badge("Traitement sécurisé", Tone::Success),
+    ]
+    .spacing(space::LG)
+    .align_y(Alignment::Center);
+
+    let preview = container(
+        column![
+            typo::meta_toned("PRÉPARATION DU DIAGNOSTIC", Tone::Accent),
+            skeleton::block(Length::Fill, 14.0),
+            skeleton::block(Length::Fill, 14.0),
+            skeleton::block(Length::FillPortion(4), 14.0),
+            Space::with_height(space::XS),
+            skeleton::block(Length::Fixed(170.0), 12.0),
+            skeleton::block(Length::Fill, 40.0),
+        ]
+        .spacing(space::SM),
+    )
+    .padding(space::LG)
+    .width(Length::Fill)
+    .style(styles::form_group);
+
+    container(
+        column![
+            header,
+            surface::divider(),
+            state::running(
+                "Analyse sémantique et compatibilité ATS",
+                app.ai_elapsed_seconds,
+                Message::CancelAi,
+            ),
+            row![
+                loading_metric("Compétences"),
+                loading_metric("Expérience"),
+                loading_metric("Mots-clés ATS"),
+            ]
+            .spacing(space::MD),
+            preview,
+            typo::caption(
+                "Vous pouvez interrompre l'analyse à tout moment sans modifier le PDF source.",
+            ),
+        ]
+        .spacing(space::LG),
+    )
+    .padding(space::XL)
+    .width(Length::Fill)
+    .max_width(980.0)
+    .style(styles::glass_card)
+    .into()
+}
+
+fn loading_metric(label: &'static str) -> Element<'static, Message> {
+    container(
+        column![
+            typo::caption(label),
+            skeleton::block(Length::Fixed(76.0), 24.0),
+        ]
+        .spacing(space::SM),
+    )
+    .padding(space::LG)
+    .width(Length::Fill)
+    .style(styles::form_group)
+    .into()
+}
+
 /// Carte « Nouvelle analyse » : dépôt du PDF, offre à comparer, action.
 fn source_card(app: &App) -> Element<'_, Message> {
     let content = column![
@@ -93,7 +169,7 @@ fn source_card(app: &App) -> Element<'_, Message> {
                 .width(58.0)
                 .height(58.0)
                 .center(Length::Fixed(58.0))
-                .style(icon_tile),
+                .style(styles::icon_tile(Tone::Accent)),
             column![
                 typo::meta_toned("DIAGNOSTIC ATS", Tone::Accent),
                 typo::title("Mesurez la force de votre CV"),
@@ -121,9 +197,10 @@ fn source_card(app: &App) -> Element<'_, Message> {
     ]
     .spacing(space::LG);
 
-    container(surface::scroll(container(content).padding(space::XL)))
+    container(content)
+        .padding(space::XL)
         .width(Length::Fill)
-        .height(Length::Fill)
+        .max_width(980.0)
         .style(styles::glass_card)
         .into()
 }
@@ -147,8 +224,8 @@ fn analysis_step<'a>(index: &'a str, title: &'a str, detail: &'a str) -> Element
 /// Zone de dépôt du PDF : tout le rectangle relance le sélecteur de fichier.
 fn drop_zone(app: &App) -> Element<'_, Message> {
     let selected = app.import_pdf_path.is_some();
-    let label = app.import_pdf_path.as_ref().map_or_else(
-        || "Glissez un PDF ou choisissez".to_owned(),
+    let filename = app.import_pdf_path.as_ref().map_or_else(
+        || "Glissez votre CV ici".to_owned(),
         |path| {
             path.file_name()
                 .and_then(std::ffi::OsStr::to_str)
@@ -156,36 +233,53 @@ fn drop_zone(app: &App) -> Element<'_, Message> {
                 .to_owned()
         },
     );
+    let detail = if selected {
+        "PDF prêt pour l'analyse"
+    } else {
+        "Fichier PDF uniquement · 10 Mo maximum"
+    };
+    let action = if selected {
+        "Remplacer le PDF"
+    } else {
+        "Parcourir les fichiers"
+    };
 
     button(
-        column![
-            container(icon::icon(Icon::Document, 48.0, Ink::Muted))
-                .width(72.0)
-                .height(72.0)
-                .center(Length::Fixed(72.0))
-                .style(icon_tile),
-            typo::body(label),
-            row![
-                icon::icon(Icon::Import, icon::SM, Ink::Accent),
-                typo::toned("Choisir un PDF", Tone::Accent),
+        container(
+            column![
+                container(icon::icon(Icon::Import, 26.0, Ink::Accent))
+                    .width(58.0)
+                    .height(58.0)
+                    .center(Length::Fixed(58.0))
+                    .style(styles::icon_tile(Tone::Accent)),
+                typo::section(filename),
+                typo::caption(detail),
+                row![
+                    icon::icon(Icon::Open, icon::SM, Ink::Accent),
+                    typo::toned(action, Tone::Accent),
+                ]
+                .spacing(space::SM)
+                .align_y(Alignment::Center),
             ]
             .spacing(space::SM)
-            .align_y(Alignment::Center),
-        ]
-        .spacing(space::MD)
-        .align_x(Alignment::Center),
+            .align_x(Alignment::Center),
+        )
+        .center(Length::Fill),
     )
     .width(Length::Fill)
     .height(Length::Fixed(DROP_HEIGHT))
+    .padding(0)
     .style(move |theme, status| {
         let palette = tokens(theme);
         let hovered = matches!(status, button::Status::Hovered | button::Status::Pressed);
         button::Style {
-            background: hovered
-                .then_some(Background::Color(alpha(palette.accent, 0.045)))
-                .or_else(|| selected.then_some(Background::Color(alpha(palette.accent, 0.04)))),
+            background: Some(Background::Color(if hovered || selected {
+                alpha(palette.accent, if hovered { 0.075 } else { 0.05 })
+            } else {
+                palette.sunken
+            })),
             text_color: palette.text,
-            border: styles::drop_zone(selected)(theme).border,
+            border: styles::drop_zone(selected || hovered)(theme).border,
             shadow: Shadow::default(),
         }
     })
@@ -193,29 +287,35 @@ fn drop_zone(app: &App) -> Element<'_, Message> {
     .into()
 }
 
-/// Encoche du pictogramme de document (`bg-secondary/70 rounded-xl`).
-fn icon_tile(theme: &Theme) -> container::Style {
-    let palette = tokens(theme);
-    container::Style {
-        background: Some(Background::Color(alpha(palette.sunken, 0.70))),
-        border: Border {
-            radius: radius::CARD.into(),
-            ..Border::default()
-        },
-        ..container::Style::default()
-    }
-}
-
 /// Éditeur de l'offre à comparer, assorti à la zone de dépôt.
 fn offer_pane(app: &App) -> Element<'_, Message> {
-    column![
-        field::editor(&app.import_offer_editor, "Collez l'offre cible…")
-            .on_action(Message::ImportOfferEditorAction)
-            .height(Length::Fixed(DROP_HEIGHT)),
-        typo::caption("L'offre à comparer, si vous en avez une"),
-    ]
-    .spacing(space::XS)
+    container(
+        column![
+            row![
+                container(icon::icon(Icon::Target, icon::SM, Ink::Accent))
+                    .width(32.0)
+                    .height(32.0)
+                    .center(Length::Fixed(32.0))
+                    .style(styles::icon_tile(Tone::Accent)),
+                column![
+                    typo::label("Offre cible"),
+                    typo::caption("Facultative, mais recommandée pour une analyse précise"),
+                ]
+                .spacing(space::XXS),
+            ]
+            .spacing(space::MD)
+            .align_y(Alignment::Center),
+            surface::divider(),
+            field::editor(&app.import_offer_editor, "Collez l'offre cible…")
+                .on_action(Message::ImportOfferEditorAction)
+                .height(Length::Fill),
+        ]
+        .spacing(space::MD),
+    )
+    .padding(space::LG)
     .width(Length::Fill)
+    .height(Length::Fixed(DROP_HEIGHT))
+    .style(styles::form_group)
     .into()
 }
 

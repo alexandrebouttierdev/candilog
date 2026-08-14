@@ -22,7 +22,7 @@ pub fn detail(app: &App) -> Element<'_, Message> {
         ))
         .width(Length::Fill)
         .height(Length::Fill)
-        .style(styles::panel_flat)
+        .style(styles::glass_card)
         .into();
     };
 
@@ -159,6 +159,6 @@ pub fn detail(app: &App) -> Element<'_, Message> {
     )
     .width(Length::Fill)
     .height(Length::Fill)
-    .style(styles::panel_flat)
+    .style(styles::glass_card)
     .into()
 }

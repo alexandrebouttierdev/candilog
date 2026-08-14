@@ -15,11 +15,11 @@ use crate::ui::components::icon::Icon;
 use crate::ui::components::sidebar::workspace_tab_controls;
 use crate::ui::components::{badge, field, layout, pagination, typo};
 use crate::ui::format;
-use crate::ui::theme::metrics::{radius, size, space, stroke};
-use crate::ui::theme::tokens::tokens;
+use crate::ui::theme::metrics::{size, space};
+use crate::ui::theme::styles;
 use crate::ui::theme::Tone;
 use iced::widget::{column, container, row};
-use iced::{Alignment, Background, Border, Element, Length, Theme};
+use iced::{Alignment, Element, Length};
 
 /// Rend l'écran complet des candidatures.
 pub fn view(app: &App) -> Element<'_, Message> {
@@ -37,7 +37,7 @@ pub fn view(app: &App) -> Element<'_, Message> {
 
     let filter_sheet: Element<'_, Message> = if app.filters_open {
         container(filters::sheet(app, companies))
-            .padding([space::SM, space::LG])
+            .padding([space::LG, 0.0])
             .into()
     } else {
         iced::widget::Space::with_height(0).into()
@@ -52,7 +52,7 @@ pub fn view(app: &App) -> Element<'_, Message> {
         })
         .width(Length::Fill)
         .height(Length::Fill)
-        .padding([space::LG, space::LG]),
+        .padding([space::LG, 0.0]),
         candidate_pagination(app),
     ]
     .spacing(0)
@@ -65,7 +65,7 @@ pub fn view(app: &App) -> Element<'_, Message> {
             workspace_tab_controls(app.route, Message::Navigate),
             actions,
         ),
-        body,
+        layout::workspace(body),
     )
 }
 
@@ -135,22 +135,8 @@ fn command_bar(app: &App) -> Element<'_, Message> {
         .padding([space::SM, space::LG])
         .width(Length::Fill)
         .align_y(Alignment::Center)
-        .style(command_bar_style)
+        .style(styles::glass_card)
         .into()
-}
-
-fn command_bar_style(theme: &Theme) -> container::Style {
-    let palette = tokens(theme);
-    container::Style {
-        background: Some(Background::Color(palette.canvas)),
-        text_color: Some(palette.text),
-        border: Border {
-            color: palette.border,
-            width: stroke::HAIRLINE,
-            radius: radius::NONE.into(),
-        },
-        ..container::Style::default()
-    }
 }
 
 /// Options de sélection d'entreprise, précédées d'une option « toutes ».

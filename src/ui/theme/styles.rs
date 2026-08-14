@@ -466,7 +466,15 @@ pub fn panel(theme: &Theme) -> container::Style {
             width: stroke::HAIRLINE,
             radius: radius::PANEL.into(),
         },
-        shadow: Shadow::default(),
+        shadow: if palette.is_dark {
+            Shadow::default()
+        } else {
+            Shadow {
+                color: alpha(palette.shadow, 0.22),
+                offset: Vector::new(0.0, 3.0),
+                blur_radius: 12.0,
+            }
+        },
     }
 }
 
@@ -553,18 +561,46 @@ pub fn form_group(theme: &Theme) -> container::Style {
     }
 }
 
-/// Colonne Kanban : fond de plan de travail, bordure discrète, sans ombre.
+/// Tuile d'icône commune aux en-têtes, formulaires et cartes de synthèse.
+///
+/// Elle reprend le langage des ateliers IA : fond teinté, filet léger et coins
+/// arrondis, sans transformer chaque pictogramme en bouton plein.
+pub fn icon_tile(tone: Tone) -> impl Fn(&Theme) -> container::Style {
+    move |theme| {
+        let palette = tokens(theme);
+        container::Style {
+            background: Some(Background::Color(tone.surface(&palette))),
+            text_color: Some(palette.text),
+            border: Border {
+                color: tone.edge(&palette),
+                width: stroke::HAIRLINE,
+                radius: radius::CONTROL.into(),
+            },
+            shadow: Shadow::default(),
+        }
+    }
+}
+
+/// Colonne Kanban : même surface élevée que les ateliers, sans saturer le statut.
 pub fn kanban_column(theme: &Theme) -> container::Style {
     let palette = tokens(theme);
     container::Style {
-        background: Some(Background::Color(palette.canvas)),
+        background: Some(Background::Color(palette.panel)),
         text_color: Some(palette.text),
         border: Border {
             color: palette.border,
             width: stroke::HAIRLINE,
             radius: radius::PANEL.into(),
         },
-        shadow: Shadow::default(),
+        shadow: if palette.is_dark {
+            Shadow::default()
+        } else {
+            Shadow {
+                color: alpha(palette.shadow, 0.18),
+                offset: Vector::new(0.0, 3.0),
+                blur_radius: 10.0,
+            }
+        },
     }
 }
 
@@ -1057,13 +1093,11 @@ mod tests {
         }
     }
 
-    /// Les panneaux intégrés ne flottent pas au-dessus du plan de travail.
+    /// Les panneaux intégrés reprennent la profondeur discrète des ateliers en thème clair.
     #[test]
-    fn le_panneau_reste_sans_ombre() {
-        for theme in [dark(), light()] {
-            let style = panel(&theme);
-            assert!(style.shadow.blur_radius.abs() < f32::EPSILON);
-        }
+    fn le_panneau_est_plat_en_sombre_et_legerement_eleve_en_clair() {
+        assert!(panel(&dark()).shadow.blur_radius.abs() < f32::EPSILON);
+        assert!(panel(&light()).shadow.blur_radius > 0.0);
     }
 
     #[test]
@@ -1120,7 +1154,7 @@ mod tests {
             let palette = tokens(&theme);
             assert_eq!(
                 kanban_column(&theme).background,
-                Some(iced::Background::Color(palette.canvas))
+                Some(iced::Background::Color(palette.panel))
             );
             assert_eq!(
                 list_header(&theme).background,

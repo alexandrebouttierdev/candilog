@@ -66,18 +66,14 @@ pub fn view(app: &App) -> Element<'_, Message> {
     };
 
     layout::screen(
-        column![
-            header::workspace_header(
-                Icon::Calendar,
-                "Calendrier et échéances",
-                workspace_tab_controls(app.route, Message::Navigate),
-                actions,
-            ),
-            nav_band(app),
-        ]
-        .spacing(0),
+        header::workspace_header(
+            Icon::Calendar,
+            "Calendrier et échéances",
+            workspace_tab_controls(app.route, Message::Navigate),
+            actions,
+        ),
         layout::workspace(
-            column![metrics_row(app), calendar]
+            column![nav_band(app), metrics_row(app), calendar]
                 .spacing(space::LG)
                 .height(Length::Fill),
         ),
@@ -112,7 +108,7 @@ fn nav_band(app: &App) -> Element<'_, Message> {
     )
     .padding([space::SM, space::LG])
     .width(Length::Fill)
-    .style(styles::panel_flat)
+    .style(styles::form_group)
     .into()
 }
 

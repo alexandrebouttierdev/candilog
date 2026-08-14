@@ -5,10 +5,11 @@ use super::icon::{self, Icon, Ink};
 use super::sidebar::workspace_tab_controls;
 use super::typo;
 use crate::navigation::Route;
-use crate::ui::theme::metrics::{radius, space};
+use crate::ui::theme::metrics::space;
 use crate::ui::theme::styles;
 use crate::ui::theme::tokens::tokens;
 use crate::ui::theme::typography as font;
+use crate::ui::theme::Tone;
 use iced::widget::text::IntoFragment;
 use iced::widget::{column, container, row, text, vertical_rule};
 use iced::{Alignment, Background, Border, Element, Length, Theme};
@@ -25,7 +26,7 @@ pub fn page_header<'a, Message: 'a>(
 ) -> Element<'a, Message> {
     container(
         row![
-            icon::icon(glyph, icon::MD, Ink::Accent),
+            page_glyph(glyph),
             typo::title(title),
             container(vertical_rule(1).style(styles::divider)).height(18.0),
             typo::meta(description),
@@ -63,7 +64,7 @@ pub fn workspace_header<'a, Message: 'a>(
 ) -> Element<'a, Message> {
     container(
         row![
-            icon::icon(glyph, icon::MD, Ink::Accent),
+            page_glyph(glyph),
             typo::title(title),
             container(vertical_rule(1).style(styles::divider)).height(18.0),
             tabs,
@@ -117,22 +118,12 @@ pub fn form_modal_header<'a, Message: Clone + 'a>(
     on_close: Message,
 ) -> Element<'a, Message> {
     row![
-        container(icon::icon(glyph, icon::MD, Ink::OnAccent))
+        container(icon::icon(glyph, icon::MD, Ink::Accent))
             .width(40.0)
             .height(40.0)
             .align_x(Alignment::Center)
             .align_y(Alignment::Center)
-            .style(move |theme: &Theme| {
-                let palette = tokens(theme);
-                container::Style {
-                    background: Some(Background::Color(palette.accent_fill)),
-                    border: Border {
-                        radius: radius::CONTROL.into(),
-                        ..Border::default()
-                    },
-                    ..container::Style::default()
-                }
-            }),
+            .style(styles::icon_tile(Tone::Accent)),
         column![
             text(title).size(16.0).font(font::SEMIBOLD),
             typo::caption(description),
@@ -144,6 +135,15 @@ pub fn form_modal_header<'a, Message: Clone + 'a>(
     .spacing(space::MD)
     .align_y(Alignment::Center)
     .into()
+}
+
+fn page_glyph<'a, Message: 'a>(glyph: Icon) -> Element<'a, Message> {
+    container(icon::icon(glyph, icon::SM, Ink::Accent))
+        .width(28.0)
+        .height(28.0)
+        .center(Length::Fixed(28.0))
+        .style(styles::icon_tile(Tone::Accent))
+        .into()
 }
 
 #[cfg(test)]

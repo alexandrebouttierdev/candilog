@@ -48,7 +48,7 @@ pub fn month_view(app: &App) -> Element<'_, Message> {
         grid = grid.push(line);
     }
 
-    surface::region(
+    surface::panel_bare(
         column![
             container(weekdays)
                 .height(size::TABLE_HEADER)
@@ -209,7 +209,10 @@ pub fn week_view(app: &App) -> Element<'_, Message> {
                 }),
         );
     }
-    container(week).height(Length::Fill).into()
+    container(week)
+        .height(Length::Fill)
+        .style(styles::glass_card)
+        .into()
 }
 
 /// Agenda d'une journée, avec les comptes rendus et analyses à droite.
@@ -298,7 +301,7 @@ pub fn day_view(app: &App) -> Element<'_, Message> {
     let analyses = analyses_panel(app, &prefix);
 
     layout::columns([
-        surface::region(
+        surface::panel_bare(
             column![
                 table::header(
                     app.layout(),
@@ -344,7 +347,7 @@ fn analyses_panel<'a>(app: &'a App, prefix: &str) -> Element<'a, Message> {
             .height(Length::Fill)
             .into()
     };
-    surface::region(
+    surface::panel_bare(
         column![
             container(surface::section_header(
                 "Comptes rendus",

@@ -17,13 +17,26 @@ use iced::{Alignment, Element, Length};
 
 /// Bibliothèque persistante, avec liste à gauche et lecture à droite.
 pub fn view(app: &App) -> Element<'_, Message> {
-    let actions = controls::primary("Rédiger une lettre", Some(Icon::Sparkles))
-        .on_press(Message::Navigate(Route::LettreMotivation))
-        .into();
+    let compact = app.layout().width < 1_280.0;
+    let actions: Element<'_, Message> = if compact {
+        controls::icon_primary(
+            Icon::Sparkles,
+            "Rédiger une lettre",
+            Message::Navigate(Route::LettreMotivation),
+        )
+    } else {
+        controls::primary("Rédiger une lettre", Some(Icon::Sparkles))
+            .on_press(Message::Navigate(Route::LettreMotivation))
+            .into()
+    };
     layout::screen(
         header::route_header(
             Icon::Mail,
-            "Mes lettres de motivation",
+            if compact {
+                "Mes lettres"
+            } else {
+                "Mes lettres de motivation"
+            },
             Route::Lettres,
             Message::Navigate,
             actions,
@@ -98,7 +111,7 @@ fn library(app: &App) -> Element<'_, Message> {
     )
     .width(Length::Fill)
     .height(Length::Fill)
-    .style(styles::panel_flat)
+    .style(styles::glass_card)
     .into()
 }
 
@@ -154,6 +167,6 @@ fn preview(app: &App) -> Element<'_, Message> {
     )
     .width(Length::Fill)
     .height(Length::Fill)
-    .style(styles::panel_flat)
+    .style(styles::glass_card)
     .into()
 }

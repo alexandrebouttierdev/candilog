@@ -7,7 +7,7 @@ use crate::ui::theme::styles;
 use crate::ui::theme::typography as font;
 use crate::ui::theme::Tone;
 use iced::widget::{column, container, row};
-use iced::{Alignment, Background, Border, Color, Element, Length, Theme};
+use iced::{Alignment, Color, Element, Length};
 
 /// Carte d'indicateur simple : label, valeur mono, couleur.
 pub fn metric<'a, Message: 'a>(
@@ -48,18 +48,7 @@ pub fn metric_icon_tinted<'a, Message: 'a>(
                 .height(36.0)
                 .align_x(Alignment::Center)
                 .align_y(Alignment::Center)
-                .style(move |theme: &Theme| {
-                    let palette = crate::ui::theme::tokens::tokens(theme);
-                    container::Style {
-                        background: Some(Background::Color(tone.surface(&palette))),
-                        border: Border {
-                            color: tone.edge(&palette),
-                            width: 1.0,
-                            radius: crate::ui::theme::metrics::radius::CONTROL.into(),
-                        },
-                        ..container::Style::default()
-                    }
-                }),
+                .style(styles::icon_tile(tone)),
             column![typo::caption(label), value].spacing(space::XXS),
         ]
         .spacing(space::MD)

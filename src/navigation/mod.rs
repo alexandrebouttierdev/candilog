@@ -180,7 +180,7 @@ impl Route {
             Self::CvGenerator => "Générer un CV",
             Self::Lettres => "Mes lettres",
             Self::LettreMotivation => "Lettre de motivation",
-            Self::CvImport => "Analyser un CV",
+            Self::CvImport => "Analyser",
             Self::Profil => "Profil",
             Self::Parametres => "Intelligence artificielle",
             Self::Sauvegardes => "Sauvegardes",

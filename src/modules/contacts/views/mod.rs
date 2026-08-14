@@ -147,7 +147,7 @@ fn directory(app: &App) -> Element<'_, Message> {
     container(column![toolbar, surface::divider(), body, footer].height(Length::Fill))
         .width(Length::Fill)
         .height(Length::Fill)
-        .style(styles::panel_flat)
+        .style(styles::glass_card)
         .into()
 }
 

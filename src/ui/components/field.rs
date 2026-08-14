@@ -258,7 +258,11 @@ pub fn form_section<'a, Message: 'a>(
     container(
         column![
             row![
-                icon::icon(glyph, icon::MD, Ink::Accent),
+                container(icon::icon(glyph, icon::SM, Ink::Accent))
+                    .width(32.0)
+                    .height(32.0)
+                    .center(Length::Fixed(32.0))
+                    .style(styles::icon_tile(crate::ui::theme::Tone::Accent)),
                 column![typo::label(title), typo::caption(description)].spacing(space::XXS),
             ]
             .spacing(space::MD)
