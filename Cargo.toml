@@ -38,12 +38,18 @@ name = "candilog"
 summary = "Suivi de candidatures, entretiens et relances avec assistance IA locale"
 license = "MIT"
 url = "https://github.com/alexandrebouttierdev/candilog"
-requires = "libxkbcommon, libwayland-client, libX11, dbus-libs, vulkan-loader"
 assets = [
   { source = "target/release/candilog", dest = "/usr/bin/candilog", mode = "755" },
   { source = "packaging/candilog.desktop", dest = "/usr/share/applications/candilog.desktop", mode = "644" },
   { source = "packaging/icons/hicolor/256x256/apps/candilog.png", dest = "/usr/share/icons/hicolor/256x256/apps/candilog.png", mode = "644" },
 ]
+
+[package.metadata.generate-rpm.requires]
+libxkbcommon = "*"
+libwayland-client = "*"
+libX11 = "*"
+dbus-libs = "*"
+vulkan-loader = "*"
 
 [features]
 default = []
