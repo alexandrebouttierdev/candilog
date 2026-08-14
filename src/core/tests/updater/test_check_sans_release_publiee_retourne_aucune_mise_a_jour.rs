@@ -16,6 +16,9 @@ async fn check_sans_release_publiee_retourne_aucune_mise_a_jour() {
         &format!("{}/releases/latest", server.url()),
     )
     .await;
-    assert!(resultat.is_ok(), "un 404 ne doit pas être une erreur : {resultat:?}");
+    assert!(
+        resultat.is_ok(),
+        "un 404 ne doit pas être une erreur : {resultat:?}"
+    );
     assert_eq!(resultat.unwrap(), None);
 }
