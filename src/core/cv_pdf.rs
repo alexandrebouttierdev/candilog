@@ -140,8 +140,9 @@ const CHIP_BG: (f32, f32, f32) = (245.0, 245.0, 247.0);
 
 const PAGE_W: f32 = 595.28;
 const PAGE_H: f32 = 841.89;
-const MARGE: f32 = 14.17; // 0,5 cm
-const CONTENU_W: f32 = PAGE_W - 2.0 * MARGE;
+const PAGE_MARGIN: f32 = 14.17; // @page { margin: 0,5 cm }
+const CONTENT_X: f32 = PAGE_MARGIN + 22.4 * PX; // padding horizontal 1,4 rem du template
+const CONTENU_W: f32 = PAGE_W - 2.0 * CONTENT_X;
 
 const PX: f32 = 0.75;
 const fn pt(px: f32) -> f32 {
@@ -211,7 +212,7 @@ impl CvPdf {
             ops: Vec::new(),
             polices: &polices,
             icones: &icones,
-            y: MARGE,
+            y: PAGE_MARGIN,
         };
 
         plan.entete(self);
@@ -454,10 +455,10 @@ impl Plan<'_> {
 
 impl Plan<'_> {
     fn entete(&mut self, cv: &CvPdf) {
-        let x = MARGE;
+        let x = CONTENT_X;
         let haut_padding = pt(13.6);
         let bas_padding = pt(12.0);
-        self.y = MARGE + haut_padding;
+        self.y = PAGE_MARGIN + haut_padding;
 
         self.texte(
             x,
@@ -540,9 +541,9 @@ impl Plan<'_> {
 
     fn section_profil(&mut self, cv: &CvPdf) {
         self.avance(pt(4.0));
-        self.titre_section(MARGE, "Profil");
+        self.titre_section(CONTENT_X, "Profil");
         self.paragraphe(
-            MARGE,
+            CONTENT_X,
             Poids::Regular,
             pt(12.16),
             rgb(SECONDAIRE.0, SECONDAIRE.1, SECONDAIRE.2),
@@ -554,13 +555,13 @@ impl Plan<'_> {
 
     fn section_competences(&mut self, cv: &CvPdf) {
         self.avance(pt(10.0));
-        self.titre_section(MARGE, "Compétences techniques");
-        let mut x = MARGE;
+        self.titre_section(CONTENT_X, "Compétences techniques");
+        let mut x = CONTENT_X;
         let y_base = self.y;
         for competence in &cv.skills {
             let largeur = self.largeur_texte(Poids::Medium, pt(10.56), competence) + 2.0 * pt(6.4);
-            if x + largeur > MARGE + CONTENU_W {
-                x = MARGE;
+            if x + largeur > CONTENT_X + CONTENU_W {
+                x = CONTENT_X;
                 self.y += pt(10.56) + 2.0 * pt(1.92) + pt(2.64);
             }
             self.polygone_arrondi(
@@ -590,7 +591,7 @@ impl Plan<'_> {
 
     fn section_experiences(&mut self, cv: &CvPdf) {
         self.avance(pt(10.0));
-        self.titre_section(MARGE, "Expérience professionnelle");
+        self.titre_section(CONTENT_X, "Expérience professionnelle");
         for experience in &cv.experiences {
             self.experience(experience);
             self.avance(pt(6.0));
@@ -598,7 +599,7 @@ impl Plan<'_> {
     }
 
     fn experience(&mut self, experience: &CvExperience) {
-        let x = MARGE;
+        let x = CONTENT_X;
         self.texte(
             x,
             self.y + ASCENT * pt(13.12),
@@ -657,9 +658,9 @@ impl Plan<'_> {
             return;
         }
         self.avance(pt(10.0));
-        self.titre_section(MARGE, "Projets techniques");
+        self.titre_section(CONTENT_X, "Projets techniques");
         for projet in &cv.projects {
-            let x = MARGE;
+            let x = CONTENT_X;
             self.texte(
                 x,
                 self.y + ASCENT * pt(13.12),
@@ -689,8 +690,8 @@ impl Plan<'_> {
 
     fn section_formation_langues(&mut self, cv: &CvPdf) {
         self.avance(pt(10.0));
-        let x_gauche = MARGE;
-        let x_droite = MARGE + CONTENU_W / 2.0 + pt(11.2);
+        let x_gauche = CONTENT_X;
+        let x_droite = CONTENT_X + CONTENU_W / 2.0 + pt(11.2);
         let y_debut = self.y;
 
         self.titre_section(x_gauche, "Formation");

@@ -5,6 +5,7 @@ use crate::modules::contacts::model::Contact;
 use crate::modules::cv::model::CvVersionSummary;
 use crate::modules::entreprises::model::Entreprise;
 use crate::modules::entretiens::model::Entretien;
+use crate::modules::lettres::model::LettreMotivation;
 use crate::modules::metriques::components::PipelineCounts;
 use crate::modules::metriques::model::{AppelLlm, Page, ResumeScoresAts, ScoreAts};
 use crate::modules::relances::model::Relance;
@@ -28,6 +29,8 @@ pub struct DataSnapshot {
     pub entreprises: Vec<Entreprise>,
     pub entreprises_total: u64,
     pub entreprises_total_pages: u64,
+    /// Types d'entreprise réellement présents, triés et dédupliqués.
+    pub company_types: Vec<String>,
     /// Contacts.
     pub contacts: Vec<Contact>,
     pub contacts_total: u64,
@@ -48,6 +51,8 @@ pub struct DataSnapshot {
     pub relances: Vec<Relance>,
     /// Versions de CV.
     pub cv_versions: Vec<CvVersionSummary>,
+    /// Lettres de motivation enregistrées.
+    pub letters: Vec<LettreMotivation>,
     /// Profil structuré.
     pub profile: Profile,
     /// Paramètres applicatifs sans secret en clair.

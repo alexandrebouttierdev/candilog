@@ -37,8 +37,14 @@ impl<R: EntrepriseRepository> EntrepriseService<R> {
         page: u64,
         page_size: u64,
         search: &str,
+        company_type: Option<&str>,
     ) -> AppResult<Page<Entreprise>> {
-        self.repo.list_page(page, page_size, search)
+        self.repo.list_page(page, page_size, search, company_type)
+    }
+
+    /// Liste les types réellement disponibles pour le filtre du répertoire.
+    pub fn lister_types(&self) -> AppResult<Vec<String>> {
+        self.repo.list_types()
     }
 
     /// Valide le nom puis crée l'entreprise.

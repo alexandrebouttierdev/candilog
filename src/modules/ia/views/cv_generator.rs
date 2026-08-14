@@ -28,7 +28,7 @@ pub fn view(app: &App) -> Element<'_, Message> {
     layout::screen(
         header::route_header(
             Icon::Sparkles,
-            "Générateur de CV",
+            "Générer un CV",
             Route::CvGenerator,
             Message::Navigate,
             actions(app),
@@ -36,7 +36,7 @@ pub fn view(app: &App) -> Element<'_, Message> {
         layout::workspace(
             column![
                 overview(app),
-                layout::columns([workbench(app), preview(app)]),
+                layout::split_portions(7, workbench(app), 8, preview(app)),
             ]
             .spacing(space::LG)
             .height(Length::Fill),

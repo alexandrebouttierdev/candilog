@@ -8,8 +8,11 @@ pub(super) fn handles(message: &Message) -> bool {
         Message::CvVersionNameChanged(..)
             | Message::SaveGeneratedCv
             | Message::LoadCvVersion(..)
+            | Message::PreviewCvVersion(..)
             | Message::ExportGeneratedCvPdf
             | Message::CvPdfExported(..)
+            | Message::SaveLetter
+            | Message::LoadLetter(..)
             | Message::SelectProfilePdf
             | Message::ProfilePdfSelected(..)
             | Message::ExtractProfile
@@ -80,6 +83,27 @@ pub(super) fn update(app: &mut App, message: Message) -> Task<Message> {
                 Err(error) => app.notify_error(&error),
             }
         }
+        Message::PreviewCvVersion(id) => {
+            let Some(backend) = app.backend.as_ref() else {
+                app.notify_failure("La base Candilog n'est pas disponible.");
+                return Task::none();
+            };
+            match backend.cv.load(id) {
+                Ok(version) => {
+                    let cv = serde_json::from_value(version.content["cv"].clone());
+                    let analysis = serde_json::from_value(version.content["analysis"].clone());
+                    match (cv, analysis) {
+                        (Ok(cv), Ok(analysis)) => {
+                            app.cv_preview_generation =
+                                Some(crate::modules::ia::cv_model::CvGeneration { cv, analysis });
+                            app.selected_cv = Some(id);
+                        }
+                        _ => app.notify_failure("Cette version de CV est illisible."),
+                    }
+                }
+                Err(error) => app.notify_error(&error),
+            }
+        }
         Message::ExportGeneratedCvPdf => {
             let Some(generation) = app.cv_generation.as_ref() else {
                 app.notify(
@@ -114,6 +138,52 @@ pub(super) fn update(app: &mut App, message: Message) -> Task<Message> {
             Ok(path) => app.notify_success(format!("CV exporté : {}", path.display())),
             Err(error) => app.notify_failure(error),
         },
+        Message::SaveLetter => {
+            let Some(backend) = app.backend.as_ref() else {
+                app.notify_failure("La base Candilog n'est pas disponible.");
+                return Task::none();
+            };
+            let name = match (app.letter_job_title.trim(), app.letter_company.trim()) {
+                ("", "") => "Lettre de motivation".to_owned(),
+                (job, "") => format!("Lettre · {job}"),
+                ("", company) => format!("Lettre · {company}"),
+                (job, company) => format!("{job} · {company}"),
+            };
+            let input = crate::modules::lettres::dtos::NouvelleLettre {
+                name,
+                company: optional(&app.letter_company),
+                job_title: optional(&app.letter_job_title),
+                tone: app.letter_tone.clone(),
+                length: app.letter_length.clone(),
+                content: app.letter_output.clone(),
+            };
+            match backend.lettres.save(&input) {
+                Ok(letter) => {
+                    app.selected_letter = Some(letter.id);
+                    app.notify_success("Lettre enregistrée dans la bibliothèque.");
+                    return recharger(app);
+                }
+                Err(error) => app.notify_error(&error),
+            }
+        }
+        Message::LoadLetter(id) => {
+            let Some(backend) = app.backend.as_ref() else {
+                app.notify_failure("La base Candilog n'est pas disponible.");
+                return Task::none();
+            };
+            match backend.lettres.load(id) {
+                Ok(letter) => {
+                    app.letter_company = letter.company.unwrap_or_default();
+                    app.letter_job_title = letter.job_title.unwrap_or_default();
+                    app.letter_tone = letter.tone;
+                    app.letter_length = letter.length;
+                    app.letter_output = letter.content;
+                    app.route = crate::navigation::Route::LettreMotivation;
+                    app.selected_letter = Some(letter.id);
+                }
+                Err(error) => app.notify_error(&error),
+            }
+        }
         Message::SelectProfilePdf => {
             return Task::perform(
                 async {

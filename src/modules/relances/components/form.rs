@@ -4,6 +4,7 @@ use crate::app::{App, Message};
 use crate::modules::candidatures::views::candidate_choices;
 use crate::ui::components::choice::Choice;
 use crate::ui::components::field;
+use crate::ui::components::icon::Icon;
 use crate::ui::components::relation::{relation_page, RelationNavigation};
 use crate::ui::theme::metrics::space;
 use iced::widget::column;
@@ -24,48 +25,63 @@ pub fn form(app: &App) -> Element<'_, Message> {
     let candidates = candidate_choices(app);
     let selected = Choice::find(&candidates, app.relance_form.candidature_id);
     column![
-        field::labeled(
-            "Candidature *",
-            relation_page(
-                &app.candidate_option_search,
-                Message::CandidateOptionSearchChanged,
-                crate::app::state::RELATION_PAGE_SIZE,
-                RelationNavigation {
-                    page: app.candidate_option_page,
-                    total_pages: app.data.candidate_options_total_pages,
-                    total: app.data.candidate_options_total,
-                    previous: Message::CandidateOptionPagePrev,
-                    next: Message::CandidateOptionPageNext,
-                },
-                field::select(candidates, selected, |choice| {
-                    Message::RelanceCandidatureChanged(choice.id)
-                })
-                .width(iced::Length::Fill)
-                .into(),
+        field::form_section(
+            Icon::Applications,
+            "Candidature concernée",
+            "Retrouvez rapidement le dossier à relancer",
+            field::labeled(
+                "Candidature *",
+                relation_page(
+                    &app.candidate_option_search,
+                    Message::CandidateOptionSearchChanged,
+                    crate::app::state::RELATION_PAGE_SIZE,
+                    RelationNavigation {
+                        page: app.candidate_option_page,
+                        total_pages: app.data.candidate_options_total_pages,
+                        total: app.data.candidate_options_total,
+                        previous: Message::CandidateOptionPagePrev,
+                        next: Message::CandidateOptionPageNext,
+                    },
+                    field::select(candidates, selected, |choice| {
+                        Message::RelanceCandidatureChanged(choice.id)
+                    })
+                    .width(iced::Length::Fill)
+                    .into(),
+                ),
             ),
         ),
-        field::form_row([
-            field::date_field(
-                "Date *",
-                &app.relance_form.date_relance,
-                None,
-                Message::RelanceDateChanged,
-                Message::OpenDatePicker(crate::app::state::DatePickerTarget::Relance),
+        field::form_section(
+            Icon::Calendar,
+            "Planification",
+            "Choisissez la date et le canal de contact",
+            field::form_row([
+                field::date_field(
+                    "Date *",
+                    &app.relance_form.date_relance,
+                    None,
+                    Message::RelanceDateChanged,
+                    Message::OpenDatePicker(crate::app::state::DatePickerTarget::Relance),
+                ),
+                field::labeled(
+                    "Canal",
+                    field::select(
+                        channels(),
+                        Some(app.relance_form.type_relance.clone()),
+                        Message::RelanceTypeChanged,
+                    )
+                    .width(iced::Length::Fill),
+                ),
+            ]),
+        ),
+        field::form_section(
+            Icon::Edit,
+            "Préparation",
+            "Message à transmettre, angle de relance ou informations utiles",
+            field::text_field(
+                "Notes",
+                &app.relance_form.notes,
+                Message::RelanceNotesChanged,
             ),
-            field::labeled(
-                "Canal",
-                field::select(
-                    channels(),
-                    Some(app.relance_form.type_relance.clone()),
-                    Message::RelanceTypeChanged,
-                )
-                .width(iced::Length::Fill),
-            ),
-        ]),
-        field::text_field(
-            "Notes",
-            &app.relance_form.notes,
-            Message::RelanceNotesChanged
         ),
     ]
     .spacing(space::LG)

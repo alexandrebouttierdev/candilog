@@ -61,6 +61,7 @@ pub(super) fn update(app: &mut App, message: Message) -> Task<Message> {
         }
         Message::ResetCandidateFilters => {
             app.candidate_filters = crate::app::state::CandidateFilters::default();
+            app.search.clear();
             app.candidate_page = 1;
             return recharger(app);
         }
@@ -76,6 +77,7 @@ pub(super) fn update(app: &mut App, message: Message) -> Task<Message> {
                     Dialog::DeleteEntretien(id) => backend.entretiens.supprimer(id),
                     Dialog::DeleteRelance(id) => backend.relances.supprimer(id),
                     Dialog::DeleteCv(id) => backend.cv.delete(id),
+                    Dialog::DeleteLetter(id) => backend.lettres.delete(id),
                     _ => Err(crate::shared::error::AppError::Validation(
                         "Aucune suppression à confirmer.".into(),
                     )),

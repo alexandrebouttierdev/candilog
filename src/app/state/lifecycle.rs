@@ -71,6 +71,7 @@ impl App {
             candidate_view: CandidateView::Kanban,
             candidate_filters: CandidateFilters::default(),
             search: String::new(),
+            company_type_filter: None,
             calendar_year: now.year(),
             calendar_month: now.month(),
             calendar_date: now.date_naive(),
@@ -104,6 +105,7 @@ impl App {
             offer_editor: iced::widget::text_editor::Content::new(),
             offer_analysis: None,
             cv_generation: None,
+            cv_preview_generation: None,
             cv_version_name: "CV optimisé".into(),
             recommendation_states: Vec::new(),
             ai_is_running: false,
@@ -118,6 +120,8 @@ impl App {
             letter_tone: "formal".into(),
             letter_length: "medium".into(),
             letter_output: String::new(),
+            letter_iteration_instruction: String::new(),
+            letter_chat_history: Vec::new(),
             press_candidate: None,
             press_origin: None,
             dragging_candidate: None,
@@ -134,6 +138,7 @@ impl App {
             selected_company: None,
             selected_contact: None,
             selected_cv: None,
+            selected_letter: None,
             filters_open: false,
             candidate_sort: CandidateSort::default(),
             candidate_sort_descending: true,
@@ -177,6 +182,7 @@ impl App {
                 "calendrier" => Route::Calendrier,
                 "statistiques" => Route::Statistiques,
                 "cv-generator" => Route::CvGenerator,
+                "lettres" => Route::Lettres,
                 "lettre" => Route::LettreMotivation,
                 "cv-import" => Route::CvImport,
                 "profil" => Route::Profil,
@@ -268,6 +274,34 @@ impl App {
         if std::env::var_os("CANDILOG_CAPTURE_AI_RUNNING").is_some() {
             self.ai_is_running = true;
             self.ai_elapsed_seconds = 18;
+        }
+        if std::env::var_os("CANDILOG_CAPTURE_CV_PREVIEW").is_some() {
+            if let (Some(backend), Some(summary)) =
+                (self.backend.as_ref(), self.data.cv_versions.first())
+            {
+                if let Ok(version) = backend.cv.load(summary.id) {
+                    let cv = serde_json::from_value(version.content["cv"].clone());
+                    let analysis = serde_json::from_value(version.content["analysis"].clone());
+                    if let (Ok(cv), Ok(analysis)) = (cv, analysis) {
+                        let generation =
+                            crate::modules::ia::cv_model::CvGeneration { cv, analysis };
+                        self.cv_generation = Some(generation.clone());
+                        self.cv_preview_generation = Some(generation);
+                        self.selected_cv = Some(summary.id);
+                    }
+                }
+            }
+        }
+        if std::env::var_os("CANDILOG_CAPTURE_LETTER_OUTPUT").is_some() {
+            self.letter_company = "Candilog".into();
+            self.letter_job_title = "Développeur Rust desktop".into();
+            self.letter_output = "Madame, Monsieur,\n\nVotre offre de Développeur Rust desktop a retenu toute mon attention. Mon expérience des applications natives, de SQLite et des interfaces exigeantes me permettrait de contribuer rapidement à vos produits.\n\nJe serais heureux d'échanger avec vous afin de détailler ma motivation et la manière dont je pourrais rejoindre votre équipe.\n\nCordialement,".into();
+            self.letter_chat_history
+                .push(crate::modules::ia::cv_model::ChatMsg {
+                    role: "user".into(),
+                    content: "Rends l'introduction plus directe et la conclusion plus chaleureuse."
+                        .into(),
+                });
         }
         if let Ok(message) = std::env::var("CANDILOG_CAPTURE_NOTIFICATION") {
             self.notify(NotificationKind::Info, message);

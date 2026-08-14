@@ -1,13 +1,13 @@
 //! Rendu des objets du réseau professionnel.
 
 use crate::modules::contacts::model::Contact;
-use crate::ui::components::{avatar, surface, typo};
+use crate::ui::components::icon::{self, Icon};
+use crate::ui::components::{avatar, layout, surface, typo};
 use crate::ui::format;
 use crate::ui::theme::metrics::space;
 use crate::ui::theme::styles;
-use crate::ui::theme::typography as font;
 use crate::ui::theme::Tone;
-use iced::widget::{button, column, container, row};
+use iced::widget::{button, column, row};
 use iced::{Alignment, Element, Length};
 
 pub mod form;
@@ -42,35 +42,39 @@ pub fn contact_card<'a, Message: Clone + 'a>(
     on_press: Message,
 ) -> Element<'a, Message> {
     let name = full_name(contact);
-    let body = container(
-        column![
-            row![
-                avatar::avatar(avatar::initials_of(&name), 40.0, Tone::Accent),
-                column![
-                    typo::item(name),
-                    typo::caption(format::or_dash(contact.poste.as_deref())),
-                ]
-                .spacing(2.0),
+    let body = column![
+        row![
+            avatar::avatar(avatar::initials_of(&name), 44.0, Tone::Accent),
+            column![
+                typo::item(name),
+                typo::caption(format::or_else(
+                    contact.poste.as_deref(),
+                    "Fonction non renseignée",
+                )),
             ]
-            .spacing(space::MD)
-            .align_y(Alignment::Center),
-            surface::divider(),
-            typo::text_mono(
-                format::or_dash(contact.email.as_deref()),
-                font::CAPTION,
-                font::MONO_REGULAR,
-            )
-            .style(styles::muted_text),
+            .spacing(space::XXS),
+            layout::spacer(),
+            icon::muted(Icon::ChevronRight),
         ]
-        .spacing(space::MD),
-    )
-    .padding(space::LG)
-    .width(Length::Fill)
-    .style(styles::glass_card);
+        .spacing(space::MD)
+        .align_y(Alignment::Center),
+        surface::divider(),
+        row![
+            icon::muted(Icon::Mail),
+            typo::caption(format::or_else(
+                contact.email.as_deref(),
+                "Aucun e-mail renseigné",
+            )),
+        ]
+        .spacing(space::SM)
+        .align_y(Alignment::Center),
+    ]
+    .spacing(space::MD);
 
     button(body)
         .width(Length::Fill)
-        .style(styles::card)
+        .padding(space::LG)
+        .style(styles::contact_card)
         .on_press(on_press)
         .into()
 }

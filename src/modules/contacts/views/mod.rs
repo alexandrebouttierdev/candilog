@@ -10,7 +10,7 @@ use crate::ui::components::button as controls;
 use crate::ui::components::header;
 use crate::ui::components::icon::Icon;
 use crate::ui::components::overlay;
-use crate::ui::components::{field, layout, pagination, state, surface, typo};
+use crate::ui::components::{badge, field, layout, pagination, state, surface, typo};
 use crate::ui::format;
 use crate::ui::theme::metrics::space;
 use crate::ui::theme::styles;
@@ -86,30 +86,41 @@ fn directory(app: &App) -> Element<'_, Message> {
 
     let today = chrono::Local::now().format("%Y-%m-%d").to_string();
     let toolbar = container(
-        row![
-            field::search(
-                "Rechercher un contact…",
-                &app.search,
-                Message::SearchChanged,
-                Length::Fixed(360.0),
-            ),
-            typo::caption(format::plural(
-                usize::try_from(app.data.contacts_total).unwrap_or(usize::MAX),
-                "contact",
-                "contacts",
-            )),
-            layout::spacer(),
-            typo::caption(format!(
-                "{} candidatures liées · {} entretiens planifiés",
-                app.data.candidature_stats.linked_contacts,
-                entretiens_planifies(&app.data.entretiens, &today),
-            )),
+        column![
+            row![
+                typo::label("Votre réseau"),
+                layout::spacer(),
+                typo::caption(format!(
+                    "{} candidatures liées · {} entretiens planifiés",
+                    app.data.candidature_stats.linked_contacts,
+                    entretiens_planifies(&app.data.entretiens, &today),
+                )),
+            ]
+            .align_y(Alignment::Center),
+            row![
+                field::search_resettable(
+                    "Rechercher un contact…",
+                    &app.search,
+                    Message::SearchChanged,
+                    Message::ResetSearch,
+                    Length::Fixed(420.0),
+                ),
+                badge::badge(
+                    format::plural(
+                        usize::try_from(app.data.contacts_total).unwrap_or(usize::MAX),
+                        "contact",
+                        "contacts",
+                    ),
+                    crate::ui::theme::Tone::Neutral,
+                ),
+            ]
+            .spacing(space::MD)
+            .align_y(Alignment::Center),
         ]
-        .spacing(space::MD)
-        .align_y(Alignment::Center),
+        .spacing(space::MD),
     )
-    .height(52.0)
-    .padding([0.0, space::LG])
+    .height(82.0)
+    .padding([space::MD, space::XL])
     .width(Length::Fill);
 
     let footer: Element<'_, Message> = if app.data.contacts_total_pages > 1 {

@@ -1,45 +1,37 @@
-//! Lettre de motivation : brief à gauche, document au centre, itération à droite.
+//! Atelier de lettre de motivation : brief, page de document et itérations IA.
 
 use crate::app::{App, Message};
 use crate::navigation::Route;
 use crate::ui::components::button as controls;
 use crate::ui::components::header;
-use crate::ui::components::icon::Icon;
+use crate::ui::components::icon::{self, Icon, Ink};
 use crate::ui::components::tabs::Tab;
-use crate::ui::components::{document, field, layout, state, surface, tabs, typo};
+use crate::ui::components::{badge, field, layout, surface, tabs, typo};
 use crate::ui::theme::metrics::{radius, space};
 use crate::ui::theme::styles;
-use crate::ui::theme::tokens::tokens;
+use crate::ui::theme::tokens::{alpha, tokens};
 use crate::ui::theme::typography as font;
+use crate::ui::theme::Tone;
 use iced::font::Family;
 use iced::widget::{column, container, row, text, Container, Space};
-use iced::{Background, Border, Element, Font, Length, Theme};
+use iced::{Alignment, Background, Border, Element, Font, Length, Theme};
 
-/// Georgia : famille serif du corps de la lettre.
 const SERIF: Font = Font {
     family: Family::Serif,
     ..Font::DEFAULT
 };
 
-/// Tons de rédaction proposés.
 const TONES: [&str; 3] = ["formal", "casual", "creative"];
-/// Longueurs de lettre proposées.
 const LENGTHS: [&str; 3] = ["short", "medium", "long"];
 
-/// Indicateur d'état du document de lettre.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum LetterStatus {
-    /// Aucun contenu généré.
     Vide,
-    /// Génération en cours, premiers fragments déjà présents.
     Brouillon,
-    /// Génération en cours, aucun fragment encore reçu.
     EnCours,
-    /// Contenu final disponible.
     Generee,
 }
 
-/// Indicateur d'état du document.
 fn letter_status(output: &str, running: bool) -> LetterStatus {
     if running {
         if output.is_empty() {
@@ -54,81 +46,166 @@ fn letter_status(output: &str, running: bool) -> LetterStatus {
     }
 }
 
-/// Nombre de caractères d'un texte.
-fn char_count(text: &str) -> usize {
-    text.chars().count()
+fn char_count(value: &str) -> usize {
+    value.chars().count()
 }
 
-/// Rend l'écran de génération de lettre.
+/// Rend l'atelier complet de rédaction.
 pub fn view(app: &App) -> Element<'_, Message> {
+    let compact = app.layout().width < 1_400.0;
+    let mut actions = row![].spacing(space::SM);
+    if !app.letter_output.trim().is_empty() && !app.ai_is_running {
+        let save: Element<'_, Message> = if compact {
+            controls::icon_action(Icon::Save, "Enregistrer la lettre", Message::SaveLetter)
+        } else {
+            controls::secondary("Enregistrer", Some(Icon::Save))
+                .on_press(Message::SaveLetter)
+                .into()
+        };
+        actions = actions.push(save);
+    }
+
+    let panels: Element<'_, Message> = if compact {
+        row![
+            brief_panel(app).width(Length::FillPortion(4)),
+            document_panel(app).width(Length::FillPortion(5)),
+            iteration_panel(app).width(Length::FillPortion(4)),
+        ]
+        .spacing(space::LG)
+        .height(Length::Fill)
+        .into()
+    } else {
+        layout::columns([
+            brief_panel(app).width(Length::Fixed(330.0)).into(),
+            document_panel(app).width(Length::Fill).into(),
+            iteration_panel(app).width(Length::Fixed(360.0)).into(),
+        ])
+    };
+
     layout::screen(
         header::route_header(
             Icon::Letter,
             "Lettre de motivation",
             Route::LettreMotivation,
             Message::Navigate,
-            Space::with_width(0).into(),
+            actions.into(),
         ),
         layout::workspace(
-            column![layout::columns([
-                brief_panel(app).width(Length::Fixed(290.0)).into(),
-                document_panel(app).width(Length::Fill).into(),
-                chat_panel().width(Length::Fixed(330.0)).into(),
-            ]),]
-            .spacing(space::LG)
-            .height(Length::Fill),
+            column![context_strip(app), panels,]
+                .spacing(space::LG)
+                .height(Length::Fill),
         ),
     )
 }
 
-/// Colonne 1 : cible, style (segmented), contexte et génération.
+fn context_strip(app: &App) -> Element<'_, Message> {
+    let status = letter_status(&app.letter_output, app.ai_is_running);
+    container(
+        row![
+            indicator(status),
+            column![
+                typo::label(status.label()),
+                typo::caption("Brief → rédaction → itérations → bibliothèque"),
+            ]
+            .spacing(space::XXS),
+            layout::spacer(),
+            badge::badge(
+                match app.letter_tone.as_str() {
+                    "casual" => "Ton naturel",
+                    "creative" => "Ton créatif",
+                    _ => "Ton formel",
+                },
+                Tone::Accent,
+            ),
+            badge::badge(
+                match app.letter_length.as_str() {
+                    "short" => "Format court",
+                    "long" => "Format long",
+                    _ => "Format moyen",
+                },
+                Tone::Neutral,
+            ),
+        ]
+        .spacing(space::MD)
+        .align_y(Alignment::Center),
+    )
+    .padding([space::SM, space::XL])
+    .width(Length::Fill)
+    .style(styles::form_group)
+    .into()
+}
+
 fn brief_panel(app: &App) -> Container<'_, Message> {
     let content = column![
-        surface::section_header("Cible", typo::caption("Entreprise et poste visés")),
-        surface::divider(),
-        field::text_field(
-            "Entreprise",
-            &app.letter_company,
-            Message::LetterCompanyChanged
-        ),
-        field::text_field(
-            "Poste ciblé",
-            &app.letter_job_title,
-            Message::LetterJobTitleChanged
-        ),
-        surface::section_header("Style", typo::caption("Ton et longueur")),
-        surface::divider(),
-        tabs::segmented(
-            [
-                Tab::new("Formel", app.letter_tone == "formal"),
-                Tab::new("Naturel", app.letter_tone == "casual"),
-                Tab::new("Créatif", app.letter_tone == "creative"),
-            ],
-            |index| Message::LetterToneChanged(TONES[index].to_owned()),
-        ),
-        tabs::segmented(
-            [
-                Tab::new("Courte", app.letter_length == "short"),
-                Tab::new("Moyenne", app.letter_length == "medium"),
-                Tab::new("Longue", app.letter_length == "long"),
-            ],
-            |index| Message::LetterLengthChanged(LENGTHS[index].to_owned()),
-        ),
-        surface::section_header("Contexte", typo::caption("Offre ou consignes")),
-        surface::divider(),
-        row![
-            typo::label("Texte de l'offre ou consignes"),
-            layout::spacer(),
-            controls::secondary("Coller", Some(Icon::Copy))
-                .on_press(Message::PasteLetterFromClipboard),
+        column![
+            typo::meta_toned("BRIEF DE RÉDACTION", Tone::Accent),
+            typo::section("Personnalisez votre candidature"),
+            typo::caption("Les données du profil restent la source de vérité du document."),
         ]
-        .align_y(iced::Alignment::Center),
-        field::editor(
-            &app.letter_editor,
-            "Collez l'offre ou décrivez la candidature…",
-        )
-        .on_action(Message::LetterEditorAction)
-        .height(Length::Fixed(280.0)),
+        .spacing(space::XS),
+        field::form_section(
+            Icon::Target,
+            "Cible",
+            "Entreprise et poste visés",
+            column![
+                field::text_field(
+                    "Entreprise",
+                    &app.letter_company,
+                    Message::LetterCompanyChanged,
+                ),
+                field::text_field(
+                    "Poste ciblé",
+                    &app.letter_job_title,
+                    Message::LetterJobTitleChanged,
+                ),
+            ]
+            .spacing(space::MD),
+        ),
+        field::form_section(
+            Icon::Sparkles,
+            "Style",
+            "Ton et longueur du document",
+            column![
+                tabs::segmented(
+                    [
+                        Tab::new("Formel", app.letter_tone == "formal"),
+                        Tab::new("Naturel", app.letter_tone == "casual"),
+                        Tab::new("Créatif", app.letter_tone == "creative"),
+                    ],
+                    |index| Message::LetterToneChanged(TONES[index].to_owned()),
+                ),
+                tabs::segmented(
+                    [
+                        Tab::new("Courte", app.letter_length == "short"),
+                        Tab::new("Moyenne", app.letter_length == "medium"),
+                        Tab::new("Longue", app.letter_length == "long"),
+                    ],
+                    |index| Message::LetterLengthChanged(LENGTHS[index].to_owned()),
+                ),
+            ]
+            .spacing(space::SM),
+        ),
+        field::form_section(
+            Icon::Document,
+            "Contexte",
+            "Offre complète ou consignes spécifiques",
+            column![
+                row![
+                    typo::label("Texte source"),
+                    layout::spacer(),
+                    controls::ghost("Coller", Some(Icon::Copy))
+                        .on_press(Message::PasteLetterFromClipboard),
+                ]
+                .align_y(Alignment::Center),
+                field::editor(
+                    &app.letter_editor,
+                    "Collez l'offre ou décrivez la candidature…",
+                )
+                .on_action(Message::LetterEditorAction)
+                .height(Length::Fixed(210.0)),
+            ]
+            .spacing(space::SM),
+        ),
     ]
     .spacing(space::LG);
 
@@ -137,7 +214,7 @@ fn brief_panel(app: &App) -> Container<'_, Message> {
             surface::scroll(container(content).padding(space::XL)).height(Length::Fill),
             surface::divider(),
             container(generate_button(app))
-                .padding([space::XL, space::XL])
+                .padding(space::XL)
                 .width(Length::Fill),
         ]
         .height(Length::Fill),
@@ -146,10 +223,9 @@ fn brief_panel(app: &App) -> Container<'_, Message> {
     .height(Length::Fill)
 }
 
-/// Bouton de pied de brief : générer la lettre, ou arrêter pendant la rédaction.
 fn generate_button(app: &App) -> Element<'_, Message> {
     if app.ai_is_running {
-        controls::secondary("Arrêter", Some(Icon::Stop))
+        controls::secondary("Arrêter la rédaction", Some(Icon::Stop))
             .on_press(Message::CancelAi)
             .width(Length::Fill)
             .height(40.0)
@@ -163,24 +239,21 @@ fn generate_button(app: &App) -> Element<'_, Message> {
     }
 }
 
-/// Colonne 2 : en-tête (indicateur + titre + état), page de lettre, compteur.
 fn document_panel(app: &App) -> Container<'_, Message> {
     let status = letter_status(&app.letter_output, app.ai_is_running);
-
-    let header = container(
-        row![
-            indicator(status),
-            typo::section("Votre document"),
-            layout::spacer(),
-            typo::caption(status.label()),
+    let header = row![
+        column![
+            typo::section("Document"),
+            typo::caption("Aperçu de la lettre prête à enregistrer"),
         ]
-        .spacing(space::MD)
-        .align_y(iced::Alignment::Center),
-    )
-    .padding([space::MD, space::XL])
-    .width(Length::Fill);
+        .spacing(space::XXS),
+        layout::spacer(),
+        typo::caption(status.label()),
+    ]
+    .spacing(space::MD)
+    .align_y(Alignment::Center);
 
-    let body: Element<'_, Message> = if app.letter_output.is_empty() {
+    let page: Element<'_, Message> = if app.letter_output.is_empty() {
         placeholder(app)
     } else {
         letter_page(app)
@@ -188,11 +261,11 @@ fn document_panel(app: &App) -> Container<'_, Message> {
 
     container(
         column![
-            header,
+            container(header).padding([space::MD, space::XL]),
             surface::divider(),
-            body,
+            page,
             surface::divider(),
-            container(footer(app))
+            container(document_footer(app))
                 .padding([space::MD, space::XL])
                 .width(Length::Fill),
         ]
@@ -202,9 +275,186 @@ fn document_panel(app: &App) -> Container<'_, Message> {
     .height(Length::Fill)
 }
 
-/// Point de 6 px : ambre pendant la rédaction, émeraude si la lettre existe.
+fn letter_page(app: &App) -> Element<'_, Message> {
+    let paper = container(
+        column![
+            typo::meta_toned("LETTRE DE MOTIVATION", Tone::Accent),
+            text(if app.letter_job_title.trim().is_empty() {
+                "Candidature".to_owned()
+            } else {
+                app.letter_job_title.clone()
+            })
+            .size(20.0)
+            .font(font::SEMIBOLD),
+            typo::caption(if app.letter_company.trim().is_empty() {
+                "Entreprise".to_owned()
+            } else {
+                app.letter_company.clone()
+            }),
+            surface::divider(),
+            text(app.letter_output.clone())
+                .size(font::ITEM)
+                .font(SERIF)
+                .line_height(iced::widget::text::LineHeight::Absolute(25.0.into())),
+        ]
+        .spacing(space::LG),
+    )
+    .max_width(690.0)
+    .padding([36.0, 44.0])
+    .style(styles::document_paper);
+
+    surface::scroll(container(paper).center_x(Length::Fill).padding(space::MAX))
+        .height(Length::Fill)
+        .into()
+}
+
+fn document_footer(app: &App) -> Element<'_, Message> {
+    row![
+        typo::caption("Contenu généré"),
+        layout::spacer(),
+        typo::text_mono(
+            crate::ui::format::plural(char_count(&app.letter_output), "caractère", "caractères"),
+            font::MICRO,
+            font::MONO_REGULAR,
+        ),
+    ]
+    .spacing(space::MD)
+    .align_y(Alignment::Center)
+    .into()
+}
+
+fn iteration_panel(app: &App) -> Container<'_, Message> {
+    let history: Element<'_, Message> = if app.letter_chat_history.is_empty() {
+        container(
+            column![
+                container(icon::icon(Icon::Sparkles, 28.0, Ink::Accent))
+                    .width(54.0)
+                    .height(54.0)
+                    .center(Length::Fixed(54.0))
+                    .style(iteration_icon_style),
+                typo::label("Affinez sans repartir de zéro"),
+                typo::caption(
+                    "Demandez une introduction plus directe, un ton plus chaleureux ou une conclusion plus percutante.",
+                ),
+            ]
+            .spacing(space::SM)
+            .align_x(Alignment::Center),
+        )
+        .padding([space::MAX, space::XL])
+        .center_x(Length::Fill)
+        .into()
+    } else {
+        let mut items = column![].spacing(space::SM);
+        for message in app
+            .letter_chat_history
+            .iter()
+            .filter(|message| message.role == "user")
+        {
+            items = items.push(
+                container(
+                    column![
+                        typo::meta_toned("CONSIGNE APPLIQUÉE", Tone::Accent),
+                        typo::body(message.content.clone()),
+                    ]
+                    .spacing(space::XS),
+                )
+                .padding(space::MD)
+                .width(Length::Fill)
+                .style(styles::form_group),
+            );
+        }
+        surface::scroll(items).height(Length::Fill).into()
+    };
+
+    let can_iterate = !app.letter_output.trim().is_empty()
+        && !app.letter_iteration_instruction.trim().is_empty()
+        && !app.ai_is_running;
+    let mut action = controls::primary("Appliquer la consigne", Some(Icon::Sparkles))
+        .width(Length::Fill)
+        .height(38.0);
+    if can_iterate {
+        action = action.on_press(Message::IterateLetter);
+    }
+
+    container(
+        column![
+            container(
+                column![
+                    typo::meta_toned("ASSISTANT DE RÉÉCRITURE", Tone::Accent),
+                    typo::section("Itération"),
+                    typo::caption("Chaque consigne repart de la lettre visible."),
+                ]
+                .spacing(space::XS),
+            )
+            .padding(space::XL),
+            surface::divider(),
+            container(history).padding(space::XL).height(Length::Fill),
+            surface::divider(),
+            container(
+                column![
+                    field::input(
+                        "Ex. Rendez la conclusion plus percutante…",
+                        &app.letter_iteration_instruction,
+                    )
+                    .on_input(Message::LetterIterationChanged)
+                    .width(Length::Fill),
+                    action,
+                ]
+                .spacing(space::SM),
+            )
+            .padding(space::XL),
+        ]
+        .height(Length::Fill),
+    )
+    .style(styles::glass_card)
+    .height(Length::Fill)
+}
+
+fn iteration_icon_style(theme: &Theme) -> container::Style {
+    let palette = tokens(theme);
+    container::Style {
+        background: Some(Background::Color(alpha(palette.accent, 0.10))),
+        border: Border {
+            color: alpha(palette.accent, 0.22),
+            width: 1.0,
+            radius: radius::PILL.into(),
+        },
+        ..container::Style::default()
+    }
+}
+
+fn placeholder(app: &App) -> Element<'_, Message> {
+    container(
+        column![
+            container(icon::icon(Icon::Letter, 34.0, Ink::Accent))
+                .width(66.0)
+                .height(66.0)
+                .center(Length::Fixed(66.0))
+                .style(iteration_icon_style),
+            typo::title(if app.letter_job_title.trim().is_empty() {
+                "Votre prochaine lettre".to_owned()
+            } else {
+                app.letter_job_title.clone()
+            }),
+            typo::caption(if app.letter_company.trim().is_empty() {
+                "Renseignez la cible et le contexte, puis lancez la rédaction.".to_owned()
+            } else {
+                format!(
+                    "La lettre destinée à {} apparaîtra ici.",
+                    app.letter_company
+                )
+            }),
+        ]
+        .spacing(space::MD)
+        .align_x(Alignment::Center),
+    )
+    .padding(space::MAX)
+    .center(Length::Fill)
+    .into()
+}
+
 fn indicator(status: LetterStatus) -> Element<'static, Message> {
-    container(Space::new(6.0, 6.0))
+    container(Space::new(8.0, 8.0))
         .style(move |theme: &Theme| {
             let palette = tokens(theme);
             let color = match status {
@@ -224,109 +474,13 @@ fn indicator(status: LetterStatus) -> Element<'static, Message> {
         .into()
 }
 
-/// Page de lettre : papier, texte serif à 13,5 px, interligne 28.
-fn letter_page(app: &App) -> Element<'_, Message> {
-    surface::scroll(
-        container(
-            text(app.letter_output.clone())
-                .size(font::ITEM)
-                .font(SERIF)
-                .line_height(28.0)
-                .style(|theme: &Theme| iced::widget::text::Style {
-                    color: Some(tokens(theme).paper_ink),
-                }),
-        )
-        .padding(space::XL)
-        .width(Length::Fill)
-        .style(move |theme: &Theme| {
-            let palette = tokens(theme);
-            container::Style {
-                background: Some(Background::Color(palette.paper)),
-                text_color: Some(palette.paper_ink),
-                border: Border {
-                    color: palette.paper_rule,
-                    width: 1.0,
-                    radius: radius::DOCUMENT.into(),
-                },
-                ..container::Style::default()
-            }
-        }),
-    )
-    .height(Length::Fill)
-    .into()
-}
-
-/// Compteur de caractères, en pied de document.
-fn footer(app: &App) -> Element<'_, Message> {
-    row![
-        typo::caption("Contenu"),
-        layout::spacer(),
-        typo::text_mono(
-            crate::ui::format::plural(char_count(&app.letter_output), "caractère", "caractères"),
-            font::MICRO,
-            font::MONO_REGULAR,
-        ),
-    ]
-    .spacing(space::MD)
-    .align_y(iced::Alignment::Center)
-    .into()
-}
-
-/// Colonne 3 : itération en lecture seule pour ce jalon.
-fn chat_panel() -> Container<'static, Message> {
-    container(
-        container(
-            column![
-                surface::section_header("Itération", typo::caption("Consignes de réécriture")),
-                surface::divider(),
-                state::empty_slot("L'itération arrive au prochain jalon."),
-                layout::spacer(),
-                field::input("Écrivez une consigne…", "").width(Length::Fill),
-            ]
-            .spacing(space::LG)
-            .height(Length::Fill),
-        )
-        .padding(space::XL),
-    )
-    .style(styles::glass_card)
-    .height(Length::Fill)
-}
-
-/// État vide de la page : objet, entreprise et invitation à générer.
-fn placeholder(app: &App) -> Element<'_, Message> {
-    container(
-        column![
-            document::heading(if app.letter_job_title.trim().is_empty() {
-                "Objet de la lettre".to_owned()
-            } else {
-                app.letter_job_title.clone()
-            }),
-            document::subheading(if app.letter_company.trim().is_empty() {
-                "Entreprise".to_owned()
-            } else {
-                app.letter_company.clone()
-            }),
-            iced::widget::Space::with_height(space::MAX),
-            document::body_muted(
-                "La lettre s'écrira ici au fil de la génération, phrase après phrase.",
-            ),
-        ]
-        .spacing(space::SM)
-        .width(Length::Fill),
-    )
-    .padding(space::XL)
-    .center_x(Length::Fill)
-    .into()
-}
-
 impl LetterStatus {
-    /// Libellé affiché à côté de l'indicateur.
-    fn label(self) -> &'static str {
+    const fn label(self) -> &'static str {
         match self {
-            LetterStatus::Vide => "En attente de génération",
-            LetterStatus::Brouillon => "Brouillon en cours",
-            LetterStatus::EnCours => "Rédaction en cours",
-            LetterStatus::Generee => "Lettre générée",
+            Self::Vide => "Prêt à rédiger",
+            Self::Brouillon => "Brouillon en cours",
+            Self::EnCours => "Rédaction en cours",
+            Self::Generee => "Lettre prête",
         }
     }
 }

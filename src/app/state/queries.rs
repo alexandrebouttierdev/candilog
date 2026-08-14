@@ -37,6 +37,13 @@ impl App {
             .and_then(|id| self.data.cv_versions.iter().find(|item| item.id == id))
     }
 
+    /// Lettre sélectionnée dans la bibliothèque.
+    #[must_use]
+    pub fn focused_letter(&self) -> Option<&crate::modules::lettres::model::LettreMotivation> {
+        self.selected_letter
+            .and_then(|id| self.data.letters.iter().find(|item| item.id == id))
+    }
+
     /// Ouvre une opération IA et renvoie son numéro de séquence.
     ///
     /// Le numéro accompagne le message de résultat : c'est lui qui permet d'ignorer celui

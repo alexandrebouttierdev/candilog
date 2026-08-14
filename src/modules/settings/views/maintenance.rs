@@ -171,42 +171,84 @@ pub fn updates_view(app: &App) -> Element<'_, Message> {
 
 /// Écran À propos, accessible depuis les deux zones de marque du rail.
 pub fn about_view(_app: &App) -> Element<'_, Message> {
-    let card = container(
-        column![
-            icon::brand(84.0),
-            typo::title("Candilog"),
-            typo::body("Le cockpit desktop pour piloter votre recherche d'emploi."),
-            badge::badge(
-                format!("Version {}", env!("CARGO_PKG_VERSION")),
-                Tone::Neutral
-            ),
-            container(
+    let hero = container(
+        row![
+            container(icon::brand(96.0))
+                .width(132.0)
+                .height(132.0)
+                .center(Length::Fixed(132.0))
+                .style(styles::form_group),
+            column![
+                typo::meta_toned("CANDILOG DESKTOP", Tone::Accent),
+                typo::title("Votre recherche d'emploi, enfin au même endroit."),
+                typo::body(
+                    "Un cockpit natif pour suivre vos candidatures, développer votre réseau et produire des documents professionnels cohérents.",
+                ),
                 row![
-                    column![
-                        typo::meta_toned("CONÇU ET DÉVELOPPÉ PAR", Tone::Accent),
-                        typo::label("Alexandre Bouttier"),
-                        typo::caption("Produit indépendant, pensé pour rester local."),
-                    ]
-                    .spacing(space::XS),
-                    layout::spacer(),
-                    controls::secondary("Visiter le site", Some(Icon::Link))
-                        .on_press(Message::OpenAuthorWebsite),
+                    badge::badge(
+                        format!("Version {}", env!("CARGO_PKG_VERSION")),
+                        Tone::Neutral,
+                    ),
+                    badge::badge("Rust · Iced · SQLite", Tone::Accent),
                 ]
-                .align_y(Alignment::Center),
-            )
-            .padding(space::LG)
-            .width(Length::Fill)
-            .style(styles::sunken),
+                .spacing(space::SM),
+            ]
+            .spacing(space::SM)
+            .width(Length::Fill),
+        ]
+        .spacing(space::MAX)
+        .align_y(Alignment::Center),
+    )
+    .padding(36.0)
+    .width(Length::Fill)
+    .style(styles::glass_card);
+
+    let values = row![
+        action_card(
+            Icon::Save,
+            "Vos données restent locales",
+            "Candidatures, contacts et documents sont conservés dans votre base SQLite.",
+            badge::badge("Local-first", Tone::Success),
+        ),
+        action_card(
+            Icon::Panel,
+            "Une expérience vraiment native",
+            "Interface desktop, raccourcis clavier et intégration au système, sans navigateur embarqué.",
+            badge::badge("100 % natif", Tone::Accent),
+        ),
+        action_card(
+            Icon::Sparkles,
+            "Une IA sous votre contrôle",
+            "Vous choisissez le fournisseur, le modèle et les contenus à analyser.",
+            badge::badge("Configurable", Tone::Neutral),
+        ),
+    ]
+    .spacing(space::LG);
+
+    let author = section_card(
+        Icon::Profile,
+        "Un produit indépendant",
+        row![
+            column![
+                typo::meta_toned("CONÇU ET DÉVELOPPÉ PAR", Tone::Accent),
+                typo::section("Alexandre Bouttier"),
+                typo::caption("Pensé pour une recherche d'emploi exigeante, concrète et locale."),
+            ]
+            .spacing(space::XS),
+            layout::spacer(),
+            controls::secondary("Visiter le site", Some(Icon::Link))
+                .on_press(Message::OpenAuthorWebsite),
             controls::primary("Vérifier les mises à jour", Some(Icon::Download))
                 .on_press(Message::Navigate(Route::MisesAJour)),
         ]
+        .spacing(space::MD)
+        .align_y(Alignment::Center)
+        .padding([space::LG, 0.0]),
+    );
+
+    let content = column![hero, values, author]
         .spacing(space::LG)
-        .align_x(Alignment::Center)
-        .width(Length::Fill),
-    )
-    .padding([space::XXL, 56.0])
-    .width(Length::Fill)
-    .style(styles::glass_card);
+        .width(Length::Fill);
     layout::screen(
         header::route_header(
             Icon::Info,
@@ -215,12 +257,11 @@ pub fn about_view(_app: &App) -> Element<'_, Message> {
             Message::Navigate,
             iced::widget::Space::with_width(0).into(),
         ),
-        layout::workspace(
-            container(card)
+        layout::workspace(surface::scroll(
+            container(content)
                 .width(Length::Fill)
-                .height(Length::Fill)
-                .max_width(880.0)
-                .center(Length::Fill),
-        ),
+                .max_width(1120.0)
+                .center_x(Length::Fill),
+        )),
     )
 }

@@ -11,6 +11,7 @@ pub(super) fn handles(message: &Message) -> bool {
             | Message::SelectCompany(..)
             | Message::SelectContact(..)
             | Message::SelectCvVersion(..)
+            | Message::SelectLetter(..)
             | Message::ToggleFilters
             | Message::SortCandidates(..)
             | Message::StatisticsTabChanged(..)
@@ -49,6 +50,7 @@ pub(super) fn update(app: &mut App, message: Message) -> Task<Message> {
         Message::SelectCompany(id) => app.selected_company = id,
         Message::SelectContact(id) => app.selected_contact = id,
         Message::SelectCvVersion(id) => app.selected_cv = id,
+        Message::SelectLetter(id) => app.selected_letter = id,
         Message::ToggleFilters => app.filters_open = !app.filters_open,
         Message::SortCandidates(column) => {
             if let Some(sort) = super::super::state::CandidateSort::from_column(column) {

@@ -21,6 +21,7 @@ pub struct SnapshotRequest {
     pub sequence: u64,
     pub route: Route,
     pub search: String,
+    pub company_type_filter: Option<String>,
     pub candidate_filters: CandidateFilters,
     pub candidate_sort: CandidateSort,
     pub candidate_sort_descending: bool,
@@ -87,6 +88,9 @@ pub fn charger_instantane(
     } else {
         ""
     };
+    let company_type = (request.route == Route::Entreprises)
+        .then_some(request.company_type_filter.as_deref())
+        .flatten();
     let contact_search = if request.route == Route::Reseau {
         request.search.as_str()
     } else {
@@ -110,9 +114,12 @@ pub fn charger_instantane(
     let company_page = charger(
         "entreprises",
         &mut echecs,
-        backend
-            .entreprises
-            .lister_page(request.company_page, BUSINESS_PAGE_SIZE, company_search),
+        backend.entreprises.lister_page(
+            request.company_page,
+            BUSINESS_PAGE_SIZE,
+            company_search,
+            company_type,
+        ),
     );
     let contact_page = charger(
         "contacts",
@@ -129,6 +136,7 @@ pub fn charger_instantane(
             request.company_option_page,
             RELATION_PAGE_SIZE,
             &request.company_option_search,
+            None,
         ),
     );
     if let Some(id) = request.selected_company_option {
@@ -208,6 +216,11 @@ pub fn charger_instantane(
         entreprises: company_page.items,
         entreprises_total: company_page.total,
         entreprises_total_pages: company_page.total_pages,
+        company_types: charger(
+            "types d'entreprise",
+            &mut echecs,
+            backend.entreprises.lister_types(),
+        ),
         contacts: contact_page.items,
         contacts_total: contact_page.total,
         contacts_total_pages: contact_page.total_pages,
@@ -231,6 +244,7 @@ pub fn charger_instantane(
             backend.relances.lister_entre(&from, &to),
         ),
         cv_versions: charger("CV", &mut echecs, backend.cv.list()),
+        letters: charger("lettres de motivation", &mut echecs, backend.lettres.list()),
         profile: charger("profil", &mut echecs, backend.profil.get()),
         settings: charger("paramètres", &mut echecs, backend.settings.get()),
         llm_calls: charger(

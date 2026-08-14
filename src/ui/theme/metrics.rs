@@ -43,11 +43,11 @@ pub mod radius {
     /// Champs de saisie.
     pub const FIELD: f32 = 8.0;
     /// Panneaux et cartes réellement autonomes.
-    pub const PANEL: f32 = 8.0;
+    pub const PANEL: f32 = 10.0;
     /// Cartes de contenu compactes.
-    pub const CARD: f32 = 8.0;
+    pub const CARD: f32 = 10.0;
     /// Modales, drawers, menus.
-    pub const DIALOG: f32 = 12.0;
+    pub const DIALOG: f32 = 14.0;
     /// Jetons de statut, compteurs, points.
     pub const PILL: f32 = 999.0;
 }

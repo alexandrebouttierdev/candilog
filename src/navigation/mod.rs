@@ -124,6 +124,8 @@ pub enum Route {
     Cv,
     /// Générateur de CV assisté par IA.
     CvGenerator,
+    /// Bibliothèque des lettres enregistrées.
+    Lettres,
     /// Générateur de lettre de motivation.
     LettreMotivation,
     /// Analyse d'un CV PDF externe.
@@ -153,6 +155,7 @@ impl Route {
             Self::Reseau => Icon::Network,
             Self::Cv => Icon::Document,
             Self::CvGenerator => Icon::Sparkles,
+            Self::Lettres => Icon::Mail,
             Self::LettreMotivation => Icon::Letter,
             Self::CvImport => Icon::Import,
             Self::Profil => Icon::Profile,
@@ -175,6 +178,7 @@ impl Route {
             Self::Reseau => "Réseau",
             Self::Cv => "Mes CV",
             Self::CvGenerator => "Générer un CV",
+            Self::Lettres => "Mes lettres",
             Self::LettreMotivation => "Lettre de motivation",
             Self::CvImport => "Analyser un CV",
             Self::Profil => "Profil",
@@ -192,9 +196,11 @@ impl Route {
             Self::Dashboard => Section::Dashboard,
             Self::Candidatures | Self::Calendrier => Section::Suivi,
             Self::Entreprises | Self::Reseau => Section::Relations,
-            Self::Cv | Self::CvGenerator | Self::LettreMotivation | Self::CvImport => {
-                Section::Documents
-            }
+            Self::Cv
+            | Self::CvGenerator
+            | Self::Lettres
+            | Self::LettreMotivation
+            | Self::CvImport => Section::Documents,
             Self::Statistiques => Section::Analyse,
             Self::Profil => Section::Profil,
             Self::Parametres | Self::Sauvegardes | Self::MisesAJour | Self::APropos => {
@@ -238,7 +244,7 @@ impl Route {
     }
 
     /// Toutes les routes, dans l'ordre de la barre latérale.
-    pub const ALL: [Self; 15] = [
+    pub const ALL: [Self; 16] = [
         Self::Dashboard,
         Self::Candidatures,
         Self::Calendrier,
@@ -246,6 +252,7 @@ impl Route {
         Self::Reseau,
         Self::Cv,
         Self::CvGenerator,
+        Self::Lettres,
         Self::LettreMotivation,
         Self::CvImport,
         Self::Statistiques,

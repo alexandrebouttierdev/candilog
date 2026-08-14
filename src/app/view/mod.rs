@@ -110,7 +110,7 @@ const fn skeleton_for(route: Route) -> PageSkeleton {
         Route::Calendrier => PageSkeleton::Calendar,
         Route::Statistiques => PageSkeleton::Default,
         Route::Entreprises | Route::Reseau => PageSkeleton::List,
-        Route::Cv => PageSkeleton::Cards,
+        Route::Cv | Route::Lettres => PageSkeleton::Cards,
         Route::CvGenerator | Route::LettreMotivation | Route::CvImport => PageSkeleton::Default,
         Route::Profil
         | Route::Parametres
@@ -130,6 +130,7 @@ fn screen(app: &App) -> Element<'_, Message> {
         Route::Reseau => crate::modules::contacts::views::view(app),
         Route::Cv => crate::modules::cv::views::view(app),
         Route::CvGenerator => crate::modules::ia::views::cv_generator::view(app),
+        Route::Lettres => crate::modules::lettres::views::view(app),
         Route::LettreMotivation => crate::modules::ia::views::cover_letter::view(app),
         Route::CvImport => crate::modules::ia::views::cv_import::view(app),
         Route::Profil => crate::modules::profil::views::view(app),

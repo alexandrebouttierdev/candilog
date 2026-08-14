@@ -9,7 +9,9 @@ use crate::ui::theme::metrics::{size, space};
 use crate::ui::theme::styles;
 use crate::ui::theme::typography as font;
 use crate::ui::theme::Tone;
-use iced::widget::{column, row, text_editor, toggler, PickList, TextEditor, TextInput, Toggler};
+use iced::widget::{
+    column, container, row, text_editor, toggler, PickList, TextEditor, TextInput, Toggler,
+};
 use iced::{Alignment, Element, Length};
 use std::borrow::Borrow;
 
@@ -38,6 +40,36 @@ pub fn search<'a, Message: Clone + 'a>(
     .spacing(space::SM)
     .align_y(Alignment::Center)
     .into()
+}
+
+/// Champ de recherche avec échappement explicite quand une valeur est saisie.
+///
+/// Le bouton n'est pas rendu à vide : la largeur utile du champ reste ainsi stable et
+/// l'utilisateur dispose d'une action locale, sans devoir sélectionner puis effacer le texte.
+pub fn search_resettable<'a, Message: Clone + 'a>(
+    placeholder: &'a str,
+    value: &'a str,
+    on_input: impl Fn(String) -> Message + 'a,
+    on_reset: Message,
+    width: Length,
+) -> Element<'a, Message> {
+    let mut control = row![
+        icon::icon(Icon::Search, icon::SM, Ink::Muted),
+        input(placeholder, value)
+            .on_input(on_input)
+            .width(Length::Fill),
+    ]
+    .spacing(space::SM)
+    .align_y(Alignment::Center)
+    .width(width);
+    if !value.trim().is_empty() {
+        control = control.push(crate::ui::components::button::icon_action(
+            Icon::Close,
+            "Effacer la recherche",
+            on_reset,
+        ));
+    }
+    control.into()
 }
 
 /// Sélecteur au style du design system.
@@ -214,4 +246,30 @@ pub fn form_row<'a, Message: 'a>(
         line = line.push(field);
     }
     line.into()
+}
+
+/// Section de formulaire avec repère iconographique, titre, description et contenu.
+pub fn form_section<'a, Message: 'a>(
+    glyph: Icon,
+    title: &'a str,
+    description: &'a str,
+    content: impl Into<Element<'a, Message>>,
+) -> Element<'a, Message> {
+    container(
+        column![
+            row![
+                icon::icon(glyph, icon::MD, Ink::Accent),
+                column![typo::label(title), typo::caption(description)].spacing(space::XXS),
+            ]
+            .spacing(space::MD)
+            .align_y(Alignment::Center),
+            crate::ui::components::surface::divider(),
+            content.into(),
+        ]
+        .spacing(space::MD),
+    )
+    .padding(space::LG)
+    .width(Length::Fill)
+    .style(styles::form_group)
+    .into()
 }

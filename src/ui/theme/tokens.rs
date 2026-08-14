@@ -173,31 +173,31 @@ pub const NIGHT: Tokens = Tokens {
     },
 };
 
-/// Thème clair « Ivoire & Cognac ».
+/// Thème clair « Porcelaine & Cognac » : surfaces nettes, profondeur discrète et encre froide.
 pub const DAY: Tokens = Tokens {
     is_dark: false,
 
-    chrome: hex(0xe9e3d8),
-    canvas: hex(0xf3efe6),
-    panel: hex(0xfffefa),
-    sunken: hex(0xeee9df),
+    chrome: hex(0xf8f6f1),
+    canvas: hex(0xf3f1ec),
+    panel: hex(0xfffefd),
+    sunken: hex(0xf0ede7),
     raised: hex(0xffffff),
-    hover: hex(0xe8e1d5),
+    hover: hex(0xeae5dd),
 
-    border: hex(0xd7cfc1),
-    border_strong: hex(0xbeb3a2),
+    border: hex(0xddd7cd),
+    border_strong: hex(0xc4b9aa),
 
-    text: hex(0x1d211d),
-    text_secondary: hex(0x5f655f),
-    text_muted: hex(0x858a82),
+    text: hex(0x17201d),
+    text_secondary: hex(0x4f5a55),
+    text_muted: hex(0x7b857f),
 
-    accent: hex(0xa8662d),
-    accent_fill: hex(0xa8662d),
-    accent_hover: hex(0x915623),
+    accent: hex(0xa65322),
+    accent_fill: hex(0xa65322),
+    accent_hover: hex(0x8c4219),
     on_accent: hex(0xfffcf6),
     selection: Color {
         a: 0.12,
-        ..hex(0xa8662d)
+        ..hex(0xa65322)
     },
 
     success: hex(0x2e7a4d),
@@ -206,8 +206,8 @@ pub const DAY: Tokens = Tokens {
     info: hex(0x477a72),
     violet: hex(0x5e844f),
 
-    paper: hex(0xfffefa),
-    paper_ink: hex(0x1d211d),
+    paper: hex(0xffffff),
+    paper_ink: hex(0x17201d),
     paper_ink_muted: hex(0x62675f),
     paper_rule: hex(0xd8d4ca),
 
@@ -221,7 +221,7 @@ pub const DAY: Tokens = Tokens {
         }
     },
     shadow: Color {
-        a: 0.18,
+        a: 0.16,
         ..Color {
             r: 0.0,
             g: 0.0,

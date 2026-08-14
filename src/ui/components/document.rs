@@ -6,6 +6,7 @@
 use super::surface;
 use super::typo;
 use crate::ui::theme::metrics::{radius, space, stroke, A4_RATIO};
+use crate::ui::theme::styles;
 use crate::ui::theme::tokens::tokens;
 use crate::ui::theme::typography as font;
 use iced::widget::{column, container, horizontal_rule, row, rule, text, Space};
@@ -91,6 +92,21 @@ pub fn page<'a, Message: 'a>(
                 },
             }
         })
+        .into()
+}
+
+/// Page A4 sans padding imposé, destinée aux templates qui portent leurs propres marges.
+///
+/// Le CV possède un header et un corps aux espacements distincts dans le HTML de référence ;
+/// un padding uniforme autour du widget rendait toute correspondance pixel perfect impossible.
+pub fn page_unpadded<'a, Message: 'a>(
+    width: f32,
+    content: impl Into<Element<'a, Message>>,
+) -> Element<'a, Message> {
+    container(content.into())
+        .width(width)
+        .height(page_height(width))
+        .style(styles::document_paper)
         .into()
 }
 

@@ -29,6 +29,8 @@ pub enum Dialog {
     DeleteRelance(uuid::Uuid),
     /// Confirmation de suppression d'une version de CV.
     DeleteCv(uuid::Uuid),
+    /// Confirmation de suppression d'une lettre de motivation.
+    DeleteLetter(uuid::Uuid),
     /// Confirmation de restauration d'un backup.
     ImportBackup,
     /// Confirmation de réinitialisation complète.

@@ -26,6 +26,8 @@ pub(super) fn handles(message: &Message) -> bool {
             | Message::LetterToneChanged(..)
             | Message::LetterLengthChanged(..)
             | Message::GenerateLetter
+            | Message::LetterIterationChanged(..)
+            | Message::IterateLetter
             | Message::LetterStream(..)
     )
 }
@@ -201,6 +203,7 @@ pub(super) fn update(app: &mut App, message: Message) -> Task<Message> {
         },
         Message::LetterToneChanged(value) => app.letter_tone = value,
         Message::LetterLengthChanged(value) => app.letter_length = value,
+        Message::LetterIterationChanged(value) => app.letter_iteration_instruction = value,
         Message::GenerateLetter => {
             let Some(backend) = app.backend.clone() else {
                 app.notify_failure("La base Candilog n'est pas disponible.");
@@ -219,6 +222,65 @@ pub(super) fn update(app: &mut App, message: Message) -> Task<Message> {
                 length: Some(app.letter_length.clone()),
                 ..crate::modules::ia::cv_model::LetterGenerationRequest::default()
             };
+            let stream = iced::stream::channel(100, move |mut sender| async move {
+                let mut chunk_sender = sender.clone();
+                let mut on_chunk = move |chunk: String| {
+                    let _ = chunk_sender.try_send(LetterStreamEvent::Chunk(chunk));
+                };
+                let result = crate::modules::ia::service::generate_cover_letter(
+                    &backend,
+                    &request,
+                    token,
+                    &mut on_chunk,
+                )
+                .await
+                .map_err(|error| error.to_string());
+                let _ = sender.send(LetterStreamEvent::Finished(result)).await;
+            });
+            return Task::run(stream, move |event| Message::LetterStream(event, sequence));
+        }
+        Message::IterateLetter => {
+            let Some(backend) = app.backend.clone() else {
+                app.notify_failure("La base Candilog n'est pas disponible.");
+                return Task::none();
+            };
+            let instruction = app.letter_iteration_instruction.trim().to_owned();
+            if app.letter_output.trim().is_empty() {
+                app.notify(
+                    NotificationKind::Warning,
+                    "Générez ou chargez une lettre avant de demander une réécriture.",
+                );
+                return Task::none();
+            }
+            if instruction.is_empty() {
+                app.notify(
+                    NotificationKind::Warning,
+                    "Écrivez une consigne de réécriture.",
+                );
+                return Task::none();
+            }
+            let previous_letter = app.letter_output.clone();
+            app.letter_chat_history
+                .push(crate::modules::ia::cv_model::ChatMsg {
+                    role: "user".into(),
+                    content: instruction.clone(),
+                });
+            app.letter_iteration_instruction.clear();
+            let request = crate::modules::ia::cv_model::LetterGenerationRequest {
+                source: "custom_request".into(),
+                generation_id: uuid::Uuid::new_v4().to_string(),
+                company_name: optional(&app.letter_company),
+                job_title: optional(&app.letter_job_title),
+                tone: Some(app.letter_tone.clone()),
+                length: Some(app.letter_length.clone()),
+                previous_letter: Some(previous_letter),
+                instruction: Some(instruction),
+                chat_history: app.letter_chat_history.clone(),
+                ..crate::modules::ia::cv_model::LetterGenerationRequest::default()
+            };
+            let token = tokio_util::sync::CancellationToken::new();
+            let sequence = app.commencer_operation_ia(token.clone());
+            app.letter_output.clear();
             let stream = iced::stream::channel(100, move |mut sender| async move {
                 let mut chunk_sender = sender.clone();
                 let mut on_chunk = move |chunk: String| {

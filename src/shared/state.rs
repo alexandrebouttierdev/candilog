@@ -11,6 +11,8 @@ use crate::modules::entreprises::service::EntrepriseService;
 use crate::modules::entretiens::repository::SqliteEntretienRepository;
 use crate::modules::entretiens::service::EntretienService;
 use crate::modules::ia::cache::SqliteCacheIaRepository;
+use crate::modules::lettres::repository::SqliteLettreRepository;
+use crate::modules::lettres::service::LettreService;
 pub use crate::modules::metriques::model::{AppelLlm, OperationLlm, OrigineScore, ScoreAts};
 pub use crate::modules::metriques::repository::{MetriquesRepository, SqliteMetriquesRepository};
 use crate::modules::profil::repository::SqliteProfilRepository;
@@ -36,6 +38,8 @@ pub struct AppState {
     pub profil: ProfilService<SqliteProfilRepository>,
     /// Service des versions de CV.
     pub cv: CvVersionService<SqliteCvVersionRepository>,
+    /// Service de la bibliothèque de lettres.
+    pub lettres: LettreService<SqliteLettreRepository>,
     /// Service des candidatures.
     pub candidatures: CandidatureService<SqliteCandidatureRepository>,
     /// Service des entreprises.
@@ -88,6 +92,7 @@ impl AppState {
         let settings = SettingsService::new(SqliteSettingsRepository::new(sqlite.clone()));
         let profil = ProfilService::new(SqliteProfilRepository::new(sqlite.clone()));
         let cv = CvVersionService::new(SqliteCvVersionRepository::new(sqlite.clone()));
+        let lettres = LettreService::new(SqliteLettreRepository::new(sqlite.clone()));
         let candidatures =
             CandidatureService::new(SqliteCandidatureRepository::new(sqlite.clone()));
         let entreprises = EntrepriseService::new(SqliteEntrepriseRepository::new(sqlite.clone()));
@@ -100,6 +105,7 @@ impl AppState {
             settings,
             profil,
             cv,
+            lettres,
             candidatures,
             entreprises,
             contacts,

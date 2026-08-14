@@ -75,6 +75,15 @@ fn directory(app: &App) -> Element<'_, Message> {
         surface::scroll(rows).height(Length::Fill).into()
     };
 
+    const ALL_TYPES: &str = "Tous les types";
+    let type_options: Vec<String> = std::iter::once(ALL_TYPES.to_owned())
+        .chain(app.data.company_types.iter().cloned())
+        .collect();
+    let selected_type = Some(
+        app.company_type_filter
+            .clone()
+            .unwrap_or_else(|| ALL_TYPES.to_owned()),
+    );
     let toolbar = container(
         column![
             row![
@@ -91,14 +100,25 @@ fn directory(app: &App) -> Element<'_, Message> {
                 )),
             ]
             .align_y(Alignment::Center),
-            field::search(
-                "Rechercher une entreprise…",
-                &app.search,
-                Message::SearchChanged,
-                Length::Fill,
-            ),
+            row![
+                field::search_resettable(
+                    "Rechercher une entreprise…",
+                    &app.search,
+                    Message::SearchChanged,
+                    Message::ResetSearch,
+                    Length::Fill,
+                ),
+                field::select(type_options, selected_type, |value| {
+                    Message::CompanyTypeFilterChanged((value != ALL_TYPES).then_some(value))
+                })
+                .width(Length::Fixed(190.0)),
+                controls::ghost("Réinitialiser", Some(Icon::Refresh))
+                    .on_press(Message::ResetCompanyDirectory),
+            ]
+            .spacing(space::SM)
+            .align_y(Alignment::Center),
         ]
-        .spacing(space::SM),
+        .spacing(space::MD),
     )
     .padding(space::LG)
     .width(Length::Fill);

@@ -26,6 +26,8 @@ pub const REGULAR: Font = font(FAMILY, Weight::Normal);
 pub const MEDIUM: Font = font(FAMILY, Weight::Medium);
 /// Graisse des titres de section, de toolbar et des métriques.
 pub const SEMIBOLD: Font = font(FAMILY, Weight::Semibold);
+/// Graisse forte réservée aux documents et à quelques titres éditoriaux.
+pub const BOLD: Font = font(FAMILY, Weight::Bold);
 /// Chiffres et valeurs monospace, graisse courante.
 pub const MONO_REGULAR: Font = font(MONO_FAMILY, Weight::Normal);
 /// Chiffres monospace des métriques secondaires.

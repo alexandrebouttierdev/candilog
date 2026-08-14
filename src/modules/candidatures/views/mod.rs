@@ -93,11 +93,12 @@ fn candidate_pagination(app: &App) -> Element<'_, Message> {
 
 /// Barre de commandes compacte : recherche, filtres et mode d'affichage.
 fn command_bar(app: &App) -> Element<'_, Message> {
-    let toolbar = row![
-        field::search(
+    let mut leading = row![
+        field::search_resettable(
             "Rechercher un poste, une entreprise…",
             &app.search,
             Message::SearchChanged,
+            Message::ResetSearch,
             Length::Fixed(size::SEARCH),
         ),
         typo::caption(format::plural(
@@ -107,6 +108,17 @@ fn command_bar(app: &App) -> Element<'_, Message> {
         )),
         controls::ghost("Filtres", Some(Icon::Filter)).on_press(Message::ToggleFilters),
         badge::count_toned(app.candidate_filters.active_count(), Tone::Accent),
+    ]
+    .spacing(space::SM)
+    .align_y(Alignment::Center);
+    if !app.search.trim().is_empty() || app.candidate_filters.active_count() > 0 {
+        leading = leading.push(
+            controls::ghost("Tout réinitialiser", Some(Icon::Refresh))
+                .on_press(Message::ResetCandidateFilters),
+        );
+    }
+    let toolbar = row![
+        leading,
         iced::widget::Space::with_width(Length::Fill),
         controls::segmented([
             controls::segment("Kanban", app.candidate_view == CandidateView::Kanban)
@@ -115,11 +127,11 @@ fn command_bar(app: &App) -> Element<'_, Message> {
                 .on_press(Message::CandidateViewChanged(CandidateView::List)),
         ]),
     ]
-    .spacing(space::SM)
+    .spacing(space::MD)
     .align_y(Alignment::Center);
 
     container(toolbar)
-        .height(52.0)
+        .height(58.0)
         .padding([space::SM, space::LG])
         .width(Length::Fill)
         .align_y(Alignment::Center)

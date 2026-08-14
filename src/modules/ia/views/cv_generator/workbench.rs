@@ -30,15 +30,15 @@ pub(super) fn workbench(app: &App) -> Element<'_, Message> {
         .into()
 }
 
-/// Étape 1 : carte info d'aide à gauche, offre à analyser à droite (grille 0.72fr/1.28fr).
+/// Étape 1 : contexte synthétique puis grand éditeur d'offre.
 fn offer_panel(app: &App) -> Element<'_, Message> {
-    row![
+    column![
         container(info_panel(app))
-            .width(Length::FillPortion(72))
+            .width(Length::Fill)
             .padding(space::XL)
             .style(primary_info_style),
         container(offer_content(app))
-            .width(Length::FillPortion(128))
+            .width(Length::Fill)
             .padding(space::XL)
             .style(styles::glass_card),
     ]
@@ -155,7 +155,7 @@ fn offer_content(app: &App) -> Element<'_, Message> {
             // Zone volontairement haute : une offre longue reste lisible sans
             // donner l'impression d'être tronquée. L'éditeur conserve son
             // défilement interne au-delà de cette hauteur.
-            .height(Length::Fixed(480.0)),
+            .height(Length::Fixed(360.0)),
         footer,
     ]
     .spacing(space::LG)

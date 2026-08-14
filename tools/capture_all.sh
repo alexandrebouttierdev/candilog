@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Produit la couverture visuelle complète de Candilog : 12 routes x 2 thèmes x 2 largeurs,
+# Produit la couverture visuelle complète de Candilog : 13 routes x 2 thèmes x 2 largeurs,
 # plus une poignée d'états particuliers (modale de formulaire, inspecteur en colonne et en
 # drawer, toast, écran d'erreur fatale, vue liste des candidatures). Rejouable à chaque
 # étape de la refonte du design system, pour comparer les captures avant/après.
@@ -8,7 +8,7 @@
 #
 # Valeurs acceptées par le harnais de capture (src/app/state.rs:527-595, src/main.rs:14-18) :
 #   CANDILOG_CAPTURE_ROUTE   : candidatures | cv | entreprises | reseau | calendrier |
-#                              statistiques | cv-generator | lettre | cv-import | profil |
+#                              statistiques | cv-generator | lettres | lettre | cv-import | profil |
 #                              parametres. Toute autre valeur (dont "dashboard") retombe
 #                              sur le tableau de bord — c'est le comportement voulu.
 #   CANDILOG_CAPTURE_SIZE    : small (1100x700) | large (1800x1100). Absente => 1440x900.
@@ -21,6 +21,8 @@
 #   CANDILOG_CAPTURE_NOTIFICATION   : message affiché en toast.
 #   CANDILOG_CAPTURE_FATAL_ERROR    : affiche l'écran d'erreur fatale si définie.
 #   CANDILOG_CAPTURE_AI_RUNNING     : affiche l'état « opération IA en cours » si définie.
+#   CANDILOG_CAPTURE_CV_PREVIEW     : charge la dernière version dans l'aperçu CV.
+#   CANDILOG_CAPTURE_LETTER_OUTPUT  : peuple la lettre et l'historique d'itération.
 #   CANDILOG_CAPTURE_CANDIDATE_VIEW : list bascule Candidatures en vue liste (défaut : pipeline).
 #   CANDILOG_CAPTURE_CALENDAR_VIEW  : week | day.
 set -euo pipefail
@@ -35,10 +37,10 @@ BIN="$PROJECT_ROOT/target/release/candilog"
 # ouverte est vide et tous les écrans paraissent déserts sur les captures.
 DATA_DIR="$PROJECT_ROOT/.candilog-dev"
 
-# Les 12 routes couvertes : 11 valeurs explicites reconnues par le harnais, plus
+# Les 13 routes couvertes : 12 valeurs explicites reconnues par le harnais, plus
 # "dashboard" qui retombe sur le tableau de bord par le repli par défaut.
 ROUTES=(dashboard candidatures cv entreprises reseau calendrier statistiques \
-        cv-generator lettre cv-import profil parametres)
+        cv-generator lettres lettre cv-import profil parametres)
 SIZES=(small large)
 
 echo "Compilation en mode release…"
@@ -71,7 +73,7 @@ capture() {
   env "${env_args[@]}" "$BIN"
 }
 
-# --- 48 captures : 12 routes x 2 thèmes x 2 largeurs ---
+# --- 52 captures : 13 routes x 2 thèmes x 2 largeurs ---
 for route in "${ROUTES[@]}"; do
   for theme in dark light; do
     for size in "${SIZES[@]}"; do

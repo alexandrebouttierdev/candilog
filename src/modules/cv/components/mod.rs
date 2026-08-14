@@ -22,6 +22,7 @@ use iced::{Alignment, Background, Border, Color, Element, Length, Shadow, Theme}
 /// l'enfant avant le parent).
 pub fn version_card<'a, Message: Clone + 'a>(
     version: &CvVersionSummary,
+    selected: bool,
     on_open: Message,
     on_edit: Message,
     on_delete: Message,
@@ -32,7 +33,15 @@ pub fn version_card<'a, Message: Clone + 'a>(
             card_footer(version, on_edit, on_delete),
         ])
         .width(Length::Fill)
-        .style(styles::glass_card),
+        .style(move |theme: &Theme| {
+            let palette = tokens(theme);
+            let mut style = styles::glass_card(theme);
+            if selected {
+                style.background = Some(Background::Color(alpha(palette.accent, 0.055)));
+                style.border.color = palette.accent;
+            }
+            style
+        }),
     )
     .width(Length::Fill)
     .style(card_lift)
@@ -250,6 +259,6 @@ mod tests {
     #[test]
     fn la_carte_de_version_s_instancie_avec_ses_trois_actions() {
         let version = version("CV Consultant", "2026-08-01");
-        let _: Element<'_, ()> = version_card(&version, (), (), ());
+        let _: Element<'_, ()> = version_card(&version, false, (), (), ());
     }
 }

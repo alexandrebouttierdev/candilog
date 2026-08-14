@@ -15,6 +15,7 @@ fn test_migration_metier_cree_toutes_les_tables() {
         "relances",
         "entretiens",
         "cv_versions",
+        "lettres_motivation",
         "parametres",
         "profil",
     ] {

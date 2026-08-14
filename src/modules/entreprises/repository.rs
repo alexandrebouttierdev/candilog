@@ -23,13 +23,20 @@ pub trait EntrepriseRepository: Send + Sync {
             .ok_or_else(|| AppError::NotFound(format!("entreprise {id}")))
     }
     /// Liste une page d'entreprises et applique la recherche dans SQLite.
-    fn list_page(&self, page: u64, page_size: u64, search: &str) -> AppResult<Page<Entreprise>> {
+    fn list_page(
+        &self,
+        page: u64,
+        page_size: u64,
+        search: &str,
+        company_type: Option<&str>,
+    ) -> AppResult<Page<Entreprise>> {
         let needle = search.trim().to_lowercase();
+        let selected_type = company_type.unwrap_or_default().trim().to_lowercase();
         let items: Vec<_> = self
             .list()?
             .into_iter()
             .filter(|item| {
-                needle.is_empty()
+                let matches_search = needle.is_empty()
                     || item.nom.to_lowercase().contains(&needle)
                     || item
                         .secteur
@@ -42,7 +49,16 @@ pub trait EntrepriseRepository: Send + Sync {
                         .as_deref()
                         .unwrap_or_default()
                         .to_lowercase()
-                        .contains(&needle)
+                        .contains(&needle);
+                let matches_type = selected_type.is_empty()
+                    || item
+                        .type_
+                        .as_deref()
+                        .unwrap_or_default()
+                        .trim()
+                        .to_lowercase()
+                        == selected_type;
+                matches_search && matches_type
             })
             .collect();
         let total = items.len() as u64;
@@ -53,6 +69,19 @@ pub trait EntrepriseRepository: Send + Sync {
             .take(page_size as usize)
             .collect();
         Ok(Page::new(page_items, total, page, page_size))
+    }
+    /// Liste les types non vides présents dans le répertoire.
+    fn list_types(&self) -> AppResult<Vec<String>> {
+        let mut types: Vec<String> = self
+            .list()?
+            .into_iter()
+            .filter_map(|item| item.type_)
+            .map(|value| value.trim().to_owned())
+            .filter(|value| !value.is_empty())
+            .collect();
+        types.sort_by_key(|value| value.to_lowercase());
+        types.dedup_by(|left, right| left.eq_ignore_ascii_case(right));
+        Ok(types)
     }
     /// Crée une entreprise.
     ///
@@ -135,28 +164,35 @@ impl EntrepriseRepository for SqliteEntrepriseRepository {
         })
     }
 
-    fn list_page(&self, page: u64, page_size: u64, search: &str) -> AppResult<Page<Entreprise>> {
+    fn list_page(
+        &self,
+        page: u64,
+        page_size: u64,
+        search: &str,
+        company_type: Option<&str>,
+    ) -> AppResult<Page<Entreprise>> {
         let conn = connexion(&self.pool)?;
         let page = page.max(1);
         let page_size = page_size.max(1);
         let needle = format!("%{}%", search.trim().to_lowercase());
-        let filtre = "WHERE ?1 = '%%' OR lower(nom) LIKE ?1 OR lower(coalesce(secteur, '')) LIKE ?1 OR lower(coalesce(ville, '')) LIKE ?1";
+        let selected_type = company_type.unwrap_or_default().trim().to_lowercase();
+        let filtre = "WHERE (?1 = '%%' OR lower(nom) LIKE ?1 OR lower(coalesce(secteur, '')) LIKE ?1 OR lower(coalesce(ville, '')) LIKE ?1) AND (?2 = '' OR lower(trim(coalesce(type, ''))) = ?2)";
         let total: u64 = conn
             .query_row(
                 &format!("SELECT count(*) FROM entreprises {filtre}"),
-                [&needle],
+                rusqlite::params![needle, selected_type],
                 |row| row.get(0),
             )
             .map_err(|e| traduire_erreur(e, "entreprises"))?;
         let offset = page.saturating_sub(1).saturating_mul(page_size);
         let mut requete = conn
             .prepare(&format!(
-                "SELECT {COLONNES} FROM entreprises {filtre} ORDER BY nom COLLATE NOCASE ASC LIMIT ?2 OFFSET ?3"
+                "SELECT {COLONNES} FROM entreprises {filtre} ORDER BY nom COLLATE NOCASE ASC LIMIT ?3 OFFSET ?4"
             ))
             .map_err(|e| traduire_erreur(e, "entreprises"))?;
         let lignes = requete
             .query_map(
-                rusqlite::params![needle, page_size, offset],
+                rusqlite::params![needle, selected_type, page_size, offset],
                 ligne_vers_entreprise,
             )
             .map_err(|e| traduire_erreur(e, "entreprises"))?;
@@ -165,6 +201,20 @@ impl EntrepriseRepository for SqliteEntrepriseRepository {
             items.push(ligne.map_err(|e| traduire_erreur(e, "entreprises"))?);
         }
         Ok(Page::new(items, total, page, page_size))
+    }
+
+    fn list_types(&self) -> AppResult<Vec<String>> {
+        let conn = connexion(&self.pool)?;
+        let mut query = conn
+            .prepare(
+                "SELECT trim(type) FROM entreprises WHERE trim(coalesce(type, '')) <> '' GROUP BY lower(trim(type)) ORDER BY lower(trim(type)) ASC",
+            )
+            .map_err(|e| traduire_erreur(e, "types d'entreprise"))?;
+        let rows = query
+            .query_map([], |row| row.get(0))
+            .map_err(|e| traduire_erreur(e, "types d'entreprise"))?;
+        rows.collect::<Result<Vec<String>, _>>()
+            .map_err(|e| traduire_erreur(e, "types d'entreprise"))
     }
 
     fn create(&self, input: &NouvelleEntreprise) -> AppResult<Entreprise> {

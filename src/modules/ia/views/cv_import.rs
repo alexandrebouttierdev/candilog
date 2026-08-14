@@ -21,7 +21,7 @@ use iced::widget::{button, column, container, row, Space, Stack};
 use iced::{Alignment, Background, Border, Element, Length, Shadow, Theme};
 
 /// Largeur maximale du corps de l'écran (`max-w-[960px]`).
-const BODY_MAX_WIDTH: f32 = 960.0;
+const BODY_MAX_WIDTH: f32 = 1080.0;
 /// Hauteur partagée de la zone de dépôt et de l'éditeur d'offre (`min-h-[210px]`).
 const DROP_HEIGHT: f32 = 210.0;
 
@@ -88,11 +88,32 @@ pub fn view(app: &App) -> Element<'_, Message> {
 /// Carte « Nouvelle analyse » : dépôt du PDF, offre à comparer, action.
 fn source_card(app: &App) -> Element<'_, Message> {
     let content = column![
-        surface::section_header(
-            "Nouvelle analyse",
-            badge::badge("Données confidentielles", Tone::Success),
-        ),
+        row![
+            container(icon::icon(Icon::Target, 30.0, Ink::Accent))
+                .width(58.0)
+                .height(58.0)
+                .center(Length::Fixed(58.0))
+                .style(icon_tile),
+            column![
+                typo::meta_toned("DIAGNOSTIC ATS", Tone::Accent),
+                typo::title("Mesurez la force de votre CV"),
+                typo::caption(
+                    "Comparez un PDF à l'offre ciblée et obtenez des recommandations actionnables.",
+                ),
+            ]
+            .spacing(space::XS),
+            layout::spacer(),
+            badge::badge("Lecture locale du PDF", Tone::Success),
+        ]
+        .spacing(space::LG)
+        .align_y(Alignment::Center),
         surface::divider(),
+        row![
+            analysis_step("01", "Importer", "Sélectionnez votre CV PDF"),
+            analysis_step("02", "Comparer", "Ajoutez l'offre visée"),
+            analysis_step("03", "Améliorer", "Appliquez les recommandations"),
+        ]
+        .spacing(space::MD),
         row![drop_zone(app), offer_pane(app)]
             .spacing(space::LG)
             .width(Length::Fill),
@@ -105,6 +126,22 @@ fn source_card(app: &App) -> Element<'_, Message> {
         .height(Length::Fill)
         .style(styles::glass_card)
         .into()
+}
+
+fn analysis_step<'a>(index: &'a str, title: &'a str, detail: &'a str) -> Element<'a, Message> {
+    container(
+        row![
+            typo::text_mono(index, font::META, font::MONO_SEMIBOLD)
+                .style(styles::toned_text(Tone::Accent)),
+            column![typo::label(title), typo::caption(detail)].spacing(space::XXS),
+        ]
+        .spacing(space::MD)
+        .align_y(Alignment::Center),
+    )
+    .padding(space::MD)
+    .width(Length::Fill)
+    .style(styles::form_group)
+    .into()
 }
 
 /// Zone de dépôt du PDF : tout le rectangle relance le sélecteur de fichier.

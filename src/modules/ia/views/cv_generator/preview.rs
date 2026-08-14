@@ -1,4 +1,4 @@
-//! Aperçu natif et composition de la page A4 du CV.
+//! Aperçu natif du CV, construit sur les métriques du template HTML imprimé.
 
 use crate::app::{App, Message};
 use crate::core::cv_pdf::{CvExperience, CvPdf, CvProject};
@@ -8,16 +8,25 @@ use crate::ui::components::{document, surface, typo};
 use crate::ui::theme::metrics::{space, stroke};
 use crate::ui::theme::tokens::tokens;
 use crate::ui::theme::typography as font;
-use iced::widget::{column, container, horizontal_rule, row, rule, text};
+use iced::widget::text::LineHeight;
+use iced::widget::{column, container, horizontal_rule, image, row, rule, text};
 use iced::{Alignment, Background, Border, Color, Element, Length, Theme};
 
-/// Aperçu du document A4, posé sur son plan de travail.
+/// Largeur A4 de printpdf, en points. Toutes les métriques du preview sont exprimées dans
+/// le même repère puis multipliées par le zoom courant.
+const PDF_WIDTH_PT: f32 = 595.28;
+const CSS_PX_TO_PT: f32 = 0.75;
+const CONTENT_X_PT: f32 = 14.17 + 22.4 * CSS_PX_TO_PT;
+
 pub(super) fn preview(app: &App) -> Element<'_, Message> {
     let bar = document::workbench_bar(
-        "Aperçu du document",
-        row![typo::caption("A4"), zoom_controls(app),]
-            .spacing(space::MD)
-            .align_y(Alignment::Center),
+        "Aperçu HTML · A4",
+        row![
+            typo::caption("Template exemple_cv.html"),
+            zoom_controls(app),
+        ]
+        .spacing(space::MD)
+        .align_y(Alignment::Center),
     );
 
     let page: Element<'_, Message> = match &app.cv_generation {
@@ -29,7 +38,7 @@ pub(super) fn preview(app: &App) -> Element<'_, Message> {
         column![
             container(bar).width(Length::Fill),
             surface::divider(),
-            document::workspace(document::page(app.document_width, page)),
+            document::workspace(document::page_unpadded(app.document_width, page)),
         ]
         .height(Length::Fill),
     )
@@ -51,274 +60,363 @@ pub(super) fn preview(app: &App) -> Element<'_, Message> {
 }
 
 fn zoom_controls(app: &App) -> Element<'_, Message> {
-    let mut segments = Vec::new();
-    for width in document::zoom_widths() {
-        segments.push(
-            controls::segment(
-                format!("{} %", document::zoom_percent(width)),
-                (app.document_width - width).abs() < f32::EPSILON,
-            )
-            .on_press(Message::DocumentWidthChanged(width)),
-        );
-    }
-    controls::segmented(segments)
+    controls::segmented(document::zoom_widths().map(|width| {
+        controls::segment(
+            format!("{} %", document::zoom_percent(width)),
+            (app.document_width - width).abs() < f32::EPSILON,
+        )
+        .on_press(Message::DocumentWidthChanged(width))
+    }))
 }
 
-/// Contenu de la page A4, fidèle au design du PDF exporté.
+/// Composition partagée avec la bibliothèque. Les marges, tailles et interlignes suivent
+/// les valeurs `@media print` du fichier HTML de référence.
 pub fn page_content<'a>(
     app: &'a App,
     generation: &'a CvGeneration,
     _title: String,
 ) -> Element<'a, Message> {
-    let document = crate::modules::ia::cv_document::construire(&app.data.profile, generation);
-    let mut page = column![
-        cv_nom(document.name.clone()),
-        cv_sous_titre(document.subtitle.clone()),
-        cv_contact(&document),
-        iced::widget::Space::with_height(space::SM),
-        cv_section("Profil"),
-        cv_paragraphe(document.profil.clone()),
+    let cv = crate::modules::ia::cv_document::construire(&app.data.profile, generation);
+    let scale = app.document_width / PDF_WIDTH_PT;
+    column![cv_header(&cv, scale), cv_body(cv, scale)]
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .into()
+}
+
+fn css(px: f32, scale: f32) -> f32 {
+    px * CSS_PX_TO_PT * scale
+}
+
+fn pt(value: f32, scale: f32) -> f32 {
+    value * scale
+}
+
+fn absolute(value: f32) -> LineHeight {
+    LineHeight::Absolute(value.into())
+}
+
+fn cv_header(document: &CvPdf, scale: f32) -> Element<'static, Message> {
+    let mut contacts = row![].spacing(css(14.4, scale));
+    for (bytes, value) in contact_items(document) {
+        contacts = contacts.push(contact_item(bytes, value, scale));
+    }
+
+    container(
+        column![
+            text(document.name.clone())
+                .size(css(32.0, scale))
+                .font(font::BOLD)
+                .line_height(absolute(css(35.2, scale)))
+                .color(cv_text()),
+            text(document.subtitle.clone())
+                .size(css(13.12, scale))
+                .font(font::SEMIBOLD)
+                .line_height(absolute(css(18.0, scale)))
+                .color(cv_accent()),
+            horizontal_rule(1).style(|_| rule::Style {
+                color: cv_border(),
+                width: 1,
+                radius: 0.0.into(),
+                fill_mode: rule::FillMode::Full,
+            }),
+            contacts.wrap(),
+        ]
+        .spacing(css(5.0, scale)),
+    )
+    .padding([css(10.0, scale), pt(CONTENT_X_PT, scale)])
+    .width(Length::Fill)
+    .style(|_| container::Style {
+        background: Some(Background::Color(Color::WHITE)),
+        border: Border {
+            color: cv_border(),
+            width: 1.0,
+            radius: 0.0.into(),
+        },
+        ..container::Style::default()
+    })
+    .into()
+}
+
+fn cv_body(document: CvPdf, scale: f32) -> Element<'static, Message> {
+    let mut body = column![
+        cv_section("Profil", scale),
+        cv_paragraph(document.profil.clone(), scale),
     ]
-    .spacing(space::SM)
-    .width(Length::Fill);
+    .spacing(css(4.48, scale));
 
     if !document.skills.is_empty() {
-        page = page
-            .push(iced::widget::Space::with_height(space::SM))
-            .push(cv_section("Compétences techniques"))
-            .push(cv_chips(document.skills.clone()));
+        body = body
+            .push(cv_section("Compétences techniques", scale))
+            .push(cv_chips(document.skills.clone(), scale));
     }
-
     if !document.experiences.is_empty() {
-        page = page
-            .push(iced::widget::Space::with_height(space::SM))
-            .push(cv_section("Expérience professionnelle"));
+        body = body.push(cv_section("Expérience professionnelle", scale));
         for experience in &document.experiences {
-            page = page.push(cv_experience(experience.clone()));
+            body = body.push(cv_experience(experience.clone(), scale));
         }
     }
-
     if !document.projects.is_empty() {
-        page = page
-            .push(iced::widget::Space::with_height(space::SM))
-            .push(cv_section("Projets techniques"));
-        for projet in &document.projects {
-            page = page.push(cv_projet(projet.clone()));
+        body = body.push(cv_section("Projets techniques", scale));
+        for project in &document.projects {
+            body = body.push(cv_project(project.clone(), scale));
         }
     }
-
     if !document.education.is_empty() || !document.languages.is_empty() {
-        page = page
-            .push(iced::widget::Space::with_height(space::SM))
-            .push(cv_formation_langues(document));
+        body = body.push(cv_education_languages(document, scale));
     }
 
-    page.into()
-}
-
-fn cv_accent() -> Color {
-    Color::from_rgb8(0x00, 0x66, 0xcc)
-}
-
-fn cv_texte() -> Color {
-    Color::from_rgb8(0x1a, 0x1a, 0x1a)
-}
-
-fn cv_secondaire() -> Color {
-    Color::from_rgb8(0x3f, 0x3f, 0x46)
-}
-
-fn cv_muted() -> Color {
-    Color::from_rgb8(0x55, 0x55, 0x5a)
-}
-
-fn cv_chip_bg() -> Color {
-    Color::from_rgb8(0xf5, 0xf5, 0xf7)
-}
-
-fn cv_nom(nom: String) -> Element<'static, Message> {
-    text(nom)
-        .size(20.0)
-        .font(font::SEMIBOLD)
-        .color(cv_texte())
+    container(body)
+        .padding([css(8.0, scale), pt(CONTENT_X_PT, scale)])
+        .width(Length::Fill)
+        .style(|_| container::Style {
+            background: Some(Background::Color(Color::WHITE)),
+            ..container::Style::default()
+        })
         .into()
 }
 
-fn cv_sous_titre(sous_titre: String) -> Element<'static, Message> {
-    text(sous_titre)
-        .size(10.0)
-        .font(font::MEDIUM)
-        .color(cv_accent())
-        .into()
+fn contact_items(document: &CvPdf) -> Vec<(&'static [u8], String)> {
+    let mut items = Vec::new();
+    if let Some(value) = document
+        .phone
+        .as_ref()
+        .filter(|value| !value.trim().is_empty())
+    {
+        items.push((
+            include_bytes!("../../../../../assets/icons/cv/phone.png").as_slice(),
+            value.clone(),
+        ));
+    }
+    if !document.email.trim().is_empty() {
+        items.push((
+            include_bytes!("../../../../../assets/icons/cv/mail.png").as_slice(),
+            document.email.clone(),
+        ));
+    }
+    if let Some(value) = document
+        .city
+        .as_ref()
+        .filter(|value| !value.trim().is_empty())
+    {
+        items.push((
+            include_bytes!("../../../../../assets/icons/cv/pin.png").as_slice(),
+            value.clone(),
+        ));
+    }
+    if let Some(value) = document
+        .linkedin
+        .as_ref()
+        .filter(|value| !value.trim().is_empty())
+    {
+        items.push((
+            include_bytes!("../../../../../assets/icons/cv/linkedin.png").as_slice(),
+            value.clone(),
+        ));
+    }
+    if let Some(value) = document
+        .website
+        .as_ref()
+        .filter(|value| !value.trim().is_empty())
+    {
+        items.push((
+            include_bytes!("../../../../../assets/icons/cv/globe.png").as_slice(),
+            value.clone(),
+        ));
+    }
+    items
 }
 
-fn cv_contact(document: &CvPdf) -> Element<'static, Message> {
-    let contact = [
-        document.phone.as_deref(),
-        Some(document.email.as_str()),
-        document.city.as_deref(),
-        document.linkedin.as_deref(),
-        document.website.as_deref(),
+fn contact_item(bytes: &'static [u8], value: String, scale: f32) -> Element<'static, Message> {
+    let icon_size = css(12.0, scale).max(7.0);
+    row![
+        image(image::Handle::from_bytes(bytes))
+            .width(icon_size)
+            .height(icon_size),
+        text(value)
+            .size(css(10.88, scale).max(6.8))
+            .font(font::MEDIUM)
+            .color(cv_secondary()),
     ]
-    .into_iter()
-    .flatten()
-    .filter(|valeur| !valeur.trim().is_empty())
-    .collect::<Vec<_>>()
-    .join(" · ");
-    text(contact)
-        .size(8.0)
-        .font(font::REGULAR)
-        .color(cv_secondaire())
-        .into()
+    .spacing(css(4.2, scale))
+    .align_y(Alignment::Center)
+    .into()
 }
 
-fn cv_section(titre: &'static str) -> Element<'static, Message> {
+fn cv_section(title: &'static str, scale: f32) -> Element<'static, Message> {
+    let width = (title.chars().count() as f32 * css(6.2, scale)).max(css(38.0, scale));
     column![
-        text(titre.to_uppercase())
-            .size(8.0)
-            .font(font::SEMIBOLD)
+        text(title.to_uppercase())
+            .size(css(9.92, scale))
+            .font(font::BOLD)
             .color(cv_accent()),
-        horizontal_rule(2).style(|_| rule::Style {
+        container(horizontal_rule(2).style(|_| rule::Style {
             color: cv_accent(),
             width: 2,
             radius: 0.0.into(),
             fill_mode: rule::FillMode::Full,
-        }),
+        }))
+        .width(width),
     ]
-    .spacing(2.0)
+    .spacing(css(1.9, scale))
     .into()
 }
 
-fn cv_paragraphe(valeur: String) -> Element<'static, Message> {
-    text(valeur)
-        .size(8.5)
+fn cv_paragraph(value: String, scale: f32) -> Element<'static, Message> {
+    text(value)
+        .size(css(12.16, scale))
+        .line_height(absolute(css(17.63, scale)))
         .font(font::REGULAR)
-        .color(cv_secondaire())
+        .color(cv_secondary())
         .into()
 }
 
-fn cv_chips(competences: Vec<String>) -> Element<'static, Message> {
-    let mut ligne = row![].spacing(4.0);
-    for competence in competences {
-        ligne = ligne.push(
+fn cv_chips(skills: Vec<String>, scale: f32) -> Element<'static, Message> {
+    let mut line = row![].spacing(css(2.64, scale));
+    for skill in skills {
+        line = line.push(
             container(
-                text(competence)
-                    .size(7.0)
+                text(skill)
+                    .size(css(10.56, scale))
                     .font(font::MEDIUM)
-                    .color(cv_texte()),
+                    .color(cv_text()),
             )
-            .padding([2.0, 5.0])
-            .style(|_| container::Style {
+            .padding([css(1.92, scale), css(6.4, scale)])
+            .style(move |_| container::Style {
                 background: Some(Background::Color(cv_chip_bg())),
                 border: Border {
-                    radius: 3.0.into(),
+                    radius: css(4.0, scale).into(),
                     ..Border::default()
                 },
                 ..container::Style::default()
             }),
         );
     }
-    ligne.wrap().into()
+    line.wrap().into()
 }
 
-fn cv_experience(experience: CvExperience) -> Element<'static, Message> {
-    let mut meta = experience.company.clone();
-    if !experience.meta.is_empty() {
-        meta = format!("{} · {}", meta, experience.meta);
-    }
-    let mut bloc = column![
-        text(experience.title)
-            .size(9.0)
-            .font(font::SEMIBOLD)
-            .color(cv_texte()),
-        text(meta)
-            .size(8.0)
-            .font(font::REGULAR)
-            .color(cv_secondaire()),
-    ]
-    .spacing(2.0);
-    for puce in experience.bullets {
-        bloc = bloc.push(cv_puce(puce));
-    }
-    bloc.into()
-}
-
-fn cv_projet(projet: CvProject) -> Element<'static, Message> {
-    let mut bloc = column![text(projet.name)
-        .size(9.0)
-        .font(font::SEMIBOLD)
-        .color(cv_texte())]
-    .spacing(2.0);
-    if !projet.meta.is_empty() {
-        bloc = bloc.push(
-            text(projet.meta)
-                .size(8.0)
+fn cv_experience(experience: CvExperience, scale: f32) -> Element<'static, Message> {
+    let mut block = column![row![
+        column![
+            text(experience.title)
+                .size(css(13.12, scale))
+                .font(font::BOLD)
+                .color(cv_text()),
+            text(experience.company)
+                .size(css(11.2, scale))
                 .font(font::REGULAR)
-                .color(cv_secondaire()),
-        );
+                .color(cv_secondary()),
+        ]
+        .spacing(css(1.5, scale))
+        .width(Length::Fill),
+        text(experience.meta)
+            .size(css(9.6, scale))
+            .font(font::MEDIUM)
+            .color(cv_muted()),
+    ]
+    .spacing(css(8.0, scale))
+    .align_y(Alignment::Start),]
+    .spacing(css(2.2, scale));
+    for bullet in experience.bullets {
+        block = block.push(cv_bullet(bullet, scale));
     }
-    for puce in projet.bullets {
-        bloc = bloc.push(cv_puce(puce));
-    }
-    bloc.into()
+    block.into()
 }
 
-fn cv_puce(valeur: String) -> Element<'static, Message> {
-    row![
-        text("·").size(7.5).font(font::REGULAR).color(cv_muted()),
-        text(valeur)
-            .size(7.5)
+fn cv_project(project: CvProject, scale: f32) -> Element<'static, Message> {
+    let mut block = column![
+        text(project.name)
+            .size(css(13.12, scale))
+            .font(font::BOLD)
+            .color(cv_text()),
+        text(project.meta)
+            .size(css(11.2, scale))
             .font(font::REGULAR)
-            .color(cv_secondaire())
+            .color(cv_secondary()),
+    ]
+    .spacing(css(1.8, scale));
+    for bullet in project.bullets {
+        block = block.push(cv_bullet(bullet, scale));
+    }
+    block.into()
+}
+
+fn cv_bullet(value: String, scale: f32) -> Element<'static, Message> {
+    row![
+        text("·")
+            .size(css(11.52, scale))
+            .font(font::REGULAR)
+            .color(cv_muted()),
+        text(value)
+            .size(css(11.52, scale))
+            .line_height(absolute(css(15.9, scale)))
+            .font(font::REGULAR)
+            .color(cv_secondary())
             .width(Length::Fill),
     ]
-    .spacing(4.0)
+    .spacing(css(3.0, scale))
     .align_y(Alignment::Start)
     .into()
 }
 
-fn cv_formation_langues(document: CvPdf) -> Element<'static, Message> {
-    let mut gauche = column![cv_section("Formation")].spacing(4.0);
+fn cv_education_languages(document: CvPdf, scale: f32) -> Element<'static, Message> {
+    let mut left = column![cv_section("Formation", scale)].spacing(css(4.0, scale));
     for education in document.education {
-        let mut bloc = column![
-            text(education.degree)
-                .size(8.5)
-                .font(font::SEMIBOLD)
-                .color(cv_texte()),
-            text(education.school)
-                .size(7.5)
-                .font(font::REGULAR)
-                .color(cv_secondaire()),
-        ]
-        .spacing(1.5);
-        if !education.date.is_empty() {
-            bloc = bloc.push(
+        left = left.push(
+            column![
+                text(education.degree)
+                    .size(css(12.16, scale))
+                    .font(font::BOLD)
+                    .color(cv_text()),
+                text(education.school)
+                    .size(css(10.88, scale))
+                    .font(font::REGULAR)
+                    .color(cv_secondary()),
                 text(education.date)
-                    .size(7.0)
+                    .size(css(9.6, scale))
                     .font(font::REGULAR)
                     .color(cv_muted()),
-            );
-        }
-        gauche = gauche.push(bloc);
+            ]
+            .spacing(css(1.5, scale)),
+        );
     }
 
-    let mut droite = column![cv_section("Disponibilité & langues")].spacing(4.0);
-    for langue in document.languages {
-        droite = droite.push(
-            text(format!("{} · {}", langue.name, langue.level))
-                .size(8.5)
-                .font(font::SEMIBOLD)
-                .color(cv_texte()),
+    let mut right = column![cv_section("Disponibilité & langues", scale)].spacing(css(4.0, scale));
+    for language in document.languages {
+        right = right.push(
+            text(format!("{} · {}", language.name, language.level))
+                .size(css(12.16, scale))
+                .font(font::BOLD)
+                .color(cv_text()),
         );
     }
 
     row![
-        gauche.width(Length::FillPortion(1)),
-        droite.width(Length::FillPortion(1)),
+        left.width(Length::FillPortion(1)),
+        right.width(Length::FillPortion(1)),
     ]
-    .spacing(16.0)
+    .spacing(css(22.4, scale))
     .align_y(Alignment::Start)
     .into()
+}
+
+fn cv_accent() -> Color {
+    Color::from_rgb8(0x00, 0x66, 0xcc)
+}
+fn cv_text() -> Color {
+    Color::from_rgb8(0x1a, 0x1a, 0x1a)
+}
+fn cv_secondary() -> Color {
+    Color::from_rgb8(0x3f, 0x3f, 0x46)
+}
+fn cv_muted() -> Color {
+    Color::from_rgb8(0x55, 0x55, 0x5a)
+}
+fn cv_border() -> Color {
+    Color::from_rgb8(0xe2, 0xe2, 0xe5)
+}
+fn cv_chip_bg() -> Color {
+    Color::from_rgb8(0xf5, 0xf5, 0xf7)
 }
 
 fn placeholder(app: &App) -> Element<'_, Message> {
@@ -326,49 +424,44 @@ fn placeholder(app: &App) -> Element<'_, Message> {
     let name = format!("{} {}", profile.first_name, profile.last_name)
         .trim()
         .to_owned();
-    column![
-        document::heading(if name.is_empty() {
-            "Votre nom".to_owned()
-        } else {
-            name
-        }),
-        document::subheading(crate::ui::format::or_else(
-            profile.headline.as_deref(),
-            "Titre professionnel"
-        )),
-        document::body_muted(contact_line(app)),
-        iced::widget::Space::with_height(space::MAX),
-        document::rubric("Profil"),
-        document::body(crate::ui::format::or_else(
-            profile.summary.as_deref(),
-            "Analysez une offre pour générer un CV adapté à sa fiche de poste.",
-        )),
-        iced::widget::Space::with_height(space::MD),
-        document::body_muted(format!(
-            "{} · {}",
-            crate::ui::format::plural(
-                app.data.profile.experiences.len(),
-                "expérience",
-                "expériences"
+    let scale = app.document_width / PDF_WIDTH_PT;
+    let header = container(
+        column![
+            text(if name.is_empty() {
+                "Votre nom".to_owned()
+            } else {
+                name
+            })
+            .size(css(32.0, scale))
+            .font(font::BOLD)
+            .color(cv_text()),
+            text(crate::ui::format::or_else(
+                profile.headline.as_deref(),
+                "Titre professionnel",
+            ))
+            .size(css(13.12, scale))
+            .font(font::SEMIBOLD)
+            .color(cv_accent()),
+        ]
+        .spacing(css(5.0, scale)),
+    )
+    .padding([css(10.0, scale), pt(CONTENT_X_PT, scale)]);
+    let body = container(
+        column![
+            cv_section("Profil", scale),
+            cv_paragraph(
+                crate::ui::format::or_else(
+                    profile.summary.as_deref(),
+                    "Analysez une offre pour générer un CV adapté à sa fiche de poste.",
+                ),
+                scale,
             ),
-            crate::ui::format::plural(app.data.profile.skills.len(), "compétence", "compétences"),
-        )),
-    ]
-    .spacing(space::SM)
-    .width(Length::Fill)
-    .into()
-}
-
-fn contact_line(app: &App) -> String {
-    let personal = &app.data.profile.personal;
-    [
-        Some(personal.email.as_str()).filter(|value| !value.is_empty()),
-        personal.phone.as_deref(),
-        personal.city.as_deref(),
-    ]
-    .into_iter()
-    .flatten()
-    .filter(|value| !value.trim().is_empty())
-    .collect::<Vec<_>>()
-    .join(" · ")
+        ]
+        .spacing(css(4.48, scale)),
+    )
+    .padding([css(8.0, scale), pt(CONTENT_X_PT, scale)]);
+    column![header, body]
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .into()
 }

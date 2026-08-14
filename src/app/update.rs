@@ -127,6 +127,27 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
             }
             return recharger(app);
         }
+        Message::ResetSearch => {
+            app.search.clear();
+            match app.route {
+                crate::navigation::Route::Candidatures => app.candidate_page = 1,
+                crate::navigation::Route::Entreprises => app.company_page = 1,
+                crate::navigation::Route::Reseau => app.contact_page = 1,
+                _ => {}
+            }
+            return recharger(app);
+        }
+        Message::CompanyTypeFilterChanged(value) => {
+            app.company_type_filter = value;
+            app.company_page = 1;
+            return recharger(app);
+        }
+        Message::ResetCompanyDirectory => {
+            app.search.clear();
+            app.company_type_filter = None;
+            app.company_page = 1;
+            return recharger(app);
+        }
         Message::CandidatePagePrev => {
             app.candidate_page = app.candidate_page.saturating_sub(1).max(1);
             return recharger(app);
@@ -379,6 +400,7 @@ pub fn update(app: &mut App, message: Message) -> Task<Message> {
                 | Dialog::DeleteEntretien(_)
                 | Dialog::DeleteRelance(_)
                 | Dialog::DeleteCv(_)
+                | Dialog::DeleteLetter(_)
                 | Dialog::ImportBackup
                 | Dialog::ResetDatabase
                 | Dialog::ResetAiCache

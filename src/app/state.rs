@@ -47,6 +47,8 @@ pub struct App {
     pub candidate_filters: CandidateFilters,
     /// Recherche de la page courante.
     pub search: String,
+    /// Type d'entreprise retenu dans le répertoire Relations.
+    pub company_type_filter: Option<String>,
     /// Année du calendrier.
     pub calendar_year: i32,
     /// Mois du calendrier, de 1 à 12.
@@ -126,6 +128,8 @@ pub struct App {
     pub offer_analysis: Option<OfferAnalysis>,
     /// Dernière génération de CV.
     pub cv_generation: Option<CvGeneration>,
+    /// Génération chargée uniquement pour l'aperçu de la bibliothèque.
+    pub cv_preview_generation: Option<CvGeneration>,
     /// Nom de la version de CV à sauvegarder.
     pub cv_version_name: String,
     /// Décisions associées aux recommandations ATS courantes.
@@ -154,6 +158,10 @@ pub struct App {
     pub letter_length: String,
     /// Texte reçu progressivement du provider.
     pub letter_output: String,
+    /// Consigne courante de réécriture de la lettre.
+    pub letter_iteration_instruction: String,
+    /// Historique des consignes déjà appliquées à la lettre.
+    pub letter_chat_history: Vec<crate::modules::ia::cv_model::ChatMsg>,
     /// Candidature sur laquelle un appui gauche est posé, avant le seuil de glisser.
     pub press_candidate: Option<uuid::Uuid>,
     /// Position du curseur à l'origine d'un potentiel glisser.
@@ -186,6 +194,8 @@ pub struct App {
     pub selected_contact: Option<uuid::Uuid>,
     /// Version de CV sélectionnée dans la bibliothèque.
     pub selected_cv: Option<uuid::Uuid>,
+    /// Lettre sélectionnée dans sa bibliothèque.
+    pub selected_letter: Option<uuid::Uuid>,
     /// Feuille de filtres dépliée.
     pub filters_open: bool,
     /// Colonne de tri de la vue Liste.

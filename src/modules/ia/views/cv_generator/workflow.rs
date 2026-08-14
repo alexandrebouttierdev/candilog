@@ -161,23 +161,28 @@ pub(super) fn overview(app: &App) -> Element<'_, Message> {
         .as_ref()
         .map_or(0, |analysis| analysis.score.total);
 
-    row![
-        steps(&items),
-        layout::spacer(),
-        column![
-            Stack::with_children(vec![
-                gauge(score, 48.0),
-                container(score_label(score))
-                    .center_x(Length::Fixed(48.0))
-                    .center_y(Length::Fixed(48.0))
-                    .into(),
-            ]),
-            typo::caption("Score ATS"),
+    container(
+        row![
+            steps(&items),
+            layout::spacer(),
+            column![
+                Stack::with_children(vec![
+                    gauge(score, 48.0),
+                    container(score_label(score))
+                        .center_x(Length::Fixed(48.0))
+                        .center_y(Length::Fixed(48.0))
+                        .into(),
+                ]),
+                typo::caption("Score ATS"),
+            ]
+            .spacing(space::XS)
+            .align_x(Alignment::Center),
         ]
-        .spacing(space::XS)
-        .align_x(Alignment::Center),
-    ]
-    .spacing(space::LG)
-    .align_y(Alignment::Center)
+        .spacing(space::LG)
+        .align_y(Alignment::Center),
+    )
+    .padding([space::MD, space::XL])
+    .width(Length::Fill)
+    .style(styles::form_group)
     .into()
 }

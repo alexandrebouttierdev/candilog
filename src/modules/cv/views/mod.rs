@@ -1,4 +1,4 @@
-//! Écran Mes CV : bibliothèque en grille à gauche, aperçu du document à droite.
+//! Écran Mes CV : bibliothèque visuelle et aperçu fidèle du document.
 
 use crate::app::state::Dialog;
 use crate::app::{App, Message};
@@ -7,28 +7,29 @@ use crate::navigation::Route;
 use crate::ui::components::button as controls;
 use crate::ui::components::header;
 use crate::ui::components::icon::Icon;
-use crate::ui::components::{document, field, layout, meter, state, surface, typo};
+use crate::ui::components::{badge, document, field, layout, meter, state, surface, typo};
 use crate::ui::format;
 use crate::ui::theme::metrics::space;
 use crate::ui::theme::styles;
+use crate::ui::theme::Tone;
 use iced::widget::{column, container, row};
 use iced::{Alignment, Element, Length};
 
 /// Rend l'écran de la bibliothèque de CV.
 pub fn view(app: &App) -> Element<'_, Message> {
-    let actions = controls::primary("Générateur de CV", Some(Icon::Sparkles))
+    let actions = controls::primary("Nouveau CV", Some(Icon::Sparkles))
         .on_press(Message::Navigate(Route::CvGenerator))
         .into();
 
     layout::screen(
         header::route_header(
             Icon::Document,
-            "Documents professionnels",
+            "Mes CV",
             Route::Cv,
             Message::Navigate,
             actions,
         ),
-        layout::workspace(layout::split(grid(app), preview(app))),
+        layout::workspace(layout::split_portions(6, grid(app), 8, preview(app))),
     )
 }
 
@@ -48,12 +49,13 @@ fn grid(app: &App) -> Element<'_, Message> {
             "Sauvegardez une version depuis le générateur ou modifiez votre recherche.",
         )
     } else {
-        let mut cards = row![].spacing(space::MD);
+        let mut cards = row![].spacing(space::LG);
         for version in versions {
             cards = cards.push(
                 container(version_card(
                     version,
-                    Message::SelectCvVersion(Some(version.id)),
+                    app.selected_cv == Some(version.id),
+                    Message::PreviewCvVersion(version.id),
                     Message::LoadCvVersion(version.id),
                     Message::OpenDialog(Dialog::DeleteCv(version.id)),
                 ))
@@ -62,34 +64,44 @@ fn grid(app: &App) -> Element<'_, Message> {
                 // ligne entière tout en n'étant dessinée que sur 240 px — la bibliothèque
                 // annoncée en grille se comportait en liste à une colonne, moitié de panneau
                 // perdue et défilement inutile dès la deuxième version.
-                .width(Length::Fixed(240.0)),
+                .width(Length::Fixed(224.0)),
             );
         }
-        surface::scroll(cards.wrap()).height(Length::Fill).into()
+        surface::scroll(container(cards.wrap()).padding(space::XL))
+            .height(Length::Fill)
+            .into()
     };
 
     let toolbar = container(
         column![
             row![
-                typo::label("Bibliothèque"),
+                column![
+                    typo::meta_toned("BIBLIOTHÈQUE PERSONNELLE", Tone::Accent),
+                    typo::section("Vos versions prêtes à l'emploi"),
+                ]
+                .spacing(space::XXS),
                 layout::spacer(),
-                typo::caption(format!(
-                    "{} · dernière mise à jour {}",
-                    format::plural(app.data.cv_versions.len(), "version", "versions",),
-                    components::latest_version_date(&app.data.cv_versions),
-                )),
+                badge::badge(
+                    format::plural(app.data.cv_versions.len(), "version", "versions"),
+                    Tone::Neutral,
+                ),
             ]
             .align_y(Alignment::Center),
-            field::search(
+            typo::caption(format!(
+                "Dernière mise à jour {} · sélectionnez une vignette pour la prévisualiser",
+                components::latest_version_date(&app.data.cv_versions),
+            )),
+            field::search_resettable(
                 "Rechercher une version…",
                 &app.search,
                 Message::SearchChanged,
+                Message::ResetSearch,
                 Length::Fill,
             ),
         ]
-        .spacing(space::SM),
+        .spacing(space::MD),
     )
-    .padding(space::LG)
+    .padding(space::XL)
     .width(Length::Fill);
 
     container(column![toolbar, surface::divider(), body].height(Length::Fill))
@@ -102,20 +114,26 @@ fn grid(app: &App) -> Element<'_, Message> {
 /// Aperçu du document de la version sélectionnée.
 fn preview(app: &App) -> Element<'_, Message> {
     let Some(version) = app.focused_cv() else {
-        return state::no_selection("Sélectionnez une version pour afficher son aperçu.");
+        return container(
+            column![
+                typo::meta_toned("APERÇU", Tone::Accent),
+                state::no_selection(
+                    "Sélectionnez une vignette pour charger son contenu dans l'aperçu.",
+                ),
+            ]
+            .spacing(space::LG),
+        )
+        .center(Length::Fill)
+        .into();
     };
 
-    let bar = document::workbench_bar(
-        "Aperçu du document",
+    let tools: Element<'_, Message> = if app.layout().width < 1_280.0 {
         row![
-            typo::caption(format::compact_datetime(&version.created_at)),
             zoom_controls(app),
-            controls::ghost("Charger", Some(Icon::Open))
-                .on_press(Message::LoadCvVersion(version.id)),
-            controls::ghost("Exporter", Some(Icon::Download)).on_press_maybe(
-                app.cv_generation
-                    .is_some()
-                    .then_some(Message::ExportGeneratedCvPdf),
+            controls::icon_action(
+                Icon::Open,
+                "Charger cette version",
+                Message::LoadCvVersion(version.id),
             ),
             controls::icon_danger(
                 Icon::Trash,
@@ -124,10 +142,27 @@ fn preview(app: &App) -> Element<'_, Message> {
             ),
         ]
         .spacing(space::SM)
-        .align_y(Alignment::Center),
-    );
+        .align_y(Alignment::Center)
+        .into()
+    } else {
+        row![
+            typo::caption(format::compact_datetime(&version.created_at)),
+            zoom_controls(app),
+            controls::ghost("Charger", Some(Icon::Open))
+                .on_press(Message::LoadCvVersion(version.id)),
+            controls::icon_danger(
+                Icon::Trash,
+                "Supprimer",
+                Message::OpenDialog(Dialog::DeleteCv(version.id)),
+            ),
+        ]
+        .spacing(space::SM)
+        .align_y(Alignment::Center)
+        .into()
+    };
+    let bar = document::workbench_bar("Aperçu du document", tools);
 
-    let page = match &app.cv_generation {
+    let page = match &app.cv_preview_generation {
         Some(generation) => super::super::ia::views::cv_generator::page_content(
             app,
             generation,
@@ -139,7 +174,7 @@ fn preview(app: &App) -> Element<'_, Message> {
     column![
         container(bar).width(Length::Fill),
         surface::divider(),
-        document::workspace(document::page(app.document_width, page)),
+        document::workspace(document::page_unpadded(app.document_width, page)),
     ]
     .height(Length::Fill)
     .into()

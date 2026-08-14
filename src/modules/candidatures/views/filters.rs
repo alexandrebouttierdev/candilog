@@ -153,7 +153,7 @@ pub fn active_strip<'a>(labels: &[String]) -> Element<'a, Message> {
         line = line.push(badge::badge(label.clone(), Tone::Accent));
     }
     line = line.push(layout::spacer()).push(
-        controls::ghost("Réinitialiser", Some(Icon::Close))
+        controls::ghost("Tout réinitialiser", Some(Icon::Refresh))
             .on_press(Message::ResetCandidateFilters),
     );
     container(line)

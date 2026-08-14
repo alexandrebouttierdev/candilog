@@ -26,8 +26,11 @@ pub(super) fn handles(message: &Message) -> bool {
             | Message::CvVersionNameChanged(..)
             | Message::SaveGeneratedCv
             | Message::LoadCvVersion(..)
+            | Message::PreviewCvVersion(..)
             | Message::ExportGeneratedCvPdf
             | Message::CvPdfExported(..)
+            | Message::SaveLetter
+            | Message::LoadLetter(..)
             | Message::SelectProfilePdf
             | Message::ProfilePdfSelected(..)
             | Message::ExtractProfile

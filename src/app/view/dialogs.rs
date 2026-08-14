@@ -34,7 +34,7 @@ pub fn layer(app: &App, dialog: Dialog) -> Element<'_, Message> {
             crate::modules::contacts::components::form::form(app),
             (!app.contact_form.prenom.trim().is_empty() && !app.contact_form.nom.trim().is_empty())
                 .then_some(Message::SubmitContact),
-            Size::Form,
+            Size::Wide,
         ),
         Dialog::Candidature => form(
             app,
@@ -62,7 +62,7 @@ pub fn layer(app: &App, dialog: Dialog) -> Element<'_, Message> {
             (app.relance_form.candidature_id.is_some()
                 && !app.relance_form.date_relance.trim().is_empty())
             .then_some(Message::SubmitRelance),
-            Size::Form,
+            Size::Wide,
         ),
         Dialog::Profil(section) => form(
             app,
@@ -113,6 +113,13 @@ pub fn layer(app: &App, dialog: Dialog) -> Element<'_, Message> {
             app,
             "Supprimer cette version de CV",
             "La version enregistrée sera supprimée. Vos candidatures ne sont pas affectées.",
+            "Supprimer définitivement",
+            Message::ConfirmDelete,
+        ),
+        Dialog::DeleteLetter(_) => confirm(
+            app,
+            "Supprimer cette lettre",
+            "La lettre enregistrée sera supprimée. Votre profil et vos candidatures ne sont pas affectés.",
             "Supprimer définitivement",
             Message::ConfirmDelete,
         ),

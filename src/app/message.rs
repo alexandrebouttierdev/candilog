@@ -72,6 +72,8 @@ pub enum Message {
     Reload,
     /// Modifie la recherche globale de la page courante.
     SearchChanged(String),
+    /// Efface la recherche globale de la page courante.
+    ResetSearch,
     /// Navigation paginée des listes métier.
     CandidatePagePrev,
     CandidatePageNext,
@@ -263,6 +265,10 @@ pub enum Message {
     LetterLengthChanged(String),
     /// Lance la génération progressive de lettre.
     GenerateLetter,
+    /// Modifie la consigne de réécriture de la lettre.
+    LetterIterationChanged(String),
+    /// Réécrit la lettre courante en appliquant la consigne.
+    IterateLetter,
     /// Fragment ou résultat terminal du streaming.
     LetterStream(LetterStreamEvent, u64),
     /// Modifie le fournisseur IA.
@@ -368,8 +374,12 @@ pub enum Message {
     CandidateFilterDateFrom(String),
     /// Définit la borne de date maximale.
     CandidateFilterDateTo(String),
-    /// Réinitialise les filtres sans vider la recherche globale.
+    /// Réinitialise les filtres et la recherche du suivi.
     ResetCandidateFilters,
+    /// Filtre le répertoire des entreprises par type.
+    CompanyTypeFilterChanged(Option<String>),
+    /// Réinitialise recherche et type du répertoire des entreprises.
+    ResetCompanyDirectory,
     /// Confirme la suppression affichée.
     ConfirmDelete,
     /// Ouvre l'édition d'une entreprise.
@@ -388,6 +398,8 @@ pub enum Message {
     SaveGeneratedCv,
     /// Charge une version de CV.
     LoadCvVersion(uuid::Uuid),
+    /// Charge une version dans l'aperçu sans quitter la bibliothèque.
+    PreviewCvVersion(uuid::Uuid),
     /// Exporte le CV généré en PDF.
     ExportGeneratedCvPdf,
     /// Résultat de l'export PDF.
@@ -452,6 +464,12 @@ pub enum Message {
     SelectContact(Option<uuid::Uuid>),
     /// Sélectionne une version de CV dans la bibliothèque.
     SelectCvVersion(Option<uuid::Uuid>),
+    /// Sélectionne une lettre dans la bibliothèque.
+    SelectLetter(Option<uuid::Uuid>),
+    /// Enregistre la lettre générée dans la bibliothèque.
+    SaveLetter,
+    /// Charge une lettre enregistrée dans l'atelier.
+    LoadLetter(uuid::Uuid),
     /// Déplie ou replie la feuille de filtres.
     ToggleFilters,
     /// Trie la vue Liste sur la colonne d'index donné.

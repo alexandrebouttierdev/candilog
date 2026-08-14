@@ -58,7 +58,15 @@ pub fn primary(theme: &Theme, status: button::Status) -> button::Style {
             palette.on_accent
         },
         border: no_border(radius::CONTROL),
-        shadow: Shadow::default(),
+        shadow: if palette.is_dark || matches!(status, button::Status::Disabled) {
+            Shadow::default()
+        } else {
+            Shadow {
+                color: alpha(palette.accent, 0.20),
+                offset: Vector::new(0.0, 3.0),
+                blur_radius: 9.0,
+            }
+        },
     }
 }
 
@@ -268,6 +276,38 @@ pub fn card(theme: &Theme, status: button::Status) -> button::Style {
     }
 }
 
+/// Carte du répertoire de contacts : une seule surface, légèrement élevée en clair.
+pub fn contact_card(theme: &Theme, status: button::Status) -> button::Style {
+    let palette = tokens(theme);
+    let engaged = matches!(status, button::Status::Hovered | button::Status::Pressed);
+    button::Style {
+        background: Some(Background::Color(if engaged {
+            palette.raised
+        } else {
+            palette.panel
+        })),
+        text_color: palette.text,
+        border: Border {
+            color: if engaged {
+                alpha(palette.accent, 0.42)
+            } else {
+                palette.border
+            },
+            width: stroke::HAIRLINE,
+            radius: radius::CARD.into(),
+        },
+        shadow: if palette.is_dark {
+            Shadow::default()
+        } else {
+            Shadow {
+                color: alpha(palette.shadow, if engaged { 0.32 } else { 0.20 }),
+                offset: Vector::new(0.0, if engaged { 5.0 } else { 3.0 }),
+                blur_radius: if engaged { 18.0 } else { 12.0 },
+            }
+        },
+    }
+}
+
 /// Carte Kanban sélectionnée : filet d'accent, sans fond saturé.
 pub fn card_selected(theme: &Theme, status: button::Status) -> button::Style {
     let palette = tokens(theme);
@@ -328,6 +368,25 @@ pub fn canvas(theme: &Theme) -> container::Style {
     }
 }
 
+/// Feuille de document lisible dans un plan de travail, indépendante du thème applicatif.
+pub fn document_paper(theme: &Theme) -> container::Style {
+    let palette = tokens(theme);
+    container::Style {
+        background: Some(Background::Color(palette.paper)),
+        text_color: Some(palette.paper_ink),
+        border: Border {
+            color: palette.paper_rule,
+            width: stroke::HAIRLINE,
+            radius: radius::DOCUMENT.into(),
+        },
+        shadow: Shadow {
+            color: palette.shadow,
+            offset: Vector::new(0.0, 10.0),
+            blur_radius: 28.0,
+        },
+    }
+}
+
 /// Ancien nom conservé pour compatibilité : panneau principal désormais opaque.
 pub fn glass_panel(theme: &Theme) -> container::Style {
     let palette = tokens(theme);
@@ -354,7 +413,15 @@ pub fn glass_card(theme: &Theme) -> container::Style {
             width: stroke::HAIRLINE,
             radius: radius::CARD.into(),
         },
-        ..container::Style::default()
+        shadow: if palette.is_dark {
+            Shadow::default()
+        } else {
+            Shadow {
+                color: alpha(palette.shadow, 0.30),
+                offset: Vector::new(0.0, 3.0),
+                blur_radius: 14.0,
+            }
+        },
     }
 }
 
@@ -410,6 +477,7 @@ pub fn panel_flat(theme: &Theme) -> container::Style {
             radius: radius::NONE.into(),
             ..panel(theme).border
         },
+        shadow: Shadow::default(),
         ..panel(theme)
     }
 }
@@ -452,6 +520,36 @@ pub fn sunken_flat(theme: &Theme) -> container::Style {
             ..sunken(theme).border
         },
         ..sunken(theme)
+    }
+}
+
+/// Groupe de formulaire : fond très léger et filet d'accent discret.
+///
+/// Il structure une modale dense sans empiler des cartes décoratives. En clair, la surface
+/// blanche se détache du fond porcelaine ; en sombre, elle reste un simple creux graphite.
+pub fn form_group(theme: &Theme) -> container::Style {
+    let palette = tokens(theme);
+    container::Style {
+        background: Some(Background::Color(if palette.is_dark {
+            mix(palette.panel, palette.canvas, 0.72)
+        } else {
+            palette.raised
+        })),
+        text_color: Some(palette.text),
+        border: Border {
+            color: alpha(palette.accent, if palette.is_dark { 0.18 } else { 0.16 }),
+            width: stroke::HAIRLINE,
+            radius: radius::PANEL.into(),
+        },
+        shadow: if palette.is_dark {
+            Shadow::default()
+        } else {
+            Shadow {
+                color: alpha(palette.shadow, 0.34),
+                offset: Vector::new(0.0, 3.0),
+                blur_radius: 12.0,
+            }
+        },
     }
 }
 

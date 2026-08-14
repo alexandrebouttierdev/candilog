@@ -91,6 +91,7 @@ impl App {
             sequence: self.data_request_sequence,
             route: self.route,
             search: self.search.clone(),
+            company_type_filter: self.company_type_filter.clone(),
             candidate_filters: self.candidate_filters.clone(),
             candidate_sort: self.candidate_sort,
             candidate_sort_descending: self.candidate_sort_descending,
