@@ -2,7 +2,7 @@ name: Déclencher la release sur candilog-releases
 
 on:
   push:
-    branches: [dev, master]
+    branches: [master]
   workflow_dispatch:
 
 permissions:

@@ -45,4 +45,4 @@ L'architecture, le modèle de données et le processus de publication sont décr
 [`docs/`](docs/). Les mises à jour et les releases sont documentées dans
 [`docs/RELEASES.md`](docs/RELEASES.md) : les binaires sont publiés sur le dépôt dédié
 `alexandrebouttierdev/candilog-releases`, dont le workflow de build est déclenché à chaque
-push sur ce dépôt source.
+push sur `master` de ce dépôt source.

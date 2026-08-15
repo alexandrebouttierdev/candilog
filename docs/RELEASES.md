@@ -8,7 +8,7 @@ le code et sa CI ; le dépôt des releases héberge le workflow de build et les 
 ## Déclenchement : un push sur le dépôt source
 
 Le workflow [`.github/workflows/release-dispatch.yml`](../.github/workflows/release-dispatch.yml)
-du dépôt source s'exécute à chaque push sur `dev` ou `master`. Il lit la version de
+du dépôt source s'exécute à chaque push sur `master` (jamais sur `dev`). Il lit la version de
 `Cargo.toml`, vérifie que la release `v<version>` n'existe pas encore sur `candilog-releases`
 et, le cas échéant, envoie un événement `repository_dispatch` (type `release-build`) à ce
 dépôt. Le workflow de build n'est donc **pas** hébergé ici : il tourne dans
@@ -60,7 +60,8 @@ de code Windows (SmartScreen) et macOS (Gatekeeper) reste traitée séparément,
 ## Procédure de release
 
 1. Monter `version` dans `Cargo.toml` (et `Cargo.lock` via `cargo build`).
-2. Pousser sur `dev` (ou `master`) : le workflow distant se déclenche automatiquement.
+2. Pousser sur `master` : le workflow distant se déclenche automatiquement. Un push sur `dev`
+   ne déclenche aucune release.
    Alternative : lancer manuellement `Build & Release` depuis l'onglet Actions de
    `candilog-releases`.
 3. Vérifier la release créée sur `candilog-releases` : tag `v<version>`, assets `-latest` et
