@@ -255,7 +255,7 @@ impl App {
         }
         if std::env::var_os("CANDILOG_CAPTURE_PROFILE_IMPORT").is_some() {
             self.extracted_profile = Some(profile_import_capture_fixture());
-            self.profile_import_path = Some(std::path::PathBuf::from("CV_Alexandre_Bouttier.pdf"));
+            self.profile_import_path = Some(std::path::PathBuf::from("CV_Camille_Moreau_Demo.pdf"));
             self.dialog = Some(Dialog::ProfileImport);
         }
         if std::env::var("CANDILOG_CAPTURE_DATE_PICKER").as_deref() == Ok("candidature") {
@@ -296,9 +296,9 @@ impl App {
             }
         }
         if std::env::var_os("CANDILOG_CAPTURE_LETTER_OUTPUT").is_some() {
-            self.letter_company = "Candilog".into();
-            self.letter_job_title = "Développeur Rust desktop".into();
-            self.letter_output = "Madame, Monsieur,\n\nVotre offre de Développeur Rust desktop a retenu toute mon attention. Mon expérience des applications natives, de SQLite et des interfaces exigeantes me permettrait de contribuer rapidement à vos produits.\n\nJe serais heureux d'échanger avec vous afin de détailler ma motivation et la manière dont je pourrais rejoindre votre équipe.\n\nCordialement,".into();
+            self.letter_company = "Boussole Labs".into();
+            self.letter_job_title = "Product owner".into();
+            self.letter_output = "Madame, Monsieur,\n\nVotre offre de Product owner a retenu toute mon attention. Mon expérience en coordination de projets numériques, en animation d'équipes et en amélioration continue me permettrait de contribuer rapidement à vos produits.\n\nJe serais heureuse d'échanger avec vous afin de détailler ma motivation et la manière dont je pourrais rejoindre votre équipe.\n\nCordialement,\nCamille Moreau".into();
             self.letter_chat_history
                 .push(crate::modules::ia::cv_model::ChatMsg {
                     role: "user".into(),
@@ -338,41 +338,41 @@ fn profile_import_capture_fixture() -> crate::shared::profile::Profile {
 
     crate::shared::profile::Profile {
         personal: PersonalInfo {
-            first_name: "Alexandre".into(),
-            last_name: "Bouttier".into(),
-            email: "alexandre@example.fr".into(),
-            phone: Some("06 12 34 56 78".into()),
-            city: Some("Rennes".into()),
-            headline: Some("Administrateur systèmes et réseaux".into()),
-            summary: Some("Technicien passionné par l'administration Linux, la virtualisation et la sécurisation des infrastructures.".into()),
-            linkedin: Some("linkedin.com/in/alexandrebouttier".into()),
-            github: Some("github.com/alexandrebouttierdev".into()),
-            website: Some("alexandrebouttier.fr".into()),
+            first_name: "Camille".into(),
+            last_name: "Moreau".into(),
+            email: "camille.moreau@example.test".into(),
+            phone: Some("06 00 00 00 00".into()),
+            city: Some("Nantes".into()),
+            headline: Some("Cheffe de projet digital".into()),
+            summary: Some("Cheffe de projet spécialisée dans la coordination de produits numériques et la collaboration entre équipes métier et design.".into()),
+            linkedin: Some("linkedin.com/in/camille-moreau-demo".into()),
+            github: None,
+            website: Some("camille-portfolio.example".into()),
         },
         experiences: vec![
             Experience {
-                title: "Technicien systèmes et réseaux".into(),
-                company: "Entreprise Démo".into(),
-                start_date: "2025-01".into(),
+                title: "Cheffe de projet digital".into(),
+                company: "Studio Nébula".into(),
+                start_date: "2023-09".into(),
                 current: true,
                 ..Experience::default()
             },
             Experience {
-                title: "Support informatique".into(),
-                company: "Atelier numérique".into(),
-                start_date: "2024-03".into(),
+                title: "Chargée de communication".into(),
+                company: "Maison Sépia".into(),
+                start_date: "2021-03".into(),
                 ..Experience::default()
             },
         ],
         skills: vec![
-            Skill { name: "Linux".into() },
-            Skill { name: "Docker".into() },
-            Skill { name: "Réseaux TCP/IP".into() },
-            Skill { name: "Active Directory".into() },
+            Skill { name: "Gestion de projet".into() },
+            Skill { name: "Méthodes agiles".into() },
+            Skill { name: "Recherche utilisateur".into() },
+            Skill { name: "Analyse de données".into() },
         ],
         education: vec![Education {
-            degree: "Titre professionnel TSSR".into(),
-            school: "Centre de formation".into(),
+            degree: "Master stratégie digitale".into(),
+            school: "Institut Mercure".into(),
             ..Education::default()
         }],
         languages: vec![
