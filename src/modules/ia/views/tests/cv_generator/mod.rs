@@ -8,6 +8,7 @@ fn entreprise(nom: &str) -> Entreprise {
     Entreprise {
         id: uuid::Uuid::nil(),
         nom: nom.to_owned(),
+        secteur_id: None,
         secteur: None,
         type_: None,
         site_web: None,

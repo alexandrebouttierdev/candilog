@@ -58,16 +58,23 @@ pub(super) fn handles(message: &Message) -> bool {
 pub(super) fn update(app: &mut App, message: Message) -> Task<Message> {
     match message {
         Message::EntrepriseNomChanged(value) => app.entreprise_form.nom = value,
-        Message::EntrepriseSecteurChanged(value) => app.entreprise_form.secteur = value,
+        Message::EntrepriseSecteurChanged(value) => app.entreprise_form.secteur_id = value,
         Message::EntrepriseTypeChanged(value) => app.entreprise_form.type_ = value,
         Message::EntrepriseSiteChanged(value) => app.entreprise_form.site_web = value,
         Message::EntrepriseVilleChanged(value) => app.entreprise_form.ville = value,
         Message::EntrepriseAdresseChanged(value) => app.entreprise_form.adresse = value,
         Message::EntrepriseNotesChanged(action) => app.entreprise_form.notes.perform(action),
         Message::SubmitEntreprise => {
+            let secteur = app
+                .data
+                .secteurs
+                .iter()
+                .find(|item| app.entreprise_form.secteur_id == Some(item.id))
+                .map(|item| item.nom.clone());
             let input = NouvelleEntreprise {
                 nom: app.entreprise_form.nom.clone(),
-                secteur: optional(&app.entreprise_form.secteur),
+                secteur_id: app.entreprise_form.secteur_id,
+                secteur,
                 type_: optional(&app.entreprise_form.type_),
                 site_web: optional(&app.entreprise_form.site_web),
                 ville: optional(&app.entreprise_form.ville),

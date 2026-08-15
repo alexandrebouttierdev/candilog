@@ -8,7 +8,7 @@ use crate::modules::settings::model::AppSettings;
 #[derive(Debug, Default)]
 pub struct EntrepriseForm {
     pub nom: String,
-    pub secteur: String,
+    pub secteur_id: Option<uuid::Uuid>,
     pub type_: String,
     pub site_web: String,
     pub ville: String,

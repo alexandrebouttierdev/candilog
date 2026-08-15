@@ -7,6 +7,7 @@ fn ent(nom: &str) -> Entreprise {
     Entreprise {
         id: uuid::Uuid::nil(),
         nom: nom.into(),
+        secteur_id: None,
         secteur: None,
         type_: None,
         site_web: None,
@@ -21,6 +22,7 @@ fn ent(nom: &str) -> Entreprise {
 fn nouvelle(nom: &str) -> NouvelleEntreprise {
     NouvelleEntreprise {
         nom: nom.into(),
+        secteur_id: None,
         secteur: None,
         type_: None,
         site_web: None,

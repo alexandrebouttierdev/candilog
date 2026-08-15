@@ -9,6 +9,8 @@ pub struct Entreprise {
     pub id: uuid::Uuid,
     /// Nom de l'entreprise.
     pub nom: String,
+    /// Identifiant du secteur d'activité lié (référentiel `secteurs_activite`).
+    pub secteur_id: Option<uuid::Uuid>,
     /// Secteur d'activité, s'il est renseigné.
     pub secteur: Option<String>,
     /// Type d'entreprise (colonne `type`), s'il est renseigné.
@@ -33,7 +35,9 @@ pub struct Entreprise {
 pub struct NouvelleEntreprise {
     /// Nom de l'entreprise (requis).
     pub nom: String,
-    /// Secteur d'activité.
+    /// Secteur d'activité choisi dans le référentiel `secteurs_activite`.
+    pub secteur_id: Option<uuid::Uuid>,
+    /// Libellé du secteur (dénormalisé depuis le référentiel pour l'affichage et la recherche).
     pub secteur: Option<String>,
     /// Type d'entreprise (colonne `type`).
     #[serde(rename = "type")]

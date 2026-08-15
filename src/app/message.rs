@@ -126,8 +126,8 @@ pub enum Message {
     DismissTopLayer,
     /// Modifie le nom d'entreprise.
     EntrepriseNomChanged(String),
-    /// Modifie le secteur d'entreprise.
-    EntrepriseSecteurChanged(String),
+    /// Modifie le secteur d'activité de l'entreprise (choix dans le référentiel).
+    EntrepriseSecteurChanged(Option<uuid::Uuid>),
     /// Modifie le type d'entreprise.
     EntrepriseTypeChanged(String),
     /// Modifie le site d'entreprise.

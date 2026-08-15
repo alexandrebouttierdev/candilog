@@ -221,6 +221,11 @@ pub fn charger_instantane(
             &mut echecs,
             backend.entreprises.lister_types(),
         ),
+        secteurs: charger(
+            "secteurs d'activité",
+            &mut echecs,
+            backend.secteurs.lister(),
+        ),
         contacts: contact_page.items,
         contacts_total: contact_page.total,
         contacts_total_pages: contact_page.total_pages,

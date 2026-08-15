@@ -25,6 +25,7 @@ fn entreprise(id: Uuid) -> Entreprise {
     Entreprise {
         id,
         nom: "Agrial".into(),
+        secteur_id: None,
         secteur: None,
         type_: None,
         site_web: None,

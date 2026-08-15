@@ -11,6 +11,7 @@ fn repo() -> SqliteEntrepriseRepository {
 fn entree(nom: &str) -> NouvelleEntreprise {
     NouvelleEntreprise {
         nom: nom.into(),
+        secteur_id: None,
         secteur: Some("Tech".into()),
         type_: Some("ESN".into()),
         site_web: None,
@@ -20,6 +21,7 @@ fn entree(nom: &str) -> NouvelleEntreprise {
     }
 }
 
+mod test_create_puis_list_restitue_le_secteur_lie;
 mod test_create_puis_list_restitue_les_champs;
 mod test_delete_entreprise_avec_candidature_retourne_validation;
 mod test_delete_supprime_l_entreprise;

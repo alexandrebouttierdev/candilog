@@ -5,7 +5,7 @@ use crate::modules::metriques::model::Page;
 use crate::shared::db::SqlitePool;
 use crate::shared::error::{AppError, AppResult};
 use crate::shared::sqlite::{
-    connexion, maintenant_iso, traduire_contrainte, traduire_erreur, uuid_colonne,
+    connexion, maintenant_iso, traduire_contrainte, traduire_erreur, uuid_colonne, uuid_colonne_opt,
 };
 
 /// Contrat d'accès aux entreprises.
@@ -114,22 +114,23 @@ impl SqliteEntrepriseRepository {
 }
 
 /// Colonnes lues par [`ligne_vers_entreprise`], dans l'ordre.
-const COLONNES: &str =
-    "id, nom, secteur, type, site_web, ville, adresse, notes, created_at, updated_at";
+const COLONNES: &str = "id, nom, secteur_id, secteur, type, site_web, ville, adresse, notes, \
+                        created_at, updated_at";
 
 /// Convertit une ligne `SQLite` en entreprise du domaine.
 fn ligne_vers_entreprise(row: &rusqlite::Row) -> rusqlite::Result<Entreprise> {
     Ok(Entreprise {
         id: uuid_colonne(row, 0)?,
         nom: row.get(1)?,
-        secteur: row.get(2)?,
-        type_: row.get(3)?,
-        site_web: row.get(4)?,
-        ville: row.get(5)?,
-        adresse: row.get(6)?,
-        notes: row.get(7)?,
-        created_at: row.get(8)?,
-        updated_at: row.get(9)?,
+        secteur_id: uuid_colonne_opt(row, 2)?,
+        secteur: row.get(3)?,
+        type_: row.get(4)?,
+        site_web: row.get(5)?,
+        ville: row.get(6)?,
+        adresse: row.get(7)?,
+        notes: row.get(8)?,
+        created_at: row.get(9)?,
+        updated_at: row.get(10)?,
     })
 }
 
@@ -222,11 +223,19 @@ impl EntrepriseRepository for SqliteEntrepriseRepository {
         let id = uuid::Uuid::new_v4();
         let maintenant = maintenant_iso();
         conn.execute(
-            "INSERT INTO entreprises (id, nom, secteur, type, site_web, ville, adresse, notes, created_at, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?9)",
+            "INSERT INTO entreprises (id, nom, secteur_id, secteur, type, site_web, ville, adresse, notes, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?10)",
             rusqlite::params![
-                id.to_string(), input.nom, input.secteur, input.type_, input.site_web,
-                input.ville, input.adresse, input.notes, maintenant
+                id.to_string(),
+                input.nom,
+                input.secteur_id.map(|value| value.to_string()),
+                input.secteur,
+                input.type_,
+                input.site_web,
+                input.ville,
+                input.adresse,
+                input.notes,
+                maintenant
             ],
         )
         .map_err(|e| traduire_erreur(e, "entreprise invalide"))?;
@@ -242,12 +251,13 @@ impl EntrepriseRepository for SqliteEntrepriseRepository {
         let conn = connexion(&self.pool)?;
         let modifiees = conn
             .execute(
-                "UPDATE entreprises SET nom = ?2, secteur = ?3, type = ?4, site_web = ?5,
-                    ville = ?6, adresse = ?7, notes = ?8, updated_at = ?9
+                "UPDATE entreprises SET nom = ?2, secteur_id = ?3, secteur = ?4, type = ?5,
+                    site_web = ?6, ville = ?7, adresse = ?8, notes = ?9, updated_at = ?10
                  WHERE id = ?1",
                 rusqlite::params![
                     id.to_string(),
                     input.nom,
+                    input.secteur_id.map(|value| value.to_string()),
                     input.secteur,
                     input.type_,
                     input.site_web,

@@ -10,6 +10,11 @@ use iced::Element;
 
 /// Formulaire de création/édition d'une entreprise.
 pub fn form(app: &App) -> Element<'_, Message> {
+    let sectors = app.data.secteurs.clone();
+    let selected_sector = app
+        .entreprise_form
+        .secteur_id
+        .and_then(|id| sectors.iter().find(|item| item.id == id).cloned());
     let mut company_types = vec![
         "PME".to_owned(),
         "GROUPE".to_owned(),
@@ -36,10 +41,12 @@ pub fn form(app: &App) -> Element<'_, Message> {
             Message::EntrepriseNomChanged
         ),
         field::form_row([
-            field::text_field(
-                "Secteur",
-                &app.entreprise_form.secteur,
-                Message::EntrepriseSecteurChanged,
+            field::labeled(
+                "Secteur d'activité",
+                field::select(sectors, selected_sector, |secteur| {
+                    Message::EntrepriseSecteurChanged(Some(secteur.id))
+                })
+                .width(iced::Length::Fill),
             ),
             field::labeled(
                 "Type",

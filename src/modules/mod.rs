@@ -10,4 +10,5 @@ pub mod lettres;
 pub mod metriques;
 pub mod profil;
 pub mod relances;
+pub mod secteurs;
 pub mod settings;

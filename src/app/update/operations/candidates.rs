@@ -89,7 +89,7 @@ pub(super) fn update(app: &mut App, message: Message) -> Task<Message> {
             if let Some(item) = app.data.entreprises.iter().find(|item| item.id == id) {
                 app.entreprise_form = EntrepriseForm {
                     nom: item.nom.clone(),
-                    secteur: item.secteur.clone().unwrap_or_default(),
+                    secteur_id: item.secteur_id,
                     type_: item.type_.clone().unwrap_or_default(),
                     site_web: item.site_web.clone().unwrap_or_default(),
                     ville: item.ville.clone().unwrap_or_default(),

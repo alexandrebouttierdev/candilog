@@ -9,6 +9,7 @@ use crate::modules::lettres::model::LettreMotivation;
 use crate::modules::metriques::components::PipelineCounts;
 use crate::modules::metriques::model::{AppelLlm, Page, ResumeScoresAts, ScoreAts};
 use crate::modules::relances::model::Relance;
+use crate::modules::secteurs::model::SecteurActivite;
 use crate::modules::settings::model::AppSettings;
 use crate::shared::profile::Profile;
 
@@ -31,6 +32,8 @@ pub struct DataSnapshot {
     pub entreprises_total_pages: u64,
     /// Types d'entreprise réellement présents, triés et dédupliqués.
     pub company_types: Vec<String>,
+    /// Référentiel des secteurs d'activité, dans l'ordre d'affichage.
+    pub secteurs: Vec<SecteurActivite>,
     /// Contacts.
     pub contacts: Vec<Contact>,
     pub contacts_total: u64,

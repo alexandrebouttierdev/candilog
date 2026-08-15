@@ -19,6 +19,8 @@ use crate::modules::profil::repository::SqliteProfilRepository;
 use crate::modules::profil::service::ProfilService;
 use crate::modules::relances::repository::SqliteRelanceRepository;
 use crate::modules::relances::service::RelanceService;
+use crate::modules::secteurs::repository::SqliteSecteurRepository;
+use crate::modules::secteurs::service::SecteurService;
 pub use crate::modules::settings::model::AppSettings;
 use crate::modules::settings::repository::SqliteSettingsRepository;
 use crate::modules::settings::service::SettingsService;
@@ -44,6 +46,8 @@ pub struct AppState {
     pub candidatures: CandidatureService<SqliteCandidatureRepository>,
     /// Service des entreprises.
     pub entreprises: EntrepriseService<SqliteEntrepriseRepository>,
+    /// Service du référentiel des secteurs d'activité.
+    pub secteurs: SecteurService<SqliteSecteurRepository>,
     /// Service des contacts (réseau).
     pub contacts: ContactService<SqliteContactRepository>,
     /// Service des relances.
@@ -89,6 +93,8 @@ impl AppState {
     fn with_database(database_path: Option<&std::path::Path>, db_path: PathBuf) -> AppResult<Self> {
         let sqlite = open_pool(database_path)?;
         run_local_migrations(&sqlite)?;
+        let secteurs_depot = SqliteSecteurRepository::new(sqlite.clone());
+        secteurs_depot.garantir_referentiel()?;
         let settings = SettingsService::new(SqliteSettingsRepository::new(sqlite.clone()));
         let profil = ProfilService::new(SqliteProfilRepository::new(sqlite.clone()));
         let cv = CvVersionService::new(SqliteCvVersionRepository::new(sqlite.clone()));
@@ -99,6 +105,7 @@ impl AppState {
         let contacts = ContactService::new(SqliteContactRepository::new(sqlite.clone()));
         let relances = RelanceService::new(SqliteRelanceRepository::new(sqlite.clone()));
         let entretiens = EntretienService::new(SqliteEntretienRepository::new(sqlite.clone()));
+        let secteurs = SecteurService::new(secteurs_depot);
         let metriques = SqliteMetriquesRepository::new(sqlite.clone());
         let cache_ia = SqliteCacheIaRepository::new(sqlite.clone());
         Ok(Self {
@@ -108,6 +115,7 @@ impl AppState {
             lettres,
             candidatures,
             entreprises,
+            secteurs,
             contacts,
             relances,
             entretiens,

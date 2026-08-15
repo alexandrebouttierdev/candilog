@@ -6,6 +6,7 @@ fn entreprise(ville: Option<&str>, secteur: Option<&str>) -> Entreprise {
     Entreprise {
         id: uuid::Uuid::new_v4(),
         nom: "Agrial".into(),
+        secteur_id: None,
         secteur: secteur.map(str::to_owned),
         type_: None,
         site_web: None,
