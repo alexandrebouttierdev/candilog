@@ -18,7 +18,7 @@ fn main() -> iced::Result {
         Size::new(1440.0, 900.0)
     };
 
-    let mut window = window::Settings {
+    let window = window::Settings {
         size: window_size,
         min_size: Some(Size::new(800.0, 600.0)),
         // Icône de fenêtre embarquée pour X11/Windows et les sélecteurs qui la lisent.
@@ -26,11 +26,13 @@ fn main() -> iced::Result {
         ..window::Settings::default()
     };
     #[cfg(target_os = "linux")]
-    {
+    let window = {
+        let mut window = window;
         // Sous Wayland, le shell retrouve l'icône via l'identifiant du fichier
         // `candilog.desktop` plutôt que via l'icône attachée à la fenêtre.
         window.platform_specific.application_id = "candilog".to_owned();
-    }
+        window
+    };
 
     iced::application("Candilog", app::update, app::view)
         .font(include_bytes!("../assets/fonts/Geist[wght].ttf").as_slice())
