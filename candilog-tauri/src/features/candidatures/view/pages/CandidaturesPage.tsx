@@ -4,7 +4,7 @@ import { useCandidaturesViewModel } from "../../viewmodel/useCandidaturesViewMod
 import type { Candidature } from "../../services/candidature.service";
 import { candidatureService } from "../../services/candidature.service";
 import { contratLabel, statutMeta } from "../../model/statuts";
-import { versDateAffichee } from "../../model/schemas/candidature-form.schema";
+import { versDateAffichee } from "@/shared/lib/dates";
 import { CandidatureFormModal } from "../components/CandidatureFormModal";
 import { CandidatureFilters } from "../components/CandidatureFilters";
 import { CandidatureDetail } from "../components/CandidatureDetail";

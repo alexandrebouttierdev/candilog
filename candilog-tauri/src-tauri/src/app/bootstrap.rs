@@ -4,6 +4,8 @@ use crate::app::state::AppState;
 use crate::features::candidatures::presentation::commands as candidatures;
 use crate::features::contacts::presentation::commands as contacts;
 use crate::features::entreprises::presentation::commands as entreprises;
+use crate::features::entretiens::presentation::commands as entretiens;
+use crate::features::relances::presentation::commands as relances;
 use crate::features::secteurs::presentation::commands as secteurs;
 
 /// Démarre Candilog : journal, état applicatif, plugins, commandes.
@@ -52,6 +54,14 @@ pub fn run() {
             contacts::contacts_creer,
             contacts::contacts_modifier,
             contacts::contacts_supprimer,
+            entretiens::entretiens_lister_entre,
+            entretiens::entretiens_obtenir,
+            entretiens::entretiens_enregistrer,
+            entretiens::entretiens_supprimer,
+            relances::relances_lister_entre,
+            relances::relances_creer,
+            relances::relances_modifier,
+            relances::relances_supprimer,
             secteurs::secteurs_lister,
         ])
         .run(tauri::generate_context!())

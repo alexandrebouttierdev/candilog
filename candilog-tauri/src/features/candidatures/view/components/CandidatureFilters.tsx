@@ -8,7 +8,7 @@ import {
   type CandidatureFilterValues,
 } from "../../model/schemas/candidature-filter.schema";
 import { CONTRATS, STATUTS, contratLabel } from "../../model/statuts";
-import { versDateAffichee } from "../../model/schemas/candidature-form.schema";
+import { versDateAffichee } from "@/shared/lib/dates";
 import { Button, FormField, ModalHost, Select, TextInput } from "@/shared/ui";
 
 /** Reconstitue les valeurs saisies depuis les filtres appliqués. */

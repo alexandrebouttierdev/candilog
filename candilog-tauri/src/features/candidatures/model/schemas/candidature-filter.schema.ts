@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { FORMAT_DATE_AFFICHE, versDateIso } from "./candidature-form.schema";
+import { FORMAT_DATE, versDateIso } from "@/shared/lib/dates";
 
 /**
  * Borne de période facultative : vide vaut « pas de borne », sinon la date doit exister.
@@ -17,7 +17,7 @@ function borneFacultative() {
       if (valeur !== "" && versDateIso(valeur) === null) {
         ctx.addIssue({
           code: "custom",
-          message: `Date invalide — format attendu ${FORMAT_DATE_AFFICHE}.`,
+          message: `Date invalide — format attendu ${FORMAT_DATE}.`,
         });
       }
     })

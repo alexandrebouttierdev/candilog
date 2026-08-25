@@ -1,6 +1,6 @@
 import type { Candidature } from "../../services/candidature.service";
 import { STATUTS, contratLabel, statutMeta } from "../../model/statuts";
-import { versDateAffichee } from "../../model/schemas/candidature-form.schema";
+import { versDateAffichee } from "@/shared/lib/dates";
 import { Button, DetailDrawer, Select, StatusPill } from "@/shared/ui";
 import type { StatutCandidature } from "../../services/candidature.service";
 

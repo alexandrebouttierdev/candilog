@@ -3,10 +3,10 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   candidatureFormSchema,
-  versDateAffichee,
   type CandidatureFormInput,
   type CandidatureFormValues,
 } from "../../model/schemas/candidature-form.schema";
+import { versDateAffichee } from "@/shared/lib/dates";
 import { CONTRATS, STATUTS, contratLabel } from "../../model/statuts";
 import type { Candidature, NouvelleCandidature } from "../../services/candidature.service";
 import { useQuery } from "@tanstack/react-query";

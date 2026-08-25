@@ -9,6 +9,10 @@ use crate::features::contacts::application::ContactService;
 use crate::features::contacts::infrastructure::SqliteContactRepository;
 use crate::features::entreprises::application::EntrepriseService;
 use crate::features::entreprises::infrastructure::SqliteEntrepriseRepository;
+use crate::features::entretiens::application::EntretienService;
+use crate::features::entretiens::infrastructure::SqliteEntretienRepository;
+use crate::features::relances::application::RelanceService;
+use crate::features::relances::infrastructure::SqliteRelanceRepository;
 use crate::features::secteurs::application::SecteurService;
 use crate::features::secteurs::infrastructure::SqliteSecteurRepository;
 use std::path::PathBuf;
@@ -20,6 +24,10 @@ pub type Candidatures = Arc<CandidatureService<SqliteCandidatureRepository>>;
 pub type Entreprises = Arc<EntrepriseService<SqliteEntrepriseRepository>>;
 /// Service des contacts tel que partagé par les commandes.
 pub type Contacts = Arc<ContactService<SqliteContactRepository>>;
+/// Service des entretiens tel que partagé par les commandes.
+pub type Entretiens = Arc<EntretienService<SqliteEntretienRepository>>;
+/// Service des relances tel que partagé par les commandes.
+pub type Relances = Arc<RelanceService<SqliteRelanceRepository>>;
 /// Service du référentiel des secteurs tel que partagé par les commandes.
 pub type Secteurs = Arc<SecteurService<SqliteSecteurRepository>>;
 
@@ -41,6 +49,10 @@ pub struct AppState {
     pub entreprises: Entreprises,
     /// Service des contacts du réseau.
     pub contacts: Contacts,
+    /// Service des entretiens.
+    pub entretiens: Entretiens,
+    /// Service des relances.
+    pub relances: Relances,
     /// Service du référentiel des secteurs d'activité.
     pub secteurs: Secteurs,
     /// Pool `SQLite` local.
@@ -91,6 +103,12 @@ impl AppState {
                 pool.clone(),
             ))),
             contacts: Arc::new(ContactService::new(SqliteContactRepository::new(
+                pool.clone(),
+            ))),
+            entretiens: Arc::new(EntretienService::new(SqliteEntretienRepository::new(
+                pool.clone(),
+            ))),
+            relances: Arc::new(RelanceService::new(SqliteRelanceRepository::new(
                 pool.clone(),
             ))),
             secteurs: Arc::new(SecteurService::new(secteurs_repo)),

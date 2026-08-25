@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  candidatureFormSchema,
-  versDateAffichee,
-  versDateIso,
-} from "../candidature-form.schema";
+import { candidatureFormSchema } from "../candidature-form.schema";
 
 const BASE = {
   poste: "Développeur Frontend",
@@ -14,40 +10,6 @@ const BASE = {
   lienOffre: "",
   notes: "",
 };
-
-describe("conversion de date", () => {
-  it("convertit le format saisi en format base", () => {
-    expect(versDateIso("20-08-2026")).toBe("2026-08-20");
-  });
-
-  it("fait l'aller-retour sans perte", () => {
-    expect(versDateAffichee(versDateIso("29-02-2024") as string)).toBe("29-02-2024");
-  });
-
-  it("refuse une date qui n'existe pas", () => {
-    // `new Date("2026-02-31")` décale au 3 mars sans erreur : seule la comparaison de la
-    // valeur relue permet de refuser un jour inexistant.
-    expect(versDateIso("31-02-2026")).toBeNull();
-    expect(versDateIso("29-02-2026")).toBeNull();
-  });
-
-  it("accepte le 29 février d'une année bissextile", () => {
-    expect(versDateIso("29-02-2024")).toBe("2024-02-29");
-  });
-
-  it("refuse une saisie hors format", () => {
-    for (const saisie of ["2026-08-20", "20/08/2026", "20 août 2026", "20-8-2026", ""]) {
-      expect(versDateIso(saisie)).toBeNull();
-    }
-  });
-
-  it("laisse intacte une date déjà affichable qu'on ne sait pas relire", () => {
-    // Les lignes héritées portent parfois un horodatage ISO complet : mieux vaut l'afficher
-    // tel quel qu'afficher « Invalid Date ».
-    expect(versDateAffichee("2026-08-20T10:00:00Z")).toBe("20-08-2026");
-    expect(versDateAffichee("date inconnue")).toBe("date inconnue");
-  });
-});
 
 describe("schéma du formulaire candidature", () => {
   it("accepte un formulaire complet", () => {

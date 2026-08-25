@@ -1,6 +1,6 @@
 import type { Candidature } from "../../services/candidature.service";
 import { contratLabel } from "../../model/statuts";
-import { versDateAffichee } from "../../model/schemas/candidature-form.schema";
+import { versDateAffichee } from "@/shared/lib/dates";
 import { Icon } from "@/shared/ui";
 import { cn } from "@/shared/lib/cn";
 

@@ -1,5 +1,6 @@
 export { Button } from "./Button";
 export type { ButtonVariant } from "./Button";
+export { CandidaturePicker } from "./CandidaturePicker";
 export { ConfirmDialog } from "./ConfirmDialog";
 export { DataTable } from "./DataTable";
 export type { Column, SortState } from "./DataTable";

@@ -338,3 +338,81 @@ vue Liste triable et paginée, panneau de détail avec changement de statut au c
 ### Reste à faire avant T4
 
 Rien. T4 migre entretiens et relances, et l'écran Calendrier.
+
+---
+
+## T4 — Entretiens, relances et calendrier · terminée le 2026-08-25
+
+### Backend
+
+**Deux chemins morts n'ont pas été migrés.** Le dépôt d'entretiens de l'application Iced
+exposait `create` et `update` en plus de `save_and_mark_candidate` ; aucun écran ne les
+appelait. Les reprendre aurait conservé un piège : planifier un entretien sans que la
+candidature avance. Le chemin est désormais unique — `id` absent crée, `id` présent modifie,
+et l'écriture comme la mise à jour du statut tiennent dans la même transaction.
+
+Le statut précédent est **lu avant** l'écriture de l'entretien : c'est ce qui permet de
+n'historiser que les passages réels à l'étape entretien. Corriger l'heure d'un entretien ne
+rejoue donc pas l'étape. La lecture vaut aussi contrôle d'existence de la candidature — la
+clé étrangère la refuserait plus loin, mais avec un message technique.
+
+Supprimer un entretien **ne rétrograde pas** la candidature : que l'entretien soit annulé ne
+veut pas dire qu'elle n'a jamais atteint cette étape.
+
+**Asymétrie signalée.** Créer une relance ne fait pas passer la candidature en « Relancée »,
+alors que planifier un entretien la fait passer en « Entretien ». C'est le comportement de
+l'application Iced, conservé tel quel — le corriger serait un changement de comportement,
+pas une migration. Un test fige l'asymétrie pour qu'une évolution soit délibérée.
+
+Entretiens et relances n'ont pas le même format de date : l'entretien porte un horodatage
+`RFC 3339` avec décalage, la relance une date nue `AAAA-MM-JJ`. Les deux services le
+valident, parce que les requêtes de plage du calendrier comparent des chaînes — une date nue
+côté entretien se comparerait avant toutes les heures du même jour, faisant disparaître
+l'entretien de sa propre journée.
+
+### Frontend
+
+**`shared/lib/dates`** rassemble les conversions que trois features partagent. Les helpers
+dupliqués dans le schéma des candidatures ont été retirés au passage, avec leurs tests.
+`versHorodatage` compose date et heure locales avec le décalage du fuseau : sans lui, un
+entretien saisi à 14 h s'afficherait à 12 h ou 16 h selon le fuseau où la base est relue.
+
+**`shared/ui/CandidaturePicker`** est partagé par les formulaires d'entretien et de relance.
+Il vit dans `shared/ui` bien qu'il connaisse une feature : deux features distinctes en
+dépendent, et le loger dans l'une ferait dépendre l'autre de sa voisine.
+
+**Le calendrier** interroge le backend sur **les bornes de la grille**, pas du mois : la
+grille déborde sur les mois voisins, et n'interroger que le mois laisserait ces cases vides
+alors qu'elles portent de vrais événements. Les compteurs d'en-tête, eux, ne comptent que le
+mois affiché — posés à côté de « août 2026 », ils mentiraient en incluant les débordements.
+
+Entretiens et relances sont ramenés à une forme commune : la grille affiche des pastilles
+datées et n'a pas à connaître deux entités. Le genre d'origine reste porté par l'événement,
+pour rouvrir la bonne modale au clic. Dans une même journée, les relances passent en tête :
+elles se traitent quand on veut, là où un entretien a un créneau.
+
+### Vérifié
+
+```
+cargo fmt --check / clippy -D warnings   ok
+cargo test                                134 passed (+24)
+npm run build / lint                      ok
+npm test                                  120 passed (+24)
+```
+
+À l'écran, sur 5 entretiens et 5 relances réels : grille mensuelle de 42 cases, pastilles
+vertes horodatées pour les entretiens et ambre pour les relances, aujourd'hui en pastille
+accent, jours hors mois estompés, navigation entre mois, et ouverture de la modale depuis
+une case avec la date présélectionnée.
+
+### Écarts assumés
+
+- **Pas de vues Semaine ni Jour.** Les maquettes les montrent en onglets *inactifs*, et
+  l'application Iced n'avait que le mois. Afficher des boutons sans effet serait précisément
+  ce que le §52 interdit.
+- Comme en T2 et T3, le rendu dans la fenêtre native n'a pas été vérifié à l'œil.
+
+### Reste à faire avant T5
+
+Rien. T5 migre le tableau de bord et les analyses, qui consomment les agrégats déjà exposés
+par `candidatures::repartition` et l'historique de statut alimenté par T3 et T4.
