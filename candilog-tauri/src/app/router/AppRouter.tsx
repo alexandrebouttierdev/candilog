@@ -4,6 +4,7 @@ import { AppShell } from "@/app/layout/AppShell";
 import { SECTIONS } from "./routes";
 import { PlaceholderPage } from "./PlaceholderPage";
 import { DesignGallery } from "@/app/dev/DesignGallery";
+import { CandidaturesPage } from "@/features/candidatures";
 import { EntreprisesPage } from "@/features/entreprises";
 import { ReseauPage } from "@/features/contacts";
 
@@ -15,6 +16,7 @@ import { ReseauPage } from "@/features/contacts";
  * complète et rend visible ce qui reste à faire.
  */
 const PAGES: Record<string, React.ReactElement> = {
+  "/suivi/candidatures": <CandidaturesPage />,
   "/relations/entreprises": <EntreprisesPage />,
   "/relations/reseau": <ReseauPage />,
 };

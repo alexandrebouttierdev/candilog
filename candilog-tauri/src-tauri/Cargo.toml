@@ -40,6 +40,8 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-appender = "0.2"
 uuid = { version = "1", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
+# Export CSV des candidatures.
+csv = "1"
 dirs = "5"
 # Analyse d'URL des champs « site web » et « profil LinkedIn ». Crate autonome plutôt que
 # `reqwest::Url` : la validation vit dans `core` et n'a aucune raison de faire dépendre le

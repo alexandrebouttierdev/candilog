@@ -2,7 +2,9 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Permissions de la fenêtre principale. Principe appliqué : n'autoriser que ce dont l'interface a réellement besoin (MIGRATION.md §44). Aucune permission filesystem large : les lectures et écritures de fichiers passent par des commandes Rust contrôlées.",
-  "windows": ["main"],
+  "windows": [
+    "main"
+  ],
   "permissions": [
     "core:default",
     "opener:allow-open-url",

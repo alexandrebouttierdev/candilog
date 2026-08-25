@@ -3,6 +3,8 @@
 use crate::core::config::AppPaths;
 use crate::core::database::{open_pool, run_local_migrations, SqlitePool};
 use crate::core::errors::AppResult;
+use crate::features::candidatures::application::CandidatureService;
+use crate::features::candidatures::infrastructure::SqliteCandidatureRepository;
 use crate::features::contacts::application::ContactService;
 use crate::features::contacts::infrastructure::SqliteContactRepository;
 use crate::features::entreprises::application::EntrepriseService;
@@ -12,6 +14,8 @@ use crate::features::secteurs::infrastructure::SqliteSecteurRepository;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+/// Service des candidatures tel que partagé par les commandes.
+pub type Candidatures = Arc<CandidatureService<SqliteCandidatureRepository>>;
 /// Service des entreprises tel que partagé par les commandes.
 pub type Entreprises = Arc<EntrepriseService<SqliteEntrepriseRepository>>;
 /// Service des contacts tel que partagé par les commandes.
@@ -31,6 +35,8 @@ pub type Secteurs = Arc<SecteurService<SqliteSecteurRepository>>;
 ///
 /// D'autres services s'ajoutent au fil des tranches de migration.
 pub struct AppState {
+    /// Service des candidatures.
+    pub candidatures: Candidatures,
     /// Service des entreprises.
     pub entreprises: Entreprises,
     /// Service des contacts du réseau.
@@ -78,6 +84,9 @@ impl AppState {
         secteurs_repo.garantir_referentiel()?;
 
         Ok(Self {
+            candidatures: Arc::new(CandidatureService::new(SqliteCandidatureRepository::new(
+                pool.clone(),
+            ))),
             entreprises: Arc::new(EntrepriseService::new(SqliteEntrepriseRepository::new(
                 pool.clone(),
             ))),

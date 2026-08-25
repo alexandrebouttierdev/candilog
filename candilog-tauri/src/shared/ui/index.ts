@@ -5,6 +5,8 @@ export { DataTable } from "./DataTable";
 export type { Column, SortState } from "./DataTable";
 export { DetailDrawer } from "./DetailDrawer";
 export { EmptyState } from "./EmptyState";
+export { EntityPicker } from "./EntityPicker";
+export type { EntityOption } from "./EntityPicker";
 export { ErrorBanner } from "./ErrorBanner";
 export { Select, TextArea, TextInput } from "./Field";
 export { FormField, controlClasses } from "./FormField";

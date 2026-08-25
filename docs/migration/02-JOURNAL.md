@@ -251,3 +251,90 @@ L'application native démarre, applique les neuf migrations et alimente le réf�
 
 Rien. T3 migre les candidatures : Kanban, Liste, filtres, détail, export CSV, et
 l'`EntityPicker` paginé.
+
+---
+
+## T3 — Candidatures · terminée le 2026-08-25
+
+La feature centrale : deux vues sur le même filtre, glisser-déposer entre statuts,
+historique de statut, sept filtres cumulables et export CSV.
+
+### Backend
+
+Le dépôt construit sa clause `WHERE` par accumulation de **paramètres liés** — le poste, la
+ville et la recherche libre viennent de champs de saisie, et les concaténer au SQL ouvrirait
+une injection. La colonne de tri, elle, est interpolée : elle vient d'un enum
+`TriCandidature` dont le jeu fermé rend l'injection impossible sans avoir à échapper quoi
+que ce soit.
+
+**L'historique de statut n'enregistre que les changements réels.** `update` compare l'ancien
+statut au nouveau avant d'insérer, et `update_statut` n'écrit rien si la valeur est
+inchangée — reposer une carte dans sa colonne d'origine est un geste courant du
+glisser-déposer. Chaque étape fictive fausserait l'entonnoir de conversion des analyses, qui
+compte les candidatures **passées** par l'entretien, refusées ensuite comprises.
+
+**`repartition` ignore le filtre de statut.** Le Kanban affiche ses quatre colonnes en
+permanence : si les compteurs tenaient compte du filtre, sélectionner « Entretien » viderait
+les trois autres en-têtes. Ils sont calculés par `SQLite` sur tout le filtre, jamais sur la
+page chargée — une colonne annoncerait sinon « 3 » en contenant tout le pipeline.
+
+Le tri de page porte un second critère `c.created_at DESC` : sans lui, deux candidatures de
+même date d'envoi changeraient d'ordre d'une page à l'autre, et une ligne pourrait
+apparaître deux fois ou pas du tout.
+
+**Export CSV** — séparateur point-virgule, comme dans l'application Iced : c'est ce
+qu'attend Excel en locale française, où un fichier séparé par des virgules s'ouvre en une
+seule colonne. L'export porte sur **tout le filtre** et non sur la page affichée. Le chemin
+vient du sélecteur natif ouvert côté frontend ; la commande Rust n'écrit qu'à l'endroit
+désigné, la fenêtre n'ayant aucune permission filesystem (§44).
+
+### Frontend
+
+Un seul ViewModel sert les deux vues : elles n'affichent pas les mêmes formes mais
+interrogent le même filtre, et les séparer aurait dupliqué l'état des filtres, du tri et de
+la pagination. Le Kanban demande une page quatre fois plus large que la Liste — une page de
+huit lignes laisserait trois colonnes vides quel que soit le contenu du pipeline.
+
+**`EntityPicker`**, le composant du guide que T2 avait laissé de côté faute de consommateur :
+recherche débattue, résultats paginés, sélection au clavier. Un `select` natif aurait exigé
+de charger tout le répertoire, ce que le guide interdit au-delà de cinquante éléments.
+
+**Conversion de date centralisée.** Les maquettes saisissent en `JJ-MM-AAAA`, la base
+compare des chaînes en `AAAA-MM-JJ`. La conversion est faite une fois, dans le schéma Zod :
+au-delà, le ViewModel et le backend ne manipulent que de l'ISO. `versDateIso` refuse le
+31 février, que `new Date` accepterait en le décalant au 3 mars.
+
+Deux schémas Zod distincts, formulaire et filtres : leurs règles n'ont rien à voir — un
+filtre vide est l'état par défaut de l'écran, un formulaire vide ne l'est pas. Le schéma de
+filtres refuse une période inversée, qui ne renverrait jamais rien et donnerait un état vide
+indiscernable d'une absence réelle de candidatures.
+
+Les classes Tailwind des pastilles de statut passent par une table statique et non par une
+interpolation `bg-${tone}-tint` : Tailwind n'émet que les classes qu'il trouve littéralement
+dans les sources, et une classe construite à l'exécution n'existerait pas dans la feuille.
+
+### Vérifié
+
+```
+cargo fmt --check / clippy -D warnings   ok
+cargo test                                110 passed (+28)
+npm run build / lint                      ok
+npm test                                  96 passed (+29)
+```
+
+À l'écran, sur 15 candidatures réelles : Kanban à quatre colonnes avec compteurs,
+vue Liste triable et paginée, panneau de détail avec changement de statut au clavier,
+`EntityPicker` filtrant le répertoire à la frappe et paginant ses résultats.
+
+### Écarts assumés
+
+- Comme en T2, le rendu **dans la fenêtre native** n'a pas été vérifié à l'œil : les
+  captures viennent du navigateur, où les données réelles ont transité par un pont
+  temporaire, retiré depuis. Le test de contrat IPC couvre le risque de nom de commande.
+- Le glisser-déposer n'a pas de test automatisé : `dragstart` / `drop` ne sont pas
+  simulables de façon fiable dans jsdom. Le changement de statut qu'il déclenche l'est, lui,
+  aussi bien côté ViewModel que côté dépôt.
+
+### Reste à faire avant T4
+
+Rien. T4 migre entretiens et relances, et l'écran Calendrier.
