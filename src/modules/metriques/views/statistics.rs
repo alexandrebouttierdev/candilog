@@ -6,9 +6,11 @@ use crate::app::{App, Message};
 use crate::modules::metriques::components::PipelineCounts;
 use crate::ui::components::icon::Icon;
 use crate::ui::components::tabs::Tab;
-use crate::ui::components::{header, layout, tabs, typo};
+use crate::ui::components::{header, layout, tabs};
 use crate::ui::format;
-use iced::Element;
+use crate::ui::theme::metrics::space;
+use iced::widget::{column, container};
+use iced::{Element, Length};
 
 pub mod candidatures;
 pub mod performance;
@@ -44,20 +46,22 @@ pub fn view(app: &App) -> Element<'_, Message> {
         },
     );
     layout::screen(
-        header::workspace_header(
+        header::page_header(
             Icon::Chart,
             "Analyses et performance",
-            section_tabs,
-            typo::caption(format::plural(
-                counts.total,
-                "candidature suivie",
-                "candidatures suivies",
-            ))
-            .into(),
+            format::plural(counts.total, "candidature suivie", "candidatures suivies"),
+            iced::widget::Space::with_width(0).into(),
         ),
-        layout::workspace(match app.statistics_tab {
-            StatisticsTab::Candidatures => candidatures_tab(app, &counts),
-            StatisticsTab::PerformanceCv => performance_tab(app),
-        }),
+        layout::workspace(
+            column![
+                container(section_tabs).padding([space::SM, space::LG]),
+                match app.statistics_tab {
+                    StatisticsTab::Candidatures => candidatures_tab(app, &counts),
+                    StatisticsTab::PerformanceCv => performance_tab(app),
+                },
+            ]
+            .spacing(space::SM)
+            .width(Length::Fill),
+        ),
     )
 }

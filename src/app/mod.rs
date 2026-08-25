@@ -20,4 +20,5 @@ pub use coquille::{subscription, theme};
 pub use message::Message;
 pub use state::App;
 pub use update::update;
+pub use update::SEARCH_FIELD_ID;
 pub use view::view;

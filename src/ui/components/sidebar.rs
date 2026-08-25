@@ -6,7 +6,6 @@
 
 use crate::navigation::{Route, Section};
 use crate::ui::components::icon::{self, Icon, Ink};
-use crate::ui::components::typo;
 use crate::ui::theme::metrics::{radius, size, space, stroke};
 use crate::ui::theme::styles;
 use crate::ui::theme::tokens::{alpha, tokens};
@@ -14,9 +13,8 @@ use crate::ui::theme::typography as font;
 use iced::widget::{button, column, container, row, text, Space};
 use iced::{Alignment, Background, Border, Color, Element, Length, Shadow, Theme};
 
-const BRAND_HEIGHT: f32 = 72.0;
-const TILE_HEIGHT: f32 = 62.0;
-const ICON_WELL: f32 = 31.0;
+const BRAND_HEIGHT: f32 = 46.0;
+const TILE_HEIGHT: f32 = 58.0;
 const CONTEXT_HEIGHT: f32 = 42.0;
 
 /// Espaces du rail avec leur état actif, dans l'ordre visuel.
@@ -52,17 +50,10 @@ pub fn sidebar<'a, Message: Clone + 'a>(
     }
 
     let brand = button(
-        container(
-            column![
-                icon::brand(34.0),
-                typo::body("Candilog").font(font::SEMIBOLD),
-            ]
-            .spacing(space::XS)
-            .align_x(Alignment::Center),
-        )
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .center(Length::Fill),
+        container(icon::icon(Icon::Workspace, 22.0, Ink::Accent))
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .center(Length::Fill),
     )
     .height(BRAND_HEIGHT)
     .width(Length::Fill)
@@ -163,39 +154,36 @@ pub fn workspace_tab_controls<'a, Message: Clone + 'a>(
     tabs.into()
 }
 
+/// Tuile du rail au gabarit de la maquette « refonte-design » : icône et
+/// libellé superposés, fond teinté quand l'espace est actif.
 fn tile<'a, Message: Clone + 'a>(
     glyph: Icon,
     label: &'static str,
     active: bool,
     on_press: Message,
 ) -> Element<'a, Message> {
-    let icon_well = container(icon::icon(
-        glyph,
-        icon::MD,
-        if active { Ink::OnAccent } else { Ink::Strong },
-    ))
-    .width(ICON_WELL)
-    .height(ICON_WELL)
-    .align_x(Alignment::Center)
-    .align_y(Alignment::Center)
-    .style(move |theme: &Theme| icon_well_style(theme, active));
-
-    let label = text(label)
-        .size(font::MICRO)
-        .font(if active { font::MEDIUM } else { font::REGULAR })
-        .style(move |theme: &Theme| iced::widget::text::Style {
+    let ink = if active { Ink::Accent } else { Ink::Muted };
+    let label_style = move |theme: &Theme| {
+        let palette = tokens(theme);
+        iced::widget::text::Style {
             color: Some(if active {
-                tokens(theme).accent
+                palette.accent
             } else {
-                tokens(theme).text_secondary
+                palette.text_secondary
             }),
-        });
-
+        }
+    };
     button(
         container(
-            column![icon_well, label]
-                .spacing(space::XS)
-                .align_x(Alignment::Center),
+            column![
+                icon::icon(glyph, 20.0, ink),
+                text(label)
+                    .size(10.0)
+                    .font(if active { font::MEDIUM } else { font::REGULAR })
+                    .style(label_style),
+            ]
+            .spacing(space::XS)
+            .align_x(Alignment::Center),
         )
         .width(Length::Fill)
         .height(Length::Fill)
@@ -204,7 +192,7 @@ fn tile<'a, Message: Clone + 'a>(
     )
     .width(Length::Fill)
     .height(TILE_HEIGHT)
-    .padding(0)
+    .padding([0, 0])
     .style(move |theme: &Theme, status| tile_style(theme, status, active))
     .on_press(on_press)
     .into()
@@ -224,47 +212,20 @@ fn rail_style(theme: &Theme) -> container::Style {
     }
 }
 
-fn icon_well_style(theme: &Theme, active: bool) -> container::Style {
-    let palette = tokens(theme);
-    container::Style {
-        background: Some(Background::Color(if active {
-            palette.accent_fill
-        } else {
-            palette.panel
-        })),
-        border: Border {
-            color: if active {
-                palette.accent_fill
-            } else {
-                palette.border_strong
-            },
-            width: stroke::HAIRLINE,
-            radius: radius::CONTROL.into(),
-        },
-        ..container::Style::default()
-    }
-}
-
 fn tile_style(theme: &Theme, status: button::Status, active: bool) -> button::Style {
     let palette = tokens(theme);
-    let background = if matches!(status, button::Status::Hovered | button::Status::Pressed) {
-        Some(if active {
-            palette.selection
-        } else {
-            alpha(palette.panel, 0.78)
-        })
+    let background = if active {
+        Some(palette.accent_tint)
+    } else if matches!(status, button::Status::Hovered | button::Status::Pressed) {
+        Some(palette.neutral_tint)
     } else {
         None
     };
     button::Style {
         background: background.map(Background::Color),
-        text_color: if active {
-            palette.accent
-        } else {
-            palette.text_secondary
-        },
+        text_color: palette.text,
         border: Border {
-            radius: radius::CONTROL.into(),
+            radius: 10.0.into(),
             ..Border::default()
         },
         shadow: Shadow::default(),

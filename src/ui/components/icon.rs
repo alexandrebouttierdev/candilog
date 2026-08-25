@@ -83,6 +83,7 @@ icon_set! {
     Profile => "navigation/profile.svg",
     Settings => "navigation/settings.svg",
     Sparkles => "navigation/sparkles.svg",
+    Workspace => "navigation/workspace.svg",
 }
 
 /// Taille optique d'une icône de ligne ou de bouton.

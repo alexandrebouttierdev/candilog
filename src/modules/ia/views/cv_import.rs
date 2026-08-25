@@ -4,7 +4,6 @@
 use crate::app::{App, Message};
 use crate::modules::ia::components::skill_list;
 use crate::modules::ia::service::ImportedCvAnalysis;
-use crate::navigation::Route;
 use crate::ui::components::badge_score;
 use crate::ui::components::button as controls;
 use crate::ui::components::header;
@@ -64,11 +63,10 @@ pub fn view(app: &App) -> Element<'_, Message> {
     };
 
     layout::screen(
-        header::route_header(
+        header::page_header(
             Icon::Import,
             "Analyse de CV",
-            Route::CvImport,
-            Message::Navigate,
+            "Importez un CV PDF à analyser",
             Space::with_width(0).into(),
         ),
         layout::workspace(

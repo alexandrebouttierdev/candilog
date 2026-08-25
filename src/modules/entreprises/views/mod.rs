@@ -4,7 +4,6 @@ use crate::app::state::Dialog;
 use crate::app::{App, Message};
 use crate::modules::entreprises::components as directory_entry;
 use crate::modules::entreprises::model::Entreprise;
-use crate::navigation::Route;
 use crate::ui::components::avatar;
 use crate::ui::components::button as controls;
 use crate::ui::components::header;
@@ -28,11 +27,10 @@ pub fn view(app: &App) -> Element<'_, Message> {
         .into();
 
     layout::screen(
-        header::route_header(
+        header::page_header(
             Icon::Building,
             "Relations professionnelles",
-            Route::Entreprises,
-            Message::Navigate,
+            "Répertoire des sociétés suivies",
             actions,
         ),
         layout::workspace(layout::columns([directory(app), detail(app)])),
@@ -101,13 +99,6 @@ fn directory(app: &App) -> Element<'_, Message> {
             ]
             .align_y(Alignment::Center),
             row![
-                field::search_resettable(
-                    "Rechercher une entreprise…",
-                    &app.search,
-                    Message::SearchChanged,
-                    Message::ResetSearch,
-                    Length::Fill,
-                ),
                 field::select(type_options, selected_type, |value| {
                     Message::CompanyTypeFilterChanged((value != ALL_TYPES).then_some(value))
                 })

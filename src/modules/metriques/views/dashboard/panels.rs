@@ -1,20 +1,28 @@
 //! Panneaux d'activité et d'événements du tableau de bord.
+//!
+//! Gabarit de la maquette « refonte-design » : jour en pastille, activité par
+//! barres verticales, pipeline en quatre étapes et candidatures récentes avec
+//! avatar.
 
 use crate::app::state::Dialog;
 use crate::app::{App, Message};
 use crate::modules::candidatures::components::{contract_short, status_badge};
+use crate::modules::metriques::components::PipelineCounts;
 use crate::navigation::Route;
+use crate::ui::components::avatar;
 use crate::ui::components::button as controls;
-use crate::ui::components::icon::{self, Icon, Ink};
+use crate::ui::components::icon::Icon;
 use crate::ui::components::table::{self, Column};
-use crate::ui::components::{badge, bar, list, state, surface, typo};
+use crate::ui::components::{badge, state, surface, typo};
 use crate::ui::format;
-use crate::ui::theme::metrics::space;
+use crate::ui::theme::metrics::{radius, space};
 use crate::ui::theme::styles;
+use crate::ui::theme::tokens::tokens;
 use crate::ui::theme::typography as font;
 use crate::ui::theme::Tone;
-use iced::widget::{column, container, Container};
-use iced::{Element, Length};
+use chrono::Datelike;
+use iced::widget::{column, container, row, Container, Space};
+use iced::{Alignment, Background, Border, Element, Length, Theme};
 
 const RECENT_COLUMNS: [Column; 4] = [
     Column::text("POSTE", 4),
@@ -24,13 +32,13 @@ const RECENT_COLUMNS: [Column; 4] = [
 ];
 
 /// Panneau « Prochains événements » : entretiens à venir puis relances
-/// échues, chacun portant une pastille d'icône teintée.
+/// échues, chacun portant un bloc de jour, un titre, une sous-ligne et un jeton.
 pub(super) fn upcoming_panel<'a>(
     app: &'a App,
     today: &str,
     upcoming: usize,
 ) -> Container<'a, Message> {
-    let mut rows = column![].spacing(0);
+    let mut rows = column![].spacing(space::SM);
     let mut count = 0_usize;
 
     let mut interviews: Vec<_> = app
@@ -41,20 +49,30 @@ pub(super) fn upcoming_panel<'a>(
         .collect();
     interviews.sort_by(|left, right| left.date_entretien.cmp(&right.date_entretien));
 
-    for interview in interviews.into_iter().take(4) {
+    for interview in interviews.into_iter().take(3) {
         count += 1;
-        rows = rows.push(list::row_static(
-            event_icon(Icon::Calendar, Tone::Success),
-            column![
-                typo::item(interview.type_entretien.to_string()),
-                typo::text_mono(
-                    format::compact_datetime(&interview.date_entretien),
-                    11.0,
-                    font::MONO_REGULAR,
-                ),
-            ]
-            .spacing(space::XXS),
-            typo::caption(format::or_dash(interview.lieu.as_deref())),
+        let (poste, company) = app
+            .data
+            .candidatures
+            .iter()
+            .find(|item| item.id == interview.candidature_id)
+            .map(|item| {
+                (
+                    item.poste.clone(),
+                    item.entreprise_nom.clone().unwrap_or_default(),
+                )
+            })
+            .unwrap_or_else(|| ("Candidature".to_owned(), String::new()));
+        let mut subtitle = poste;
+        if let Some(lieu) = interview.lieu.as_deref() {
+            subtitle = format!("{subtitle} · {lieu}");
+        }
+        rows = rows.push(agenda_row(
+            &interview.date_entretien,
+            "Entretien",
+            Tone::Success,
+            format!("Entretien — {company}"),
+            subtitle,
         ));
     }
 
@@ -66,26 +84,26 @@ pub(super) fn upcoming_panel<'a>(
         .collect();
     reminders.sort_by(|left, right| left.date_relance.cmp(&right.date_relance));
 
-    for reminder in reminders.into_iter().take(4) {
+    for reminder in reminders.into_iter().take(3) {
         count += 1;
-        let poste = app
+        let (poste, company) = app
             .data
             .candidatures
             .iter()
             .find(|item| item.id == reminder.candidature_id)
-            .map_or_else(|| "Candidature".to_owned(), |item| item.poste.clone());
-        rows = rows.push(list::row_static(
-            event_icon(Icon::Alert, Tone::Warning),
-            column![
-                typo::item(format::truncate(&poste, 30)),
-                typo::text_mono(
-                    format::compact_date(&reminder.date_relance),
-                    11.0,
-                    font::MONO_REGULAR,
-                ),
-            ]
-            .spacing(space::XXS),
-            typo::caption(reminder.type_relance.clone()),
+            .map(|item| {
+                (
+                    item.poste.clone(),
+                    item.entreprise_nom.clone().unwrap_or_default(),
+                )
+            })
+            .unwrap_or_else(|| ("Candidature".to_owned(), String::new()));
+        rows = rows.push(agenda_row(
+            &reminder.date_relance,
+            "Relance",
+            Tone::Warning,
+            format!("Relance — {company}"),
+            format!("{poste} · sans réponse"),
         ));
     }
 
@@ -108,7 +126,7 @@ pub(super) fn upcoming_panel<'a>(
 }
 
 /// Panneau « Activité récente » : les envois des sept derniers jours en
-/// barres, avec la valeur et le jour superposés à chaque barre.
+/// barres verticales, avec la valeur au-dessus et le jour sous chaque barre.
 pub(super) fn activity_panel(app: &App) -> Container<'_, Message> {
     let days = last_seven_days(&app.data.candidature_stats.activity_by_day);
     let maximum = days
@@ -117,14 +135,50 @@ pub(super) fn activity_panel(app: &App) -> Container<'_, Message> {
         .max()
         .unwrap_or(1)
         .max(1);
-    let mut chart = column![].spacing(space::SM).width(Length::Fill);
+    let mut chart = row![]
+        .spacing(space::MD)
+        .align_y(Alignment::End)
+        .width(Length::Fill);
     for (date, count) in &days {
-        chart = chart.push(bar::barre(
-            format::compact_date(&date.format("%Y-%m-%d").to_string()),
-            format::plural(*count, "envoi", "envois"),
-            (*count as f32 / maximum as f32) * 100.0,
-            Tone::Accent,
-        ));
+        let pct = (*count as f32 / maximum as f32) * 100.0;
+        let bar_height = 4.0 + pct * 0.92;
+        let day_label = format::weekday_abbrev(date.weekday().num_days_from_monday());
+        let is_zero = *count == 0;
+        let value_style = move |theme: &Theme| {
+            if is_zero {
+                styles::muted_text(theme)
+            } else {
+                styles::toned_text(Tone::Accent)(theme)
+            }
+        };
+        let bar_style = move |theme: &Theme| {
+            let palette = tokens(theme);
+            container::Style {
+                background: Some(Background::Color(if is_zero {
+                    palette.neutral_tint
+                } else {
+                    palette.accent
+                })),
+                border: Border {
+                    radius: radius::CONTROL.into(),
+                    ..Border::default()
+                },
+                ..container::Style::default()
+            }
+        };
+        chart = chart.push(
+            column![
+                typo::caption(count.to_string()).style(value_style),
+                container(Space::new(Length::Fixed(22.0), Length::Fixed(bar_height)))
+                    .width(Length::Fixed(22.0))
+                    .height(Length::Fixed(bar_height))
+                    .style(bar_style),
+                typo::caption(day_label).style(styles::muted_text),
+            ]
+            .spacing(space::XS)
+            .align_x(Alignment::Center)
+            .width(Length::Fill),
+        );
     }
 
     surface::panel(
@@ -134,7 +188,65 @@ pub(super) fn activity_panel(app: &App) -> Container<'_, Message> {
                 badge::badge("7 derniers jours", Tone::Neutral),
             ),
             surface::divider(),
-            container(chart).padding([space::MD, 0.0]),
+            container(chart)
+                .padding([space::MD, space::XS])
+                .width(Length::Fill),
+        ]
+        .height(Length::Fill),
+    )
+    .width(Length::Fill)
+    .height(Length::Fill)
+}
+
+/// Panneau « Pipeline » : les quatre étapes du suivi avec leur compte.
+pub(super) fn pipeline_panel(counts: &PipelineCounts) -> Container<'static, Message> {
+    let conversion = counts
+        .interviews
+        .checked_mul(100)
+        .and_then(|value| value.checked_div(counts.total))
+        .unwrap_or(0);
+    let stages = [
+        ("En attente", counts.pending, Tone::Neutral),
+        ("Relancées", counts.followed_up, Tone::Warning),
+        ("Entretiens", counts.interviews, Tone::Success),
+        ("Refusées", counts.rejected, Tone::Danger),
+    ];
+    let mut list = column![].spacing(space::SM);
+    for (label, value, tone) in stages {
+        let dot_style = move |theme: &Theme| container::Style {
+            background: Some(Background::Color(tone.color(&tokens(theme)))),
+            border: Border {
+                radius: radius::PILL.into(),
+                ..Border::default()
+            },
+            ..container::Style::default()
+        };
+        list = list.push(
+            container(
+                row![
+                    container(Space::new(Length::Fixed(8.0), Length::Fixed(8.0))).style(dot_style),
+                    typo::body(label),
+                    iced::widget::Space::with_width(Length::Fill),
+                    typo::text_mono(value.to_string(), font::BODY, font::MONO_SEMIBOLD),
+                ]
+                .spacing(space::SM)
+                .align_y(Alignment::Center),
+            )
+            .padding([space::SM, space::MD])
+            .style(styles::glass_card),
+        );
+    }
+
+    surface::panel(
+        column![
+            surface::section_header(
+                "Pipeline",
+                badge::badge(format!("Conversion {conversion} %"), Tone::Accent),
+            ),
+            surface::divider(),
+            container(list)
+                .padding([space::MD, 0.0])
+                .width(Length::Fill),
         ]
         .height(Length::Fill),
     )
@@ -150,21 +262,25 @@ pub(super) fn recent_panel(app: &App) -> Container<'_, Message> {
     recent.sort_by(|left, right| right.updated_at.cmp(&left.updated_at));
 
     for candidate in recent.iter().take(5) {
+        let company = format::or_else(candidate.entreprise_nom.as_deref(), "Entreprise inconnue");
+        let initials = avatar::initials_of(&company);
         let cells = vec![
             table::cell(
                 RECENT_COLUMNS[0],
-                column![
-                    typo::item(format::truncate(&candidate.poste, 46)),
-                    typo::caption(contract_short(candidate.type_contrat)),
+                row![
+                    avatar::avatar(initials, 28.0, Tone::Accent),
+                    column![
+                        typo::item(format::truncate(&candidate.poste, 40)),
+                        typo::caption(contract_short(candidate.type_contrat)),
+                    ]
+                    .spacing(0),
                 ]
-                .spacing(0),
+                .spacing(space::SM)
+                .align_y(Alignment::Center),
             ),
             table::cell(
                 RECENT_COLUMNS[1],
-                typo::meta(format::truncate(
-                    &format::or_else(candidate.entreprise_nom.as_deref(), "Entreprise inconnue"),
-                    42,
-                )),
+                typo::meta(format::truncate(&company, 42)),
             ),
             table::cell(RECENT_COLUMNS[2], status_badge(candidate.statut)),
             table::cell(
@@ -213,14 +329,65 @@ pub(super) fn recent_panel(app: &App) -> Container<'_, Message> {
     .height(Length::Fill)
 }
 
-/// Pastille d'événement 36 px : icône du ton sur fond teinté du même ton.
-fn event_icon<'a, Message: 'a>(glyph: Icon, tone: Tone) -> Element<'a, Message> {
-    container(icon::icon(glyph, icon::MD, Ink::Toned(tone)))
-        .width(36.0)
-        .height(36.0)
-        .center(Length::Fixed(36.0))
-        .style(styles::toned(tone))
-        .into()
+/// Ligne d'agenda au gabarit de la maquette : bloc de jour, titre, sous-ligne
+/// et jeton de nature (Entretien / Relance).
+fn agenda_row<'a, Message: 'a>(
+    date: &str,
+    kind: &'static str,
+    tone: Tone,
+    title: String,
+    subtitle: String,
+) -> Element<'a, Message> {
+    let (day, month) = date_day_month(date);
+    row![
+        day_block(day, month, tone),
+        column![
+            typo::item(title),
+            typo::caption(subtitle).style(styles::muted_text),
+        ]
+        .spacing(space::XXS)
+        .width(Length::Fill),
+        badge::badge(kind, tone),
+    ]
+    .spacing(space::MD)
+    .align_y(Alignment::Center)
+    .into()
+}
+
+/// Extrait le numéro de jour et le mois (en toutes lettres, minuscule) d'une
+/// date ISO `AAAA-MM-JJ`.
+fn date_day_month(date: &str) -> (String, String) {
+    let prefix = &date[..date.len().min(10)];
+    match chrono::NaiveDate::parse_from_str(prefix, "%Y-%m-%d") {
+        Ok(parsed) => (
+            parsed.format("%d").to_string(),
+            format::month_name(parsed.month()).to_lowercase(),
+        ),
+        Err(_) => ("–".to_owned(), String::new()),
+    }
+}
+
+/// Bloc de jour 44 × 46 : numéro en graisse mono et mois, sur fond teinté.
+fn day_block<'a, Message: 'a>(day: String, month: String, tone: Tone) -> Element<'a, Message> {
+    let month_label: Element<'a, Message> = if month.is_empty() {
+        iced::widget::Space::with_height(0).into()
+    } else {
+        typo::caption(month).style(styles::muted_text).into()
+    };
+    container(
+        column![
+            typo::text_mono(day, 16.0, font::MONO_SEMIBOLD).style(styles::toned_text(tone)),
+            month_label,
+        ]
+        .spacing(0)
+        .align_x(Alignment::Center),
+    )
+    .width(44.0)
+    .height(46.0)
+    .align_x(Alignment::Center)
+    .align_y(Alignment::Center)
+    .style(styles::toned(tone))
+    .into()
 }
 
 /// Dates des sept derniers jours avec le compte de candidatures envoyées

@@ -3,7 +3,6 @@
 
 use crate::app::{App, Message};
 use crate::modules::profil::service::completion_score;
-use crate::navigation::Route;
 use crate::shared::profile::PersonalInfo;
 use crate::ui::components::header;
 use crate::ui::components::icon::Icon;
@@ -30,11 +29,10 @@ const COMPLETION_WIDTH: f32 = 144.0;
 /// Rend l'écran du profil.
 pub fn view(app: &App) -> Element<'_, Message> {
     layout::screen(
-        header::route_header(
+        header::page_header(
             Icon::Profile,
             "Profil professionnel",
-            Route::Profil,
-            Message::Navigate,
+            "Votre identité et vos atouts",
             iced::widget::Space::with_width(0).into(),
         ),
         layout::workspace(surface::scroll(

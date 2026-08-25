@@ -62,7 +62,7 @@ pub fn view(app: &App) -> Element<'_, Message> {
         },
         Message::Navigate(Route::Parametres),
     );
-    let content = column![titlebar(runtime), main,]
+    let content = column![titlebar(app, runtime), main,]
         .width(Length::Fill)
         .height(Length::Fill);
 

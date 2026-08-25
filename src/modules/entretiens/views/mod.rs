@@ -8,7 +8,6 @@ use crate::modules::relances::model::Relance;
 use crate::ui::components::button as controls;
 use crate::ui::components::header;
 use crate::ui::components::icon::Icon;
-use crate::ui::components::sidebar::workspace_tab_controls;
 use crate::ui::components::stat_card;
 use crate::ui::components::{layout, typo};
 use crate::ui::format;
@@ -66,10 +65,10 @@ pub fn view(app: &App) -> Element<'_, Message> {
     };
 
     layout::screen(
-        header::workspace_header(
+        header::page_header(
             Icon::Calendar,
             "Calendrier et échéances",
-            workspace_tab_controls(app.route, Message::Navigate),
+            "Entretiens, relances et événements",
             actions,
         ),
         layout::workspace(

@@ -45,13 +45,20 @@ impl Tone {
     /// Fond discret d'un jeton portant ce ton.
     #[must_use]
     pub fn surface(self, palette: &Tokens) -> Color {
-        if self == Self::Neutral {
-            return palette.sunken;
-        }
-        let base = self.color(palette);
-        Color {
-            a: if palette.is_dark { 0.14 } else { 0.10 },
-            ..base
+        match self {
+            Self::Neutral => palette.neutral_tint,
+            Self::Accent => palette.accent_tint,
+            Self::Success => palette.success_tint,
+            Self::Warning => palette.warning_tint,
+            Self::Danger => palette.danger_tint,
+            Self::Info | Self::Violet => {
+                // Les tons sans teinte dédiée restent sur un fond translucide.
+                let base = self.color(palette);
+                Color {
+                    a: if palette.is_dark { 0.14 } else { 0.10 },
+                    ..base
+                }
+            }
         }
     }
 
@@ -103,12 +110,16 @@ mod tests {
     }
 
     #[test]
-    fn tons_semantiques_produisent_un_fond_discret() {
+    fn tons_semantiques_portent_une_teinte_opaque() {
         for palette in [NIGHT, DAY] {
             for tone in [Tone::Accent, Tone::Success, Tone::Warning, Tone::Danger] {
                 let surface = tone.surface(&palette);
-                assert!(surface.a > 0.0 && surface.a <= 0.16, "fond trop appuyé");
-                assert!(tone.edge(&palette).a <= 0.35, "filet trop appuyé");
+                assert_eq!(surface.a, 1.0, "la teinte doit être opaque");
+                assert_ne!(
+                    surface,
+                    tone.color(&palette),
+                    "la teinte ne doit pas se confondre avec le ton lui-même"
+                );
             }
         }
     }

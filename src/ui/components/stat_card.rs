@@ -61,6 +61,51 @@ pub fn metric_icon_tinted<'a, Message: 'a>(
     .into()
 }
 
+/// Indicateur desktop avec tendance : puits d'icône, valeur, puis une ligne de
+/// tendance (icône + libellé) teintée, au gabarit de la maquette « refonte-design ».
+pub fn metric_icon_delta<'a, Message: 'a>(
+    label: &'a str,
+    value: String,
+    tone: Tone,
+    glyph: Icon,
+    delta: Option<(&'a str, Icon, Tone)>,
+) -> Element<'a, Message> {
+    let mut metric_value = typo::text_mono(value, font::METRIC, font::MONO_SEMIBOLD);
+    if tone != Tone::Accent {
+        metric_value = metric_value.style(styles::toned_text(tone));
+    }
+    let trend: Element<'a, Message> = delta
+        .map(|(label, icon, delta_tone)| {
+            row![
+                icon::icon(icon, icon::SM, Ink::Toned(delta_tone)),
+                typo::caption(label).style(styles::toned_text(delta_tone)),
+            ]
+            .spacing(space::XS)
+            .align_y(Alignment::Center)
+            .into()
+        })
+        .unwrap_or_else(|| iced::widget::Space::with_height(0).into());
+
+    container(
+        row![
+            container(icon::icon(glyph, icon::MD, Ink::Toned(tone)))
+                .width(36.0)
+                .height(36.0)
+                .align_x(Alignment::Center)
+                .align_y(Alignment::Center)
+                .style(styles::icon_tile(tone)),
+            column![typo::caption(label), metric_value, trend,].spacing(space::XXS),
+        ]
+        .spacing(space::MD)
+        .align_y(Alignment::Center),
+    )
+    .height(96.0)
+    .padding(space::LG)
+    .width(Length::Fill)
+    .style(styles::glass_card)
+    .into()
+}
+
 #[cfg(test)]
 mod tests {
     use super::metric_icon_tinted;

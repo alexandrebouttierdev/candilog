@@ -1060,7 +1060,11 @@ mod tests {
             let survol = card(&theme, button::Status::Hovered);
             assert!(repos.shadow.blur_radius.abs() < f32::EPSILON);
             assert!(survol.shadow.blur_radius.abs() < f32::EPSILON);
-            assert_ne!(repos.background, survol.background);
+            assert_ne!(
+                format!("{:?}", repos.border),
+                format!("{:?}", survol.border),
+                "le survol doit au moins renforcer le filet de la carte"
+            );
         }
     }
 

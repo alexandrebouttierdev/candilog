@@ -1,7 +1,6 @@
 //! Atelier de lettre de motivation : brief, page de document et itérations IA.
 
 use crate::app::{App, Message};
-use crate::navigation::Route;
 use crate::ui::components::button as controls;
 use crate::ui::components::header;
 use crate::ui::components::icon::{self, Icon, Ink};
@@ -83,11 +82,10 @@ pub fn view(app: &App) -> Element<'_, Message> {
     };
 
     layout::screen(
-        header::route_header(
+        header::page_header(
             Icon::Letter,
             "Lettre de motivation",
-            Route::LettreMotivation,
-            Message::Navigate,
+            "Rédigez une lettre ciblée",
             actions.into(),
         ),
         layout::workspace(

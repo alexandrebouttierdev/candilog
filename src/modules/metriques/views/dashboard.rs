@@ -23,7 +23,7 @@ use iced::{Alignment, Element, Length};
 
 pub mod panels;
 
-use panels::{activity_panel, recent_panel, upcoming_panel};
+use panels::{activity_panel, pipeline_panel, recent_panel, upcoming_panel};
 
 /// Rend le tableau de bord.
 pub fn view(app: &App) -> Element<'_, Message> {
@@ -47,12 +47,15 @@ pub fn view(app: &App) -> Element<'_, Message> {
     let body = layout::workspace(
         column![
             metric_cards(app, &counts, upcoming, due),
-            layout::columns([
-                upcoming_panel(app, &today, upcoming)
+            row![
+                column![upcoming_panel(app, &today, upcoming), activity_panel(app),]
+                    .spacing(space::LG)
                     .width(Length::FillPortion(3))
-                    .into(),
-                activity_panel(app).width(Length::FillPortion(2)).into(),
-            ]),
+                    .height(Length::Fill),
+                pipeline_panel(&counts).width(Length::FillPortion(2)),
+            ]
+            .spacing(space::LG)
+            .height(Length::FillPortion(3)),
             recent_panel(app),
         ]
         .spacing(space::LG)
@@ -74,29 +77,33 @@ fn metric_cards<'a>(
     due: usize,
 ) -> Element<'a, Message> {
     let [active, interviews, rate, reminders] = [
-        stat_card::metric_icon_tinted(
+        stat_card::metric_icon_delta(
             "Candidatures actives",
             counts.active().to_string(),
             Tone::Accent,
             Icon::Applications,
+            Some(("en cours", Icon::Clock, Tone::Neutral)),
         ),
-        stat_card::metric_icon_tinted(
+        stat_card::metric_icon_delta(
             "Entretiens à venir",
             upcoming.to_string(),
-            Tone::Accent,
+            Tone::Success,
             Icon::Calendar,
+            Some(("cette semaine", Icon::Clock, Tone::Neutral)),
         ),
-        stat_card::metric_icon_tinted(
+        stat_card::metric_icon_delta(
             "Taux de réponse",
             format!("{} %", counts.response_rate()),
             Tone::Success,
             Icon::Chart,
+            Some(("réponses reçues", Icon::Mail, Tone::Success)),
         ),
-        stat_card::metric_icon_tinted(
+        stat_card::metric_icon_delta(
             "Relances à traiter",
             due.to_string(),
             Tone::Warning,
             Icon::Alert,
+            Some(("en retard", Icon::Alert, Tone::Warning)),
         ),
     ];
 

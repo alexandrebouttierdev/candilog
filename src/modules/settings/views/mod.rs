@@ -2,7 +2,6 @@
 //! dans l'esprit candilog-desktop.
 
 use crate::app::{App, Message};
-use crate::navigation::Route;
 use crate::ui::components::button as controls;
 use crate::ui::components::header;
 use crate::ui::components::icon::{self, Icon, Ink};
@@ -27,11 +26,10 @@ const BODY_MAX_WIDTH: f32 = 1120.0;
 /// Rend l'écran des paramètres.
 pub fn view(app: &App) -> Element<'_, Message> {
     layout::screen(
-        header::route_header(
+        header::page_header(
             Icon::Settings,
             "Intelligence artificielle",
-            Route::Parametres,
-            Message::Navigate,
+            "Fournisseur, modèle et comportement",
             controls::primary("Enregistrer", Some(Icon::Save))
                 .on_press(Message::SaveSettings)
                 .into(),

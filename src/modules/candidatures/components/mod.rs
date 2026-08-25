@@ -114,20 +114,23 @@ pub fn kanban_card<'a, Message: Clone + 'a>(
     on_hover: Message,
     on_exit: Message,
 ) -> Element<'a, Message> {
+    let company = format::or_else(candidate.entreprise_nom.as_deref(), "Entreprise inconnue");
+    let initials = crate::ui::components::avatar::initials_of(&company);
     let content = column![
-        crate::ui::components::tooltip::tip(
-            typo::item(format::truncate(&candidate.poste, 30)).font(font::SEMIBOLD),
-            candidate.poste.as_str(),
-            crate::ui::components::tooltip::Side::Bottom,
-        ),
         row![
-            icon::icon(Icon::Building, 12.0, Ink::Muted),
-            typo::meta(format::truncate(
-                &format::or_else(candidate.entreprise_nom.as_deref(), "Entreprise inconnue"),
-                30,
-            )),
+            crate::ui::components::avatar::avatar(initials, 28.0, Tone::Accent),
+            column![
+                crate::ui::components::tooltip::tip(
+                    typo::item(format::truncate(&candidate.poste, 26)).font(font::SEMIBOLD),
+                    candidate.poste.as_str(),
+                    crate::ui::components::tooltip::Side::Bottom,
+                ),
+                typo::meta(format::truncate(&company, 26)),
+            ]
+            .spacing(space::XXS)
+            .width(Length::Fill),
         ]
-        .spacing(space::XS)
+        .spacing(space::SM)
         .align_y(Alignment::Center),
         surface::divider(),
         row![

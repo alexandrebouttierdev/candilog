@@ -2,7 +2,6 @@
 //! document A4 posé à droite.
 
 use crate::app::{App, Message};
-use crate::navigation::Route;
 use crate::ui::components::header;
 use crate::ui::components::icon::Icon;
 use crate::ui::components::layout;
@@ -26,11 +25,10 @@ mod tests;
 /// Rend l'écran du générateur de CV.
 pub fn view(app: &App) -> Element<'_, Message> {
     layout::screen(
-        header::route_header(
+        header::page_header(
             Icon::Sparkles,
             "Générer un CV",
-            Route::CvGenerator,
-            Message::Navigate,
+            "Un CV ciblé, généré et optimisé",
             actions(app),
         ),
         layout::workspace(

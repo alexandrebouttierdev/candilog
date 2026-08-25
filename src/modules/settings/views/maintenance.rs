@@ -66,11 +66,10 @@ pub fn backup_view(_app: &App) -> Element<'_, Message> {
     .spacing(space::LG)
     .width(Length::Fill);
     layout::screen(
-        header::route_header(
+        header::page_header(
             Icon::Save,
             "Sauvegardes",
-            Route::Sauvegardes,
-            Message::Navigate,
+            "Sauvegarde et restauration de vos données",
             iced::widget::Space::with_width(0).into(),
         ),
         layout::workspace(surface::scroll(
@@ -142,11 +141,10 @@ pub fn updates_view(app: &App) -> Element<'_, Message> {
         ));
     }
     layout::screen(
-        header::route_header(
+        header::page_header(
             Icon::Download,
             "Mises à jour",
-            Route::MisesAJour,
-            Message::Navigate,
+            "Recherche et installation des mises à jour",
             typo::caption(format!("Version actuelle {}", env!("CARGO_PKG_VERSION"))).into(),
         ),
         layout::workspace(surface::scroll(
@@ -239,11 +237,10 @@ pub fn about_view(_app: &App) -> Element<'_, Message> {
         .spacing(space::LG)
         .width(Length::Fill);
     layout::screen(
-        header::route_header(
+        header::page_header(
             Icon::Info,
             "À propos",
-            Route::APropos,
-            Message::Navigate,
+            "Informations sur l'application et son auteur",
             iced::widget::Space::with_width(0).into(),
         ),
         layout::workspace(surface::scroll(

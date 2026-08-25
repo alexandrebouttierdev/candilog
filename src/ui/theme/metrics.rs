@@ -62,6 +62,8 @@ pub mod size {
     /// sélection, contexte) : un peu plus haute qu'un en-tête de table pour
     /// respirer sous la toolbar.
     pub const TOOLBAR_STRIP: f32 = TABLE_HEADER + 6.0;
+    /// Hauteur de la barre supérieure : onglets contextuels, recherche et runtime.
+    pub const TOPBAR: f32 = 46.0;
     /// En-tête de section à l'intérieur d'un panneau.
     pub const SECTION_HEADER: f32 = 34.0;
     /// En-tête de colonnes d'une table.
@@ -116,10 +118,8 @@ pub mod size {
     pub const SEARCH: f32 = 260.0;
     /// Largeur d'une colonne Kanban.
     pub const KANBAN_COLUMN: f32 = 280.0;
-    /// Largeur du rail de navigation desktop.
-    pub const SIDEBAR: f32 = 96.0;
-    /// Hauteur de la barre de titre de fenêtre.
-    pub const TITLEBAR: f32 = 36.0;
+    /// Largeur du rail de navigation desktop (maquette « refonte-design »).
+    pub const SIDEBAR: f32 = 86.0;
 
     /// Largeur de la modale standard candilog-desktop (max-w-[34rem]).
     pub const MODAL_WIDTH: f32 = 544.0;
@@ -177,8 +177,8 @@ mod tests {
 
     #[test]
     fn gabarits_de_la_coquille_sont_definis() {
-        assert_eq!(size::SIDEBAR, 96.0);
-        assert_eq!(size::TITLEBAR, 36.0);
+        assert_eq!(size::SIDEBAR, 86.0);
+        assert_eq!(size::TOPBAR, 46.0);
         assert_eq!(size::MODAL_WIDTH, 544.0);
         assert_eq!(size::DRAWER, 460.0);
     }

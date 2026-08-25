@@ -7,7 +7,7 @@ use crate::navigation::Route;
 use crate::ui::components::button as controls;
 use crate::ui::components::header;
 use crate::ui::components::icon::Icon;
-use crate::ui::components::{badge, document, field, layout, meter, state, surface, typo};
+use crate::ui::components::{badge, document, layout, meter, state, surface, typo};
 use crate::ui::format;
 use crate::ui::theme::metrics::space;
 use crate::ui::theme::styles;
@@ -22,11 +22,10 @@ pub fn view(app: &App) -> Element<'_, Message> {
         .into();
 
     layout::screen(
-        header::route_header(
+        header::page_header(
             Icon::Document,
             "Mes CV",
-            Route::Cv,
-            Message::Navigate,
+            "Vos versions prêtes à l'emploi",
             actions,
         ),
         layout::workspace(layout::split_portions(6, grid(app), 8, preview(app))),
@@ -73,32 +72,19 @@ fn grid(app: &App) -> Element<'_, Message> {
     };
 
     let toolbar = container(
-        column![
-            row![
-                column![
-                    typo::meta_toned("BIBLIOTHÈQUE PERSONNELLE", Tone::Accent),
-                    typo::section("Vos versions prêtes à l'emploi"),
-                ]
-                .spacing(space::XXS),
-                layout::spacer(),
-                badge::badge(
-                    format::plural(app.data.cv_versions.len(), "version", "versions"),
-                    Tone::Neutral,
-                ),
+        column![row![
+            column![
+                typo::meta_toned("BIBLIOTHÈQUE PERSONNELLE", Tone::Accent),
+                typo::section("Vos versions prêtes à l'emploi"),
             ]
-            .align_y(Alignment::Center),
-            typo::caption(format!(
-                "Dernière mise à jour {} · sélectionnez une vignette pour la prévisualiser",
-                components::latest_version_date(&app.data.cv_versions),
-            )),
-            field::search_resettable(
-                "Rechercher une version…",
-                &app.search,
-                Message::SearchChanged,
-                Message::ResetSearch,
-                Length::Fill,
+            .spacing(space::XXS),
+            layout::spacer(),
+            badge::badge(
+                format::plural(app.data.cv_versions.len(), "version", "versions"),
+                Tone::Neutral,
             ),
         ]
+        .align_y(Alignment::Center),]
         .spacing(space::MD),
     )
     .padding(space::XL)

@@ -7,7 +7,7 @@ use crate::navigation::Route;
 use crate::ui::components::button as controls;
 use crate::ui::components::header;
 use crate::ui::components::icon::Icon;
-use crate::ui::components::{badge, field, layout, list, state, surface, typo};
+use crate::ui::components::{badge, layout, list, state, surface, typo};
 use crate::ui::format;
 use crate::ui::theme::metrics::space;
 use crate::ui::theme::styles;
@@ -30,15 +30,14 @@ pub fn view(app: &App) -> Element<'_, Message> {
             .into()
     };
     layout::screen(
-        header::route_header(
+        header::page_header(
             Icon::Mail,
             if compact {
                 "Mes lettres"
             } else {
                 "Mes lettres de motivation"
             },
-            Route::Lettres,
-            Message::Navigate,
+            "Votre bibliothèque de lettres",
             actions,
         ),
         layout::workspace(layout::split_portions(5, library(app), 8, preview(app))),
@@ -84,21 +83,12 @@ fn library(app: &App) -> Element<'_, Message> {
             .into()
     };
 
-    let toolbar = column![
-        row![
-            typo::label("Bibliothèque"),
-            layout::spacer(),
-            typo::caption(format::plural(app.data.letters.len(), "lettre", "lettres")),
-        ]
-        .align_y(Alignment::Center),
-        field::search_resettable(
-            "Rechercher une lettre…",
-            &app.search,
-            Message::SearchChanged,
-            Message::ResetSearch,
-            Length::Fill,
-        ),
+    let toolbar = column![row![
+        typo::label("Bibliothèque"),
+        layout::spacer(),
+        typo::caption(format::plural(app.data.letters.len(), "lettre", "lettres")),
     ]
+    .align_y(Alignment::Center),]
     .spacing(space::MD);
 
     container(

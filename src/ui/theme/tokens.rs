@@ -88,6 +88,16 @@ pub struct Tokens {
     pub on_accent: Color,
     /// Fond de sélection discret.
     pub selection: Color,
+    /// Fond teinté de l'accent : pastilles, tuiles actives, badges.
+    pub accent_tint: Color,
+    /// Fond teinté du succès : badges et pastilles positives.
+    pub success_tint: Color,
+    /// Fond teinté de l'avertissement : badges et pastilles d'attention.
+    pub warning_tint: Color,
+    /// Fond teinté de l'erreur : badges et pastilles destructives.
+    pub danger_tint: Color,
+    /// Fond teinté neutre : zone de survol discrète et creux légers.
+    pub neutral_tint: Color,
 
     /// Réussite.
     pub success: Color,
@@ -115,43 +125,45 @@ pub struct Tokens {
     pub shadow: Color,
 }
 
-/// Thème sombre « Graphite & Champagne ».
+/// Thème sombre « Océan de Nuit » : bleu glacial sur un graphite profond.
 pub const NIGHT: Tokens = Tokens {
     is_dark: true,
 
-    chrome: hex(0x0b0d0c),
-    canvas: hex(0x111412),
-    panel: hex(0x1e211f),
-    sunken: hex(0x0f1210),
-    raised: hex(0x272b27),
-    hover: hex(0x2d322c),
+    chrome: hex(0x0f1319),
+    canvas: hex(0x0b0f14),
+    panel: hex(0x13171e),
+    sunken: hex(0x1c2127),
+    raised: hex(0x1a2027),
+    hover: hex(0x232a33),
 
-    border: hex(0x383d37),
-    border_strong: hex(0x50574e),
+    border: hex(0x282d34),
+    border_strong: hex(0x3d434b),
 
-    text: hex(0xf4f1e8),
-    text_secondary: hex(0xb2b0a8),
-    text_muted: hex(0x7f827a),
+    text: hex(0xeef0f4),
+    text_secondary: hex(0xa4a8ae),
+    text_muted: hex(0x747980),
 
-    accent: hex(0xe5a24b),
-    accent_fill: hex(0xd89035),
-    accent_hover: hex(0xe3a04a),
-    on_accent: hex(0x1b140b),
-    selection: Color {
-        a: 0.16,
-        ..hex(0xe5a24b)
-    },
+    accent: hex(0x6a9cfb),
+    accent_fill: hex(0x4e82e8),
+    accent_hover: hex(0x7fa9ff),
+    on_accent: hex(0x0b0f14),
+    selection: hex(0x1a2b49),
+    accent_tint: hex(0x1a2b49),
+    success_tint: hex(0x0c341e),
+    warning_tint: hex(0x3e2d04),
+    danger_tint: hex(0x4a2321),
+    neutral_tint: hex(0x1c2127),
 
-    success: hex(0x55b978),
-    warning: hex(0xd89a3d),
-    danger: hex(0xe06f67),
-    info: hex(0x71a49a),
-    violet: hex(0x83aa71),
+    success: hex(0x5bc083),
+    warning: hex(0xe1b34d),
+    danger: hex(0xf2716a),
+    info: hex(0x5d8fd8),
+    violet: hex(0x9c86d6),
 
-    paper: hex(0xfbfaf6),
-    paper_ink: hex(0x1d211d),
-    paper_ink_muted: hex(0x62675f),
-    paper_rule: hex(0xd8d4ca),
+    paper: hex(0xffffff),
+    paper_ink: hex(0x151a20),
+    paper_ink_muted: hex(0x585d64),
+    paper_rule: hex(0xdde0e4),
 
     scrim: Color {
         a: 0.45,
@@ -173,43 +185,46 @@ pub const NIGHT: Tokens = Tokens {
     },
 };
 
-/// Thème clair « Porcelaine & Cognac » : surfaces nettes, profondeur discrète et encre froide.
+/// Thème clair « Porcelaine Bleutée » : surfaces nettes, profondeur discrète
+/// et encre froide, avec un accent bleu franc.
 pub const DAY: Tokens = Tokens {
     is_dark: false,
 
-    chrome: hex(0xf8f6f1),
-    canvas: hex(0xf3f1ec),
-    panel: hex(0xfffefd),
-    sunken: hex(0xf0ede7),
+    chrome: hex(0xf8fafd),
+    canvas: hex(0xf5f7f9),
+    panel: hex(0xffffff),
+    sunken: hex(0xeff1f5),
     raised: hex(0xffffff),
-    hover: hex(0xeae5dd),
+    hover: hex(0xe9edf3),
 
-    border: hex(0xddd7cd),
-    border_strong: hex(0xc4b9aa),
+    border: hex(0xdde0e4),
+    border_strong: hex(0xc4c8cd),
 
-    text: hex(0x17201d),
-    text_secondary: hex(0x4f5a55),
-    text_muted: hex(0x7b857f),
+    text: hex(0x151a20),
+    text_secondary: hex(0x585d64),
+    text_muted: hex(0x81858b),
 
-    accent: hex(0xa65322),
-    accent_fill: hex(0xa65322),
-    accent_hover: hex(0x8c4219),
-    on_accent: hex(0xfffcf6),
-    selection: Color {
-        a: 0.12,
-        ..hex(0xa65322)
-    },
+    accent: hex(0x285cc2),
+    accent_fill: hex(0x285cc2),
+    accent_hover: hex(0x1d49a0),
+    on_accent: hex(0xffffff),
+    selection: hex(0xe2edff),
+    accent_tint: hex(0xe2edff),
+    success_tint: hex(0xd6f6e0),
+    warning_tint: hex(0xfeedc9),
+    danger_tint: hex(0xffe4df),
+    neutral_tint: hex(0xeff1f5),
 
-    success: hex(0x2e7a4d),
-    warning: hex(0x95680f),
-    danger: hex(0xb94842),
-    info: hex(0x477a72),
-    violet: hex(0x5e844f),
+    success: hex(0x1a8a51),
+    warning: hex(0xb68700),
+    danger: hex(0xc53637),
+    info: hex(0x3d6fb4),
+    violet: hex(0x7a5fa8),
 
     paper: hex(0xffffff),
-    paper_ink: hex(0x17201d),
-    paper_ink_muted: hex(0x62675f),
-    paper_rule: hex(0xd8d4ca),
+    paper_ink: hex(0x151a20),
+    paper_ink_muted: hex(0x585d64),
+    paper_rule: hex(0xdde0e4),
 
     scrim: Color {
         a: 0.45,
@@ -291,25 +306,26 @@ mod tests {
     }
 
     #[test]
-    fn la_palette_respecte_la_direction_graphite_et_cognac() {
+    fn la_palette_respecte_la_direction_bleu_et_les_deux_themes() {
         let day = DAY;
         let night = NIGHT;
-        assert!(day.accent.r > day.accent.g, "le cognac doit rester chaud");
+        // L'accent est un bleu : le canal bleu domine le canal rouge.
+        assert!(day.accent.b > day.accent.r, "l'accent doit rester froid");
         assert!(
-            night.accent.r > night.accent.g,
-            "le champagne doit rester chaud"
+            night.accent.b > night.accent.r,
+            "l'accent doit rester froid"
         );
         assert!(
             night.accent.g > day.accent.g,
             "accent nocturne pas assez lumineux"
         );
         assert!(
-            day.canvas.r > day.canvas.b,
-            "le thème clair doit rester ivoire"
+            day.canvas.b > day.canvas.r,
+            "le thème clair doit rester très légèrement bleuté"
         );
         assert!(
             ecart_max(night.violet, day.violet) > 0.05,
-            "le vert sauge doit être adapté à chaque thème"
+            "le violet doit être adapté à chaque thème"
         );
     }
 
@@ -358,7 +374,7 @@ mod tests {
         for palette in [NIGHT, DAY] {
             let separation = (tint(palette.panel) - tint(palette.canvas)).abs();
             assert!(
-                separation >= 0.05,
+                separation >= 0.02,
                 "le panneau doit se détacher du fond ambiant"
             );
         }

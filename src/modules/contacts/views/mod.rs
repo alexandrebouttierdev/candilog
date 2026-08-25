@@ -5,12 +5,11 @@ use crate::app::{App, Message};
 use crate::modules::contacts::components as people;
 use crate::modules::contacts::model::Contact;
 use crate::modules::entretiens::model::Entretien;
-use crate::navigation::Route;
 use crate::ui::components::button as controls;
 use crate::ui::components::header;
 use crate::ui::components::icon::Icon;
 use crate::ui::components::overlay;
-use crate::ui::components::{badge, field, layout, pagination, state, surface, typo};
+use crate::ui::components::{badge, layout, pagination, state, surface, typo};
 use crate::ui::format;
 use crate::ui::theme::metrics::space;
 use crate::ui::theme::styles;
@@ -24,11 +23,10 @@ use iced::{Alignment, Element, Length};
 /// Rend l'écran du réseau professionnel.
 pub fn view(app: &App) -> Element<'_, Message> {
     let screen: Element<'_, Message> = layout::screen(
-        header::route_header(
+        header::page_header(
             Icon::Network,
             "Réseau professionnel",
-            Route::Reseau,
-            Message::Navigate,
+            "Contacts et réseau",
             actions(),
         ),
         layout::workspace(directory(app)),
@@ -97,23 +95,14 @@ fn directory(app: &App) -> Element<'_, Message> {
                 )),
             ]
             .align_y(Alignment::Center),
-            row![
-                field::search_resettable(
-                    "Rechercher un contact…",
-                    &app.search,
-                    Message::SearchChanged,
-                    Message::ResetSearch,
-                    Length::Fixed(420.0),
+            row![badge::badge(
+                format::plural(
+                    usize::try_from(app.data.contacts_total).unwrap_or(usize::MAX),
+                    "contact",
+                    "contacts",
                 ),
-                badge::badge(
-                    format::plural(
-                        usize::try_from(app.data.contacts_total).unwrap_or(usize::MAX),
-                        "contact",
-                        "contacts",
-                    ),
-                    crate::ui::theme::Tone::Neutral,
-                ),
-            ]
+                crate::ui::theme::Tone::Neutral,
+            ),]
             .spacing(space::MD)
             .align_y(Alignment::Center),
         ]

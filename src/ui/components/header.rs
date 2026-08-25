@@ -2,9 +2,7 @@
 
 use super::button as controls;
 use super::icon::{self, Icon, Ink};
-use super::sidebar::workspace_tab_controls;
 use super::typo;
-use crate::navigation::Route;
 use crate::ui::theme::metrics::space;
 use crate::ui::theme::styles;
 use crate::ui::theme::tokens::tokens;
@@ -53,61 +51,6 @@ pub fn page_header<'a, Message: 'a>(
         }
     })
     .into()
-}
-
-/// Toolbar d'un espace : titre, routes sœurs et actions métier sur une seule ligne.
-pub fn workspace_header<'a, Message: 'a>(
-    glyph: Icon,
-    title: &'a str,
-    tabs: Element<'a, Message>,
-    actions: Element<'a, Message>,
-) -> Element<'a, Message> {
-    container(
-        row![
-            page_glyph(glyph),
-            typo::title(title),
-            container(vertical_rule(1).style(styles::divider)).height(18.0),
-            tabs,
-            iced::widget::Space::with_width(Length::Fill),
-            actions,
-        ]
-        .spacing(space::LG)
-        .align_y(Alignment::Center),
-    )
-    .height(58.0)
-    .padding([0.0, space::XXL])
-    .width(Length::Fill)
-    .align_y(Alignment::Center)
-    .style(move |theme: &Theme| {
-        let palette = tokens(theme);
-        container::Style {
-            background: Some(Background::Color(palette.canvas)),
-            border: Border {
-                color: palette.border,
-                width: 1.0,
-                radius: PAGE_HEADER_RADIUS.into(),
-            },
-            ..container::Style::default()
-        }
-    })
-    .into()
-}
-
-/// Toolbar d'un écran rattaché à un espace : les routes sœurs sont intégrées
-/// au même niveau que le titre et les actions métier.
-pub fn route_header<'a, Message: Clone + 'a>(
-    glyph: Icon,
-    title: &'a str,
-    active: Route,
-    on_navigate: impl Fn(Route) -> Message + Copy + 'a,
-    actions: Element<'a, Message>,
-) -> Element<'a, Message> {
-    workspace_header(
-        glyph,
-        title,
-        workspace_tab_controls(active, on_navigate),
-        actions,
-    )
 }
 
 /// En-tête de modale : icône, titre, description, bouton fermer.

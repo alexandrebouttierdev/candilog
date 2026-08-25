@@ -52,16 +52,18 @@ pub fn search_resettable<'a, Message: Clone + 'a>(
     on_input: impl Fn(String) -> Message + 'a,
     on_reset: Message,
     width: Length,
+    focus_id: Option<&'static str>,
 ) -> Element<'a, Message> {
-    let mut control = row![
-        icon::icon(Icon::Search, icon::SM, Ink::Muted),
-        input(placeholder, value)
-            .on_input(on_input)
-            .width(Length::Fill),
-    ]
-    .spacing(space::SM)
-    .align_y(Alignment::Center)
-    .width(width);
+    let mut field = input(placeholder, value)
+        .on_input(on_input)
+        .width(Length::Fill);
+    if let Some(id) = focus_id {
+        field = field.id(iced::widget::text_input::Id::new(id));
+    }
+    let mut control = row![icon::icon(Icon::Search, icon::SM, Ink::Muted), field]
+        .spacing(space::SM)
+        .align_y(Alignment::Center)
+        .width(width);
     if !value.trim().is_empty() {
         control = control.push(crate::ui::components::button::icon_action(
             Icon::Close,

@@ -12,10 +12,9 @@ use crate::ui::components::button as controls;
 use crate::ui::components::choice::Choice;
 use crate::ui::components::header;
 use crate::ui::components::icon::Icon;
-use crate::ui::components::sidebar::workspace_tab_controls;
-use crate::ui::components::{badge, field, layout, pagination, typo};
+use crate::ui::components::{badge, layout, pagination, typo};
 use crate::ui::format;
-use crate::ui::theme::metrics::{size, space};
+use crate::ui::theme::metrics::space;
 use crate::ui::theme::styles;
 use crate::ui::theme::Tone;
 use iced::widget::{column, container, row};
@@ -59,10 +58,10 @@ pub fn view(app: &App) -> Element<'_, Message> {
     .height(Length::Fill);
 
     layout::screen(
-        header::workspace_header(
+        header::page_header(
             Icon::Applications,
             "Suivi des candidatures",
-            workspace_tab_controls(app.route, Message::Navigate),
+            "Suivi de vos dossiers",
             actions,
         ),
         layout::workspace(body),
@@ -94,13 +93,6 @@ fn candidate_pagination(app: &App) -> Element<'_, Message> {
 /// Barre de commandes compacte : recherche, filtres et mode d'affichage.
 fn command_bar(app: &App) -> Element<'_, Message> {
     let mut leading = row![
-        field::search_resettable(
-            "Rechercher un poste, une entreprise…",
-            &app.search,
-            Message::SearchChanged,
-            Message::ResetSearch,
-            Length::Fixed(size::SEARCH),
-        ),
         typo::caption(format::plural(
             usize::try_from(app.data.candidatures_total).unwrap_or(usize::MAX),
             "résultat",
