@@ -19,7 +19,7 @@ export function DetailDrawer({
 }: {
   open: boolean;
   title: string;
-  subtitle?: string;
+  subtitle?: string | undefined;
   /** Actions contextuelles du bandeau d'identité. */
   actions?: ReactNode;
   onClose: () => void;

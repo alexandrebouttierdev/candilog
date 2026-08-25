@@ -152,3 +152,102 @@ npm test                            41 passed (7 fichiers)
 
 Rien. T2 migre Entreprises + Secteurs + Contacts et valide la chaîne complète
 View → ViewModel → Service → IPC → Rust sur la feature la plus simple.
+
+---
+
+## T2 — Entreprises, Secteurs, Contacts · terminée le 2026-08-25
+
+Première feature migrée de bout en bout. Valide la chaîne complète
+View → ViewModel → Service → IPC → Command → Service → Domain → Repository → SQLite.
+
+### Backend
+
+Trois features portées dans `features/<f>/{domain,application,infrastructure,presentation}`.
+Le métier vient de l'application Iced ; deux choses ont changé au passage.
+
+**Les traits de dépôt perdent leurs implémentations par défaut.** Dans le projet Iced,
+`EntrepriseRepository::list_page` avait un corps par défaut qui chargeait toute la table
+puis filtrait en Rust — pratique pour les mocks, mais un dépôt écrit sans surcharge
+« fonctionnait » tout en annulant la pagination, et le défaut serait resté invisible
+jusqu'à ce que le répertoire grossisse. Chaque implémentation dit maintenant explicitement
+comment elle pagine.
+
+**Le contact porte le nom de son entreprise.** `Contact.entreprise_nom` est aplati depuis un
+`LEFT JOIN` : sans lui, afficher « Nova Digital » sous chaque ligne de la liste demanderait
+une requête par ligne, ou de charger tout le répertoire côté React.
+
+Ajouts au socle :
+
+- `core/pagination` — type `Page<T>` partagé, avec `offset()` sans débordement. Les quatre
+  compteurs sont annoncés `number` et non `number | bigint` côté TypeScript : ils comptent
+  des lignes d'une base locale, qui ne peut pas approcher 2^53.
+- `core/utils/blocking` — toutes les commandes enveloppent l'appel métier dans
+  `spawn_blocking`. `rusqlite` est synchrone : appelé directement dans une commande `async`,
+  il figerait l'interface le temps de l'accès disque (§28).
+- `core/utils/validation` — repris de l'Iced, `reqwest::Url` remplacé par `url` : la
+  validation vit dans `core` et n'a pas à faire dépendre le socle d'un client HTTP.
+- **Migration 009** — `contacts.role_suivi`, pour le champ « Rôle dans le suivi » des
+  maquettes. Nullable, sans `CHECK` : le rôle est un texte libre dans les maquettes, et
+  figer une liste obligerait à migrer à chaque rôle nouveau.
+
+14 commandes Tauri, toutes fines : reprendre le service, déléguer, laisser `AppError` se
+sérialiser.
+
+### Frontend
+
+`features/{entreprises,contacts,secteurs}/` en `model` / `view` / `viewmodel` / `services`.
+
+Les ViewModels traitent **la recherche et la pagination comme des paramètres de requête** :
+la clé de cache TanStack Query les inclut, chaque changement déclenche un appel qui ne
+renvoie qu'une page, et toute nouvelle recherche ramène en page 1 — rester en page 3 après
+avoir restreint la recherche afficherait une liste vide alors que des résultats existent.
+
+Deux formulaires React Hook Form + Zod, un schéma par formulaire, reprenant les règles du
+backend. Les helpers `texteFacultatif` / `urlFacultative` / `identifiantFacultatif`
+normalisent `""` en `null` : la base distingue `NULL` de `''`, que les `coalesce` et les
+`LIKE` de la recherche ne traitent pas de la même façon.
+
+`shared/ui/MasterList` complète la bibliothèque : liste maître d'un écran maître-détail,
+générique parce que Relations l'utilise deux fois et que Candidatures la réutilisera.
+
+### Le test qui compte
+
+`shared/services/__tests__/commandes-ipc.test.ts` compare trois inventaires : les
+`#[tauri::command]` déclarés, les commandes enregistrées dans l'`invoke_handler`, et les
+chaînes réellement passées à `ipc()`. C'est le seul défaut qu'aucun compilateur ne voit :
+`ipc("entreprise_lister")` au lieu de `entreprises_lister` compile des deux côtés et
+n'échoue qu'à l'exécution, sur un écran vide.
+
+### Vérifié
+
+```
+cargo fmt --check / clippy -D warnings   ok
+cargo test                                82 passed (+22)
+npm run build / lint                      ok
+npm test                                  67 passed (+26)
+```
+
+À l'écran, sur les données réelles de la base de développement (10 entreprises,
+9 contacts) : liste maître paginée, recherche, fiche détaillée avec champs non renseignés
+explicitement marqués, modale de formulaire conforme aux maquettes, validation Zod rendue
+sous les champs, `role_suivi` de la migration 009 affiché en pastille.
+
+L'application native démarre, applique les neuf migrations et alimente le référentiel des
+23 secteurs.
+
+### Écarts assumés
+
+- **Le rendu dans la fenêtre native n'a pas été vérifié à l'œil.** Les captures ont été
+  prises dans le navigateur, où l'IPC est absent : les données réelles y ont transité par un
+  pont temporaire, retiré depuis. Le risque de divergence porte sur le nom des commandes,
+  que le test de contrat IPC couvre. `npm run tauri dev` reste à lancer pour un contrôle
+  visuel dans la fenêtre.
+- Le sélecteur d'entreprise du formulaire contact charge le répertoire complet, sans
+  pagination : c'est un `select` natif, qui ne saurait pas demander la page suivante.
+  L'`EntityPicker` paginé du guide arrive avec les candidatures, dont l'usage du répertoire
+  est plus intensif.
+
+### Reste à faire avant T3
+
+Rien. T3 migre les candidatures : Kanban, Liste, filtres, détail, export CSV, et
+l'`EntityPicker` paginé.

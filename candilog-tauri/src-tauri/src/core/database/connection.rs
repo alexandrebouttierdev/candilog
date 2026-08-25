@@ -37,10 +37,14 @@ const MIGRATIONS: &[(i64, &str)] = &[
         8,
         include_str!("../../../migrations/008_secteurs_activite.sql"),
     ),
+    (
+        9,
+        include_str!("../../../migrations/009_role_suivi_contacts.sql"),
+    ),
 ];
 
 /// Version de schéma atteinte après application de toutes les migrations.
-pub const DERNIERE_VERSION: i64 = 8;
+pub const DERNIERE_VERSION: i64 = 9;
 
 /// Applique les réglages indispensables à **chaque** connexion du pool.
 ///

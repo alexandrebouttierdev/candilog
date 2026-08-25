@@ -1,6 +1,9 @@
 //! Construction et lancement de l'application Tauri.
 
 use crate::app::state::AppState;
+use crate::features::contacts::presentation::commands as contacts;
+use crate::features::entreprises::presentation::commands as entreprises;
+use crate::features::secteurs::presentation::commands as secteurs;
 
 /// Démarre Candilog : journal, état applicatif, plugins, commandes.
 ///
@@ -26,7 +29,22 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(state)
-        .invoke_handler(tauri::generate_handler![])
+        .invoke_handler(tauri::generate_handler![
+            entreprises::entreprises_lister,
+            entreprises::entreprises_lister_page,
+            entreprises::entreprises_lister_types,
+            entreprises::entreprises_obtenir,
+            entreprises::entreprises_creer,
+            entreprises::entreprises_modifier,
+            entreprises::entreprises_supprimer,
+            contacts::contacts_lister,
+            contacts::contacts_lister_page,
+            contacts::contacts_obtenir,
+            contacts::contacts_creer,
+            contacts::contacts_modifier,
+            contacts::contacts_supprimer,
+            secteurs::secteurs_lister,
+        ])
         .run(tauri::generate_context!())
     {
         // `run` n'échoue qu'à l'initialisation du moteur de rendu système : rien que

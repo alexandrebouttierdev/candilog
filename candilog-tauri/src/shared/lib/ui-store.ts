@@ -7,7 +7,7 @@ export interface ToastMessage {
   readonly id: string;
   readonly tone: "success" | "error" | "info";
   readonly title: string;
-  readonly detail?: string;
+  readonly detail?: string | undefined;
 }
 
 interface UiState {

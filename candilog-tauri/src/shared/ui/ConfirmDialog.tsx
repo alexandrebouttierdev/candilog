@@ -25,7 +25,7 @@ export function ConfirmDialog({
   title: string;
   description: string;
   /** Ce que l'action ne détruit pas, ou toute précision rassurante. */
-  note?: string;
+  note?: string | undefined;
   confirmLabel?: string;
   busy?: boolean;
   onCancel: () => void;

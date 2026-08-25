@@ -32,8 +32,8 @@ export function ModalHost({
   open: boolean;
   icon: string;
   title: string;
-  subtitle?: string;
-  footerNote?: string;
+  subtitle?: string | undefined;
+  footerNote?: string | undefined;
   submitLabel?: string;
   submitIcon?: string;
   submitDisabled?: boolean;

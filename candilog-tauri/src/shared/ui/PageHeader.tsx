@@ -16,7 +16,7 @@ export function PageHeader({
 }: {
   icon: string;
   title: string;
-  subtitle?: string;
+  subtitle?: string | undefined;
   secondary?: ReactNode;
   primary?: ReactNode;
 }) {

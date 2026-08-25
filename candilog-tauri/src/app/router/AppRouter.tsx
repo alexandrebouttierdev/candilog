@@ -4,17 +4,24 @@ import { AppShell } from "@/app/layout/AppShell";
 import { SECTIONS } from "./routes";
 import { PlaceholderPage } from "./PlaceholderPage";
 import { DesignGallery } from "@/app/dev/DesignGallery";
+import { EntreprisesPage } from "@/features/entreprises";
+import { ReseauPage } from "@/features/contacts";
 
 /**
- * Écrans de l'application, dérivés de la carte de navigation.
+ * Écrans réellement migrés, indexés par chemin.
  *
- * Les écrans sont pour l'instant des jalons : chaque tranche de migration remplace celui de
- * sa feature par la vraie page (cf. `docs/migration/01-AUDIT.md`, §7). Déclarer les routes
- * dès maintenant fige la carte de navigation et rend la coque vérifiable.
+ * Chaque tranche de migration ajoute ici la page de sa feature ; les chemins absents de
+ * cette table retombent sur le jalon « écran non encore migré », ce qui garde la navigation
+ * complète et rend visible ce qui reste à faire.
  */
+const PAGES: Record<string, React.ReactElement> = {
+  "/relations/entreprises": <EntreprisesPage />,
+  "/relations/reseau": <ReseauPage />,
+};
+
 const screenRoutes: RouteObject[] = SECTIONS.flatMap((section) =>
   section.routes.map((route): RouteObject => {
-    const element = (
+    const element = PAGES[route.path] ?? (
       <PlaceholderPage icon={route.icon} title={route.label} section={section.longLabel} />
     );
     // La racine est déclarée en route index et non en chemin vide : React Router refuse

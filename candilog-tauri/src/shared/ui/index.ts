@@ -9,6 +9,7 @@ export { ErrorBanner } from "./ErrorBanner";
 export { Select, TextArea, TextInput } from "./Field";
 export { FormField, controlClasses } from "./FormField";
 export { Icon } from "./Icon";
+export { MasterList, MasterListItem, initiales } from "./MasterList";
 export { ModalHost } from "./ModalHost";
 export { PageHeader } from "./PageHeader";
 export { Pager, pageBounds } from "./Pager";

@@ -3,17 +3,40 @@
 use crate::core::config::AppPaths;
 use crate::core::database::{open_pool, run_local_migrations, SqlitePool};
 use crate::core::errors::AppResult;
+use crate::features::contacts::application::ContactService;
+use crate::features::contacts::infrastructure::SqliteContactRepository;
+use crate::features::entreprises::application::EntrepriseService;
+use crate::features::entreprises::infrastructure::SqliteEntrepriseRepository;
+use crate::features::secteurs::application::SecteurService;
+use crate::features::secteurs::infrastructure::SqliteSecteurRepository;
 use std::path::PathBuf;
+use std::sync::Arc;
+
+/// Service des entreprises tel que partagé par les commandes.
+pub type Entreprises = Arc<EntrepriseService<SqliteEntrepriseRepository>>;
+/// Service des contacts tel que partagé par les commandes.
+pub type Contacts = Arc<ContactService<SqliteContactRepository>>;
+/// Service du référentiel des secteurs tel que partagé par les commandes.
+pub type Secteurs = Arc<SecteurService<SqliteSecteurRepository>>;
 
 /// Dépendances partagées par toutes les commandes.
 ///
-/// Un unique exemplaire est construit au démarrage puis passé à Tauri via `manage` :
-/// les commandes le reçoivent en `State<'_, AppState>` et ne recréent jamais ni connexion,
-/// ni dépôt, ni client HTTP (MIGRATION.md §23).
+/// Un unique exemplaire est construit au démarrage puis confié à Tauri via `manage` : les
+/// commandes le reçoivent en `State<'_, AppState>` et ne recréent jamais ni connexion, ni
+/// dépôt, ni client HTTP (MIGRATION.md §23).
 ///
-/// Les services métier y sont ajoutés au fur et à mesure des tranches de migration ; le
-/// champ `sqlite` reste le seul socle commun.
+/// Les services sont derrière `Arc` parce qu'une commande `async` doit s'approprier ce
+/// qu'elle déplace vers `spawn_blocking` : elle ne peut pas y emprunter l'état, dont la
+/// durée de vie est liée à l'appel.
+///
+/// D'autres services s'ajoutent au fil des tranches de migration.
 pub struct AppState {
+    /// Service des entreprises.
+    pub entreprises: Entreprises,
+    /// Service des contacts du réseau.
+    pub contacts: Contacts,
+    /// Service du référentiel des secteurs d'activité.
+    pub secteurs: Secteurs,
     /// Pool `SQLite` local.
     pub sqlite: SqlitePool,
     /// Chemin du fichier de base, nécessaire à l'export et à la restauration de sauvegarde.
@@ -33,22 +56,37 @@ impl AppState {
         // Le fichier de base n'existe pas encore au moment où les chemins sont résolus :
         // ses permissions ne peuvent être restreintes qu'une fois la base ouverte.
         paths.securiser();
-        Ok(Self {
-            sqlite: pool,
-            db_path: paths.database,
-        })
+        Self::sur_pool(pool, paths.database)
     }
 
     /// Construit l'état sur une base **en mémoire**, réservé aux tests.
     ///
     /// # Errors
-    /// Retourne `AppError::Database` si le pool ne peut pas être initialisé.
+    /// Retourne `AppError::Database` si le pool `SQLite` ne peut pas être initialisé.
     pub fn in_memory() -> AppResult<Self> {
         let pool = open_pool(None)?;
         run_local_migrations(&pool)?;
+        Self::sur_pool(pool, PathBuf::new())
+    }
+
+    /// Assemble dépôts et services autour d'un pool déjà migré.
+    fn sur_pool(pool: SqlitePool, db_path: PathBuf) -> AppResult<Self> {
+        let secteurs_repo = SqliteSecteurRepository::new(pool.clone());
+        // Le référentiel est garanti au démarrage : le sélecteur du formulaire entreprise
+        // serait vide sur une base neuve, et les secteurs saisis librement dans l'ancienne
+        // application resteraient sans ligne correspondante.
+        secteurs_repo.garantir_referentiel()?;
+
         Ok(Self {
+            entreprises: Arc::new(EntrepriseService::new(SqliteEntrepriseRepository::new(
+                pool.clone(),
+            ))),
+            contacts: Arc::new(ContactService::new(SqliteContactRepository::new(
+                pool.clone(),
+            ))),
+            secteurs: Arc::new(SecteurService::new(secteurs_repo)),
             sqlite: pool,
-            db_path: PathBuf::new(),
+            db_path,
         })
     }
 }

@@ -5,4 +5,5 @@ pub mod database;
 pub mod errors;
 pub mod events;
 pub mod logging;
+pub mod pagination;
 pub mod utils;

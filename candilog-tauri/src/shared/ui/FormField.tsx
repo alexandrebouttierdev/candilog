@@ -20,8 +20,8 @@ export function FormField({
 }: {
   label: string;
   required?: boolean;
-  help?: string;
-  error?: string;
+  help?: string | undefined;
+  error?: string | undefined;
   /** Reçoit les attributs à poser sur le contrôle : identifiant et description. */
   children: (props: {
     id: string;

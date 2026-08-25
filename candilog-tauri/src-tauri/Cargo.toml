@@ -41,6 +41,10 @@ tracing-appender = "0.2"
 uuid = { version = "1", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 dirs = "5"
+# Analyse d'URL des champs « site web » et « profil LinkedIn ». Crate autonome plutôt que
+# `reqwest::Url` : la validation vit dans `core` et n'a aucune raison de faire dépendre le
+# socle d'un client HTTP.
+url = "2"
 ts-rs = { version = "12", features = ["serde-compat", "uuid-impl", "chrono-impl", "no-serde-warnings"] }
 
 [dev-dependencies]
