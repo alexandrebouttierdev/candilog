@@ -1,0 +1,8 @@
+//! Helpers communs et déclaration des cas de test.
+use super::*;
+
+mod test_affichage_validation_contient_message;
+mod test_code_est_stable_par_variante;
+mod test_conversion_serde_donne_variante_serialization;
+mod test_message_utilisateur_masque_le_detail_technique;
+mod test_serialisation_ipc_expose_code_et_message_utilisateur;

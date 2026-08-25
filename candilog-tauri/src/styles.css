@@ -1,0 +1,194 @@
+@import "tailwindcss";
+/* Jeu d'icônes des maquettes, embarqué localement : la politique de sécurité de
+   contenu de la fenêtre Tauri interdit les requêtes vers fonts.googleapis.com, et une
+   application de bureau doit rester utilisable hors ligne. */
+@import "material-symbols/rounded.css";
+
+/* ------------------------------------------------------------------------ */
+/* Jetons Candilog — SPECDESIGN/Guide Avalonia, section 2                     */
+/*                                                                           */
+/* Les jetons sont des variables CSS et non des valeurs `@theme` figées :     */
+/* la préférence de thème a trois états (clair, sombre, système), et seul un  */
+/* triple jeu de déclarations les couvre sans JavaScript. `:root` porte le    */
+/* thème clair, la requête `prefers-color-scheme` le thème sombre lorsque     */
+/* l'utilisateur n'a rien forcé, et `[data-theme]` l'emporte dans les deux    */
+/* sens quand il a choisi.                                                   */
+/* ------------------------------------------------------------------------ */
+
+:root {
+  --candilog-page: #f6f7fa;
+  --candilog-surface: #ffffff;
+  --candilog-surface-alt: #fafbfd;
+  --candilog-border: #e2e6ee;
+  --candilog-border-strong: #c9cfdb;
+  --candilog-text-primary: #22262f;
+  --candilog-text-secondary: #666d7d;
+  --candilog-text-tertiary: #8b91a0;
+  --candilog-accent: #2957d8;
+  --candilog-accent-tint: #eaefff;
+  --candilog-success: #1c7a4f;
+  --candilog-warning: #9a6a12;
+  --candilog-danger: #c0392f;
+  --candilog-neutral-tint: #f2f4f8;
+
+  /* Teintes de statut et filet accentué : présents dans les maquettes (fonds des pastilles
+     et bordure de l'état sélectionné) mais absents du tableau de jetons du guide, qui ne
+     liste que les quatorze couleurs de premier plan. Repris en oklch, la notation dans
+     laquelle les maquettes les expriment. */
+  --candilog-accent-border: oklch(0.83 0.07 262);
+  --candilog-success-tint: oklch(0.945 0.045 155);
+  --candilog-warning-tint: oklch(0.95 0.05 85);
+  --candilog-danger-tint: oklch(0.95 0.045 25);
+
+  /* Élévation — guide section 3. Le niveau 0 est un filet, pas une ombre. */
+  --candilog-shadow-1: 0 1px 2px rgb(20 26 45 / 0.06);
+  --candilog-shadow-2: 0 8px 24px -12px rgb(20 26 45 / 0.18);
+  --candilog-shadow-3: 0 30px 70px -26px rgb(20 26 45 / 0.35);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --candilog-page: #15181f;
+    --candilog-surface: #1d2028;
+    --candilog-surface-alt: #191c23;
+    --candilog-border: #343943;
+    --candilog-border-strong: #474d59;
+    --candilog-text-primary: #f1f3f7;
+    --candilog-text-secondary: #a5abb8;
+    --candilog-text-tertiary: #7c8290;
+    --candilog-accent: #7b9bff;
+    --candilog-accent-tint: #25304d;
+    --candilog-success: #5fd598;
+    --candilog-warning: #e5b65a;
+    --candilog-danger: #f08b7f;
+    --candilog-neutral-tint: #262a33;
+
+    --candilog-accent-border: oklch(0.42 0.09 262);
+    --candilog-success-tint: oklch(0.29 0.06 155);
+    --candilog-warning-tint: oklch(0.31 0.06 85);
+    --candilog-danger-tint: oklch(0.31 0.06 25);
+
+    --candilog-shadow-1: 0 1px 2px rgb(0 0 0 / 0.35);
+    --candilog-shadow-2: 0 8px 24px -12px rgb(0 0 0 / 0.55);
+    --candilog-shadow-3: 0 30px 70px -26px rgb(0 0 0 / 0.7);
+  }
+}
+
+:root[data-theme="dark"] {
+  --candilog-page: #15181f;
+  --candilog-surface: #1d2028;
+  --candilog-surface-alt: #191c23;
+  --candilog-border: #343943;
+  --candilog-border-strong: #474d59;
+  --candilog-text-primary: #f1f3f7;
+  --candilog-text-secondary: #a5abb8;
+  --candilog-text-tertiary: #7c8290;
+  --candilog-accent: #7b9bff;
+  --candilog-accent-tint: #25304d;
+  --candilog-success: #5fd598;
+  --candilog-warning: #e5b65a;
+  --candilog-danger: #f08b7f;
+  --candilog-neutral-tint: #262a33;
+
+  --candilog-accent-border: oklch(0.42 0.09 262);
+  --candilog-success-tint: oklch(0.29 0.06 155);
+  --candilog-warning-tint: oklch(0.31 0.06 85);
+  --candilog-danger-tint: oklch(0.31 0.06 25);
+
+  --candilog-shadow-1: 0 1px 2px rgb(0 0 0 / 0.35);
+  --candilog-shadow-2: 0 8px 24px -12px rgb(0 0 0 / 0.55);
+  --candilog-shadow-3: 0 30px 70px -26px rgb(0 0 0 / 0.7);
+}
+
+/* `dark:` suit la même logique que les jetons : préférence système sauf choix
+   explicite. Rare — les jetons couvrent la quasi-totalité des besoins. */
+@custom-variant dark {
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme="light"]) *, :root:not([data-theme="light"])) {
+      @slot;
+    }
+  }
+  &:where(:root[data-theme="dark"] *, :root[data-theme="dark"]) {
+    @slot;
+  }
+}
+
+@theme inline {
+  --color-page: var(--candilog-page);
+  --color-surface: var(--candilog-surface);
+  --color-surface-alt: var(--candilog-surface-alt);
+  --color-line: var(--candilog-border);
+  --color-line-strong: var(--candilog-border-strong);
+  --color-ink: var(--candilog-text-primary);
+  --color-ink-muted: var(--candilog-text-secondary);
+  --color-ink-faint: var(--candilog-text-tertiary);
+  --color-accent: var(--candilog-accent);
+  --color-accent-tint: var(--candilog-accent-tint);
+  --color-success: var(--candilog-success);
+  --color-warning: var(--candilog-warning);
+  --color-danger: var(--candilog-danger);
+  --color-neutral-tint: var(--candilog-neutral-tint);
+  --color-accent-border: var(--candilog-accent-border);
+  --color-success-tint: var(--candilog-success-tint);
+  --color-warning-tint: var(--candilog-warning-tint);
+  --color-danger-tint: var(--candilog-danger-tint);
+
+  /* Typographie — guide section 3. Police système, graisses 400/500/600. */
+  --font-sans: -apple-system, "Segoe UI", system-ui, sans-serif;
+  --font-mono: ui-monospace, Menlo, Consolas, monospace;
+
+  --text-title: 1.25rem; /* 20 px — titre de page */
+  --text-title--line-height: 1.2;
+  --text-title--font-weight: 650;
+  --text-section: 0.84375rem; /* 13,5 px — titre de section */
+  --text-section--font-weight: 600;
+  --text-kpi: 1.625rem; /* 26 px — valeur de KPI, chiffres tabulaires */
+  --text-kpi--font-weight: 650;
+  --text-body: 0.78125rem; /* 12,5 px — corps */
+  --text-label: 0.71875rem; /* 11,5 px — libellé de champ */
+  --text-label--font-weight: 550;
+  --text-meta: 0.6875rem; /* 11 px — métadonnée */
+  --text-eyebrow: 0.65625rem; /* 10,5 px — sur-titre */
+  --text-eyebrow--font-weight: 600;
+  --text-eyebrow--letter-spacing: 0.08em;
+
+  /* Rayons — guide section 3. */
+  --radius-card: 12px;
+  --radius-field: 9px;
+  --radius-button: 8px;
+  --radius-pill: 6px;
+
+  /* Hauteurs de contrôle et densité. */
+  --spacing-control: 33px; /* bouton */
+  --spacing-field: 36px; /* champ */
+  --spacing-row: 44px; /* ligne de tableau */
+
+  --shadow-e1: var(--candilog-shadow-1);
+  --shadow-e2: var(--candilog-shadow-2);
+  --shadow-e3: var(--candilog-shadow-3);
+}
+
+@layer base {
+  html {
+    color-scheme: light dark;
+  }
+
+  body {
+    background-color: var(--color-page);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Anneau de focus accent, jamais supprimé — guide section 7. */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  /* Chiffres tabulaires partout : KPI, dates, pagination. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
