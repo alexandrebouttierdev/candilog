@@ -827,3 +827,10 @@ alors que la maquette Documents a « Exporter PDF » sur les lettres.
 `cargo clippy --all-targets -- -D warnings`, `cargo test --lib` 232, `npm run lint`,
 `npm test` 143. `vite :1420` : chrome clair/sombre ; PDF et persistance rail → `tauri dev`.
 
+---
+
+## T14 — Nettoyage post-migration (2026-08-28)
+
+`candilog-tauri/` n'existe plus depuis T10 (contenu déjà à la racine). Le dossier
+`website/` est retiré du dépôt : le site public sera repris à part.
+

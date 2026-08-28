@@ -5,7 +5,6 @@ Application native **Tauri 2 + React + TypeScript**, base SQLite locale.
 
 - Audit et plan de migration : [`docs/migration/01-AUDIT.md`](docs/migration/01-AUDIT.md)
 - Source de vérité du design : [`SPECDESIGN/`](SPECDESIGN/)
-- Site public : [`website/`](website/)
 
 ## Démarrer
 
