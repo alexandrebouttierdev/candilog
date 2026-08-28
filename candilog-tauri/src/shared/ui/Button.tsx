@@ -42,6 +42,7 @@ export function Button({
         "inline-flex h-control items-center justify-center gap-1.5 rounded-button px-3.5",
         "text-body font-medium whitespace-nowrap",
         "transition-[background-color,border-color,color,filter] duration-150",
+        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
         "disabled:pointer-events-none disabled:opacity-45",
         VARIANTS[variant],
         className,

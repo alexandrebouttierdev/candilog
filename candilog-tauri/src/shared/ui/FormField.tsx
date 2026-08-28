@@ -62,6 +62,7 @@ export function controlClasses(invalid = false, extra?: string): string {
     "placeholder:text-ink-faint",
     "transition-[border-color,background-color] duration-150",
     "disabled:cursor-not-allowed disabled:bg-neutral-tint disabled:text-ink-faint",
+    "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
     invalid ? "border-danger" : "border-line focus:border-accent",
     extra,
   );

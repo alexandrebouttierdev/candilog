@@ -20,25 +20,28 @@ export function ContextTabs() {
       aria-label={section.longLabel}
       className="flex flex-none items-center gap-1 border-b border-line bg-surface-alt px-7"
     >
-      {section.routes.map((route) => (
-        <NavLink
-          key={route.path}
-          to={route.path}
-          role="tab"
-          className={({ isActive }) =>
-            [
+      {section.routes.map((route) => {
+        const selected = pathname === route.path;
+        return (
+          <NavLink
+            key={route.path}
+            to={route.path}
+            role="tab"
+            aria-selected={selected}
+            className={[
               "flex min-h-10 items-center gap-1.5 border-b-2 px-3 text-body",
               "transition-[color,border-color] duration-150",
-              isActive
+              "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+              selected
                 ? "border-accent font-medium text-accent"
                 : "border-transparent text-ink-muted hover:text-ink",
-            ].join(" ")
-          }
-        >
-          <Icon name={route.icon} size={16} />
-          {route.label}
-        </NavLink>
-      ))}
+            ].join(" ")}
+          >
+            <Icon name={route.icon} size={16} />
+            {route.label}
+          </NavLink>
+        );
+      })}
     </div>
   );
 }

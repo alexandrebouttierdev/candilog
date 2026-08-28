@@ -42,3 +42,11 @@ describe("carte de navigation", () => {
     expect(sectionForPath("/inexistant").key).toBe("accueil");
   });
 });
+
+describe("écrans migrés", () => {
+  it("couvre tous les chemins du rail, sans jalon restant", async () => {
+    const { CHEMINS_MIGRES } = await import("../AppRouter");
+    const paths = SECTIONS.flatMap((section) => section.routes.map((route) => route.path));
+    expect([...CHEMINS_MIGRES].sort()).toEqual([...paths].sort());
+  });
+});

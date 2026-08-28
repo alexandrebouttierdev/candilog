@@ -1,24 +1,85 @@
+import { lazy } from "react";
 import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
 import type { RouteObject } from "react-router-dom";
 import { AppShell } from "@/app/layout/AppShell";
 import { SECTIONS } from "./routes";
 import { PlaceholderPage } from "./PlaceholderPage";
-import { DesignGallery } from "@/app/dev/DesignGallery";
-import { CalendrierPage } from "@/features/calendrier";
-import { CandidaturesPage } from "@/features/candidatures";
-import { EntreprisesPage } from "@/features/entreprises";
-import { ReseauPage } from "@/features/contacts";
-import { AnalysesPage, DashboardPage } from "@/features/analyses";
-import { ProfilPage } from "@/features/profil";
-import { CvAnalysisPage, CvGeneratorPage, CvLibraryPage, LettersLibraryPage, LetterWriterPage } from "@/features/documents";
-import { AProposPage, IaPage, MisesAJourPage, SauvegardesPage } from "@/features/parametres";
+
+const DashboardPage = lazy(() =>
+  import("@/features/analyses/view/pages/DashboardPage").then((m) => ({ default: m.DashboardPage })),
+);
+const AnalysesPage = lazy(() =>
+  import("@/features/analyses/view/pages/AnalysesPage").then((m) => ({ default: m.AnalysesPage })),
+);
+const CandidaturesPage = lazy(() =>
+  import("@/features/candidatures/view/pages/CandidaturesPage").then((m) => ({
+    default: m.CandidaturesPage,
+  })),
+);
+const CalendrierPage = lazy(() =>
+  import("@/features/calendrier/view/pages/CalendrierPage").then((m) => ({
+    default: m.CalendrierPage,
+  })),
+);
+const EntreprisesPage = lazy(() =>
+  import("@/features/entreprises/view/pages/EntreprisesPage").then((m) => ({
+    default: m.EntreprisesPage,
+  })),
+);
+const ReseauPage = lazy(() =>
+  import("@/features/contacts/view/pages/ReseauPage").then((m) => ({ default: m.ReseauPage })),
+);
+const ProfilPage = lazy(() =>
+  import("@/features/profil/view/pages/ProfilPage").then((m) => ({ default: m.ProfilPage })),
+);
+const CvLibraryPage = lazy(() =>
+  import("@/features/documents/view/pages/DocumentsPages").then((m) => ({ default: m.CvLibraryPage })),
+);
+const CvGeneratorPage = lazy(() =>
+  import("@/features/documents/view/pages/DocumentsPages").then((m) => ({
+    default: m.CvGeneratorPage,
+  })),
+);
+const LettersLibraryPage = lazy(() =>
+  import("@/features/documents/view/pages/DocumentsPages").then((m) => ({
+    default: m.LettersLibraryPage,
+  })),
+);
+const LetterWriterPage = lazy(() =>
+  import("@/features/documents/view/pages/DocumentsPages").then((m) => ({
+    default: m.LetterWriterPage,
+  })),
+);
+const CvAnalysisPage = lazy(() =>
+  import("@/features/documents/view/pages/DocumentsPages").then((m) => ({
+    default: m.CvAnalysisPage,
+  })),
+);
+const IaPage = lazy(() =>
+  import("@/features/parametres/view/pages/IaPage").then((m) => ({ default: m.IaPage })),
+);
+const SauvegardesPage = lazy(() =>
+  import("@/features/parametres/view/pages/SauvegardesPage").then((m) => ({
+    default: m.SauvegardesPage,
+  })),
+);
+const MisesAJourPage = lazy(() =>
+  import("@/features/parametres/view/pages/MisesAJourPage").then((m) => ({
+    default: m.MisesAJourPage,
+  })),
+);
+const AProposPage = lazy(() =>
+  import("@/features/parametres/view/pages/AProposPage").then((m) => ({ default: m.AProposPage })),
+);
+const DesignGallery = lazy(() =>
+  import("@/app/dev/DesignGallery").then((m) => ({ default: m.DesignGallery })),
+);
 
 /**
  * Écrans réellement migrés, indexés par chemin.
  *
- * Chaque tranche de migration ajoute ici la page de sa feature ; les chemins absents de
- * cette table retombent sur le jalon « écran non encore migré », ce qui garde la navigation
- * complète et rend visible ce qui reste à faire.
+ * Tous les chemins du rail sont couverts. Un chemin absent retomberait encore sur le jalon
+ * « écran non encore migré », conservé si la carte de navigation s'agrandit avant sa page.
  */
 const PAGES: Record<string, React.ReactElement> = {
   "/": <DashboardPage />,
@@ -39,14 +100,14 @@ const PAGES: Record<string, React.ReactElement> = {
   "/reglages/a-propos": <AProposPage />,
 };
 
+/** Chemins dont la page n'est plus un jalon. */
+export const CHEMINS_MIGRES = Object.keys(PAGES);
+
 const screenRoutes: RouteObject[] = SECTIONS.flatMap((section) =>
   section.routes.map((route): RouteObject => {
     const element = PAGES[route.path] ?? (
       <PlaceholderPage icon={route.icon} title={route.label} section={section.longLabel} />
     );
-    // La racine est déclarée en route index et non en chemin vide : React Router refuse
-    // de porter les deux à la fois, et `exactOptionalPropertyTypes` interdit de passer
-    // `path: undefined` pour contourner la distinction.
     return route.path === "/"
       ? { index: true, element }
       : { path: route.path.slice(1), element };
@@ -59,7 +120,6 @@ const router = createBrowserRouter([
     element: <AppShell />,
     children: [
       ...screenRoutes,
-      // Planche de revue du design system : atteignable par l'URL, jamais par le rail.
       { path: "_design", element: <DesignGallery /> },
       { path: "*", element: <Navigate to="/" replace /> },
     ],
