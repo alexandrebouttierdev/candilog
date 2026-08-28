@@ -29,6 +29,25 @@ export function versDateAffichee(iso: string): string {
   return `${jour}-${mois}-${annee}`;
 }
 
+/**
+ * Date d'affichage des maquettes : « 02 août », « 02 août 2026 » avec l'année.
+ *
+ * Distincte de `versDateAffichee`, qui reste le format **de saisie** `JJ-MM-AAAA` des
+ * champs de formulaire : les maquettes n'écrivent jamais une date en chiffres ailleurs
+ * que dans un champ.
+ */
+export function versDateLongue(iso: string, avecAnnee = false): string {
+  const jour = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!jour) return iso;
+  const date = new Date(`${jour[1]}-${jour[2]}-${jour[3]}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return iso;
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "2-digit",
+    month: "long",
+    ...(avecAnnee ? { year: "numeric" } : {}),
+  }).format(date);
+}
+
 /** Valide une heure `HH:MM` sur 24 heures. */
 export function heureValide(saisie: string): boolean {
   return /^([01]\d|2[0-3]):[0-5]\d$/.test(saisie.trim());
@@ -79,4 +98,18 @@ export function heureDepuisHorodatage(horodatage: string): string {
 /** Jour `AAAA-MM-JJ` d'un horodatage ou d'une date, pour regrouper par journée. */
 export function jourDe(valeur: string): string {
   return valeur.slice(0, 10);
+}
+
+/**
+ * Jours écoulés depuis une date `AAAA-MM-JJ`, jamais négatif.
+ *
+ * Les maquettes affichent l'ancienneté d'une candidature plutôt que sa date d'envoi sur les
+ * cartes du Kanban : « 12 j » se lit d'un coup d'œil là où une date demande un calcul.
+ */
+export function joursDepuis(iso: string): number {
+  const date = new Date(`${iso.slice(0, 10)}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return 0;
+  const aujourdhui = new Date();
+  aujourdhui.setHours(0, 0, 0, 0);
+  return Math.max(0, Math.round((aujourdhui.getTime() - date.getTime()) / 86_400_000));
 }

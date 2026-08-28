@@ -1,8 +1,13 @@
 import type { ReactNode } from "react";
 import { Icon } from "./Icon";
+import { cn } from "@/shared/lib/cn";
 
 /**
  * État vide d'un écran ou d'une carte.
+ *
+ * Reprend la carte « Vide » des maquettes : encadré pointillé de 1,5 px, pastille d'icône
+ * de 36 px, titre 13 px/600 puis explication 11,5 px et action. `bordered` peut être
+ * désactivé lorsque l'état vide occupe déjà une carte à filet plein.
  *
  * Le guide SPECDESIGN demande un état vide **par carte** plutôt qu'un écran vide global :
  * ce composant est donc dimensionné pour être inséré dans un conteneur, pas pour occuper
@@ -13,22 +18,32 @@ export function EmptyState({
   title,
   description,
   action,
+  bordered = false,
+  className,
 }: {
   icon?: string;
   title: string;
   description?: string | undefined;
   action?: ReactNode;
+  bordered?: boolean;
+  className?: string;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 px-6 py-10 text-center">
-      <span className="flex size-11 items-center justify-center rounded-card bg-neutral-tint text-ink-faint">
-        <Icon name={icon} size={22} />
+    <div
+      className={cn(
+        "px-[18px] py-6 text-center",
+        bordered && "rounded-[11px] border-[1.5px] border-dashed border-line",
+        className,
+      )}
+    >
+      <span className="mb-[11px] inline-flex size-9 items-center justify-center rounded-tile bg-neutral-tint text-ink-faint">
+        <Icon name={icon} size={20} />
       </span>
-      <p className="text-section text-ink">{title}</p>
+      <p className="mb-[5px] text-item font-semibold text-ink">{title}</p>
       {description ? (
-        <p className="max-w-sm text-meta text-ink-muted">{description}</p>
+        <p className="mx-auto max-w-sm text-label leading-normal text-ink-faint">{description}</p>
       ) : null}
-      {action ? <div className="mt-2">{action}</div> : null}
+      {action ? <div className="mt-[13px] flex justify-center">{action}</div> : null}
     </div>
   );
 }

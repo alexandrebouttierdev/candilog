@@ -81,19 +81,26 @@ const COLUMNS: Column<DemoRow, "poste" | "entreprise" | "statut" | "date">[] = [
     sortKey: "entreprise",
     render: (row) => <span className="text-ink-muted">{row.entreprise}</span>,
   },
-  { key: "contrat", header: "Contrat", width: "110px", render: (row) => row.contrat },
+  { key: "contrat", header: "Contrat", grow: 0.7, render: (row) => row.contrat },
   {
     key: "statut",
     header: "Statut",
     sortKey: "statut",
-    width: "150px",
+    grow: 1,
     render: (row) => (
       <StatusPill tone={row.statut.tone} icon={row.statut.icon}>
         {row.statut.label}
       </StatusPill>
     ),
   },
-  { key: "date", header: "Envoyée", sortKey: "date", width: "110px", numeric: true, render: (row) => row.date },
+  {
+    key: "date",
+    header: "Envoyée",
+    sortKey: "date",
+    grow: 0.7,
+    numeric: true,
+    render: (row) => row.date,
+  },
 ];
 
 const THEMES: ThemePref[] = ["light", "dark", "system"];

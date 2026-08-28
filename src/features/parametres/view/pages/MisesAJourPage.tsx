@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { ContextBarAccessory, ContextNote } from "@/app/layout/ContextBar";
 import { AppError } from "@/shared/types/app-error";
 import type { MiseAJour, ProgressionMaj } from "@/shared/types/generated/parametres";
 import { Button, PageHeader, StatusPill } from "@/shared/ui";
@@ -66,6 +67,9 @@ export function MisesAJourPage() {
 
   return (
     <div className="flex h-full flex-col">
+      <ContextBarAccessory>
+        <ContextNote>Candilog · données locales</ContextNote>
+      </ContextBarAccessory>
       <PageHeader
         icon="system_update"
         title="Mises à jour"

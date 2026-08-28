@@ -9,8 +9,11 @@ export interface Column<TRow, TSortKey extends string = string> {
   readonly header: string;
   /** Clé de tri envoyée au backend ; absente si la colonne n'est pas triable. */
   readonly sortKey?: TSortKey;
-  /** Largeur CSS de la colonne ; `undefined` laisse la colonne s'étirer. */
-  readonly width?: string;
+  /**
+   * Part de la largeur disponible, comme les `fr` des grilles des maquettes
+   * (« 2.2fr 1.3fr 0.9fr … »). Vaut 1 par défaut.
+   */
+  readonly grow?: number;
   /** Aligner à droite : réservé aux nombres et aux dates. */
   readonly numeric?: boolean;
   readonly render: (row: TRow) => ReactNode;
@@ -22,7 +25,12 @@ export interface SortState<TSortKey extends string> {
 }
 
 /**
- * Tableau dense du guide SPECDESIGN : lignes de 44 px, en-tête triable, ligne cliquable.
+ * Tableau dense du guide SPECDESIGN.
+ *
+ * Grille CSS plutôt que `<table>` : les maquettes répartissent les colonnes en fractions
+ * (`2.2fr 1.3fr 0.9fr 1.1fr 1fr 0.7fr`) et alignent verticalement des cellules à deux
+ * lignes ; une table HTML rendrait les mêmes proportions dépendantes du contenu. Les rôles
+ * ARIA de tableau sont posés à la main pour ne rien perdre en restitution.
  *
  * Le tri est **délégué** : le composant émet la colonne demandée et affiche la direction
  * courante, mais ne trie rien lui-même. Trier ici ne trierait que la page affichée, ce qui
@@ -36,7 +44,10 @@ export function DataTable<TRow, TSortKey extends string = string>({
   sort,
   onSortChange,
   onRowClick,
+  isSelected,
+  header,
   emptyState,
+  footer,
 }: {
   columns: readonly Column<TRow, TSortKey>[];
   rows: readonly TRow[];
@@ -44,149 +55,164 @@ export function DataTable<TRow, TSortKey extends string = string>({
   sort?: SortState<TSortKey>;
   onSortChange?: (key: TSortKey) => void;
   onRowClick?: (row: TRow) => void;
+  isSelected?: (row: TRow) => boolean;
+  /** Bandeau titré au-dessus des en-têtes de colonnes — un `CardHeader`. */
+  header?: ReactNode;
   /** Affiché à la place du corps lorsque `rows` est vide. */
   emptyState?: ReactNode;
+  /** Pied du tableau, à l'intérieur de la carte — typiquement un `Pager`. */
+  footer?: ReactNode;
 }) {
-  if (rows.length === 0 && emptyState) {
-    return (
-      <div className="overflow-hidden rounded-card border border-line bg-surface">
-        <TableHead columns={columns} sort={sort} onSortChange={onSortChange} />
-        {emptyState}
-      </div>
-    );
-  }
+  const template = columns.map((column) => `${column.grow ?? 1}fr`).join(" ");
 
   return (
-    <div className="overflow-x-auto rounded-card border border-line bg-surface">
-      <table className="w-full min-w-[720px] border-collapse text-body">
-        <TableHead columns={columns} sort={sort} onSortChange={onSortChange} asTable />
-        <tbody>
+    <div
+      role="table"
+      className="min-w-0 overflow-hidden rounded-card border border-line bg-surface shadow-e1"
+    >
+      {header}
+
+      <div role="rowgroup">
+        <div
+          role="row"
+          style={{ gridTemplateColumns: template }}
+          className="grid bg-neutral-tint px-[19px] py-[9px]"
+        >
+          {columns.map((column) => {
+            const sortable = column.sortKey !== undefined && onSortChange !== undefined;
+            const activeSort = sort && sort.key === column.sortKey ? sort : undefined;
+            const content = (
+              <>
+                {column.header}
+                {sortable ? (
+                  <Icon
+                    name={
+                      activeSort
+                        ? activeSort.direction === "asc"
+                          ? "arrow_upward"
+                          : "arrow_downward"
+                        : "unfold_more"
+                    }
+                    size={13}
+                    className={activeSort ? "text-accent" : "text-ink-faint"}
+                  />
+                ) : null}
+              </>
+            );
+
+            return (
+              <div
+                key={column.key}
+                role="columnheader"
+                aria-sort={
+                  activeSort
+                    ? activeSort.direction === "asc"
+                      ? "ascending"
+                      : "descending"
+                    : undefined
+                }
+                className={cn(
+                  "min-w-0 text-eyebrow text-ink-faint uppercase",
+                  column.numeric && "text-right",
+                )}
+              >
+                {sortable ? (
+                  <button
+                    type="button"
+                    onClick={() => onSortChange(column.sortKey as TSortKey)}
+                    className={cn(
+                      "inline-flex items-center gap-1 transition-colors duration-150 hover:text-ink",
+                      column.numeric && "flex-row-reverse",
+                    )}
+                  >
+                    {content}
+                  </button>
+                ) : (
+                  content
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {rows.length === 0 && emptyState ? (
+        emptyState
+      ) : (
+        <div role="rowgroup">
           {rows.map((row) => (
-            <tr
+            <div
               key={rowKey(row)}
+              role="row"
               onClick={onRowClick ? () => onRowClick(row) : undefined}
               tabIndex={onRowClick ? 0 : undefined}
               onKeyDown={
                 onRowClick
                   ? (event) => {
-                      if (event.key === "Enter") onRowClick(row);
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        onRowClick(row);
+                      }
                     }
                   : undefined
               }
+              style={{ gridTemplateColumns: template }}
               className={cn(
-                "h-row border-b border-line last:border-b-0",
-                onRowClick && "cursor-pointer transition-colors duration-150 hover:bg-neutral-tint",
+                "grid items-center border-t border-line px-[19px] py-3",
+                onRowClick && "cursor-pointer transition-colors duration-150",
+                isSelected?.(row)
+                  ? "bg-accent-tint"
+                  : onRowClick && "hover:bg-neutral-tint",
               )}
             >
               {columns.map((column) => (
-                <td
+                <div
                   key={column.key}
-                  className={cn(
-                    "px-4 align-middle",
-                    column.numeric && "tabular text-right",
-                  )}
-                  style={column.width ? { width: column.width } : undefined}
+                  role="cell"
+                  className={cn("min-w-0", column.numeric && "tabular text-right")}
                 >
                   {column.render(row)}
-                </td>
+                </div>
               ))}
-            </tr>
+            </div>
           ))}
-        </tbody>
-      </table>
+        </div>
+      )}
+
+      {footer}
     </div>
   );
 }
 
-function TableHead<TRow, TSortKey extends string>({
-  columns,
-  sort,
-  onSortChange,
-  asTable = false,
+/**
+ * Cellule « intitulé » des tableaux : pastille d'initiales, titre 13 px et sous-titre.
+ *
+ * Présente à l'identique dans le tableau du Suivi, celui du Tableau de bord et la liste
+ * des candidatures à relancer — d'où sa place ici plutôt que recopiée trois fois.
+ */
+export function CellIdentity({
+  initials,
+  title,
+  subtitle,
 }: {
-  columns: readonly Column<TRow, TSortKey>[];
-  // `| undefined` explicite : `exactOptionalPropertyTypes` distingue « propriété absente »
-  // de « propriété valant undefined », et le parent transmet ici la seconde forme.
-  sort?: SortState<TSortKey> | undefined;
-  onSortChange?: ((key: TSortKey) => void) | undefined;
-  asTable?: boolean;
+  initials: string;
+  title: string;
+  subtitle?: ReactNode;
 }) {
-  const cells = columns.map((column) => {
-    const sortable = column.sortKey !== undefined && onSortChange !== undefined;
-    // Lié à une constante locale : le rétrécissement de type sur `sort?.key` ne se propage
-    // pas jusqu'aux lectures de `sort.direction` plus bas.
-    const activeSort = sort && sort.key === column.sortKey ? sort : undefined;
-    const content = (
-      <>
-        {column.header}
-        {sortable ? (
-          <Icon
-            name={
-              activeSort
-                ? activeSort.direction === "asc"
-                  ? "arrow_upward"
-                  : "arrow_downward"
-                : "unfold_more"
-            }
-            size={13}
-            className={activeSort ? "text-accent" : "text-ink-faint"}
-          />
-        ) : null}
-      </>
-    );
-
-    const className = cn(
-      "px-4 py-2.5 text-left text-eyebrow uppercase text-ink-faint",
-      column.numeric && "text-right",
-    );
-
-    if (!asTable) {
-      return (
-        <div key={column.key} className={className}>
-          {content}
-        </div>
-      );
-    }
-
-    return (
-      <th
-        key={column.key}
-        scope="col"
-        aria-sort={
-          activeSort
-            ? activeSort.direction === "asc"
-              ? "ascending"
-              : "descending"
-            : undefined
-        }
-        className={className}
-        style={column.width ? { width: column.width } : undefined}
-      >
-        {sortable ? (
-          <button
-            type="button"
-            onClick={() => onSortChange(column.sortKey as TSortKey)}
-            className={cn(
-              "inline-flex items-center gap-1 transition-colors duration-150 hover:text-ink",
-              column.numeric && "flex-row-reverse",
-            )}
-          >
-            {content}
-          </button>
-        ) : (
-          content
-        )}
-      </th>
-    );
-  });
-
-  if (!asTable) {
-    return <div className="flex border-b border-line bg-surface-alt">{cells}</div>;
-  }
-
   return (
-    <thead className="border-b border-line bg-surface-alt">
-      <tr>{cells}</tr>
-    </thead>
+    <div className="flex min-w-0 items-center gap-[11px]">
+      <span
+        aria-hidden="true"
+        className="flex size-7 flex-none items-center justify-center rounded-button bg-neutral-tint text-meta font-strong text-ink-muted"
+      >
+        {initials}
+      </span>
+      <div className="min-w-0">
+        <div className="truncate text-item font-mid text-ink">{title}</div>
+        {subtitle ? (
+          <div className="mt-px truncate text-label text-ink-faint">{subtitle}</div>
+        ) : null}
+      </div>
+    </div>
   );
 }

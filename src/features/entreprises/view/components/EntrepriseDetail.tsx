@@ -1,75 +1,185 @@
 import type { Entreprise } from "../../services/entreprise.service";
-import { Button, Icon } from "@/shared/ui";
+import type { Candidature } from "@/features/candidatures/services/candidature.service";
+import { contratLabel, statutMeta } from "@/features/candidatures/model/statuts";
+import { versDateLongue } from "@/shared/lib/dates";
+import {
+  Card,
+  CardHeader,
+  CardLink,
+  EmptyState,
+  Icon,
+  RecordAction,
+  RecordHeader,
+  RecordStat,
+  StatusPill,
+  initialesMot,
+} from "@/shared/ui";
 
 /**
  * Fiche détaillée d'une entreprise.
  *
- * Structure imposée par le guide : bandeau d'identité, colonne principale, colonne latérale
- * d'informations. Les champs non renseignés sont **explicitement marqués** plutôt que
- * masqués — le guide le demande, et une fiche dont les lignes disparaissent au gré du
- * remplissage ne se lit pas d'un coup d'œil.
+ * Disposition des maquettes Relations : bandeau d'identité et chiffres clés, colonne
+ * principale (candidatures liées, notes) et colonne latérale d'informations.
+ *
+ * Les champs non renseignés sont **explicitement marqués** plutôt que masqués — le guide le
+ * demande, et une fiche dont les lignes disparaissent au gré du remplissage ne se lit pas
+ * d'un coup d'œil.
  */
 export function EntrepriseDetail({
   entreprise,
+  candidatures,
+  totalCandidatures,
   onEdit,
   onDelete,
+  onOuvrirCandidature,
+  onToutVoir,
 }: {
   entreprise: Entreprise;
+  candidatures: readonly Candidature[];
+  totalCandidatures: number;
   onEdit: () => void;
   onDelete: () => void;
+  onOuvrirCandidature: (candidature: Candidature) => void;
+  onToutVoir: () => void;
 }) {
+  const entretiens = candidatures.filter((item) => item.statut === "ENTRETIEN").length;
+  const enAttente = candidatures.filter((item) => item.statut === "EN_ATTENTE").length;
+
   return (
-    <div className="flex h-full flex-col overflow-y-auto">
-      <header className="flex flex-none items-start gap-3 border-b border-line bg-surface-alt px-6 py-5">
-        <span className="flex size-11 flex-none items-center justify-center rounded-card bg-accent-tint text-accent">
-          <Icon name="apartment" size={22} />
-        </span>
-        <div className="min-w-0 flex-1">
-          <h2 className="truncate text-title">{entreprise.nom}</h2>
-          <p className="truncate text-meta text-ink-muted">
-            {[entreprise.secteur, entreprise.type, entreprise.ville]
-              .filter(Boolean)
-              .join(" · ") || "Aucune information complémentaire"}
-          </p>
-        </div>
-        <Button icon="edit" onClick={onEdit}>
-          Modifier
-        </Button>
-        <Button variant="danger" icon="delete" onClick={onDelete}>
-          Supprimer
-        </Button>
-      </header>
+    <div className="min-w-0 flex-1 overflow-y-auto bg-page">
+      <RecordHeader
+        initials={initialesMot(entreprise.nom)}
+        title={entreprise.nom}
+        badge={
+          entreprise.type ? (
+            <StatusPill tone="accent" icon="business_center">
+              {entreprise.type}
+            </StatusPill>
+          ) : null
+        }
+        subtitle={
+          [entreprise.secteur, entreprise.ville].filter(Boolean).join(" · ") ||
+          "Aucune information complémentaire"
+        }
+        actions={
+          <>
+            {entreprise.siteWeb ? (
+              <RecordAction
+                icon="open_in_new"
+                onClick={() => window.open(entreprise.siteWeb ?? "", "_blank", "noopener")}
+              >
+                Site web
+              </RecordAction>
+            ) : null}
+            <RecordAction icon="edit" onClick={onEdit}>
+              Modifier
+            </RecordAction>
+            <RecordAction icon="delete" onClick={onDelete}>
+              Supprimer
+            </RecordAction>
+          </>
+        }
+        stats={
+          <>
+            <RecordStat icon="work" iconClassName="text-accent" label="Candidatures">
+              {totalCandidatures}
+            </RecordStat>
+            <RecordStat icon="event_available" iconClassName="text-success" label="Entretiens">
+              {entretiens}
+            </RecordStat>
+            <RecordStat icon="hourglass_top" label="En attente">
+              {enAttente}
+            </RecordStat>
+          </>
+        }
+      />
 
-      <div className="grid flex-1 grid-cols-[1fr_280px] gap-6 p-6">
-        <section className="flex flex-col gap-3">
-          <h3 className="text-eyebrow uppercase text-ink-faint">Notes</h3>
-          <div className="rounded-card border border-line bg-surface p-4">
-            {entreprise.notes ? (
-              <p className="text-body whitespace-pre-wrap text-ink">{entreprise.notes}</p>
+      <div className="flex flex-wrap items-start gap-4 px-[26px] pt-5 pb-[30px]">
+        <div className="flex min-w-0 flex-[1_1_420px] flex-col gap-4">
+          <Card clipped>
+            <CardHeader
+              compact
+              meta={
+                candidatures.length > 0 ? (
+                  <CardLink compact onClick={onToutVoir}>
+                    Tout voir
+                  </CardLink>
+                ) : undefined
+              }
+            >
+              Candidatures liées
+            </CardHeader>
+            {candidatures.length === 0 ? (
+              <EmptyState
+                icon="work_off"
+                title="Aucune candidature"
+                description="Les candidatures envoyées à cette société apparaîtront ici."
+              />
             ) : (
-              <p className="text-meta text-ink-faint">
-                Aucune note. Utilisez « Modifier » pour consigner le contexte, la culture ou
-                les informations utiles.
-              </p>
+              candidatures.map((candidature) => {
+                const statut = statutMeta(candidature.statut);
+                return (
+                  <button
+                    key={candidature.id}
+                    type="button"
+                    onClick={() => onOuvrirCandidature(candidature)}
+                    className="flex w-full items-center gap-[11px] border-b border-line px-[17px] py-[11px] text-left transition-colors duration-150 last:border-b-0 hover:bg-neutral-tint"
+                  >
+                    <span className="flex size-7 flex-none items-center justify-center rounded-button bg-neutral-tint text-ink-muted">
+                      <Icon name="work" size={16} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-body font-mid text-ink">
+                        {candidature.poste}
+                      </span>
+                      <span className="mt-px block truncate text-meta text-ink-faint">
+                        {contratLabel(candidature.typeContrat)} · envoyée le{" "}
+                        {versDateLongue(candidature.dateEnvoi)}
+                      </span>
+                    </span>
+                    <StatusPill tone={statut.tone} compact>
+                      {statut.label}
+                    </StatusPill>
+                  </button>
+                );
+              })
             )}
-          </div>
-        </section>
+          </Card>
 
-        <aside className="flex flex-col gap-3">
-          <h3 className="text-eyebrow uppercase text-ink-faint">Informations</h3>
-          <dl className="flex flex-col gap-3 rounded-card border border-line bg-surface p-4">
+          <Card clipped>
+            <CardHeader compact>Notes</CardHeader>
+            <div className="px-[17px] py-3.5">
+              {entreprise.notes ? (
+                <p className="text-body leading-normal whitespace-pre-wrap text-ink">
+                  {entreprise.notes}
+                </p>
+              ) : (
+                <p className="text-label leading-normal text-ink-faint">
+                  Aucune note. Utilisez « Modifier » pour consigner le contexte, la culture ou
+                  les informations utiles.
+                </p>
+              )}
+            </div>
+          </Card>
+        </div>
+
+        <Card clipped className="max-w-[360px] flex-[1_1_280px]">
+          <CardHeader compact>Informations</CardHeader>
+          <div className="px-[17px] pt-1 pb-3">
             <Ligne label="Secteur" valeur={entreprise.secteur} />
             <Ligne label="Type" valeur={entreprise.type} />
             <Ligne label="Ville" valeur={entreprise.ville} />
             <Ligne label="Adresse" valeur={entreprise.adresse} />
             <Ligne label="Site web" valeur={entreprise.siteWeb} lien />
-          </dl>
-        </aside>
+            <Ligne label="Ajoutée le" valeur={versDateLongue(entreprise.createdAt, true)} />
+          </div>
+        </Card>
       </div>
     </div>
   );
 }
 
+/** Rangée libellé / valeur de la carte « Informations » : 9 px de padding, filet bas. */
 function Ligne({
   label,
   valeur,
@@ -80,9 +190,9 @@ function Ligne({
   lien?: boolean;
 }) {
   return (
-    <div className="flex flex-col gap-0.5">
-      <dt className="text-label text-ink-faint">{label}</dt>
-      <dd className="text-body break-words text-ink">
+    <div className="flex items-center justify-between gap-3.5 border-b border-line py-[9px] last:border-b-0">
+      <span className="flex-none text-note text-ink-faint">{label}</span>
+      <span className="min-w-0 flex-1 truncate text-right text-body font-medium text-ink">
         {valeur ? (
           lien ? (
             // `rel` et `target` explicites : l'application est servie depuis un contexte
@@ -99,9 +209,9 @@ function Ligne({
             valeur
           )
         ) : (
-          <span className="text-ink-faint">Non renseigné</span>
+          <span className="font-normal text-ink-faint">Non renseigné</span>
         )}
-      </dd>
+      </span>
     </div>
   );
 }

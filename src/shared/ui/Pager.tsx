@@ -12,6 +12,9 @@ export function pageBounds(page: number, pageSize: number, total: number) {
 /**
  * Pagination réutilisable.
  *
+ * Pied de 11 px / 19 px sur fond `surface-alt`, résumé à gauche, sélecteur de densité puis
+ * boutons de 28 px à droite : la barre des maquettes du Suivi et des Relations.
+ *
  * La pagination est **côté données** : le composant ne reçoit jamais la collection
  * complète, seulement la page courante et le total, et le ViewModel ne demande au backend
  * que la page affichée. Le guide exige de ne matérialiser qu'une page au-delà de 50
@@ -22,14 +25,22 @@ export function Pager({
   pageSize,
   total,
   label,
+  pageSizes,
+  dense = false,
   onPageChange,
+  onPageSizeChange,
 }: {
   page: number;
   pageSize: number;
   total: number;
   /** Nom de ce qui est compté, au pluriel : « candidatures », « entreprises ». */
   label: string;
+  /** Densités proposées ; le sélecteur est masqué si l'appelant n'en gère pas. */
+  pageSizes?: readonly number[];
+  /** Pied resserré des colonnes maîtresses : 10 px / 14 px au lieu de 11 px / 19 px. */
+  dense?: boolean;
   onPageChange: (page: number) => void;
+  onPageSizeChange?: (pageSize: number) => void;
 }) {
   const { pageCount, from, to, hasPrev, hasNext } = pageBounds(page, pageSize, total);
 
@@ -41,12 +52,46 @@ export function Pager({
   return (
     <nav
       aria-label={`Pagination des ${label}`}
-      className="flex flex-none items-center justify-between gap-3 border-t border-line bg-surface-alt px-4 py-2.5"
+      className={cn(
+        "flex flex-none flex-wrap items-center border-t border-line bg-surface-alt",
+        dense ? "gap-2.5 px-3.5 py-2.5" : "gap-3.5 px-[19px] py-[11px]",
+      )}
     >
-      <p className="tabular text-meta text-ink-muted">
+      <p
+        className={cn(
+          "tabular flex-1 truncate text-label text-ink-faint",
+          dense ? "min-w-0" : "min-w-[150px]",
+        )}
+      >
         {from}–{to} sur {total} {label}
       </p>
-      <div className="flex items-center gap-1">
+
+      {pageSizes && onPageSizeChange ? (
+        <div className="flex items-center gap-2">
+          <span className="text-label text-ink-faint">Lignes</span>
+          <div className="relative">
+            <select
+              value={pageSize}
+              aria-label="Nombre de lignes par page"
+              onChange={(event) => onPageSizeChange(Number(event.target.value))}
+              className="h-pager appearance-none rounded-control border border-line bg-surface pr-7 pl-2.5 text-note font-medium text-ink"
+            >
+              {pageSizes.map((taille) => (
+                <option key={taille} value={taille}>
+                  {taille}
+                </option>
+              ))}
+            </select>
+            <Icon
+              name="expand_more"
+              size={15}
+              className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 text-ink-faint"
+            />
+          </div>
+        </div>
+      ) : null}
+
+      <div className="flex flex-none items-center gap-1">
         <PagerArrow
           icon="chevron_left"
           label="Page précédente"
@@ -60,7 +105,7 @@ export function Pager({
             aria-current={number === page ? "page" : undefined}
             onClick={() => onPageChange(number)}
             className={cn(
-              "tabular size-7 rounded-button border text-meta transition-colors duration-150",
+              "tabular h-pager min-w-pager rounded-control border px-[7px] text-note font-mid transition-colors duration-150",
               number === page
                 ? "border-accent bg-accent text-white"
                 : "border-line bg-surface text-ink-muted hover:bg-neutral-tint",
@@ -69,11 +114,12 @@ export function Pager({
             {number}
           </button>
         ))}
-        {pageCount > 3 ? <span className="px-1 text-meta text-ink-faint">…</span> : null}
+        {pageCount > 3 ? <span className="px-1 text-note text-ink-faint">…</span> : null}
         <PagerArrow
           icon="chevron_right"
           label="Page suivante"
           disabled={!hasNext}
+          accent
           onClick={() => onPageChange(page + 1)}
         />
       </div>
@@ -85,11 +131,14 @@ function PagerArrow({
   icon,
   label,
   disabled,
+  accent = false,
   onClick,
 }: {
   icon: string;
   label: string;
   disabled: boolean;
+  /** La flèche « suivant » est en accent lorsqu'elle est active, comme dans les maquettes. */
+  accent?: boolean;
   onClick: () => void;
 }) {
   return (
@@ -99,13 +148,82 @@ function PagerArrow({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "flex size-7 items-center justify-center rounded-button border transition-colors duration-150",
+        "flex size-pager items-center justify-center rounded-control border border-line transition-colors duration-150",
         disabled
-          ? "border-line bg-neutral-tint text-ink-faint"
-          : "border-line bg-surface text-ink-muted hover:bg-neutral-tint",
+          ? "cursor-not-allowed bg-neutral-tint text-ink-faint"
+          : cn("bg-surface hover:bg-neutral-tint", accent ? "text-accent" : "text-ink-muted"),
       )}
     >
       <Icon name={icon} size={16} />
+    </button>
+  );
+}
+
+/**
+ * Pagination compacte d'une colonne de Kanban : deux flèches de 24 px encadrant le compteur.
+ */
+export function ColumnPager({
+  page,
+  pageSize,
+  total,
+  onPageChange,
+}: {
+  page: number;
+  pageSize: number;
+  total: number;
+  onPageChange: (page: number) => void;
+}) {
+  const { from, to, hasPrev, hasNext } = pageBounds(page, pageSize, total);
+
+  return (
+    <div className="flex items-center justify-between gap-2 border-t border-line px-3 py-2">
+      <ColumnArrow
+        icon="chevron_left"
+        label="Page précédente"
+        disabled={!hasPrev}
+        onClick={() => onPageChange(page - 1)}
+      />
+      <span className="tabular text-meta text-ink-faint">
+        {from}–{to} sur {total}
+      </span>
+      <ColumnArrow
+        icon="chevron_right"
+        label="Page suivante"
+        disabled={!hasNext}
+        accent
+        onClick={() => onPageChange(page + 1)}
+      />
+    </div>
+  );
+}
+
+function ColumnArrow({
+  icon,
+  label,
+  disabled,
+  accent = false,
+  onClick,
+}: {
+  icon: string;
+  label: string;
+  disabled: boolean;
+  accent?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      disabled={disabled}
+      onClick={onClick}
+      className={cn(
+        "flex size-6 items-center justify-center rounded-pill border border-line transition-colors duration-150",
+        disabled
+          ? "cursor-not-allowed bg-neutral-tint text-ink-faint"
+          : cn("bg-surface hover:bg-neutral-tint", accent ? "text-accent" : "text-ink-muted"),
+      )}
+    >
+      <Icon name={icon} size={15} />
     </button>
   );
 }

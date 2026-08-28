@@ -24,15 +24,15 @@ describe("coque applicative", () => {
 });
 
 describe("rail de navigation", () => {
-  it("cache les libellés sous 1200 px tout en conservant un nom accessible", () => {
+  it("conserve les libellés et un nom accessible, comme les maquettes", () => {
     render(
       <MemoryRouter>
         <NavRail />
       </MemoryRouter>,
     );
     expect(screen.getByRole("link", { name: "Tableau de bord" })).toBeInTheDocument();
-    expect(screen.getByText("Accueil")).toHaveClass("hidden", "min-[1200px]:block");
-    expect(screen.getByRole("button", { name: "Passer en thème sombre" })).toHaveTextContent("Sombre");
+    expect(screen.getByText("Accueil")).toHaveClass("text-micro", "font-mid");
+    expect(screen.getByRole("button", { name: "Passer en thème sombre" })).toHaveTextContent("Clair");
   });
 });
 
@@ -40,7 +40,7 @@ describe("onglets contextuels", () => {
   it("expose l'onglet actif aux technologies d'assistance", () => {
     render(
       <MemoryRouter initialEntries={["/suivi/calendrier"]}>
-        <ContextTabs />
+        <ContextTabs slotRef={() => {}} />
       </MemoryRouter>,
     );
     expect(screen.getByRole("tab", { name: /Calendrier/ })).toHaveAttribute("aria-selected", "true");

@@ -2,11 +2,14 @@ import type { ReactNode } from "react";
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "./Icon";
-import { Button } from "./Button";
+import { Button, IconButton } from "./Button";
 import { useDismissable } from "@/shared/hooks/useDismissable";
 
 /**
  * Modale du guide : en-tête, corps défilant, pied fixe.
+ *
+ * Géométrie des maquettes : rayon 14 px, ombre de niveau 3, en-tête de 18 px / 22 px avec
+ * pastille d'icône de 34 px et titre 16 px/650, pied en `surface-alt` de 14 px / 22 px.
  *
  * Rendue en superposition dans le document plutôt que dans une fenêtre native : le guide
  * demande de conserver l'arrière-plan atténué et le focus dans la page. La structure en
@@ -20,6 +23,8 @@ export function ModalHost({
   title,
   subtitle,
   footerNote,
+  footerIcon = "info",
+  footerTone = "neutral",
   submitLabel = "Enregistrer",
   submitIcon = "check",
   submitDisabled = false,
@@ -34,6 +39,8 @@ export function ModalHost({
   title: string;
   subtitle?: string | undefined;
   footerNote?: string | undefined;
+  footerIcon?: string;
+  footerTone?: "neutral" | "danger";
   submitLabel?: string;
   submitIcon?: string;
   submitDisabled?: boolean;
@@ -67,7 +74,7 @@ export function ModalHost({
   if (!open) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/70 p-[34px] backdrop-blur-[2px]">
       <div
         ref={panel}
         role="dialog"
@@ -75,42 +82,47 @@ export function ModalHost({
         aria-label={title}
         tabIndex={-1}
         style={{ width, maxWidth: "100%" }}
-        className="grid max-h-full grid-rows-[auto_1fr_auto] overflow-hidden rounded-card border border-line bg-surface shadow-e3"
+        className="flex max-h-full flex-col overflow-hidden rounded-[14px] border border-line bg-surface shadow-e3"
       >
-        <header className="flex items-center gap-3 border-b border-line px-5 py-4">
-          <span className="flex size-9 flex-none items-center justify-center rounded-card bg-accent-tint text-accent">
+        <header className="flex flex-none items-start gap-[13px] border-b border-line px-[22px] py-[18px]">
+          <span className="flex size-[34px] flex-none items-center justify-center rounded-tile bg-accent-tint text-accent">
             <Icon name={icon} size={19} />
           </span>
           <div className="min-w-0 flex-1">
-            <h2 className="truncate text-section text-ink">{title}</h2>
-            {subtitle ? <p className="truncate text-meta text-ink-muted">{subtitle}</p> : null}
+            <h2 className="truncate text-[16px] leading-tight font-strong tracking-[-0.015em] text-ink">
+              {title}
+            </h2>
+            {subtitle ? (
+              <p className="mt-[3px] truncate text-note text-ink-faint">{subtitle}</p>
+            ) : null}
           </div>
-          <button
-            type="button"
-            aria-label="Fermer"
-            onClick={onClose}
-            className="flex size-8 items-center justify-center rounded-button text-ink-faint transition-colors duration-150 hover:bg-neutral-tint hover:text-ink"
-          >
-            <Icon name="close" size={18} />
-          </button>
+          <IconButton icon="close" label="Fermer" onClick={onClose} />
         </header>
 
-        <div ref={body} className="min-h-0 overflow-y-auto px-5 py-4">
+        <div ref={body} className="min-h-0 flex-1 overflow-y-auto px-[22px] pt-1.5 pb-[18px]">
           {children}
         </div>
 
-        <footer className="flex items-center gap-3 border-t border-line bg-surface-alt px-5 py-3">
+        <footer className="flex flex-none flex-wrap items-center gap-3 border-t border-line bg-surface-alt px-[22px] py-3.5">
           {footerNote ? (
-            <p className="min-w-0 flex-1 truncate text-meta text-ink-faint">{footerNote}</p>
+            <p
+              className={`flex min-w-[180px] flex-1 items-center gap-1.5 text-label ${
+                footerTone === "danger" ? "text-danger" : "text-ink-faint"
+              }`}
+            >
+              <Icon name={footerIcon} size={15} className="flex-none" />
+              {footerNote}
+            </p>
           ) : (
             <div className="flex-1" />
           )}
-          <Button variant="ghost" onClick={onClose}>
+          <Button variant="secondary" size="dialog" onClick={onClose}>
             Annuler
           </Button>
           {onSubmit ? (
             <Button
               variant="primary"
+              size="dialog"
               icon={busy ? "progress_activity" : submitIcon}
               disabled={submitDisabled || busy}
               onClick={onSubmit}
@@ -122,5 +134,29 @@ export function ModalHost({
       </div>
     </div>,
     document.body,
+  );
+}
+
+/**
+ * Titre de section d'un formulaire : icône, libellé 12,5 px/600, filet occupant le reste.
+ */
+export function ModalSection({
+  icon,
+  title,
+  children,
+}: {
+  icon: string;
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="pt-[18px]">
+      <div className="mb-3 flex items-center gap-2">
+        <Icon name={icon} size={16} className="flex-none text-ink-faint" />
+        <span className="text-body font-semibold text-ink">{title}</span>
+        <span aria-hidden className="h-px flex-1 bg-line" />
+      </div>
+      {children}
+    </section>
   );
 }

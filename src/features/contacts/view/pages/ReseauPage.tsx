@@ -3,6 +3,8 @@ import { useContactsViewModel } from "../../viewmodel/useContactsViewModel";
 import type { Contact } from "../../services/contact.service";
 import { ContactFormModal } from "../components/ContactFormModal";
 import { ContactDetail } from "../components/ContactDetail";
+import { roleMeta } from "../../model/roles";
+import { ContextBarAccessory, ContextSearch } from "@/app/layout/ContextBar";
 import {
   Button,
   ConfirmDialog,
@@ -10,6 +12,7 @@ import {
   ErrorBanner,
   MasterList,
   MasterListItem,
+  MasterListTag,
   PageHeader,
   Pager,
   Skeleton,
@@ -28,6 +31,14 @@ export function ReseauPage() {
 
   return (
     <div className="flex h-full flex-col">
+      <ContextBarAccessory>
+        <ContextSearch
+          value={vm.search}
+          placeholder="Rechercher un contact…"
+          onChange={vm.rechercher}
+        />
+      </ContextBarAccessory>
+
       <PageHeader
         icon="hub"
         title="Réseau"
@@ -45,12 +56,12 @@ export function ReseauPage() {
 
       <div className="flex min-h-0 flex-1">
         <MasterList
-          search={vm.search}
-          searchPlaceholder="Rechercher un contact…"
-          onSearchChange={vm.rechercher}
+          title="Votre réseau"
+          count={`${vm.total} ${vm.total > 1 ? "contacts" : "contact"}`}
           footer={
             vm.total > 0 ? (
               <Pager
+                dense
                 page={vm.page}
                 pageSize={vm.pageSize}
                 total={vm.total}
@@ -87,11 +98,19 @@ export function ReseauPage() {
             vm.items.map((contact) => (
               <MasterListItem
                 key={contact.id}
+                round
                 initials={initiales(contact.prenom, contact.nom)}
                 title={`${contact.prenom} ${contact.nom}`}
                 subtitle={
                   [contact.poste, contact.entrepriseNom].filter(Boolean).join(" · ") ||
                   undefined
+                }
+                meta={
+                  contact.roleSuivi ? (
+                    <MasterListTag {...roleMeta(contact.roleSuivi)}>
+                      {contact.roleSuivi}
+                    </MasterListTag>
+                  ) : undefined
                 }
                 selected={contact.id === vm.selectedId}
                 onSelect={() => vm.selectionner(contact.id)}
@@ -153,8 +172,8 @@ function ListeSquelette() {
   return (
     <div role="status" aria-label="Chargement du réseau">
       {Array.from({ length: 6 }, (_, index) => (
-        <div key={index} className="flex min-h-row items-center gap-2.5 border-b border-line px-3">
-          <Skeleton className="size-8 flex-none rounded-pill" />
+        <div key={index} className="mb-1 flex items-center gap-[11px] px-3 py-[11px]">
+          <Skeleton className="size-8 flex-none rounded-full" />
           <div className="flex-1">
             <Skeleton className="h-3 w-2/3" />
             <Skeleton className="mt-1.5 h-2.5 w-1/3" />

@@ -6,6 +6,7 @@ import {
   type ContactFormInput,
   type ContactFormValues,
 } from "../../model/schemas/contact-form.schema";
+import { ROLES } from "../../model/roles";
 import type { Contact, NouveauContact } from "../../services/contact.service";
 import { entrepriseService } from "@/features/entreprises/services/entreprise.service";
 import { useQuery } from "@tanstack/react-query";
@@ -36,9 +37,6 @@ function depuis(contact: Contact): ContactFormInput {
     notes: contact.notes ?? "",
   };
 }
-
-/** Rôles proposés par les maquettes ; le champ reste libre en base. */
-const ROLES = ["Recruteur", "Manager", "Référent", "Ancien collègue", "Autre"] as const;
 
 /**
  * Modale de création et de modification d'un contact.

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { ContextBarAccessory, ContextNote } from "@/app/layout/ContextBar";
 import { Button, Icon, PageHeader, StatusPill } from "@/shared/ui";
 import { parametresService } from "../../services/parametres.service";
 import { A_PROPOS_KEY } from "../../viewmodel/useParametresViewModel";
@@ -14,6 +15,9 @@ export function AProposPage() {
 
   return (
     <div className="flex h-full flex-col">
+      <ContextBarAccessory>
+        <ContextNote>Candilog · données locales</ContextNote>
+      </ContextBarAccessory>
       <PageHeader icon="info" title="À propos" subtitle="Candilog, un produit indépendant" />
       <SettingsBody>
         <SettingsHero

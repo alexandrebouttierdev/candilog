@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ContextBarAccessory, ContextNote } from "@/app/layout/ContextBar";
 import { AppError } from "@/shared/types/app-error";
 import type { AnalysisMode, LlmFormulaire, Parametres, ThemePref } from "@/shared/types/generated/parametres";
 import {
@@ -112,6 +113,9 @@ export function IaPage() {
 
   return (
     <div className="flex h-full flex-col">
+      <ContextBarAccessory>
+        <ContextNote>Candilog · données locales</ContextNote>
+      </ContextBarAccessory>
       <PageHeader
         icon="smart_toy"
         title="Intelligence artificielle"
@@ -137,7 +141,13 @@ export function IaPage() {
         </div>
       ) : (
         <SettingsBody>
-          <SettingsCard icon="hub" title="Fournisseur">
+          <div className="flex flex-wrap items-start gap-4">
+          <SettingsCard
+            icon="smart_toy"
+            title="Fournisseur"
+            hint="Choisissez le moteur utilisé pour les générations"
+            className="min-w-0 flex-[1_1_480px] overflow-hidden rounded-card border border-line bg-surface shadow-e1"
+          >
             <ProviderGrid value={llm.provider} onChange={choisirFournisseur} />
             <div className="mt-5 space-y-4 rounded-card bg-surface-alt p-4">
               <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
@@ -237,6 +247,7 @@ export function IaPage() {
             </div>
           </SettingsCard>
 
+          <div className="flex max-w-[420px] min-w-0 flex-[1_1_320px] flex-col gap-4">
           <SettingsCard icon="contrast" title="Apparence">
             <div role="radiogroup" aria-label="Thème" className="grid grid-cols-3 gap-2">
               {THEMES.map((theme) => {
@@ -263,6 +274,8 @@ export function IaPage() {
               })}
             </div>
           </SettingsCard>
+          </div>
+          </div>
         </SettingsBody>
       )}
 

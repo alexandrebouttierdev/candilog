@@ -10,8 +10,9 @@ import { useIaProgress } from "@/features/ia/viewmodel/useIaProgress";
 import { useUiStore } from "@/shared/lib/ui-store";
 import type { ToastMessage } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
+import { ContextBarAccessory, ContextNote, ContextSearch } from "@/app/layout/ContextBar";
 import { Button, ConfirmDialog, EmptyState, ErrorBanner, FormField, Icon, PageHeader, Select, TextArea, TextInput } from "@/shared/ui";
-import { A4Preview, DocumentPanel, IaProgress, ScoreBadge } from "../components/DocumentUi";
+import { A4Preview, DocumentPanel, IaProgress, PreviewAction, ScoreBadge } from "../components/DocumentUi";
 
 const CV_KEY = ["documents", "cv"] as const;
 const LETTRES_KEY = ["documents", "lettres"] as const;
@@ -61,7 +62,10 @@ export function CvLibraryPage() {
   }, [list.data, recherche]);
 
   return (
-    <Screen padded={false} header={
+    <Screen
+      padded={false}
+      search={{ value: recherche, onChange: setRecherche, placeholder: "Rechercher un document…" }}
+      header={
       <PageHeader
         icon="description"
         title="Mes CV"
@@ -73,8 +77,8 @@ export function CvLibraryPage() {
     }>
       <div className="flex min-h-0 flex-1">
           <div className="flex w-[40%] min-w-[280px] flex-col border-r border-line bg-surface">
-            <div className="border-b border-line px-5 py-3">
-              <div className="mb-2.5 flex items-center justify-between">
+            <div className="border-b border-line px-5 pt-4 pb-3">
+              <div className="mb-[11px] flex items-center justify-between">
                 <span className="text-section">Bibliothèque</span>
                 <span className="text-label text-ink-faint">{list.data?.length ?? 0} version{(list.data?.length ?? 0) > 1 ? "s" : ""}</span>
               </div>
@@ -104,16 +108,21 @@ export function CvLibraryPage() {
                         onClick={() => setSelected(cv.id)}
                         className={`flex w-full gap-3 rounded-[10px] border p-3 text-left transition-colors ${selectedId === cv.id ? "border-accent-border bg-accent-tint" : "border-transparent hover:bg-neutral-tint"}`}
                       >
-                        <span className="flex h-[50px] w-[38px] flex-none flex-col gap-[3px] rounded-[5px] border border-line bg-page p-1.5">
-                          <span className="h-[3px] w-[70%] rounded-sm bg-accent/40" />
+                        <span className="flex h-[50px] w-[38px] flex-none flex-col gap-[3px] rounded-[5px] border border-line bg-page px-[5px] py-1.5">
+                          <span className={`h-[3px] w-[70%] rounded-sm ${selectedId === cv.id ? "bg-accent" : "bg-accent/40"}`} />
                           <span className="h-[2px] w-full rounded-sm bg-line" />
                           <span className="h-[2px] w-[85%] rounded-sm bg-line" />
+                          <span className="h-[2px] w-[95%] rounded-sm bg-line" />
+                          <span className="h-[2px] w-[60%] rounded-sm bg-line" />
                         </span>
                         <span className="min-w-0 flex-1">
-                          <span className="flex items-center gap-2">
-                            <span className="truncate text-[13px] font-semibold">{cv.nom}</span>
+                          <span className="mb-[3px] flex items-center gap-2">
+                            <span className="truncate text-item font-semibold">{cv.nom}</span>
+                            {selectedId === cv.id && generation ? (
+                              <AtsChip score={generation.analyse.score} />
+                            ) : null}
                           </span>
-                          <span className="mt-1 block text-label text-ink-faint">{date(cv.createdAt)}</span>
+                          <span className="block text-label text-ink-faint">{date(cv.createdAt)}</span>
                         </span>
                       </button>
                     </li>
@@ -127,22 +136,45 @@ export function CvLibraryPage() {
             </div>
           </div>
           <div className="flex min-w-0 flex-1 flex-col bg-page">
-            <div className="flex flex-none items-center justify-between border-b border-line bg-surface px-5 py-3">
-              <div className="flex min-w-0 items-center gap-2.5">
+            <div className="flex flex-none items-center justify-between gap-3 border-b border-line bg-surface px-[22px] py-3">
+              <div className="flex min-w-0 items-center gap-[9px]">
                 <Icon name="visibility" size={17} className="text-ink-faint" />
-                <p className="truncate text-section">{version ? `Aperçu · ${version.nom}` : "Aperçu"}</p>
-                {generation ? <AtsChip score={generation.analyse.score} /> : null}
+                <p className="truncate text-body font-mid">
+                  {version ? `Aperçu · ${version.nom}` : "Aperçu"}
+                </p>
               </div>
               {version ? (
-                <div className="flex gap-2">
+                <div className="flex items-center gap-1.5">
                   {generation ? (
                     <>
-                      <Button icon="edit" onClick={() => void navigate("/documents/generer-cv", { state: { generation, nom: version.nom } })}>Modifier</Button>
-                      <Button icon="content_copy" disabled={dupliquer.isPending} onClick={() => dupliquer.mutate()}>Dupliquer</Button>
-                      <Button icon="download" onClick={() => void exporterPdf(generation.cv, version.nom, notify)}>Exporter PDF</Button>
+                      <PreviewAction
+                        icon="edit"
+                        onClick={() =>
+                          void navigate("/documents/generer-cv", {
+                            state: { generation, nom: version.nom },
+                          })
+                        }
+                      >
+                        Modifier
+                      </PreviewAction>
+                      <PreviewAction
+                        icon="content_copy"
+                        disabled={dupliquer.isPending}
+                        onClick={() => dupliquer.mutate()}
+                      >
+                        Dupliquer
+                      </PreviewAction>
+                      <PreviewAction
+                        icon="download"
+                        onClick={() => void exporterPdf(generation.cv, version.nom, notify)}
+                      >
+                        Exporter PDF
+                      </PreviewAction>
                     </>
                   ) : null}
-                  <Button variant="danger" icon="delete" onClick={() => setDeleteId(version.id)}>Supprimer</Button>
+                  <PreviewAction tone="danger" icon="delete" onClick={() => setDeleteId(version.id)}>
+                    Supprimer
+                  </PreviewAction>
                 </div>
               ) : null}
             </div>
@@ -247,9 +279,22 @@ export function LettersLibraryPage() {
   const notify = useUiStore((s) => s.notify);
   const [selected, setSelected] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [recherche, setRecherche] = useState("");
   const list = useQuery({ queryKey: LETTRES_KEY, queryFn: documentsService.listerLettres });
   const selectedId = selected ?? list.data?.[0]?.id ?? null;
   const selectedLetter = list.data?.find((l) => l.id === selectedId) ?? null;
+  const lettres = useMemo(() => {
+    const terme = recherche.trim().toLowerCase();
+    const toutes = list.data ?? [];
+    return terme
+      ? toutes.filter(
+          (lettre) =>
+            lettre.nom.toLowerCase().includes(terme) ||
+            (lettre.entreprise ?? "").toLowerCase().includes(terme) ||
+            (lettre.poste ?? "").toLowerCase().includes(terme),
+        )
+      : toutes;
+  }, [list.data, recherche]);
   const remove = useMutation({
     mutationFn: documentsService.supprimerLettre,
     onSuccess: async () => {
@@ -266,7 +311,10 @@ export function LettersLibraryPage() {
   };
 
   return (
-    <Screen padded={false} header={
+    <Screen
+      padded={false}
+      search={{ value: recherche, onChange: setRecherche, placeholder: "Rechercher un document…" }}
+      header={
       <PageHeader
         icon="mail"
         title="Mes lettres de motivation"
@@ -286,9 +334,9 @@ export function LettersLibraryPage() {
                 <ErrorBanner message={message(list.error)} onRetry={() => void list.refetch()} />
               ) : list.isLoading ? (
                 <p className="p-6 text-center text-ink-muted">Chargement…</p>
-              ) : list.data?.length ? (
+              ) : lettres.length ? (
                 <ul className="space-y-1.5">
-                  {list.data.map((letter) => (
+                  {lettres.map((letter) => (
                     <li key={letter.id}>
                       <button
                         type="button"
@@ -306,20 +354,22 @@ export function LettersLibraryPage() {
                     </li>
                   ))}
                 </ul>
+              ) : recherche.trim() ? (
+                <EmptyState icon="search" title="Aucun résultat" description="Aucune lettre ne correspond à cette recherche." />
               ) : (
                 <EmptyState icon="mail" title="Aucune lettre enregistrée" description="Rédigez une lettre puis enregistrez-la ici." action={<Button icon="auto_awesome" onClick={() => void navigate("/documents/rediger-lettre")}>Rédiger une lettre</Button>} />
               )}
             </div>
           </div>
           <div className="flex min-w-0 flex-1 flex-col bg-page">
-            <div className="flex flex-none items-center justify-between border-b border-line bg-surface px-5 py-3">
-              <p className="truncate text-section">{selectedLetter?.nom ?? "Lecture"}</p>
+            <div className="flex flex-none items-center justify-between gap-3 border-b border-line bg-surface px-[22px] py-3">
+              <p className="truncate text-body font-mid">{selectedLetter?.nom ?? "Lecture"}</p>
               {selectedLetter ? (
-                <div className="flex gap-2">
-                  <Button icon="edit" onClick={() => void navigate("/documents/rediger-lettre", { state: { lettre: selectedLetter } })}>Modifier</Button>
-                  <Button icon="content_copy" onClick={() => void copier()}>Copier</Button>
-                  <Button icon="download" onClick={() => void exporterLettrePdf({ nom: selectedLetter.nom, entreprise: selectedLetter.entreprise, poste: selectedLetter.poste, contenu: selectedLetter.contenu }, notify)}>Exporter PDF</Button>
-                  <Button variant="danger" icon="delete" onClick={() => setDeleteId(selectedLetter.id)}>Supprimer</Button>
+                <div className="flex items-center gap-1.5">
+                  <PreviewAction icon="edit" onClick={() => void navigate("/documents/rediger-lettre", { state: { lettre: selectedLetter } })}>Modifier</PreviewAction>
+                  <PreviewAction icon="content_copy" onClick={() => void copier()}>Copier</PreviewAction>
+                  <PreviewAction icon="download" onClick={() => void exporterLettrePdf({ nom: selectedLetter.nom, entreprise: selectedLetter.entreprise, poste: selectedLetter.poste, contenu: selectedLetter.contenu }, notify)}>Exporter PDF</PreviewAction>
+                  <PreviewAction tone="danger" icon="delete" onClick={() => setDeleteId(selectedLetter.id)}>Supprimer</PreviewAction>
                 </div>
               ) : null}
             </div>
@@ -484,9 +534,33 @@ export function CvAnalysisPage() {
   );
 }
 
-function Screen({ header, children, padded = true }: { header: ReactNode; children: ReactNode; padded?: boolean }) {
+function Screen({
+  header,
+  children,
+  padded = true,
+  search,
+}: {
+  header: ReactNode;
+  children: ReactNode;
+  padded?: boolean;
+  search?: { value: string; onChange: (valeur: string) => void; placeholder: string };
+}) {
   return (
     <div className="flex h-full flex-col">
+      {search ? (
+        <ContextBarAccessory>
+          <ContextSearch
+            value={search.value}
+            placeholder={search.placeholder}
+            onChange={search.onChange}
+            width={230}
+          />
+        </ContextBarAccessory>
+      ) : (
+        <ContextBarAccessory>
+          <ContextNote>Documents locaux · génération IA</ContextNote>
+        </ContextBarAccessory>
+      )}
       {header}
       <div className={padded ? "min-h-0 flex-1 overflow-y-auto p-5 min-[1200px]:p-6" : "flex min-h-0 flex-1 flex-col overflow-hidden"}>
         {children}
@@ -497,7 +571,7 @@ function Screen({ header, children, padded = true }: { header: ReactNode; childr
 
 function HeaderBadge({ children, icon = "auto_awesome" }: { children: ReactNode; icon?: string }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-pill bg-accent-tint px-2.5 py-1 text-label font-medium text-accent">
+    <span className="inline-flex items-center gap-[5px] rounded-pill bg-accent-tint px-2.5 py-[5px] text-label font-mid text-accent">
       <Icon name={icon} size={15} />
       {children}
     </span>

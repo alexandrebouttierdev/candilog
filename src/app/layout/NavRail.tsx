@@ -8,9 +8,10 @@ import { Icon } from "@/shared/ui/Icon";
 /**
  * Rail de navigation de premier niveau.
  *
- * Largeur et pastilles des maquettes (86 px). Sous 1200 px le libellé des
- * sections disparaît (guide SPECDESIGN, section 7) ; le basculeur clair/sombre
- * garde toujours son texte, sinon il disparaît dans une fenêtre Tauri 1024.
+ * Géométrie des maquettes : 86 px de large, marque en 22 px, tuiles de 10 px de rayon
+ * espacées de 3 px dans une gouttière de 9 px, basculeur de thème collé en bas. Sous
+ * 1200 px la largeur tombe à 72 px (guide SPECDESIGN, section 7) mais les libellés
+ * restent : ils tiennent, et un rail d'icônes muettes est illisible.
  */
 export function NavRail() {
   const { pathname } = useLocation();
@@ -27,10 +28,10 @@ export function NavRail() {
   return (
     <nav
       aria-label="Navigation principale"
-      className="flex w-[72px] flex-none flex-col items-center border-r border-line bg-surface-alt py-3.5 min-[1200px]:w-[86px]"
+      className="flex w-[72px] flex-none flex-col items-center overflow-hidden border-r border-line bg-surface-alt pt-[18px] pb-3.5 min-[1200px]:w-[86px]"
     >
       <Icon name="workspace_premium" size={22} className="mb-4 text-accent" />
-      <div className="flex min-h-0 flex-1 flex-col gap-[3px] self-stretch px-2">
+      <div className="flex min-h-0 flex-1 flex-col gap-[3px] self-stretch px-[9px]">
         {SECTIONS.map((section) => {
           const isActive = section.key === active.key;
           return (
@@ -41,18 +42,14 @@ export function NavRail() {
               aria-label={section.longLabel}
               aria-current={isActive ? "page" : undefined}
               className={[
-                "flex min-h-11 flex-col items-center justify-center gap-1 rounded-[10px] px-1 py-2",
-                "transition-[background-color,color] duration-150",
+                "flex min-w-0 flex-col items-center gap-[5px] rounded-tile px-1 pt-[9px] pb-[7px]",
+                "transition-colors duration-[120ms]",
                 "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
-                isActive
-                  ? "bg-accent-tint text-accent"
-                  : "text-ink-faint hover:bg-neutral-tint hover:text-ink",
+                isActive ? "bg-accent-tint text-accent" : "text-ink-faint hover:bg-neutral-tint",
               ].join(" ")}
             >
-              <Icon name={section.icon} size={21} filled={isActive} />
-              <span className="hidden max-w-full truncate text-[10px] font-medium min-[1200px]:block">
-                {section.shortLabel}
-              </span>
+              <Icon name={section.icon} size={21} />
+              <span className="max-w-full truncate text-micro font-mid">{section.shortLabel}</span>
             </NavLink>
           );
         })}
@@ -72,11 +69,11 @@ export function NavRail() {
               /* Revue navigateur sans backend : le thème reste en session. */
             });
         }}
-        className="mx-2 mt-1 flex min-h-11 w-[calc(100%-16px)] flex-col items-center justify-center gap-1.5 rounded-[10px] py-2 text-ink-faint transition-colors duration-150 hover:bg-neutral-tint hover:text-ink"
+        className="mx-[9px] flex flex-col items-center gap-1.5 self-stretch rounded-tile py-[9px] text-ink-faint transition-colors duration-[120ms] hover:bg-neutral-tint"
       >
-        <Icon name={sombre ? "light_mode" : "dark_mode"} size={19} />
-        <span className="max-w-full truncate text-[10px] font-medium">
-          {sombre ? "Clair" : "Sombre"}
+        <Icon name={sombre ? "dark_mode" : "light_mode"} size={19} />
+        <span className="max-w-full truncate text-micro font-mid">
+          {sombre ? "Sombre" : "Clair"}
         </span>
       </button>
     </nav>

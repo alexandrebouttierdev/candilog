@@ -91,7 +91,9 @@ export function useContactsViewModel() {
   }, []);
 
   const items: Contact[] = liste.data?.items ?? [];
-  const selection = items.find((item) => item.id === selectedId) ?? null;
+  // Comme pour les entreprises, la fiche de droite n'est jamais vide tant que la page
+  // contient au moins un contact.
+  const selection = items.find((item) => item.id === selectedId) ?? items[0] ?? null;
 
   return {
     items,
@@ -100,7 +102,7 @@ export function useContactsViewModel() {
     pageSize: PAGE_SIZE,
     search,
     selection,
-    selectedId,
+    selectedId: selection?.id ?? null,
     isLoading: liste.isPending,
     error: liste.error,
     isSaving: creation.isPending || modification.isPending,

@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { entrepriseService } from "../services/entreprise.service";
 import type { Entreprise, NouvelleEntreprise } from "../services/entreprise.service";
+import { candidatureService } from "@/features/candidatures/services/candidature.service";
 import { PAGE_SIZE } from "@/shared/types/page";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
@@ -35,6 +36,37 @@ export function useEntreprisesViewModel() {
   const types = useQuery({
     queryKey: [...ENTREPRISES_KEY, "types"],
     queryFn: entrepriseService.listerTypes,
+  });
+
+  const items: Entreprise[] = liste.data?.items ?? [];
+  // Les maquettes n'affichent jamais la colonne de droite vide : à défaut de sélection
+  // explicite, la première fiche de la page est ouverte.
+  const selection = items.find((item) => item.id === selectedId) ?? items[0] ?? null;
+  const ficheId = selection?.id ?? null;
+
+  // Candidatures rattachées à la fiche ouverte : les maquettes les affichent sous le
+  // bandeau d'identité. Interrogées par le filtre existant plutôt que par une commande
+  // dédiée, et seulement quand une fiche est sélectionnée.
+  const liees = useQuery({
+    queryKey: [...ENTREPRISES_KEY, "candidatures", ficheId],
+    enabled: ficheId !== null,
+    queryFn: () =>
+      candidatureService.listerPage({
+        page: 1,
+        pageSize: PAGE_SIZE,
+        filtre: {
+          search: "",
+          statut: null,
+          contrat: null,
+          entrepriseId: ficheId,
+          ville: "",
+          poste: "",
+          dateDebut: null,
+          dateFin: null,
+          tri: "date",
+          descendant: true,
+        },
+      }),
   });
 
   /** Recharge toute la feature : liste, filtres et fiche sélectionnée. */
@@ -98,9 +130,6 @@ export function useEntreprisesViewModel() {
     setPage(1);
   }, []);
 
-  const items: Entreprise[] = liste.data?.items ?? [];
-  const selection = items.find((item) => item.id === selectedId) ?? null;
-
   return {
     items,
     total: liste.data?.total ?? 0,
@@ -110,7 +139,10 @@ export function useEntreprisesViewModel() {
     companyType,
     types: types.data ?? [],
     selection,
-    selectedId,
+    selectedId: ficheId,
+    /** Candidatures rattachées à la fiche ouverte, page la plus récente. */
+    candidaturesLiees: liees.data?.items ?? [],
+    totalCandidaturesLiees: liees.data?.total ?? 0,
     isLoading: liste.isPending,
     error: liste.error,
     isSaving: creation.isPending || modification.isPending,

@@ -5,23 +5,31 @@ import { useAnalysesViewModel } from "../../viewmodel/useAnalysesViewModel";
 import { analysesService } from "../../services/analyses.service";
 import {
   ActivityChart,
-  AnalyticsPanel,
   AnalyticsSkeleton,
   FollowUpList,
   FunnelChart,
-  MetricCard,
   PerformanceList,
 } from "../components/AnalyticsUi";
+import { ContextBarAccessory, ContextNote } from "@/app/layout/ContextBar";
 import { RelanceFormModal } from "@/features/relances/view/components/RelanceFormModal";
 import { AppError } from "@/shared/types/app-error";
 import { useUiStore } from "@/shared/lib/ui-store";
-import { Button, ErrorBanner, PageHeader } from "@/shared/ui";
-import { cn } from "@/shared/lib/cn";
+import {
+  Button,
+  Card,
+  CardHeader,
+  CardTitle,
+  ErrorBanner,
+  PageHeader,
+  SegmentedControl,
+  StatCard,
+  StatusPill,
+} from "@/shared/ui";
 
-const PERIODES: readonly { valeur: Periode; label: string }[] = [
-  { valeur: "trenteJours", label: "30 j" },
-  { valeur: "quatreVingtDixJours", label: "90 j" },
-  { valeur: "tout", label: "Tout" },
+const PERIODES: readonly { value: Periode; label: string }[] = [
+  { value: "trenteJours", label: "30 j" },
+  { value: "quatreVingtDixJours", label: "90 j" },
+  { value: "tout", label: "Tout" },
 ];
 
 /** Statistiques de candidature, période et export réellement interactifs. */
@@ -55,32 +63,34 @@ export function AnalysesPage() {
 
   return (
     <div className="flex h-full flex-col">
+      <ContextBarAccessory>
+        <ContextNote>Période glissante · export CSV</ContextNote>
+      </ContextBarAccessory>
       <PageHeader
         icon="monitoring"
-        title="Analyses et performance"
-        subtitle={vm.data ? `${vm.data.indicateurs.candidatures} candidatures sur la période` : "Suivi des conversions"}
-        secondary={
-          <div aria-label="Période d’analyse" className="flex items-center gap-0.5 rounded-button bg-neutral-tint p-0.5">
-            {PERIODES.map((periode) => (
-              <button
-                key={periode.valeur}
-                type="button"
-                aria-pressed={vm.periode === periode.valeur}
-                onClick={() => vm.changerPeriode(periode.valeur)}
-                className={cn(
-                  "h-7 rounded-[6px] px-2.5 text-meta font-medium transition-[background-color,color] duration-150",
-                  vm.periode === periode.valeur
-                    ? "bg-surface text-ink shadow-e1"
-                    : "text-ink-muted hover:text-ink",
-                )}
-              >
-                {periode.label}
-              </button>
-            ))}
-          </div>
+        title="Analyses"
+        subtitle={
+          vm.data
+            ? `${vm.data.indicateurs.candidatures} candidature${
+                vm.data.indicateurs.candidatures > 1 ? "s" : ""
+              } sur la période`
+            : "Suivi des conversions"
+        }
+        toolbar={
+          <SegmentedControl
+            label="Période d’analyse"
+            value={vm.periode}
+            onChange={vm.changerPeriode}
+            options={PERIODES}
+          />
         }
         primary={
-          <Button variant="primary" icon="download" disabled={exportEnCours} onClick={() => void exporter()}>
+          <Button
+            variant="primary"
+            icon="download"
+            disabled={exportEnCours}
+            onClick={() => void exporter()}
+          >
             Exporter
           </Button>
         }
@@ -90,63 +100,112 @@ export function AnalysesPage() {
         {vm.isLoading ? (
           <AnalyticsSkeleton />
         ) : vm.error || !vm.data ? (
-          <div className="p-6">
+          <div className="px-7 pt-[22px]">
             <ErrorBanner
-              message={vm.error instanceof AppError ? vm.error.message : "Les analyses n’ont pas pu être chargées."}
+              message={
+                vm.error instanceof AppError
+                  ? vm.error.message
+                  : "Les analyses n’ont pas pu être chargées."
+              }
               onRetry={vm.recharger}
             />
           </div>
         ) : (
-          <div className="space-y-4 p-5 min-[1200px]:p-6">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-[1.2fr_1fr_1fr_1fr]">
-              <MetricCard
-                primary
-                tone="accent"
+          <div className="px-7 pt-[22px] pb-8">
+            <div className="mb-4 grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(min(190px,100%),1fr))]">
+              <StatCard
                 icon="work"
+                tone="accent"
                 label="Candidatures"
                 value={vm.data.indicateurs.candidatures.toString()}
-                context="envoyées sur la période"
-                sparkline={vm.data.activite.map((semaine) => semaine.nombre)}
+                delta="envoyées"
               />
-              <MetricCard
-                tone="success"
+              <StatCard
                 icon="event_available"
+                tone="success"
                 label="Entretiens"
                 value={vm.data.indicateurs.entretiens.toString()}
-                context={`${vm.data.indicateurs.tauxEntretien} % des candidatures`}
+                delta={`${vm.data.indicateurs.tauxEntretien} %`}
+                deltaTone="success"
               />
-              <MetricCard
-                tone="accent"
+              <StatCard
                 icon="mark_email_read"
+                tone="accent"
                 label="Taux de réponse"
                 value={`${vm.data.indicateurs.tauxReponse} %`}
-                context={`${vm.data.indicateurs.reponses} réponse${vm.data.indicateurs.reponses > 1 ? "s" : ""}`}
+                delta={`${vm.data.indicateurs.reponses} réponse${
+                  vm.data.indicateurs.reponses > 1 ? "s" : ""
+                }`}
               />
-              <MetricCard
-                tone="danger"
+              <StatCard
                 icon="do_not_disturb_on"
+                tone="danger"
                 label="Refus reçus"
                 value={vm.data.indicateurs.refus.toString()}
-                context={vm.data.indicateurs.candidatures === 0 ? "aucune candidature" : `${Math.round((vm.data.indicateurs.refus / vm.data.indicateurs.candidatures) * 100)} % de la période`}
+                delta={
+                  vm.data.indicateurs.candidatures === 0
+                    ? "aucune candidature"
+                    : `${Math.round(
+                        (vm.data.indicateurs.refus / vm.data.indicateurs.candidatures) * 100,
+                      )} % du total`
+                }
+                deltaTone="danger"
               />
             </div>
 
-            <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.35fr_1fr]">
-              <AnalyticsPanel icon="bar_chart_4_bars" title="Candidatures envoyées" meta={PERIODES.find((item) => item.valeur === vm.periode)?.label}>
-                <ActivityChart activite={vm.data.activite} />
-              </AnalyticsPanel>
-              <AnalyticsPanel icon="conversion_path" title="Entonnoir de conversion">
+            <div className="mb-4 flex flex-wrap items-start gap-3.5">
+              <Card padded className="flex-[1_1_480px]">
+                <CardTitle
+                  icon="bar_chart_4_bars"
+                  className="mb-[18px]"
+                  meta={
+                    <SegmentedControl
+                      dense
+                      label="Période du graphique"
+                      value={vm.periode}
+                      onChange={vm.changerPeriode}
+                      options={PERIODES}
+                    />
+                  }
+                >
+                  Candidatures envoyées
+                </CardTitle>
+                <ActivityChart activite={vm.data.activite} height={150} gap={10} />
+              </Card>
+
+              <Card padded className="flex-[1_1_320px]">
+                <CardTitle icon="conversion_path" className="mb-4">
+                  Entonnoir de conversion
+                </CardTitle>
                 <FunnelChart etapes={vm.data.entonnoir} />
-              </AnalyticsPanel>
+              </Card>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.3fr_0.7fr]">
-              <AnalyticsPanel icon="notifications_active" title="Candidatures à relancer" meta={`${vm.data.aRelancer.length} à traiter`}>
+            <div className="flex flex-wrap items-start gap-3.5">
+              <Card clipped className="flex-[1_1_420px]">
+                <CardHeader
+                  icon="notifications_active"
+                  iconClassName="text-warning"
+                  meta={
+                    <StatusPill tone="warning" compact className="font-semibold">
+                      {vm.data.aRelancer.length}
+                    </StatusPill>
+                  }
+                >
+                  Candidatures à relancer
+                </CardHeader>
                 <FollowUpList items={vm.data.aRelancer} onRelancer={setARelancer} />
-              </AnalyticsPanel>
-              <AnalyticsPanel icon="insights" title="Performance">
-                <PerformanceList performance={vm.data.performance} indicateurs={vm.data.indicateurs} />
-              </AnalyticsPanel>
+              </Card>
+
+              <Card padded className="flex-[1_1_300px]">
+                <CardTitle icon="insights" className="mb-[15px]">
+                  Performance
+                </CardTitle>
+                <PerformanceList
+                  performance={vm.data.performance}
+                  indicateurs={vm.data.indicateurs}
+                />
+              </Card>
             </div>
           </div>
         )}

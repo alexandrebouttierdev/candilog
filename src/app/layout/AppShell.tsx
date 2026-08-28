@@ -2,11 +2,12 @@ import { Outlet } from "react-router-dom";
 import { Suspense } from "react";
 import { NavRail } from "./NavRail";
 import { ContextTabs } from "./ContextTabs";
+import { ContextBarProvider } from "./ContextBar";
 
 function PageFallback() {
   return (
     <div className="flex h-full flex-col" role="status" aria-label="Chargement de l'écran">
-      <div className="h-[61px] flex-none border-b border-line bg-surface-alt" />
+      <div className="h-[69px] flex-none border-b border-line bg-surface" />
       <div className="min-h-0 flex-1 animate-pulse bg-neutral-tint/40" />
     </div>
   );
@@ -29,14 +30,18 @@ export function AppShell() {
         Aller au contenu
       </a>
       <NavRail />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <ContextTabs />
-        <main id="contenu" tabIndex={-1} className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <Suspense fallback={<PageFallback />}>
-            <Outlet />
-          </Suspense>
-        </main>
-      </div>
+      <ContextBarProvider>
+        {(slotRef) => (
+          <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+            <ContextTabs slotRef={slotRef} />
+            <main id="contenu" tabIndex={-1} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+              <Suspense fallback={<PageFallback />}>
+                <Outlet />
+              </Suspense>
+            </main>
+          </div>
+        )}
+      </ContextBarProvider>
     </div>
   );
 }

@@ -8,22 +8,26 @@ import { cn } from "@/shared/lib/cn";
 import type { Tone } from "@/shared/ui";
 
 /**
- * Classes de la pastille d'en-tête, par tonalité.
+ * Couleur de la pastille d'en-tête de colonne, par tonalité.
  *
- * Une table statique et non une interpolation `bg-${tone}-tint` : Tailwind analyse les
- * sources à la compilation et ne génère que les classes qu'il y trouve littéralement — une
- * classe construite à l'exécution n'existerait tout simplement pas dans la feuille de style.
+ * Une table statique et non une interpolation `bg-${tone}` : Tailwind analyse les sources à
+ * la compilation et ne génère que les classes qu'il y trouve littéralement — une classe
+ * construite à l'exécution n'existerait tout simplement pas dans la feuille de style.
  */
-const PASTILLE: Record<Tone, string> = {
-  neutral: "bg-neutral-tint text-ink-muted",
-  accent: "bg-accent-tint text-accent",
-  success: "bg-success-tint text-success",
-  warning: "bg-warning-tint text-warning",
-  danger: "bg-danger-tint text-danger",
+const POINT: Record<Tone, string> = {
+  neutral: "bg-ink-faint",
+  accent: "bg-accent",
+  success: "bg-success",
+  warning: "bg-warning",
+  danger: "bg-danger",
 };
 
 /**
  * Pipeline en colonnes, avec glisser-déposer entre statuts.
+ *
+ * Géométrie des maquettes : grille auto-ajustée de colonnes d'au moins 240 px sur fond
+ * `surface-alt`, en-tête de 12 px / 14 px portant un point de couleur, le libellé et le
+ * compteur, cartes espacées de 8 px dans une gouttière de 10 px.
  *
  * Les compteurs d'en-tête viennent de `repartition`, calculée par `SQLite` sur tout le
  * filtre — et non de la longueur des colonnes affichées, qui ne compterait que la page
@@ -55,89 +59,93 @@ export function KanbanBoard({
   };
 
   return (
-    <div className="flex h-full gap-3.5 overflow-x-auto p-6">
-      {STATUTS.map((statut) => {
-        const colonne = candidatures.filter((item) => item.statut === statut.valeur);
-        const survolee = cible === statut.valeur && glissee?.statut !== statut.valeur;
+    <div className="min-h-0 flex-1 overflow-auto px-7 pt-[18px] pb-[26px]">
+      <div className="grid min-h-full gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr))]">
+        {STATUTS.map((statut) => {
+          const colonne = candidatures.filter((item) => item.statut === statut.valeur);
+          const survolee = cible === statut.valeur && glissee?.statut !== statut.valeur;
 
-        return (
-          <section
-            key={statut.valeur}
-            onDragOver={(event) => {
-              // `preventDefault` est ce qui autorise le dépôt : sans lui, le navigateur
-              // refuse la cible et le curseur affiche « interdit ».
-              event.preventDefault();
-              setCible(statut.valeur);
-            }}
-            onDragLeave={() => setCible((valeur) => (valeur === statut.valeur ? null : valeur))}
-            onDrop={() => {
-              if (glissee && glissee.statut !== statut.valeur) {
-                onStatutChange(glissee.id, statut.valeur);
-              }
-              setGlissee(null);
-              setCible(null);
-            }}
-            className={cn(
-              "flex w-[280px] flex-none flex-col rounded-card border bg-surface-alt",
-              "transition-[border-color,background-color] duration-150",
-              survolee ? "border-accent bg-accent-tint" : "border-line",
-            )}
-          >
-            <header className="flex flex-none items-center gap-2 border-b border-line px-3 py-2.5">
-              <span
-                aria-hidden="true"
-                className={cn(
-                  "flex size-5 flex-none items-center justify-center rounded-pill",
-                  PASTILLE[statut.tone],
-                )}
-              >
-                <Icon name={statut.icon} size={12} />
-              </span>
-              <h3 className="min-w-0 flex-1 truncate text-section text-ink">{statut.label}</h3>
-              <span className="tabular rounded-pill bg-neutral-tint px-1.5 py-px text-meta text-ink-muted">
-                {compteurs[statut.valeur]}
-              </span>
-              <button
-                type="button"
-                aria-label={`Nouvelle candidature au statut ${statut.label}`}
-                onClick={onCreate}
-                className="flex size-6 items-center justify-center rounded-button text-ink-faint transition-colors duration-150 hover:bg-neutral-tint hover:text-ink"
-              >
-                <Icon name="add" size={15} />
-              </button>
-            </header>
-
-            <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2">
-              {colonne.length === 0 ? (
-                <p className="rounded-card border border-dashed border-line px-3 py-6 text-center text-meta text-ink-faint">
-                  Glissez une carte ici
-                </p>
-              ) : (
-                colonne.map((candidature) => (
-                  <CandidatureCard
-                    key={candidature.id}
-                    candidature={candidature}
-                    draggable
-                    selected={candidature.id === selectedId}
-                    onSelect={() => onSelect(candidature.id)}
-                    onDragStart={() => setGlissee(candidature)}
-                    onDragEnd={() => {
-                      setGlissee(null);
-                      setCible(null);
-                    }}
-                  />
-                ))
+          return (
+            <section
+              key={statut.valeur}
+              onDragOver={(event) => {
+                // `preventDefault` est ce qui autorise le dépôt : sans lui, le navigateur
+                // refuse la cible et le curseur affiche « interdit ».
+                event.preventDefault();
+                setCible(statut.valeur);
+              }}
+              onDragLeave={() => setCible((valeur) => (valeur === statut.valeur ? null : valeur))}
+              onDrop={() => {
+                if (glissee && glissee.statut !== statut.valeur) {
+                  onStatutChange(glissee.id, statut.valeur);
+                }
+                setGlissee(null);
+                setCible(null);
+              }}
+              className={cn(
+                "flex min-w-0 flex-col rounded-card border bg-surface-alt",
+                "transition-[border-color,background-color] duration-150",
+                survolee ? "border-accent bg-accent-tint" : "border-line",
               )}
-            </div>
+            >
+              <header className="flex flex-none items-center gap-2 border-b border-line px-3.5 py-3">
+                <span
+                  aria-hidden="true"
+                  className={cn("size-[7px] flex-none rounded-full", POINT[statut.tone])}
+                />
+                <h3 className="min-w-0 truncate text-body font-semibold text-ink">
+                  {statut.label}
+                </h3>
+                <span className="tabular flex-none rounded-chip bg-neutral-tint px-1.5 py-0.5 text-meta font-semibold text-ink-faint">
+                  {compteurs[statut.valeur]}
+                </span>
+                <span className="flex-1" />
+                <button
+                  type="button"
+                  aria-label={`Nouvelle candidature au statut ${statut.label}`}
+                  onClick={onCreate}
+                  className="flex flex-none items-center text-ink-faint transition-colors duration-150 hover:text-ink"
+                >
+                  <Icon name="add" size={17} />
+                </button>
+              </header>
 
-            {compteurs[statut.valeur] > colonne.length ? (
-              <footer className="tabular flex-none border-t border-line px-3 py-2 text-meta text-ink-faint">
-                {colonne.length} sur {compteurs[statut.valeur]} affichées
-              </footer>
-            ) : null}
-          </section>
-        );
-      })}
+              <div className="flex flex-1 flex-col gap-2 p-2.5">
+                {colonne.length === 0 ? (
+                  <p className="rounded-tile border-[1.5px] border-dashed border-line px-3 py-[22px] text-center text-label leading-normal text-ink-faint">
+                    Aucune candidature
+                    <br />
+                    Glissez une carte ici
+                  </p>
+                ) : (
+                  colonne.map((candidature) => (
+                    <CandidatureCard
+                      key={candidature.id}
+                      candidature={candidature}
+                      draggable
+                      selected={candidature.id === selectedId}
+                      onSelect={() => onSelect(candidature.id)}
+                      onDragStart={() => setGlissee(candidature)}
+                      onDragEnd={() => {
+                        setGlissee(null);
+                        setCible(null);
+                      }}
+                    />
+                  ))
+                )}
+              </div>
+
+              {/* Le pied n'apparaît que si la page chargée ne couvre pas la colonne : sans
+                  lui, le compteur d'en-tête contredirait le nombre de cartes visibles. */}
+              {compteurs[statut.valeur] > colonne.length ? (
+                <p className="tabular flex-none border-t border-line px-3 py-2 text-center text-meta text-ink-faint">
+                  {colonne.length} sur {compteurs[statut.valeur]} affichées
+                </p>
+              ) : null}
+            </section>
+          );
+        })}
+      </div>
     </div>
   );
 }

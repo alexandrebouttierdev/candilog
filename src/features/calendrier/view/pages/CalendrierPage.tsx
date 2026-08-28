@@ -16,6 +16,7 @@ import { EntretienFormModal } from "@/features/entretiens/view/components/Entret
 import { RelanceFormModal } from "@/features/relances/view/components/RelanceFormModal";
 import type { Entretien } from "@/features/entretiens/services/entretien.service";
 import type { Relance } from "@/features/relances/services/relance.service";
+import { ContextBarAccessory, ContextNote } from "@/app/layout/ContextBar";
 import {
   Button,
   ConfirmDialog,
@@ -104,6 +105,9 @@ export function CalendrierPage() {
 
   return (
     <div className="flex h-full flex-col">
+      <ContextBarAccessory>
+        <ContextNote>Entretiens et relances</ContextNote>
+      </ContextBarAccessory>
       <PageHeader
         icon="calendar_month"
         title="Calendrier"

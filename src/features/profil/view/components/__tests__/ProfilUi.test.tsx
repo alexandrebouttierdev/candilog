@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { CompletionRing, ProfilPanel, ProfilTabs } from "../ProfilUi";
+import { CompletionBar, ProfilPanel, ProfilTabs } from "../ProfilUi";
 
 const counts = { experiences: 2, competences: 5, formations: 1, langues: 3 };
 
@@ -29,7 +29,8 @@ describe("interface du profil", () => {
   });
 
   it("annonce la complétion aux technologies d'assistance", () => {
-    render(<CompletionRing value={57} />);
-    expect(screen.getByRole("img", { name: "Profil complété à 57 %" })).toBeInTheDocument();
+    render(<CompletionBar value={57} hint="Ajoutez vos formations." />);
+    const barre = screen.getByRole("progressbar", { name: "Profil complété" });
+    expect(barre).toHaveAttribute("aria-valuenow", "57");
   });
 });

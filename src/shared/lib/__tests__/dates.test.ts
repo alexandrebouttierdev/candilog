@@ -6,6 +6,7 @@ import {
   jourDe,
   versDateAffichee,
   versDateIso,
+  versDateLongue,
   versHorodatage,
 } from "../dates";
 
@@ -40,6 +41,11 @@ describe("conversion de date", () => {
     // tel quel qu'afficher « Invalid Date ».
     expect(versDateAffichee("2026-08-20T10:00:00Z")).toBe("20-08-2026");
     expect(versDateAffichee("date inconnue")).toBe("date inconnue");
+  });
+
+  it("affiche une date longue comme les maquettes", () => {
+    expect(versDateLongue("2026-08-02")).toBe("02 août");
+    expect(versDateLongue("2026-08-02", true)).toBe("02 août 2026");
   });
 });
 

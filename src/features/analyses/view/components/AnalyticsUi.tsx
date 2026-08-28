@@ -11,144 +11,112 @@ import type {
 import type { Candidature } from "@/shared/types/generated/candidatures";
 import { contratLabel, statutMeta } from "@/features/candidatures/model/statuts";
 import { cn } from "@/shared/lib/cn";
-import { Button, EmptyState, Icon, Skeleton } from "@/shared/ui";
+import {
+  Button,
+  CellIdentity,
+  DataTable,
+  EmptyState,
+  Skeleton,
+  StatusPill,
+} from "@/shared/ui";
+import type { Column, Tone } from "@/shared/ui";
 
-type Ton = "accent" | "success" | "warning" | "danger" | "neutral";
-
-const TONS: Record<Ton, { icon: string; text: string; tint: string; bar: string }> = {
-  accent: {
-    icon: "bg-accent-tint text-accent",
-    text: "text-accent",
-    tint: "border-accent-border bg-accent-tint/55",
-    bar: "bg-accent",
-  },
-  success: {
-    icon: "bg-success-tint text-success",
-    text: "text-success",
-    tint: "border-success/20 bg-success-tint/50",
-    bar: "bg-success",
-  },
-  warning: {
-    icon: "bg-warning-tint text-warning",
-    text: "text-warning",
-    tint: "border-warning/20 bg-warning-tint/50",
-    bar: "bg-warning",
-  },
-  danger: {
-    icon: "bg-danger-tint text-danger",
-    text: "text-danger",
-    tint: "border-danger/20 bg-danger-tint/50",
-    bar: "bg-danger",
-  },
-  neutral: {
-    icon: "bg-neutral-tint text-ink-muted",
-    text: "text-ink",
-    tint: "border-line bg-surface",
-    bar: "bg-ink-faint",
-  },
+/** Couleur de remplissage des barres et des pastilles, par tonalité. */
+const FILL: Record<Tone, string> = {
+  neutral: "bg-ink-faint",
+  accent: "bg-accent",
+  success: "bg-success",
+  warning: "bg-warning",
+  danger: "bg-danger",
 };
 
-export function AnalyticsPanel({
-  icon,
-  title,
-  meta,
-  className,
-  children,
-}: {
-  icon: string;
-  title: string;
-  meta?: ReactNode;
-  className?: string;
-  children: ReactNode;
-}) {
-  return (
-    <section className={cn("min-w-0 rounded-card border border-line bg-surface shadow-e1", className)}>
-      <header className="flex min-h-12 items-center gap-2 border-b border-line px-4">
-        <Icon name={icon} size={17} className="text-ink-faint" />
-        <h2 className="min-w-0 flex-1 truncate text-section text-ink">{title}</h2>
-        {meta ? <div className="flex-none text-meta text-ink-faint">{meta}</div> : null}
-      </header>
-      {children}
-    </section>
-  );
-}
+const TINT: Record<Tone, string> = {
+  neutral: "bg-neutral-tint text-ink-muted",
+  accent: "bg-accent-tint text-accent",
+  success: "bg-success-tint text-success",
+  warning: "bg-warning-tint text-warning",
+  danger: "bg-danger-tint text-danger",
+};
 
-export function MetricCard({
-  icon,
-  label,
-  value,
-  context,
-  tone = "neutral",
-  primary = false,
-  sparkline,
-}: {
-  icon: string;
-  label: string;
-  value: string;
-  context: string;
-  tone?: Ton;
-  primary?: boolean;
-  sparkline?: readonly number[];
-}) {
-  const styles = TONS[tone];
-  return (
-    <article
-      className={cn(
-        "relative min-w-0 overflow-hidden rounded-card border p-4 shadow-e1",
-        primary ? styles.tint : "border-line bg-surface",
-      )}
-    >
-      <div className="flex items-center gap-2">
-        <span className={cn("flex size-7 items-center justify-center rounded-button", styles.icon)}>
-          <Icon name={icon} size={16} />
-        </span>
-        <p className="min-w-0 flex-1 truncate text-meta font-medium text-ink-muted">{label}</p>
-      </div>
-      <div className="mt-2 flex items-end justify-between gap-3">
-        <div className="min-w-0">
-          <p
-            className={cn(
-              "tabular font-semibold tracking-[-0.025em]",
-              primary ? "text-[34px] leading-none" : "text-kpi",
-              primary ? styles.text : "text-ink",
-            )}
-          >
-            {value}
-          </p>
-          <p className="mt-1 truncate text-meta text-ink-faint">{context}</p>
-        </div>
-        {sparkline && sparkline.length > 1 ? (
-          <Sparkline values={sparkline} label={`Tendance de ${label.toLowerCase()}`} />
-        ) : null}
-      </div>
-    </article>
-  );
-}
-
-function Sparkline({ values, label }: { values: readonly number[]; label: string }) {
-  const maximum = Math.max(...values, 1);
-  const pas = 112 / Math.max(values.length - 1, 1);
-  const points = values
-    .map((valeur, index) => `${4 + index * pas},${28 - (valeur / maximum) * 22}`)
-    .join(" ");
-  const aire = `4,30 ${points} 116,30`;
-  return (
-    <svg role="img" aria-label={label} viewBox="0 0 120 32" className="h-8 w-28 flex-none">
-      <polygon points={aire} className="fill-accent/10" />
-      <polyline
-        points={points}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="text-accent"
+/**
+ * Prochains entretiens et relances.
+ *
+ * Rangées de 11 px séparées par un filet haut, tuile de date de 36 px reprenant la teinte du
+ * genre d'événement, pastille de genre à droite : la liste « Prochains événements » de la
+ * maquette du tableau de bord.
+ */
+export function UpcomingList({ echeances }: { echeances: readonly Echeance[] }) {
+  if (echeances.length === 0) {
+    return (
+      <EmptyState
+        icon="event_available"
+        title="Rien à venir"
+        description="Aucun entretien ni relance n’est programmé."
       />
-    </svg>
+    );
+  }
+
+  return (
+    <ul className="flex flex-col">
+      {echeances.slice(0, 4).map((echeance) => {
+        const entretien = echeance.genre === "entretien";
+        const tone: Tone = entretien ? "success" : "warning";
+        return (
+          <li key={`${echeance.genre}-${echeance.id}`} className="border-t border-line">
+            <Link
+              to="/suivi/calendrier"
+              className="flex items-center gap-3 py-[11px] transition-colors duration-150 hover:bg-neutral-tint"
+            >
+              <span
+                className={cn(
+                  "flex size-9 flex-none flex-col items-center justify-center rounded-tile leading-[1.05]",
+                  TINT[tone],
+                )}
+              >
+                <span className="tabular text-item font-strong">{jour(echeance.date)}</span>
+                <span className="text-[8.5px] font-semibold tracking-[0.04em] uppercase">
+                  {mois(echeance.date)}
+                </span>
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-item font-mid text-ink">
+                  {entretien ? "Entretien" : "Relance"} — {echeance.entrepriseNom ?? "Entreprise"}
+                </span>
+                <span className="mt-0.5 block truncate text-label text-ink-faint">
+                  {echeance.poste ?? "Candidature"} · {echeance.detail}
+                </span>
+              </span>
+              <StatusPill tone={tone} icon={entretien ? "videocam" : "send"}>
+                {entretien ? "Entretien" : "Relance"}
+              </StatusPill>
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
-export function ActivityChart({ activite }: { activite: readonly SemaineActivite[] }) {
+/**
+ * Histogramme des candidatures envoyées, semaine par semaine.
+ *
+ * Barres proportionnelles surmontées de leur valeur et suivies de leur libellé, comme dans
+ * les maquettes. La hauteur du bloc de barres est un paramètre : le tableau de bord lui
+ * donne 98 px, l'écran Analyses 150 px.
+ *
+ * Rendu en `div` plutôt qu'en SVG parce que les hauteurs sont exprimées en pourcentage du
+ * conteneur : le graphique suit alors la largeur de la carte sans recalcul au
+ * redimensionnement, ce qu'un `viewBox` fixe ne permettrait pas.
+ */
+export function ActivityChart({
+  activite,
+  height = 98,
+  gap = 8,
+}: {
+  activite: readonly SemaineActivite[];
+  height?: number;
+  gap?: number;
+}) {
   if (activite.every((semaine) => semaine.nombre === 0)) {
     return (
       <EmptyState
@@ -158,41 +126,42 @@ export function ActivityChart({ activite }: { activite: readonly SemaineActivite
       />
     );
   }
+
   const maximum = Math.max(...activite.map((semaine) => semaine.nombre), 1);
-  const pasLibelle = activite.length > 16 ? Math.ceil(activite.length / 8) : 1;
+
   return (
-    <div className="p-4">
+    <>
       <div
         role="img"
         aria-label="Candidatures envoyées par semaine"
-        className="flex h-36 items-end gap-1.5 border-b border-line px-1"
+        style={{ height, gap }}
+        className="mb-[9px] flex items-end"
       >
-        {activite.map((semaine) => {
-          const hauteur = semaine.nombre === 0 ? 3 : Math.max(8, (semaine.nombre / maximum) * 112);
-          return (
-            <div key={semaine.debut} className="group flex h-full min-w-0 flex-1 items-end justify-center">
-              <div
-                title={`${formatDate(semaine.debut, "long")} : ${semaine.nombre}`}
-                style={{ height: `${hauteur}px` }}
-                className={cn(
-                  "relative w-full max-w-8 rounded-t-[5px]",
-                  semaine.nombre === 0 ? "bg-neutral-tint" : "bg-accent",
-                )}
-              >
-                <span className="tabular absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] text-ink-faint opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-                  {semaine.nombre}
-                </span>
-              </div>
-            </div>
-          );
-        })}
+        {activite.map((semaine) => (
+          <div
+            key={semaine.debut}
+            className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1.5"
+          >
+            <span className="tabular text-eyebrow font-normal tracking-normal text-ink-faint">
+              {semaine.nombre}
+            </span>
+            <div
+              style={{ height: `${(semaine.nombre / maximum) * 100}%` }}
+              className={cn(
+                "min-h-1 w-full rounded-chip",
+                semaine.nombre === 0 ? "bg-neutral-tint" : "bg-accent",
+              )}
+            />
+          </div>
+        ))}
       </div>
-      <div className="mt-2 flex gap-1.5 px-1" aria-hidden="true">
-        {activite.map((semaine, index) => (
-          <span key={semaine.debut} className="min-w-0 flex-1 truncate text-center text-[10px] text-ink-faint">
-            {index % pasLibelle === 0 || index === activite.length - 1
-              ? formatDate(semaine.debut, "court")
-              : ""}
+      <div style={{ gap }} className="flex" aria-hidden="true">
+        {activite.map((semaine) => (
+          <span
+            key={semaine.debut}
+            className="min-w-0 flex-1 truncate text-center text-eyebrow font-normal tracking-normal text-ink-faint"
+          >
+            {formatDate(semaine.debut, "court")}
           </span>
         ))}
       </div>
@@ -204,10 +173,17 @@ export function ActivityChart({ activite }: { activite: readonly SemaineActivite
           </li>
         ))}
       </ol>
-    </div>
+    </>
   );
 }
 
+/** Tonalités de l'entonnoir et du pipeline, dans l'ordre des étapes renvoyées par le backend. */
+const ETAPES_PIPELINE: readonly Tone[] = ["neutral", "warning", "success", "danger"];
+const ETAPES_ENTONNOIR: readonly Tone[] = ["accent", "accent", "success", "danger"];
+
+/**
+ * Entonnoir de conversion : une barre par étape, valeur et part à droite du libellé.
+ */
 export function FunnelChart({ etapes }: { etapes: readonly Etape[] }) {
   if (etapes.every((etape) => etape.nombre === 0)) {
     return (
@@ -218,21 +194,22 @@ export function FunnelChart({ etapes }: { etapes: readonly Etape[] }) {
       />
     );
   }
-  const tons: Ton[] = ["accent", "accent", "success", "danger"];
+
   return (
-    <div className="space-y-3.5 p-4">
+    <div>
       {etapes.map((etape, index) => (
-        <div key={etape.label}>
+        <div key={etape.label} className="mb-3.5 last:mb-0">
           <div className="mb-1.5 flex items-baseline justify-between gap-3">
-            <span className="text-meta font-medium text-ink-muted">{etape.label}</span>
-            <span className="tabular text-meta font-semibold text-ink">
-              {etape.nombre} <span className="font-normal text-ink-faint">· {etape.pourcentage} %</span>
+            <span className="text-note font-medium text-ink-muted">{etape.label}</span>
+            <span className="tabular text-note font-semibold text-ink">
+              {etape.nombre}{" "}
+              <span className="font-medium text-ink-faint">· {etape.pourcentage} %</span>
             </span>
           </div>
-          <div className="h-2 overflow-hidden rounded-full bg-neutral-tint">
+          <div className="h-2 overflow-hidden rounded-tag bg-neutral-tint">
             <div
               style={{ width: `${etape.pourcentage}%` }}
-              className={cn("h-full rounded-full", TONS[tons[index] ?? "neutral"].bar)}
+              className={cn("h-full rounded-tag", FILL[ETAPES_ENTONNOIR[index] ?? "neutral"])}
             />
           </div>
         </div>
@@ -241,9 +218,15 @@ export function FunnelChart({ etapes }: { etapes: readonly Etape[] }) {
   );
 }
 
+/**
+ * Répartition du pipeline : bande segmentée puis légende chiffrée.
+ *
+ * Les segments sont dimensionnés par `flex-grow` sur le nombre de candidatures, exactement
+ * comme la maquette : une étape vide disparaît d'elle-même au lieu de laisser un filet.
+ */
 export function PipelineBar({ etapes }: { etapes: readonly Etape[] }) {
   const total = etapes.reduce((somme, etape) => somme + etape.nombre, 0);
-  const tons: Ton[] = ["neutral", "warning", "success", "danger"];
+
   if (total === 0) {
     return (
       <EmptyState
@@ -253,23 +236,29 @@ export function PipelineBar({ etapes }: { etapes: readonly Etape[] }) {
       />
     );
   }
+
   return (
-    <div className="p-4">
-      <div className="flex h-2.5 gap-0.5 overflow-hidden rounded-[5px] bg-neutral-tint">
+    <div>
+      <div className="mb-[13px] flex h-[9px] gap-[3px]">
         {etapes.map((etape, index) => (
           <span
             key={etape.label}
             style={{ flexGrow: etape.nombre, flexBasis: 0 }}
-            className={TONS[tons[index] ?? "neutral"].bar}
+            className={cn("rounded-[3px]", FILL[ETAPES_PIPELINE[index] ?? "neutral"])}
           />
         ))}
       </div>
-      <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2">
+      <div className="flex flex-wrap gap-x-[22px] gap-y-2">
         {etapes.map((etape, index) => (
-          <div key={etape.label} className="flex items-center gap-1.5 text-meta">
-            <span className={cn("size-1.5 rounded-full", TONS[tons[index] ?? "neutral"].bar)} />
-            <span className="text-ink-muted">{etape.label}</span>
-            <span className="tabular font-semibold text-ink">{etape.nombre}</span>
+          <div key={etape.label} className="flex items-center gap-[7px]">
+            <span
+              className={cn(
+                "size-1.5 rounded-full",
+                FILL[ETAPES_PIPELINE[index] ?? "neutral"],
+              )}
+            />
+            <span className="text-note text-ink-muted">{etape.label}</span>
+            <span className="tabular text-note font-semibold text-ink">{etape.nombre}</span>
           </div>
         ))}
       </div>
@@ -277,114 +266,94 @@ export function PipelineBar({ etapes }: { etapes: readonly Etape[] }) {
   );
 }
 
-export function UpcomingList({ echeances }: { echeances: readonly Echeance[] }) {
-  if (echeances.length === 0) {
-    return (
-      <EmptyState
-        icon="event_available"
-        title="Rien à venir"
-        description="Aucun entretien ni relance n’est programmé."
-      />
-    );
-  }
-  return (
-    <ul className="divide-y divide-line">
-      {echeances.slice(0, 4).map((echeance) => {
-        const entretien = echeance.genre === "entretien";
+/** Colonnes du tableau des candidatures récentes, aux proportions de la maquette. */
+function colonnesRecentes(): readonly Column<Candidature>[] {
+  return [
+    {
+      key: "poste",
+      header: "Poste",
+      grow: 2.1,
+      render: (candidature) => (
+        <CellIdentity
+          initials={initiales(candidature.entrepriseNom ?? candidature.poste)}
+          title={candidature.poste}
+          subtitle={`${contratLabel(candidature.typeContrat)}${
+            candidature.entrepriseVille ? ` · ${candidature.entrepriseVille}` : ""
+          }`}
+        />
+      ),
+    },
+    {
+      key: "entreprise",
+      header: "Entreprise",
+      grow: 1.4,
+      render: (candidature) => (
+        <span className="truncate text-body text-ink-muted">
+          {candidature.entrepriseNom ?? "—"}
+        </span>
+      ),
+    },
+    {
+      key: "statut",
+      header: "Statut",
+      grow: 1.1,
+      render: (candidature) => {
+        const statut = statutMeta(candidature.statut);
         return (
-          <li key={`${echeance.genre}-${echeance.id}`}>
-            <Link
-              to="/suivi/calendrier"
-              className="flex min-h-14 items-center gap-3 px-4 py-2.5 transition-colors duration-150 hover:bg-neutral-tint"
-            >
-              <span
-                className={cn(
-                  "flex size-9 flex-none flex-col items-center justify-center rounded-card leading-none",
-                  entretien ? TONS.success.icon : TONS.warning.icon,
-                )}
-              >
-                <span className="tabular text-body font-semibold">{jour(echeance.date)}</span>
-                <span className="mt-0.5 text-[8px] font-semibold">{mois(echeance.date)}</span>
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-body font-medium text-ink">
-                  {entretien ? "Entretien" : "Relance"} — {echeance.entrepriseNom ?? "Entreprise"}
-                </span>
-                <span className="mt-0.5 block truncate text-meta text-ink-faint">
-                  {echeance.poste ?? "Candidature"} · {echeance.detail}
-                </span>
-              </span>
-              <span className={cn("flex items-center gap-1 text-meta font-medium", entretien ? "text-success" : "text-warning")}>
-                <Icon name={entretien ? "videocam" : "send"} size={14} />
-                {entretien ? "Entretien" : "Relance"}
-              </span>
-            </Link>
-          </li>
+          <StatusPill tone={statut.tone} icon={statut.icon}>
+            {statut.label}
+          </StatusPill>
         );
-      })}
-    </ul>
-  );
+      },
+    },
+    {
+      key: "maj",
+      header: "Mise à jour",
+      grow: 0.9,
+      numeric: true,
+      render: (candidature) => (
+        <span className="text-note text-ink-faint">
+          {formatDate(candidature.updatedAt, "long")}
+        </span>
+      ),
+    },
+  ];
 }
 
-export function RecentApplications({ candidatures }: { candidatures: readonly Candidature[] }) {
-  if (candidatures.length === 0) {
-    return (
-      <EmptyState
-        icon="work"
-        title="Aucune candidature"
-        description="Ajoutez votre première candidature pour démarrer le suivi."
-      />
-    );
-  }
+/** Tableau des dernières candidatures, en pied du tableau de bord. */
+export function RecentApplications({
+  candidatures,
+  header,
+  onOuvrir,
+}: {
+  candidatures: readonly Candidature[];
+  header: ReactNode;
+  onOuvrir: (candidature: Candidature) => void;
+}) {
   return (
-    <div className="overflow-x-auto [scrollbar-gutter:stable]">
-      <table className="w-full min-w-[680px] border-collapse">
-        <thead className="bg-neutral-tint text-left text-meta font-medium text-ink-faint">
-          <tr>
-            <th className="px-4 py-2">Poste</th>
-            <th className="px-4 py-2">Entreprise</th>
-            <th className="px-4 py-2">Statut</th>
-            <th className="px-4 py-2 text-right">Mise à jour</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-line">
-          {candidatures.map((candidature) => {
-            const statut = statutMeta(candidature.statut);
-            return (
-              <tr key={candidature.id} className="h-row transition-colors duration-150 hover:bg-neutral-tint">
-                <td className="px-4">
-                  <Link to="/suivi/candidatures" className="flex items-center gap-2.5">
-                    <span className="flex size-7 flex-none items-center justify-center rounded-button bg-neutral-tint text-meta font-semibold text-ink-muted">
-                      {initiales(candidature.entrepriseNom ?? candidature.poste)}
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block truncate text-body font-medium text-ink">{candidature.poste}</span>
-                      <span className="block text-meta text-ink-faint">
-                        {contratLabel(candidature.typeContrat)}
-                        {candidature.entrepriseVille ? ` · ${candidature.entrepriseVille}` : ""}
-                      </span>
-                    </span>
-                  </Link>
-                </td>
-                <td className="px-4 text-body text-ink-muted">{candidature.entrepriseNom ?? "—"}</td>
-                <td className="px-4">
-                  <span className="inline-flex items-center gap-1.5 text-meta text-ink-muted">
-                    <span className={cn("size-1.5 rounded-full", TONS[statut.tone].bar)} />
-                    {statut.label}
-                  </span>
-                </td>
-                <td className="tabular px-4 text-right text-meta text-ink-faint">
-                  {formatDate(candidature.updatedAt, "long")}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+    <DataTable
+      columns={colonnesRecentes()}
+      rows={candidatures}
+      rowKey={(candidature) => candidature.id}
+      onRowClick={onOuvrir}
+      header={header}
+      emptyState={
+        <EmptyState
+          icon="work"
+          title="Aucune candidature"
+          description="Ajoutez votre première candidature pour démarrer le suivi."
+        />
+      }
+    />
   );
 }
 
+/**
+ * Candidatures sans réponse, avec leur ancienneté et l'action de relance.
+ *
+ * L'ancienneté passe en rouge à quinze jours : au-delà, la maquette signale la relance comme
+ * en retard plutôt que simplement due.
+ */
 export function FollowUpList({
   items,
   onRelancer,
@@ -401,23 +370,27 @@ export function FollowUpList({
       />
     );
   }
+
   return (
-    <ul className="divide-y divide-line">
+    <ul>
       {items.map((item) => (
-        <li key={item.id} className="flex min-h-14 items-center gap-3 px-4 py-2.5">
-          <span className="flex size-7 flex-none items-center justify-center rounded-button bg-neutral-tint text-meta font-semibold text-ink-muted">
+        <li
+          key={item.id}
+          className="flex items-center gap-[11px] border-b border-line px-[19px] py-3 last:border-b-0"
+        >
+          <span className="flex size-7 flex-none items-center justify-center rounded-button bg-neutral-tint text-meta font-strong text-ink-muted">
             {initiales(item.entrepriseNom ?? item.poste)}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-body font-medium text-ink">{item.poste}</p>
-            <p className="truncate text-meta text-ink-faint">
+            <p className="truncate text-body font-mid text-ink">{item.poste}</p>
+            <p className="truncate text-label text-ink-faint">
               {item.entrepriseNom ?? "Entreprise"} · envoyée le {formatDate(item.dateEnvoi, "long")}
             </p>
           </div>
-          <span className={cn("tabular rounded-pill px-2 py-1 text-meta font-medium", item.jours >= 15 ? TONS.danger.icon : TONS.warning.icon)}>
+          <StatusPill tone={item.jours >= 15 ? "danger" : "warning"} compact>
             {item.jours} j
-          </span>
-          <Button icon="send" onClick={() => onRelancer(item)}>
+          </StatusPill>
+          <Button icon="send" className="h-pager px-2.5 text-label" onClick={() => onRelancer(item)}>
             Relancer
           </Button>
         </li>
@@ -426,6 +399,7 @@ export function FollowUpList({
   );
 }
 
+/** Rythme et délais : rangées libellé / valeur séparées par un filet haut. */
 export function PerformanceList({
   performance,
   indicateurs,
@@ -433,19 +407,43 @@ export function PerformanceList({
   performance: Performance;
   indicateurs: Indicateurs;
 }) {
-  const lignes = [
-    ["Délai moyen de réponse", performance.delaiMoyenReponse === null ? "—" : `${performance.delaiMoyenReponse} j`],
-    ["Candidatures / semaine", formatNombre(performance.candidaturesParSemaine)],
-    ["Taux d’entretien", `${indicateurs.tauxEntretien} %`],
-    ["Relances en retard", performance.relancesEnRetard.toString()],
-  ] as const;
+  const lignes: readonly { label: string; valeur: string; tone?: Tone }[] = [
+    {
+      label: "Délai moyen de réponse",
+      valeur:
+        performance.delaiMoyenReponse === null ? "—" : `${performance.delaiMoyenReponse} j`,
+    },
+    {
+      label: "Candidatures / semaine",
+      valeur: formatNombre(performance.candidaturesParSemaine),
+    },
+    { label: "Taux d’entretien", valeur: `${indicateurs.tauxEntretien} %`, tone: "success" },
+    {
+      label: "Relances en retard",
+      valeur: performance.relancesEnRetard.toString(),
+      ...(performance.relancesEnRetard > 0 ? { tone: "warning" as Tone } : {}),
+    },
+  ];
+
   return (
-    <dl className="divide-y divide-line px-4">
-      {lignes.map(([label, valeur], index) => (
-        <div key={label} className="flex min-h-11 items-center justify-between gap-4">
-          <dt className="text-meta text-ink-muted">{label}</dt>
-          <dd className={cn("tabular text-body font-semibold", index === 2 ? "text-success" : index === 3 && performance.relancesEnRetard > 0 ? "text-warning" : "text-ink")}>
-            {valeur}
+    <dl>
+      {lignes.map((ligne) => (
+        <div
+          key={ligne.label}
+          className="flex items-center justify-between gap-3.5 border-t border-line py-2.5"
+        >
+          <dt className="min-w-0 text-note text-ink-muted">{ligne.label}</dt>
+          <dd
+            className={cn(
+              "tabular flex-none text-body font-semibold",
+              ligne.tone === "success"
+                ? "text-success"
+                : ligne.tone === "warning"
+                  ? "text-warning"
+                  : "text-ink",
+            )}
+          >
+            {ligne.valeur}
           </dd>
         </div>
       ))}
@@ -453,28 +451,34 @@ export function PerformanceList({
   );
 }
 
+/** Ossature affichée pendant le chargement, aux dimensions des cartes réelles. */
 export function AnalyticsSkeleton() {
   return (
-    <div role="status" aria-label="Chargement du tableau de bord" className="space-y-4 p-6">
-      <div className="grid grid-cols-4 gap-3">
+    <div
+      role="status"
+      aria-label="Chargement en cours"
+      className="px-7 pt-[22px] pb-8"
+    >
+      <div className="mb-4 grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr))]">
         {Array.from({ length: 4 }, (_, index) => (
-          <div key={index} className="h-28 rounded-card border border-line bg-surface p-4">
+          <div key={index} className="rounded-card border border-line bg-surface px-[18px] py-4">
             <Skeleton className="h-3 w-24" />
-            <Skeleton className="mt-4 h-8 w-16" />
-            <Skeleton className="mt-2 h-2.5 w-28" />
+            <Skeleton className="mt-[19px] h-6 w-16" />
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <Skeleton className="h-64 rounded-card" />
-        <Skeleton className="h-64 rounded-card" />
+      <div className="mb-4 grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr))]">
+        <Skeleton className="h-[232px] rounded-card" />
+        <Skeleton className="h-[232px] rounded-card" />
       </div>
-      <Skeleton className="h-48 rounded-card" />
+      <Skeleton className="mb-4 h-[124px] rounded-card" />
+      <Skeleton className="h-[300px] rounded-card" />
     </div>
   );
 }
 
-function initiales(valeur: string): string {
+/** Initiales d'un intitulé, pour les pastilles des listes. */
+export function initiales(valeur: string): string {
   return valeur
     .split(/\s+/)
     .filter(Boolean)
@@ -488,7 +492,7 @@ function formatDate(valeur: string, format: "court" | "long"): string {
   const date = new Date(`${valeur.slice(0, 10)}T12:00:00`);
   if (Number.isNaN(date.getTime())) return valeur.slice(0, 10);
   return new Intl.DateTimeFormat("fr-FR", {
-    day: format === "long" ? "2-digit" : undefined,
+    day: format === "long" ? "2-digit" : "numeric",
     month: "short",
   }).format(date);
 }

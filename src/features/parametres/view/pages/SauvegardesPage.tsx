@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { useQueryClient } from "@tanstack/react-query";
+import { ContextBarAccessory, ContextNote } from "@/app/layout/ContextBar";
 import { AppError } from "@/shared/types/app-error";
 import { Button, ConfirmDialog, PageHeader } from "@/shared/ui";
 import { useUiStore } from "@/shared/lib/ui-store";
@@ -84,6 +85,9 @@ export function SauvegardesPage() {
 
   return (
     <div className="flex h-full flex-col">
+      <ContextBarAccessory>
+        <ContextNote>Candilog · données locales</ContextNote>
+      </ContextBarAccessory>
       <PageHeader icon="save" title="Sauvegardes" subtitle="Export, restauration et maintenance" />
       <SettingsBody>
         <SettingsHero

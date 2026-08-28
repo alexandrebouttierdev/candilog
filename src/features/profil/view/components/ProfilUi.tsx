@@ -1,7 +1,7 @@
 import type { KeyboardEvent, ReactNode } from "react";
 import type { Identite } from "@/shared/types/generated/profil";
 import { cn } from "@/shared/lib/cn";
-import { Button, Icon, Skeleton } from "@/shared/ui";
+import { Icon, Skeleton } from "@/shared/ui";
 
 export type ProfilTab = "experiences" | "competences" | "formations" | "langues";
 
@@ -12,7 +12,7 @@ const TAB_LABELS: Record<ProfilTab, { label: string; icon: string }> = {
   langues: { label: "Langues", icon: "translate" },
 };
 
-/** Navigation locale du profil, restituée comme de vrais onglets au clavier. */
+/** Onglets du bandeau profil : 9 px / 13 px, soulignement accent, compteur 10,5 px. */
 export function ProfilTabs({
   active,
   counts,
@@ -23,7 +23,7 @@ export function ProfilTabs({
   onChange: (tab: ProfilTab) => void;
 }) {
   return (
-    <div role="tablist" aria-label="Sections du profil" className="flex gap-1 overflow-x-auto border-b border-line px-5">
+    <div role="tablist" aria-label="Sections du profil" className="mt-[18px] flex gap-[3px]">
       {(Object.keys(TAB_LABELS) as ProfilTab[]).map((tab) => {
         const meta = TAB_LABELS[tab];
         const tabs = Object.keys(TAB_LABELS) as ProfilTab[];
@@ -41,28 +41,28 @@ export function ProfilTabs({
           onChange(prochainTab);
           document.getElementById(`profil-tab-${prochainTab}`)?.focus();
         };
+        const selected = active === tab;
         return (
           <button
             key={tab}
             id={`profil-tab-${tab}`}
             type="button"
             role="tab"
-            aria-selected={active === tab}
+            aria-selected={selected}
             aria-controls={`profil-panel-${tab}`}
-            tabIndex={active === tab ? 0 : -1}
+            tabIndex={selected ? 0 : -1}
             onClick={() => onChange(tab)}
             onKeyDown={naviguer}
             className={cn(
-              "relative flex h-12 flex-none items-center gap-2 px-3 text-body font-medium transition-colors duration-150",
-              active === tab ? "text-accent" : "text-ink-muted hover:text-ink",
+              "flex flex-none items-center gap-[7px] px-[13px] py-[9px] text-body font-mid",
+              selected ? "text-accent shadow-[inset_0_-2px_0_0_var(--color-accent)]" : "text-ink-muted hover:text-ink",
             )}
           >
-            <Icon name={meta.icon} size={17} />
+            <Icon name={meta.icon} size={16} />
             {meta.label}
-            <span className="tabular rounded-full bg-neutral-tint px-1.5 py-0.5 text-[10px] text-ink-faint">
+            <span className="rounded-tag bg-neutral-tint px-[5px] py-px text-eyebrow font-semibold text-ink-faint">
               {counts[tab]}
             </span>
-            {active === tab ? <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-accent" /> : null}
           </button>
         );
       })}
@@ -81,12 +81,7 @@ export function ProfilPanel({
 }) {
   if (!active) return null;
   return (
-    <div
-      id={`profil-panel-${tab}`}
-      role="tabpanel"
-      aria-labelledby={`profil-tab-${tab}`}
-      className="p-5"
-    >
+    <div id={`profil-panel-${tab}`} role="tabpanel" aria-labelledby={`profil-tab-${tab}`}>
       {children}
     </div>
   );
@@ -95,25 +90,31 @@ export function ProfilPanel({
 export function SectionCard({
   icon,
   title,
-  meta,
+  actionLabel = "Modifier",
   onEdit,
   children,
 }: {
   icon: string;
   title: string;
-  meta?: string;
+  actionLabel?: string;
   onEdit: () => void;
   children: ReactNode;
 }) {
   return (
     <section className="overflow-hidden rounded-card border border-line bg-surface shadow-e1">
-      <header className="flex min-h-12 items-center gap-2 border-b border-line px-4">
-        <Icon name={icon} size={17} className="text-accent" />
-        <h2 className="min-w-0 flex-1 truncate text-section text-ink">{title}</h2>
-        {meta ? <span className="text-meta text-ink-faint">{meta}</span> : null}
-        <Button variant="ghost" icon="edit" onClick={onEdit} aria-label={`Modifier ${title.toLowerCase()}`}>
-          Modifier
-        </Button>
+      <header className="flex items-center justify-between gap-3 border-b border-line px-[18px] py-[13px]">
+        <div className="flex min-w-0 items-center gap-2">
+          <Icon name={icon} size={17} className="flex-none text-ink-faint" />
+          <h2 className="truncate text-item font-semibold text-ink">{title}</h2>
+        </div>
+        <button
+          type="button"
+          onClick={onEdit}
+          className="inline-flex flex-none items-center gap-[5px] rounded-pill text-label font-medium text-accent hover:opacity-80"
+        >
+          <Icon name="edit" size={15} />
+          {actionLabel}
+        </button>
       </header>
       {children}
     </section>
@@ -126,47 +127,83 @@ export function ProfileIdentity({ identite }: { identite: Identite }) {
     .filter(Boolean)
     .map((partie) => partie.charAt(0).toUpperCase())
     .join("") || "?";
+  const chips = [
+    identite.email ? { icon: "mail", label: identite.email } : null,
+    identite.telephone ? { icon: "call", label: identite.telephone } : null,
+    identite.ville ? { icon: "location_on", label: identite.ville } : null,
+  ].filter((chip): chip is { icon: string; label: string } => chip !== null);
+
   return (
-    <div className="flex min-w-0 items-center gap-4">
-      <span className="flex size-14 flex-none items-center justify-center rounded-[18px] bg-accent text-lg font-semibold text-white shadow-e1">
+    <div className="flex min-w-[260px] flex-1 items-start gap-4">
+      <span className="flex size-14 flex-none items-center justify-center rounded-full bg-accent-tint text-lg font-strong text-accent">
         {initiales}
       </span>
       <div className="min-w-0">
-        <h2 className="truncate text-[22px] font-semibold tracking-[-0.02em] text-ink">{nom}</h2>
-        <p className="truncate text-body text-ink-muted">{identite.titre ?? "Ajoutez votre objectif professionnel"}</p>
-        <p className="mt-1 flex items-center gap-1.5 text-meta text-ink-faint">
-          <Icon name="location_on" size={14} />
-          {identite.ville ?? "Localisation non renseignée"}
+        <h2 className="text-title text-ink">{nom}</h2>
+        <p className="mt-1 text-body font-mid text-accent">
+          {identite.titre ?? "Ajoutez votre objectif professionnel"}
         </p>
+        {chips.length > 0 ? (
+          <div className="mt-2.5 flex flex-wrap gap-2">
+            {chips.map((chip) => (
+              <span
+                key={chip.label}
+                className="inline-flex items-center gap-1.5 rounded-pill bg-neutral-tint px-[9px] py-1 text-label text-ink-muted"
+              >
+                <Icon name={chip.icon} size={14} className="text-ink-faint" />
+                {chip.label}
+              </span>
+            ))}
+          </div>
+        ) : null}
       </div>
     </div>
   );
 }
 
-export function CompletionRing({ value }: { value: number }) {
-  const degres = Math.max(0, Math.min(100, value)) * 3.6;
+/** Barre de progression du bandeau, 7 px, comme les maquettes Analyses et Profil. */
+export function CompletionBar({
+  value,
+  hint,
+}: {
+  value: number;
+  hint: string;
+}) {
+  const borne = Math.max(0, Math.min(100, value));
   return (
-    <div
-      role="img"
-      aria-label={`Profil complété à ${value} %`}
-      className="relative flex size-20 flex-none items-center justify-center rounded-full"
-      style={{ background: `conic-gradient(var(--color-accent) ${degres}deg, var(--color-neutral-tint) 0deg)` }}
-    >
-      <span className="absolute inset-[7px] rounded-full bg-surface" />
-      <span className="tabular relative text-lg font-semibold text-ink">{value}%</span>
+    <div className="min-w-0 max-w-[280px] flex-[1_1_210px]">
+      <div className="mb-[7px] flex items-baseline justify-between">
+        <span className="text-label font-medium text-ink-muted">Profil complété</span>
+        <span className="tabular text-item font-strong text-accent">{borne} %</span>
+      </div>
+      <div
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={borne}
+        aria-label="Profil complété"
+        className="mb-[9px] h-[7px] overflow-hidden rounded-tag bg-neutral-tint"
+      >
+        <div className="h-full rounded-tag bg-accent" style={{ width: `${borne}%` }} />
+      </div>
+      <p className="text-meta leading-normal text-ink-faint">{hint}</p>
     </div>
   );
 }
 
 export function ProfilSkeleton() {
   return (
-    <div className="space-y-4 p-5 min-[1200px]:p-6">
-      <div className="rounded-card border border-line bg-surface p-6">
-        <div className="flex items-center gap-4"><Skeleton className="size-14 rounded-[18px]" /><div className="flex-1 space-y-2"><Skeleton className="h-5 w-52" /><Skeleton className="h-3 w-72" /></div><Skeleton className="size-20 rounded-full" /></div>
-      </div>
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
-        <Skeleton className="h-96 rounded-card" />
-        <Skeleton className="h-72 rounded-card" />
+    <div>
+      <div className="border-b border-line bg-surface px-7 pt-[22px] pb-0">
+        <div className="flex items-start gap-4">
+          <Skeleton className="size-14 rounded-full" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-5 w-52" />
+            <Skeleton className="h-3 w-72" />
+          </div>
+          <Skeleton className="h-16 w-56" />
+        </div>
+        <Skeleton className="mt-[18px] h-10 w-full" />
       </div>
     </div>
   );

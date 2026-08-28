@@ -21,7 +21,7 @@ export function ProviderGrid({
     <div
       role="radiogroup"
       aria-label="Fournisseur IA"
-      className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4"
+      className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 [grid-template-columns:repeat(auto-fit,minmax(min(140px,100%),1fr))]"
     >
       {FOURNISSEURS.map((fournisseur) => {
         const selected = fournisseur.id === actif;
@@ -34,23 +34,25 @@ export function ProviderGrid({
             aria-label={fournisseur.label}
             onClick={() => onChange(fournisseur.id)}
             className={cn(
-              "flex min-h-11 items-start gap-3 rounded-card border px-3 py-3 text-left",
-              "transition-[background-color,border-color,color] duration-150",
+              "flex min-w-0 items-center gap-[9px] rounded-field border px-3 py-[11px] text-left",
+              "transition-[background-color,border-color] duration-150",
               selected
-                ? "border-accent bg-accent-tint text-ink"
-                : "border-line bg-surface text-ink hover:bg-neutral-tint",
+                ? "border-accent-border bg-accent-tint"
+                : "border-line bg-surface hover:bg-neutral-tint",
             )}
           >
-            <Icon
-              name={fournisseur.icon}
-              size={18}
-              filled={selected}
-              className={selected ? "text-accent" : "text-ink-muted"}
-            />
-            <span>
-              <span className="block text-label font-semibold">{fournisseur.label}</span>
-              <span className="mt-0.5 block text-meta text-ink-muted">{fournisseur.hint}</span>
+            <span
+              className={cn(
+                "flex size-[26px] flex-none items-center justify-center rounded-control",
+                selected ? "bg-accent text-white" : "bg-neutral-tint text-ink-muted",
+              )}
+            >
+              <Icon name={fournisseur.icon} size={15} filled={selected} />
             </span>
+            <span className="min-w-0 flex-1 truncate text-body font-mid text-ink">
+              {fournisseur.label}
+            </span>
+            {selected ? <Icon name="check" size={16} className="ml-auto flex-none text-accent" /> : null}
           </button>
         );
       })}

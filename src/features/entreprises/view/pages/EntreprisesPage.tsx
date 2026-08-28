@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useEntreprisesViewModel } from "../../viewmodel/useEntreprisesViewModel";
 import type { Entreprise } from "../../services/entreprise.service";
 import { EntrepriseFormModal } from "../components/EntrepriseFormModal";
 import { EntrepriseDetail } from "../components/EntrepriseDetail";
+import { ContextBarAccessory, ContextSearch } from "@/app/layout/ContextBar";
 import {
   Button,
   ConfirmDialog,
@@ -10,17 +12,19 @@ import {
   ErrorBanner,
   MasterList,
   MasterListItem,
+  MasterListTag,
   PageHeader,
   Pager,
   Select,
   Skeleton,
-  initiales,
+  initialesMot,
 } from "@/shared/ui";
 import { AppError } from "@/shared/types/app-error";
 
 /** Écran Relations → Entreprises : liste maître paginée et fiche détaillée. */
 export function EntreprisesPage() {
   const vm = useEntreprisesViewModel();
+  const naviguer = useNavigate();
   const [formulaire, setFormulaire] = useState<{ ouvert: boolean; cible: Entreprise | null }>({
     ouvert: false,
     cible: null,
@@ -29,10 +33,35 @@ export function EntreprisesPage() {
 
   return (
     <div className="flex h-full flex-col">
+      <ContextBarAccessory>
+        <ContextSearch
+          value={vm.search}
+          placeholder="Rechercher une entreprise…"
+          onChange={vm.rechercher}
+        />
+      </ContextBarAccessory>
+
       <PageHeader
         icon="apartment"
         title="Entreprises"
         subtitle="Répertoire des sociétés suivies"
+        secondary={
+          vm.types.length > 0 ? (
+            <Select
+              dense
+              aria-label="Filtrer par type"
+              value={vm.companyType ?? ""}
+              onChange={(event) => vm.filtrerParType(event.target.value || null)}
+            >
+              <option value="">Tous les types</option>
+              {vm.types.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </Select>
+          ) : null
+        }
         primary={
           <Button
             variant="primary"
@@ -46,28 +75,12 @@ export function EntreprisesPage() {
 
       <div className="flex min-h-0 flex-1">
         <MasterList
-          search={vm.search}
-          searchPlaceholder="Rechercher une entreprise…"
-          onSearchChange={vm.rechercher}
-          toolbar={
-            vm.types.length > 0 ? (
-              <Select
-                aria-label="Filtrer par type"
-                value={vm.companyType ?? ""}
-                onChange={(event) => vm.filtrerParType(event.target.value || null)}
-              >
-                <option value="">Tous les types</option>
-                {vm.types.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </Select>
-            ) : null
-          }
+          title="Répertoire"
+          count={`${vm.total} ${vm.total > 1 ? "entreprises" : "entreprise"}`}
           footer={
             vm.total > 0 ? (
               <Pager
+                dense
                 page={vm.page}
                 pageSize={vm.pageSize}
                 total={vm.total}
@@ -104,11 +117,16 @@ export function EntreprisesPage() {
             vm.items.map((entreprise) => (
               <MasterListItem
                 key={entreprise.id}
-                initials={initiales(entreprise.nom)}
+                initials={initialesMot(entreprise.nom)}
                 title={entreprise.nom}
                 subtitle={
                   [entreprise.secteur, entreprise.ville].filter(Boolean).join(" · ") ||
                   undefined
+                }
+                meta={
+                  entreprise.type ? (
+                    <MasterListTag icon="business_center">{entreprise.type}</MasterListTag>
+                  ) : undefined
                 }
                 selected={entreprise.id === vm.selectedId}
                 onSelect={() => vm.selectionner(entreprise.id)}
@@ -121,8 +139,12 @@ export function EntreprisesPage() {
           {vm.selection ? (
             <EntrepriseDetail
               entreprise={vm.selection}
+              candidatures={vm.candidaturesLiees}
+              totalCandidatures={vm.totalCandidaturesLiees}
               onEdit={() => setFormulaire({ ouvert: true, cible: vm.selection })}
               onDelete={() => setASupprimer(vm.selection)}
+              onOuvrirCandidature={() => naviguer("/suivi/candidatures")}
+              onToutVoir={() => naviguer("/suivi/candidatures")}
             />
           ) : (
             <div className="flex h-full items-center justify-center">
@@ -170,8 +192,8 @@ function ListeSquelette() {
   return (
     <div role="status" aria-label="Chargement du répertoire">
       {Array.from({ length: 6 }, (_, index) => (
-        <div key={index} className="flex min-h-row items-center gap-2.5 border-b border-line px-3">
-          <Skeleton className="size-8 flex-none rounded-pill" />
+        <div key={index} className="mb-1 flex items-center gap-[11px] px-3 py-[11px]">
+          <Skeleton className="size-8 flex-none rounded-field" />
           <div className="flex-1">
             <Skeleton className="h-3 w-2/3" />
             <Skeleton className="mt-1.5 h-2.5 w-1/3" />

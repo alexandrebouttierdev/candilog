@@ -13,43 +13,33 @@ export interface TimelineEntry {
 /**
  * Chronologie d'activité d'une fiche.
  *
- * Le filet vertical est tracé par une bordure sur le conteneur de la pastille plutôt que par
- * un élément dédié : il s'arrête ainsi naturellement à la dernière entrée, sans dépasser
- * sous elle.
+ * Les maquettes ne tracent pas de filet vertical : chaque entrée est une pastille de 8 px
+ * cerclée d'un halo de 3 px dans la teinte de sa tonalité, suivie du titre et de la date.
  */
 export function TimelineList({ entries }: { entries: readonly TimelineEntry[] }) {
   const dot: Record<Tone, string> = {
-    neutral: "bg-neutral-tint text-ink-faint",
-    accent: "bg-accent-tint text-accent",
-    success: "bg-success-tint text-success",
-    warning: "bg-warning-tint text-warning",
-    danger: "bg-danger-tint text-danger",
+    neutral: "bg-ink-faint shadow-[0_0_0_3px_transparent]",
+    accent: "bg-accent shadow-[0_0_0_3px_var(--color-accent-tint)]",
+    success: "bg-success shadow-[0_0_0_3px_var(--color-success-tint)]",
+    warning: "bg-warning shadow-[0_0_0_3px_var(--color-warning-tint)]",
+    danger: "bg-danger shadow-[0_0_0_3px_var(--color-danger-tint)]",
   };
 
   return (
     <ol className="flex flex-col">
-      {entries.map((entry, index) => (
-        <li key={entry.id} className="flex gap-3">
-          <div
-            className={cn(
-              "flex flex-col items-center",
-              index < entries.length - 1 && "after:mt-1 after:w-px after:flex-1 after:bg-line",
-            )}
-          >
-            <span
-              className={cn("mt-1 size-2.5 rounded-full", dot[entry.tone ?? "neutral"])}
-              aria-hidden="true"
-            />
-          </div>
-          <div className="min-w-0 flex-1 pb-4">
-            <div className="flex items-baseline gap-2">
-              <p className="min-w-0 flex-1 truncate text-body text-ink">{entry.title}</p>
-              <time className="tabular flex-none text-meta text-ink-faint">{entry.date}</time>
-            </div>
+      {entries.map((entry) => (
+        <li key={entry.id} className="flex items-start gap-[11px] pb-[13px] last:pb-0">
+          <span
+            aria-hidden="true"
+            className={cn("mt-[5px] size-2 flex-none rounded-full", dot[entry.tone ?? "neutral"])}
+          />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-body font-mid text-ink">{entry.title}</p>
             {entry.detail ? (
-              <p className="truncate text-meta text-ink-muted">{entry.detail}</p>
+              <p className="mt-0.5 truncate text-label text-ink-faint">{entry.detail}</p>
             ) : null}
           </div>
+          <time className="tabular flex-none text-label text-ink-faint">{entry.date}</time>
         </li>
       ))}
     </ol>

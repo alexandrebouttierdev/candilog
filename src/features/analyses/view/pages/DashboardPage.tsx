@@ -2,20 +2,35 @@ import { useNavigate } from "react-router-dom";
 import { useTableauDeBordViewModel } from "../../viewmodel/useTableauDeBordViewModel";
 import {
   ActivityChart,
-  AnalyticsPanel,
   AnalyticsSkeleton,
-  MetricCard,
   PipelineBar,
   RecentApplications,
   UpcomingList,
 } from "../components/AnalyticsUi";
+import { ContextBarAccessory, ContextNote } from "@/app/layout/ContextBar";
 import { AppError } from "@/shared/types/app-error";
-import { Button, ErrorBanner, PageHeader } from "@/shared/ui";
+import {
+  Button,
+  Card,
+  CardHeader,
+  CardLink,
+  CardMeta,
+  CardTitle,
+  ErrorBanner,
+  PageHeader,
+  StatCard,
+} from "@/shared/ui";
+
+/** Grilles auto-ajustées des maquettes : les cartes se replient sous une largeur plancher. */
+const GRILLE_KPI = "grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr))]";
+const GRILLE_CARTES =
+  "grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr))]";
 
 /** Accueil : état de la recherche d'emploi et prochaines actions. */
 export function DashboardPage() {
   const vm = useTableauDeBordViewModel();
   const navigate = useNavigate();
+
   const date = new Intl.DateTimeFormat("fr-FR", {
     weekday: "long",
     day: "numeric",
@@ -25,6 +40,9 @@ export function DashboardPage() {
 
   return (
     <div className="flex h-full flex-col">
+      <ContextBarAccessory>
+        <ContextNote>Vue d’ensemble de la recherche</ContextNote>
+      </ContextBarAccessory>
       <PageHeader
         icon="space_dashboard"
         title="Tableau de bord"
@@ -49,7 +67,7 @@ export function DashboardPage() {
         {vm.isLoading ? (
           <AnalyticsSkeleton />
         ) : vm.error || !vm.data ? (
-          <div className="p-6">
+          <div className="px-7 pt-[22px]">
             <ErrorBanner
               message={
                 vm.error instanceof AppError
@@ -60,76 +78,100 @@ export function DashboardPage() {
             />
           </div>
         ) : (
-          <div className="space-y-4 p-5 min-[1200px]:p-6">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-[1.2fr_1fr_1fr_1fr]">
-              <MetricCard
-                primary
-                tone="accent"
+          <div className="px-7 pt-[22px] pb-8">
+            <div className={`${GRILLE_KPI} mb-4`}>
+              <StatCard
                 icon="work"
+                tone="accent"
                 label="Candidatures actives"
-                value={Math.max(0, vm.data.indicateurs.candidatures - vm.data.indicateurs.refus).toString()}
-                context="envoyées sur les 30 derniers jours"
-                sparkline={vm.data.activite.map((semaine) => semaine.nombre)}
+                value={vm.data.indicateurs.enAttente.toString()}
+                delta={`${vm.data.indicateurs.candidatures} sur 30 j`}
+                deltaIcon="trending_up"
+                deltaTone="success"
               />
-              <MetricCard
-                tone="success"
+              <StatCard
                 icon="event_available"
+                tone="success"
                 label="Entretiens à venir"
                 value={vm.data.performance.entretiensAVenir.toString()}
-                context="tous horizons confondus"
+                delta="tous horizons"
+                deltaIcon="schedule"
               />
-              <MetricCard
-                tone="accent"
+              <StatCard
                 icon="mark_email_read"
+                tone="accent"
                 label="Taux de réponse"
                 value={`${vm.data.indicateurs.tauxReponse} %`}
-                context={`${vm.data.indicateurs.reponses} réponse${vm.data.indicateurs.reponses > 1 ? "s" : ""} reçue${vm.data.indicateurs.reponses > 1 ? "s" : ""}`}
+                delta={`${vm.data.indicateurs.reponses} réponse${
+                  vm.data.indicateurs.reponses > 1 ? "s" : ""
+                }`}
+                deltaIcon="mark_chat_read"
+                deltaTone="success"
               />
-              <MetricCard
-                tone="warning"
+              <StatCard
                 icon="notifications_active"
+                tone="warning"
                 label="Relances à traiter"
                 value={vm.data.performance.relancesEnRetard.toString()}
-                context="dont la date est dépassée"
+                delta="en retard"
+                deltaIcon="priority_high"
+                deltaTone="warning"
               />
             </div>
 
-            <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-              <AnalyticsPanel
-                icon="event_upcoming"
-                title="Prochains événements"
-                meta={`${vm.data.echeances.length} à venir`}
-              >
+            <div className={`${GRILLE_CARTES} mb-4`}>
+              <Card padded>
+                <CardTitle
+                  icon="event_upcoming"
+                  meta={<CardMeta>{vm.data.echeances.length} à venir</CardMeta>}
+                  className="mb-3"
+                >
+                  Prochains événements
+                </CardTitle>
                 <UpcomingList echeances={vm.data.echeances} />
-              </AnalyticsPanel>
-              <AnalyticsPanel icon="bar_chart_4_bars" title="Activité récente" meta="8 dernières semaines">
+              </Card>
+
+              <Card padded>
+                <CardTitle
+                  icon="bar_chart_4_bars"
+                  meta={<CardMeta>8 dernières semaines</CardMeta>}
+                  className="mb-4"
+                >
+                  Activité récente
+                </CardTitle>
                 <ActivityChart activite={vm.data.activite} />
-              </AnalyticsPanel>
+              </Card>
             </div>
 
-            <AnalyticsPanel
-              icon="conversion_path"
-              title="Pipeline"
-              meta={`Taux d’entretien ${vm.data.indicateurs.tauxEntretien} %`}
-            >
+            <Card padded className="mb-4">
+              <CardTitle
+                icon="conversion_path"
+                meta={<CardMeta>Taux d’entretien {vm.data.indicateurs.tauxEntretien} %</CardMeta>}
+                className="mb-[13px]"
+              >
+                Pipeline
+              </CardTitle>
               <PipelineBar etapes={vm.data.pipeline} />
-            </AnalyticsPanel>
+            </Card>
 
-            <AnalyticsPanel
-              icon="work_history"
-              title="Candidatures récentes"
-              meta={
-                <button
-                  type="button"
-                  onClick={() => void navigate("/suivi/candidatures")}
-                  className="inline-flex items-center gap-1 font-medium text-accent hover:underline"
+            <RecentApplications
+              candidatures={vm.data.recentes}
+              header={
+                <CardHeader
+                  icon="work_history"
+                  meta={
+                    <CardLink onClick={() => void navigate("/suivi/candidatures")}>
+                      Tout voir
+                    </CardLink>
+                  }
                 >
-                  Tout voir
-                </button>
+                  Candidatures récentes
+                </CardHeader>
               }
-            >
-              <RecentApplications candidatures={vm.data.recentes} />
-            </AnalyticsPanel>
+              onOuvrir={(candidature) =>
+                void navigate(`/suivi/candidatures?fiche=${candidature.id}`)
+              }
+            />
           </div>
         )}
       </div>

@@ -43,6 +43,7 @@ export function useCandidaturesViewModel() {
 
   const [vue, setVue] = useState<VueSuivi>("kanban");
   const [page, setPage] = useState(1);
+  const [taillePage, setTaillePage] = useState<number>(PAGE_SIZE);
   const [search, setSearch] = useState("");
   const [filtres, setFiltres] = useState<CandidatureFilterValues>(FILTRE_INITIAL);
   const [tri, setTri] = useState<TriCandidature>("date");
@@ -67,8 +68,8 @@ export function useCandidaturesViewModel() {
   );
 
   // Le Kanban affiche les quatre colonnes d'un coup : il demande une page assez large pour
-  // les remplir, là où la Liste s'en tient à la taille de page des maquettes.
-  const pageSize = vue === "kanban" ? PAGE_SIZE * 4 : PAGE_SIZE;
+  // les remplir, là où la Liste s'en tient à la densité choisie dans son pied.
+  const pageSize = vue === "kanban" ? PAGE_SIZE * 4 : taillePage;
 
   const liste = useQuery({
     queryKey: [...CANDIDATURES_KEY, "page", { page, pageSize, filtre }],
@@ -210,6 +211,11 @@ export function useCandidaturesViewModel() {
 
     setVue,
     setPage,
+    /** Change la densité de la vue Liste et revient à la première page. */
+    setPageSize: useCallback((taille: number) => {
+      setTaillePage(taille);
+      setPage(1);
+    }, []),
     rechercher,
     appliquerFiltres,
     reinitialiserFiltres,

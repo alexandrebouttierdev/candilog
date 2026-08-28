@@ -10,24 +10,30 @@ import { CandidatureFormModal } from "../components/CandidatureFormModal";
 import { CandidatureFilters } from "../components/CandidatureFilters";
 import { CandidatureDetail } from "../components/CandidatureDetail";
 import { KanbanBoard } from "../components/KanbanBoard";
+import { ContextBarAccessory, ContextSearch } from "@/app/layout/ContextBar";
 import {
   Button,
+  CellIdentity,
   ConfirmDialog,
   DataTable,
   EmptyState,
   ErrorBanner,
-  Icon,
+  FilterBar,
+  FilterChip,
   PageHeader,
   Pager,
+  SegmentedControl,
   SkeletonRows,
   StatusPill,
 } from "@/shared/ui";
 import type { Column } from "@/shared/ui";
 import type { TriCandidature } from "@/shared/types/generated/candidatures";
-import { controlClasses } from "@/shared/ui/FormField";
 import { AppError } from "@/shared/types/app-error";
 import { useUiStore } from "@/shared/lib/ui-store";
-import { cn } from "@/shared/lib/cn";
+import { PAGE_SIZE } from "@/shared/types/page";
+
+/** Densités proposées par le pied de la vue Liste. */
+const DENSITES = [PAGE_SIZE, 25, 50] as const;
 
 /** Écran Suivi → Candidatures : Kanban ou Liste, sur le même filtre. */
 export function CandidaturesPage() {
@@ -90,30 +96,35 @@ export function CandidaturesPage() {
       key: "poste",
       header: "Poste",
       sortKey: "poste",
-      render: (row) => <span className="font-medium text-ink">{row.poste}</span>,
+      grow: 2.2,
+      render: (row) => (
+        <CellIdentity
+          initials={initiales(row.entrepriseNom ?? row.poste)}
+          title={row.poste}
+          subtitle={row.entrepriseVille ?? undefined}
+        />
+      ),
     },
     {
       key: "entreprise",
       header: "Entreprise",
       sortKey: "entreprise",
+      grow: 1.3,
       render: (row) => (
-        <span className="text-ink-muted">
-          {row.entrepriseNom ?? "—"}
-          {row.entrepriseVille ? ` · ${row.entrepriseVille}` : ""}
-        </span>
+        <span className="truncate text-body text-ink-muted">{row.entrepriseNom ?? "—"}</span>
       ),
     },
     {
       key: "contrat",
       header: "Contrat",
-      width: "110px",
-      render: (row) => contratLabel(row.typeContrat),
+      grow: 0.9,
+      render: (row) => <span className="text-note text-ink-faint">{contratLabel(row.typeContrat)}</span>,
     },
     {
       key: "statut",
       header: "Statut",
       sortKey: "statut",
-      width: "150px",
+      grow: 1.1,
       render: (row) => {
         const statut = statutMeta(row.statut);
         return (
@@ -127,18 +138,42 @@ export function CandidaturesPage() {
       key: "date",
       header: "Envoyée",
       sortKey: "date",
-      width: "120px",
+      grow: 0.7,
       numeric: true,
-      render: (row) => versDateAffichee(row.dateEnvoi),
+      render: (row) => (
+        <span className="text-note text-ink-faint">{versDateAffichee(row.dateEnvoi)}</span>
+      ),
     },
   ];
 
+  const filtres = vm.filtres;
+
   return (
     <div className="flex h-full flex-col">
+      <ContextBarAccessory>
+        <ContextSearch
+          value={vm.search}
+          onChange={vm.rechercher}
+          placeholder="Rechercher un poste, une entreprise…"
+          width={250}
+        />
+      </ContextBarAccessory>
+
       <PageHeader
         icon="work"
         title="Candidatures"
         subtitle="Suivi de vos dossiers"
+        toolbar={
+          <SegmentedControl
+            label="Mode d’affichage"
+            value={vm.vue}
+            onChange={vm.setVue}
+            options={[
+              { value: "kanban", label: "Kanban", icon: "view_kanban" },
+              { value: "liste", label: "Liste", icon: "view_list" },
+            ]}
+          />
+        }
         secondary={
           <Button icon="download" disabled={exportEnCours} onClick={() => void exporter()}>
             Exporter
@@ -155,65 +190,50 @@ export function CandidaturesPage() {
         }
       />
 
-      <div className="flex flex-none items-center gap-2 border-b border-line bg-surface-alt px-6 py-2.5">
-        <div className="relative w-[280px]">
-          <Icon
-            name="search"
-            size={16}
-            className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink-faint"
-          />
-          <input
-            type="search"
-            value={vm.search}
-            onChange={(event) => vm.rechercher(event.target.value)}
-            placeholder="Rechercher un poste ou une entreprise…"
-            aria-label="Rechercher une candidature"
-            className={controlClasses(false, "pl-8")}
-          />
-        </div>
-
-        <Button icon="filter_alt" onClick={() => setFiltresOuverts(true)}>
-          Filtres
-          {vm.filtresActifs > 0 ? (
-            <span className="tabular ml-1 rounded-pill bg-accent px-1.5 text-meta text-white">
-              {vm.filtresActifs}
-            </span>
-          ) : null}
-        </Button>
-
+      <FilterBar
+        summary={
+          vm.isLoading
+            ? null
+            : `${vm.total} candidature${vm.total > 1 ? "s" : ""}${
+                vm.filtresActifs > 0 ? " · filtrées" : ""
+              }`
+        }
+      >
+        <FilterChip
+          icon="filter_alt"
+          label={filtres.statut ? statutMeta(filtres.statut).label : "Statut"}
+          active={filtres.statut !== null}
+          onClick={() => setFiltresOuverts(true)}
+        />
+        <FilterChip
+          icon="badge"
+          label={filtres.contrat ? contratLabel(filtres.contrat) : "Contrat"}
+          active={filtres.contrat !== null}
+          onClick={() => setFiltresOuverts(true)}
+        />
+        <FilterChip
+          icon="apartment"
+          label={filtres.ville || "Ville"}
+          active={filtres.ville !== ""}
+          onClick={() => setFiltresOuverts(true)}
+        />
+        <FilterChip
+          icon="date_range"
+          label={periodeLabel(filtres.dateDebut, filtres.dateFin)}
+          active={filtres.dateDebut !== null || filtres.dateFin !== null}
+          onClick={() => setFiltresOuverts(true)}
+        />
         {vm.filtresActifs > 0 ? (
           <Button variant="ghost" icon="filter_alt_off" onClick={vm.reinitialiserFiltres}>
             Effacer
           </Button>
         ) : null}
-
-        <div className="flex-1" />
-
-        <div className="flex items-center gap-0.5 rounded-button border border-line bg-surface p-0.5">
-          {(["kanban", "liste"] as const).map((mode) => (
-            <button
-              key={mode}
-              type="button"
-              onClick={() => vm.setVue(mode)}
-              aria-pressed={vm.vue === mode}
-              className={cn(
-                "flex items-center gap-1.5 rounded-[6px] px-2.5 py-1 text-meta transition-colors duration-150",
-                vm.vue === mode
-                  ? "bg-accent-tint text-accent"
-                  : "text-ink-muted hover:text-ink",
-              )}
-            >
-              <Icon name={mode === "kanban" ? "view_kanban" : "view_list"} size={15} />
-              {mode === "kanban" ? "Kanban" : "Liste"}
-            </button>
-          ))}
-        </div>
-      </div>
+      </FilterBar>
 
       <div className="flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col">
           {vm.error ? (
-            <div className="p-6">
+            <div className="px-7 pt-[18px]">
               <ErrorBanner
                 message={
                   vm.error instanceof AppError
@@ -224,20 +244,17 @@ export function CandidaturesPage() {
               />
             </div>
           ) : vm.isLoading ? (
-            <div className="p-6">
-              <div className="overflow-hidden rounded-card border border-line bg-surface">
+            <div className="px-7 pt-[18px]">
+              <div className="overflow-hidden rounded-card border border-line bg-surface shadow-e1">
                 <SkeletonRows rows={6} columns={5} />
               </div>
             </div>
           ) : vm.total === 0 ? (
-            <div className="flex flex-1 items-center justify-center">
+            <div className="px-7 pt-[18px]">
               <EmptyState
+                bordered
                 icon="work"
-                title={
-                  vm.search || vm.filtresActifs > 0
-                    ? "Aucun résultat"
-                    : "Aucune candidature"
-                }
+                title={vm.search || vm.filtresActifs > 0 ? "Aucun résultat" : "Aucune candidature"}
                 description={
                   vm.search || vm.filtresActifs > 0
                     ? "Aucune candidature ne correspond à ces critères."
@@ -270,7 +287,7 @@ export function CandidaturesPage() {
               onCreate={() => setFormulaire({ ouvert: true, cible: null })}
             />
           ) : (
-            <div className="flex min-h-0 flex-1 flex-col gap-3 p-6">
+            <div className="min-h-0 flex-1 overflow-auto px-7 pt-[18px] pb-[26px]">
               <DataTable
                 columns={colonnes}
                 rows={vm.items}
@@ -278,16 +295,19 @@ export function CandidaturesPage() {
                 sort={{ key: vm.tri, direction: vm.descendant ? "desc" : "asc" }}
                 onSortChange={vm.trierPar}
                 onRowClick={(row) => vm.selectionner(row.id)}
+                isSelected={(row) => row.id === vm.selectedId}
+                footer={
+                  <Pager
+                    page={vm.page}
+                    pageSize={vm.pageSize}
+                    total={vm.total}
+                    label="candidatures"
+                    pageSizes={DENSITES}
+                    onPageChange={vm.setPage}
+                    onPageSizeChange={vm.setPageSize}
+                  />
+                }
               />
-              <div className="overflow-hidden rounded-card border border-line">
-                <Pager
-                  page={vm.page}
-                  pageSize={vm.pageSize}
-                  total={vm.total}
-                  label="candidatures"
-                  onPageChange={vm.setPage}
-                />
-              </div>
             </div>
           )}
         </div>
@@ -298,9 +318,7 @@ export function CandidaturesPage() {
             onClose={() => vm.selectionner(null)}
             onEdit={() => setFormulaire({ ouvert: true, cible: vm.selection })}
             onDelete={() => setASupprimer(vm.selection)}
-            onStatutChange={(statut) =>
-              void vm.changerStatut({ id: vm.selection!.id, statut })
-            }
+            onStatutChange={(statut) => void vm.changerStatut({ id: vm.selection!.id, statut })}
           />
         ) : null}
       </div>
@@ -340,4 +358,23 @@ export function CandidaturesPage() {
       />
     </div>
   );
+}
+
+/** Libellé de la puce de période : la borne renseignée, ou les deux. */
+function periodeLabel(debut: string | null, fin: string | null): string {
+  if (debut && fin) return `${versDateAffichee(debut)} → ${versDateAffichee(fin)}`;
+  if (debut) return `Depuis le ${versDateAffichee(debut)}`;
+  if (fin) return `Jusqu’au ${versDateAffichee(fin)}`;
+  return "Période";
+}
+
+/** Initiales de l'entreprise, pour la pastille de la colonne « Poste ». */
+function initiales(valeur: string): string {
+  return valeur
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((mot) => mot[0])
+    .join("")
+    .toUpperCase();
 }
