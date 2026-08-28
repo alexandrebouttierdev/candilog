@@ -32,7 +32,7 @@ export function EntreprisesPage() {
       <PageHeader
         icon="apartment"
         title="Entreprises"
-        subtitle="Répertoire des sociétés que vous suivez"
+        subtitle="Répertoire des sociétés suivies"
         primary={
           <Button
             variant="primary"

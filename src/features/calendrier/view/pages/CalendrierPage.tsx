@@ -1,7 +1,17 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useCalendrierViewModel } from "../../viewmodel/useCalendrierViewModel";
 import type { EvenementCalendrier } from "../../model/evenement";
+import {
+  dateDepuisIso,
+  decalerJours,
+  decalerMois,
+  isoLocal,
+  joursDeLaSemaine,
+  libelleJour,
+  libelleSemaine,
+} from "../../model/mois";
 import { GrilleMois } from "../components/GrilleMois";
+import { VueJour, VueSemaine } from "../components/VueAgenda";
 import { EntretienFormModal } from "@/features/entretiens/view/components/EntretienFormModal";
 import { RelanceFormModal } from "@/features/relances/view/components/RelanceFormModal";
 import type { Entretien } from "@/features/entretiens/services/entretien.service";
@@ -16,6 +26,15 @@ import {
   StatusPill,
 } from "@/shared/ui";
 import { AppError } from "@/shared/types/app-error";
+import { cn } from "@/shared/lib/cn";
+
+type VueCalendrier = "mois" | "semaine" | "jour";
+
+const VUES: readonly { id: VueCalendrier; label: string }[] = [
+  { id: "mois", label: "Mois" },
+  { id: "semaine", label: "Semaine" },
+  { id: "jour", label: "Jour" },
+];
 
 /** Ce que la page a ouvert : une modale d'entretien, de relance, ou rien. */
 type Edition =
@@ -28,8 +47,51 @@ export function CalendrierPage() {
   const vm = useCalendrierViewModel();
   const [edition, setEdition] = useState<Edition>({ genre: "aucune" });
   const [aSupprimer, setASupprimer] = useState<EvenementCalendrier | null>(null);
+  const [vue, setVue] = useState<VueCalendrier>("mois");
+  const [jourSelectionne, setJourSelectionne] = useState(() => isoLocal(new Date()));
 
   const fermer = () => setEdition({ genre: "aucune" });
+
+  const allerAuJour = (iso: string) => {
+    setJourSelectionne(iso);
+    const date = dateDepuisIso(iso);
+    if (date.getFullYear() !== vm.annee || date.getMonth() !== vm.mois) {
+      vm.allerA(date.getFullYear(), date.getMonth());
+    }
+  };
+
+  const naviguer = (pas: number) => {
+    if (vue === "mois") {
+      const suivante = decalerMois(vm.annee, vm.mois, pas);
+      vm.allerA(suivante.annee, suivante.mois);
+      const aujourdhui = new Date();
+      if (aujourdhui.getFullYear() === suivante.annee && aujourdhui.getMonth() === suivante.mois) {
+        setJourSelectionne(isoLocal(aujourdhui));
+      } else {
+        setJourSelectionne(isoLocal(new Date(suivante.annee, suivante.mois, 1)));
+      }
+      return;
+    }
+    allerAuJour(decalerJours(jourSelectionne, vue === "semaine" ? pas * 7 : pas));
+  };
+
+  const revenirAujourdhui = () => {
+    vm.revenirAujourdhui();
+    setJourSelectionne(isoLocal(new Date()));
+  };
+
+  const libelle =
+    vue === "semaine"
+      ? libelleSemaine(jourSelectionne)
+      : vue === "jour"
+        ? libelleJour(jourSelectionne)
+        : vm.libelle;
+
+  const joursSemaine = useMemo(
+    () => joursDeLaSemaine(jourSelectionne),
+    [jourSelectionne],
+  );
+  const evenementsDuJour = vm.parJour.get(jourSelectionne) ?? [];
 
   /** Clic sur un événement : rouvre la modale de son entité d'origine. */
   const ouvrirEvenement = (evenement: EvenementCalendrier) => {
@@ -66,16 +128,16 @@ export function CalendrierPage() {
       />
 
       <div className="flex flex-none items-center gap-3 border-b border-line bg-surface-alt px-6 py-2.5">
-        <Button icon="today" onClick={vm.revenirAujourdhui}>
+        <div className="flex items-center">
+          <NavigationMois direction="chevron_left" label="Période précédente" onClick={() => naviguer(-1)} />
+          <NavigationMois direction="chevron_right" label="Période suivante" onClick={() => naviguer(1)} joined />
+        </div>
+
+        <Button icon="today" onClick={revenirAujourdhui}>
           Aujourd'hui
         </Button>
 
-        <div className="flex items-center gap-0.5">
-          <NavigationMois direction="chevron_left" label="Mois précédent" onClick={() => vm.naviguer(-1)} />
-          <NavigationMois direction="chevron_right" label="Mois suivant" onClick={() => vm.naviguer(1)} />
-        </div>
-
-        <h2 className="text-section text-ink capitalize">{vm.libelle}</h2>
+        <h2 className="text-section text-ink capitalize">{libelle}</h2>
 
         <div className="flex-1" />
 
@@ -85,6 +147,23 @@ export function CalendrierPage() {
         <StatusPill tone="warning" icon="send">
           {`${vm.nombreRelances} relance${vm.nombreRelances > 1 ? "s" : ""}`}
         </StatusPill>
+
+        <div role="group" aria-label="Vue du calendrier" className="flex items-center gap-0.5 rounded-button bg-neutral-tint p-0.5">
+          {VUES.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              aria-pressed={vue === item.id}
+              onClick={() => setVue(item.id)}
+              className={cn(
+                "h-7 rounded-[6px] px-2.5 text-meta font-medium transition-[background-color,color] duration-150",
+                vue === item.id ? "bg-surface text-ink shadow-e1" : "text-ink-muted hover:text-ink",
+              )}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col p-6">
@@ -100,12 +179,32 @@ export function CalendrierPage() {
         ) : vm.isLoading ? (
           <GrilleSquelette />
         ) : (
-          <GrilleMois
-            cases={vm.cases}
-            parJour={vm.parJour}
-            onJourClick={(jour) => setEdition({ genre: "entretien", cible: null, jour })}
-            onEvenementClick={ouvrirEvenement}
-          />
+          vue === "semaine" ? (
+            <VueSemaine
+              jours={joursSemaine}
+              parJour={vm.parJour}
+              selection={jourSelectionne}
+              onJourClick={(jour) => {
+                allerAuJour(jour);
+                setEdition({ genre: "entretien", cible: null, jour });
+              }}
+              onEvenementClick={ouvrirEvenement}
+            />
+          ) : vue === "jour" ? (
+            <VueJour
+              jour={jourSelectionne}
+              evenements={evenementsDuJour}
+              onJourClick={(jour) => setEdition({ genre: "entretien", cible: null, jour })}
+              onEvenementClick={ouvrirEvenement}
+            />
+          ) : (
+            <GrilleMois
+              cases={vm.cases}
+              parJour={vm.parJour}
+              onJourClick={(jour) => setEdition({ genre: "entretien", cible: null, jour })}
+              onEvenementClick={ouvrirEvenement}
+            />
+          )
         )}
       </div>
 
@@ -166,17 +265,22 @@ function NavigationMois({
   direction,
   label,
   onClick,
+  joined = false,
 }: {
   direction: string;
   label: string;
   onClick: () => void;
+  joined?: boolean;
 }) {
   return (
     <button
       type="button"
       aria-label={label}
       onClick={onClick}
-      className="flex size-8 items-center justify-center rounded-button border border-line bg-surface text-ink-muted transition-colors duration-150 hover:bg-neutral-tint hover:text-ink"
+      className={cn(
+        "flex size-[30px] items-center justify-center border border-line bg-surface text-ink-muted transition-colors duration-150 hover:bg-neutral-tint hover:text-ink",
+        joined ? "rounded-r-button border-l-0" : "rounded-l-button",
+      )}
     >
       <Icon name={direction} size={16} />
     </button>

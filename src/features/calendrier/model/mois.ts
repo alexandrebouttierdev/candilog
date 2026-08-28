@@ -41,9 +41,65 @@ export function libelleMois(annee: number, mois: number): string {
 }
 
 /** Date `AAAA-MM-JJ` d'un objet `Date`, en heure locale. */
-function iso(date: Date): string {
+export function isoLocal(date: Date): string {
   const deuxChiffres = (valeur: number) => String(valeur).padStart(2, "0");
   return `${date.getFullYear()}-${deuxChiffres(date.getMonth() + 1)}-${deuxChiffres(date.getDate())}`;
+}
+
+/** Reconstruit un `Date` local depuis une clé `AAAA-MM-JJ` (sans passer par UTC). */
+export function dateDepuisIso(cle: string): Date {
+  const [annee, mois, jour] = cle.split("-").map(Number);
+  return new Date(annee ?? 0, (mois ?? 1) - 1, jour ?? 1);
+}
+
+/** Décale une clé ISO d'un nombre de jours, en heure locale. */
+export function decalerJours(cle: string, pas: number): string {
+  const date = dateDepuisIso(cle);
+  date.setDate(date.getDate() + pas);
+  return isoLocal(date);
+}
+
+/**
+ * Les sept jours de la semaine (lundi → dimanche) qui contient `cle`.
+ *
+ * `dansLeMois` se lit par rapport au mois de `cle`, pour estomper le débordement
+ * comme sur la grille mensuelle.
+ */
+export function joursDeLaSemaine(cle: string, aujourdhui = new Date()): JourGrille[] {
+  const ancre = dateDepuisIso(cle);
+  const decalage = (ancre.getDay() + 6) % 7;
+  const debut = new Date(ancre.getFullYear(), ancre.getMonth(), ancre.getDate() - decalage);
+  const isoAujourdhui = isoLocal(aujourdhui);
+
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(debut.getFullYear(), debut.getMonth(), debut.getDate() + index);
+    const jour = isoLocal(date);
+    return {
+      iso: jour,
+      numero: date.getDate(),
+      dansLeMois: date.getMonth() === ancre.getMonth(),
+      aujourdhui: jour === isoAujourdhui,
+    };
+  });
+}
+
+/** Libellé « lundi 24 août 2026 » d'un jour. */
+export function libelleJour(cle: string): string {
+  return new Intl.DateTimeFormat("fr-FR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(dateDepuisIso(cle));
+}
+
+/** Libellé « 24 – 30 août 2026 » de la semaine contenant `cle`. */
+export function libelleSemaine(cle: string): string {
+  const jours = joursDeLaSemaine(cle);
+  const debut = dateDepuisIso(jours[0]!.iso);
+  const fin = dateDepuisIso(jours[6]!.iso);
+  const jourMois = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short" });
+  return `${jourMois.format(debut)} – ${jourMois.format(fin)} ${fin.getFullYear()}`;
 }
 
 /**
@@ -56,11 +112,11 @@ export function grilleDuMois(annee: number, mois: number, aujourdhui = new Date(
   // `getDay` place dimanche à 0 ; la semaine des maquettes commence le lundi.
   const decalage = (premier.getDay() + 6) % 7;
   const debut = new Date(annee, mois, 1 - decalage);
-  const isoAujourdhui = iso(aujourdhui);
+  const isoAujourdhui = isoLocal(aujourdhui);
 
   return Array.from({ length: 42 }, (_, index) => {
     const date = new Date(debut.getFullYear(), debut.getMonth(), debut.getDate() + index);
-    const cle = iso(date);
+    const cle = isoLocal(date);
     return {
       iso: cle,
       numero: date.getDate(),

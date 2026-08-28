@@ -28,8 +28,8 @@ export function ProfilPage() {
     <div className="flex h-full flex-col">
       <PageHeader
         icon="account_circle"
-        title="Profil et objectif"
-        subtitle="Votre parcours, prêt à alimenter vos candidatures"
+        title="Profil professionnel"
+        subtitle="Source de vérité de vos documents"
         secondary={<div className="flex gap-2"><Button variant="secondary" icon="upload_file" onClick={() => setImportOpen(true)}>Importer un CV</Button><Button variant="secondary" icon="description" onClick={() => void navigate("/documents/cv")}>Mes CV</Button></div>}
         primary={<Button variant="primary" icon="edit" disabled={!vm.data} onClick={() => setSection("identite")}>Modifier le profil</Button>}
       />

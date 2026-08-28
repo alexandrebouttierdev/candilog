@@ -32,6 +32,7 @@ describe("rail de navigation", () => {
     );
     expect(screen.getByRole("link", { name: "Tableau de bord" })).toBeInTheDocument();
     expect(screen.getByText("Accueil")).toHaveClass("hidden", "min-[1200px]:block");
+    expect(screen.getByRole("button", { name: /Passer en thème/ })).toBeInTheDocument();
   });
 });
 
@@ -44,5 +45,6 @@ describe("onglets contextuels", () => {
     );
     expect(screen.getByRole("tab", { name: /Calendrier/ })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("tab", { name: /Candidatures/ })).toHaveAttribute("aria-selected", "false");
+    expect(screen.getByRole("tab", { name: /Calendrier/ })).toHaveClass("bg-accent-tint");
   });
 });

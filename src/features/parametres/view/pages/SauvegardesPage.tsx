@@ -84,7 +84,7 @@ export function SauvegardesPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <PageHeader icon="save" title="Sauvegardes" subtitle="Sauvegarde et restauration de vos données" />
+      <PageHeader icon="save" title="Sauvegardes" subtitle="Export, restauration et maintenance" />
       <SettingsBody>
         <SettingsHero
           kicker="Vos données"

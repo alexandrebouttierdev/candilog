@@ -31,7 +31,7 @@ export function ReseauPage() {
       <PageHeader
         icon="hub"
         title="Réseau"
-        subtitle="Interlocuteurs rencontrés au fil de vos candidatures"
+        subtitle="Vos contacts professionnels"
         primary={
           <Button
             variant="primary"

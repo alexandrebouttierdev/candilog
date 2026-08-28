@@ -154,6 +154,10 @@ export function useCalendrierViewModel() {
     setPeriode({ annee: aujourdhui.getFullYear(), mois: aujourdhui.getMonth() });
   }, []);
 
+  const allerA = useCallback((cibleAnnee: number, cibleMois: number) => {
+    setPeriode({ annee: cibleAnnee, mois: cibleMois });
+  }, []);
+
   /** Entretien ou relance derrière un événement, pour rouvrir la bonne modale. */
   const entretienDe = useCallback(
     (id: string): Entretien | null => entretiens.data?.find((item) => item.id === id) ?? null,
@@ -178,6 +182,7 @@ export function useCalendrierViewModel() {
     isDeleting: supprimerEntretien.isPending || supprimerRelance.isPending,
 
     naviguer,
+    allerA,
     revenirAujourdhui,
     recharger: () => {
       void entretiens.refetch();

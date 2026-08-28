@@ -2,35 +2,45 @@ import type { ReactNode } from "react";
 import { Icon } from "./Icon";
 
 /**
- * En-tête d'écran : icône, titre, sous-titre, actions.
+ * En-tête d'écran : icône, titre et sous-titre en ligne, actions à droite.
  *
- * Le guide SPECDESIGN impose une seule action primaire par écran ; `primary` est donc un
- * emplacement unique et non une liste, pour que la règle tienne par construction.
+ * Reprend le chrome des maquettes SPECDESIGN (titre 20 px, filet vertical, sous-titre
+ * tertiaire). Le guide n'admet qu'une seule action `primary` par écran.
  */
 export function PageHeader({
   icon,
   title,
   subtitle,
+  badge,
   secondary,
   primary,
 }: {
   icon: string;
   title: string;
   subtitle?: string | undefined;
+  badge?: ReactNode;
   secondary?: ReactNode;
   primary?: ReactNode;
 }) {
   return (
-    <header className="flex flex-none items-center gap-3 border-b border-line bg-surface-alt px-7 py-4">
-      <span className="flex size-9 flex-none items-center justify-center rounded-card bg-accent-tint text-accent">
-        <Icon name={icon} size={20} />
-      </span>
-      <div className="min-w-0 flex-1">
-        <h1 className="truncate text-title">{title}</h1>
-        {subtitle ? <p className="truncate text-meta text-ink-muted">{subtitle}</p> : null}
+    <header className="flex flex-none items-center justify-between gap-5 border-b border-line bg-surface px-7 py-[17px]">
+      <div className="flex min-w-0 items-center gap-3.5">
+        <span className="flex size-[34px] flex-none items-center justify-center rounded-[10px] bg-accent-tint text-accent">
+          <Icon name={icon} size={19} />
+        </span>
+        <h1 className="truncate text-title tracking-tight">{title}</h1>
+        {subtitle ? (
+          <>
+            <span aria-hidden className="h-[18px] w-px flex-none bg-line" />
+            <p className="truncate text-body text-ink-faint">{subtitle}</p>
+          </>
+        ) : null}
       </div>
-      {secondary}
-      {primary}
+      <div className="flex flex-none items-center gap-2.5">
+        {badge}
+        {secondary}
+        {primary}
+      </div>
     </header>
   );
 }

@@ -763,3 +763,41 @@ npm eslint src / vitest                   139 passed
 - Le dépôt `candilog-releases` n'est toujours pas aligné sur Tauri.
 - Une ancienne version de CV Iced sans JSON structuré n'exporte pas (même limite que l'aperçu).
 
+---
+
+## T12 — Conformité visuelle SPECDESIGN · terminée le 2026-08-28
+
+Passage écran par écran contre les maquettes HTML : coque, bibliothèques documents,
+calendrier Mois/Semaine/Jour, libellés d'en-tête.
+
+**Coque** — Rail 86 px (`workspace_premium`, bascule clair/sombre), onglets pastille 30 px
+dans une barre 46 px, en-tête titre | filet | sous-titre, icône 34×34 `rounded-[10px]`.
+
+**Documents** — Mes CV et Mes lettres en liste + aperçu (40 % / 36 %), recherche, actions
+Modifier / Dupliquer / Exporter PDF (CV) et Modifier / Copier (lettres). Générateur : action
+primaire « Exporter le PDF », chargement d'une version depuis la bibliothèque.
+
+**Calendrier** — Segmented control Mois / Semaine / Jour. Semaine = 7 colonnes ; jour = liste.
+
+### Vérifié
+
+```
+npm run lint                              ok
+npm test                                  143 passed (+4)
+Chrome visuel Vite :1420, 1440×900, clair et sombre
+```
+
+Sans backend Tauri, les listes métier restent en erreur IPC — le chrome est celui des
+maquettes.
+
+### Écarts assumés
+
+- Pas de ⌘K (décoratif dans les maquettes, non branché).
+- Accueil n'a pas les onglets Candidatures/Calendrier du Dashboard HTML : ils vivent sous Suivi.
+- Générateur CV en 3 colonnes, pas le wizard 3 étapes de la maquette.
+- Pas d'ATS sur les lignes de bibliothèque (`CvResume` n'expose pas le score).
+- Pas d'export PDF des lettres, pas d'historique d'analyse, pas de bouton mort « Modèle » /
+  « Historique » / « Importer » (lettres).
+- Bascule de thème du rail : session seulement, la persistance reste dans Réglages.
+- Vue Semaine/Jour : mêmes événements que la grille du mois, pas d'agenda horaire complet.
+

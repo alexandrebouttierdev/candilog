@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { bornesDeLaGrille, decalerMois, grilleDuMois, libelleMois } from "../mois";
+import {
+  bornesDeLaGrille,
+  dateDepuisIso,
+  decalerJours,
+  decalerMois,
+  grilleDuMois,
+  isoLocal,
+  joursDeLaSemaine,
+  libelleJour,
+  libelleMois,
+  libelleSemaine,
+} from "../mois";
 
 describe("grille du mois", () => {
   it("produit toujours 42 cases", () => {
@@ -82,5 +93,30 @@ describe("libellé du mois", () => {
   it("nomme le mois en français", () => {
     expect(libelleMois(2026, 7)).toBe("août 2026");
     expect(libelleMois(2026, 0)).toBe("janvier 2026");
+  });
+});
+
+describe("semaine et jour", () => {
+  it("aligne la semaine sur le lundi", () => {
+    // Le 28 août 2026 est un vendredi : la semaine commence le lundi 24.
+    const jours = joursDeLaSemaine("2026-08-28", new Date(2026, 7, 28));
+    expect(jours).toHaveLength(7);
+    expect(jours[0]?.iso).toBe("2026-08-24");
+    expect(jours[6]?.iso).toBe("2026-08-30");
+    expect(jours.filter((jour) => jour.aujourdhui)).toHaveLength(1);
+  });
+
+  it("décale une clé ISO en heure locale", () => {
+    expect(decalerJours("2026-08-31", 1)).toBe("2026-09-01");
+    expect(decalerJours("2026-01-01", -1)).toBe("2025-12-31");
+  });
+
+  it("round-trip ISO sans glisser en UTC", () => {
+    expect(isoLocal(dateDepuisIso("2026-08-28"))).toBe("2026-08-28");
+  });
+
+  it("libellé la semaine et le jour en français", () => {
+    expect(libelleSemaine("2026-08-28")).toMatch(/24.*30.*2026/);
+    expect(libelleJour("2026-08-28")).toMatch(/vendredi.*28.*août.*2026/i);
   });
 });

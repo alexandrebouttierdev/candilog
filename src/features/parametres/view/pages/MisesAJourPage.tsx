@@ -69,8 +69,7 @@ export function MisesAJourPage() {
       <PageHeader
         icon="system_update"
         title="Mises à jour"
-        subtitle="Recherche et installation des mises à jour"
-        secondary={<p className="text-meta text-ink-muted">Version actuelle {version}</p>}
+        subtitle={`Version actuelle ${version}`}
       />
       <SettingsBody>
         <SettingsHero

@@ -23,5 +23,9 @@ dist/
 *.log
 .DS_Store
 
+.playwright-cli/
+output/playwright/
+
 /.superpowers/
 AUDIT_APP_REPORT.md
+
