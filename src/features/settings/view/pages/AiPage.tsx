@@ -122,7 +122,7 @@ export function AiPage() {
         subtitle="Fournisseur, modèle et comportement"
         primary={
           <Button variant="primary" icon="save" disabled={!form || vm.isSaving} onClick={() => void save()}>
-            Save
+            Enregistrer
           </Button>
         }
       />

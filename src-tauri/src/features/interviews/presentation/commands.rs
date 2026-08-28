@@ -8,7 +8,7 @@ use std::sync::Arc;
 use tauri::State;
 
 /// List les entretiens d'une plage de dates, bornes incluses.
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn interviews_list_between(
     state: State<'_, AppState>,
     from: String,
@@ -19,7 +19,7 @@ pub async fn interviews_list_between(
 }
 
 /// Récupère un entretien par identifiant.
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn interviews_get(
     state: State<'_, AppState>,
     id: uuid::Uuid,
@@ -32,7 +32,7 @@ pub async fn interviews_get(
 ///
 /// `id` absent crée, `id` présent modifie : le chemin est unique côté dépôt, où l'écriture
 /// et la mise à jour du statut sont dans la même transaction.
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn interviews_save(
     state: State<'_, AppState>,
     id: Option<uuid::Uuid>,
@@ -43,7 +43,7 @@ pub async fn interviews_save(
 }
 
 /// Supprime un entretien.
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn interviews_delete(state: State<'_, AppState>, id: uuid::Uuid) -> AppResult<()> {
     let service = Arc::clone(&state.interviews);
     blocking::execute(move || service.delete(id)).await

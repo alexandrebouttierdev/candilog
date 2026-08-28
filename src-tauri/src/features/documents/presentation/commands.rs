@@ -13,21 +13,21 @@ use std::sync::Arc;
 use tauri::State;
 use uuid::Uuid;
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn documents_resume_list(state: State<'_, AppState>) -> AppResult<Vec<ResumeSummary>> {
     let service = state.documents.clone();
     tauri::async_runtime::spawn_blocking(move || service.resume_list())
         .await
         .map_err(|e| crate::core::errors::AppError::Database(e.to_string()))?
 }
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn documents_resume_get(state: State<'_, AppState>, id: Uuid) -> AppResult<ResumeVersion> {
     let service = state.documents.clone();
     tauri::async_runtime::spawn_blocking(move || service.resume_get(id))
         .await
         .map_err(|e| crate::core::errors::AppError::Database(e.to_string()))?
 }
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn documents_resume_save(
     state: State<'_, AppState>,
     input: NewResume,
@@ -37,7 +37,7 @@ pub async fn documents_resume_save(
         .await
         .map_err(|e| crate::core::errors::AppError::Database(e.to_string()))?
 }
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn documents_resume_delete(state: State<'_, AppState>, id: Uuid) -> AppResult<()> {
     let service = state.documents.clone();
     tauri::async_runtime::spawn_blocking(move || service.resume_delete(id))
@@ -49,8 +49,8 @@ pub async fn documents_resume_delete(state: State<'_, AppState>, id: Uuid) -> Ap
 ///
 /// Le profil (identité, périodes, projets, langues) est fusionné au contenu
 /// reformulé : l'aperçu HTML et le PDF reposent sur les mêmes données.
-#[tauri::command]
-pub async fn documents_cv_export_pdf(
+#[tauri::command(rename_all = "snake_case")]
+pub async fn documents_resume_export_pdf(
     state: State<'_, AppState>,
     resume: GeneratedResume,
     path: String,
@@ -72,8 +72,8 @@ pub async fn documents_cv_export_pdf(
 ///
 /// L'identité du profil (nom, ville, e-mail) est posée en en-tête, comme
 /// sur l'aperçu HTML.
-#[tauri::command]
-pub async fn documents_lettre_export_pdf(
+#[tauri::command(rename_all = "snake_case")]
+pub async fn documents_cover_letter_export_pdf(
     state: State<'_, AppState>,
     cover_letter: CoverLetterExport,
     path: String,
@@ -90,21 +90,21 @@ pub async fn documents_lettre_export_pdf(
     })
     .await
 }
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn documents_cover_letters_list(state: State<'_, AppState>) -> AppResult<Vec<CoverLetter>> {
     let service = state.documents.clone();
     tauri::async_runtime::spawn_blocking(move || service.cover_letters_list())
         .await
         .map_err(|e| crate::core::errors::AppError::Database(e.to_string()))?
 }
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn documents_cover_letter_get(state: State<'_, AppState>, id: Uuid) -> AppResult<CoverLetter> {
     let service = state.documents.clone();
     tauri::async_runtime::spawn_blocking(move || service.cover_letter_get(id))
         .await
         .map_err(|e| crate::core::errors::AppError::Database(e.to_string()))?
 }
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn documents_cover_letter_save(
     state: State<'_, AppState>,
     input: NewCoverLetter,
@@ -114,7 +114,7 @@ pub async fn documents_cover_letter_save(
         .await
         .map_err(|e| crate::core::errors::AppError::Database(e.to_string()))?
 }
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn documents_cover_letter_delete(state: State<'_, AppState>, id: Uuid) -> AppResult<()> {
     let service = state.documents.clone();
     tauri::async_runtime::spawn_blocking(move || service.cover_letter_delete(id))

@@ -16,7 +16,7 @@ fn notifier(app: AppHandle) -> impl Fn(AiProgress) {
     }
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn ai_analyze_listing(
     state: State<'_, AppState>,
     text: String,
@@ -24,7 +24,7 @@ pub async fn ai_analyze_listing(
     state.ai.analyze_listing(text).await
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn ai_generate_resume(
     app: AppHandle,
     state: State<'_, AppState>,
@@ -33,7 +33,7 @@ pub async fn ai_generate_resume(
     state.ai.generate_resume(request, notifier(app)).await
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn ai_generate_cover_letter(
     app: AppHandle,
     state: State<'_, AppState>,
@@ -42,7 +42,7 @@ pub async fn ai_generate_cover_letter(
     state.ai.generate_cover_letter(request, notifier(app)).await
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn ai_analyze_resume(
     app: AppHandle,
     state: State<'_, AppState>,
@@ -51,7 +51,7 @@ pub async fn ai_analyze_resume(
     state.ai.analyze_resume_imported(request, notifier(app)).await
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn ai_import_profile(
     app: AppHandle,
     state: State<'_, AppState>,
@@ -60,7 +60,7 @@ pub async fn ai_import_profile(
     state.ai.import_profile(request, notifier(app)).await
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn ai_cancel(state: State<'_, AppState>, generation_id: String) -> AppResult<()> {
     state.ai.cancel(&generation_id);
     Ok(())

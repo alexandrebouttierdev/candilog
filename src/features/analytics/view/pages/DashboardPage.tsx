@@ -93,7 +93,7 @@ export function DashboardPage() {
                 icon="event_available"
                 tone="success"
                 label="Entretiens à venir"
-                value={vm.data.performance.upcomingInterviews.toString()}
+                value={vm.data.performance.upcoming_interviews.toString()}
                 delta="tous horizons"
                 deltaIcon="schedule"
               />

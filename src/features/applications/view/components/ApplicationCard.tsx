@@ -59,7 +59,7 @@ export function ApplicationCard({
         <div className="min-w-0 flex-1">
           <p className="text-body leading-[1.35] font-semibold text-ink">{application.job_title}</p>
           <p className="mt-0.5 truncate text-meta text-ink-faint">
-            {application.company_name ?? "Company inconnue"}
+            {application.company_name ?? "Entreprise inconnue"}
           </p>
         </div>
       </div>

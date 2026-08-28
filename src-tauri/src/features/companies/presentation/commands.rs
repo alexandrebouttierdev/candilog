@@ -13,14 +13,14 @@ use std::sync::Arc;
 use tauri::State;
 
 /// List toutes les entreprises, pour alimenter un sélecteur.
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn companies_list(state: State<'_, AppState>) -> AppResult<Vec<Company>> {
     let service = Arc::clone(&state.companies);
     blocking::execute(move || service.list()).await
 }
 
 /// Payload une page du répertoire, filtrée par recherche libre et par type.
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn companies_list_page(
     state: State<'_, AppState>,
     page: u64,
@@ -36,7 +36,7 @@ pub async fn companies_list_page(
 }
 
 /// Récupère une entreprise par identifiant.
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn companies_get(
     state: State<'_, AppState>,
     id: uuid::Uuid,
@@ -46,14 +46,14 @@ pub async fn companies_get(
 }
 
 /// List les types d'entreprise réellement présents, pour le filtre du répertoire.
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn companies_list_types(state: State<'_, AppState>) -> AppResult<Vec<String>> {
     let service = Arc::clone(&state.companies);
     blocking::execute(move || service.list_types()).await
 }
 
 /// Crée une entreprise.
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn companies_create(
     state: State<'_, AppState>,
     input: NewCompany,
@@ -63,7 +63,7 @@ pub async fn companies_create(
 }
 
 /// Remplace les champs d'une entreprise.
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn companies_update(
     state: State<'_, AppState>,
     id: uuid::Uuid,
@@ -74,7 +74,7 @@ pub async fn companies_update(
 }
 
 /// Supprime une entreprise.
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn companies_delete(state: State<'_, AppState>, id: uuid::Uuid) -> AppResult<()> {
     let service = Arc::clone(&state.companies);
     blocking::execute(move || service.delete(id)).await

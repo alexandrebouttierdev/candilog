@@ -24,7 +24,7 @@ export function UpdatesPage() {
 
   useEffect(() => {
     let dispose: (() => void) | undefined;
-    void listen<UpdateProgress>("maj-progression", (event) => {
+    void listen<UpdateProgress>("update-progress", (event) => {
       setProgress(event.payload.progress);
     })
       .then((unlisten) => {

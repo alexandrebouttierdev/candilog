@@ -122,7 +122,7 @@ export function SectionCard({
 }
 
 export function ProfileIdentity({ identity }: { identity: Identity }) {
-  const name = [identity.first_name, identity.name].filter(Boolean).join(" ") || "Profile à compléter";
+  const name = [identity.first_name, identity.name].filter(Boolean).join(" ") || "Profil à compléter";
   const initials = [identity.first_name, identity.name]
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase())

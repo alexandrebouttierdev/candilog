@@ -201,7 +201,7 @@ function SkillsForm({ value, input, error, onInput, onAdd, onChange }: { value: 
   return (
     <div className="space-y-4">
       <FormField label="Nouvelle compétence" error={error} help="Entrée permet aussi d'ajouter la compétence.">
-        {(props) => <div className="flex gap-2"><TextInput {...props} value={input} placeholder="Ex. Figma, Rust, Gestion de projet" onChange={(event) => onInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); onAdd(); } }} /><Button icon="add" onClick={onAdd}>Add</Button></div>}
+        {(props) => <div className="flex gap-2"><TextInput {...props} value={input} placeholder="Ex. Figma, Rust, Gestion de projet" onChange={(event) => onInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); onAdd(); } }} /><Button icon="add" onClick={onAdd}>Ajouter</Button></div>}
       </FormField>
       {value.length === 0 ? <EmptyInline text="Aucune compétence ajoutée" /> : (
         <ul aria-label="Compétences ajoutées" className="flex flex-wrap gap-2">

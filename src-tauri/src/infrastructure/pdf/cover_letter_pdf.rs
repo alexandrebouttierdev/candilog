@@ -181,7 +181,7 @@ impl Plan<'_> {
         self.bloc_text(
             Weight::SemiBold,
             13.0,
-            rgb(TEXT.0, Text.1, Text.2),
+            rgb(TEXT.0, TEXT.1, TEXT.2),
             18.0,
             name,
         );
@@ -223,7 +223,7 @@ impl Plan<'_> {
         self.bloc_text(
             Weight::Medium,
             11.0,
-            rgb(TEXT.0, Text.1, Text.2),
+            rgb(TEXT.0, TEXT.1, TEXT.2),
             18.0,
             &cover_letter.subject,
         );
@@ -236,7 +236,7 @@ impl Plan<'_> {
             self.paragraphe(
                 Weight::Regular,
                 11.0,
-                rgb(TEXT.0, Text.1, Text.2),
+                rgb(TEXT.0, TEXT.1, TEXT.2),
                 16.5,
                 text,
             );
@@ -246,7 +246,7 @@ impl Plan<'_> {
         self.bloc_text(
             Weight::Medium,
             11.0,
-            rgb(TEXT.0, Text.1, Text.2),
+            rgb(TEXT.0, TEXT.1, TEXT.2),
             16.0,
             name,
         );

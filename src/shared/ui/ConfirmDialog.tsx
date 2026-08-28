@@ -61,9 +61,9 @@ export function ConfirmDialog({
         </div>
 
         <footer className="flex items-center gap-2.5 border-t border-line bg-surface-alt px-[22px] py-3.5">
-          <p className="flex-1 text-label text-ink-faint">Échap pour cancel</p>
+          <p className="flex-1 text-label text-ink-faint">Échap pour annuler</p>
           <Button variant="secondary" size="dialog" onClick={onCancel}>
-            Cancel
+            Annuler
           </Button>
           <Button
             variant="primary"

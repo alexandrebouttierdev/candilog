@@ -92,7 +92,7 @@ export function useCompaniesViewModel() {
     onSuccess: async (company) => {
       await invalider();
       setSelectedId(company.id);
-      notify({ tone: "success", title: "Company enregistrée", detail: company.name });
+      notify({ tone: "success", title: "Entreprise enregistrée", detail: company.name });
     },
     onError: signalerEchec("Enregistrement impossible"),
   });
@@ -102,7 +102,7 @@ export function useCompaniesViewModel() {
       companyService.update(params.id, params.input),
     onSuccess: async (company) => {
       await invalider();
-      notify({ tone: "success", title: "Company modifiée", detail: company.name });
+      notify({ tone: "success", title: "Entreprise modifiée", detail: company.name });
     },
     onError: signalerEchec("Modification impossible"),
   });
@@ -114,7 +114,7 @@ export function useCompaniesViewModel() {
       // La fiche affichée n'existe plus : la garder ouverte laisserait des données mortes
       // à l'écran jusqu'à la prochaine sélection.
       if (selected_id === id) setSelectedId(null);
-      notify({ tone: "success", title: "Company supprimée" });
+      notify({ tone: "success", title: "Entreprise supprimée" });
     },
     onError: signalerEchec("Suppression impossible"),
   });
@@ -139,7 +139,7 @@ export function useCompaniesViewModel() {
     company_type,
     types: types.data ?? [],
     selection,
-    selected_id: ficheId,
+    selected_id,
     /** Applications rattachées à la fiche ouverte, page la plus récente. */
     applicationsLiees: liees.data?.items ?? [],
     totalApplicationsLiees: liees.data?.total ?? 0,

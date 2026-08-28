@@ -155,7 +155,7 @@ export function ResumeLibraryPage() {
                           })
                         }
                       >
-                        Update
+                        Modifier
                       </PreviewAction>
                       <PreviewAction
                         icon="content_copy"
@@ -168,12 +168,12 @@ export function ResumeLibraryPage() {
                         icon="download"
                         onClick={() => void exportPdf(generation.resume, version.name, notify)}
                       >
-                        Export PDF
+                        Exporter PDF
                       </PreviewAction>
                     </>
                   ) : null}
                   <PreviewAction tone="danger" icon="delete" onClick={() => setDeleteId(version.id)}>
-                    Delete
+                    Supprimer
                   </PreviewAction>
                 </div>
               ) : null}
@@ -231,7 +231,7 @@ export function ResumeGeneratorPage() {
         icon="auto_awesome"
         title="Générer un CV"
         subtitle="Analysez une offre, générez un CV ciblé, exportez en PDF"
-        badge={operation ? <HeaderBadge>Ai active</HeaderBadge> : undefined}
+        badge={operation ? <HeaderBadge>IA active</HeaderBadge> : undefined}
         secondary={result ? <Button icon="save" disabled={!name.trim() || save.isPending} onClick={() => save.mutate()}>Enregistrer</Button> : undefined}
         primary={result ? <Button variant="primary" icon="download" onClick={() => void exportPdf(result.resume, name || "cv-candilog", notify)}>Exporter le PDF</Button> : undefined}
       />
@@ -349,7 +349,7 @@ export function LettersLibraryPage() {
                           <span className="min-w-0 flex-1 truncate text-[13px] font-semibold">{letter.company ?? letter.name}</span>
                           <span className="flex-none text-label text-ink-faint">{date(letter.created_at)}</span>
                         </span>
-                        <span className="mt-1 block truncate pl-6 text-label text-ink-faint">{letter.job_title ?? "Application"} · {labelTone(letter.tone)}</span>
+                        <span className="mt-1 block truncate pl-6 text-label text-ink-faint">{letter.job_title ?? "Candidature"} · {labelTone(letter.tone)}</span>
                       </button>
                     </li>
                   ))}
@@ -558,7 +558,7 @@ function Screen({
         </ContextBarAccessory>
       ) : (
         <ContextBarAccessory>
-          <ContextNote>Documents locaux · gNRation Ai</ContextNote>
+          <ContextNote>Documents locaux · génération IA</ContextNote>
         </ContextBarAccessory>
       )}
       {header}

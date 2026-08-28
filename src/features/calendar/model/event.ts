@@ -13,7 +13,7 @@ import type { Tone } from "@/shared/ui";
  */
 export interface CalendarEvent {
   readonly id: string;
-  readonly kind: "entretien" | "relance";
+  readonly kind: "interview" | "follow_up";
   /** Day `AAAA-MM-JJ` de regroupement. */
   readonly day: string;
   /** Time `HH:MM`, absente pour une relance qui se programme au jour. */
@@ -28,7 +28,7 @@ export interface CalendarEvent {
 export function fromInterview(interview: Interview): CalendarEvent {
   return {
     id: interview.id,
-    kind: "entretien",
+    kind: "interview",
     day: dayOf(interview.interview_date),
     time: timeFromTimestamp(interview.interview_date),
     label: interview.application_job_title ?? "Entretien",
@@ -42,7 +42,7 @@ export function fromInterview(interview: Interview): CalendarEvent {
 export function fromFollowUp(follow_up: FollowUp): CalendarEvent {
   return {
     id: follow_up.id,
-    kind: "relance",
+    kind: "follow_up",
     day: dayOf(follow_up.follow_up_date),
     time: null,
     label: follow_up.application_job_title ?? "Relance",

@@ -38,7 +38,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .manage(state)
         .invoke_handler(tauri::generate_handler![
-            analytics::analyses_dashboard,
+            analytics::analytics_dashboard,
             analytics::analytics_load,
             analytics::analytics_export_csv,
             applications::applications_list_page,
@@ -66,12 +66,12 @@ pub fn run() {
             documents::documents_resume_get,
             documents::documents_resume_save,
             documents::documents_resume_delete,
-            documents::documents_cv_export_pdf,
+            documents::documents_resume_export_pdf,
             documents::documents_cover_letters_list,
             documents::documents_cover_letter_get,
             documents::documents_cover_letter_save,
             documents::documents_cover_letter_delete,
-            documents::documents_lettre_export_pdf,
+            documents::documents_cover_letter_export_pdf,
             interviews::interviews_list_between,
             interviews::interviews_get,
             interviews::interviews_save,
@@ -86,7 +86,7 @@ pub fn run() {
             settings::settings_save,
             settings::settings_test_connection,
             settings::settings_list_models,
-            settings::parametres_clear_ai_cache,
+            settings::settings_clear_ai_cache,
             settings::settings_export,
             settings::settings_restore,
             settings::settings_reset,

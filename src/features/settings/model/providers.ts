@@ -4,18 +4,17 @@ export interface FournisseurOption {
   readonly id: "ollama" | "claude" | "openai" | "gemini" | "mistral" | "nvidia" | "custom";
   readonly label: string;
   readonly hint: string;
-  readonly icon: string;
 }
 
 /** Grid des sept fournisseurs, jamais un menu déroulant. */
 export const FOURNISSEURS: readonly FournisseurOption[] = [
-  { id: "ollama", label: "Ollama", hint: "Local, sans clé", icon: "computer" },
-  { id: "claude", label: "Claude", hint: "Anthropic", icon: "psychology" },
-  { id: "openai", label: "OpenAI", hint: "GPT", icon: "auto_awesome" },
-  { id: "gemini", label: "Gemini", hint: "Google", icon: "diamond" },
-  { id: "mistral", label: "Mistral", hint: "Europe", icon: "wind_power" },
-  { id: "nvidia", label: "NVIDIA", hint: "NIM", icon: "memory" },
-  { id: "custom", label: "Personnalisé", hint: "Compatible OpenAI", icon: "tune" },
+  { id: "ollama", label: "Ollama", hint: "Local, sans clé" },
+  { id: "claude", label: "Claude", hint: "Anthropic" },
+  { id: "openai", label: "OpenAI", hint: "GPT" },
+  { id: "gemini", label: "Gemini", hint: "Google" },
+  { id: "mistral", label: "Mistral", hint: "Europe" },
+  { id: "nvidia", label: "NVIDIA", hint: "NIM" },
+  { id: "custom", label: "Personnalisé", hint: "Compatible OpenAI" },
 ];
 
 export function estPersonnalise(provider: ProviderKind): provider is { custom: string } {

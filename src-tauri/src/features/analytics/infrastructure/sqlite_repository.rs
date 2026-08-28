@@ -215,7 +215,7 @@ impl AnalyticsRepository for SqliteAnalyticsRepository {
         Ok([
             ("En attente", pending),
             ("Relancées", followed_up),
-            ("Interviews", interviews),
+            ("Entretiens", interviews),
             ("Refusées", rejected),
         ]
         .into_iter()

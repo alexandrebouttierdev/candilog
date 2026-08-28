@@ -12,7 +12,7 @@ use std::sync::Arc;
 use tauri::State;
 
 /// Payload une page de candidatures, filtrée et triée.
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn applications_list_page(
     state: State<'_, AppState>,
     page: u64,
@@ -24,7 +24,7 @@ pub async fn applications_list_page(
 }
 
 /// Report les candidatures par statut, pour les en-têtes de colonnes du Kanban.
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn applications_breakdown(
     state: State<'_, AppState>,
     filter: ApplicationFilter,
@@ -34,7 +34,7 @@ pub async fn applications_breakdown(
 }
 
 /// Récupère une candidature par identifiant.
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn applications_get(
     state: State<'_, AppState>,
     id: uuid::Uuid,
@@ -44,7 +44,7 @@ pub async fn applications_get(
 }
 
 /// Crée une candidature.
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn applications_create(
     state: State<'_, AppState>,
     input: NewApplication,
@@ -54,7 +54,7 @@ pub async fn applications_create(
 }
 
 /// Remplace les champs d'une candidature.
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn applications_update(
     state: State<'_, AppState>,
     id: uuid::Uuid,
@@ -65,7 +65,7 @@ pub async fn applications_update(
 }
 
 /// Change le seul statut — geste du glisser-déposer du Kanban.
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn applications_change_status(
     state: State<'_, AppState>,
     id: uuid::Uuid,
@@ -76,7 +76,7 @@ pub async fn applications_change_status(
 }
 
 /// Supprime une candidature et, en cascade, ses relances, entretiens et historique.
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn applications_delete(state: State<'_, AppState>, id: uuid::Uuid) -> AppResult<()> {
     let service = Arc::clone(&state.applications);
     blocking::execute(move || service.delete(id)).await
@@ -90,7 +90,7 @@ pub async fn applications_delete(state: State<'_, AppState>, id: uuid::Uuid) -> 
 ///
 /// L'export porte sur **tout le filtre** et non sur la page affichée : exporter huit lignes
 /// sur quarante serait un piège silencieux.
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn applications_export_csv(
     state: State<'_, AppState>,
     filter: ApplicationFilter,

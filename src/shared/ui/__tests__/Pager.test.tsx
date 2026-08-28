@@ -28,7 +28,7 @@ describe("bornes de page", () => {
 
 describe("Pager", () => {
   it("annonce la tranche et le total", () => {
-    render(<Pager page={1} page_size={8} total={15} label="applications" onPageChange={vi.fn()} />);
+    render(<Pager page={1} page_size={8} total={15} label="candidatures" onPageChange={vi.fn()} />);
     expect(screen.getByText("1–8 sur 15 candidatures")).toBeInTheDocument();
   });
 
@@ -36,7 +36,7 @@ describe("Pager", () => {
     // Le composant ne connaît que `page`, `page_size` et `total` : il ne peut donc pas
     // paginer côté client, ce qui est précisément la garantie recherchée.
     const onPageChange = vi.fn();
-    render(<Pager page={1} page_size={8} total={15} label="applications" onPageChange={onPageChange} />);
+    render(<Pager page={1} page_size={8} total={15} label="candidatures" onPageChange={onPageChange} />);
 
     await userEvent.click(screen.getByRole("button", { name: "Page suivante" }));
 
@@ -45,7 +45,7 @@ describe("Pager", () => {
 
   it("empêche de reculer avant la première page", async () => {
     const onPageChange = vi.fn();
-    render(<Pager page={1} page_size={8} total={15} label="applications" onPageChange={onPageChange} />);
+    render(<Pager page={1} page_size={8} total={15} label="candidatures" onPageChange={onPageChange} />);
 
     await userEvent.click(screen.getByRole("button", { name: "Page précédente" }));
 
@@ -53,7 +53,7 @@ describe("Pager", () => {
   });
 
   it("marque la page courante pour les technologies d'assistance", () => {
-    render(<Pager page={2} page_size={4} total={15} label="applications" onPageChange={vi.fn()} />);
+    render(<Pager page={2} page_size={4} total={15} label="candidatures" onPageChange={vi.fn()} />);
     expect(screen.getByRole("button", { current: "page" })).toHaveTextContent("2");
   });
 });

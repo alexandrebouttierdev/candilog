@@ -8,7 +8,7 @@ use std::sync::Arc;
 use tauri::State;
 
 /// List les relances d'une plage de dates, bornes incluses.
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn follow_ups_list_between(
     state: State<'_, AppState>,
     from: String,
@@ -19,7 +19,7 @@ pub async fn follow_ups_list_between(
 }
 
 /// Crée une relance.
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn follow_ups_create(
     state: State<'_, AppState>,
     input: NewFollowUp,
@@ -29,7 +29,7 @@ pub async fn follow_ups_create(
 }
 
 /// Remplace les champs d'une relance.
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn follow_ups_update(
     state: State<'_, AppState>,
     id: uuid::Uuid,
@@ -40,7 +40,7 @@ pub async fn follow_ups_update(
 }
 
 /// Supprime une relance.
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn follow_ups_delete(state: State<'_, AppState>, id: uuid::Uuid) -> AppResult<()> {
     let service = Arc::clone(&state.followups);
     blocking::execute(move || service.delete(id)).await

@@ -68,7 +68,7 @@ export function Pager({
 
       {pageSizes && onPageSizeChange ? (
         <div className="flex items-center gap-2">
-          <span className="text-label text-ink-faint">Rows</span>
+          <span className="text-label text-ink-faint">Lignes</span>
           <div className="relative">
             <select
               value={page_size}

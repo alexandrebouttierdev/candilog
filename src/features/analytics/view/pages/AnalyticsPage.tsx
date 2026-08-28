@@ -27,8 +27,8 @@ import {
 } from "@/shared/ui";
 
 const PERIODES: readonly { value: Period; label: string }[] = [
-  { value: "trenteJours", label: "30 j" },
-  { value: "quatreVingtDixJours", label: "90 j" },
+  { value: "trente_days", label: "30 j" },
+  { value: "quatre_vingt_dix_days", label: "90 j" },
   { value: "tout", label: "Tout" },
 ];
 

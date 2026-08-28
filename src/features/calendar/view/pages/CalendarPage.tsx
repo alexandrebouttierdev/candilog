@@ -93,7 +93,7 @@ export function CalendarPage() {
 
   /** Clic sur un événement : rouvre la modale de son entité d'origine. */
   const openEvent = (event: CalendarEvent) => {
-    if (event.kind === "entretien") {
+    if (event.kind === "interview") {
       setEdition({ kind: "entretien", target: vm.interviewDe(event.id), day: null });
     } else {
       setEdition({ kind: "relance", target: vm.followUpDe(event.id), day: null });
@@ -242,13 +242,13 @@ export function CalendarPage() {
       <ConfirmDialog
         open={to_delete !== null}
         title={
-          to_delete?.kind === "entretien"
+          to_delete?.kind === "interview"
             ? "Supprimer cet entretien ?"
             : "Supprimer cette relance ?"
         }
         description={`« ${to_delete?.label ?? ""} » sera définitivement retiré du calendrier.`}
         note={
-          to_delete?.kind === "entretien"
+          to_delete?.kind === "interview"
             ? "La candidature conserve son statut « Entretien »."
             : "La candidature n'est pas modifiée."
         }
@@ -258,7 +258,7 @@ export function CalendarPage() {
           const target = to_delete;
           setToDelete(null);
           if (!target) return;
-          if (target.kind === "entretien") void vm.deleteInterview(target.id);
+          if (target.kind === "interview") void vm.deleteInterview(target.id);
           else void vm.deleteFollowUp(target.id);
         }}
       />

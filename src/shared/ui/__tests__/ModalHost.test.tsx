@@ -9,7 +9,7 @@ function ouvrir(props: Partial<Parameters<typeof ModalHost>[0]> = {}) {
   const onSubmit = vi.fn();
   render(
     <ModalHost open icon="work" title="Nouvelle candidature" onClose={onClose} onSubmit={onSubmit} {...props}>
-      <TextInput aria-label="JobTitle" />
+      <TextInput aria-label="Poste" />
     </ModalHost>,
   );
   return { onClose, onSubmit };
@@ -20,7 +20,7 @@ describe("ModalHost", () => {
     const onClose = vi.fn();
     render(
       <ModalHost open={false} icon="work" title="Nouvelle candidature" onClose={onClose}>
-        <TextInput aria-label="JobTitle" />
+        <TextInput aria-label="Poste" />
       </ModalHost>,
     );
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -30,7 +30,7 @@ describe("ModalHost", () => {
     // Sans cela, la tabulation continue de parcourir l'arrière-plan atténué : invisible,
     // mais toujours atteignable au clavier.
     ouvrir();
-    expect(screen.getByLabelText("JobTitle")).toHaveFocus();
+    expect(screen.getByLabelText("Poste")).toHaveFocus();
   });
 
   it("ferme sur Échap", async () => {
@@ -51,7 +51,7 @@ describe("ModalHost", () => {
         <p>Lecture seule</p>
       </ModalHost>,
     );
-    expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Annuler" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Enregistrer/ })).not.toBeInTheDocument();
   });
 

@@ -42,7 +42,7 @@ export function ApplicationDetail({
       initials={initials(application.company_name ?? application.job_title)}
       title={application.job_title}
       subtitle={[
-        application.company_name ?? "Company inconnue",
+        application.company_name ?? "Entreprise inconnue",
         contract_label(application.contract_type),
         application.company_city,
       ]
@@ -52,19 +52,19 @@ export function ApplicationDetail({
       actions={
         <>
           <Button variant="danger" icon="delete" onClick={onDelete}>
-            Delete
+            Supprimer
           </Button>
           <span className="flex-1" />
           <Button variant="primary" icon="edit" onClick={onEdit}>
-            Update
+            Modifier
           </Button>
         </>
       }
     >
       <div className="mb-[18px] flex items-center gap-3 rounded-tile border border-accent-border bg-accent-tint px-3.5 py-3">
         <div className="min-w-0 flex-1">
-          <p className="text-note font-semibold text-accent">Status de la application</p>
-          <p className="mt-0.5 text-meta text-ink-muted">Choisissez l’étape du tracking</p>
+          <p className="text-note font-semibold text-accent">Statut de la candidature</p>
+          <p className="mt-0.5 text-meta text-ink-muted">Choisissez l’étape du suivi</p>
         </div>
         <div className="relative flex h-8 flex-none items-center gap-2 rounded-button border border-line bg-surface pr-8 pl-[11px]">
           <span aria-hidden className={cn("size-1.5 rounded-full", POINT[status.tone])} />
@@ -89,12 +89,12 @@ export function ApplicationDetail({
         </div>
       </div>
 
-      <DrawerSection icon="work" title="Application">
+      <DrawerSection icon="work" title="Candidature">
         <DrawerRow label="Contrat">{contract_label(application.contract_type)}</DrawerRow>
         <DrawerRow label="Envoyée le">
           <span className="tabular">{versDateAffichee(application.sent_date)}</span>
         </DrawerRow>
-        <DrawerRow label="Ancienneté">{daysFrom(application.sent_date)} days</DrawerRow>
+        <DrawerRow label="Ancienneté">{daysFrom(application.sent_date)} jours</DrawerRow>
         <DrawerRow label="Ville" tone={application.company_city ? undefined : "muted"}>
           {application.company_city ?? "Non renseignée"}
         </DrawerRow>
@@ -123,7 +123,7 @@ export function ApplicationDetail({
           </p>
         ) : (
           <p className="text-label leading-normal text-ink-faint">
-            Aucune note. Utilisez « Update » pour consigner le context de la application.
+            Aucune note. Utilisez « Modifier » pour consigner le contexte de la candidature.
           </p>
         )}
       </DrawerSection>

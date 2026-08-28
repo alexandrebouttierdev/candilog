@@ -49,7 +49,7 @@ export function NetworkPage() {
             icon="person_add"
             onClick={() => setForm({ ouvert: true, cible: null })}
           >
-            New contact
+            Nouveau contact
           </Button>
         }
       />

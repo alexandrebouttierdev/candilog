@@ -117,7 +117,7 @@ export function ModalHost({
             <div className="flex-1" />
           )}
           <Button variant="secondary" size="dialog" onClick={onClose}>
-            Cancel
+            Annuler
           </Button>
           {onSubmit ? (
             <Button

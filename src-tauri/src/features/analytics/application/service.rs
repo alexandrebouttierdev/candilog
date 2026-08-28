@@ -48,8 +48,8 @@ impl<R: AnalyticsRepository> AnalyticsService<R> {
         let funnel = [
             ("Envoyées", metrics.applications),
             ("Réponses", metrics.responses),
-            ("Interviews", metrics.interviews),
-            ("Rejected", metrics.rejected),
+            ("Entretiens", metrics.interviews),
+            ("Refus", metrics.rejected),
         ]
         .into_iter()
         .map(|(label, count)| Step {
@@ -79,13 +79,13 @@ impl<R: AnalyticsRepository> AnalyticsService<R> {
             .delimiter(b';')
             .from_writer(vec![]);
         writer
-            .write_record(["Metric", "Value"])
+            .write_record(["Indicateur", "Valeur"])
             .map_err(|error| AppError::Serialization(error.to_string()))?;
         for (label, value) in [
-            ("Applications", donnees.metrics.applications.to_string()),
-            ("Interviews", donnees.metrics.interviews.to_string()),
+            ("Candidatures", donnees.metrics.applications.to_string()),
+            ("Entretiens", donnees.metrics.interviews.to_string()),
             ("Réponses", donnees.metrics.responses.to_string()),
-            ("Rejected", donnees.metrics.rejected.to_string()),
+            ("Refus", donnees.metrics.rejected.to_string()),
             (
                 "Taux de réponse",
                 format!("{} %", donnees.metrics.response_rate),

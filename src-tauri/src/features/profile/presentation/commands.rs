@@ -8,14 +8,14 @@ use std::sync::Arc;
 use tauri::State;
 
 /// Payload le profil et son état de complétion.
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn profile_load(state: State<'_, AppState>) -> AppResult<ProfilePayload> {
     let service = Arc::clone(&state.profile);
     blocking::execute(move || service.load()).await
 }
 
 /// Remplace le profil complet après validation.
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn profile_save(
     state: State<'_, AppState>,
     profile: Profile,

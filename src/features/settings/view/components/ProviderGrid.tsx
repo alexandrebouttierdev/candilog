@@ -6,6 +6,23 @@ import {
   type FournisseurOption,
 } from "../../model/providers";
 import type { ProviderKind } from "@/shared/types/generated/settings";
+import logoOllama from "@/assets/providers/ollama.svg";
+import logoClaude from "@/assets/providers/claude.svg";
+import logoOpenai from "@/assets/providers/openai.svg";
+import logoGemini from "@/assets/providers/googlegemini.svg";
+import logoMistral from "@/assets/providers/mistralai.svg";
+import logoNvidia from "@/assets/providers/nvidia.svg";
+import logoCustom from "@/assets/providers/custom.svg";
+
+const LOGOS: Record<FournisseurOption["id"], { src: string; mono: boolean }> = {
+  ollama: { src: logoOllama, mono: true },
+  claude: { src: logoClaude, mono: false },
+  openai: { src: logoOpenai, mono: true },
+  gemini: { src: logoGemini, mono: false },
+  mistral: { src: logoMistral, mono: false },
+  nvidia: { src: logoNvidia, mono: false },
+  custom: { src: logoCustom, mono: true },
+};
 
 /** Grid de choix du fournisseur IA : des cartes, pas une liste déroulante. */
 export function ProviderGrid({
@@ -25,6 +42,7 @@ export function ProviderGrid({
     >
       {FOURNISSEURS.map((fournisseur) => {
         const selected = fournisseur.id === actif;
+        const logo = LOGOS[fournisseur.id];
         return (
           <button
             key={fournisseur.id}
@@ -41,13 +59,14 @@ export function ProviderGrid({
                 : "border-line bg-surface hover:bg-neutral-tint",
             )}
           >
-            <span
-              className={cn(
-                "flex size-[26px] flex-none items-center justify-center rounded-control",
-                selected ? "bg-accent text-white" : "bg-neutral-tint text-ink-muted",
-              )}
-            >
-              <Icon name={fournisseur.icon} size={15} filled={selected} />
+            <span className="flex size-8 flex-none items-center justify-center rounded-control bg-surface ring-1 ring-inset ring-line">
+              <img
+                src={logo.src}
+                alt={fournisseur.label}
+                width={20}
+                height={20}
+                className={cn("size-5", logo.mono && "dark:invert")}
+              />
             </span>
             <span className="min-w-0 flex-1 truncate text-body font-mid text-ink">
               {fournisseur.label}

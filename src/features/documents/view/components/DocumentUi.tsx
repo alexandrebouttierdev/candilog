@@ -61,7 +61,7 @@ export function A4Preview({
         {children ??
           (resume ? (
             <>
-              <h2 className="text-display text-[#1a1c22]">{resume.resume || "Profile professionnel"}</h2>
+              <h2 className="text-display text-[#1a1c22]">{resume.resume || "Profil professionnel"}</h2>
               <Section title="Compétences">
                 <p>{resume.skills.join(" · ")}</p>
               </Section>
@@ -85,7 +85,7 @@ export function A4Preview({
             </>
           ) : (
             <div className="flex min-h-[590px] items-center justify-center text-center text-[12px] text-[#7b8493]">
-              Le document apparaTra ici aprS la gNRation.
+              Le document apparaîtra ici après la génération.
             </div>
           ))}
       </article>

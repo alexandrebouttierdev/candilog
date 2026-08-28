@@ -44,7 +44,7 @@ const ROWS: DemoRow[] = [
     job_title: "Développeur Frontend",
     company: "Nova Digital",
     contract: "CDI",
-    status: { label: "Interview", tone: "success", icon: "event_available" },
+    status: { label: "Entretien", tone: "success", icon: "event_available" },
     date: "20 août",
   },
   {
@@ -77,7 +77,7 @@ const COLUMNS: Column<DemoRow, "poste" | "entreprise" | "statut" | "date">[] = [
   { key: "poste", header: "Poste", sort_key: "poste", render: (row) => row.job_title },
   {
     key: "entreprise",
-    header: "Company",
+    header: "Entreprise",
     sort_key: "entreprise",
     render: (row) => <span className="text-ink-muted">{row.company}</span>,
   },
@@ -165,11 +165,11 @@ export function DesignGallery() {
 
         <Section title="Statuts">
           <div className="flex flex-wrap items-center gap-2">
-            <StatusPill tone="success" icon="event_available">Interview</StatusPill>
-            <StatusPill tone="neutral" icon="hourglass_top">En pending</StatusPill>
-            <StatusPill tone="warning" icon="send">RelancE</StatusPill>
-            <StatusPill tone="danger" icon="do_not_disturb_on">RejectedE</StatusPill>
-            <StatusPill tone="accent" icon="auto_awesome">GNR par Ai</StatusPill>
+            <StatusPill tone="success" icon="event_available">Entretien</StatusPill>
+            <StatusPill tone="neutral" icon="hourglass_top">En attente</StatusPill>
+            <StatusPill tone="warning" icon="send">Relancée</StatusPill>
+            <StatusPill tone="danger" icon="do_not_disturb_on">Refusée</StatusPill>
+            <StatusPill tone="accent" icon="auto_awesome">Généré par IA</StatusPill>
           </div>
         </Section>
 
@@ -240,7 +240,7 @@ export function DesignGallery() {
           <div className="rounded-card border border-line bg-surface p-4">
             <TimelineList
               entries={[
-                { id: "a", title: "Interview planifié", detail: "Visio 45 min avec Camille Rivet", date: "25 août", tone: "success" },
+                { id: "a", title: "Entretien planifié", detail: "Visio 45 min avec Camille Rivet", date: "25 août", tone: "success" },
                 { id: "b", title: "Réponse reçue", detail: "Invitation à un premier échange", date: "20 août", tone: "accent" },
                 { id: "c", title: "Relance envoyée", detail: "Email de suivi, ton formel", date: "14 août", tone: "warning" },
               ]}
@@ -250,11 +250,11 @@ export function DesignGallery() {
 
         <Section title="Notifications">
           <div className="flex flex-wrap gap-2">
-            <Button icon="check_circle" onClick={() => notify({ tone: "success", title: "Application enregistrée", detail: "Ajoutée au suivi." })}>
-              SuccS
+            <Button icon="check_circle" onClick={() => notify({ tone: "success", title: "Candidature enregistrée", detail: "Ajoutée au suivi." })}>
+              Succès
             </Button>
             <Button icon="error" onClick={() => notify({ tone: "error", title: "Enregistrement impossible", detail: "Le poste est requis." })}>
-              Error
+              Erreur
             </Button>
             <Button icon="info" onClick={() => notify({ tone: "info", title: "Analyse en cours" })}>
               Information
@@ -272,7 +272,7 @@ export function DesignGallery() {
         onClose={() => setModal(false)}
         onSubmit={() => {
           setModal(false);
-          notify({ tone: "success", title: "Application enregistrée" });
+          notify({ tone: "success", title: "Candidature enregistrée" });
         }}
       >
         <div className="grid grid-cols-2 gap-4">
@@ -303,7 +303,7 @@ export function DesignGallery() {
         onCancel={() => setConfirm(false)}
         onConfirm={() => {
           setConfirm(false);
-          notify({ tone: "success", title: "Application supprimée" });
+          notify({ tone: "success", title: "Candidature supprimée" });
         }}
       />
     </div>

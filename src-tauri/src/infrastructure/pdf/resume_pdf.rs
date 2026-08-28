@@ -465,7 +465,7 @@ impl Plan<'_> {
             self.y + ASCENT * pt(32.0),
             Weight::Bold,
             pt(32.0),
-            rgb(TEXT.0, Text.1, Text.2),
+            rgb(TEXT.0, TEXT.1, TEXT.2),
             &resume.name,
         );
         self.y += pt(32.0) * 1.1;
@@ -577,7 +577,7 @@ impl Plan<'_> {
                 self.y + pt(1.92) + ASCENT * pt(10.56),
                 Weight::Medium,
                 pt(10.56),
-                rgb(TEXT.0, Text.1, Text.2),
+                rgb(TEXT.0, TEXT.1, TEXT.2),
                 skill,
             );
             x += largeur + pt(2.64);
@@ -605,7 +605,7 @@ impl Plan<'_> {
             self.y + ASCENT * pt(13.12),
             Weight::Bold,
             pt(13.12),
-            rgb(TEXT.0, Text.1, Text.2),
+            rgb(TEXT.0, TEXT.1, TEXT.2),
             &experience.title,
         );
         self.y += pt(13.12) * 1.35;
@@ -666,7 +666,7 @@ impl Plan<'_> {
                 self.y + ASCENT * pt(13.12),
                 Weight::Bold,
                 pt(13.12),
-                rgb(TEXT.0, Text.1, Text.2),
+                rgb(TEXT.0, TEXT.1, TEXT.2),
                 &project.name,
             );
             self.y += pt(13.12) * 1.35;
@@ -701,7 +701,7 @@ impl Plan<'_> {
                 self.y + ASCENT * pt(12.16),
                 Weight::Bold,
                 pt(12.16),
-                rgb(TEXT.0, Text.1, Text.2),
+                rgb(TEXT.0, TEXT.1, TEXT.2),
                 &education.degree,
             );
             self.y += pt(12.16) * 1.4;
@@ -737,7 +737,7 @@ impl Plan<'_> {
                 self.y + ASCENT * pt(12.16),
                 Weight::Bold,
                 pt(12.16),
-                rgb(TEXT.0, Text.1, Text.2),
+                rgb(TEXT.0, TEXT.1, TEXT.2),
                 &format!("{} · {}", language.name, language.level),
             );
             self.y += pt(12.16) * 1.4;

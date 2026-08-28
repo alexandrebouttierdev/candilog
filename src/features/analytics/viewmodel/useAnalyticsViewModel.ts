@@ -11,7 +11,7 @@ import { AppError } from "@/shared/types/app-error";
 
 /** Orchestration de l'écran Analytics et de sa période. */
 export function useAnalyticsViewModel() {
-  const [period, setPeriod] = useState<Period>("trenteJours");
+  const [period, setPeriod] = useState<Period>("trente_days");
   const queryClient = useQueryClient();
   const notify = useUiStore((state) => state.notify);
   const query = useQuery({

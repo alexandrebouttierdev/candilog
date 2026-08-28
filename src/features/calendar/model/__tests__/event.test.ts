@@ -59,7 +59,7 @@ describe("conversion en événement", () => {
 
   it("retombe sur un libellé générique quand la candidature n'est pas résolue", () => {
     const orphelin = { ...interview("e1", "2026-08-25T14:00:00+02:00"), application_job_title: null };
-    expect(fromInterview(orphelin).label).toBe("Interview");
+    expect(fromInterview(orphelin).label).toBe("Entretien");
   });
 });
 

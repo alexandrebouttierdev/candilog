@@ -2,29 +2,17 @@
 import type { Application } from "./applications";
 
 /**
- * Application sans réponse depuis un certain temps.
+ * Count de candidatures envoyées sur une semaine.
  */
-export type ToFollowUp = { 
+export type ActivityWeek = { 
 /**
- * Id de la candidature, pour ouvrir sa fiche.
+ * Début de la fenêtre glissante de sept jours (`AAAA-MM-JJ`).
  */
-id: string, 
+start: string, 
 /**
- * Intitulé du poste.
+ * Count de candidatures envoyées cette semaine-là.
  */
-job_title: string, 
-/**
- * Name de l'entreprise.
- */
-company_name: string | null, 
-/**
- * Date d'envoi (`AAAA-MM-JJ`).
- */
-sent_date: string, 
-/**
- * Days écoulés depuis l'envoi.
- */
-days: number, };
+count: number, };
 
 /**
  * Payload utile de l'écran Analytics.
@@ -52,50 +40,33 @@ funnel: Array<Step>,
 to_follow_up: Array<ToFollowUp>, };
 
 /**
- * Événement à venir affiché par le tableau de bord.
+ * Payload utile du tableau de bord.
  */
-export type UpcomingItem = { 
+export type Dashboard = { 
 /**
- * Id de l'entretien ou de la relance.
+ * Metrics sur trente jours.
  */
-id: string, 
+metrics: Metrics, 
 /**
- * `entretien` ou `relance`.
+ * Rythme et délais.
  */
-kind: string, 
+performance: Performance, 
 /**
- * Date ou horodatage de l'événement.
+ * Prochains entretiens et relances, les plus proches d'abord.
  */
-date: string, 
+upcoming_items: Array<UpcomingItem>, 
 /**
- * Intitulé du poste concerné.
+ * Répartition du pipeline, toutes périodes confondues.
  */
-job_title: string | null, 
+pipeline: Array<Step>, 
 /**
- * Name de l'entreprise concernée.
+ * Activité hebdomadaire des huit dernières semaines.
  */
-company_name: string | null, 
+activity: Array<ActivityWeek>, 
 /**
- * Format d'entretien ou canal de relance.
+ * Applications les plus récentes.
  */
-detail: string, };
-
-/**
- * Compteur assorti de sa part du total.
- */
-export type Step = { 
-/**
- * Libellé de l'étape.
- */
-label: string, 
-/**
- * Count de candidatures ayant atteint l'étape.
- */
-count: number, 
-/**
- * Part du total, en pourcentage entier.
- */
-percentage: number, };
+recent: Array<Application>, };
 
 /**
  * Metrics chiffrés communs aux deux écrans.
@@ -149,7 +120,7 @@ applications_per_week: number,
 /**
  * Interviews à venir, tous horizons confondus.
  */
-upcomingInterviews: number, 
+upcoming_interviews: number, 
 /**
  * FollowUps programmées dont la date est passée.
  */
@@ -162,46 +133,75 @@ overdue_follow_ups: number, };
  * les maquettes n'offrent que ces trois choix. Un entier venu de l'IPC obligerait à le
  * valider, sans rien apporter à l'utilisateur.
  */
-export type Period = "trenteJours" | "quatreVingtDixJours" | "tout";
+export type Period = "trente_days" | "quatre_vingt_dix_days" | "tout";
 
 /**
- * Count de candidatures envoyées sur une semaine.
+ * Compteur assorti de sa part du total.
  */
-export type ActivityWeek = { 
+export type Step = { 
 /**
- * Début de la fenêtre glissante de sept jours (`AAAA-MM-JJ`).
+ * Libellé de l'étape.
  */
-start: string, 
+label: string, 
 /**
- * Count de candidatures envoyées cette semaine-là.
+ * Count de candidatures ayant atteint l'étape.
  */
-count: number, };
+count: number, 
+/**
+ * Part du total, en pourcentage entier.
+ */
+percentage: number, };
 
 /**
- * Payload utile du tableau de bord.
+ * Application sans réponse depuis un certain temps.
  */
-export type Dashboard = { 
+export type ToFollowUp = { 
 /**
- * Metrics sur trente jours.
+ * Id de la candidature, pour ouvrir sa fiche.
  */
-metrics: Metrics, 
+id: string, 
 /**
- * Rythme et délais.
+ * Intitulé du poste.
  */
-performance: Performance, 
+job_title: string, 
 /**
- * Prochains entretiens et relances, les plus proches d'abord.
+ * Name de l'entreprise.
  */
-upcoming_items: Array<UpcomingItem>, 
+company_name: string | null, 
 /**
- * Répartition du pipeline, toutes périodes confondues.
+ * Date d'envoi (`AAAA-MM-JJ`).
  */
-pipeline: Array<Step>, 
+sent_date: string, 
 /**
- * Activité hebdomadaire des huit dernières semaines.
+ * Days écoulés depuis l'envoi.
  */
-activity: Array<ActivityWeek>, 
+days: number, };
+
 /**
- * Applications les plus récentes.
+ * Événement à venir affiché par le tableau de bord.
  */
-recent: Array<Application>, };
+export type UpcomingItem = { 
+/**
+ * Id de l'entretien ou de la relance.
+ */
+id: string, 
+/**
+ * `entretien` ou `relance`.
+ */
+kind: string, 
+/**
+ * Date ou horodatage de l'événement.
+ */
+date: string, 
+/**
+ * Intitulé du poste concerné.
+ */
+job_title: string | null, 
+/**
+ * Name de l'entreprise concernée.
+ */
+company_name: string | null, 
+/**
+ * Format d'entretien ou canal de relance.
+ */
+detail: string, };

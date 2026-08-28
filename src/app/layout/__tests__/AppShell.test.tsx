@@ -33,6 +33,7 @@ describe("rail de navigation", () => {
     expect(screen.getByRole("link", { name: "Tableau de bord" })).toBeInTheDocument();
     expect(screen.getByText("Accueil")).toHaveClass("text-micro", "font-mid");
     expect(screen.getByRole("button", { name: "Passer en thème sombre" })).toHaveTextContent("Clair");
+    expect(screen.getByRole("img", { name: "Candilog" })).toBeInTheDocument();
   });
 });
 

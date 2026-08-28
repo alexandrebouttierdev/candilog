@@ -58,10 +58,10 @@ export function ContactDetail({
               </RecordAction>
             ) : null}
             <RecordAction icon="edit" onClick={onEdit}>
-              Update
+              Modifier
             </RecordAction>
             <RecordAction icon="delete" onClick={onDelete}>
-              Delete
+              Supprimer
             </RecordAction>
           </>
         }
@@ -77,7 +77,7 @@ export function ContactDetail({
               </p>
             ) : (
               <p className="text-label leading-normal text-ink-faint">
-                Aucune note. Utilisez « Update » pour consigner les sujets abordS et les
+                Aucune note. Utilisez « Modifier » pour consigner les sujets abordés et les
                 points à retenir.
               </p>
             )}

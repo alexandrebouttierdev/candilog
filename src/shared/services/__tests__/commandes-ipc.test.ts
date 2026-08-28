@@ -15,26 +15,31 @@ import { globSync, readFileSync } from "node:fs";
 // du projet.
 const racine = process.cwd();
 
-/** Noms de commandes déclarés côté Rust par `#[tauri::command]`. */
-function commandesRust(): Set<string> {
+/** Attributs `#[tauri::command…]` et le nom de fonction qui suit. */
+function attributsCommandes(): { attribut: string; nom: string }[] {
   const fichiers = globSync("src-tauri/src/features/*/presentation/commands.rs", {
     cwd: racine,
   });
-  const noms = new Set<string>();
+  const attributs: { attribut: string; nom: string }[] = [];
   for (const fichier of fichiers) {
     const source = readFileSync(`${racine}/${fichier}`, "utf8");
     for (const correspondance of source.matchAll(
-      /#\[tauri::command\]\s*(?:pub\s+)?async\s+fn\s+(\w+)/g,
+      /#\[tauri::command((?:\([^)]*\))?)\]\s*(?:pub\s+)?async\s+fn\s+(\w+)/g,
     )) {
-      noms.add(correspondance[1]!);
+      attributs.push({ attribut: correspondance[1] ?? "", nom: correspondance[2]! });
     }
   }
-  return noms;
+  return attributs;
+}
+
+/** Noms de commandes déclarés côté Rust par `#[tauri::command]`. */
+function commandesRust(): Set<string> {
+  return new Set(attributsCommandes().map((commande) => commande.nom));
 }
 
 /** Noms de commandes réellement appelés par les services frontend. */
 function commandesAppelees(): Set<string> {
-  const fichiers = globSync("src/features/*/services/*.service.ts", { cwd: racine });
+  const fichiers = globSync("src/features/*/services/*.ts", { cwd: racine });
   const noms = new Set<string>();
   for (const fichier of fichiers) {
     const source = readFileSync(`${racine}/${fichier}`, "utf8");
@@ -81,5 +86,14 @@ describe("contrat IPC", () => {
     const rust = commandesRust();
     const fantomes = [...commandesEnregistrees()].filter((nom) => !rust.has(nom));
     expect(fantomes).toEqual([]);
+  });
+
+  it("impose snake_case aux arguments IPC, comme les DTO serde", () => {
+    // Tauri convertit `page_size` en `pageSize` par défaut : le frontend envoie
+    // `page_size` et la commande échoue avec « missing required key pageSize ».
+    const camel = attributsCommandes()
+      .filter((commande) => !commande.attribut.includes('rename_all = "snake_case"'))
+      .map((commande) => commande.nom);
+    expect(camel).toEqual([]);
   });
 });

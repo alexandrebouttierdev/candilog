@@ -421,7 +421,7 @@ export function PerformanceList({
     {
       label: "Relances en retard",
       value: performance.overdue_follow_ups.toString(),
-      ...(performance.overdue_follow_ups > 0 ? { tone: "warning" as Tone } : {}),
+      ...(performance.overdue_follow_ups > 0 ? { tone: "warning" } : {}),
     },
   ];
 

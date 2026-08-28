@@ -68,7 +68,7 @@ export function CompaniesPage() {
             icon="add"
             onClick={() => setForm({ ouvert: true, cible: null })}
           >
-            New company
+            Nouvelle entreprise
           </Button>
         }
       />
@@ -128,7 +128,7 @@ export function CompaniesPage() {
                     <MasterListTag icon="business_center">{company.type}</MasterListTag>
                   ) : undefined
                 }
-                selected={company.id === vm.selected_id}
+                selected={company.id === vm.selection?.id}
                 onSelect={() => vm.selectionner(company.id)}
               />
             ))
@@ -143,8 +143,8 @@ export function CompaniesPage() {
               total_applications={vm.totalApplicationsLiees}
               onEdit={() => setForm({ ouvert: true, cible: vm.selection })}
               onDelete={() => setADelete(vm.selection)}
-              onOuvrirApplication={() => naviguer("/tracking/applications")}
-              onToutVoir={() => naviguer("/tracking/applications")}
+              onOuvrirApplication={() => void naviguer("/tracking/applications")}
+              onToutVoir={() => void naviguer("/tracking/applications")}
             />
           ) : (
             <div className="flex h-full items-center justify-center">

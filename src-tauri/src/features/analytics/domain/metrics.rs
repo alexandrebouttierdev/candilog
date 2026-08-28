@@ -151,3 +151,19 @@ pub struct Analytics {
     /// Applications sans réponse, les plus anciennes d'abord.
     pub to_follow_up: Vec<ToFollowUp>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_performance_json_expose_upcoming_interviews() {
+        let json = serde_json::to_value(Performance {
+            upcoming_interviews: 3,
+            ..Performance::default()
+        })
+        .unwrap();
+        assert_eq!(json["upcoming_interviews"], 3);
+        assert!(json.get("upcomingInterviews").is_none());
+    }
+}

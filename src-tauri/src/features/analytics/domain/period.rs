@@ -53,3 +53,25 @@ impl Period {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_period_json_suit_le_snake_case_de_serde() {
+        assert_eq!(
+            serde_json::to_string(&Period::TrenteDays).unwrap(),
+            "\"trente_days\""
+        );
+        assert_eq!(
+            serde_json::to_string(&Period::QuatreVingtDixDays).unwrap(),
+            "\"quatre_vingt_dix_days\""
+        );
+        assert_eq!(serde_json::to_string(&Period::Tout).unwrap(), "\"tout\"");
+        assert_eq!(
+            serde_json::from_str::<Period>("\"trente_days\"").unwrap(),
+            Period::TrenteDays
+        );
+    }
+}
