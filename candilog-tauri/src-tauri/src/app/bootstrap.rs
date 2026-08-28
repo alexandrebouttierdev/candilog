@@ -8,6 +8,7 @@ use crate::features::documents::presentation::commands as documents;
 use crate::features::entreprises::presentation::commands as entreprises;
 use crate::features::entretiens::presentation::commands as entretiens;
 use crate::features::ia::presentation::commands as ia;
+use crate::features::parametres::presentation::commands as parametres;
 use crate::features::profil::presentation::commands as profil;
 use crate::features::relances::presentation::commands as relances;
 use crate::features::secteurs::presentation::commands as secteurs;
@@ -79,6 +80,17 @@ pub fn run() {
             ia::ia_analyser_cv,
             ia::ia_importer_profil,
             ia::ia_annuler,
+            parametres::parametres_charger,
+            parametres::parametres_enregistrer,
+            parametres::parametres_tester_connexion,
+            parametres::parametres_lister_modeles,
+            parametres::parametres_vider_cache_ia,
+            parametres::parametres_exporter,
+            parametres::parametres_restaurer,
+            parametres::parametres_reinitialiser,
+            parametres::parametres_verifier_maj,
+            parametres::parametres_telecharger_maj,
+            parametres::parametres_a_propos,
             profil::profil_charger,
             profil::profil_enregistrer,
             relances::relances_lister_entre,

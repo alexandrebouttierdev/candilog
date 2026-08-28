@@ -612,3 +612,62 @@ npm test                                  132 passed (+4)
 
 Rien. T8 migre les réglages (fournisseur IA, sauvegardes, mises à jour, à propos).
 
+---
+
+## T8 — Réglages · terminée le 2026-08-28
+
+### Backend
+
+Les réglages applicatifs vivent dans `features/parametres/`. Le JSON historique de
+`parametres.data` reste en snake_case (compatibilité Iced) ; l'IPC expose un DTO camelCase.
+La clé API n'est plus écrite dans SQLite : au chargement, une clé héritée est déplacée vers
+le coffre natif (`keyring`, service `com.alexandrebouttier.candilog` / `llm-api-key`) ; à
+l'enregistrement, le JSON est persisté sans secret. Ollama n'interroge pas le trousseau, ce
+qui laisse les tests CI fonctionner sans service de secrets. Les appels IA (`charger_config`)
+réinjectent la clé du coffre pour les fournisseurs cloud.
+
+La validation reprend Iced : température 0.0–2.0, endpoint requis pour Custom, clé requise
+pour Claude / OpenAI / Gemini / Mistral / NVIDIA. Health-check et liste de modèles passent
+par les mêmes endpoints que l'application Iced (`/api/tags`, `/v1/models`, `/v1beta/models`).
+
+Sauvegardes : export SQLite via l'API backup, validation d'en-tête / intégrité / tables /
+version de schéma, restauration avec copie de secours et retour arrière. La réinitialisation
+vide aussi `lettres_motivation` (oubli Iced) et conserve le référentiel des secteurs.
+
+Mises à jour : API GitHub `candilog-releases` avec `User-Agent`, comparaison semver, asset
+par plateforme, téléchargement borné à 256 Mo dans Téléchargements, lancement assisté (pas
+d'installation silencieuse), événement `maj-progression`.
+
+### Frontend
+
+Quatre écrans branchés : Intelligence artificielle (grille de sept fournisseurs, jamais une
+liste déroulante), Sauvegardes, Mises à jour, À propos. Le thème clair / sombre / système est
+persisté avec les réglages et hydraté au démarrage. L'action primaire de l'écran IA est
+« Enregistrer ».
+
+### Vérifié
+
+```
+cargo fmt --check                         ok
+cargo clippy --all-targets -D warnings   ok
+cargo test                                226 passed (+29)
+npm run build / lint                      ok
+npm test                                  135 passed (+3)
+```
+
+### Écarts assumés
+
+- L'application Iced n'est pas retirée : le crate racine reste le pipeline de release
+  (`docs/RELEASES.md`). T9 se limite à l'accessibilité, au responsive et à la découpe du
+  bundle, sans supprimer `src/`.
+- L'export PDF du CV (`printpdf`) reste reporté.
+- La revue a été faite par les tests et la compilation, pas dans la fenêtre Tauri native
+  ni via un pont navigateur : cette session n'avait pas d'outils de contrôle visuel interactif.
+- Le bundle JavaScript principal atteint environ 607 ko minifié. La découpe par route reste
+  planifiée pour T9.
+
+### Reste à faire avant T9
+
+Rien. T9 couvre l'accessibilité, le responsive 1024–2560, les tests manquants et la découpe
+du bundle. L'ancien projet Iced reste comme référence et binaire de release.
+

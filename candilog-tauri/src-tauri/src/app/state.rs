@@ -3,6 +3,7 @@
 use crate::core::config::AppPaths;
 use crate::core::database::{open_pool, run_local_migrations, SqlitePool};
 use crate::core::errors::AppResult;
+use crate::core::secrets::SecretStore;
 use crate::features::analyses::application::AnalysesService;
 use crate::features::analyses::infrastructure::SqliteAnalysesRepository;
 use crate::features::candidatures::application::CandidatureService;
@@ -16,6 +17,8 @@ use crate::features::entreprises::infrastructure::SqliteEntrepriseRepository;
 use crate::features::entretiens::application::EntretienService;
 use crate::features::entretiens::infrastructure::SqliteEntretienRepository;
 use crate::features::ia::application::IaService;
+use crate::features::parametres::application::ParametresService;
+use crate::features::parametres::infrastructure::SqliteParametresRepository;
 use crate::features::profil::application::ProfilService;
 use crate::features::profil::infrastructure::SqliteProfilRepository;
 use crate::features::relances::application::RelanceService;
@@ -39,6 +42,8 @@ pub type Documents = Arc<DocumentsService<SqliteCvRepository, SqliteLettreReposi
 pub type Entretiens = Arc<EntretienService<SqliteEntretienRepository>>;
 /// Orchestrateur des traitements IA et de leur annulation.
 pub type Ia = Arc<IaService>;
+/// Réglages, coffre, sauvegardes et mises à jour.
+pub type Reglages = Arc<ParametresService<SqliteParametresRepository, SecretStore>>;
 /// Service du profil professionnel.
 pub type Profil = Arc<ProfilService<SqliteProfilRepository>>;
 /// Service des relances tel que partagé par les commandes.
@@ -72,6 +77,8 @@ pub struct AppState {
     pub entretiens: Entretiens,
     /// Analyse et génération de documents.
     pub ia: Ia,
+    /// Réglages applicatifs et maintenance.
+    pub reglages: Reglages,
     /// Service du profil professionnel.
     pub profil: Profil,
     /// Service des relances.
@@ -139,6 +146,12 @@ impl AppState {
                 pool.clone(),
             ))),
             ia: Arc::new(IaService::new(pool.clone())),
+            reglages: Arc::new(ParametresService::new(
+                SqliteParametresRepository::new(pool.clone()),
+                SecretStore,
+                pool.clone(),
+                db_path.clone(),
+            )),
             profil: Arc::new(ProfilService::new(SqliteProfilRepository::new(
                 pool.clone(),
             ))),

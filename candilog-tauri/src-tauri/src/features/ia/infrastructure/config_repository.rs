@@ -3,16 +3,21 @@
 use crate::core::database::helpers::connexion;
 use crate::core::database::SqlitePool;
 use crate::core::errors::{AppError, AppResult};
-use crate::features::ia::domain::{LlmConfig, ParametresStockes};
+use crate::core::secrets::{CoffreSecrets, SecretStore};
+use crate::features::ia::domain::{LlmConfig, ParametresStockes, ProviderKind};
 use rusqlite::OptionalExtension;
 
 pub fn charger_config(pool: &SqlitePool) -> AppResult<LlmConfig> {
+    charger_config_avec(pool, &SecretStore)
+}
+
+pub fn charger_config_avec(pool: &SqlitePool, coffre: &impl CoffreSecrets) -> AppResult<LlmConfig> {
     let brut: Option<String> = connexion(pool)?
         .query_row("SELECT data FROM parametres WHERE id = 1", [], |row| {
             row.get(0)
         })
         .optional()?;
-    let config = match brut {
+    let mut config = match brut {
         Some(brut) => serde_json::from_str::<ParametresStockes>(&brut)
             .map(|p| p.llm)
             .map_err(|_| {
@@ -20,6 +25,17 @@ pub fn charger_config(pool: &SqlitePool) -> AppResult<LlmConfig> {
             })?,
         None => LlmConfig::default(),
     };
+    // Ollama n'interroge pas le trousseau : CI et tests n'ont souvent aucun service de secrets.
+    if !matches!(config.provider, ProviderKind::Ollama)
+        && config
+            .api_key
+            .as_deref()
+            .unwrap_or_default()
+            .trim()
+            .is_empty()
+    {
+        config.api_key = coffre.load_api_key()?;
+    }
     if !config.est_configure() {
         return Err(AppError::Provider(
             "Configurez un fournisseur IA dans Réglages avant de lancer cette opération".into(),
@@ -63,5 +79,30 @@ mod tests {
             charger_config(&pool).unwrap().provider,
             crate::features::ia::domain::ProviderKind::Ollama
         );
+    }
+
+    struct CoffreFixe(Option<String>);
+
+    impl CoffreSecrets for CoffreFixe {
+        fn load_api_key(&self) -> AppResult<Option<String>> {
+            Ok(self.0.clone())
+        }
+        fn store_api_key(&self, _: Option<&str>) -> AppResult<()> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn un_fournisseur_cloud_injecte_la_cle_du_coffre() {
+        let pool = pool();
+        connexion(&pool)
+            .unwrap()
+            .execute(
+                "INSERT INTO parametres (id, data, updated_at) VALUES (1, ?1, datetime('now'))",
+                [r#"{"llm":{"provider":"open_ai","api_key":null,"endpoint":null,"model":"gpt-4o","temperature":0.5}}"#],
+            )
+            .unwrap();
+        let config = charger_config_avec(&pool, &CoffreFixe(Some("sk-test".into()))).unwrap();
+        assert_eq!(config.api_key.as_deref(), Some("sk-test"));
     }
 }

@@ -12,6 +12,8 @@ const MAX_RESPONSE: usize = 5 * 1024 * 1024;
 #[async_trait]
 pub trait GenerateurLlm: Send + Sync {
     async fn generer(&self, prompt: &str, systeme: &str, json: bool) -> AppResult<String>;
+    async fn tester(&self) -> AppResult<()>;
+    async fn lister_modeles(&self) -> AppResult<Vec<String>>;
 }
 
 pub async fn construire_provider(config: &LlmConfig) -> AppResult<Arc<dyn GenerateurLlm>> {
@@ -69,6 +71,22 @@ impl GenerateurLlm for ProviderHttp {
             | ProviderKind::Mistral
             | ProviderKind::Nvidia
             | ProviderKind::Custom(_) => self.openai(prompt, systeme, json).await,
+        }
+    }
+
+    async fn tester(&self) -> AppResult<()> {
+        self.lister_modeles().await.map(|_| ())
+    }
+
+    async fn lister_modeles(&self) -> AppResult<Vec<String>> {
+        match self.config.provider {
+            ProviderKind::Ollama => self.modeles_ollama().await,
+            ProviderKind::Claude => self.modeles_claude().await,
+            ProviderKind::Gemini => self.modeles_gemini().await,
+            ProviderKind::OpenAI
+            | ProviderKind::Mistral
+            | ProviderKind::Nvidia
+            | ProviderKind::Custom(_) => self.modeles_openai().await,
         }
     }
 }
@@ -140,6 +158,87 @@ impl ProviderHttp {
             .error_for_status()?;
         let value: serde_json::Value = json_limite(response).await?;
         texte(&value, "/candidates/0/content/parts/0/text")
+    }
+
+    async fn modeles_ollama(&self) -> AppResult<Vec<String>> {
+        let response = self
+            .client
+            .get(format!("{}/api/tags", self.endpoint))
+            .send()
+            .await?
+            .error_for_status()?;
+        let value: serde_json::Value = json_limite(response).await?;
+        Ok(value
+            .pointer("/models")
+            .and_then(|v| v.as_array())
+            .into_iter()
+            .flatten()
+            .filter_map(|modele| modele.get("name")?.as_str().map(str::to_owned))
+            .collect())
+    }
+
+    async fn modeles_openai(&self) -> AppResult<Vec<String>> {
+        let response = self
+            .client
+            .get(format!("{}/v1/models", self.endpoint))
+            .bearer_auth(self.config.api_key.as_deref().unwrap_or_default())
+            .send()
+            .await?
+            .error_for_status()?;
+        let value: serde_json::Value = json_limite(response).await?;
+        Ok(value
+            .pointer("/data")
+            .and_then(|v| v.as_array())
+            .into_iter()
+            .flatten()
+            .filter_map(|modele| modele.get("id")?.as_str().map(str::to_owned))
+            .collect())
+    }
+
+    async fn modeles_claude(&self) -> AppResult<Vec<String>> {
+        let response = self
+            .client
+            .get(format!("{}/v1/models", self.endpoint))
+            .header(
+                "x-api-key",
+                self.config.api_key.as_deref().unwrap_or_default(),
+            )
+            .header("anthropic-version", "2023-06-01")
+            .send()
+            .await?
+            .error_for_status()?;
+        let value: serde_json::Value = json_limite(response).await?;
+        Ok(value
+            .pointer("/data")
+            .and_then(|v| v.as_array())
+            .into_iter()
+            .flatten()
+            .filter_map(|modele| modele.get("id")?.as_str().map(str::to_owned))
+            .collect())
+    }
+
+    async fn modeles_gemini(&self) -> AppResult<Vec<String>> {
+        let response = self
+            .client
+            .get(format!("{}/v1beta/models", self.endpoint))
+            .header(
+                "x-goog-api-key",
+                self.config.api_key.as_deref().unwrap_or_default(),
+            )
+            .send()
+            .await?
+            .error_for_status()?;
+        let value: serde_json::Value = json_limite(response).await?;
+        Ok(value
+            .pointer("/models")
+            .and_then(|v| v.as_array())
+            .into_iter()
+            .flatten()
+            .filter_map(|modele| {
+                let nom = modele.get("name")?.as_str()?;
+                Some(nom.strip_prefix("models/").unwrap_or(nom).to_owned())
+            })
+            .collect())
     }
 }
 

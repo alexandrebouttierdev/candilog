@@ -1,12 +1,28 @@
 //! Configuration compatible avec le JSON historique de `parametres`.
 
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// Mode d'analyse, rétro-compatible avec les bases antérieures à son introduction.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
 #[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "parametres.ts")]
+pub enum AnalysisMode {
+    #[default]
+    Auto,
+    Small,
+    Standard,
+    Advanced,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "parametres.ts")]
 pub enum ProviderKind {
     Ollama,
     Claude,
+    /// Serde `snake_case` produit `open_a_i` ; les alias couvrent les JSON écrits à la main.
+    #[serde(alias = "open_ai", alias = "openai")]
     OpenAI,
     Gemini,
     Mistral,
@@ -14,6 +30,7 @@ pub enum ProviderKind {
     Custom(String),
 }
 
+/// Champs en snake_case : c'est le JSON persisté par l'application Iced.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LlmConfig {
     pub provider: ProviderKind,
@@ -21,6 +38,8 @@ pub struct LlmConfig {
     pub endpoint: Option<String>,
     pub model: String,
     pub temperature: f32,
+    #[serde(default)]
+    pub mode: AnalysisMode,
 }
 
 impl Default for LlmConfig {
@@ -31,6 +50,7 @@ impl Default for LlmConfig {
             endpoint: Some("http://localhost:11434".into()),
             model: "llama3.2:3b".into(),
             temperature: 0.7,
+            mode: AnalysisMode::Auto,
         }
     }
 }
