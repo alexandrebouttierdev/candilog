@@ -6,6 +6,7 @@ use crate::features::candidatures::presentation::commands as candidatures;
 use crate::features::contacts::presentation::commands as contacts;
 use crate::features::entreprises::presentation::commands as entreprises;
 use crate::features::entretiens::presentation::commands as entretiens;
+use crate::features::profil::presentation::commands as profil;
 use crate::features::relances::presentation::commands as relances;
 use crate::features::secteurs::presentation::commands as secteurs;
 
@@ -62,6 +63,8 @@ pub fn run() {
             entretiens::entretiens_obtenir,
             entretiens::entretiens_enregistrer,
             entretiens::entretiens_supprimer,
+            profil::profil_charger,
+            profil::profil_enregistrer,
             relances::relances_lister_entre,
             relances::relances_creer,
             relances::relances_modifier,

@@ -492,3 +492,68 @@ retiré avant les contrôles finaux.
 ### Reste à faire avant T6
 
 Rien. T6 migre le profil, les compétences et les objectifs.
+
+---
+
+## T6 — Profil, compétences et objectifs · terminée le 2026-08-28
+
+### Backend
+
+Le profil reste une **ligne singleton JSON** dans la table historique `profil`. Le dépôt
+SQLite possède volontairement une représentation de stockage distincte du domaine IPC :
+il relit et réécrit les clés anglaises de l'application Iced (`personal`, `skills`,
+`education`, etc.), tandis que React reçoit des DTO français en camelCase. Une base déjà
+remplie s'ouvre ainsi sans conversion destructive ni changement silencieux de schéma.
+
+Le chargement renvoie le profil, son horodatage et un score de complétion sur sept
+sections. Une collection ne compte que si elle contient au moins une entrée réellement
+complète : une expérience legacy sans entreprise ou date ne gonfle pas le score. Le
+service valide à nouveau toutes les règles côté Rust — e-mail, liens HTTP(S), champs
+obligatoires et incohérence entre poste actuel et date de fin — même si le formulaire Zod
+les contrôle déjà.
+
+L'« objectif » n'est pas une entité séparée dans l'ancien domaine. Il est conservé dans
+`titre` et `resume` de l'identité, ce qui correspond à l'accroche et à la présentation déjà
+utilisées par le générateur de CV. Projets et certifications sont également conservés pour
+que T7 puisse les exploiter sans perte de données.
+
+### Frontend
+
+L'écran suit les quatre onglets de la maquette : Expériences, Compétences, Formations et
+Langues. Projets et certifications restent éditables sous Formations, plutôt que de créer
+des onglets supplémentaires absents du guide. Les onglets exposent les rôles ARIA attendus
+et se parcourent avec Gauche, Droite, Début et Fin.
+
+Le bandeau relie identité, objectif et progression ; la colonne latérale rend visibles la
+prochaine section utile, l'objectif détaillé et les coordonnées sans dupliquer une grille
+de KPI. Sept éditeurs réutilisent la modale commune du design system. Les listes répétables
+peuvent ajouter ou retirer leurs entrées, les compétences s'ajoutent aussi avec Entrée, et
+les erreurs restent sous leur champ avec `aria-invalid` et `aria-describedby`.
+
+### Vérifié
+
+```
+cargo fmt --check                         ok
+cargo clippy --all-targets -D warnings   ok
+cargo test                                165 passed (+17)
+npm run build / lint                      ok
+npm test                                  128 passed (+5)
+```
+
+La revue navigateur a couvert le profil rempli, les quatre onglets, les modales Identité
+et Expériences, les erreurs de liens et de champs obligatoires, la navigation clavier et
+une largeur compacte de 900 px. Il n'y a qu'un repère `main`, aucun débordement horizontal
+et aucune erreur console. Le pont d'aperçu temporaire a été retiré avant les contrôles
+finaux.
+
+### Écarts assumés
+
+- L'import de CV n'est pas affiché comme action inerte : il dépend de l'analyse IA et sera
+  livré dans T7 avec les écrans Documents.
+- Le rendu a été comparé dans le navigateur, pas dans la fenêtre Tauri native.
+- Le bundle JavaScript principal atteint environ 563 ko minifié. La découpe par route reste
+  planifiée pour T9 avec les autres optimisations transversales.
+
+### Reste à faire avant T7
+
+Rien. T7 migre les CV, lettres, génération de documents et fonctions IA associées.

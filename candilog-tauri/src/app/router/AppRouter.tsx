@@ -9,6 +9,7 @@ import { CandidaturesPage } from "@/features/candidatures";
 import { EntreprisesPage } from "@/features/entreprises";
 import { ReseauPage } from "@/features/contacts";
 import { AnalysesPage, DashboardPage } from "@/features/analyses";
+import { ProfilPage } from "@/features/profil";
 
 /**
  * Écrans réellement migrés, indexés par chemin.
@@ -24,6 +25,7 @@ const PAGES: Record<string, React.ReactElement> = {
   "/suivi/calendrier": <CalendrierPage />,
   "/relations/entreprises": <EntreprisesPage />,
   "/relations/reseau": <ReseauPage />,
+  "/profil": <ProfilPage />,
 };
 
 const screenRoutes: RouteObject[] = SECTIONS.flatMap((section) =>

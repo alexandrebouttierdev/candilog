@@ -7,5 +7,6 @@ pub mod candidatures;
 pub mod contacts;
 pub mod entreprises;
 pub mod entretiens;
+pub mod profil;
 pub mod relances;
 pub mod secteurs;
