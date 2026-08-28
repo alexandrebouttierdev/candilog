@@ -1,48 +1,112 @@
 # Candilog Desktop
 
-Réécriture native de Candilog en Rust, Iced, Tokio et SQLite.
+Suivi de candidatures, entretiens et relances, avec assistance IA locale.
+Application native **Tauri 2 + React + TypeScript**, base SQLite locale.
+
+- Audit et plan de migration : [`docs/migration/01-AUDIT.md`](docs/migration/01-AUDIT.md)
+- Source de vérité du design : [`SPECDESIGN/`](SPECDESIGN/)
+- Site public : [`website/`](website/)
+
+## Démarrer
 
 ```bash
-cargo run
+npm install
+npm run tauri dev
+```
+
+Le frontend seul (sans fenêtre native, IPC indisponible) :
+
+```bash
+npm run dev
 ```
 
 ## Validations
 
 ```bash
-cargo fmt --check
-cargo check --all-targets --all-features
-cargo clippy --all-targets --all-features -- -D warnings
-cargo test --all-targets --all-features
-cargo deny check          # licences et avis RustSec (voir deny.toml)
+npm run build
+npm run lint
+npm test
+cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check
+cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+cargo test --manifest-path src-tauri/Cargo.toml
 ```
 
-## Dépendances d'exécution
+## Architecture
 
-Candilog utilise le renderer graphique par défaut d'Iced. Sous Linux, il sélectionne le backend
-compatible avec la session Wayland ou X11 et le pilote graphique disponibles.
+```
+React                          Tauri IPC                      Rust
+─────                          ─────────                      ────
+View                                                          Command
+ ↓                                                             ↓
+ViewModel (hook)                                              Application Service
+ ↓                                                             ↓
+Frontend Service ──────────────► invoke ──────────────────►   Domain
+                                                               ↓
+                                                              Repository (trait)
+                                                               ↓
+                                                              Infrastructure (SQLite, HTTP, IA)
+```
 
-| Plateforme | Requis |
-|---|---|
-| Linux | `libxkbcommon`, `libwayland-client` (session Wayland) ou `libX11`, `libdbus-1` et un pilote Vulkan fonctionnel |
-| Windows | Bibliothèques système standard |
-| macOS | Bibliothèques système standard |
+### Frontend — `src/`
 
-Les paquets `.deb` et `.rpm` déclarent ces dépendances automatiquement.
+Feature-first + MVVM. Chaque feature est autonome :
 
-## Configuration
+```
+features/<feature>/
+├── model/       types, DTO, schémas Zod, mappers
+├── view/        pages et composants React
+├── viewmodel/   hooks d'orchestration UI
+└── services/    seule couche connaissant les commandes Tauri de la feature
+```
 
-| Variable | Effet |
-|---|---|
-| `CANDILOG_DATA_DIR` | Déplace le dossier de données (base, exports, journaux). Utile pour travailler sans toucher aux données réelles. |
-| `RUST_LOG` | Niveau de journalisation, `candilog=info` par défaut. Le journal est écrit sur la sortie standard **et** dans `candilog.log` du dossier de données, avec rotation à chaque démarrage. |
+`shared/ui/` ne contient que du générique ; un composant métier reste dans sa feature.
 
-La caractéristique Cargo `capture` (`cargo run --features capture`) active le harnais de
-capture visuelle destiné à la revue de design. Elle est absente du binaire distribué.
+Les appels IPC passent tous par `shared/services/ipc.ts` — une règle ESLint interdit
+d'importer `invoke` ailleurs.
+
+### Backend — `src-tauri/src/`
+
+Architecture hexagonale pragmatique, feature-first :
+
+```
+app/              état partagé (AppState) et démarrage
+core/             config, base de données, erreurs, journal, événements
+features/<f>/     domain · application · infrastructure · presentation
+infrastructure/   IA, PDF, HTTP, filesystem, coffre à secrets
+```
+
+Le `domain` ne dépend ni de Tauri, ni de rusqlite, ni d'un fournisseur IA.
+
+### Contrat IPC
+
+Les types TypeScript des DTO sont **générés** depuis Rust par `ts-rs` dans
+`src/shared/types/generated/`. Ils ne s'éditent pas à la main : régénérer avec
+
+```bash
+cargo test --manifest-path src-tauri/Cargo.toml
+```
+
+Un DTO Rust modifié sans régénération fait échouer `npm run build`.
+
+### Erreurs
+
+Le backend rejette toujours `{ code, message }` : `code` est stable et destiné au
+branchement conditionnel, `message` est rédigé pour l'utilisateur. Le détail technique
+part au journal, jamais à l'écran.
+
+## Base de données
+
+SQLite, `rusqlite` + `r2d2`, migrations embarquées dans le binaire et appliquées par
+`PRAGMA user_version`. Le schéma est celui de Candilog Desktop historique : les données
+existantes sont conservées.
+
+`CANDILOG_DATA_DIR` déplace le dossier de données. En développement, la base vit sous
+`src-tauri/.candilog-dev/` (ancrée sur le manifeste Cargo) et ne touche jamais aux
+données réelles. `RUST_LOG` règle le niveau de journalisation (`candilog=info` par défaut).
 
 ## Documentation
 
 L'architecture, le modèle de données et le processus de publication sont décrits dans
-[`docs/`](docs/). Les mises à jour et les releases sont documentées dans
-[`docs/RELEASES.md`](docs/RELEASES.md) : les binaires sont publiés sur le dépôt dédié
-`alexandrebouttierdev/candilog-releases`, dont le workflow de build est déclenché à chaque
-push sur `master` de ce dépôt source.
+[`docs/`](docs/). Les binaires sont publiés sur le dépôt dédié
+`alexandrebouttierdev/candilog-releases`, déclenché à chaque push sur `master` de ce
+dépôt source — voir [`docs/RELEASES.md`](docs/RELEASES.md).

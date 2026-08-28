@@ -1,11 +1,27 @@
+# Rust / Tauri
 /target/
+src-tauri/target/
+src-tauri/gen/
+src-tauri/.candilog-dev/
+
+# Frontend
+node_modules/
+dist/
+.npm-cache/
+*.local
+
+# Données locales
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
 .env
+/.candilog-dev/
+
+# IDE et OS
 .idea/
 .vscode/
 *.log
-/.candilog-dev/
+.DS_Store
+
 /.superpowers/
 AUDIT_APP_REPORT.md

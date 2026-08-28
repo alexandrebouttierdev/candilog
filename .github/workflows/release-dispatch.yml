@@ -18,7 +18,7 @@ jobs:
       - name: Lire la version
         id: version
         run: |
-          VERSION=$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -1)
+          VERSION=$(sed -n 's/^version = "\([^"]*\)"/\1/p' src-tauri/Cargo.toml | head -1)
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Vérifier le jeton et décider de la publication

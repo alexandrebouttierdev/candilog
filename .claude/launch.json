@@ -4,7 +4,7 @@
     {
       "name": "candilog-web",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "candilog-tauri", "run", "dev"],
+      "runtimeArgs": ["run", "dev"],
       "port": 1420
     }
   ]

@@ -720,3 +720,22 @@ Les contrôles Rust de T8 restent verts ; cette tranche ne touche pas le backend
 La migration fonctionnelle Tauri des écrans du rail est complète. Le bascule de release
 (Iced → Tauri) et l'export PDF restent hors périmètre des tranches T0–T9.
 
+---
+
+## T10 — Racine Tauri · terminée le 2026-08-28
+
+Le crate Iced (`src/`, `Cargo.toml`, `assets/`, `migrations/`, `packaging/`, `tests/`,
+`tools/`, `deny.toml`) est retiré. Le contenu de `candilog-tauri/` vit à la racine :
+frontend `src/`, backend `src-tauri/`, `package.json`.
+
+Le correctif `pdf-extract` pointe vers `../vendor/pdf-extract-0.12.0`. La CI Linux/macOS/Windows
+travaille dans `src-tauri` et installe les dépendances WebKitGTK. `release-dispatch` lit la
+version dans `src-tauri/Cargo.toml`.
+
+### Écarts assumés
+
+- Le dépôt `candilog-releases` construit encore l'ancien crate Iced : un push sur `master`
+  cassera la publication jusqu'à ce que ce workflow distant fasse `npm ci` + build Tauri.
+- `cargo-deny` n'est plus exécuté (le `deny.toml` Iced ne s'appliquait pas à Tauri).
+- L'export PDF du CV (`printpdf`) n'est toujours pas porté.
+

@@ -26,7 +26,7 @@ assert!(out.contains("This is a small demonstration"));
 ## Correctif vendored (candilog)
 
 Cette copie de `pdf-extract` 0.12.0 porte un correctif local, référencée par
-`[patch.crates-io]` dans le `Cargo.toml` de candilog.
+`[patch.crates-io]` dans `src-tauri/Cargo.toml`.
 
 **Bogue corrigé** : dans `PdfCIDFont::new` (src/lib.rs), le parsing du tableau `/W` au
 format range (`c_first c_last w`) lisait `c_last` et `c_width` depuis `w[i]` au lieu de
