@@ -66,6 +66,7 @@ pub fn run() {
             documents::documents_cv_obtenir,
             documents::documents_cv_enregistrer,
             documents::documents_cv_supprimer,
+            documents::documents_cv_exporter_pdf,
             documents::documents_lettres_lister,
             documents::documents_lettre_obtenir,
             documents::documents_lettre_enregistrer,

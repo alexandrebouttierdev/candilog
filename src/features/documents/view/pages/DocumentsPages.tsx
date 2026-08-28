@@ -1,13 +1,14 @@
 import { useState } from "react";
-import { open } from "@tauri-apps/plugin-dialog";
+import { open, save } from "@tauri-apps/plugin-dialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { documentsService } from "../../services/documents.service";
 import type { CvVersion, Lettre } from "../../services/documents.service";
 import { iaService, generationId } from "@/features/ia/services/ia.service";
-import type { AnalyseCvImporte, GenerationCv } from "@/features/ia/model/types";
+import type { AnalyseCvImporte, CvGenere, GenerationCv } from "@/features/ia/model/types";
 import { useIaProgress } from "@/features/ia/viewmodel/useIaProgress";
 import { useUiStore } from "@/shared/lib/ui-store";
+import type { ToastMessage } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 import { Button, ConfirmDialog, EmptyState, ErrorBanner, FormField, Icon, PageHeader, Select, TextArea, TextInput } from "@/shared/ui";
 import { A4Preview, DocumentPanel, IaProgress, ScoreBadge } from "../components/DocumentUi";
@@ -22,7 +23,7 @@ export function CvLibraryPage() {
   const detail = useQuery({ queryKey: [...CV_KEY, selectedId], queryFn: () => documentsService.obtenirCv(selectedId ?? ""), enabled: selectedId !== null });
   const remove = useMutation({ mutationFn: documentsService.supprimerCv, onSuccess: async () => { setSelected(null); setDeleteId(null); await queryClient.invalidateQueries({ queryKey: CV_KEY }); notify({ tone: "success", title: "Version supprimée" }); } });
   return <Screen header={<PageHeader icon="description" title="Mes CV" subtitle={list.data ? `${list.data.length} version${list.data.length > 1 ? "s" : ""} prête${list.data.length > 1 ? "s" : ""} à l’emploi` : "Vos versions prêtes à l’emploi"} primary={<Button variant="primary" icon="auto_awesome" onClick={() => void navigate("/documents/generer-cv")}>Nouveau CV</Button>} />}>
-    {list.error ? <ErrorBanner message={message(list.error)} onRetry={() => void list.refetch()} /> : <div className="grid min-h-[620px] gap-4 xl:grid-cols-[minmax(340px,0.75fr)_minmax(480px,1.25fr)]"><DocumentPanel title="Bibliothèque personnelle" icon="folder_open"><div className="p-3">{list.isLoading ? <p className="p-6 text-center text-ink-muted">Chargement…</p> : list.data?.length ? <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-2">{list.data.map((cv) => <li key={cv.id}><button type="button" aria-pressed={selected === cv.id} onClick={() => setSelected(cv.id)} className={`w-full overflow-hidden rounded-card border text-left transition-colors ${selected === cv.id ? "border-accent bg-accent-tint" : "border-line bg-surface-alt hover:border-accent-border"}`}><div className="mx-3 mt-3 h-36 bg-white p-4 shadow-e1"><span className="block h-2 w-2/3 bg-[#5b6ee1]/25" /><span className="mt-4 block h-1.5 w-full bg-[#dfe3eb]" /><span className="mt-2 block h-1.5 w-4/5 bg-[#dfe3eb]" /></div><div className="p-3"><p className="truncate font-medium text-ink">{cv.nom}</p><p className="mt-1 text-meta text-ink-faint">{date(cv.createdAt)}</p></div></button></li>)}</ul> : <EmptyState icon="description" title="Aucune version" description="Générez puis sauvegardez votre premier CV ciblé." action={<Button icon="auto_awesome" onClick={() => void navigate("/documents/generer-cv")}>Générer un CV</Button>} />}</div></DocumentPanel><DocumentPanel title={detail.data?.nom ?? "Aperçu"} icon="visibility" action={detail.data ? <Button variant="danger" icon="delete" onClick={() => setDeleteId(detail.data?.id ?? null)}>Supprimer</Button> : null}>{detail.data ? <CvSavedPreview version={detail.data} /> : <EmptyState icon="visibility" title="Sélectionnez une version" description="Son contenu détaillé apparaîtra ici." />}</DocumentPanel></div>}
+    {list.error ? <ErrorBanner message={message(list.error)} onRetry={() => void list.refetch()} /> : <div className="grid min-h-[620px] gap-4 xl:grid-cols-[minmax(340px,0.75fr)_minmax(480px,1.25fr)]"><DocumentPanel title="Bibliothèque personnelle" icon="folder_open"><div className="p-3">{list.isLoading ? <p className="p-6 text-center text-ink-muted">Chargement…</p> : list.data?.length ? <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-2">{list.data.map((cv) => <li key={cv.id}><button type="button" aria-pressed={selected === cv.id} onClick={() => setSelected(cv.id)} className={`w-full overflow-hidden rounded-card border text-left transition-colors ${selected === cv.id ? "border-accent bg-accent-tint" : "border-line bg-surface-alt hover:border-accent-border"}`}><div className="mx-3 mt-3 h-36 bg-white p-4 shadow-e1"><span className="block h-2 w-2/3 bg-[#5b6ee1]/25" /><span className="mt-4 block h-1.5 w-full bg-[#dfe3eb]" /><span className="mt-2 block h-1.5 w-4/5 bg-[#dfe3eb]" /></div><div className="p-3"><p className="truncate font-medium text-ink">{cv.nom}</p><p className="mt-1 text-meta text-ink-faint">{date(cv.createdAt)}</p></div></button></li>)}</ul> : <EmptyState icon="description" title="Aucune version" description="Générez puis sauvegardez votre premier CV ciblé." action={<Button icon="auto_awesome" onClick={() => void navigate("/documents/generer-cv")}>Générer un CV</Button>} />}</div></DocumentPanel><DocumentPanel title={detail.data?.nom ?? "Aperçu"} icon="visibility" action={detail.data ? <div className="flex gap-2">{isGeneration(detail.data.contenu) ? <Button icon="download" onClick={() => { const generation = detail.data?.contenu; if (detail.data && isGeneration(generation)) void exporterPdf(generation.cv, detail.data.nom, notify); }}>Exporter PDF</Button> : null}<Button variant="danger" icon="delete" onClick={() => setDeleteId(detail.data?.id ?? null)}>Supprimer</Button></div> : null}>{detail.data ? <CvSavedPreview version={detail.data} /> : <EmptyState icon="visibility" title="Sélectionnez une version" description="Son contenu détaillé apparaîtra ici." />}</DocumentPanel></div>}
     <ConfirmDialog open={deleteId !== null} title="Supprimer cette version ?" description="Le CV disparaîtra définitivement de la bibliothèque locale." note="Votre profil et vos autres versions seront conservés." busy={remove.isPending} onCancel={() => setDeleteId(null)} onConfirm={() => { if (deleteId) remove.mutate(deleteId); }} />
   </Screen>;
 }
@@ -33,7 +34,7 @@ export function CvGeneratorPage() {
   const queryClient = useQueryClient(); const notify = useUiStore((s) => s.notify); const [offre, setOffre] = useState(""); const [operation, setOperation] = useState<string | null>(null); const [result, setResult] = useState<GenerationCv | null>(null); const [error, setError] = useState<string | null>(null); const [nom, setNom] = useState(""); const progress = useIaProgress(operation);
   const run = async () => { if (!offre.trim()) { setError("Collez le texte de l’offre à cibler."); return; } const id = generationId(); setOperation(id); setError(null); try { const value = await iaService.genererCv({ generationId: id, offre }); setResult(value); setNom(`CV — ${value.offre.titre || "Version ciblée"}`); } catch (e) { if (!(e instanceof AppError && e.code === "CANCELLED")) setError(message(e)); } finally { setOperation(null); } };
   const save = useMutation({ mutationFn: () => documentsService.enregistrerCv({ nom, contenu: result }), onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: CV_KEY }); notify({ tone: "success", title: "CV ajouté à la bibliothèque" }); } });
-  return <Screen header={<PageHeader icon="auto_awesome" title="Générer un CV" subtitle="Analysez une offre, adaptez votre profil, mesurez le score ATS" primary={result ? <Button variant="primary" icon="save" disabled={!nom.trim() || save.isPending} onClick={() => save.mutate()}>Enregistrer</Button> : undefined} />}>
+  return <Screen header={<PageHeader icon="auto_awesome" title="Générer un CV" subtitle="Analysez une offre, adaptez votre profil, mesurez le score ATS" secondary={result ? <Button icon="download" onClick={() => void exporterPdf(result.cv, nom || "cv-candilog", notify)}>Exporter PDF</Button> : undefined} primary={result ? <Button variant="primary" icon="save" disabled={!nom.trim() || save.isPending} onClick={() => save.mutate()}>Enregistrer</Button> : undefined} />}>
     <div className="grid min-h-[660px] gap-4 xl:grid-cols-[350px_minmax(460px,1fr)_320px]"><DocumentPanel title="Offre ciblée" icon="target"><div className="space-y-4 p-4"><FormField label="Texte de l’offre" required help="Le texte est envoyé uniquement au fournisseur configuré.">{(props) => <TextArea {...props} rows={18} value={offre} placeholder="Collez ici l’intitulé, les missions et les compétences recherchées…" onChange={(e) => setOffre(e.target.value)} />}</FormField>{error ? <ErrorBanner title="Génération impossible" message={error} /> : null}{operation ? <><IaProgress progress={progress} /><Button variant="danger" icon="stop" className="w-full" onClick={() => void iaService.annuler(operation)}>Annuler</Button></> : <Button variant="primary" icon="auto_awesome" className="w-full" onClick={() => void run()}>Générer le CV ciblé</Button>}</div></DocumentPanel><DocumentPanel title="Aperçu HTML · A4" icon="article"><A4Preview cv={result?.cv} /></DocumentPanel><DocumentPanel title="Analyse ATS" icon="query_stats"><div className="space-y-5 p-4">{result ? <><ScoreBadge value={result.analyse.score} /><p className="text-body leading-relaxed text-ink-muted">{result.analyse.recap}</p><div><p className="mb-2 text-label font-medium text-ink">Suggestions</p><ul className="space-y-2">{result.analyse.suggestions.map((s, i) => <li key={i} className="flex gap-2 text-body text-ink-muted"><Icon name="arrow_right" size={15} className="mt-0.5 text-accent" />{s}</li>)}</ul></div><FormField label="Nom de la version" required>{(props) => <TextInput {...props} value={nom} onChange={(e) => setNom(e.target.value)} />}</FormField></> : <EmptyState icon="query_stats" title="Analyse en attente" description="Le score et les recommandations suivront la génération." />}</div></DocumentPanel></div>
   </Screen>;
 }
@@ -63,3 +64,27 @@ function Champ({ label, value, onChange }: { label:string; value:string; onChang
 function message(error: unknown): string { return error instanceof AppError ? error.message : "Une erreur inattendue s’est produite."; }
 function date(value: string): string { const d = new Date(value); return Number.isNaN(d.getTime()) ? value : new Intl.DateTimeFormat("fr-FR", { day:"2-digit", month:"short", year:"numeric" }).format(d); }
 function isGeneration(value: unknown): value is GenerationCv { return typeof value === "object" && value !== null && "cv" in value && "analyse" in value; }
+
+async function exporterPdf(
+  cv: CvGenere,
+  nom: string,
+  notify: (toast: Omit<ToastMessage, "id">) => void,
+) {
+  const base = nom.trim().replace(/[\\/:*?"<>|]+/g, "-") || "cv-candilog";
+  const chemin = await save({
+    title: "Exporter le CV en PDF",
+    defaultPath: `${base}.pdf`,
+    filters: [{ name: "PDF", extensions: ["pdf"] }],
+  });
+  if (chemin === null) return;
+  try {
+    await documentsService.exporterPdf(cv, chemin);
+    notify({ tone: "success", title: "CV exporté" });
+  } catch (error) {
+    notify({
+      tone: "error",
+      title: "Export PDF impossible",
+      detail: error instanceof AppError ? error.message : undefined,
+    });
+  }
+}

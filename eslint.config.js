@@ -10,6 +10,7 @@ export default tseslint.config(
       "dist",
       "src-tauri/target",
       "src/shared/types/generated",
+      "src-tauri/**",
       "website/**",
       "vendor/**",
       "SPECDESIGN/**",

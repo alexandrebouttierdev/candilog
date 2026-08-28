@@ -64,6 +64,10 @@ jobs:
         run: cargo test --manifest-path src-tauri/Cargo.toml --locked --all-targets
       - name: Doc-tests
         run: cargo test --manifest-path src-tauri/Cargo.toml --locked --doc
+      - name: Licences, sources et avis autorisés
+        uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          manifest-path: src-tauri/Cargo.toml
 
   macos-build:
     name: Build macOS

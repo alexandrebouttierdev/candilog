@@ -1,0 +1,43 @@
+# Contrôle de la chaîne d'approvisionnement : licences et avis de sécurité.
+#
+#     cargo deny --manifest-path src-tauri/Cargo.toml check
+
+[graph]
+all-features = true
+
+[advisories]
+version = 2
+ignore = []
+
+[licenses]
+version = 2
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "MPL-2.0",
+    "Unicode-3.0",
+    "Unicode-DFS-2016",
+    "CC0-1.0",
+    "BSL-1.0",
+    "Unlicense",
+    "OFL-1.1",
+    "OpenSSL",
+    "NCSA",
+    # Jeu de racines de certification Mozilla embarqué par `webpki-roots`.
+    "CDLA-Permissive-2.0",
+]
+confidence-threshold = 0.9
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

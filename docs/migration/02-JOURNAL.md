@@ -739,3 +739,27 @@ version dans `src-tauri/Cargo.toml`.
 - `cargo-deny` n'est plus exécuté (le `deny.toml` Iced ne s'appliquait pas à Tauri).
 - L'export PDF du CV (`printpdf`) n'est toujours pas porté.
 
+---
+
+## T11 — Export PDF · terminée le 2026-08-28
+
+L'export PDF Iced (`printpdf` 0.12.5, polices Geist et icônes embarquées) est porté dans
+`src-tauri/src/infrastructure/pdf/`. Le profil (identité, périodes, projets, langues) est
+fusionné au CV généré, comme avant. L'utilisateur choisit le fichier via le sélecteur natif,
+depuis la génération ou depuis une version enregistrée.
+
+`cargo deny` revient en CI sur le crate Tauri, sans les exemptions RUSTSEC propres à Iced.
+
+### Vérifié
+
+```
+cargo fmt --check / clippy -D warnings   ok
+cargo test --lib                          229 passed (+3)
+npm eslint src / vitest                   139 passed
+```
+
+### Écarts assumés
+
+- Le dépôt `candilog-releases` n'est toujours pas aligné sur Tauri.
+- Une ancienne version de CV Iced sans JSON structuré n'exporte pas (même limite que l'aperçu).
+
