@@ -671,3 +671,52 @@ npm test                                  135 passed (+3)
 Rien. T9 couvre l'accessibilité, le responsive 1024–2560, les tests manquants et la découpe
 du bundle. L'ancien projet Iced reste comme référence et binaire de release.
 
+---
+
+## T9 — Finition · terminée le 2026-08-28
+
+### Accessibilité et coque
+
+Le rail annonce chaque section par `aria-label` (le libellé visible disparaît sous 1200 px)
+et les onglets contextuels exposent `aria-selected`. Un lien d'évitement « Aller au contenu »
+mène au unique `main`. Les boutons et champs ont un contour `focus-visible` accent. `main`
+ne défile plus : chaque écran garde son en-tête collant sans scroll imbriqué.
+
+### Responsive
+
+Le rail se replie réellement sous 1200 px (libellé `hidden`, cible 44 px conservée), conformément
+au guide. La coque reste à `min-w-0` pour encaisser 1024 px sans débordement horizontal.
+
+### Bundle
+
+Les écrans sont chargés à la demande (`React.lazy` + `Suspense`). Le chunk principal passe
+d'environ 607 ko à 351 ko minifié ; la planche `/_design` et les features ne sont plus dans
+le premier chargement.
+
+### Tests
+
+La carte de navigation exige désormais qu'aucun chemin du rail ne reste un jalon. La coque,
+le rail replié et les onglets contextuels sont couverts.
+
+### Vérifié
+
+```
+npm run lint / test / build               ok (139 tests, +4)
+chunk principal                           351 ko (plus d'avertissement Vite > 500 ko)
+```
+
+Les contrôles Rust de T8 restent verts ; cette tranche ne touche pas le backend.
+
+### Écarts assumés
+
+- L'application Iced (`src/` à la racine) n'est **pas** retirée : elle reste la référence
+  fonctionnelle et le binaire publié via `docs/RELEASES.md` / `candilog-releases`. Le crate
+  Tauri n'a pas encore repris le pipeline de packaging.
+- L'export PDF du CV (`printpdf`) n'est toujours pas porté.
+- Pas de revue visuelle native ni navigateur dans cette session.
+
+### Reste à faire
+
+La migration fonctionnelle Tauri des écrans du rail est complète. Le bascule de release
+(Iced → Tauri) et l'export PDF restent hors périmètre des tranches T0–T9.
+
