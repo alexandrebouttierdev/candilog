@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<style>
+  body{margin:0;-webkit-font-smoothing:antialiased}
+  ::selection{background:rgba(41,87,216,.22)}
+  .ms{font-family:'Material Symbols Rounded';font-weight:400;font-style:normal;line-height:1;letter-spacing:normal;text-transform:none;display:inline-block;white-space:nowrap;word-wrap:normal;direction:ltr;font-feature-settings:'liga';-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24}
+</style>
+</helmet>
+<div data-screen-label="Relations" style="display:flex;height:100vh;width:100%;font-family:-apple-system,'Segoe UI',system-ui,sans-serif;background:{{c.bgPage}};color:{{c.textPrimary}}">
+
+  <div style="width:86px;flex:none;box-sizing:border-box;overflow:hidden;display:flex;flex-direction:column;align-items:center;background:{{c.bgSidebar}};border-right:1px solid {{c.border}};padding:18px 0 14px">
+    <span class="ms" style="font-size:22px;color:{{c.accent}};margin-bottom:16px">workspace_premium</span>
+    <div style="display:flex;flex-direction:column;gap:3px;flex:1;align-self:stretch;box-sizing:border-box;padding:0 9px">
+      <sc-for list="{{ navItems }}" as="item" hint-placeholder-count="7">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:5px;padding:9px 4px 7px;border-radius:10px;cursor:pointer;min-width:0;background:{{ item.bg }};transition:background .12s ease" style-hover="background:{{c.neutralTint}}">
+          <span class="ms" style="font-size:21px;color:{{ item.color }}">{{ item.icon }}</span>
+          <span style="font-size:10px;font-weight:550;color:{{ item.color }};max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ item.label }}</span>
+        </div>
+      </sc-for>
+    </div>
+    <div onClick="{{ toggleTheme }}" style="display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;padding:9px 0;align-self:stretch;box-sizing:border-box;margin:0 9px;border-radius:10px" style-hover="background:{{c.neutralTint}}">
+      <span class="ms" style="font-size:19px;color:{{c.textTertiary}}">{{ themeIcon }}</span>
+      <span style="font-size:10px;color:{{c.textTertiary}};font-weight:550">{{ themeLabel }}</span>
+    </div>
+  </div>
+
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden">
+
+    <div style="flex:none;height:46px;display:flex;align-items:center;gap:3px;padding:0 20px;background:{{c.bgSurface}};border-bottom:1px solid {{c.border}}">
+      <sc-for list="{{ tabs }}" as="tab" hint-placeholder-count="2">
+        <div onClick="{{ tab.onClick }}" style="display:flex;align-items:center;gap:7px;height:30px;padding:0 12px;border-radius:8px;cursor:pointer;font-size:12.5px;font-weight:500;background:{{ tab.bg }};color:{{ tab.color }}" style-hover="background:{{c.neutralTint}}">
+          <span class="ms" style="font-size:17px">{{ tab.icon }}</span>{{ tab.label }}
+        </div>
+      </sc-for>
+      <span style="flex:1"></span>
+      <div style="display:flex;align-items:center;gap:8px;height:30px;padding:0 11px;border:1px solid {{c.border}};border-radius:8px;background:{{c.bgPage}};min-width:250px">
+        <span class="ms" style="font-size:16px;color:{{c.textTertiary}}">search</span>
+        <span style="font-size:12px;color:{{c.textTertiary}};flex:1">{{ searchPlaceholder }}</span>
+        <span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;color:{{c.textTertiary}};border:1px solid {{c.border}};border-radius:4px;padding:1px 5px">⌘K</span>
+      </div>
+    </div>
+
+    <div style="flex:none;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:17px 28px;border-bottom:1px solid {{c.border}};background:{{c.bgSurface}}">
+      <div style="display:flex;align-items:center;gap:13px;min-width:0">
+        <span style="width:34px;height:34px;border-radius:10px;background:{{c.accentTint}};display:flex;align-items:center;justify-content:center;flex:none">
+          <span class="ms" style="font-size:19px;color:{{c.accent}}">{{ head.icon }}</span>
+        </span>
+        <h1 style="margin:0;font-size:20px;font-weight:650;letter-spacing:-0.02em">{{ head.title }}</h1>
+        <span style="width:1px;height:18px;background:{{c.border}}"></span>
+        <span style="font-size:12.5px;color:{{c.textTertiary}}">{{ head.subtitle }}</span>
+      </div>
+      <div style="display:flex;gap:9px;flex:none;align-items:center">
+        <button style="display:flex;align-items:center;gap:7px;font:500 12.5px inherit;height:33px;padding:0 13px;border-radius:8px;border:1px solid {{c.border}};background:{{c.bgSurface}};color:{{c.textPrimary}};cursor:pointer;box-shadow:{{c.cardShadow}}">
+          <span class="ms" style="font-size:17px;color:{{c.textSecondary}}">filter_alt</span>Filtres
+        </button>
+        <button style="display:flex;align-items:center;gap:7px;font:550 12.5px inherit;height:33px;padding:0 14px;border-radius:8px;border:none;background:{{c.accent}};color:#fff;cursor:pointer;box-shadow:{{c.accentShadow}}">
+          <span class="ms" style="font-size:17px">add</span>{{ head.primary }}
+        </button>
+      </div>
+    </div>
+
+    <div style="flex:1;min-height:0;display:flex">
+
+      <!-- Liste gauche -->
+      <div style="width:37%;min-width:0;border-right:1px solid {{c.border}};display:flex;flex-direction:column;background:{{c.bgSurface}}">
+        <div style="flex:none;display:flex;align-items:center;justify-content:space-between;padding:13px 18px;border-bottom:1px solid {{c.border}}">
+          <span style="font-size:12.5px;font-weight:600">{{ listTitle }}</span>
+          <span style="font-size:11.5px;color:{{c.textTertiary}}">{{ listCount }}</span>
+        </div>
+        <div style="flex:1;overflow:auto;padding:9px">
+
+          <sc-if value="{{ isCompanies }}" hint-placeholder-val="{{ true }}">
+            <sc-for list="{{ companies }}" as="co" hint-placeholder-count="6">
+              <div style="display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:10px;cursor:pointer;background:{{ co.bg }};border:1px solid {{ co.borderColor }};margin-bottom:4px" style-hover="background:{{c.neutralTint}}">
+                <span style="width:32px;height:32px;border-radius:9px;flex:none;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:650;background:{{ co.tileBg }};color:{{ co.tileColor }}">{{ co.initials }}</span>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ co.name }}</div>
+                  <div style="font-size:11.5px;color:{{c.textTertiary}};margin-top:1px">{{ co.sector }} · {{ co.city }}</div>
+                </div>
+                <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:550;color:{{c.textSecondary}};background:{{c.neutralTint}};border-radius:5px;padding:3px 7px;flex:none">
+                  <span class="ms" style="font-size:13px">work</span>{{ co.applications }}
+                </span>
+              </div>
+            </sc-for>
+          </sc-if>
+
+          <sc-if value="{{ isNetwork }}" hint-placeholder-val="{{ false }}">
+            <sc-for list="{{ contacts }}" as="ct" hint-placeholder-count="6">
+              <div style="display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:10px;cursor:pointer;background:{{ ct.bg }};border:1px solid {{ ct.borderColor }};margin-bottom:4px" style-hover="background:{{c.neutralTint}}">
+                <span style="width:32px;height:32px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:650;background:{{ ct.tileBg }};color:{{ ct.tileColor }}">{{ ct.initials }}</span>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ ct.name }}</div>
+                  <div style="font-size:11.5px;color:{{c.textTertiary}};margin-top:1px">{{ ct.role }} · {{ ct.company }}</div>
+                </div>
+                <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:550;color:{{ ct.tagColor }};background:{{ ct.tagTint }};border-radius:5px;padding:3px 7px;flex:none">
+                  <span class="ms" style="font-size:13px">{{ ct.tagIcon }}</span>{{ ct.tag }}
+                </span>
+              </div>
+            </sc-for>
+          </sc-if>
+        </div>
+        <div style="flex:none;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-top:1px solid {{c.border}};background:{{c.bgSidebar}}">
+          <span style="font-size:11.5px;color:{{c.textTertiary}};min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ listPager.pageLabel }}</span>
+          <div style="display:flex;align-items:center;gap:4px;flex:none">
+            <span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:7px;border:1px solid {{c.border}};background:{{ listPager.prevBg }};cursor:{{ listPager.prevCursor }}">
+              <span class="ms" style="font-size:16px;color:{{ listPager.prevColor }}">chevron_left</span>
+            </span>
+            <sc-for list="{{ listPager.pages }}" as="p" hint-placeholder-count="2">
+              <span style="display:inline-flex;align-items:center;justify-content:center;min-width:28px;height:28px;padding:0 7px;border-radius:7px;font-size:12px;font-weight:550;cursor:pointer;background:{{ p.bg }};color:{{ p.color }};border:1px solid {{ p.borderColor }}">{{ p.label }}</span>
+            </sc-for>
+            <span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:7px;border:1px solid {{c.border}};background:{{ listPager.nextBg }};cursor:{{ listPager.nextCursor }}">
+              <span class="ms" style="font-size:16px;color:{{ listPager.nextColor }}">chevron_right</span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Fiche droite -->
+      <div style="flex:1;min-width:0;overflow:auto;background:{{c.bgPage}}">
+
+        <div style="background:{{c.bgSurface}};border-bottom:1px solid {{c.border}};padding:20px 26px 0">
+          <div style="display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap">
+            <span style="width:50px;height:50px;border-radius:{{ detail.avatarRadius }};background:{{c.accentTint}};color:{{c.accent}};display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:650;flex:none">{{ detail.initials }}</span>
+            <div style="min-width:260px;flex:1">
+              <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
+                <h2 style="margin:0;font-size:19px;font-weight:650;letter-spacing:-0.015em">{{ detail.name }}</h2>
+                <span style="display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:550;color:{{c.accent}};background:{{c.accentTint}};border-radius:6px;padding:3px 8px">
+                  <span class="ms" style="font-size:14px">{{ detail.badgeIcon }}</span>{{ detail.badge }}
+                </span>
+              </div>
+              <div style="font-size:12.5px;color:{{c.textTertiary}};margin-top:4px">{{ detail.subtitle }}</div>
+            </div>
+            <div style="display:flex;gap:7px;flex-wrap:wrap">
+              <sc-for list="{{ detail.actions }}" as="a" hint-placeholder-count="3">
+                <span style="display:inline-flex;align-items:center;gap:6px;height:31px;padding:0 12px;border:1px solid {{c.border}};border-radius:8px;font-size:12px;font-weight:500;color:{{c.textSecondary}};cursor:pointer;background:{{c.bgSurface}}" style-hover="background:{{c.neutralTint}}">
+                  <span class="ms" style="font-size:15px">{{ a.icon }}</span>{{ a.label }}
+                </span>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-wrap:wrap;gap:28px;padding:18px 0 16px;margin-top:16px;border-top:1px solid {{c.border}}">
+            <sc-for list="{{ detail.stats }}" as="s" hint-placeholder-count="3">
+              <div style="min-width:0">
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
+                  <span class="ms" style="font-size:15px;color:{{ s.color }}">{{ s.icon }}</span>
+                  <span style="font-size:11.5px;color:{{c.textSecondary}};font-weight:500">{{ s.label }}</span>
+                </div>
+                <div style="font-size:19px;font-weight:650;letter-spacing:-0.02em;font-variant-numeric:tabular-nums">{{ s.value }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;padding:20px 26px 30px">
+
+          <div style="flex:1 1 420px;min-width:0;display:flex;flex-direction:column;gap:16px">
+            <div style="min-width:0;background:{{c.bgSurface}};border:1px solid {{c.border}};border-radius:11px;overflow:hidden;box-shadow:{{c.cardShadow}}">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 17px;border-bottom:1px solid {{c.border}}">
+                <span style="font-size:12.5px;font-weight:600">{{ detail.linkedTitle }}</span>
+                <span style="font-size:11.5px;color:{{c.accent}};font-weight:500;cursor:pointer">Tout voir</span>
+              </div>
+              <sc-for list="{{ detail.linked }}" as="l" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:11px;padding:11px 17px;border-bottom:1px solid {{c.border}};cursor:pointer" style-hover="background:{{c.neutralTint}}">
+                  <span style="width:28px;height:28px;border-radius:8px;background:{{c.neutralTint}};color:{{c.textSecondary}};display:flex;align-items:center;justify-content:center;flex:none">
+                    <span class="ms" style="font-size:16px">{{ l.icon }}</span>
+                  </span>
+                  <div style="flex:1;min-width:0">
+                    <div style="font-size:12.5px;font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ l.title }}</div>
+                    <div style="font-size:11px;color:{{c.textTertiary}};margin-top:1px">{{ l.meta }}</div>
+                  </div>
+                  <span style="font-size:11.5px;font-weight:550;color:{{ l.statusColor }};background:{{ l.statusTint }};border-radius:5px;padding:3px 8px;flex:none">{{ l.status }}</span>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="min-width:0;background:{{c.bgSurface}};border:1px solid {{c.border}};border-radius:11px;overflow:hidden;box-shadow:{{c.cardShadow}}">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 17px;border-bottom:1px solid {{c.border}}">
+                <span style="font-size:12.5px;font-weight:600">Activité</span>
+                <span style="display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:500;color:{{c.accent}};cursor:pointer">
+                  <span class="ms" style="font-size:15px">add</span>Ajouter une note
+                </span>
+              </div>
+              <div style="padding:15px 17px 6px">
+                <sc-for list="{{ detail.timeline }}" as="t" hint-placeholder-count="4">
+                  <div style="display:flex;gap:12px;align-items:flex-start;padding-bottom:14px">
+                    <span style="width:8px;height:8px;border-radius:50%;background:{{ t.color }};margin-top:5px;flex:none;box-shadow:0 0 0 3px {{ t.halo }}"></span>
+                    <div style="flex:1;min-width:0">
+                      <div style="font-size:12.5px;font-weight:550">{{ t.title }}</div>
+                      <div style="font-size:11.5px;color:{{c.textTertiary}};margin-top:2px;line-height:1.5">{{ t.detail }}</div>
+                    </div>
+                    <span style="font-size:11.5px;color:{{c.textTertiary}};flex:none;font-variant-numeric:tabular-nums">{{ t.date }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+
+          <div style="flex:1 1 280px;min-width:0;max-width:360px;background:{{c.bgSurface}};border:1px solid {{c.border}};border-radius:11px;overflow:hidden;box-shadow:{{c.cardShadow}}">
+            <div style="padding:13px 17px;border-bottom:1px solid {{c.border}};font-size:12.5px;font-weight:600">Informations</div>
+            <div style="padding:4px 17px 12px">
+              <sc-for list="{{ detail.fields }}" as="f" hint-placeholder-count="5">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:9px 0;border-bottom:1px solid {{c.border}}">
+                  <span style="font-size:12px;color:{{c.textTertiary}};flex:none">{{ f.label }}</span>
+                  <span style="font-size:12.5px;font-weight:500;color:{{ f.color }};text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1">{{ f.value }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1600,&quot;height&quot;:940},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'light'|'dark'&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;]}}">
+class Component extends DCLogic {
+  state = { theme: undefined, screen: 'companies' };
+
+  renderVals() {
+    const theme = this.state.theme ?? this.props.theme ?? 'light';
+    const dark = theme === 'dark';
+    const screen = this.state.screen;
+
+    const c = dark ? {
+      bgPage: 'oklch(0.165 0.012 258)', bgSurface: 'oklch(0.205 0.014 258)', bgSidebar: 'oklch(0.185 0.013 258)',
+      border: 'oklch(0.295 0.014 258)', borderStrong: 'oklch(0.38 0.016 258)',
+      textPrimary: 'oklch(0.955 0.006 258)', textSecondary: 'oklch(0.73 0.01 258)', textTertiary: 'oklch(0.575 0.012 258)',
+      accent: 'oklch(0.7 0.15 262)', accentTint: 'oklch(0.29 0.06 262)', accentBorder: 'oklch(0.42 0.09 262)',
+      success: 'oklch(0.73 0.13 155)', successTint: 'oklch(0.29 0.06 155)',
+      warning: 'oklch(0.79 0.13 85)', warningTint: 'oklch(0.31 0.06 85)',
+      danger: 'oklch(0.7 0.16 25)', dangerTint: 'oklch(0.31 0.06 25)',
+      neutralTint: 'oklch(0.245 0.014 258)',
+      cardShadow: '0 1px 2px rgba(0,0,0,.4)', accentShadow: '0 1px 2px rgba(0,0,0,.4)'
+    } : {
+      bgPage: 'oklch(0.975 0.004 258)', bgSurface: 'oklch(1 0 0)', bgSidebar: 'oklch(0.985 0.004 258)',
+      border: 'oklch(0.905 0.007 258)', borderStrong: 'oklch(0.83 0.009 258)',
+      textPrimary: 'oklch(0.215 0.015 258)', textSecondary: 'oklch(0.475 0.013 258)', textTertiary: 'oklch(0.615 0.011 258)',
+      accent: 'oklch(0.5 0.17 262)', accentTint: 'oklch(0.945 0.03 262)', accentBorder: 'oklch(0.83 0.07 262)',
+      success: 'oklch(0.56 0.13 155)', successTint: 'oklch(0.945 0.045 155)',
+      warning: 'oklch(0.65 0.14 85)', warningTint: 'oklch(0.95 0.05 85)',
+      danger: 'oklch(0.55 0.18 25)', dangerTint: 'oklch(0.95 0.045 25)',
+      neutralTint: 'oklch(0.958 0.006 258)',
+      cardShadow: '0 1px 2px rgba(20,26,45,.06)', accentShadow: '0 1px 2px rgba(41,87,216,.35)'
+    };
+
+    const navRaw = [
+      { label: 'Accueil', icon: 'space_dashboard' }, { label: 'Suivi', icon: 'work' },
+      { label: 'Relations', icon: 'hub' }, { label: 'Documents', icon: 'description' },
+      { label: 'Analyses', icon: 'monitoring' }, { label: 'Profil', icon: 'account_circle' },
+      { label: 'Réglages', icon: 'tune' }
+    ];
+    const navItems = navRaw.map((n, i) => ({
+      label: n.label, icon: n.icon,
+      bg: i === 2 ? c.accentTint : 'transparent',
+      color: i === 2 ? c.accent : c.textTertiary
+    }));
+
+    const tabDefs = [
+      { key: 'companies', label: 'Entreprises', icon: 'apartment' },
+      { key: 'network', label: 'Réseau', icon: 'hub' }
+    ];
+    const tabs = tabDefs.map(t => ({
+      label: t.label, icon: t.icon,
+      bg: screen === t.key ? c.accentTint : 'transparent',
+      color: screen === t.key ? c.accent : c.textSecondary,
+      onClick: () => this.setState({ screen: t.key })
+    }));
+
+    const initials = n => n.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+    const sel = (isSel, round) => ({
+      bg: isSel ? c.accentTint : 'transparent',
+      borderColor: isSel ? c.accentBorder : 'transparent',
+      tileBg: isSel ? c.accent : c.neutralTint,
+      tileColor: isSel ? '#fff' : c.textSecondary
+    });
+
+    const companies = [
+      { name: 'Nova Digital', sector: 'Éditeur logiciel', city: 'Rennes', applications: 2, selected: true },
+      { name: 'Atlas Studio', sector: 'Agence produit', city: 'Nantes', applications: 1 },
+      { name: 'Kelvin Systems', sector: 'Infrastructure', city: 'Remote', applications: 1 },
+      { name: 'Meridian Group', sector: 'ESN', city: 'Paris', applications: 3 },
+      { name: 'Orion Software', sector: 'Éditeur logiciel', city: 'Rennes', applications: 1 },
+      { name: 'Vertex Labs', sector: 'R&D mobile', city: 'Remote', applications: 1 },
+      { name: 'Solstice Analytics', sector: 'Data', city: 'Lyon', applications: 1 }
+    ].map(co => ({ ...co, initials: initials(co.name), ...sel(co.selected) }));
+
+    const contactTag = t => t === 'Recruteur'
+      ? { color: c.accent, tint: c.accentTint, icon: 'badge' }
+      : t === 'Manager'
+        ? { color: c.success, tint: c.successTint, icon: 'star' }
+        : { color: c.textSecondary, tint: c.neutralTint, icon: 'person' };
+
+    const contacts = [
+      { name: 'Camille Rivet', role: 'Lead Frontend', company: 'Nova Digital', tag: 'Manager', selected: true },
+      { name: 'Julien Marchand', role: 'Talent Acquisition', company: 'Nova Digital', tag: 'Recruteur' },
+      { name: 'Sofia Lemaire', role: 'Head of Product', company: 'Atlas Studio', tag: 'Manager' },
+      { name: 'Thomas Andrieu', role: 'CTO', company: 'Kelvin Systems', tag: 'Contact' },
+      { name: 'Inès Fabre', role: 'Recruteuse', company: 'Meridian Group', tag: 'Recruteur' },
+      { name: 'Marc Delaunay', role: 'Développeur', company: 'Vertex Labs', tag: 'Contact' }
+    ].map(ct => {
+      const t = contactTag(ct.tag);
+      return { ...ct, initials: initials(ct.name), ...sel(ct.selected), tagColor: t.color, tagTint: t.tint, tagIcon: t.icon };
+    });
+
+    const statusTone = s => s === 'Entretien'
+      ? { color: c.success, tint: c.successTint }
+      : s === 'Relancée'
+        ? { color: c.warning, tint: c.warningTint }
+        : s === 'Refusée'
+          ? { color: c.danger, tint: c.dangerTint }
+          : { color: c.textSecondary, tint: c.neutralTint };
+
+    const companyDetail = {
+      initials: 'ND', avatarRadius: '14px', name: 'Nova Digital',
+      badge: '2 candidatures', badgeIcon: 'work',
+      subtitle: 'Éditeur logiciel · Rennes · 45 collaborateurs',
+      actions: [
+        { label: 'Site web', icon: 'open_in_new' }, { label: 'Modifier', icon: 'edit' }, { label: 'Supprimer', icon: 'delete' }
+      ],
+      stats: [
+        { label: 'Candidatures', value: '2', icon: 'work', color: c.accent },
+        { label: 'Contacts', value: '2', icon: 'group', color: c.textSecondary },
+        { label: 'Entretiens', value: '1', icon: 'event_available', color: c.success }
+      ],
+      fields: [
+        { label: 'Secteur', value: 'Éditeur logiciel', color: c.textPrimary },
+        { label: 'Type', value: 'PME', color: c.textPrimary },
+        { label: 'Ville', value: 'Rennes, France', color: c.textPrimary },
+        { label: 'Site web', value: 'novadigital.fr', color: c.accent },
+        { label: 'Ajoutée le', value: '02 août 2026', color: c.textPrimary }
+      ],
+      linkedTitle: 'Candidatures liées',
+      linked: [
+        { title: 'Développeur Frontend', meta: 'CDI · envoyée le 02 août', status: 'Entretien', icon: 'work' },
+        { title: 'Développeur Fullstack', meta: 'CDI · envoyée le 28 juillet', status: 'Refusée', icon: 'work' }
+      ].map(l => ({ ...l, statusColor: statusTone(l.status).color, statusTint: statusTone(l.status).tint })),
+      timeline: [
+        { title: 'Entretien planifié', detail: 'Visio 45 min avec Camille Rivet', date: '25 août', color: c.success, halo: c.successTint },
+        { title: 'Réponse reçue', detail: 'Invitation à un premier échange', date: '20 août', color: c.accent, halo: c.accentTint },
+        { title: 'Relance envoyée', detail: 'Email de suivi, ton formel', date: '14 août', color: c.warning, halo: c.warningTint },
+        { title: 'Candidature envoyée', detail: 'CV ciblé + lettre générée par IA', date: '02 août', color: c.textTertiary, halo: 'transparent' }
+      ]
+    };
+
+    const contactDetail = {
+      initials: 'CR', avatarRadius: '50%', name: 'Camille Rivet',
+      badge: 'Manager', badgeIcon: 'star',
+      subtitle: 'Lead Frontend · Nova Digital · Rennes',
+      actions: [
+        { label: 'Email', icon: 'mail' }, { label: 'LinkedIn', icon: 'open_in_new' }, { label: 'Modifier', icon: 'edit' }
+      ],
+      stats: [
+        { label: 'Échanges', value: '4', icon: 'forum', color: c.accent },
+        { label: 'Entretiens', value: '1', icon: 'event_available', color: c.success },
+        { label: 'Dernier contact', value: '20 août', icon: 'history', color: c.textSecondary }
+      ],
+      fields: [
+        { label: 'Entreprise', value: 'Nova Digital', color: c.accent },
+        { label: 'Poste', value: 'Lead Frontend', color: c.textPrimary },
+        { label: 'E-mail', value: 'camille.rivet@novadigital.fr', color: c.textPrimary },
+        { label: 'Téléphone', value: '02 99 14 88 05', color: c.textPrimary },
+        { label: 'LinkedIn', value: 'in/camillerivet', color: c.accent }
+      ],
+      linkedTitle: 'Candidatures liées',
+      linked: [
+        { title: 'Développeur Frontend', meta: 'Nova Digital · CDI', status: 'Entretien', icon: 'work' },
+        { title: 'Entretien technique', meta: '25 août · visio 45 min', status: 'Planifié', icon: 'event' }
+      ].map(l => ({ ...l, statusColor: statusTone(l.status).color, statusTint: statusTone(l.status).tint })),
+      timeline: [
+        { title: 'Échange téléphonique', detail: 'Présentation de l’équipe et du produit', date: '20 août', color: c.accent, halo: c.accentTint },
+        { title: 'Réponse à la relance', detail: 'Retour positif sous 48 h', date: '16 août', color: c.success, halo: c.successTint },
+        { title: 'Relance envoyée', detail: 'Email de suivi après candidature', date: '14 août', color: c.warning, halo: c.warningTint },
+        { title: 'Contact ajouté', detail: 'Identifié via LinkedIn', date: '02 août', color: c.textTertiary, halo: 'transparent' }
+      ]
+    };
+
+    const isCompanies = screen === 'companies';
+
+    const pager = (page, pageSize, total, label) => {
+      const pageCount = Math.max(1, Math.ceil(total / pageSize));
+      const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
+      const to = Math.min(page * pageSize, total);
+      const hasPrev = page > 1, hasNext = page < pageCount;
+      const pages = [];
+      for (let i = 1; i <= Math.min(pageCount, 3); i++) pages.push({
+        label: String(i),
+        bg: i === page ? c.accent : c.bgSurface,
+        color: i === page ? '#fff' : c.textSecondary,
+        borderColor: i === page ? c.accent : c.border
+      });
+      if (pageCount > 3) pages.push({ label: '…', bg: 'transparent', color: c.textTertiary, borderColor: 'transparent' });
+      return {
+        pageLabel: from + '–' + to + ' sur ' + total + ' ' + label,
+        pages,
+        prevBg: hasPrev ? c.bgSurface : c.neutralTint,
+        prevColor: hasPrev ? c.textSecondary : c.textTertiary,
+        prevCursor: hasPrev ? 'pointer' : 'not-allowed',
+        nextBg: hasNext ? c.bgSurface : c.neutralTint,
+        nextColor: hasNext ? c.accent : c.textTertiary,
+        nextCursor: hasNext ? 'pointer' : 'not-allowed'
+      };
+    };
+
+    return {
+      c, navItems, tabs, companies, contacts,
+      listPager: isCompanies ? pager(1, 7, 24, 'entreprises') : pager(1, 6, 18, 'contacts'),
+      isCompanies, isNetwork: !isCompanies,
+      head: isCompanies
+        ? { icon: 'apartment', title: 'Entreprises', subtitle: 'Répertoire des sociétés suivies', primary: 'Nouvelle entreprise' }
+        : { icon: 'hub', title: 'Réseau', subtitle: 'Vos contacts professionnels', primary: 'Nouveau contact' },
+      searchPlaceholder: isCompanies ? 'Rechercher une entreprise…' : 'Rechercher un contact…',
+      listTitle: isCompanies ? 'Répertoire' : 'Votre réseau',
+      listCount: isCompanies ? '7 entreprises · 10 candidatures' : '6 contacts · 3 entreprises',
+      detail: isCompanies ? companyDetail : contactDetail,
+      themeLabel: dark ? 'Sombre' : 'Clair',
+      themeIcon: dark ? 'dark_mode' : 'light_mode',
+      toggleTheme: () => this.setState(s => ({ theme: (s.theme ?? theme) === 'dark' ? 'light' : 'dark' }))
+    };
+  }
+}
+
+</script>
+</body>
+</html>
