@@ -7,7 +7,7 @@ WEBSITE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 OUTPUT="$WEBSITE_ROOT/app/opengraph-image.png"
 LOGO="$WEBSITE_ROOT/public/brand/candilog.png"
 SCREENSHOT="$WEBSITE_ROOT/public/screenshots/dashboard.webp"
-DISPLAY_FONT="Cantarell-Extra-Bold"
+DISPLAY_FONT="$WEBSITE_ROOT/public/fonts/geist-variable.ttf"
 BODY_FONT="$WEBSITE_ROOT/public/fonts/geist-variable.ttf"
 
 command -v magick >/dev/null || {
@@ -16,29 +16,22 @@ command -v magick >/dev/null || {
 }
 
 magick \
-  -size 1200x630 xc:'#f8f5ee' \
-  -fill '#df9e47' -draw 'rectangle 0,0 1200,10' \
-  -fill '#e7e1d6' -draw 'circle 1110,74 1160,74' \
-  -fill '#efe9de' -draw 'circle 1150,128 1190,128' \
-  -fill 'rgba(47,38,24,0.12)' -draw 'roundrectangle 560,150 1228,552 16,16' \
-  -fill '#fffdf7' -stroke '#b9b1a4' -strokewidth 2 -draw 'roundrectangle 548,138 1216,540 16,16' \
-  -fill '#ebe7df' -stroke none -draw 'roundrectangle 550,140 1214,182 14,14' \
-  -fill '#ebe7df' -draw 'rectangle 550,166 1214,182' \
-  -fill '#ca7a2f' -draw 'circle 572,161 577,161' \
-  -fill '#aaa297' -draw 'circle 588,161 593,161' \
-  -fill '#aaa297' -draw 'circle 604,161 609,161' \
-  -font "$BODY_FONT" -pointsize 15 -fill '#66706b' -gravity northwest -annotate +845+151 'Candilog' \
-  \( "$SCREENSHOT" -resize '640x343!' \) -gravity northwest -geometry +574+182 -composite \
-  \( "$LOGO" -resize '48x48!' \) -gravity northwest -geometry +68+44 -composite \
-  -font "$DISPLAY_FONT" -pointsize 27 -weight 700 -fill '#17201d' -gravity northwest -annotate +128+52 'Candilog' \
-  -font "$BODY_FONT" -pointsize 15 -weight 700 -fill '#ca7a2f' -gravity northwest -annotate +70+147 'SUIVI DE CANDIDATURES  +  IA' \
-  -font "$DISPLAY_FONT" -pointsize 50 -weight 800 -fill '#17201d' -interline-spacing -7 -gravity northwest -annotate +68+188 $'Votre recherche\nd’emploi.\nEnfin au même\nendroit.' \
-  -font "$BODY_FONT" -pointsize 20 -weight 400 -fill '#5d6863' -interline-spacing 4 -gravity northwest -annotate +70+408 $'Candidatures, CV, lettres et entretiens\nréunis dans une application claire.' \
-  -fill '#df9e47' -stroke none -draw 'roundrectangle 70,500 462,544 7,7' \
-  -font "$BODY_FONT" -pointsize 15 -weight 700 -fill '#21170b' -gravity northwest -annotate +90+512 'Windows  ·  macOS  ·  Ubuntu  ·  Fedora' \
-  -fill '#cfc8bc' -draw 'rectangle 70,584 1130,585' \
-  -font "$BODY_FONT" -pointsize 13 -weight 600 -fill '#66706b' -gravity northwest -annotate +70+596 'CANDILOG' \
-  -font "$BODY_FONT" -pointsize 13 -weight 400 -fill '#7a827d' -gravity northwest -annotate +974+596 'Alexandre Bouttier' \
+  -size 1200x630 xc:'#101114' \
+  -fill '#315fc9' -stroke none -draw 'rectangle 0,0 10,630' \
+  \( "$LOGO" -resize '42x42!' \) -gravity northwest -geometry +62+48 -composite \
+  -stroke none \
+  -font "$DISPLAY_FONT" -pointsize 25 -weight 680 -fill '#f1f2f4' -gravity northwest -annotate +120+55 'Candilog' \
+  -font "$BODY_FONT" -pointsize 13 -weight 620 -fill '#7ba2ff' -kerning 2.2 -gravity northwest -annotate +64+148 'APPLICATION DE BUREAU' \
+  -font "$DISPLAY_FONT" -pointsize 58 -weight 690 -fill '#f1f2f4' -interline-spacing -7 -gravity northwest -annotate +60+188 $'Votre recherche.\nUn seul espace.' \
+  -font "$BODY_FONT" -pointsize 20 -weight 400 -fill '#a8acb4' -interline-spacing 5 -gravity northwest -annotate +64+340 $'Offres, contacts et documents.\nRendez-vous, dans un dossier privé.' \
+  -fill '#315fc9' -draw 'roundrectangle 64,452 257,498 23,23' \
+  -font "$BODY_FONT" -pointsize 15 -weight 650 -fill '#ffffff' -gravity northwest -annotate +92+465 'Installer Candilog' \
+  -fill '#2b2e34' -draw 'rectangle 64,570 1138,571' \
+  -font "$BODY_FONT" -pointsize 13 -weight 520 -fill '#8e929b' -gravity northwest -annotate +64+584 'WINDOWS  ·  macOS  ·  LINUX' \
+  -fill '#1b1d22' -stroke '#343841' -strokewidth 2 -draw 'roundrectangle 548,126 1248,608 18,18' \
+  \( "$SCREENSHOT" -resize '820x461!' \) -gravity northwest -geometry +566+145 -composite \
+  -fill '#7ba2ff' -stroke none -draw 'circle 1120,64 1126,64' \
+  -font "$BODY_FONT" -pointsize 12 -weight 550 -fill '#a8acb4' -gravity northwest -annotate +957+57 'DONNÉES LOCALES' \
   -strip "$OUTPUT"
 
 echo "$OUTPUT"

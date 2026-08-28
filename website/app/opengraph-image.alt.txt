@@ -1,1 +1,1 @@
-Candilog — suivi de candidatures, documents, entretiens et intelligence artificielle
+Candilog, l’application de bureau qui réunit offres, contacts, documents et rendez-vous dans un dossier privé.

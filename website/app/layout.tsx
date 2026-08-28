@@ -7,11 +7,11 @@ const googleVerification = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION;
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "Candilog — Votre recherche d'emploi, enfin maîtrisée",
-    template: "%s — Candilog",
+    default: "Candilog - Votre recherche d'emploi au même endroit",
+    template: "%s - Candilog",
   },
   description:
-    "Réunissez vos candidatures, CV, lettres, contacts et entretiens dans une application claire, avec une IA utile quand vous en avez besoin.",
+    "Candilog rassemble candidatures, contacts, rendez-vous et documents dans une application de bureau privée pour Windows, macOS et Linux.",
   applicationName: "Candilog",
   category: "productivity",
   alternates: {
@@ -52,29 +52,29 @@ export const metadata: Metadata = {
     url: "/",
     locale: "fr_FR",
     siteName: "Candilog",
-    title: "Candilog — Votre recherche d'emploi au même endroit",
+    title: "Candilog - Votre recherche d'emploi au même endroit",
     description:
-      "Suivez vos candidatures, adaptez vos documents et préparez vos entretiens sans disperser vos informations.",
+      "Offres, contacts, documents et rendez-vous réunis dans une application privée sur votre ordinateur.",
     images: [
       {
         url: "/opengraph-image.png",
         width: 1200,
         height: 630,
-        alt: "Candilog — votre recherche d’emploi au même endroit",
+        alt: "Candilog, l’application de bureau pour organiser une recherche d’emploi",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Candilog — Votre recherche d'emploi, enfin maîtrisée",
+    title: "Candilog - Votre recherche d'emploi au même endroit",
     description:
-      "Suivi de candidatures, CV adaptés, lettres et préparation des entretiens dans une seule application.",
+      "Offres, contacts, documents et rendez-vous réunis dans une application privée sur votre ordinateur.",
     images: [
       {
         url: "/opengraph-image.png",
         width: 1200,
         height: 630,
-        alt: "Candilog — votre recherche d’emploi au même endroit",
+        alt: "Candilog, l’application de bureau pour organiser une recherche d’emploi",
       },
     ],
   },
@@ -85,8 +85,11 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#fffdf7",
-  colorScheme: "light",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#eef0f2" },
+    { media: "(prefers-color-scheme: dark)", color: "#101114" },
+  ],
+  colorScheme: "light dark",
   width: "device-width",
   initialScale: 1,
 };

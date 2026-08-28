@@ -10,19 +10,19 @@ type Platform = "windows" | "macos" | "linux" | "unknown";
 
 const platformDownloads = {
   windows: {
-    label: "Télécharger pour Windows",
+    label: "Installer Candilog",
     href: `${RELEASE_BASE}/candilog-windows-latest.exe`,
   },
   macos: {
-    label: "Télécharger pour macOS",
+    label: "Installer Candilog",
     href: `${RELEASE_BASE}/candilog-macos-latest.dmg`,
   },
   linux: {
-    label: "Télécharger pour Linux",
+    label: "Installer Candilog",
     href: `${RELEASE_BASE}/candilog-ubuntu-latest.AppImage`,
   },
   unknown: {
-    label: "Télécharger Candilog",
+    label: "Installer Candilog",
     href: "#telecharger",
   },
 } satisfies Record<Platform, { label: string; href: string }>;
