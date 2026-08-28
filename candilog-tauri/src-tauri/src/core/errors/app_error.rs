@@ -128,6 +128,18 @@ impl From<serde_json::Error> for AppError {
     }
 }
 
+impl From<reqwest::Error> for AppError {
+    fn from(error: reqwest::Error) -> Self {
+        if error.is_timeout() {
+            Self::Http("le fournisseur IA met trop de temps à répondre".into())
+        } else if error.is_connect() {
+            Self::Http("le fournisseur IA est injoignable".into())
+        } else {
+            Self::Http(error.to_string())
+        }
+    }
+}
+
 #[cfg(test)]
 #[path = "tests/app_error/mod.rs"]
 mod tests;

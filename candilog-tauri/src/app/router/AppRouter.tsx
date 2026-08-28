@@ -10,6 +10,7 @@ import { EntreprisesPage } from "@/features/entreprises";
 import { ReseauPage } from "@/features/contacts";
 import { AnalysesPage, DashboardPage } from "@/features/analyses";
 import { ProfilPage } from "@/features/profil";
+import { CvAnalysisPage, CvGeneratorPage, CvLibraryPage, LettersLibraryPage, LetterWriterPage } from "@/features/documents";
 
 /**
  * Écrans réellement migrés, indexés par chemin.
@@ -26,6 +27,11 @@ const PAGES: Record<string, React.ReactElement> = {
   "/relations/entreprises": <EntreprisesPage />,
   "/relations/reseau": <ReseauPage />,
   "/profil": <ProfilPage />,
+  "/documents/cv": <CvLibraryPage />,
+  "/documents/generer-cv": <CvGeneratorPage />,
+  "/documents/lettres": <LettersLibraryPage />,
+  "/documents/rediger-lettre": <LetterWriterPage />,
+  "/documents/analyser": <CvAnalysisPage />,
 };
 
 const screenRoutes: RouteObject[] = SECTIONS.flatMap((section) =>

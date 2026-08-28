@@ -5,8 +5,10 @@
 pub mod analyses;
 pub mod candidatures;
 pub mod contacts;
+pub mod documents;
 pub mod entreprises;
 pub mod entretiens;
+pub mod ia;
 pub mod profil;
 pub mod relances;
 pub mod secteurs;

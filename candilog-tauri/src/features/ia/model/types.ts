@@ -1,0 +1,18 @@
+export type {
+  AnalyseAts,
+  AnalyseCvImporte,
+  AnalyseOffre,
+  CvGenere,
+  DemandeAnalyseCv,
+  DemandeGenerationCv,
+  DemandeImportProfil,
+  DemandeLettre,
+  ExperienceGeneree,
+  FormationGeneree,
+  GenerationCv,
+  OffreStructuree,
+  ProfilExtrait,
+  ProgressionIa,
+  RecommandationAts,
+  ScoreCorrespondance,
+} from "@/shared/types/generated/ia";

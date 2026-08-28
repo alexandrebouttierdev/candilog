@@ -5,6 +5,7 @@ import type { Profil } from "@/shared/types/generated/profil";
 import { Button, EmptyState, ErrorBanner, Icon, PageHeader } from "@/shared/ui";
 import { useProfilViewModel } from "../../viewmodel/useProfilViewModel";
 import { ProfilSectionModal, type ProfilSection } from "../components/ProfilSectionModal";
+import { ProfilImportModal } from "../components/ProfilImportModal";
 import {
   CompletionRing,
   ProfileIdentity,
@@ -21,6 +22,7 @@ export function ProfilPage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState<ProfilTab>("experiences");
   const [section, setSection] = useState<ProfilSection | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   return (
     <div className="flex h-full flex-col">
@@ -28,7 +30,7 @@ export function ProfilPage() {
         icon="account_circle"
         title="Profil et objectif"
         subtitle="Votre parcours, prêt à alimenter vos candidatures"
-        secondary={<Button variant="secondary" icon="description" onClick={() => void navigate("/documents/cv")}>Aperçu CV</Button>}
+        secondary={<div className="flex gap-2"><Button variant="secondary" icon="upload_file" onClick={() => setImportOpen(true)}>Importer un CV</Button><Button variant="secondary" icon="description" onClick={() => void navigate("/documents/cv")}>Mes CV</Button></div>}
         primary={<Button variant="primary" icon="edit" disabled={!vm.data} onClick={() => setSection("identite")}>Modifier le profil</Button>}
       />
 
@@ -125,6 +127,7 @@ export function ProfilPage() {
       </div>
 
       {vm.data && section ? <ProfilSectionModal key={section} section={section} profil={vm.data.profil} busy={vm.isSaving} onClose={() => setSection(null)} onSubmit={vm.enregistrer} /> : null}
+      {vm.data ? <ProfilImportModal open={importOpen} profil={vm.data.profil} busy={vm.isSaving} onClose={() => setImportOpen(false)} onSubmit={vm.enregistrer} /> : null}
     </div>
   );
 }

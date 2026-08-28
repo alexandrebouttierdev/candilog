@@ -557,3 +557,58 @@ finaux.
 ### Reste à faire avant T7
 
 Rien. T7 migre les CV, lettres, génération de documents et fonctions IA associées.
+
+---
+
+## T7 — Documents et IA · terminée le 2026-08-28
+
+### Backend
+
+Les bibliothèques de CV et de lettres relisent les tables historiques `cv_versions` et
+`lettres_motivation` (colonnes anglaises `name` / `content` / `company`…) et exposent des
+DTO français en camelCase. Le JSON d'une version de CV reste opaque côté persistance : une
+ancienne entrée Iced s'ouvre, même si son aperçu structuré n'est pas encore reconstruisible.
+
+Cinq workflows IA sont branchés, corrélés par identifiant, annulables, et émettent
+l'événement Tauri `ia-progression` sans polling : analyse d'offre, génération de CV,
+rédaction de lettre (fragments successifs), analyse d'un PDF local, extraction de profil.
+La lecture PDF est bornée (extension, magique `%PDF-`, 10 Mo) et s'exécute en local ; le
+texte est ensuite envoyé uniquement au fournisseur configuré dans `parametres`.
+
+La configuration LLM historique est lue sans réécriture. Une base neuve ou un JSON `{}`
+retombe sur Ollama local. Un endpoint distant doit être en HTTPS et ne peut pas cibler une
+IP privée. Les opérations longues libèrent leur jeton d'annulation y compris en cas d'erreur.
+
+### Frontend
+
+Cinq écrans Documents reprennent la navigation des maquettes : Mes CV, Générer un CV,
+Mes lettres, Lettre de motivation, Analyser. L'aperçu A4 est un document papier (fond
+blanc) distinct du thème de l'application. L'annulation coupe réellement le workflow côté
+Rust. L'import de CV, reporté depuis T6, s'ouvre depuis le profil : l'IA prépare les
+données, l'utilisateur confirme la fusion, les doublons exacts sont ignorés.
+
+### Vérifié
+
+```
+cargo fmt --check                         ok
+cargo clippy --all-targets -D warnings   ok
+cargo test                                197 passed (+32)
+npm run build / lint                      ok
+npm test                                  132 passed (+4)
+```
+
+### Écarts assumés
+
+- L'export PDF du CV généré (`printpdf`, présent dans l'application Iced) n'est pas porté :
+  l'aperçu A4 et l'enregistrement en bibliothèque locale couvrent le parcours Documents ;
+  l'export fichier est reporté à T9 avec les autres finitions.
+- L'analyse IA d'un compte-rendu d'entretien n'appartient pas à cette tranche.
+- La revue a été faite par les tests et la compilation, pas dans la fenêtre Tauri native
+  ni via un pont navigateur : cette session n'avait pas d'outils de contrôle visuel interactif.
+- Le bundle JavaScript principal atteint environ 588 ko minifié. La découpe par route reste
+  planifiée pour T9.
+
+### Reste à faire avant T8
+
+Rien. T8 migre les réglages (fournisseur IA, sauvegardes, mises à jour, à propos).
+

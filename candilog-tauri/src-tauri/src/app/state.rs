@@ -9,10 +9,13 @@ use crate::features::candidatures::application::CandidatureService;
 use crate::features::candidatures::infrastructure::SqliteCandidatureRepository;
 use crate::features::contacts::application::ContactService;
 use crate::features::contacts::infrastructure::SqliteContactRepository;
+use crate::features::documents::application::DocumentsService;
+use crate::features::documents::infrastructure::{SqliteCvRepository, SqliteLettreRepository};
 use crate::features::entreprises::application::EntrepriseService;
 use crate::features::entreprises::infrastructure::SqliteEntrepriseRepository;
 use crate::features::entretiens::application::EntretienService;
 use crate::features::entretiens::infrastructure::SqliteEntretienRepository;
+use crate::features::ia::application::IaService;
 use crate::features::profil::application::ProfilService;
 use crate::features::profil::infrastructure::SqliteProfilRepository;
 use crate::features::relances::application::RelanceService;
@@ -30,8 +33,12 @@ pub type Analyses = Arc<AnalysesService<SqliteAnalysesRepository>>;
 pub type Entreprises = Arc<EntrepriseService<SqliteEntrepriseRepository>>;
 /// Service des contacts tel que partagé par les commandes.
 pub type Contacts = Arc<ContactService<SqliteContactRepository>>;
+/// Service des bibliothèques de CV et lettres.
+pub type Documents = Arc<DocumentsService<SqliteCvRepository, SqliteLettreRepository>>;
 /// Service des entretiens tel que partagé par les commandes.
 pub type Entretiens = Arc<EntretienService<SqliteEntretienRepository>>;
+/// Orchestrateur des traitements IA et de leur annulation.
+pub type Ia = Arc<IaService>;
 /// Service du profil professionnel.
 pub type Profil = Arc<ProfilService<SqliteProfilRepository>>;
 /// Service des relances tel que partagé par les commandes.
@@ -59,8 +66,12 @@ pub struct AppState {
     pub entreprises: Entreprises,
     /// Service des contacts du réseau.
     pub contacts: Contacts,
+    /// Bibliothèques locales de CV et lettres.
+    pub documents: Documents,
     /// Service des entretiens.
     pub entretiens: Entretiens,
+    /// Analyse et génération de documents.
+    pub ia: Ia,
     /// Service du profil professionnel.
     pub profil: Profil,
     /// Service des relances.
@@ -120,9 +131,14 @@ impl AppState {
             contacts: Arc::new(ContactService::new(SqliteContactRepository::new(
                 pool.clone(),
             ))),
+            documents: Arc::new(DocumentsService::new(
+                SqliteCvRepository::new(pool.clone()),
+                SqliteLettreRepository::new(pool.clone()),
+            )),
             entretiens: Arc::new(EntretienService::new(SqliteEntretienRepository::new(
                 pool.clone(),
             ))),
+            ia: Arc::new(IaService::new(pool.clone())),
             profil: Arc::new(ProfilService::new(SqliteProfilRepository::new(
                 pool.clone(),
             ))),

@@ -4,8 +4,10 @@ use crate::app::state::AppState;
 use crate::features::analyses::presentation::commands as analyses;
 use crate::features::candidatures::presentation::commands as candidatures;
 use crate::features::contacts::presentation::commands as contacts;
+use crate::features::documents::presentation::commands as documents;
 use crate::features::entreprises::presentation::commands as entreprises;
 use crate::features::entretiens::presentation::commands as entretiens;
+use crate::features::ia::presentation::commands as ia;
 use crate::features::profil::presentation::commands as profil;
 use crate::features::relances::presentation::commands as relances;
 use crate::features::secteurs::presentation::commands as secteurs;
@@ -59,10 +61,24 @@ pub fn run() {
             contacts::contacts_creer,
             contacts::contacts_modifier,
             contacts::contacts_supprimer,
+            documents::documents_cv_lister,
+            documents::documents_cv_obtenir,
+            documents::documents_cv_enregistrer,
+            documents::documents_cv_supprimer,
+            documents::documents_lettres_lister,
+            documents::documents_lettre_obtenir,
+            documents::documents_lettre_enregistrer,
+            documents::documents_lettre_supprimer,
             entretiens::entretiens_lister_entre,
             entretiens::entretiens_obtenir,
             entretiens::entretiens_enregistrer,
             entretiens::entretiens_supprimer,
+            ia::ia_analyser_offre,
+            ia::ia_generer_cv,
+            ia::ia_generer_lettre,
+            ia::ia_analyser_cv,
+            ia::ia_importer_profil,
+            ia::ia_annuler,
             profil::profil_charger,
             profil::profil_enregistrer,
             relances::relances_lister_entre,
