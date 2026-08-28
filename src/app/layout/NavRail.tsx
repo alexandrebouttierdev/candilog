@@ -9,7 +9,7 @@ import logoCandilog from "@/assets/logo-candilog.png";
 /**
  * Rail de navigation de premier niveau.
  *
- * Géométrie des maquettes : 86 px de large, marque en 28 px, tuiles de 10 px de rayon
+ * Géométrie des maquettes : 86 px de large, marque en 40 px, tuiles de 10 px de rayon
  * espacées de 3 px dans une gouttière de 9 px, basculeur de thème collé en bas. Sous
  * 1200 px la largeur tombe à 72 px (guide SPECDESIGN, section 7) mais les libellés
  * restent : ils tiennent, et un rail d'icônes muettes est illisible.
@@ -31,7 +31,7 @@ export function NavRail() {
       aria-label="Navigation principale"
       className="flex w-[72px] flex-none flex-col items-center overflow-hidden border-r border-line bg-surface-alt pt-[18px] pb-3.5 min-[1200px]:w-[86px]"
     >
-      <img src={logoCandilog} alt="Candilog" width={28} height={28} className="mb-4 size-7" />
+      <img src={logoCandilog} alt="Candilog" width={40} height={40} className="mb-4 size-10" />
       <div className="flex min-h-0 flex-1 flex-col gap-[3px] self-stretch px-[9px]">
         {Sections.map((section) => {
           const isActive = section.key === active.key;
