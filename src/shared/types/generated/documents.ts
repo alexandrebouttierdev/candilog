@@ -11,6 +11,11 @@ export type CvResume = { id: string, nom: string, createdAt: string, };
 export type CvVersion = { id: string, nom: string, contenu: unknown, createdAt: string, };
 
 /**
+ * Contenu d'une lettre à exporter en PDF (enregistrée ou encore à l'écran).
+ */
+export type ExportLettre = { nom: string, entreprise: string | null, poste: string | null, contenu: string, };
+
+/**
  * Lettre enregistrée dans la bibliothèque locale.
  */
 export type Lettre = { id: string, nom: string, entreprise: string | null, poste: string | null, ton: string, longueur: string, contenu: string, createdAt: string, };

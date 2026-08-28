@@ -1,14 +1,16 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { SECTIONS, sectionForPath } from "@/app/router/routes";
 import { applyTheme, useUiStore } from "@/shared/lib/ui-store";
+import type { ThemePref } from "@/shared/types/generated/parametres";
+import { parametresService } from "@/features/parametres/services/parametres.service";
 import { Icon } from "@/shared/ui/Icon";
 
 /**
  * Rail de navigation de premier niveau.
  *
- * Largeur et pastilles des maquettes (86 px). Sous 1200 px le libellé disparaît
- * (guide SPECDESIGN, section 7) ; l'infobulle et `aria-label` restent.
- * Le basculeur clair/sombre reprend le pied de rail des maquettes.
+ * Largeur et pastilles des maquettes (86 px). Sous 1200 px le libellé des
+ * sections disparaît (guide SPECDESIGN, section 7) ; le basculeur clair/sombre
+ * garde toujours son texte, sinon il disparaît dans une fenêtre Tauri 1024.
  */
 export function NavRail() {
   const { pathname } = useLocation();
@@ -57,16 +59,23 @@ export function NavRail() {
       </div>
       <button
         type="button"
+        title={sombre ? "Passer en thème clair" : "Passer en thème sombre"}
         aria-label={sombre ? "Passer en thème clair" : "Passer en thème sombre"}
         onClick={() => {
-          const suivant = sombre ? "light" : "dark";
+          const suivant: ThemePref = sombre ? "light" : "dark";
           setTheme(suivant);
           applyTheme(suivant);
+          void parametresService
+            .charger()
+            .then((parametres) => parametresService.enregistrer({ ...parametres, theme: suivant }))
+            .catch(() => {
+              /* Revue navigateur sans backend : le thème reste en session. */
+            });
         }}
         className="mx-2 mt-1 flex min-h-11 w-[calc(100%-16px)] flex-col items-center justify-center gap-1.5 rounded-[10px] py-2 text-ink-faint transition-colors duration-150 hover:bg-neutral-tint hover:text-ink"
       >
         <Icon name={sombre ? "light_mode" : "dark_mode"} size={19} />
-        <span className="hidden text-[10px] font-medium min-[1200px]:block">
+        <span className="max-w-full truncate text-[10px] font-medium">
           {sombre ? "Clair" : "Sombre"}
         </span>
       </button>

@@ -3,8 +3,10 @@
 use crate::app::state::AppState;
 use crate::core::errors::{AppError, AppResult};
 use crate::core::utils::blocking;
-use crate::features::documents::application::construire;
-use crate::features::documents::domain::{CvResume, CvVersion, Lettre, NouveauCv, NouvelleLettre};
+use crate::features::documents::application::{construire, construire_lettre};
+use crate::features::documents::domain::{
+    CvResume, CvVersion, ExportLettre, Lettre, NouveauCv, NouvelleLettre,
+};
 use crate::features::ia::domain::CvGenere;
 use std::path::Path;
 use std::sync::Arc;
@@ -60,6 +62,29 @@ pub async fn documents_cv_exporter_pdf(
             .render_pdf(Path::new(&chemin))
             .map_err(|error| {
                 tracing::error!(%error, chemin, "export PDF impossible");
+                AppError::Validation("Le PDF n'a pas pu être écrit à l'emplacement choisi.".into())
+            })
+    })
+    .await
+}
+
+/// Exporte une lettre au chemin choisi dans le sélecteur natif.
+///
+/// L'identité du profil (nom, ville, e-mail) est posée en en-tête, comme
+/// sur l'aperçu HTML.
+#[tauri::command]
+pub async fn documents_lettre_exporter_pdf(
+    state: State<'_, AppState>,
+    lettre: ExportLettre,
+    chemin: String,
+) -> AppResult<()> {
+    let profil = Arc::clone(&state.profil);
+    blocking::execute(move || {
+        let charge = profil.charger()?;
+        construire_lettre(&charge.profil, &lettre)
+            .render_pdf(Path::new(&chemin))
+            .map_err(|error| {
+                tracing::error!(%error, chemin, "export PDF de lettre impossible");
                 AppError::Validation("Le PDF n'a pas pu être écrit à l'emplacement choisi.".into())
             })
     })

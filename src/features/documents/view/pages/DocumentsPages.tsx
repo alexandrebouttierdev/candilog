@@ -3,7 +3,7 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "react-router-dom";
 import { documentsService } from "../../services/documents.service";
-import type { CvVersion, Lettre } from "../../services/documents.service";
+import type { CvVersion, ExportLettre, Lettre } from "../../services/documents.service";
 import { iaService, generationId } from "@/features/ia/services/ia.service";
 import type { AnalyseCvImporte, CvGenere, GenerationCv } from "@/features/ia/model/types";
 import { useIaProgress } from "@/features/ia/viewmodel/useIaProgress";
@@ -318,6 +318,7 @@ export function LettersLibraryPage() {
                 <div className="flex gap-2">
                   <Button icon="edit" onClick={() => void navigate("/documents/rediger-lettre", { state: { lettre: selectedLetter } })}>Modifier</Button>
                   <Button icon="content_copy" onClick={() => void copier()}>Copier</Button>
+                  <Button icon="download" onClick={() => void exporterLettrePdf({ nom: selectedLetter.nom, entreprise: selectedLetter.entreprise, poste: selectedLetter.poste, contenu: selectedLetter.contenu }, notify)}>Exporter PDF</Button>
                   <Button variant="danger" icon="delete" onClick={() => setDeleteId(selectedLetter.id)}>Supprimer</Button>
                 </div>
               ) : null}
@@ -377,6 +378,7 @@ export function LetterWriterPage() {
         title="Lettre de motivation"
         subtitle="Rédigez, itérez et enregistrez"
         badge={operation ? <HeaderBadge>IA active</HeaderBadge> : undefined}
+        secondary={output ? <Button icon="download" onClick={() => void exporterLettrePdf({ nom: `Lettre — ${poste || entreprise || "Candidature"}`, entreprise: entreprise || null, poste: poste || null, contenu: output }, notify)}>Exporter PDF</Button> : undefined}
         primary={output ? <Button variant="primary" icon="save" disabled={save.isPending} onClick={() => save.mutate()}>Enregistrer</Button> : undefined}
       />
     }>
@@ -550,6 +552,29 @@ async function exporterPdf(
   try {
     await documentsService.exporterPdf(cv, chemin);
     notify({ tone: "success", title: "CV exporté" });
+  } catch (error) {
+    notify({
+      tone: "error",
+      title: "Export PDF impossible",
+      detail: error instanceof AppError ? error.message : undefined,
+    });
+  }
+}
+
+async function exporterLettrePdf(
+  lettre: ExportLettre,
+  notify: (toast: Omit<ToastMessage, "id">) => void,
+) {
+  const base = lettre.nom.trim().replace(/[\\/:*?"<>|]+/g, "-") || "lettre-candilog";
+  const chemin = await save({
+    title: "Exporter la lettre en PDF",
+    defaultPath: `${base}.pdf`,
+    filters: [{ name: "PDF", extensions: ["pdf"] }],
+  });
+  if (chemin === null) return;
+  try {
+    await documentsService.exporterLettrePdf(lettre, chemin);
+    notify({ tone: "success", title: "Lettre exportée" });
   } catch (error) {
     notify({
       tone: "error",

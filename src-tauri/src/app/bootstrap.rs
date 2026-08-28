@@ -71,6 +71,7 @@ pub fn run() {
             documents::documents_lettre_obtenir,
             documents::documents_lettre_enregistrer,
             documents::documents_lettre_supprimer,
+            documents::documents_lettre_exporter_pdf,
             entretiens::entretiens_lister_entre,
             entretiens::entretiens_obtenir,
             entretiens::entretiens_enregistrer,

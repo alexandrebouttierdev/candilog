@@ -796,8 +796,34 @@ maquettes.
 - Accueil n'a pas les onglets Candidatures/Calendrier du Dashboard HTML : ils vivent sous Suivi.
 - Générateur CV en 3 colonnes, pas le wizard 3 étapes de la maquette.
 - Pas d'ATS sur les lignes de bibliothèque (`CvResume` n'expose pas le score).
-- Pas d'export PDF des lettres, pas d'historique d'analyse, pas de bouton mort « Modèle » /
-  « Historique » / « Importer » (lettres).
-- Bascule de thème du rail : session seulement, la persistance reste dans Réglages.
+- Pas d'historique d'analyse, pas de bouton mort « Modèle » / « Historique » / « Importer »
+  (lettres).
 - Vue Semaine/Jour : mêmes événements que la grille du mois, pas d'agenda horaire complet.
+
+---
+
+## T13 — Thème clair visible + PDF lettres (2026-08-28)
+
+### Constat
+
+Le bouton Clair/Sombre existait au bas du rail, mais le libellé était `hidden` sous 1200 px
+(fenêtre Tauri souvent 1024) : on ne voyait qu'une icône 20 px. Le clic ne persistait pas
+(`parametres` en base, relance = sombre). Réglages → Apparence ne s'appliquait qu'au
+« Enregistrer ».
+
+L'export PDF des lettres n'existait pas : seule `documents_cv_exporter_pdf` était branchée
+alors que la maquette Documents a « Exporter PDF » sur les lettres.
+
+### Choix
+
+- Libellé du rail toujours visible ; `aria-label` « Passer en thème clair/sombre ».
+- Rail : `setTheme` + `parametresService.enregistrer` (thème seulement, le reste inchangé).
+- Réglages Apparence : `setTheme` immédiat ; Enregistrer reste pour LLM + persistance page.
+- `documents_lettre_exporter_pdf` + `printpdf`, même Geist que le CV, en-tête identité /
+  date / objet. Boutons Mes lettres (aperçu) et rédacteur (après génération).
+
+### Vérification
+
+`cargo clippy --all-targets -- -D warnings`, `cargo test --lib` 232, `npm run lint`,
+`npm test` 143. `vite :1420` : chrome clair/sombre ; PDF et persistance rail → `tauri dev`.
 

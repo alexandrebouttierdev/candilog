@@ -63,3 +63,14 @@ pub struct NouvelleLettre {
     pub longueur: String,
     pub contenu: String,
 }
+
+/// Contenu d'une lettre à exporter en PDF (enregistrée ou encore à l'écran).
+#[derive(Debug, Clone, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "documents.ts")]
+pub struct ExportLettre {
+    pub nom: String,
+    pub entreprise: Option<String>,
+    pub poste: Option<String>,
+    pub contenu: String,
+}

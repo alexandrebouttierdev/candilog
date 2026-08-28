@@ -13,6 +13,7 @@ import {
 } from "@/shared/ui";
 import { parametresService } from "../../services/parametres.service";
 import { useParametresViewModel } from "../../viewmodel/useParametresViewModel";
+import { applyTheme, useUiStore } from "@/shared/lib/ui-store";
 import {
   endpointDefaut,
   identifiantProvider,
@@ -39,6 +40,7 @@ const THEMES: Array<{ value: ThemePref; label: string }> = [
 /** Intelligence artificielle : fournisseur, modèle, comportement et apparence. */
 export function IaPage() {
   const vm = useParametresViewModel();
+  const setTheme = useUiStore((state) => state.setTheme);
   const [draft, setDraft] = useState<Parametres | null>(null);
   const [modeles, setModeles] = useState<string[]>([]);
   const [test, setTest] = useState<"idle" | "pending" | "ok" | "error">("idle");
@@ -245,7 +247,11 @@ export function IaPage() {
                     type="button"
                     role="radio"
                     aria-checked={selected}
-                    onClick={() => setDraft({ ...form, theme: theme.value })}
+                    onClick={() => {
+                      setDraft({ ...form, theme: theme.value });
+                      setTheme(theme.value);
+                      applyTheme(theme.value);
+                    }}
                     className={[
                       "min-h-11 rounded-card border px-3 py-2 text-label font-medium",
                       selected ? "border-accent bg-accent-tint text-ink" : "border-line bg-surface text-ink-muted hover:bg-neutral-tint",

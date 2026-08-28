@@ -32,7 +32,7 @@ describe("rail de navigation", () => {
     );
     expect(screen.getByRole("link", { name: "Tableau de bord" })).toBeInTheDocument();
     expect(screen.getByText("Accueil")).toHaveClass("hidden", "min-[1200px]:block");
-    expect(screen.getByRole("button", { name: /Passer en thème/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Passer en thème sombre" })).toHaveTextContent("Sombre");
   });
 });
 
