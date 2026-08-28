@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { save } from "@tauri-apps/plugin-dialog";
 import { useCandidaturesViewModel } from "../../viewmodel/useCandidaturesViewModel";
 import type { Candidature } from "../../services/candidature.service";
@@ -31,14 +32,25 @@ import { cn } from "@/shared/lib/cn";
 /** Écran Suivi → Candidatures : Kanban ou Liste, sur le même filtre. */
 export function CandidaturesPage() {
   const vm = useCandidaturesViewModel();
+  const [searchParams, setSearchParams] = useSearchParams();
   const notify = useUiStore((state) => state.notify);
   const [formulaire, setFormulaire] = useState<{ ouvert: boolean; cible: Candidature | null }>({
-    ouvert: false,
+    ouvert: searchParams.get("nouvelle") === "1",
     cible: null,
   });
   const [filtresOuverts, setFiltresOuverts] = useState(false);
   const [aSupprimer, setASupprimer] = useState<Candidature | null>(null);
   const [exportEnCours, setExportEnCours] = useState(false);
+
+  // Le bouton principal du Dashboard ouvre réellement la création, sans dupliquer le
+  // formulaire ni son ViewModel dans une autre feature. Le paramètre reste dans l'URL le
+  // temps de la modale, puis est consommé à sa fermeture.
+  const fermerFormulaire = () => {
+    setFormulaire({ ouvert: false, cible: null });
+    if (searchParams.get("nouvelle") === "1") {
+      setSearchParams({}, { replace: true });
+    }
+  };
 
   /**
    * Exporte le filtre courant.
@@ -297,7 +309,7 @@ export function CandidaturesPage() {
         open={formulaire.ouvert}
         candidature={formulaire.cible}
         busy={vm.isSaving}
-        onClose={() => setFormulaire({ ouvert: false, cible: null })}
+        onClose={fermerFormulaire}
         onSubmit={(valeurs) =>
           formulaire.cible
             ? vm.modifier({ id: formulaire.cible.id, input: valeurs })

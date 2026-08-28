@@ -23,7 +23,7 @@ pub struct Etape {
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "analyses.ts")]
 pub struct SemaineActivite {
-    /// Lundi de la semaine (`AAAA-MM-JJ`), pour l'étiquette et le tri.
+    /// Début de la fenêtre glissante de sept jours (`AAAA-MM-JJ`).
     pub debut: String,
     /// Nombre de candidatures envoyées cette semaine-là.
     #[ts(type = "number")]

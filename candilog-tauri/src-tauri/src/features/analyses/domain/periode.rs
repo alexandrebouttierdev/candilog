@@ -38,4 +38,18 @@ impl Periode {
                 .to_string(),
         )
     }
+
+    /// Nombre de semaines représentées par le graphique d'activité.
+    ///
+    /// La vue « Tout » reste bornée à un an : au-delà, des barres hebdomadaires de quelques
+    /// pixels ne seraient plus lisibles. Les indicateurs, eux, portent bien sur tout
+    /// l'historique ; seule la visualisation conserve une fenêtre utile.
+    #[must_use]
+    pub const fn semaines(self) -> u32 {
+        match self {
+            Self::TrenteJours => 5,
+            Self::QuatreVingtDixJours => 13,
+            Self::Tout => 52,
+        }
+    }
 }

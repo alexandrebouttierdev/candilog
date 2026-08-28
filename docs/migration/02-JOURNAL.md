@@ -416,3 +416,79 @@ une case avec la date présélectionnée.
 
 Rien. T5 migre le tableau de bord et les analyses, qui consomment les agrégats déjà exposés
 par `candidatures::repartition` et l'historique de statut alimenté par T3 et T4.
+
+---
+
+## T5 — Tableau de bord et analyses · terminée le 2026-08-28
+
+### Backend
+
+Le frontend reçoit un **instantané complet par écran** : une commande pour le tableau de
+bord et une pour les analyses. Les six blocs du Dashboard ne déclenchent donc pas six
+allers-retours IPC et ne risquent pas d'afficher des valeurs calculées à des instants
+différents.
+
+Les conversions s'appuient sur l'historique, pas seulement sur le statut courant. Une
+candidature refusée après un entretien reste comptée dans « Entretiens » et « Réponses » ;
+les entretiens et relances persistés servent aussi de preuve lorsqu'une ancienne base ne
+possède pas tout l'historique. Sans cette règle, faire avancer une candidature ferait
+baisser rétroactivement les étapes précédentes de l'entonnoir.
+
+Les périodes 30 jours, 90 jours et Tout forment un enum partagé avec TypeScript. Les KPI de
+« Tout » couvrent bien tout l'historique, mais son graphique est borné à 52 fenêtres :
+afficher plusieurs années de barres hebdomadaires les rendrait illisibles. Comme dans
+l'application Iced, l'activité reste composée de fenêtres **glissantes de sept jours**, et
+les semaines vides sont matérialisées par une CTE récursive SQLite.
+
+Le délai moyen porte sur la première réponse observable — passage à Entretien ou Refus,
+entretien persisté, ou statut courant pour les données anciennes. Les échéances fusionnent
+entretiens et relances dans une seule requête ordonnée ; les candidatures à relancer sont
+les dossiers encore en attente depuis au moins sept jours.
+
+L'export CSV reprend le séparateur point-virgule des exports précédents et contient les KPI
+puis l'activité de la période. Comme pour T3, le chemin vient du sélecteur natif et seule la
+commande Rust écrit le fichier.
+
+### Frontend
+
+Le Dashboard donne la priorité aux actions : KPI principal « Candidatures actives » avec
+tendance compacte, prochains événements, activité, pipeline et dossiers récents. Son CTA
+« Nouvelle candidature » réutilise le formulaire de la feature Suivi par un paramètre
+d'URL consommé à la fermeture ; aucun second formulaire n'a été créé.
+
+L'écran Analyses partage les composants de visualisation avec le Dashboard, mais conserve
+son propre ViewModel : période, export et création d'une relance ont leur cycle de chargement
+et leurs erreurs. Le sélecteur 30/90/Tout est un vrai contrôle à état `aria-pressed`, et le
+bouton Relancer ouvre la modale existante sur la candidature choisie.
+
+Les graphiques restent du HTML/SVG léger, sans nouvelle bibliothèque : les données sont
+également décrites dans une liste masquée pour les lecteurs d'écran. Chaque bloc possède
+ses états chargement, erreur et vide.
+
+### Vérifié
+
+```
+cargo fmt --check                         ok
+cargo clippy --all-targets -D warnings   ok
+cargo test                                148 passed (+14)
+npm run build / lint                      ok
+npm test                                  123 passed (+3)
+```
+
+La revue navigateur a couvert le Dashboard et Analyses avec données représentatives, le
+sélecteur de période, l'ouverture de la modale de relance et une largeur compacte de 900 px.
+Aucun débordement horizontal ni erreur console n'a été observé. Le pont d'aperçu a été
+retiré avant les contrôles finaux.
+
+### Écarts assumés
+
+- Le rendu dans la fenêtre Tauri native n'a pas été revérifié. Le navigateur a servi à la
+  comparaison visuelle avec un pont IPC temporaire retiré avant livraison ; la compilation
+  Rust et les 148 tests ont ensuite passé sur le code final.
+- Le bundle JavaScript principal pèse environ 534 ko minifié et déclenche l'avertissement
+  Vite à 500 ko. La découpe par route est reportée à T9, où l'optimisation globale est
+  prévue ; elle ne change pas le comportement de cette tranche.
+
+### Reste à faire avant T6
+
+Rien. T6 migre le profil, les compétences et les objectifs.

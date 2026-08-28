@@ -1,6 +1,7 @@
 //! Construction et lancement de l'application Tauri.
 
 use crate::app::state::AppState;
+use crate::features::analyses::presentation::commands as analyses;
 use crate::features::candidatures::presentation::commands as candidatures;
 use crate::features::contacts::presentation::commands as contacts;
 use crate::features::entreprises::presentation::commands as entreprises;
@@ -33,6 +34,9 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .manage(state)
         .invoke_handler(tauri::generate_handler![
+            analyses::analyses_tableau_de_bord,
+            analyses::analyses_charger,
+            analyses::analyses_exporter_csv,
             candidatures::candidatures_lister_page,
             candidatures::candidatures_repartition,
             candidatures::candidatures_obtenir,

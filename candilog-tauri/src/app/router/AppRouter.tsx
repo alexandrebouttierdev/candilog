@@ -8,6 +8,7 @@ import { CalendrierPage } from "@/features/calendrier";
 import { CandidaturesPage } from "@/features/candidatures";
 import { EntreprisesPage } from "@/features/entreprises";
 import { ReseauPage } from "@/features/contacts";
+import { AnalysesPage, DashboardPage } from "@/features/analyses";
 
 /**
  * Écrans réellement migrés, indexés par chemin.
@@ -17,6 +18,8 @@ import { ReseauPage } from "@/features/contacts";
  * complète et rend visible ce qui reste à faire.
  */
 const PAGES: Record<string, React.ReactElement> = {
+  "/": <DashboardPage />,
+  "/analyses": <AnalysesPage />,
   "/suivi/candidatures": <CandidaturesPage />,
   "/suivi/calendrier": <CalendrierPage />,
   "/relations/entreprises": <EntreprisesPage />,

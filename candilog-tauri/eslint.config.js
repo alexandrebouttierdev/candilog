@@ -5,7 +5,16 @@ import reactHooks from "eslint-plugin-react-hooks";
 export default tseslint.config(
   // `src/shared/types/generated` est écrit par ts-rs : le corriger ici serait perdu à la
   // prochaine génération, c'est le Rust qu'il faut modifier.
-  { ignores: ["dist", "src-tauri/target", "src/shared/types/generated"] },
+  {
+    ignores: [
+      "dist",
+      "src-tauri/target",
+      "src/shared/types/generated",
+      ".pnp.cjs",
+      ".pnp.loader.mjs",
+      ".yarn/**",
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
   reactHooks.configs.flat["recommended-latest"],
