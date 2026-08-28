@@ -10,15 +10,15 @@ use crate::core::config::AppPaths;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
-/// Nombre de fichiers de journal conservés, le courant compris.
+/// Count de fichiers de journal conservés, le courant compris.
 const JOURNAUX_CONSERVES: usize = 5;
 
-/// Garde de vidage du journal fichier. À conserver vivante jusqu'à l'arrêt du programme :
+/// Guard de vidage du journal fichier. À conserver vivante jusqu'à l'arrêt du programme :
 /// l'écriture étant tamponnée dans un fil dédié, la relâcher trop tôt perd les dernières
 /// lignes — précisément celles qui décrivent un arrêt anormal.
-pub struct GardeJournal(Option<tracing_appender::non_blocking::WorkerGuard>);
+pub struct GuardJournal(Option<tracing_appender::non_blocking::WorkerGuard>);
 
-impl GardeJournal {
+impl GuardJournal {
     /// Un journal fichier est-il actif ? Faux quand le dossier de données est inaccessible.
     #[must_use]
     pub const fn ecrit_dans_un_fichier(&self) -> bool {
@@ -29,21 +29,21 @@ impl GardeJournal {
 /// Installe le journal. Sans dossier de données accessible, la sortie standard seule est
 /// utilisée : ne pas pouvoir journaliser ne doit jamais empêcher l'application de démarrer.
 #[must_use]
-pub fn initialiser() -> GardeJournal {
-    let filtre = || {
+pub fn init() -> GuardJournal {
+    let filter = || {
         tracing_subscriber::EnvFilter::try_from_default_env()
             .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("candilog=info"))
     };
 
-    let Some(fichier) = ouvrir_fichier() else {
-        tracing_subscriber::fmt().with_env_filter(filtre()).init();
+    let Some(file) = ouvrir_file() else {
+        tracing_subscriber::fmt().with_env_filter(filter()).init();
         tracing::warn!("journal fichier indisponible : sortie standard seule");
-        return GardeJournal(None);
+        return GuardJournal(None);
     };
 
-    let (ecriture, garde) = tracing_appender::non_blocking(fichier);
+    let (ecriture, guard) = tracing_appender::non_blocking(file);
     tracing_subscriber::registry()
-        .with(filtre())
+        .with(filter())
         .with(tracing_subscriber::fmt::layer())
         .with(
             tracing_subscriber::fmt::layer()
@@ -52,11 +52,11 @@ pub fn initialiser() -> GardeJournal {
         )
         .init();
     tracing::info!(version = env!("CARGO_PKG_VERSION"), "démarrage de Candilog");
-    GardeJournal(Some(garde))
+    GuardJournal(Some(guard))
 }
 
 /// Ouvre `candilog.log` sous le dossier de données, après avoir fait tourner les précédents.
-fn ouvrir_fichier() -> Option<std::fs::File> {
+fn ouvrir_file() -> Option<std::fs::File> {
     let paths = AppPaths::discover().ok()?;
     let journal = paths.data_dir.join("candilog.log");
     faire_tourner(&journal);

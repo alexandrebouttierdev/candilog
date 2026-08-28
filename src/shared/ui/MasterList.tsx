@@ -3,7 +3,7 @@ import { Icon } from "./Icon";
 import { cn } from "@/shared/lib/cn";
 
 /**
- * Liste maître d'un écran maître-détail : en-tête compté, éléments, pied paginé.
+ * List maître d'un écran maître-détail : en-tête compté, éléments, pied paginé.
  *
  * Géométrie des maquettes Relations : colonne de 37 % de la largeur sur fond surface,
  * en-tête à filet de 13 px / 18 px portant le titre et le compte, éléments dans une
@@ -22,7 +22,7 @@ export function MasterList({
   title: string;
   /** Résumé affiché à droite du titre : « 7 entreprises · 10 candidatures ». */
   count?: ReactNode;
-  /** Filtres additionnels, placés sous l'en-tête. */
+  /** Filters additionnels, placés sous l'en-tête. */
   toolbar?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
@@ -137,15 +137,15 @@ export function MasterListTag({
   );
 }
 
-/** Initiales d'un nom, pour la pastille des listes maîtresses. */
-export function initiales(...parties: Array<string | null | undefined>): string {
-  const lettres = parties
-    .map((partie) => partie?.trim()?.[0])
-    .filter((lettre): lettre is string => Boolean(lettre));
-  return (lettres.length > 0 ? lettres.join("") : "?").slice(0, 2).toUpperCase();
+/** Initials d'un nom, pour la pastille des listes maîtresses. */
+export function initials(...parts: Array<string | null | undefined>): string {
+  const cover_letters = parts
+    .map((part) => part?.trim()?.[0])
+    .filter((cover_letter): cover_letter is string => Boolean(cover_letter));
+  return (cover_letters.length > 0 ? cover_letters.join("") : "?").slice(0, 2).toUpperCase();
 }
 
-/** Initiales d'une raison sociale : deux premières initiales de mots (« Nova Digital » → ND). */
-export function initialesMot(nom: string | null | undefined): string {
-  return initiales(...(nom ?? "").split(/\s+/).filter(Boolean).slice(0, 2));
+/** Initials d'une raison sociale : deux premières initiales de mots (« Nova Digital » → ND). */
+export function wordInitials(name: string | null | undefined): string {
+  return initials(...(name ?? "").split(/\s+/).filter(Boolean).slice(0, 2));
 }

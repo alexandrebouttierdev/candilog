@@ -9,34 +9,34 @@ fn pool() -> SqlitePool {
 
 #[test]
 fn cv_est_restitue_avec_son_json_et_son_resume() {
-    let repo = SqliteCvRepository::new(pool());
+    let repo = SqliteResumeRepository::new(pool());
     let saved = repo
-        .enregistrer(&NouveauCv {
-            nom: "CV Produit".into(),
-            contenu: serde_json::json!({"cv":{"summary":"Bonjour"}}),
+        .save(&NewResume {
+            name: "CV Produit".into(),
+            content: serde_json::json!({"cv":{"summary":"Bonjour"}}),
         })
         .unwrap();
-    assert_eq!(repo.lister().unwrap()[0].nom, "CV Produit");
+    assert_eq!(repo.list().unwrap()[0].name, "CV Produit");
     assert_eq!(
-        repo.obtenir(saved.id).unwrap().contenu["cv"]["summary"],
+        repo.get(saved.id).unwrap().content["cv"]["summary"],
         "Bonjour"
     );
 }
 
 #[test]
 fn lettre_est_enregistree_et_supprimee() {
-    let repo = SqliteLettreRepository::new(pool());
+    let repo = SqliteCoverLetterRepository::new(pool());
     let saved = repo
-        .enregistrer(&NouvelleLettre {
-            nom: "Lettre Nova".into(),
-            entreprise: Some("Nova".into()),
-            poste: Some("Designer".into()),
-            ton: "formal".into(),
-            longueur: "medium".into(),
-            contenu: "Madame, Monsieur…".into(),
+        .save(&NewCoverLetter {
+            name: "Lettre Nova".into(),
+            company: Some("Nova".into()),
+            job_title: Some("Designer".into()),
+            tone: "formal".into(),
+            length: "medium".into(),
+            content: "Madame, Monsieur…".into(),
         })
         .unwrap();
-    assert_eq!(repo.lister().unwrap(), vec![saved.clone()]);
-    repo.supprimer(saved.id).unwrap();
-    assert!(repo.lister().unwrap().is_empty());
+    assert_eq!(repo.list().unwrap(), vec![saved.clone()]);
+    repo.delete(saved.id).unwrap();
+    assert!(repo.list().unwrap().is_empty());
 }

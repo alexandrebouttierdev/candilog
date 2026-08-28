@@ -51,7 +51,7 @@ impl SecretStore {
     }
 }
 
-/// Contrat testable du coffre, pour ne pas dépendre du trousseau en tests unitaires.
+/// Contract testable du coffre, pour ne pas dépendre du trousseau en tests unitaires.
 pub trait CoffreSecrets: Send + Sync {
     fn load_api_key(&self) -> AppResult<Option<String>>;
     fn store_api_key(&self, secret: Option<&str>) -> AppResult<()>;

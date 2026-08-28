@@ -4,11 +4,11 @@ import { cn } from "@/shared/lib/cn";
 
 /** Description d'une colonne : en-tête, rendu de cellule, tri éventuel. */
 export interface Column<TRow, TSortKey extends string = string> {
-  /** Identifiant stable de la colonne, utilisé comme clé React. */
+  /** Id stable de la colonne, utilisé comme clé React. */
   readonly key: string;
   readonly header: string;
   /** Clé de tri envoyée au backend ; absente si la colonne n'est pas triable. */
-  readonly sortKey?: TSortKey;
+  readonly sort_key?: TSortKey;
   /**
    * Part de la largeur disponible, comme les `fr` des grilles des maquettes
    * (« 2.2fr 1.3fr 0.9fr … »). Vaut 1 par défaut.
@@ -25,9 +25,9 @@ export interface SortState<TSortKey extends string> {
 }
 
 /**
- * Tableau dense du guide SPECDESIGN.
+ * Table dense du guide SPECDESIGN.
  *
- * Grille CSS plutôt que `<table>` : les maquettes répartissent les colonnes en fractions
+ * Grid CSS plutôt que `<table>` : les maquettes répartissent les colonnes en fractions
  * (`2.2fr 1.3fr 0.9fr 1.1fr 1fr 0.7fr`) et alignent verticalement des cellules à deux
  * lignes ; une table HTML rendrait les mêmes proportions dépendantes du contenu. Les rôles
  * ARIA de tableau sont posés à la main pour ne rien perdre en restitution.
@@ -40,18 +40,18 @@ export interface SortState<TSortKey extends string> {
 export function DataTable<TRow, TSortKey extends string = string>({
   columns,
   rows,
-  rowKey,
+  row_key,
   sort,
   onSortChange,
   onRowClick,
   isSelected,
   header,
-  emptyState,
+  empty_state,
   footer,
 }: {
   columns: readonly Column<TRow, TSortKey>[];
   rows: readonly TRow[];
-  rowKey: (row: TRow) => string;
+  row_key: (row: TRow) => string;
   sort?: SortState<TSortKey>;
   onSortChange?: (key: TSortKey) => void;
   onRowClick?: (row: TRow) => void;
@@ -59,7 +59,7 @@ export function DataTable<TRow, TSortKey extends string = string>({
   /** Bandeau titré au-dessus des en-têtes de colonnes — un `CardHeader`. */
   header?: ReactNode;
   /** Affiché à la place du corps lorsque `rows` est vide. */
-  emptyState?: ReactNode;
+  empty_state?: ReactNode;
   /** Pied du tableau, à l'intérieur de la carte — typiquement un `Pager`. */
   footer?: ReactNode;
 }) {
@@ -79,8 +79,8 @@ export function DataTable<TRow, TSortKey extends string = string>({
           className="grid bg-neutral-tint px-[19px] py-[9px]"
         >
           {columns.map((column) => {
-            const sortable = column.sortKey !== undefined && onSortChange !== undefined;
-            const activeSort = sort && sort.key === column.sortKey ? sort : undefined;
+            const sortable = column.sort_key !== undefined && onSortChange !== undefined;
+            const activeSort = sort && sort.key === column.sort_key ? sort : undefined;
             const content = (
               <>
                 {column.header}
@@ -119,7 +119,7 @@ export function DataTable<TRow, TSortKey extends string = string>({
                 {sortable ? (
                   <button
                     type="button"
-                    onClick={() => onSortChange(column.sortKey as TSortKey)}
+                    onClick={() => onSortChange(column.sort_key as TSortKey)}
                     className={cn(
                       "inline-flex items-center gap-1 transition-colors duration-150 hover:text-ink",
                       column.numeric && "flex-row-reverse",
@@ -136,13 +136,13 @@ export function DataTable<TRow, TSortKey extends string = string>({
         </div>
       </div>
 
-      {rows.length === 0 && emptyState ? (
-        emptyState
+      {rows.length === 0 && empty_state ? (
+        empty_state
       ) : (
         <div role="rowgroup">
           {rows.map((row) => (
             <div
-              key={rowKey(row)}
+              key={row_key(row)}
               role="row"
               onClick={onRowClick ? () => onRowClick(row) : undefined}
               tabIndex={onRowClick ? 0 : undefined}
@@ -187,7 +187,7 @@ export function DataTable<TRow, TSortKey extends string = string>({
 /**
  * Cellule « intitulé » des tableaux : pastille d'initiales, titre 13 px et sous-titre.
  *
- * Présente à l'identique dans le tableau du Suivi, celui du Tableau de bord et la liste
+ * Présente à l'identique dans le tableau du Tracking, celui du Table de bord et la liste
  * des candidatures à relancer — d'où sa place ici plutôt que recopiée trois fois.
  */
 export function CellIdentity({

@@ -23,7 +23,7 @@ export const APP_ERROR_CODES = [
 export type AppErrorCode = (typeof APP_ERROR_CODES)[number];
 
 /**
- * Erreur applicative telle que la voit le frontend.
+ * Error applicative telle que la voit le frontend.
  *
  * Étend `Error` pour rester interceptable par les frontières usuelles (TanStack Query,
  * error boundaries) tout en conservant le code structuré.

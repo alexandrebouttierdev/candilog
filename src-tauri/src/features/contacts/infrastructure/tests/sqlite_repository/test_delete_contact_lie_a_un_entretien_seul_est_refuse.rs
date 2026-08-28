@@ -8,21 +8,21 @@ fn test_delete_contact_lie_a_un_entretien_seul_est_refuse() {
     // sont liées, en s'appuyant sur un refus backend qui doit donc exister.
     let repo = repo();
     let cree = repo.create(&entree("Bouttier", None)).unwrap();
-    let candidature_id = candidature_liee(&repo, cree.id);
+    let application_id = application_liee(&repo, cree.id);
     {
-        let conn = crate::core::database::helpers::connexion(&repo.pool).unwrap();
+        let conn = crate::core::database::helpers::connection(&repo.pool).unwrap();
         // On détache la candidature : seul l'entretien référence encore le contact.
         conn.execute(
-            "UPDATE candidatures SET contact_id = NULL WHERE id = ?1",
-            [candidature_id.to_string()],
+            "UPDATE applications SET contact_id = NULL WHERE id = ?1",
+            [application_id.to_string()],
         )
         .unwrap();
         conn.execute(
-                "INSERT INTO entretiens (id, candidature_id, contact_id, date_entretien, created_at, updated_at)
+                "INSERT INTO interviews (id, application_id, contact_id, interview_date, created_at, updated_at)
                  VALUES (?1, ?2, ?3, '2026-02-01T10:00:00Z', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')",
                 rusqlite::params![
                     uuid::Uuid::new_v4().to_string(),
-                    candidature_id.to_string(),
+                    application_id.to_string(),
                     cree.id.to_string()
                 ],
             )

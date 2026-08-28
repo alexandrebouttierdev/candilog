@@ -1,19 +1,19 @@
-//! Contrats d'accès aux bibliothèques locales.
+//! Contracts d'accès aux bibliothèques locales.
 
-use super::{CvResume, CvVersion, Lettre, NouveauCv, NouvelleLettre};
+use super::{ResumeSummary, ResumeVersion, CoverLetter, NewResume, NewCoverLetter};
 use crate::core::errors::AppResult;
 use uuid::Uuid;
 
-pub trait CvRepository: Send + Sync {
-    fn enregistrer(&self, input: &NouveauCv) -> AppResult<CvVersion>;
-    fn lister(&self) -> AppResult<Vec<CvResume>>;
-    fn obtenir(&self, id: Uuid) -> AppResult<CvVersion>;
-    fn supprimer(&self, id: Uuid) -> AppResult<()>;
+pub trait ResumeRepository: Send + Sync {
+    fn save(&self, input: &NewResume) -> AppResult<ResumeVersion>;
+    fn list(&self) -> AppResult<Vec<ResumeSummary>>;
+    fn get(&self, id: Uuid) -> AppResult<ResumeVersion>;
+    fn delete(&self, id: Uuid) -> AppResult<()>;
 }
 
-pub trait LettreRepository: Send + Sync {
-    fn enregistrer(&self, input: &NouvelleLettre) -> AppResult<Lettre>;
-    fn lister(&self) -> AppResult<Vec<Lettre>>;
-    fn obtenir(&self, id: Uuid) -> AppResult<Lettre>;
-    fn supprimer(&self, id: Uuid) -> AppResult<()>;
+pub trait CoverLetterRepository: Send + Sync {
+    fn save(&self, input: &NewCoverLetter) -> AppResult<CoverLetter>;
+    fn list(&self) -> AppResult<Vec<CoverLetter>>;
+    fn get(&self, id: Uuid) -> AppResult<CoverLetter>;
+    fn delete(&self, id: Uuid) -> AppResult<()>;
 }

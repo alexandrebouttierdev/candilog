@@ -1,12 +1,12 @@
-//! Contrat d'accès aux contacts du réseau.
+//! Contract d'accès aux contacts du réseau.
 
 use crate::core::errors::AppResult;
 use crate::core::pagination::Page;
-use crate::features::contacts::domain::contact::{Contact, NouveauContact};
+use crate::features::contacts::domain::contact::{Contact, NewContact};
 
 /// Accès au réseau de contacts.
 pub trait ContactRepository: Send + Sync {
-    /// Liste tous les contacts, triés par nom puis prénom.
+    /// List tous les contacts, triés par nom puis prénom.
     ///
     /// # Errors
     /// Retourne `AppError::Database` si la requête échoue.
@@ -18,7 +18,7 @@ pub trait ContactRepository: Send + Sync {
     /// `AppError::NotFound` si l'identifiant est inconnu.
     fn get(&self, id: uuid::Uuid) -> AppResult<Contact>;
 
-    /// Charge une page filtrée par recherche libre.
+    /// Payload une page filtrée par recherche libre.
     ///
     /// # Errors
     /// Retourne `AppError::Database` si la requête échoue.
@@ -28,14 +28,14 @@ pub trait ContactRepository: Send + Sync {
     ///
     /// # Errors
     /// `AppError::Validation` si l'entreprise liée est introuvable.
-    fn create(&self, input: &NouveauContact) -> AppResult<Contact>;
+    fn create(&self, input: &NewContact) -> AppResult<Contact>;
 
     /// Remplace les champs d'un contact.
     ///
     /// # Errors
     /// `AppError::NotFound` si l'identifiant est inconnu ;
     /// `AppError::Validation` si l'entreprise liée est introuvable.
-    fn update(&self, id: uuid::Uuid, input: &NouveauContact) -> AppResult<Contact>;
+    fn update(&self, id: uuid::Uuid, input: &NewContact) -> AppResult<Contact>;
 
     /// Supprime un contact.
     ///

@@ -1,8 +1,8 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { SECTIONS, sectionForPath } from "@/app/router/routes";
+import { Sections, sectionForPath } from "@/app/router/routes";
 import { applyTheme, useUiStore } from "@/shared/lib/ui-store";
-import type { ThemePref } from "@/shared/types/generated/parametres";
-import { parametresService } from "@/features/parametres/services/parametres.service";
+import type { ThemePref } from "@/shared/types/generated/settings";
+import { settingsService } from "@/features/settings/services/settingsService";
 import { Icon } from "@/shared/ui/Icon";
 
 /**
@@ -32,14 +32,14 @@ export function NavRail() {
     >
       <Icon name="workspace_premium" size={22} className="mb-4 text-accent" />
       <div className="flex min-h-0 flex-1 flex-col gap-[3px] self-stretch px-[9px]">
-        {SECTIONS.map((section) => {
+        {Sections.map((section) => {
           const isActive = section.key === active.key;
           return (
             <NavLink
               key={section.key}
               to={section.routes[0]!.path}
-              title={section.longLabel}
-              aria-label={section.longLabel}
+              title={section.long_label}
+              aria-label={section.long_label}
               aria-current={isActive ? "page" : undefined}
               className={[
                 "flex min-w-0 flex-col items-center gap-[5px] rounded-tile px-1 pt-[9px] pb-[7px]",
@@ -49,7 +49,7 @@ export function NavRail() {
               ].join(" ")}
             >
               <Icon name={section.icon} size={21} />
-              <span className="max-w-full truncate text-micro font-mid">{section.shortLabel}</span>
+              <span className="max-w-full truncate text-micro font-mid">{section.short_label}</span>
             </NavLink>
           );
         })}
@@ -62,9 +62,9 @@ export function NavRail() {
           const suivant: ThemePref = sombre ? "light" : "dark";
           setTheme(suivant);
           applyTheme(suivant);
-          void parametresService
-            .charger()
-            .then((parametres) => parametresService.enregistrer({ ...parametres, theme: suivant }))
+          void settingsService
+            .load()
+            .then((settings) => settingsService.save({ ...settings, theme: suivant }))
             .catch(() => {
               /* Revue navigateur sans backend : le thème reste en session. */
             });

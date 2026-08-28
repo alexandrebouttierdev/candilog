@@ -17,7 +17,7 @@ export function Skeleton({ className }: { className?: string }) {
   );
 }
 
-/** Lignes de squelette d'un tableau, dimensionnées sur la hauteur de ligne du guide. */
+/** Rows de squelette d'un tableau, dimensionnées sur la hauteur de ligne du guide. */
 export function SkeletonRows({ rows = 5, columns = 4 }: { rows?: number; columns?: number }) {
   return (
     <div role="status" aria-label="Chargement en cours">

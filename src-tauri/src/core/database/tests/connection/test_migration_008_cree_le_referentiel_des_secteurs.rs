@@ -10,28 +10,28 @@ fn la_migration_008_cree_la_table_et_la_colonne_de_liaison() {
 
     let table: i64 = conn
         .query_row(
-            "SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = 'secteurs_activite'",
+            "SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = 'sectors'",
             [],
             |row| row.get(0),
         )
         .unwrap();
-    assert_eq!(table, 1, "table secteurs_activite absente");
+    assert_eq!(table, 1, "table sectors absente");
 
-    let colonne: i64 = conn
+    let column: i64 = conn
         .query_row(
-            "SELECT count(*) FROM pragma_table_info('entreprises') WHERE name = 'secteur_id'",
+            "SELECT count(*) FROM pragma_table_info('companies') WHERE name = 'sector_id'",
             [],
             |row| row.get(0),
         )
         .unwrap();
-    assert_eq!(colonne, 1, "colonne entreprises.secteur_id absente");
+    assert_eq!(column, 1, "colonne companies.sector_id absente");
 
     let index: i64 = conn
         .query_row(
-            "SELECT count(*) FROM sqlite_master WHERE type = 'index' AND name = 'idx_entreprises_secteur_id'",
+            "SELECT count(*) FROM sqlite_master WHERE type = 'index' AND name = 'idx_companies_sector_id'",
             [],
             |row| row.get(0),
         )
         .unwrap();
-    assert_eq!(index, 1, "index idx_entreprises_secteur_id absent");
+    assert_eq!(index, 1, "index idx_companies_sector_id absent");
 }

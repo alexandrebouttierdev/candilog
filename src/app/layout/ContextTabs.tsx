@@ -16,7 +16,7 @@ export function ContextTabs({ slotRef }: { slotRef: (node: HTMLElement | null) =
 
   return (
     <div className="flex h-[46px] flex-none items-center gap-[3px] border-b border-line bg-surface px-5">
-      <div role="tablist" aria-label={section.longLabel} className="flex items-center gap-[3px]">
+      <div role="tablist" aria-label={section.long_label} className="flex items-center gap-[3px]">
         {section.routes.map((route) => {
           const selected =
             route.path === "/" ? pathname === "/" : pathname.startsWith(route.path);

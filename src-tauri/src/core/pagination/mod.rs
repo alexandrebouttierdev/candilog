@@ -8,12 +8,12 @@ use serde::Serialize;
 
 /// Page de résultats et ses métadonnées.
 #[derive(Debug, Clone, Serialize, ts_rs::TS)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "page.ts")]
 pub struct Page<T: ts_rs::TS> {
     /// Éléments de la page courante.
     pub items: Vec<T>,
-    /// Nombre total d'éléments, toutes pages confondues.
+    /// Count total d'éléments, toutes pages confondues.
     ///
     /// Les quatre compteurs sont annoncés `number` et non `number | bigint` côté
     /// TypeScript, contrairement à ce que `ts-rs` déduit d'un `u64` : ils comptent des
@@ -26,10 +26,10 @@ pub struct Page<T: ts_rs::TS> {
     /// Numéro de page courant, à partir de 1.
     #[ts(type = "number")]
     pub page: u64,
-    /// Nombre maximal d'éléments par page.
+    /// Count maximal d'éléments par page.
     #[ts(type = "number")]
     pub page_size: u64,
-    /// Nombre total de pages, au moins 1 même sur une collection vide.
+    /// Count total de pages, au moins 1 même sur une collection vide.
     #[ts(type = "number")]
     pub total_pages: u64,
 }

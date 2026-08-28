@@ -6,9 +6,9 @@ fn test_migration_006_indexe_les_dates() {
     run_local_migrations(&pool).unwrap();
     let conn = pool.get().unwrap();
     for index in [
-        "idx_candidatures_date",
-        "idx_relances_date",
-        "idx_entretiens_date",
+        "idx_applications_date",
+        "idx_follow_ups_date",
+        "idx_interviews_date",
     ] {
         let found: i64 = conn
             .query_row(

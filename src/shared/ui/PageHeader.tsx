@@ -51,10 +51,10 @@ export function PageHeader({
 }
 
 /**
- * Bascule segmentée de l'en-tête (Kanban / Liste, Mois / Semaine / Jour, 30 j / 90 j).
+ * Bascule segmentée de l'en-tête (Kanban / List, Month / Week / Day, 30 j / 90 j).
  *
  * Piste en teinte neutre de 3 px de padding, pastille active en surface : les maquettes
- * l'emploient à l'identique dans le Suivi, le Calendrier et les Analyses.
+ * l'emploient à l'identique dans le Tracking, le Calendar et les Analytics.
  */
 export function SegmentedControl<TValue extends string>({
   value,
@@ -65,7 +65,7 @@ export function SegmentedControl<TValue extends string>({
 }: {
   value: TValue;
   options: readonly { readonly value: TValue; readonly label: string; readonly icon?: string }[];
-  onChange: (valeur: TValue) => void;
+  onChange: (value: TValue) => void;
   label: string;
   /** Variante sans icône des cartes d'analyse : 11,5 px et padding réduit. */
   dense?: boolean;

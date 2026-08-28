@@ -1,19 +1,19 @@
 import { Icon } from "./Icon";
 import { cn } from "@/shared/lib/cn";
 
-/** Bornes d'une page, calculées une fois pour l'affichage et pour les tests. */
-export function pageBounds(page: number, pageSize: number, total: number) {
-  const pageCount = Math.max(1, Math.ceil(total / pageSize));
-  const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
-  const to = Math.min(page * pageSize, total);
-  return { pageCount, from, to, hasPrev: page > 1, hasNext: page < pageCount };
+/** Bounds d'une page, calculées une fois pour l'affichage et pour les tests. */
+export function page_bounds(page: number, page_size: number, total: number) {
+  const page_count = Math.max(1, Math.ceil(total / page_size));
+  const from = total === 0 ? 0 : (page - 1) * page_size + 1;
+  const to = Math.min(page * page_size, total);
+  return { page_count, from, to, hasPrev: page > 1, hasNext: page < page_count };
 }
 
 /**
  * Pagination réutilisable.
  *
  * Pied de 11 px / 19 px sur fond `surface-alt`, résumé à gauche, sélecteur de densité puis
- * boutons de 28 px à droite : la barre des maquettes du Suivi et des Relations.
+ * boutons de 28 px à droite : la barre des maquettes du Tracking et des Relations.
  *
  * La pagination est **côté données** : le composant ne reçoit jamais la collection
  * complète, seulement la page courante et le total, et le ViewModel ne demande au backend
@@ -22,7 +22,7 @@ export function pageBounds(page: number, pageSize: number, total: number) {
  */
 export function Pager({
   page,
-  pageSize,
+  page_size,
   total,
   label,
   pageSizes,
@@ -31,23 +31,23 @@ export function Pager({
   onPageSizeChange,
 }: {
   page: number;
-  pageSize: number;
+  page_size: number;
   total: number;
-  /** Nom de ce qui est compté, au pluriel : « candidatures », « entreprises ». */
+  /** Name de ce qui est compté, au pluriel : « candidatures », « entreprises ». */
   label: string;
   /** Densités proposées ; le sélecteur est masqué si l'appelant n'en gère pas. */
   pageSizes?: readonly number[];
   /** Pied resserré des colonnes maîtresses : 10 px / 14 px au lieu de 11 px / 19 px. */
   dense?: boolean;
   onPageChange: (page: number) => void;
-  onPageSizeChange?: (pageSize: number) => void;
+  onPageSizeChange?: (page_size: number) => void;
 }) {
-  const { pageCount, from, to, hasPrev, hasNext } = pageBounds(page, pageSize, total);
+  const { page_count, from, to, hasPrev, hasNext } = page_bounds(page, page_size, total);
 
   // Les trois premiers numéros puis une ellipse : le guide affiche un repère de position,
   // pas un index complet — au-delà, le compteur textuel est plus lisible qu'une rangée
   // de numéros.
-  const numbers = Array.from({ length: Math.min(pageCount, 3) }, (_, index) => index + 1);
+  const numbers = Array.from({ length: Math.min(page_count, 3) }, (_, index) => index + 1);
 
   return (
     <nav
@@ -68,17 +68,17 @@ export function Pager({
 
       {pageSizes && onPageSizeChange ? (
         <div className="flex items-center gap-2">
-          <span className="text-label text-ink-faint">Lignes</span>
+          <span className="text-label text-ink-faint">Rows</span>
           <div className="relative">
             <select
-              value={pageSize}
+              value={page_size}
               aria-label="Nombre de lignes par page"
               onChange={(event) => onPageSizeChange(Number(event.target.value))}
               className="h-pager appearance-none rounded-control border border-line bg-surface pr-7 pl-2.5 text-note font-medium text-ink"
             >
-              {pageSizes.map((taille) => (
-                <option key={taille} value={taille}>
-                  {taille}
+              {pageSizes.map((size) => (
+                <option key={size} value={size}>
+                  {size}
                 </option>
               ))}
             </select>
@@ -114,7 +114,7 @@ export function Pager({
             {number}
           </button>
         ))}
-        {pageCount > 3 ? <span className="px-1 text-note text-ink-faint">…</span> : null}
+        {page_count > 3 ? <span className="px-1 text-note text-ink-faint">…</span> : null}
         <PagerArrow
           icon="chevron_right"
           label="Page suivante"
@@ -164,16 +164,16 @@ function PagerArrow({
  */
 export function ColumnPager({
   page,
-  pageSize,
+  page_size,
   total,
   onPageChange,
 }: {
   page: number;
-  pageSize: number;
+  page_size: number;
   total: number;
   onPageChange: (page: number) => void;
 }) {
-  const { from, to, hasPrev, hasNext } = pageBounds(page, pageSize, total);
+  const { from, to, hasPrev, hasNext } = page_bounds(page, page_size, total);
 
   return (
     <div className="flex items-center justify-between gap-2 border-t border-line px-3 py-2">

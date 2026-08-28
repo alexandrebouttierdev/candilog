@@ -3,29 +3,29 @@
 /**
  * Résumé léger d'une version de CV.
  */
-export type CvResume = { id: string, nom: string, createdAt: string, };
+export type ResumeSummary = { id: string, name: string, created_at: string, };
 
 /**
  * Version complète de CV ; son contenu structuré reste extensible.
  */
-export type CvVersion = { id: string, nom: string, contenu: unknown, createdAt: string, };
+export type ResumeVersion = { id: string, name: string, content: unknown, created_at: string, };
 
 /**
- * Contenu d'une lettre à exporter en PDF (enregistrée ou encore à l'écran).
+ * Content d'une lettre à exporter en PDF (enregistrée ou encore à l'écran).
  */
-export type ExportLettre = { nom: string, entreprise: string | null, poste: string | null, contenu: string, };
+export type CoverLetterExport = { name: string, company: string | null, job_title: string | null, content: string, };
 
 /**
- * Lettre enregistrée dans la bibliothèque locale.
+ * CoverLetter enregistrée dans la bibliothèque locale.
  */
-export type Lettre = { id: string, nom: string, entreprise: string | null, poste: string | null, ton: string, longueur: string, contenu: string, createdAt: string, };
+export type CoverLetter = { id: string, name: string, company: string | null, job_title: string | null, tone: string, length: string, content: string, created_at: string, };
 
 /**
  * Entrée d'enregistrement d'un CV.
  */
-export type NouveauCv = { nom: string, contenu: unknown, };
+export type NewResume = { name: string, content: unknown, };
 
 /**
  * Entrée d'enregistrement d'une lettre générée ou remaniée.
  */
-export type NouvelleLettre = { nom: string, entreprise: string | null, poste: string | null, ton: string, longueur: string, contenu: string, };
+export type NewCoverLetter = { name: string, company: string | null, job_title: string | null, tone: string, length: string, content: string, };

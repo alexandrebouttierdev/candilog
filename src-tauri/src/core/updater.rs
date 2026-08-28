@@ -81,13 +81,13 @@ async fn check_url(
         return Ok(None);
     }
     let response = response.error_for_status()?;
-    let texte = response.text().await?;
-    Ok(analyser_reponse(&texte, current))
+    let text = response.text().await?;
+    Ok(parse_response(&text, current))
 }
 
 /// Décode la réponse de l'API GitHub et la compare à la version locale, hors réseau.
 #[must_use]
-pub fn analyser_reponse(json: &str, current: &Version) -> Option<UpdateInfo> {
+pub fn parse_response(json: &str, current: &Version) -> Option<UpdateInfo> {
     let release: ReleaseApi = serde_json::from_str(json).ok()?;
     let tag = release
         .tag_name
@@ -168,12 +168,12 @@ pub fn extension_pour(os: &str, ids: &[&str]) -> Option<&'static str> {
 
 fn lire_os_release_ids() -> Vec<String> {
     let mut ids = Vec::new();
-    if let Ok(contenu) = std::fs::read_to_string("/etc/os-release") {
-        for ligne in contenu.lines() {
-            if let Some((cle, valeur)) = ligne.split_once('=') {
+    if let Ok(content) = std::fs::read_to_string("/etc/os-release") {
+        for row in content.lines() {
+            if let Some((cle, value)) = row.split_once('=') {
                 if cle == "ID" || cle == "ID_LIKE" {
-                    let valeur = valeur.trim_matches('"');
-                    for id in valeur.split_whitespace() {
+                    let value = value.trim_matches('"');
+                    for id in value.split_whitespace() {
                         ids.push(id.to_lowercase());
                     }
                 }
@@ -183,14 +183,14 @@ fn lire_os_release_ids() -> Vec<String> {
     ids
 }
 
-/// Taille maximale acceptée pour un installeur natif (256 MiB).
+/// Size maximale acceptée pour un installeur natif (256 MiB).
 pub const MAX_UPDATE_BYTES: u64 = 256 * 1024 * 1024;
 
 /// Vérifie que la taille d'un installeur ne dépasse pas la limite autorisée.
 ///
 /// # Errors
 /// Retourne `Validation` si l'installeur dépasse la taille maximale.
-pub fn verifier_taille_paquet(length: u64) -> AppResult<()> {
+pub fn check_size_paquet(length: u64) -> AppResult<()> {
     if length > MAX_UPDATE_BYTES {
         return Err(AppError::Validation(
             "Le paquet de mise à jour dépasse la taille maximale autorisée.".into(),
@@ -204,8 +204,8 @@ fn dossier_telechargements() -> PathBuf {
 }
 
 #[must_use]
-pub fn nom_de_fichier_sur(nom: &str) -> String {
-    let nettoye: String = nom
+pub fn nom_de_fichier_sur(name: &str) -> String {
+    let nettoye: String = name
         .chars()
         .map(|c| match c {
             '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' | '\0' => '_',
@@ -223,50 +223,50 @@ pub fn nom_de_fichier_sur(nom: &str) -> String {
 ///
 /// # Errors
 /// Retourne une erreur de réseau ou d'écriture. Un fichier trop volumineux est supprimé.
-pub async fn telecharger_installeur(
+pub async fn download_installeur(
     client: &reqwest::Client,
     url: &str,
-    nom_fichier: &str,
+    name_file: &str,
     mut on_progress: impl FnMut(u8),
 ) -> AppResult<PathBuf> {
     let response = client.get(url).send().await?.error_for_status()?;
     let total = response.content_length();
     if let Some(length) = total {
-        verifier_taille_paquet(length)?;
+        check_size_paquet(length)?;
     }
-    let chemin = dossier_telechargements().join(nom_de_fichier_sur(nom_fichier));
-    let mut fichier = tokio::fs::File::create(&chemin).await.map_err(|error| {
+    let path = dossier_telechargements().join(nom_de_fichier_sur(name_file));
+    let mut file = tokio::fs::File::create(&path).await.map_err(|error| {
         AppError::Database(format!("Création de l'installeur impossible : {error}"))
     })?;
     let mut recu = 0_u64;
     let mut stream = response.bytes_stream();
     while let Some(chunk) = stream.next().await {
         let chunk = chunk?;
-        if let Err(error) = verifier_taille_paquet(recu.saturating_add(chunk.len() as u64)) {
-            drop(fichier);
-            let _ = tokio::fs::remove_file(&chemin).await;
+        if let Err(error) = check_size_paquet(recu.saturating_add(chunk.len() as u64)) {
+            drop(file);
+            let _ = tokio::fs::remove_file(&path).await;
             return Err(error);
         }
-        fichier.write_all(&chunk).await.map_err(|error| {
+        file.write_all(&chunk).await.map_err(|error| {
             AppError::Database(format!("Écriture de l'installeur impossible : {error}"))
         })?;
         recu = recu.saturating_add(u64::try_from(chunk.len()).unwrap_or_default());
         if let Some(total) = total {
-            let pourcentage = recu
+            let percentage = recu
                 .saturating_mul(100)
                 .checked_div(total)
                 .unwrap_or_default();
-            on_progress(u8::try_from(pourcentage.min(100)).unwrap_or(100));
+            on_progress(u8::try_from(percentage.min(100)).unwrap_or(100));
         }
     }
-    fichier.sync_all().await.map_err(|error| {
+    file.sync_all().await.map_err(|error| {
         AppError::Database(format!(
             "Synchronisation de l'installeur impossible : {error}"
         ))
     })?;
     on_progress(100);
-    tracing::info!(chemin = %chemin.display(), "installeur téléchargé");
-    Ok(chemin)
+    tracing::info!(path = %path.display(), "installeur téléchargé");
+    Ok(path)
 }
 
 fn ouvrir_avec_lanceur(cible: &str) -> AppResult<()> {
@@ -290,8 +290,8 @@ fn ouvrir_avec_lanceur(cible: &str) -> AppResult<()> {
 ///
 /// # Errors
 /// Retourne une erreur si le lanceur système refuse de démarrer.
-pub fn ouvrir_fichier(chemin: &Path) -> AppResult<()> {
-    ouvrir_avec_lanceur(&chemin.to_string_lossy())
+pub fn ouvrir_file(path: &Path) -> AppResult<()> {
+    ouvrir_avec_lanceur(&path.to_string_lossy())
 }
 
 /// Ouvre la page web d'une release dans le navigateur par défaut.
@@ -315,7 +315,7 @@ pub fn version_locale() -> AppResult<Version> {
 mod tests {
     use super::*;
 
-    const REPONSE_EXEMPLE: &str = r#"{
+    const RESPONSE_EXEMPLE: &str = r#"{
     "tag_name": "v0.3.0",
     "body": "Nouvelle version avec corrections.",
     "html_url": "https://github.com/alexandrebouttierdev/candilog-releases/releases/tag/v0.3.0",
@@ -341,7 +341,7 @@ mod tests {
 
     #[test]
     fn une_reponse_github_complete_est_decodee() {
-        let info = analyser_reponse(REPONSE_EXEMPLE, &Version::new(0, 2, 0))
+        let info = parse_response(RESPONSE_EXEMPLE, &Version::new(0, 2, 0))
             .expect("la réponse complète doit être décodée");
         assert_eq!(info.version, Version::new(0, 3, 0));
         assert_eq!(info.notes, "Nouvelle version avec corrections.");
@@ -353,16 +353,16 @@ mod tests {
 
     #[test]
     fn une_version_egale_ou_inferieure_est_ignoree() {
-        let reponse = r#"{"tag_name":"v0.2.0","html_url":"https://example.test","assets":[]}"#;
-        assert_eq!(analyser_reponse(reponse, &Version::new(0, 2, 0)), None);
-        assert_eq!(analyser_reponse(reponse, &Version::new(0, 3, 0)), None);
+        let response = r#"{"tag_name":"v0.2.0","html_url":"https://example.test","assets":[]}"#;
+        assert_eq!(parse_response(response, &Version::new(0, 2, 0)), None);
+        assert_eq!(parse_response(response, &Version::new(0, 3, 0)), None);
     }
 
     #[test]
     fn un_json_incomplet_ou_invalide_est_refuse() {
         let actuelle = Version::new(0, 2, 0);
-        assert_eq!(analyser_reponse("pas du json", &actuelle), None);
-        assert_eq!(analyser_reponse("{}", &actuelle), None);
+        assert_eq!(parse_response("pas du json", &actuelle), None);
+        assert_eq!(parse_response("{}", &actuelle), None);
     }
 
     #[test]
@@ -387,7 +387,7 @@ mod tests {
 
     #[test]
     fn download_refuse_un_paquet_trop_volumineux() {
-        verifier_taille_paquet(MAX_UPDATE_BYTES).unwrap();
-        assert!(verifier_taille_paquet(MAX_UPDATE_BYTES + 1).is_err());
+        check_size_paquet(MAX_UPDATE_BYTES).unwrap();
+        assert!(check_size_paquet(MAX_UPDATE_BYTES + 1).is_err());
     }
 }

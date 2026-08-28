@@ -21,7 +21,7 @@ const DELTA: Record<Tone, string> = {
 };
 
 /**
- * Indicateur chiffré du tableau de bord et des analyses.
+ * Metric chiffré du tableau de bord et des analyses.
  *
  * Géométrie des maquettes : carte de 16 px / 18 px, libellé 12 px à gauche et pastille
  * d'icône de 26 px à droite, puis la valeur en 26 px/650 alignée sur la ligne de base du

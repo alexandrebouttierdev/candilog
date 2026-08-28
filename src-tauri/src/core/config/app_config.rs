@@ -3,7 +3,7 @@
 use crate::core::errors::{AppError, AppResult};
 use std::path::PathBuf;
 
-/// Chemins persistants utilisés par Candilog.
+/// Paths persistants utilisés par Candilog.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AppPaths {
     /// Dossier de données de l'application.
@@ -79,7 +79,7 @@ impl AppPaths {
         // moins protégé, et l'incident est journalisé.
         // Les journaux WAL portent les mêmes données que la base : les laisser en 644
         // annulerait la protection du fichier principal.
-        for (chemin, mode) in [
+        for (path, mode) in [
             (data_dir.to_path_buf(), 0o700),
             (data_dir.join("exports"), 0o700),
             (data_dir.join("candilog.sqlite"), 0o600),
@@ -87,13 +87,13 @@ impl AppPaths {
             (data_dir.join("candilog.sqlite-shm"), 0o600),
             (data_dir.join("candilog.log"), 0o600),
         ] {
-            if !chemin.exists() {
+            if !path.exists() {
                 continue;
             }
             if let Err(error) =
-                std::fs::set_permissions(&chemin, std::fs::Permissions::from_mode(mode))
+                std::fs::set_permissions(&path, std::fs::Permissions::from_mode(mode))
             {
-                tracing::warn!(?chemin, %error, "permissions non appliquées");
+                tracing::warn!(?path, %error, "permissions non appliquées");
             }
         }
     }

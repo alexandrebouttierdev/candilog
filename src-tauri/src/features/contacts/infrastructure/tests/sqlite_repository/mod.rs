@@ -8,25 +8,25 @@ fn repo() -> SqliteContactRepository {
     SqliteContactRepository::new(pool)
 }
 
-fn entree(nom: &str, entreprise_id: Option<uuid::Uuid>) -> NouveauContact {
-    NouveauContact {
-        entreprise_id,
-        prenom: "Alex".into(),
-        nom: nom.into(),
-        poste: Some("CTO".into()),
-        role_suivi: Some("Manager".into()),
+fn entree(name: &str, company_id: Option<uuid::Uuid>) -> NewContact {
+    NewContact {
+        company_id,
+        first_name: "Alex".into(),
+        name: name.into(),
+        job_title: Some("CTO".into()),
+        tracking_role: Some("Manager".into()),
         email: Some("alex@example.com".into()),
-        telephone: None,
+        phone: None,
         linkedin: None,
         notes: None,
     }
 }
 
-fn entreprise(repo: &SqliteContactRepository) -> uuid::Uuid {
+fn company(repo: &SqliteContactRepository) -> uuid::Uuid {
     let id = uuid::Uuid::new_v4();
-    let conn = crate::core::database::helpers::connexion(&repo.pool).unwrap();
+    let conn = crate::core::database::helpers::connection(&repo.pool).unwrap();
     conn.execute(
-        "INSERT INTO entreprises (id, nom, created_at, updated_at)
+        "INSERT INTO companies (id, name, created_at, updated_at)
              VALUES (?1, 'ACME', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')",
         [id.to_string()],
     )
@@ -36,14 +36,14 @@ fn entreprise(repo: &SqliteContactRepository) -> uuid::Uuid {
 
 /// Insère une candidature rattachée au contact, en `SQL` direct : le module `contacts`
 /// n'importe pas le module `candidatures`.
-fn candidature_liee(repo: &SqliteContactRepository, contact_id: uuid::Uuid) -> uuid::Uuid {
-    let entreprise_id = entreprise(repo);
+fn application_liee(repo: &SqliteContactRepository, contact_id: uuid::Uuid) -> uuid::Uuid {
+    let company_id = company(repo);
     let id = uuid::Uuid::new_v4();
-    let conn = crate::core::database::helpers::connexion(&repo.pool).unwrap();
+    let conn = crate::core::database::helpers::connection(&repo.pool).unwrap();
     conn.execute(
-            "INSERT INTO candidatures (id, entreprise_id, contact_id, poste, date_envoi, created_at, updated_at)
+            "INSERT INTO applications (id, company_id, contact_id, job_title, sent_date, created_at, updated_at)
              VALUES (?1, ?2, ?3, 'Dev', '2026-01-01', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')",
-            rusqlite::params![id.to_string(), entreprise_id.to_string(), contact_id.to_string()],
+            rusqlite::params![id.to_string(), company_id.to_string(), contact_id.to_string()],
         )
         .unwrap();
     id

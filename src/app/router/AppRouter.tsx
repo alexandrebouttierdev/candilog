@@ -2,42 +2,42 @@ import { lazy } from "react";
 import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
 import type { RouteObject } from "react-router-dom";
 import { AppShell } from "@/app/layout/AppShell";
-import { SECTIONS } from "./routes";
+import { Sections } from "./routes";
 import { PlaceholderPage } from "./PlaceholderPage";
 
 const DashboardPage = lazy(() =>
-  import("@/features/analyses/view/pages/DashboardPage").then((m) => ({ default: m.DashboardPage })),
+  import("@/features/analytics/view/pages/DashboardPage").then((m) => ({ default: m.DashboardPage })),
 );
-const AnalysesPage = lazy(() =>
-  import("@/features/analyses/view/pages/AnalysesPage").then((m) => ({ default: m.AnalysesPage })),
+const AnalyticsPage = lazy(() =>
+  import("@/features/analytics/view/pages/AnalyticsPage").then((m) => ({ default: m.AnalyticsPage })),
 );
-const CandidaturesPage = lazy(() =>
-  import("@/features/candidatures/view/pages/CandidaturesPage").then((m) => ({
-    default: m.CandidaturesPage,
+const ApplicationsPage = lazy(() =>
+  import("@/features/applications/view/pages/ApplicationsPage").then((m) => ({
+    default: m.ApplicationsPage,
   })),
 );
-const CalendrierPage = lazy(() =>
-  import("@/features/calendrier/view/pages/CalendrierPage").then((m) => ({
-    default: m.CalendrierPage,
+const CalendarPage = lazy(() =>
+  import("@/features/calendar/view/pages/CalendarPage").then((m) => ({
+    default: m.CalendarPage,
   })),
 );
-const EntreprisesPage = lazy(() =>
-  import("@/features/entreprises/view/pages/EntreprisesPage").then((m) => ({
-    default: m.EntreprisesPage,
+const CompaniesPage = lazy(() =>
+  import("@/features/companies/view/pages/CompaniesPage").then((m) => ({
+    default: m.CompaniesPage,
   })),
 );
-const ReseauPage = lazy(() =>
-  import("@/features/contacts/view/pages/ReseauPage").then((m) => ({ default: m.ReseauPage })),
+const NetworkPage = lazy(() =>
+  import("@/features/contacts/view/pages/NetworkPage").then((m) => ({ default: m.NetworkPage })),
 );
-const ProfilPage = lazy(() =>
-  import("@/features/profil/view/pages/ProfilPage").then((m) => ({ default: m.ProfilPage })),
+const ProfilePage = lazy(() =>
+  import("@/features/profile/view/pages/ProfilePage").then((m) => ({ default: m.ProfilePage })),
 );
-const CvLibraryPage = lazy(() =>
-  import("@/features/documents/view/pages/DocumentsPages").then((m) => ({ default: m.CvLibraryPage })),
+const ResumeLibraryPage = lazy(() =>
+  import("@/features/documents/view/pages/DocumentsPages").then((m) => ({ default: m.ResumeLibraryPage })),
 );
-const CvGeneratorPage = lazy(() =>
+const ResumeGeneratorPage = lazy(() =>
   import("@/features/documents/view/pages/DocumentsPages").then((m) => ({
-    default: m.CvGeneratorPage,
+    default: m.ResumeGeneratorPage,
   })),
 );
 const LettersLibraryPage = lazy(() =>
@@ -50,26 +50,26 @@ const LetterWriterPage = lazy(() =>
     default: m.LetterWriterPage,
   })),
 );
-const CvAnalysisPage = lazy(() =>
+const ResumeAnalysisPage = lazy(() =>
   import("@/features/documents/view/pages/DocumentsPages").then((m) => ({
-    default: m.CvAnalysisPage,
+    default: m.ResumeAnalysisPage,
   })),
 );
-const IaPage = lazy(() =>
-  import("@/features/parametres/view/pages/IaPage").then((m) => ({ default: m.IaPage })),
+const AiPage = lazy(() =>
+  import("@/features/settings/view/pages/AiPage").then((m) => ({ default: m.AiPage })),
 );
-const SauvegardesPage = lazy(() =>
-  import("@/features/parametres/view/pages/SauvegardesPage").then((m) => ({
-    default: m.SauvegardesPage,
+const BackupsPage = lazy(() =>
+  import("@/features/settings/view/pages/BackupsPage").then((m) => ({
+    default: m.BackupsPage,
   })),
 );
-const MisesAJourPage = lazy(() =>
-  import("@/features/parametres/view/pages/MisesAJourPage").then((m) => ({
-    default: m.MisesAJourPage,
+const UpdatesPage = lazy(() =>
+  import("@/features/settings/view/pages/UpdatesPage").then((m) => ({
+    default: m.UpdatesPage,
   })),
 );
-const AProposPage = lazy(() =>
-  import("@/features/parametres/view/pages/AProposPage").then((m) => ({ default: m.AProposPage })),
+const AboutPage = lazy(() =>
+  import("@/features/settings/view/pages/AboutPage").then((m) => ({ default: m.AboutPage })),
 );
 const DesignGallery = lazy(() =>
   import("@/app/dev/DesignGallery").then((m) => ({ default: m.DesignGallery })),
@@ -81,32 +81,32 @@ const DesignGallery = lazy(() =>
  * Tous les chemins du rail sont couverts. Un chemin absent retomberait encore sur le jalon
  * « écran non encore migré », conservé si la carte de navigation s'agrandit avant sa page.
  */
-const PAGES: Record<string, React.ReactElement> = {
+const Pages: Record<string, React.ReactElement> = {
   "/": <DashboardPage />,
-  "/analyses": <AnalysesPage />,
-  "/suivi/candidatures": <CandidaturesPage />,
-  "/suivi/calendrier": <CalendrierPage />,
-  "/relations/entreprises": <EntreprisesPage />,
-  "/relations/reseau": <ReseauPage />,
-  "/profil": <ProfilPage />,
-  "/documents/cv": <CvLibraryPage />,
-  "/documents/generer-cv": <CvGeneratorPage />,
-  "/documents/lettres": <LettersLibraryPage />,
-  "/documents/rediger-lettre": <LetterWriterPage />,
-  "/documents/analyser": <CvAnalysisPage />,
-  "/reglages/ia": <IaPage />,
-  "/reglages/sauvegardes": <SauvegardesPage />,
-  "/reglages/mises-a-jour": <MisesAJourPage />,
-  "/reglages/a-propos": <AProposPage />,
+  "/analytics": <AnalyticsPage />,
+  "/tracking/applications": <ApplicationsPage />,
+  "/tracking/calendar": <CalendarPage />,
+  "/relations/companies": <CompaniesPage />,
+  "/relations/network": <NetworkPage />,
+  "/profile": <ProfilePage />,
+  "/documents/cv": <ResumeLibraryPage />,
+  "/documents/generate-resume": <ResumeGeneratorPage />,
+  "/documents/cover-letters": <LettersLibraryPage />,
+  "/documents/write-cover-letter": <LetterWriterPage />,
+  "/documents/analyze": <ResumeAnalysisPage />,
+  "/settings/ai": <AiPage />,
+  "/settings/backups": <BackupsPage />,
+  "/settings/updates": <UpdatesPage />,
+  "/settings/about": <AboutPage />,
 };
 
-/** Chemins dont la page n'est plus un jalon. */
-export const CHEMINS_MIGRES = Object.keys(PAGES);
+/** Paths dont la page n'est plus un jalon. */
+export const MIGRATED_PATHS = Object.keys(Pages);
 
-const screenRoutes: RouteObject[] = SECTIONS.flatMap((section) =>
+const screenRoutes: RouteObject[] = Sections.flatMap((section) =>
   section.routes.map((route): RouteObject => {
-    const element = PAGES[route.path] ?? (
-      <PlaceholderPage icon={route.icon} title={route.label} section={section.longLabel} />
+    const element = Pages[route.path] ?? (
+      <PlaceholderPage icon={route.icon} title={route.label} section={section.long_label} />
     );
     return route.path === "/"
       ? { index: true, element }

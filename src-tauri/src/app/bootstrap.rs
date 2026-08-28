@@ -1,17 +1,17 @@
 //! Construction et lancement de l'application Tauri.
 
 use crate::app::state::AppState;
-use crate::features::analyses::presentation::commands as analyses;
-use crate::features::candidatures::presentation::commands as candidatures;
+use crate::features::analytics::presentation::commands as analytics;
+use crate::features::applications::presentation::commands as applications;
 use crate::features::contacts::presentation::commands as contacts;
 use crate::features::documents::presentation::commands as documents;
-use crate::features::entreprises::presentation::commands as entreprises;
-use crate::features::entretiens::presentation::commands as entretiens;
-use crate::features::ia::presentation::commands as ia;
-use crate::features::parametres::presentation::commands as parametres;
-use crate::features::profil::presentation::commands as profil;
-use crate::features::relances::presentation::commands as relances;
-use crate::features::secteurs::presentation::commands as secteurs;
+use crate::features::companies::presentation::commands as companies;
+use crate::features::interviews::presentation::commands as interviews;
+use crate::features::ai::presentation::commands as ai;
+use crate::features::settings::presentation::commands as settings;
+use crate::features::profile::presentation::commands as profile;
+use crate::features::followups::presentation::commands as followups;
+use crate::features::sectors::presentation::commands as sectors;
 
 /// Démarre Candilog : journal, état applicatif, plugins, commandes.
 ///
@@ -19,7 +19,7 @@ use crate::features::secteurs::presentation::commands as secteurs;
 /// journalisant la cause plutôt que d'ouvrir une fenêtre vide dont l'utilisateur ne pourrait
 /// rien tirer. C'est le seul point du programme où un arrêt est le bon comportement.
 pub fn run() {
-    let _garde = crate::core::logging::initialiser();
+    let _guard = crate::core::logging::init();
 
     let state = match AppState::persistent() {
         Ok(state) => state,
@@ -27,7 +27,7 @@ pub fn run() {
             tracing::error!(%error, "état applicatif non initialisable");
             eprintln!(
                 "Candilog n'a pas pu ouvrir ses données : {}",
-                error.message_utilisateur()
+                error.user_message()
             );
             std::process::exit(1);
         }
@@ -38,68 +38,68 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .manage(state)
         .invoke_handler(tauri::generate_handler![
-            analyses::analyses_tableau_de_bord,
-            analyses::analyses_charger,
-            analyses::analyses_exporter_csv,
-            candidatures::candidatures_lister_page,
-            candidatures::candidatures_repartition,
-            candidatures::candidatures_obtenir,
-            candidatures::candidatures_creer,
-            candidatures::candidatures_modifier,
-            candidatures::candidatures_changer_statut,
-            candidatures::candidatures_supprimer,
-            candidatures::candidatures_exporter_csv,
-            entreprises::entreprises_lister,
-            entreprises::entreprises_lister_page,
-            entreprises::entreprises_lister_types,
-            entreprises::entreprises_obtenir,
-            entreprises::entreprises_creer,
-            entreprises::entreprises_modifier,
-            entreprises::entreprises_supprimer,
-            contacts::contacts_lister,
-            contacts::contacts_lister_page,
-            contacts::contacts_obtenir,
-            contacts::contacts_creer,
-            contacts::contacts_modifier,
-            contacts::contacts_supprimer,
-            documents::documents_cv_lister,
-            documents::documents_cv_obtenir,
-            documents::documents_cv_enregistrer,
-            documents::documents_cv_supprimer,
-            documents::documents_cv_exporter_pdf,
-            documents::documents_lettres_lister,
-            documents::documents_lettre_obtenir,
-            documents::documents_lettre_enregistrer,
-            documents::documents_lettre_supprimer,
-            documents::documents_lettre_exporter_pdf,
-            entretiens::entretiens_lister_entre,
-            entretiens::entretiens_obtenir,
-            entretiens::entretiens_enregistrer,
-            entretiens::entretiens_supprimer,
-            ia::ia_analyser_offre,
-            ia::ia_generer_cv,
-            ia::ia_generer_lettre,
-            ia::ia_analyser_cv,
-            ia::ia_importer_profil,
-            ia::ia_annuler,
-            parametres::parametres_charger,
-            parametres::parametres_enregistrer,
-            parametres::parametres_tester_connexion,
-            parametres::parametres_lister_modeles,
-            parametres::parametres_vider_cache_ia,
-            parametres::parametres_exporter,
-            parametres::parametres_restaurer,
-            parametres::parametres_reinitialiser,
-            parametres::parametres_verifier_maj,
-            parametres::parametres_telecharger_maj,
-            parametres::parametres_a_propos,
-            profil::profil_charger,
-            profil::profil_enregistrer,
-            relances::relances_lister_entre,
-            relances::relances_creer,
-            relances::relances_modifier,
-            relances::relances_supprimer,
-            secteurs::secteurs_lister,
+            analytics::analyses_dashboard,
+            analytics::analytics_load,
+            analytics::analytics_export_csv,
+            applications::applications_list_page,
+            applications::applications_breakdown,
+            applications::applications_get,
+            applications::applications_create,
+            applications::applications_update,
+            applications::applications_change_status,
+            applications::applications_delete,
+            applications::applications_export_csv,
+            companies::companies_list,
+            companies::companies_list_page,
+            companies::companies_list_types,
+            companies::companies_get,
+            companies::companies_create,
+            companies::companies_update,
+            companies::companies_delete,
+            contacts::contacts_list,
+            contacts::contacts_list_page,
+            contacts::contacts_get,
+            contacts::contacts_create,
+            contacts::contacts_update,
+            contacts::contacts_delete,
+            documents::documents_resume_list,
+            documents::documents_resume_get,
+            documents::documents_resume_save,
+            documents::documents_resume_delete,
+            documents::documents_cv_export_pdf,
+            documents::documents_cover_letters_list,
+            documents::documents_cover_letter_get,
+            documents::documents_cover_letter_save,
+            documents::documents_cover_letter_delete,
+            documents::documents_lettre_export_pdf,
+            interviews::interviews_list_between,
+            interviews::interviews_get,
+            interviews::interviews_save,
+            interviews::interviews_delete,
+            ai::ai_analyze_listing,
+            ai::ai_generate_resume,
+            ai::ai_generate_cover_letter,
+            ai::ai_analyze_resume,
+            ai::ai_import_profile,
+            ai::ai_cancel,
+            settings::settings_load,
+            settings::settings_save,
+            settings::settings_test_connection,
+            settings::settings_list_models,
+            settings::parametres_clear_ai_cache,
+            settings::settings_export,
+            settings::settings_restore,
+            settings::settings_reset,
+            settings::settings_check_update,
+            settings::settings_download_update,
+            settings::settings_about,
+            profile::profile_load,
+            profile::profile_save,
+            followups::follow_ups_list_between,
+            followups::follow_ups_create,
+            followups::follow_ups_update,
+            followups::follow_ups_delete,
+            sectors::sectors_list,
         ])
         .run(tauri::generate_context!())
     {

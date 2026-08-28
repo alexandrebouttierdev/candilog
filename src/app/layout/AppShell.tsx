@@ -27,7 +27,7 @@ export function AppShell() {
         href="#contenu"
         className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:m-3 focus:rounded-button focus:bg-accent focus:px-3.5 focus:py-2 focus:text-body focus:font-medium focus:text-white"
       >
-        Aller au contenu
+        Aller au content
       </a>
       <NavRail />
       <ContextBarProvider>

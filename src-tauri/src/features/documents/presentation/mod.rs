@@ -1,2 +1,2 @@
-//! Commandes Tauri des bibliothèques Documents.
+//! Commands Tauri des bibliothèques Documents.
 pub mod commands;

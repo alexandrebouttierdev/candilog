@@ -1,8 +1,8 @@
 //! Cas d'usage des bibliothèques Documents.
 
-mod cv_document;
-mod lettre_document;
+mod resume_document;
+mod cover_letter_document;
 mod service;
-pub use cv_document::construire;
-pub use lettre_document::construire_lettre;
+pub use resume_document::build;
+pub use cover_letter_document::build_cover_letter;
 pub use service::DocumentsService;

@@ -26,7 +26,7 @@ export function EntityPicker({
   selectedLabel,
   placeholder,
   emptyHelp,
-  pageSize = 4,
+  page_size = 4,
   invalid = false,
   describedBy,
   id,
@@ -34,21 +34,21 @@ export function EntityPicker({
   fetchPage,
   queryKey,
 }: {
-  /** Identifiant sélectionné, ou `null`. */
+  /** Id sélectionné, ou `null`. */
   value: string | null;
   /** Libellé de la sélection courante, connu de l'appelant seul. */
   selectedLabel: string | null;
   placeholder: string;
   /** Aide affichée sous la liste quand la recherche ne donne rien. */
   emptyHelp?: string;
-  pageSize?: number;
+  page_size?: number;
   invalid?: boolean;
   describedBy?: string | undefined;
   id?: string;
   onChange: (id: string | null) => void;
-  /** Charge une page de résultats pour une recherche donnée. */
-  fetchPage: (params: { page: number; pageSize: number; search: string }) => Promise<Page<EntityOption>>;
-  /** Racine de la clé de cache, propre à l'entité recherchée. */
+  /** Payload une page de résultats pour une recherche donnée. */
+  fetchPage: (params: { page: number; page_size: number; search: string }) => Promise<Page<EntityOption>>;
+  /** Root de la clé de cache, propre à l'entité recherchée. */
   queryKey: readonly unknown[];
 }) {
   const [ouvert, setOuvert] = useState(false);
@@ -56,11 +56,11 @@ export function EntityPicker({
   const [page, setPage] = useState(1);
   const recherche = useDebounce(saisie);
   const conteneur = useRef<HTMLDivElement>(null);
-  const listeId = useId();
+  const listId = useId();
 
   const resultats = useQuery({
-    queryKey: [...queryKey, "picker", { page, pageSize, recherche }],
-    queryFn: () => fetchPage({ page, pageSize, search: recherche }),
+    queryKey: [...queryKey, "picker", { page, page_size, recherche }],
+    queryFn: () => fetchPage({ page, page_size, search: recherche }),
     enabled: ouvert,
   });
 
@@ -90,7 +90,7 @@ export function EntityPicker({
           type="text"
           role="combobox"
           aria-expanded={ouvert}
-          aria-controls={listeId}
+          aria-controls={listId}
           aria-autocomplete="list"
           aria-invalid={invalid}
           aria-describedby={describedBy}
@@ -124,7 +124,7 @@ export function EntityPicker({
 
       {ouvert ? (
         <div
-          id={listeId}
+          id={listId}
           role="listbox"
           className="absolute top-full right-0 left-0 z-20 mt-1 overflow-hidden rounded-field border border-line bg-surface shadow-e2"
         >
@@ -168,10 +168,10 @@ export function EntityPicker({
             </ul>
           )}
 
-          {(resultats.data?.total ?? 0) > pageSize ? (
+          {(resultats.data?.total ?? 0) > page_size ? (
             <Pager
               page={page}
-              pageSize={pageSize}
+              page_size={page_size}
               total={resultats.data?.total ?? 0}
               label="résultats"
               onPageChange={setPage}

@@ -1,28 +1,28 @@
 //! Tests du modèle de lettre fusionné.
 
 use super::*;
-use crate::features::documents::domain::ExportLettre;
-use crate::features::profil::domain::{Identite, Profil};
+use crate::features::documents::domain::CoverLetterExport;
+use crate::features::profile::domain::{Identity, Profile};
 
-fn profil() -> Profil {
-    Profil {
-        identite: Identite {
-            prenom: "Alex".into(),
-            nom: "Exemple".into(),
+fn profile() -> Profile {
+    Profile {
+        identity: Identity {
+            first_name: "Alex".into(),
+            name: "Exemple".into(),
             email: "alex@exemple.fr".into(),
-            ville: Some("Rennes".into()),
-            ..Identite::default()
+            city: Some("Rennes".into()),
+            ..Identity::default()
         },
-        ..Profil::default()
+        ..Profile::default()
     }
 }
 
-fn lettre() -> ExportLettre {
-    ExportLettre {
-        nom: "Lettre Nova".into(),
-        entreprise: Some("Nova".into()),
-        poste: Some("Développeur".into()),
-        contenu: "Madame, Monsieur,".into(),
+fn cover_letter() -> CoverLetterExport {
+    CoverLetterExport {
+        name: "Lettre Nova".into(),
+        company: Some("Nova".into()),
+        job_title: Some("Développeur".into()),
+        content: "Madame, Monsieur,".into(),
     }
 }
 

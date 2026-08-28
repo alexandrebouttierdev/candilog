@@ -12,6 +12,6 @@ fn test_update_entreprise_inconnue_retourne_une_phrase_lisible() {
             message, "L'entreprise liée à ce contact est introuvable",
             "message rendu à l'utilisateur"
         ),
-        autre => panic!("attendu Validation, obtenu {autre:?}"),
+        other => panic!("attendu Validation, obtenu {other:?}"),
     }
 }

@@ -4,9 +4,9 @@ use super::*;
 
 #[test]
 fn fusionne_l_identite_et_le_contenu_genere() {
-    let cv = construire(&profil(), &generation());
-    assert_eq!(cv.name, "Alex Exemple");
-    assert_eq!(cv.subtitle, "Administrateur systèmes");
-    assert_eq!(cv.profil, "Résumé généré.");
-    assert_eq!(cv.skills, vec!["Linux"]);
+    let resume = build(&profile(), &generation());
+    assert_eq!(resume.name, "Alex Exemple");
+    assert_eq!(resume.subtitle, "Administrateur systèmes");
+    assert_eq!(resume.profile, "Résumé généré.");
+    assert_eq!(resume.skills, vec!["Linux"]);
 }

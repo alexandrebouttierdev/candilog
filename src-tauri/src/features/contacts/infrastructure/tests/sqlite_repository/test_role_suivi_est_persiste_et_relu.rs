@@ -9,15 +9,15 @@ use super::*;
 fn test_role_suivi_est_persiste_et_relu() {
     let repo = repo();
     let cree = repo.create(&entree("Rivet", None)).unwrap();
-    assert_eq!(cree.role_suivi.as_deref(), Some("Manager"));
+    assert_eq!(cree.tracking_role.as_deref(), Some("Manager"));
 
     let mut modifie = entree("Rivet", None);
-    modifie.role_suivi = Some("Recruteur".into());
+    modifie.tracking_role = Some("Recruteur".into());
     let apres = repo.update(cree.id, &modifie).unwrap();
 
-    assert_eq!(apres.role_suivi.as_deref(), Some("Recruteur"));
+    assert_eq!(apres.tracking_role.as_deref(), Some("Recruteur"));
     assert_eq!(
-        repo.get(cree.id).unwrap().role_suivi.as_deref(),
+        repo.get(cree.id).unwrap().tracking_role.as_deref(),
         Some("Recruteur")
     );
 }

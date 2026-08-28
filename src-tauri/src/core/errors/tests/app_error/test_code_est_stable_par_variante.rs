@@ -18,7 +18,7 @@ fn test_code_est_stable_par_variante() {
         (AppError::Provider(String::new()), "PROVIDER_ERROR"),
         (AppError::Cancelled, "CANCELLED"),
     ];
-    for (erreur, code) in attendus {
-        assert_eq!(erreur.code(), code);
+    for (error, code) in attendus {
+        assert_eq!(error.code(), code);
     }
 }

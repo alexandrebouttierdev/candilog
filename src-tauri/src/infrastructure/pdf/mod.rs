@@ -1,7 +1,7 @@
 //! Génération de documents PDF autonomes (polices et icônes embarquées).
 
-mod cv_pdf;
-mod lettre_pdf;
+mod resume_pdf;
+mod cover_letter_pdf;
 
-pub use cv_pdf::{CvEducation, CvExperience, CvLanguage, CvPdf, CvProject};
-pub use lettre_pdf::LettrePdf;
+pub use resume_pdf::{ResumeEducation, ResumeExperience, ResumeLanguage, ResumePdf, ResumeProject};
+pub use cover_letter_pdf::CoverLetterPdf;

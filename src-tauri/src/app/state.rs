@@ -4,52 +4,52 @@ use crate::core::config::AppPaths;
 use crate::core::database::{open_pool, run_local_migrations, SqlitePool};
 use crate::core::errors::AppResult;
 use crate::core::secrets::SecretStore;
-use crate::features::analyses::application::AnalysesService;
-use crate::features::analyses::infrastructure::SqliteAnalysesRepository;
-use crate::features::candidatures::application::CandidatureService;
-use crate::features::candidatures::infrastructure::SqliteCandidatureRepository;
+use crate::features::analytics::application::AnalyticsService;
+use crate::features::analytics::infrastructure::SqliteAnalyticsRepository;
+use crate::features::applications::application::ApplicationService;
+use crate::features::applications::infrastructure::SqliteApplicationRepository;
 use crate::features::contacts::application::ContactService;
 use crate::features::contacts::infrastructure::SqliteContactRepository;
 use crate::features::documents::application::DocumentsService;
-use crate::features::documents::infrastructure::{SqliteCvRepository, SqliteLettreRepository};
-use crate::features::entreprises::application::EntrepriseService;
-use crate::features::entreprises::infrastructure::SqliteEntrepriseRepository;
-use crate::features::entretiens::application::EntretienService;
-use crate::features::entretiens::infrastructure::SqliteEntretienRepository;
-use crate::features::ia::application::IaService;
-use crate::features::parametres::application::ParametresService;
-use crate::features::parametres::infrastructure::SqliteParametresRepository;
-use crate::features::profil::application::ProfilService;
-use crate::features::profil::infrastructure::SqliteProfilRepository;
-use crate::features::relances::application::RelanceService;
-use crate::features::relances::infrastructure::SqliteRelanceRepository;
-use crate::features::secteurs::application::SecteurService;
-use crate::features::secteurs::infrastructure::SqliteSecteurRepository;
+use crate::features::documents::infrastructure::{SqliteResumeRepository, SqliteCoverLetterRepository};
+use crate::features::companies::application::CompanyService;
+use crate::features::companies::infrastructure::SqliteCompanyRepository;
+use crate::features::interviews::application::InterviewService;
+use crate::features::interviews::infrastructure::SqliteInterviewRepository;
+use crate::features::ai::application::AiService;
+use crate::features::settings::application::SettingsService;
+use crate::features::settings::infrastructure::SqliteSettingsRepository;
+use crate::features::profile::application::ProfileService;
+use crate::features::profile::infrastructure::SqliteProfileRepository;
+use crate::features::followups::application::FollowUpService;
+use crate::features::followups::infrastructure::SqliteFollowUpRepository;
+use crate::features::sectors::application::SectorService;
+use crate::features::sectors::infrastructure::SqliteSectorRepository;
 use std::path::PathBuf;
 use std::sync::Arc;
 
 /// Service des candidatures tel que partagé par les commandes.
-pub type Candidatures = Arc<CandidatureService<SqliteCandidatureRepository>>;
+pub type Applications = Arc<ApplicationService<SqliteApplicationRepository>>;
 /// Service du tableau de bord et des analyses.
-pub type Analyses = Arc<AnalysesService<SqliteAnalysesRepository>>;
+pub type Analytics = Arc<AnalyticsService<SqliteAnalyticsRepository>>;
 /// Service des entreprises tel que partagé par les commandes.
-pub type Entreprises = Arc<EntrepriseService<SqliteEntrepriseRepository>>;
+pub type Companies = Arc<CompanyService<SqliteCompanyRepository>>;
 /// Service des contacts tel que partagé par les commandes.
 pub type Contacts = Arc<ContactService<SqliteContactRepository>>;
 /// Service des bibliothèques de CV et lettres.
-pub type Documents = Arc<DocumentsService<SqliteCvRepository, SqliteLettreRepository>>;
+pub type Documents = Arc<DocumentsService<SqliteResumeRepository, SqliteCoverLetterRepository>>;
 /// Service des entretiens tel que partagé par les commandes.
-pub type Entretiens = Arc<EntretienService<SqliteEntretienRepository>>;
+pub type Interviews = Arc<InterviewService<SqliteInterviewRepository>>;
 /// Orchestrateur des traitements IA et de leur annulation.
-pub type Ia = Arc<IaService>;
+pub type Ai = Arc<AiService>;
 /// Réglages, coffre, sauvegardes et mises à jour.
-pub type Reglages = Arc<ParametresService<SqliteParametresRepository, SecretStore>>;
+pub type SettingsHandle = Arc<SettingsService<SqliteSettingsRepository, SecretStore>>;
 /// Service du profil professionnel.
-pub type Profil = Arc<ProfilService<SqliteProfilRepository>>;
+pub type Profile = Arc<ProfileService<SqliteProfileRepository>>;
 /// Service des relances tel que partagé par les commandes.
-pub type Relances = Arc<RelanceService<SqliteRelanceRepository>>;
+pub type FollowUps = Arc<FollowUpService<SqliteFollowUpRepository>>;
 /// Service du référentiel des secteurs tel que partagé par les commandes.
-pub type Secteurs = Arc<SecteurService<SqliteSecteurRepository>>;
+pub type Sectors = Arc<SectorService<SqliteSectorRepository>>;
 
 /// Dépendances partagées par toutes les commandes.
 ///
@@ -64,30 +64,30 @@ pub type Secteurs = Arc<SecteurService<SqliteSecteurRepository>>;
 /// D'autres services s'ajoutent au fil des tranches de migration.
 pub struct AppState {
     /// Service du tableau de bord et des analyses.
-    pub analyses: Analyses,
+    pub analytics: Analytics,
     /// Service des candidatures.
-    pub candidatures: Candidatures,
+    pub applications: Applications,
     /// Service des entreprises.
-    pub entreprises: Entreprises,
+    pub companies: Companies,
     /// Service des contacts du réseau.
     pub contacts: Contacts,
     /// Bibliothèques locales de CV et lettres.
     pub documents: Documents,
     /// Service des entretiens.
-    pub entretiens: Entretiens,
-    /// Analyse et génération de documents.
-    pub ia: Ia,
+    pub interviews: Interviews,
+    /// Analysis et génération de documents.
+    pub ai: Ai,
     /// Réglages applicatifs et maintenance.
-    pub reglages: Reglages,
+    pub settings: SettingsHandle,
     /// Service du profil professionnel.
-    pub profil: Profil,
+    pub profile: Profile,
     /// Service des relances.
-    pub relances: Relances,
+    pub followups: FollowUps,
     /// Service du référentiel des secteurs d'activité.
-    pub secteurs: Secteurs,
+    pub sectors: Sectors,
     /// Pool `SQLite` local.
     pub sqlite: SqlitePool,
-    /// Chemin du fichier de base, nécessaire à l'export et à la restauration de sauvegarde.
+    /// Path du fichier de base, nécessaire à l'export et à la restauration de sauvegarde.
     pub db_path: PathBuf,
 }
 
@@ -119,46 +119,46 @@ impl AppState {
 
     /// Assemble dépôts et services autour d'un pool déjà migré.
     fn sur_pool(pool: SqlitePool, db_path: PathBuf) -> AppResult<Self> {
-        let secteurs_repo = SqliteSecteurRepository::new(pool.clone());
+        let sectors_repo = SqliteSectorRepository::new(pool.clone());
         // Le référentiel est garanti au démarrage : le sélecteur du formulaire entreprise
         // serait vide sur une base neuve, et les secteurs saisis librement dans l'ancienne
         // application resteraient sans ligne correspondante.
-        secteurs_repo.garantir_referentiel()?;
+        sectors_repo.ensure_catalog()?;
 
         Ok(Self {
-            analyses: Arc::new(AnalysesService::new(SqliteAnalysesRepository::new(
+            analytics: Arc::new(AnalyticsService::new(SqliteAnalyticsRepository::new(
                 pool.clone(),
             ))),
-            candidatures: Arc::new(CandidatureService::new(SqliteCandidatureRepository::new(
+            applications: Arc::new(ApplicationService::new(SqliteApplicationRepository::new(
                 pool.clone(),
             ))),
-            entreprises: Arc::new(EntrepriseService::new(SqliteEntrepriseRepository::new(
+            companies: Arc::new(CompanyService::new(SqliteCompanyRepository::new(
                 pool.clone(),
             ))),
             contacts: Arc::new(ContactService::new(SqliteContactRepository::new(
                 pool.clone(),
             ))),
             documents: Arc::new(DocumentsService::new(
-                SqliteCvRepository::new(pool.clone()),
-                SqliteLettreRepository::new(pool.clone()),
+                SqliteResumeRepository::new(pool.clone()),
+                SqliteCoverLetterRepository::new(pool.clone()),
             )),
-            entretiens: Arc::new(EntretienService::new(SqliteEntretienRepository::new(
+            interviews: Arc::new(InterviewService::new(SqliteInterviewRepository::new(
                 pool.clone(),
             ))),
-            ia: Arc::new(IaService::new(pool.clone())),
-            reglages: Arc::new(ParametresService::new(
-                SqliteParametresRepository::new(pool.clone()),
+            ai: Arc::new(AiService::new(pool.clone())),
+            settings: Arc::new(SettingsService::new(
+                SqliteSettingsRepository::new(pool.clone()),
                 SecretStore,
                 pool.clone(),
                 db_path.clone(),
             )),
-            profil: Arc::new(ProfilService::new(SqliteProfilRepository::new(
+            profile: Arc::new(ProfileService::new(SqliteProfileRepository::new(
                 pool.clone(),
             ))),
-            relances: Arc::new(RelanceService::new(SqliteRelanceRepository::new(
+            followups: Arc::new(FollowUpService::new(SqliteFollowUpRepository::new(
                 pool.clone(),
             ))),
-            secteurs: Arc::new(SecteurService::new(secteurs_repo)),
+            sectors: Arc::new(SectorService::new(sectors_repo)),
             sqlite: pool,
             db_path,
         })

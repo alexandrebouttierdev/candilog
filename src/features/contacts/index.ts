@@ -1,3 +1,3 @@
-export { ReseauPage } from "./view/pages/ReseauPage";
+export { NetworkPage } from "./view/pages/NetworkPage";
 export { useContactsViewModel, CONTACTS_KEY } from "./viewmodel/useContactsViewModel";
-export type { Contact, NouveauContact } from "./services/contact.service";
+export type { Contact, NewContact } from "./services/contactService";

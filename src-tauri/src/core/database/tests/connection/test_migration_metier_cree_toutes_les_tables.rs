@@ -8,17 +8,17 @@ fn test_migration_metier_cree_toutes_les_tables() {
     run_local_migrations(&pool).unwrap();
     let conn = pool.get().unwrap();
     for table in [
-        "entreprises",
+        "companies",
         "contacts",
-        "candidatures",
-        "statut_history",
-        "relances",
-        "entretiens",
-        "cv_versions",
-        "lettres_motivation",
-        "secteurs_activite",
-        "parametres",
-        "profil",
+        "applications",
+        "status_history",
+        "follow_ups",
+        "interviews",
+        "resume_versions",
+        "cover_letters",
+        "sectors",
+        "settings",
+        "profile",
     ] {
         let n: i64 = conn
             .query_row(

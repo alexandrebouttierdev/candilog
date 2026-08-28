@@ -31,72 +31,72 @@ import type { ThemePref } from "@/shared/lib/ui-store";
 
 interface DemoRow {
   id: string;
-  poste: string;
-  entreprise: string;
-  contrat: string;
-  statut: { label: string; tone: Tone; icon: string };
+  job_title: string;
+  company: string;
+  contract: string;
+  status: { label: string; tone: Tone; icon: string };
   date: string;
 }
 
 const ROWS: DemoRow[] = [
   {
     id: "1",
-    poste: "Développeur Frontend",
-    entreprise: "Nova Digital",
-    contrat: "CDI",
-    statut: { label: "Entretien", tone: "success", icon: "event_available" },
+    job_title: "Développeur Frontend",
+    company: "Nova Digital",
+    contract: "CDI",
+    status: { label: "Interview", tone: "success", icon: "event_available" },
     date: "20 août",
   },
   {
     id: "2",
-    poste: "Product Designer",
-    entreprise: "Atlas Studio",
-    contrat: "CDI",
-    statut: { label: "En attente", tone: "neutral", icon: "hourglass_top" },
+    job_title: "Product Designer",
+    company: "Atlas Studio",
+    contract: "CDI",
+    status: { label: "En attente", tone: "neutral", icon: "hourglass_top" },
     date: "18 août",
   },
   {
     id: "3",
-    poste: "Ingénieur DevOps",
-    entreprise: "Kelvin Systems",
-    contrat: "CDI",
-    statut: { label: "Relancée", tone: "warning", icon: "send" },
+    job_title: "Ingénieur DevOps",
+    company: "Kelvin Systems",
+    contract: "CDI",
+    status: { label: "Relancée", tone: "warning", icon: "send" },
     date: "15 août",
   },
   {
     id: "4",
-    poste: "Data Analyst",
-    entreprise: "Solstice Analytics",
-    contrat: "CDI",
-    statut: { label: "Refusée", tone: "danger", icon: "do_not_disturb_on" },
+    job_title: "Data Analyst",
+    company: "Solstice Analytics",
+    contract: "CDI",
+    status: { label: "Refusée", tone: "danger", icon: "do_not_disturb_on" },
     date: "08 août",
   },
 ];
 
 const COLUMNS: Column<DemoRow, "poste" | "entreprise" | "statut" | "date">[] = [
-  { key: "poste", header: "Poste", sortKey: "poste", render: (row) => row.poste },
+  { key: "poste", header: "Poste", sort_key: "poste", render: (row) => row.job_title },
   {
     key: "entreprise",
-    header: "Entreprise",
-    sortKey: "entreprise",
-    render: (row) => <span className="text-ink-muted">{row.entreprise}</span>,
+    header: "Company",
+    sort_key: "entreprise",
+    render: (row) => <span className="text-ink-muted">{row.company}</span>,
   },
-  { key: "contrat", header: "Contrat", grow: 0.7, render: (row) => row.contrat },
+  { key: "contrat", header: "Contrat", grow: 0.7, render: (row) => row.contract },
   {
     key: "statut",
     header: "Statut",
-    sortKey: "statut",
+    sort_key: "statut",
     grow: 1,
     render: (row) => (
-      <StatusPill tone={row.statut.tone} icon={row.statut.icon}>
-        {row.statut.label}
+      <StatusPill tone={row.status.tone} icon={row.status.icon}>
+        {row.status.label}
       </StatusPill>
     ),
   },
   {
     key: "date",
     header: "Envoyée",
-    sortKey: "date",
+    sort_key: "date",
     grow: 0.7,
     numeric: true,
     render: (row) => row.date,
@@ -109,7 +109,7 @@ export function DesignGallery() {
   const [modal, setModal] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const [page, setPage] = useState(1);
-  const [sortKey, setSortKey] = useState<"poste" | "entreprise" | "statut" | "date">("date");
+  const [sort_key, setSortKey] = useState<"poste" | "entreprise" | "statut" | "date">("date");
   const { theme, setTheme, notify } = useUiStore();
 
   return (
@@ -146,11 +146,11 @@ export function DesignGallery() {
           <div className="flex flex-wrap items-center gap-2">
             <Button variant="primary" icon="add">Action primaire</Button>
             <Button variant="secondary" icon="download">Secondaire</Button>
-            <Button variant="ghost" icon="filter_alt">Fantôme</Button>
+            <Button variant="ghost" icon="filter_alt">FantMe</Button>
             <Button variant="danger" icon="delete" onClick={() => setConfirm(true)}>
               Destructive
             </Button>
-            <Button variant="primary" disabled>Désactivé</Button>
+            <Button variant="primary" disabled>DSactiv</Button>
           </div>
         </Section>
 
@@ -165,11 +165,11 @@ export function DesignGallery() {
 
         <Section title="Statuts">
           <div className="flex flex-wrap items-center gap-2">
-            <StatusPill tone="success" icon="event_available">Entretien</StatusPill>
-            <StatusPill tone="neutral" icon="hourglass_top">En attente</StatusPill>
-            <StatusPill tone="warning" icon="send">Relancée</StatusPill>
-            <StatusPill tone="danger" icon="do_not_disturb_on">Refusée</StatusPill>
-            <StatusPill tone="accent" icon="auto_awesome">Généré par IA</StatusPill>
+            <StatusPill tone="success" icon="event_available">Interview</StatusPill>
+            <StatusPill tone="neutral" icon="hourglass_top">En pending</StatusPill>
+            <StatusPill tone="warning" icon="send">RelancE</StatusPill>
+            <StatusPill tone="danger" icon="do_not_disturb_on">RejectedE</StatusPill>
+            <StatusPill tone="accent" icon="auto_awesome">GNR par Ai</StatusPill>
           </div>
         </Section>
 
@@ -178,12 +178,12 @@ export function DesignGallery() {
             <DataTable
               columns={COLUMNS}
               rows={ROWS}
-              rowKey={(row) => row.id}
-              sort={{ key: sortKey, direction: "desc" }}
+              row_key={(row) => row.id}
+              sort={{ key: sort_key, direction: "desc" }}
               onSortChange={setSortKey}
               onRowClick={() => notify({ tone: "info", title: "Ligne ouverte" })}
             />
-            <Pager page={page} pageSize={4} total={15} label="candidatures" onPageChange={setPage} />
+            <Pager page={page} page_size={4} total={15} label="candidatures" onPageChange={setPage} />
           </div>
         </Section>
 
@@ -240,7 +240,7 @@ export function DesignGallery() {
           <div className="rounded-card border border-line bg-surface p-4">
             <TimelineList
               entries={[
-                { id: "a", title: "Entretien planifié", detail: "Visio 45 min avec Camille Rivet", date: "25 août", tone: "success" },
+                { id: "a", title: "Interview planifié", detail: "Visio 45 min avec Camille Rivet", date: "25 août", tone: "success" },
                 { id: "b", title: "Réponse reçue", detail: "Invitation à un premier échange", date: "20 août", tone: "accent" },
                 { id: "c", title: "Relance envoyée", detail: "Email de suivi, ton formel", date: "14 août", tone: "warning" },
               ]}
@@ -250,11 +250,11 @@ export function DesignGallery() {
 
         <Section title="Notifications">
           <div className="flex flex-wrap gap-2">
-            <Button icon="check_circle" onClick={() => notify({ tone: "success", title: "Candidature enregistrée", detail: "Ajoutée au suivi." })}>
-              Succès
+            <Button icon="check_circle" onClick={() => notify({ tone: "success", title: "Application enregistrée", detail: "Ajoutée au suivi." })}>
+              SuccS
             </Button>
             <Button icon="error" onClick={() => notify({ tone: "error", title: "Enregistrement impossible", detail: "Le poste est requis." })}>
-              Erreur
+              Error
             </Button>
             <Button icon="info" onClick={() => notify({ tone: "info", title: "Analyse en cours" })}>
               Information
@@ -268,11 +268,11 @@ export function DesignGallery() {
         icon="work"
         title="Nouvelle candidature"
         subtitle="Renseignez le poste et l'entreprise visés"
-        footerNote="Les dates sont saisies au format JJ-MM-AAAA."
+        footer_note="Les dates sont saisies au format JJ-MM-AAAA."
         onClose={() => setModal(false)}
         onSubmit={() => {
           setModal(false);
-          notify({ tone: "success", title: "Candidature enregistrée" });
+          notify({ tone: "success", title: "Application enregistrée" });
         }}
       >
         <div className="grid grid-cols-2 gap-4">
@@ -303,7 +303,7 @@ export function DesignGallery() {
         onCancel={() => setConfirm(false)}
         onConfirm={() => {
           setConfirm(false);
-          notify({ tone: "success", title: "Candidature supprimée" });
+          notify({ tone: "success", title: "Application supprimée" });
         }}
       />
     </div>

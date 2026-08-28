@@ -7,10 +7,10 @@ use super::*;
 #[test]
 fn test_creer_refuse_un_linkedin_non_http() {
     let service = ContactService::new(StubRepo);
-    let mut input = nouveau("Camille", "Rivet");
+    let mut input = new("Camille", "Rivet");
     input.linkedin = Some("javascript:alert(1)".into());
 
-    let resultat = service.creer(&input);
+    let resultat = service.create(&input);
 
     assert!(matches!(resultat, Err(AppError::Validation(_))));
 }

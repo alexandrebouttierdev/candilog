@@ -6,8 +6,8 @@ import { Icon } from "@/shared/ui/Icon";
 /**
  * Emplacement droit de la barre d'onglets contextuels.
  *
- * Les maquettes y placent, selon l'écran, un champ de recherche (Tableau de bord, Suivi,
- * Relations, Documents) ou une note de contexte (Analyses, Réglages). L'accessoire
+ * Les maquettes y placent, selon l'écran, un champ de recherche (Table de bord, Tracking,
+ * Relations, Documents) ou une note de contexte (Analytics, Réglages). L'accessoire
  * appartient donc à l'écran, mais s'affiche dans la coque : un portail vers un nœud
  * exposé par `AppShell` évite de faire remonter l'état de recherche de chaque page
  * jusqu'à la coque, ou de dupliquer la barre dans chaque écran.
@@ -47,7 +47,7 @@ export function ContextSearch({
 }: {
   value: string;
   placeholder: string;
-  onChange: (valeur: string) => void;
+  onChange: (value: string) => void;
   /** Largeur minimale ; les maquettes vont de 230 à 260 px selon l'écran. */
   width?: number;
 }) {

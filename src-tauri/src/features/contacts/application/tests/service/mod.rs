@@ -3,17 +3,17 @@ use super::*;
 use crate::features::contacts::domain::Contact;
 
 /// Contact de test, renvoyé par le dépôt double.
-fn ct(prenom: &str, nom: &str) -> Contact {
+fn ct(first_name: &str, name: &str) -> Contact {
     Contact {
         id: uuid::Uuid::nil(),
-        entreprise_id: None,
-        entreprise_nom: None,
-        prenom: prenom.into(),
-        nom: nom.into(),
-        poste: None,
-        role_suivi: None,
+        company_id: None,
+        company_name: None,
+        first_name: first_name.into(),
+        name: name.into(),
+        job_title: None,
+        tracking_role: None,
         email: None,
-        telephone: None,
+        phone: None,
         linkedin: None,
         notes: None,
         created_at: "now".into(),
@@ -21,16 +21,16 @@ fn ct(prenom: &str, nom: &str) -> Contact {
     }
 }
 
-/// Charge utile de test, avec les seuls champs requis.
-fn nouveau(prenom: &str, nom: &str) -> NouveauContact {
-    NouveauContact {
-        entreprise_id: None,
-        prenom: prenom.into(),
-        nom: nom.into(),
-        poste: None,
-        role_suivi: None,
+/// Payload utile de test, avec les seuls champs requis.
+fn new(first_name: &str, name: &str) -> NewContact {
+    NewContact {
+        company_id: None,
+        first_name: first_name.into(),
+        name: name.into(),
+        job_title: None,
+        tracking_role: None,
         email: None,
-        telephone: None,
+        phone: None,
         linkedin: None,
         notes: None,
     }
@@ -62,11 +62,11 @@ impl ContactRepository for StubRepo {
             page_size,
         ))
     }
-    fn create(&self, input: &NouveauContact) -> AppResult<Contact> {
-        Ok(ct(&input.prenom, &input.nom))
+    fn create(&self, input: &NewContact) -> AppResult<Contact> {
+        Ok(ct(&input.first_name, &input.name))
     }
-    fn update(&self, _id: uuid::Uuid, input: &NouveauContact) -> AppResult<Contact> {
-        Ok(ct(&input.prenom, &input.nom))
+    fn update(&self, _id: uuid::Uuid, input: &NewContact) -> AppResult<Contact> {
+        Ok(ct(&input.first_name, &input.name))
     }
     fn delete(&self, _id: uuid::Uuid) -> AppResult<()> {
         Ok(())

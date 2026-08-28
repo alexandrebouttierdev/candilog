@@ -3,14 +3,14 @@ use super::*;
 
 /// Enum de substitution aux enums du domaine.
 ///
-/// Les helpers `enum_depuis_texte` / `texte_depuis_enum` sont génériques : les éprouver avec
+/// Les helpers `enum_from_text` / `text_from_enum` sont génériques : les éprouver avec
 /// un enum métier réel ferait dépendre le socle d'une feature, alors que ce qui est testé est
 /// l'aller-retour `serde` lui-même. Cet enum reproduit la convention effectivement utilisée en
-/// base (`SCREAMING_SNAKE_CASE` pour `candidatures.statut`).
+/// base (`EN_ATTENTE` pour `applications.status`).
 #[derive(Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-enum StatutFactice {
-    EnAttente,
+enum StatusFactice {
+    #[serde(rename = "EN_ATTENTE")]
+    Pending,
 }
 
 mod test_enum_depuis_texte_valeur_connue_retourne_la_variante;

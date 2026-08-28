@@ -1,87 +1,87 @@
-//! Persistance dans les tables historiques `cv_versions` et `lettres_motivation`.
+//! Persistance dans les tables historiques `resume_versions` et `cover_letters_motivation`.
 
-use crate::core::database::helpers::{connexion, maintenant_iso, traduire_erreur, uuid_colonne};
+use crate::core::database::helpers::{connection, now_iso, translate_error, uuid_column};
 use crate::core::database::SqlitePool;
 use crate::core::errors::{AppError, AppResult};
 use crate::features::documents::domain::{
-    CvRepository, CvResume, CvVersion, Lettre, LettreRepository, NouveauCv, NouvelleLettre,
+    ResumeRepository, ResumeSummary, ResumeVersion, CoverLetter, CoverLetterRepository, NewResume, NewCoverLetter,
 };
 use uuid::Uuid;
 
-pub struct SqliteCvRepository {
+pub struct SqliteResumeRepository {
     pool: SqlitePool,
 }
-impl SqliteCvRepository {
+impl SqliteResumeRepository {
     #[must_use]
     pub const fn new(pool: SqlitePool) -> Self {
         Self { pool }
     }
 }
 
-impl CvRepository for SqliteCvRepository {
-    fn enregistrer(&self, input: &NouveauCv) -> AppResult<CvVersion> {
-        let conn = connexion(&self.pool)?;
+impl ResumeRepository for SqliteResumeRepository {
+    fn save(&self, input: &NewResume) -> AppResult<ResumeVersion> {
+        let conn = connection(&self.pool)?;
         let id = Uuid::new_v4();
-        let created_at = maintenant_iso();
-        let contenu = serde_json::to_string(&input.contenu)
+        let created_at = now_iso();
+        let content = serde_json::to_string(&input.content)
             .map_err(|e| AppError::Serialization(e.to_string()))?;
         conn.execute(
-            "INSERT INTO cv_versions (id, name, content, created_at) VALUES (?1, ?2, ?3, ?4)",
-            rusqlite::params![id.to_string(), input.nom, contenu, created_at],
+            "INSERT INTO resume_versions (id, name, content, created_at) VALUES (?1, ?2, ?3, ?4)",
+            rusqlite::params![id.to_string(), input.name, content, created_at],
         )
-        .map_err(|e| traduire_erreur(e, "version de CV"))?;
-        Ok(CvVersion {
+        .map_err(|e| translate_error(e, "version de CV"))?;
+        Ok(ResumeVersion {
             id,
-            nom: input.nom.clone(),
-            contenu: input.contenu.clone(),
+            name: input.name.clone(),
+            content: input.content.clone(),
             created_at,
         })
     }
 
-    fn lister(&self) -> AppResult<Vec<CvResume>> {
-        let conn = connexion(&self.pool)?;
+    fn list(&self) -> AppResult<Vec<ResumeSummary>> {
+        let conn = connection(&self.pool)?;
         let mut query = conn
             .prepare(
-                "SELECT id, name, created_at FROM cv_versions ORDER BY created_at DESC, rowid DESC",
+                "SELECT id, name, created_at FROM resume_versions ORDER BY created_at DESC, rowid DESC",
             )
-            .map_err(|e| traduire_erreur(e, "versions de CV"))?;
+            .map_err(|e| translate_error(e, "versions de CV"))?;
         let rows = query
             .query_map([], |row| {
-                Ok(CvResume {
-                    id: uuid_colonne(row, 0)?,
-                    nom: row.get(1)?,
+                Ok(ResumeSummary {
+                    id: uuid_column(row, 0)?,
+                    name: row.get(1)?,
                     created_at: row.get(2)?,
                 })
             })
-            .map_err(|e| traduire_erreur(e, "versions de CV"))?;
+            .map_err(|e| translate_error(e, "versions de CV"))?;
         rows.collect::<Result<Vec<_>, _>>()
-            .map_err(|e| traduire_erreur(e, "versions de CV"))
+            .map_err(|e| translate_error(e, "versions de CV"))
     }
 
-    fn obtenir(&self, id: Uuid) -> AppResult<CvVersion> {
-        let conn = connexion(&self.pool)?;
-        let (nom, brut, created_at): (String, String, String) = conn
+    fn get(&self, id: Uuid) -> AppResult<ResumeVersion> {
+        let conn = connection(&self.pool)?;
+        let (name, raw, created_at): (String, String, String) = conn
             .query_row(
-                "SELECT name, content, created_at FROM cv_versions WHERE id = ?1",
+                "SELECT name, content, created_at FROM resume_versions WHERE id = ?1",
                 [id.to_string()],
                 |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
             )
-            .map_err(|e| traduire_erreur(e, &format!("version de CV {id}")))?;
-        let contenu =
-            serde_json::from_str(&brut).map_err(|e| AppError::Serialization(e.to_string()))?;
-        Ok(CvVersion {
+            .map_err(|e| translate_error(e, &format!("version de CV {id}")))?;
+        let content =
+            serde_json::from_str(&raw).map_err(|e| AppError::Serialization(e.to_string()))?;
+        Ok(ResumeVersion {
             id,
-            nom,
-            contenu,
+            name,
+            content,
             created_at,
         })
     }
 
-    fn supprimer(&self, id: Uuid) -> AppResult<()> {
-        let conn = connexion(&self.pool)?;
+    fn delete(&self, id: Uuid) -> AppResult<()> {
+        let conn = connection(&self.pool)?;
         let count = conn
-            .execute("DELETE FROM cv_versions WHERE id = ?1", [id.to_string()])
-            .map_err(|e| traduire_erreur(e, "version de CV"))?;
+            .execute("DELETE FROM resume_versions WHERE id = ?1", [id.to_string()])
+            .map_err(|e| translate_error(e, "version de CV"))?;
         if count == 0 {
             return Err(AppError::NotFound(format!("version de CV {id}")));
         }
@@ -89,74 +89,74 @@ impl CvRepository for SqliteCvRepository {
     }
 }
 
-pub struct SqliteLettreRepository {
+pub struct SqliteCoverLetterRepository {
     pool: SqlitePool,
 }
-impl SqliteLettreRepository {
+impl SqliteCoverLetterRepository {
     #[must_use]
     pub const fn new(pool: SqlitePool) -> Self {
         Self { pool }
     }
 }
-const LETTRE_COLONNES: &str = "id, name, company, job_title, tone, length, content, created_at";
-fn lettre_row(row: &rusqlite::Row) -> rusqlite::Result<Lettre> {
-    Ok(Lettre {
-        id: uuid_colonne(row, 0)?,
-        nom: row.get(1)?,
-        entreprise: row.get(2)?,
-        poste: row.get(3)?,
-        ton: row.get(4)?,
-        longueur: row.get(5)?,
-        contenu: row.get(6)?,
+const COVER_LETTER_COLUMNS: &str = "id, name, company, job_title, tone, length, content, created_at";
+fn cover_letter_row(row: &rusqlite::Row) -> rusqlite::Result<CoverLetter> {
+    Ok(CoverLetter {
+        id: uuid_column(row, 0)?,
+        name: row.get(1)?,
+        company: row.get(2)?,
+        job_title: row.get(3)?,
+        tone: row.get(4)?,
+        length: row.get(5)?,
+        content: row.get(6)?,
         created_at: row.get(7)?,
     })
 }
 
-impl LettreRepository for SqliteLettreRepository {
-    fn enregistrer(&self, input: &NouvelleLettre) -> AppResult<Lettre> {
-        let conn = connexion(&self.pool)?;
+impl CoverLetterRepository for SqliteCoverLetterRepository {
+    fn save(&self, input: &NewCoverLetter) -> AppResult<CoverLetter> {
+        let conn = connection(&self.pool)?;
         let id = Uuid::new_v4();
-        let created_at = maintenant_iso();
-        conn.execute("INSERT INTO lettres_motivation (id, name, company, job_title, tone, length, content, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)", rusqlite::params![id.to_string(), input.nom, input.entreprise, input.poste, input.ton, input.longueur, input.contenu, created_at]).map_err(|e| traduire_erreur(e, "lettre de motivation"))?;
-        Ok(Lettre {
+        let created_at = now_iso();
+        conn.execute("INSERT INTO cover_letters (id, name, company, job_title, tone, length, content, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)", rusqlite::params![id.to_string(), input.name, input.company, input.job_title, input.tone, input.length, input.content, created_at]).map_err(|e| translate_error(e, "lettre de motivation"))?;
+        Ok(CoverLetter {
             id,
-            nom: input.nom.clone(),
-            entreprise: input.entreprise.clone(),
-            poste: input.poste.clone(),
-            ton: input.ton.clone(),
-            longueur: input.longueur.clone(),
-            contenu: input.contenu.clone(),
+            name: input.name.clone(),
+            company: input.company.clone(),
+            job_title: input.job_title.clone(),
+            tone: input.tone.clone(),
+            length: input.length.clone(),
+            content: input.content.clone(),
             created_at,
         })
     }
 
-    fn lister(&self) -> AppResult<Vec<Lettre>> {
-        let conn = connexion(&self.pool)?;
-        let mut query = conn.prepare(&format!("SELECT {LETTRE_COLONNES} FROM lettres_motivation ORDER BY created_at DESC, rowid DESC")).map_err(|e| traduire_erreur(e, "lettres de motivation"))?;
+    fn list(&self) -> AppResult<Vec<CoverLetter>> {
+        let conn = connection(&self.pool)?;
+        let mut query = conn.prepare(&format!("SELECT {COVER_LETTER_COLUMNS} FROM cover_letters ORDER BY created_at DESC, rowid DESC")).map_err(|e| translate_error(e, "lettres de motivation"))?;
         let rows = query
-            .query_map([], lettre_row)
-            .map_err(|e| traduire_erreur(e, "lettres de motivation"))?;
+            .query_map([], cover_letter_row)
+            .map_err(|e| translate_error(e, "lettres de motivation"))?;
         rows.collect::<Result<Vec<_>, _>>()
-            .map_err(|e| traduire_erreur(e, "lettres de motivation"))
+            .map_err(|e| translate_error(e, "lettres de motivation"))
     }
 
-    fn obtenir(&self, id: Uuid) -> AppResult<Lettre> {
-        connexion(&self.pool)?
+    fn get(&self, id: Uuid) -> AppResult<CoverLetter> {
+        connection(&self.pool)?
             .query_row(
-                &format!("SELECT {LETTRE_COLONNES} FROM lettres_motivation WHERE id = ?1"),
+                &format!("SELECT {COVER_LETTER_COLUMNS} FROM cover_letters WHERE id = ?1"),
                 [id.to_string()],
-                lettre_row,
+                cover_letter_row,
             )
-            .map_err(|e| traduire_erreur(e, &format!("lettre de motivation {id}")))
+            .map_err(|e| translate_error(e, &format!("lettre de motivation {id}")))
     }
 
-    fn supprimer(&self, id: Uuid) -> AppResult<()> {
-        let count = connexion(&self.pool)?
+    fn delete(&self, id: Uuid) -> AppResult<()> {
+        let count = connection(&self.pool)?
             .execute(
-                "DELETE FROM lettres_motivation WHERE id = ?1",
+                "DELETE FROM cover_letters WHERE id = ?1",
                 [id.to_string()],
             )
-            .map_err(|e| traduire_erreur(e, "lettre de motivation"))?;
+            .map_err(|e| translate_error(e, "lettre de motivation"))?;
         if count == 0 {
             return Err(AppError::NotFound(format!("lettre de motivation {id}")));
         }

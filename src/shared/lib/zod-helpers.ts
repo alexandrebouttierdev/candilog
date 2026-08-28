@@ -8,10 +8,10 @@ import { z } from "zod";
  * stockerait `''` au lieu de `NULL` — deux valeurs que `coalesce` et les `LIKE` des
  * requêtes de recherche ne traitent pas de la même façon.
  */
-export const texteFacultatif = z
+export const textFacultatif = z
   .string()
   .trim()
-  .transform((valeur) => (valeur === "" ? null : valeur))
+  .transform((value) => (value === "" ? null : value))
   .nullable()
   .default(null);
 
@@ -25,14 +25,14 @@ export const urlFacultative = (message = "Adresse invalide — attendu http:// o
   z
     .string()
     .trim()
-    .transform((valeur) => (valeur === "" ? null : valeur))
+    .transform((value) => (value === "" ? null : value))
     .nullable()
     .default(null)
     .refine(
-      (valeur) => {
-        if (valeur === null) return true;
+      (value) => {
+        if (value === null) return true;
         try {
-          return ["http:", "https:"].includes(new URL(valeur).protocol);
+          return ["http:", "https:"].includes(new URL(value).protocol);
         } catch {
           return false;
         }
@@ -40,9 +40,9 @@ export const urlFacultative = (message = "Adresse invalide — attendu http:// o
       { message },
     );
 
-/** Identifiant facultatif venant d'un sélecteur : `""` signifie « aucun ». */
-export const identifiantFacultatif = z
+/** Id facultatif venant d'un sélecteur : `""` signifie « aucun ». */
+export const idFacultatif = z
   .string()
-  .transform((valeur) => (valeur === "" ? null : valeur))
+  .transform((value) => (value === "" ? null : value))
   .nullable()
   .default(null);

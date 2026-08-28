@@ -3,44 +3,44 @@
 use crate::app::state::AppState;
 use crate::core::errors::{AppError, AppResult};
 use crate::core::utils::blocking;
-use crate::features::documents::application::{construire, construire_lettre};
+use crate::features::documents::application::{build, build_cover_letter};
 use crate::features::documents::domain::{
-    CvResume, CvVersion, ExportLettre, Lettre, NouveauCv, NouvelleLettre,
+    ResumeSummary, ResumeVersion, CoverLetterExport, CoverLetter, NewResume, NewCoverLetter,
 };
-use crate::features::ia::domain::CvGenere;
+use crate::features::ai::domain::GeneratedResume;
 use std::path::Path;
 use std::sync::Arc;
 use tauri::State;
 use uuid::Uuid;
 
 #[tauri::command]
-pub async fn documents_cv_lister(state: State<'_, AppState>) -> AppResult<Vec<CvResume>> {
+pub async fn documents_resume_list(state: State<'_, AppState>) -> AppResult<Vec<ResumeSummary>> {
     let service = state.documents.clone();
-    tauri::async_runtime::spawn_blocking(move || service.cv_lister())
+    tauri::async_runtime::spawn_blocking(move || service.resume_list())
         .await
         .map_err(|e| crate::core::errors::AppError::Database(e.to_string()))?
 }
 #[tauri::command]
-pub async fn documents_cv_obtenir(state: State<'_, AppState>, id: Uuid) -> AppResult<CvVersion> {
+pub async fn documents_resume_get(state: State<'_, AppState>, id: Uuid) -> AppResult<ResumeVersion> {
     let service = state.documents.clone();
-    tauri::async_runtime::spawn_blocking(move || service.cv_obtenir(id))
+    tauri::async_runtime::spawn_blocking(move || service.resume_get(id))
         .await
         .map_err(|e| crate::core::errors::AppError::Database(e.to_string()))?
 }
 #[tauri::command]
-pub async fn documents_cv_enregistrer(
+pub async fn documents_resume_save(
     state: State<'_, AppState>,
-    input: NouveauCv,
-) -> AppResult<CvVersion> {
+    input: NewResume,
+) -> AppResult<ResumeVersion> {
     let service = state.documents.clone();
-    tauri::async_runtime::spawn_blocking(move || service.cv_enregistrer(&input))
+    tauri::async_runtime::spawn_blocking(move || service.resume_save(&input))
         .await
         .map_err(|e| crate::core::errors::AppError::Database(e.to_string()))?
 }
 #[tauri::command]
-pub async fn documents_cv_supprimer(state: State<'_, AppState>, id: Uuid) -> AppResult<()> {
+pub async fn documents_resume_delete(state: State<'_, AppState>, id: Uuid) -> AppResult<()> {
     let service = state.documents.clone();
-    tauri::async_runtime::spawn_blocking(move || service.cv_supprimer(id))
+    tauri::async_runtime::spawn_blocking(move || service.resume_delete(id))
         .await
         .map_err(|e| crate::core::errors::AppError::Database(e.to_string()))?
 }
@@ -50,18 +50,18 @@ pub async fn documents_cv_supprimer(state: State<'_, AppState>, id: Uuid) -> App
 /// Le profil (identité, périodes, projets, langues) est fusionné au contenu
 /// reformulé : l'aperçu HTML et le PDF reposent sur les mêmes données.
 #[tauri::command]
-pub async fn documents_cv_exporter_pdf(
+pub async fn documents_cv_export_pdf(
     state: State<'_, AppState>,
-    cv: CvGenere,
-    chemin: String,
+    resume: GeneratedResume,
+    path: String,
 ) -> AppResult<()> {
-    let profil = Arc::clone(&state.profil);
+    let profile = Arc::clone(&state.profile);
     blocking::execute(move || {
-        let charge = profil.charger()?;
-        construire(&charge.profil, &cv)
-            .render_pdf(Path::new(&chemin))
+        let payload = profile.load()?;
+        build(&payload.profile, &resume)
+            .render_pdf(Path::new(&path))
             .map_err(|error| {
-                tracing::error!(%error, chemin, "export PDF impossible");
+                tracing::error!(%error, path, "export PDF impossible");
                 AppError::Validation("Le PDF n'a pas pu être écrit à l'emplacement choisi.".into())
             })
     })
@@ -73,51 +73,51 @@ pub async fn documents_cv_exporter_pdf(
 /// L'identité du profil (nom, ville, e-mail) est posée en en-tête, comme
 /// sur l'aperçu HTML.
 #[tauri::command]
-pub async fn documents_lettre_exporter_pdf(
+pub async fn documents_lettre_export_pdf(
     state: State<'_, AppState>,
-    lettre: ExportLettre,
-    chemin: String,
+    cover_letter: CoverLetterExport,
+    path: String,
 ) -> AppResult<()> {
-    let profil = Arc::clone(&state.profil);
+    let profile = Arc::clone(&state.profile);
     blocking::execute(move || {
-        let charge = profil.charger()?;
-        construire_lettre(&charge.profil, &lettre)
-            .render_pdf(Path::new(&chemin))
+        let payload = profile.load()?;
+        build_cover_letter(&payload.profile, &cover_letter)
+            .render_pdf(Path::new(&path))
             .map_err(|error| {
-                tracing::error!(%error, chemin, "export PDF de lettre impossible");
+                tracing::error!(%error, path, "export PDF de lettre impossible");
                 AppError::Validation("Le PDF n'a pas pu être écrit à l'emplacement choisi.".into())
             })
     })
     .await
 }
 #[tauri::command]
-pub async fn documents_lettres_lister(state: State<'_, AppState>) -> AppResult<Vec<Lettre>> {
+pub async fn documents_cover_letters_list(state: State<'_, AppState>) -> AppResult<Vec<CoverLetter>> {
     let service = state.documents.clone();
-    tauri::async_runtime::spawn_blocking(move || service.lettres_lister())
+    tauri::async_runtime::spawn_blocking(move || service.cover_letters_list())
         .await
         .map_err(|e| crate::core::errors::AppError::Database(e.to_string()))?
 }
 #[tauri::command]
-pub async fn documents_lettre_obtenir(state: State<'_, AppState>, id: Uuid) -> AppResult<Lettre> {
+pub async fn documents_cover_letter_get(state: State<'_, AppState>, id: Uuid) -> AppResult<CoverLetter> {
     let service = state.documents.clone();
-    tauri::async_runtime::spawn_blocking(move || service.lettre_obtenir(id))
+    tauri::async_runtime::spawn_blocking(move || service.cover_letter_get(id))
         .await
         .map_err(|e| crate::core::errors::AppError::Database(e.to_string()))?
 }
 #[tauri::command]
-pub async fn documents_lettre_enregistrer(
+pub async fn documents_cover_letter_save(
     state: State<'_, AppState>,
-    input: NouvelleLettre,
-) -> AppResult<Lettre> {
+    input: NewCoverLetter,
+) -> AppResult<CoverLetter> {
     let service = state.documents.clone();
-    tauri::async_runtime::spawn_blocking(move || service.lettre_enregistrer(&input))
+    tauri::async_runtime::spawn_blocking(move || service.cover_letter_save(&input))
         .await
         .map_err(|e| crate::core::errors::AppError::Database(e.to_string()))?
 }
 #[tauri::command]
-pub async fn documents_lettre_supprimer(state: State<'_, AppState>, id: Uuid) -> AppResult<()> {
+pub async fn documents_cover_letter_delete(state: State<'_, AppState>, id: Uuid) -> AppResult<()> {
     let service = state.documents.clone();
-    tauri::async_runtime::spawn_blocking(move || service.lettre_supprimer(id))
+    tauri::async_runtime::spawn_blocking(move || service.cover_letter_delete(id))
         .await
         .map_err(|e| crate::core::errors::AppError::Database(e.to_string()))?
 }

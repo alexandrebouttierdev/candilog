@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { A4Preview, IaProgress, ScoreBadge } from "../DocumentUi";
+import { A4Preview, AiProgress, ScoreBadge } from "../DocumentUi";
 
 describe("DocumentUi", () => {
   it("annonce l'état vide de l'aperçu A4", () => {
@@ -18,8 +18,8 @@ describe("DocumentUi", () => {
 
   it("expose la progression IA aux technologies d'assistance", () => {
     render(
-      <IaProgress
-        progress={{ generationId: "op-1", etape: "Analyse ATS", progression: 78, fragment: null }}
+      <AiProgress
+        progress={{ generation_id: "op-1", step: "Analyse ATS", progress: 78, chunk: null }}
       />,
     );
     expect(screen.getByRole("status")).toHaveTextContent("Analyse ATS");

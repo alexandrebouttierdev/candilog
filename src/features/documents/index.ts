@@ -1,1 +1,1 @@
-export { CvLibraryPage, CvGeneratorPage, LettersLibraryPage, LetterWriterPage, CvAnalysisPage } from "./view/pages/DocumentsPages";
+export { ResumeLibraryPage, ResumeGeneratorPage, LettersLibraryPage, LetterWriterPage, ResumeAnalysisPage } from "./view/pages/DocumentsPages";

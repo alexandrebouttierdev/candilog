@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { CvGenere, ProgressionIa } from "@/features/ia/model/types";
+import type { GeneratedResume, AiProgress } from "@/features/ai/model/types";
 import { cn } from "@/shared/lib/cn";
 import { Icon } from "@/shared/ui";
 
@@ -44,11 +44,11 @@ export function DocumentPanel({
  * Le fond reste blanc en thème sombre : un CV imprimé n'inverse pas ses encres.
  */
 export function A4Preview({
-  cv,
+  resume,
   title = "Aperçu du document",
   children,
 }: {
-  cv?: CvGenere | undefined;
+  resume?: GeneratedResume | undefined;
   title?: string;
   children?: ReactNode;
 }) {
@@ -59,16 +59,16 @@ export function A4Preview({
         className="h-fit w-full max-w-[560px] rounded-[4px] border border-line bg-white px-[42px] py-[38px] text-[#1a1c22] shadow-paper"
       >
         {children ??
-          (cv ? (
+          (resume ? (
             <>
-              <h2 className="text-display text-[#1a1c22]">{cv.resume || "Profil professionnel"}</h2>
+              <h2 className="text-display text-[#1a1c22]">{resume.resume || "Profile professionnel"}</h2>
               <Section title="Compétences">
-                <p>{cv.competences.join(" · ")}</p>
+                <p>{resume.skills.join(" · ")}</p>
               </Section>
               <Section title="Expériences">
-                {cv.experiences.map((item, index) => (
-                  <div key={`${item.intitule}-${index}`} className="mb-[9px]">
-                    <p className="text-label font-semibold">{item.intitule} · {item.entreprise}</p>
+                {resume.experiences.map((item, index) => (
+                  <div key={`${item.title}-${index}`} className="mb-[9px]">
+                    <p className="text-label font-semibold">{item.title} · {item.company}</p>
                     <p className="mt-[3px] text-[10.5px] leading-[1.55] text-[#5b6070]">
                       {item.description}
                     </p>
@@ -76,16 +76,16 @@ export function A4Preview({
                 ))}
               </Section>
               <Section title="Formations">
-                {cv.formations.map((item, index) => (
-                  <p key={`${item.diplome}-${index}`} className="text-label">
-                    <span className="font-semibold">{item.diplome}</span> · {item.etablissement}
+                {resume.education.map((item, index) => (
+                  <p key={`${item.degree}-${index}`} className="text-label">
+                    <span className="font-semibold">{item.degree}</span> · {item.school}
                   </p>
                 ))}
               </Section>
             </>
           ) : (
             <div className="flex min-h-[590px] items-center justify-center text-center text-[12px] text-[#7b8493]">
-              Le document apparaîtra ici après la génération.
+              Le document apparaTra ici aprS la gNRation.
             </div>
           ))}
       </article>
@@ -104,13 +104,13 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-export function IaProgress({ progress }: { progress: ProgressionIa | null }) {
-  const value = progress?.progression ?? 5;
+export function AiProgress({ progress }: { progress: AiProgress | null }) {
+  const value = progress?.progress ?? 5;
   return (
     <div role="status" className="rounded-card border border-accent-border bg-accent-tint p-4">
       <div className="flex items-center gap-2">
         <Icon name="progress_activity" size={17} className="animate-spin text-accent" />
-        <p className="flex-1 text-label font-medium text-ink">{progress?.etape ?? "Préparation…"}</p>
+        <p className="flex-1 text-label font-medium text-ink">{progress?.step ?? "Préparation…"}</p>
         <span className="tabular text-meta text-accent">{value}%</span>
       </div>
       <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface">

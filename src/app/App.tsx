@@ -3,16 +3,16 @@ import { AppProviders } from "./providers/AppProviders";
 import { AppRouter } from "./router/AppRouter";
 import { Toaster } from "@/shared/ui";
 import { applyTheme, useUiStore } from "@/shared/lib/ui-store";
-import { parametresService } from "@/features/parametres/services/parametres.service";
+import { settingsService } from "@/features/settings/services/settingsService";
 
 export function App() {
   const theme = useUiStore((state) => state.theme);
 
   useEffect(() => {
-    void parametresService
-      .charger()
-      .then((parametres) => {
-        useUiStore.getState().setTheme(parametres.theme);
+    void settingsService
+      .load()
+      .then((settings) => {
+        useUiStore.getState().setTheme(settings.theme);
       })
       .catch(() => {
         /* Première ouverture : le thème système reste. */

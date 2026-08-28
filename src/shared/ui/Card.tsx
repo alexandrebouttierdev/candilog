@@ -35,7 +35,7 @@ export function Card({
 }
 
 /**
- * Titre de section interne à une carte sans filet : icône 17 px tertiaire, libellé
+ * Title de section interne à une carte sans filet : icône 17 px tertiaire, libellé
  * 13,5 px/600, méta optionnelle poussée à droite.
  */
 export function CardTitle({
@@ -51,7 +51,7 @@ export function CardTitle({
   iconClassName?: string;
   children: ReactNode;
   meta?: ReactNode;
-  /** Titre 12,5 px des fiches Relations, au lieu des 13,5 px des cartes de tableau de bord. */
+  /** Title 12,5 px des fiches Relations, au lieu des 13,5 px des cartes de tableau de bord. */
   compact?: boolean;
   className?: string;
 }) {
@@ -113,7 +113,7 @@ export function CardMeta({ children }: { children: ReactNode }) {
 }
 
 /**
- * Lien discret « Tout voir » des en-têtes de carte.
+ * Url discret « Tout voir » des en-têtes de carte.
  *
  * `compact` donne la variante des fiches Relations : 11,5 px et pas de chevron, là où les
  * cartes du tableau de bord affichent le lien en 12,5 px suivi d'un chevron.

@@ -12,5 +12,5 @@ fn test_pagination_applique_la_recherche_avant_la_limite() {
     assert_eq!(page.total_pages, 3);
     let filtered = repo.list_page(1, 10, "Contact 29").unwrap();
     assert_eq!(filtered.total, 1);
-    assert_eq!(filtered.items[0].nom, "Contact 29");
+    assert_eq!(filtered.items[0].name, "Contact 29");
 }

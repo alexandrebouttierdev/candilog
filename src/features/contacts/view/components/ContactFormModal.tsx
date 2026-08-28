@@ -6,33 +6,33 @@ import {
   type ContactFormInput,
   type ContactFormValues,
 } from "../../model/schemas/contact-form.schema";
-import { ROLES } from "../../model/roles";
-import type { Contact, NouveauContact } from "../../services/contact.service";
-import { entrepriseService } from "@/features/entreprises/services/entreprise.service";
+import { Roles } from "../../model/roles";
+import type { Contact, NewContact } from "../../services/contactService";
+import { companyService } from "@/features/companies/services/companyService";
 import { useQuery } from "@tanstack/react-query";
 import { FormField, ModalHost, Select, TextArea, TextInput } from "@/shared/ui";
 
 const VIDE: ContactFormInput = {
-  prenom: "",
-  nom: "",
+  first_name: "",
+  name: "",
   email: "",
-  telephone: "",
-  entrepriseId: "",
-  poste: "",
-  roleSuivi: "",
+  phone: "",
+  company_id: "",
+  job_title: "",
+  tracking_role: "",
   linkedin: "",
   notes: "",
 };
 
-function depuis(contact: Contact): ContactFormInput {
+function from(contact: Contact): ContactFormInput {
   return {
-    prenom: contact.prenom,
-    nom: contact.nom,
+    first_name: contact.first_name,
+    name: contact.name,
     email: contact.email ?? "",
-    telephone: contact.telephone ?? "",
-    entrepriseId: contact.entrepriseId ?? "",
-    poste: contact.poste ?? "",
-    roleSuivi: contact.roleSuivi ?? "",
+    phone: contact.phone ?? "",
+    company_id: contact.company_id ?? "",
+    job_title: contact.job_title ?? "",
+    tracking_role: contact.tracking_role ?? "",
     linkedin: contact.linkedin ?? "",
     notes: contact.notes ?? "",
   };
@@ -41,7 +41,7 @@ function depuis(contact: Contact): ContactFormInput {
 /**
  * Modale de création et de modification d'un contact.
  *
- * Structure reprise de `SPECDESIGN/Modales.dc.html` : « Identité » puis « Contexte
+ * Structure reprise de `SPECDESIGN/Modales.dc.html` : « Identité » puis « Context
  * professionnel ».
  */
 export function ContactFormModal({
@@ -55,15 +55,15 @@ export function ContactFormModal({
   contact: Contact | null;
   busy: boolean;
   onClose: () => void;
-  onSubmit: (valeurs: NouveauContact) => Promise<unknown>;
+  onSubmit: (values: NewContact) => Promise<unknown>;
 }) {
   // Le sélecteur d'entreprise charge le répertoire complet, sans pagination : il alimente
   // une liste déroulante, et un `select` natif ne saurait pas demander la page suivante.
   // Un EntityPicker paginé sera introduit avec les candidatures, dont le répertoire
   // d'entreprises est le même mais l'usage plus intensif.
-  const entreprises = useQuery({
+  const companies = useQuery({
     queryKey: ["entreprises", "toutes"],
-    queryFn: entrepriseService.lister,
+    queryFn: companyService.list,
     enabled: open,
   });
 
@@ -73,11 +73,11 @@ export function ContactFormModal({
   });
 
   useEffect(() => {
-    if (open) form.reset(contact ? depuis(contact) : VIDE);
+    if (open) form.reset(contact ? from(contact) : VIDE);
   }, [open, contact, form]);
 
-  const enregistrer = form.handleSubmit(async (valeurs) => {
-    await onSubmit(valeurs);
+  const save = form.handleSubmit(async (values) => {
+    await onSubmit(values);
     onClose();
   });
 
@@ -90,37 +90,37 @@ export function ContactFormModal({
       title={contact ? "Modifier le contact" : "Nouveau contact"}
       subtitle={
         contact
-          ? `${contact.prenom} ${contact.nom}`
+          ? `${contact.first_name} ${contact.name}`
           : "Ajoutez un interlocuteur à votre réseau"
       }
-      footerNote="Le prénom et le nom sont obligatoires."
+      footer_note="Le prénom et le nom sont obligatoires."
       busy={busy}
       onClose={onClose}
-      onSubmit={() => void enregistrer()}
+      onSubmit={() => void save()}
       width="620px"
     >
-      <form onSubmit={(event) => void enregistrer(event)} className="flex flex-col gap-5">
+      <form onSubmit={(event) => void save(event)} className="flex flex-col gap-5">
         <fieldset className="flex flex-col gap-3">
           <legend className="text-eyebrow uppercase text-ink-faint">Identité</legend>
           <div className="grid grid-cols-2 gap-4">
-            <FormField label="Prénom" required error={errors.prenom?.message}>
+            <FormField label="Prénom" required error={errors.first_name?.message}>
               {(props) => (
                 <TextInput
                   {...props}
-                  {...form.register("prenom")}
+                  {...form.register("first_name")}
                   placeholder="Camille"
-                  invalid={Boolean(errors.prenom)}
+                  invalid={Boolean(errors.first_name)}
                 />
               )}
             </FormField>
 
-            <FormField label="Nom" required error={errors.nom?.message}>
+            <FormField label="Nom" required error={errors.name?.message}>
               {(props) => (
                 <TextInput
                   {...props}
-                  {...form.register("nom")}
+                  {...form.register("name")}
                   placeholder="Rivet"
-                  invalid={Boolean(errors.nom)}
+                  invalid={Boolean(errors.name)}
                 />
               )}
             </FormField>
@@ -139,7 +139,7 @@ export function ContactFormModal({
 
             <FormField label="Téléphone">
               {(props) => (
-                <TextInput {...props} {...form.register("telephone")} placeholder="02 99 14 88 05" />
+                <TextInput {...props} {...form.register("phone")} placeholder="02 99 14 88 05" />
               )}
             </FormField>
           </div>
@@ -152,11 +152,11 @@ export function ContactFormModal({
           <div className="grid grid-cols-2 gap-4">
             <FormField label="Entreprise">
               {(props) => (
-                <Select {...props} {...form.register("entrepriseId")}>
+                <Select {...props} {...form.register("company_id")}>
                   <option value="">Aucune</option>
-                  {entreprises.data?.map((entreprise) => (
-                    <option key={entreprise.id} value={entreprise.id}>
-                      {entreprise.nom}
+                  {companies.data?.map((company) => (
+                    <option key={company.id} value={company.id}>
+                      {company.name}
                     </option>
                   ))}
                 </Select>
@@ -165,15 +165,15 @@ export function ContactFormModal({
 
             <FormField label="Poste">
               {(props) => (
-                <TextInput {...props} {...form.register("poste")} placeholder="Lead Frontend" />
+                <TextInput {...props} {...form.register("job_title")} placeholder="Lead Frontend" />
               )}
             </FormField>
 
             <FormField label="Rôle dans le suivi">
               {(props) => (
-                <Select {...props} {...form.register("roleSuivi")}>
+                <Select {...props} {...form.register("tracking_role")}>
                   <option value="">Non renseigné</option>
-                  {ROLES.map((role) => (
+                  {Roles.map((role) => (
                     <option key={role} value={role}>
                       {role}
                     </option>

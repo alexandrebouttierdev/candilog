@@ -2,13 +2,13 @@ import { describe, expect, it } from "vitest";
 import { contactFormSchema } from "../contact-form.schema";
 
 const BASE = {
-  prenom: "Camille",
-  nom: "Rivet",
+  first_name: "Camille",
+  name: "Rivet",
   email: "",
-  telephone: "",
-  entrepriseId: "",
-  poste: "",
-  roleSuivi: "",
+  phone: "",
+  company_id: "",
+  job_title: "",
+  tracking_role: "",
   linkedin: "",
   notes: "",
 };
@@ -19,8 +19,8 @@ describe("schéma du formulaire contact", () => {
   });
 
   it("exige le prénom et le nom", () => {
-    expect(contactFormSchema.safeParse({ ...BASE, prenom: "" }).success).toBe(false);
-    expect(contactFormSchema.safeParse({ ...BASE, nom: "  " }).success).toBe(false);
+    expect(contactFormSchema.safeParse({ ...BASE, first_name: "" }).success).toBe(false);
+    expect(contactFormSchema.safeParse({ ...BASE, name: "  " }).success).toBe(false);
   });
 
   it("accepte une adresse e-mail valide", () => {
@@ -48,11 +48,11 @@ describe("schéma du formulaire contact", () => {
   it("normalise l'entreprise non choisie en null", () => {
     // Le `select` renvoie "" pour « Aucune » ; le backend attend une absence de valeur, pas
     // une chaîne vide qui échouerait la contrainte de clé étrangère.
-    expect(contactFormSchema.parse(BASE).entrepriseId).toBeNull();
+    expect(contactFormSchema.parse(BASE).company_id).toBeNull();
   });
 
   it("conserve le rôle dans le suivi lorsqu'il est choisi", () => {
-    expect(contactFormSchema.parse({ ...BASE, roleSuivi: "Recruteur" }).roleSuivi).toBe(
+    expect(contactFormSchema.parse({ ...BASE, tracking_role: "Recruteur" }).tracking_role).toBe(
       "Recruteur",
     );
   });

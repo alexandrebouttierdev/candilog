@@ -5,7 +5,7 @@ import { cn } from "@/shared/lib/cn";
 /**
  * Bandeau de filtres sous l'en-tête de page.
  *
- * Géométrie des maquettes du Suivi : bande de 11 px / 28 px posée sur le fond de page — et
+ * Géométrie des maquettes du Tracking : bande de 11 px / 28 px posée sur le fond de page — et
  * non sur la surface, contrairement à l'en-tête — avec les puces à gauche et le décompte
  * du résultat à droite.
  */

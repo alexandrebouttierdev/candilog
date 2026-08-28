@@ -1,4 +1,4 @@
-//! Sauvegarde et validation des bases SQLite Candilog.
+//! Backup et validation des bases SQLite Candilog.
 
 use crate::core::database::{run_local_migrations, SqlitePool, DERNIERE_VERSION};
 use crate::core::errors::{AppError, AppResult};
@@ -27,10 +27,10 @@ pub fn export(pool: &SqlitePool, destination: &Path) -> AppResult<()> {
 /// Retourne une erreur si l'en-tête, l'intégrité ou les tables indispensables sont invalides.
 pub fn validate(path: &Path) -> AppResult<()> {
     let mut entete = [0_u8; 16];
-    let mut fichier = std::fs::File::open(path)
+    let mut file = std::fs::File::open(path)
         .map_err(|error| AppError::Database(format!("Impossible de lire le backup : {error}")))?;
     let trop_court = matches!(
-        fichier.read_exact(&mut entete),
+        file.read_exact(&mut entete),
         Err(ref error) if error.kind() == std::io::ErrorKind::UnexpectedEof
     );
     if trop_court || &entete != b"SQLite format 3\0" {
@@ -47,11 +47,11 @@ pub fn validate(path: &Path) -> AppResult<()> {
         )));
     }
     for table in [
-        "candidatures",
-        "entreprises",
+        "applications",
+        "companies",
         "contacts",
-        "parametres",
-        "profil",
+        "settings",
+        "profile",
     ] {
         let count: i64 = connection.query_row(
             "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?1",
@@ -82,7 +82,7 @@ pub fn validate(path: &Path) -> AppResult<()> {
 /// la base active a été remise dans son état antérieur.
 pub fn import(pool: &SqlitePool, db_path: &Path, source_path: &Path) -> AppResult<()> {
     validate(source_path)?;
-    let secours = chemin_de_secours(db_path);
+    let secours = path_de_secours(db_path);
     export(pool, &secours)?;
     tracing::info!("copie de secours prise avant restauration");
 
@@ -90,7 +90,7 @@ pub fn import(pool: &SqlitePool, db_path: &Path, source_path: &Path) -> AppResul
         tracing::info!("backup restauré");
         return Ok(());
     };
-    tracing::error!(erreur = %echec, "restauration échouée, retour arrière");
+    tracing::error!(error = %echec, "restauration échouée, retour arrière");
 
     match remplacer(pool, &secours) {
         Ok(()) => Err(AppError::Validation(
@@ -99,7 +99,7 @@ pub fn import(pool: &SqlitePool, db_path: &Path, source_path: &Path) -> AppResul
                 .into(),
         )),
         Err(perte) => {
-            tracing::error!(erreur = %perte, "retour arrière échoué");
+            tracing::error!(error = %perte, "retour arrière échoué");
             Err(AppError::Database(format!(
                 "Le backup n'a pas pu être restauré et la base d'origine n'a pas pu être \
                  remise en place. Une copie intacte de vos données est conservée dans {}.",
@@ -126,7 +126,7 @@ fn remplacer(pool: &SqlitePool, source_path: &Path) -> AppResult<()> {
     run_local_migrations(pool)
 }
 
-fn chemin_de_secours(db_path: &Path) -> PathBuf {
+fn path_de_secours(db_path: &Path) -> PathBuf {
     if db_path.as_os_str().is_empty() {
         std::env::temp_dir().join(format!("candilog-secours-{}.sqlite", uuid::Uuid::new_v4()))
     } else {
@@ -145,19 +145,19 @@ pub fn reset_data(pool: &SqlitePool) -> AppResult<()> {
         .map_err(|error| AppError::Database(error.to_string()))?;
     let transaction = connection.transaction()?;
     transaction.execute_batch(
-        "DELETE FROM relances;
-         DELETE FROM entretiens;
-         DELETE FROM statut_history;
-         DELETE FROM candidatures;
+        "DELETE FROM follow_ups;
+         DELETE FROM interviews;
+         DELETE FROM status_history;
+         DELETE FROM applications;
          DELETE FROM contacts;
-         DELETE FROM entreprises;
-         DELETE FROM cv_versions;
-         DELETE FROM lettres_motivation;
-         DELETE FROM profil;
-         DELETE FROM parametres;
-         DELETE FROM llm_appels;
-         DELETE FROM scores_ats;
-         DELETE FROM cache_ia;
+         DELETE FROM companies;
+         DELETE FROM resume_versions;
+         DELETE FROM cover_letters;
+         DELETE FROM profile;
+         DELETE FROM settings;
+         DELETE FROM llm_calls;
+         DELETE FROM ats_scores;
+         DELETE FROM ai_cache;
          DELETE FROM app_kv;",
     )?;
     transaction.commit()?;
@@ -168,11 +168,11 @@ pub fn reset_data(pool: &SqlitePool) -> AppResult<()> {
 ///
 /// # Errors
 /// Retourne une erreur si la table ne peut pas être vidée.
-pub fn vider_cache_ia(pool: &SqlitePool) -> AppResult<()> {
+pub fn clear_ai_cache(pool: &SqlitePool) -> AppResult<()> {
     let connection = pool
         .get()
         .map_err(|error| AppError::Database(error.to_string()))?;
-    connection.execute("DELETE FROM cache_ia", [])?;
+    connection.execute("DELETE FROM ai_cache", [])?;
     Ok(())
 }
 
@@ -206,7 +206,7 @@ mod tests {
         {
             let conn = pool.get().unwrap();
             conn.execute(
-                "INSERT INTO app_kv (cle, valeur) VALUES ('marque', 'oui')",
+                "INSERT INTO app_kv (kv_key, kv_value) VALUES ('marque', 'oui')",
                 [],
             )
             .unwrap();
@@ -217,14 +217,14 @@ mod tests {
             .query_row("SELECT COUNT(*) FROM app_kv", [], |row| row.get(0))
             .unwrap();
         assert_eq!(kv, 0);
-        let secteurs: i64 = conn
+        let sectors: i64 = conn
             .query_row(
-                "SELECT COUNT(*) FROM sqlite_master WHERE name = 'secteurs_activite'",
+                "SELECT COUNT(*) FROM sqlite_master WHERE name = 'sectors'",
                 [],
                 |row| row.get(0),
             )
             .unwrap();
-        assert_eq!(secteurs, 1);
+        assert_eq!(sectors, 1);
     }
 
     #[test]
@@ -239,10 +239,10 @@ mod tests {
             let connection = pool.get().unwrap();
             connection
                 .execute_batch(
-                    "INSERT INTO entreprises (id, nom, created_at, updated_at)
+                    "INSERT INTO companies (id, name, created_at, updated_at)
                         VALUES ('e1', 'Acme', '2026-01-01', '2026-01-01');
-                     INSERT INTO candidatures
-                        (id, entreprise_id, poste, type_contrat, statut, date_envoi, created_at, updated_at)
+                     INSERT INTO applications
+                        (id, company_id, job_title, contract_type, status, sent_date, created_at, updated_at)
                         VALUES ('c1', 'e1', 'Dev', 'CDI', 'EN_ATTENTE', '2026-01-01', '2026-01-01', '2026-01-01');",
                 )
                 .unwrap();
@@ -252,29 +252,29 @@ mod tests {
             let connection = rusqlite::Connection::open(&source_path).unwrap();
             connection
                 .execute_batch(
-                    "CREATE TABLE candidatures (id TEXT PRIMARY KEY);
-                     CREATE TABLE entreprises (id TEXT PRIMARY KEY);
+                    "CREATE TABLE applications (id TEXT PRIMARY KEY);
+                     CREATE TABLE companies (id TEXT PRIMARY KEY);
                      CREATE TABLE contacts (id TEXT PRIMARY KEY);
-                     CREATE TABLE parametres (id INTEGER PRIMARY KEY);
-                     CREATE TABLE profil (id INTEGER PRIMARY KEY);",
+                     CREATE TABLE settings (id INTEGER PRIMARY KEY);
+                     CREATE TABLE profile (id INTEGER PRIMARY KEY);",
                 )
                 .unwrap();
         }
 
-        let erreur = import(&pool, &db_path, &source_path).unwrap_err();
+        let error = import(&pool, &db_path, &source_path).unwrap_err();
         assert!(
-            erreur.to_string().contains("restaurée"),
-            "l'échec doit signaler que la base d'origine a été remise en place : {erreur}"
+            error.to_string().contains("restaurée"),
+            "l'échec doit signaler que la base d'origine a été remise en place : {error}"
         );
 
         let connection = pool.get().unwrap();
-        let poste: String = connection
+        let job_title: String = connection
             .query_row(
-                "SELECT poste FROM candidatures WHERE id = 'c1'",
+                "SELECT job_title FROM applications WHERE id = 'c1'",
                 [],
                 |row| row.get(0),
             )
             .unwrap();
-        assert_eq!(poste, "Dev");
+        assert_eq!(job_title, "Dev");
     }
 }

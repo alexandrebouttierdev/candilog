@@ -13,12 +13,12 @@ use crate::core::errors::{AppError, AppResult};
 /// Retourne l'erreur du travail, ou `AppError::Database` si le fil s'est interrompu — ce qui
 /// n'arrive qu'en cas de panique dans le métier, où `deny(clippy::unwrap_used)` rend la
 /// situation improbable mais pas impossible.
-pub async fn execute<T, F>(travail: F) -> AppResult<T>
+pub async fn execute<T, F>(work: F) -> AppResult<T>
 where
     F: FnOnce() -> AppResult<T> + Send + 'static,
     T: Send + 'static,
 {
-    tauri::async_runtime::spawn_blocking(travail)
+    tauri::async_runtime::spawn_blocking(work)
         .await
         .map_err(|error| {
             tracing::error!(%error, "tâche métier interrompue");

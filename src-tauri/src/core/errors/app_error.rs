@@ -2,7 +2,7 @@
 
 use serde::Serialize;
 
-/// Erreur unifiée remontée par toutes les couches de l'application.
+/// Error unifiée remontée par toutes les couches de l'application.
 #[derive(Debug, thiserror::Error)]
 pub enum AppError {
     /// Entrée invalide (validation métier).
@@ -11,16 +11,16 @@ pub enum AppError {
     /// Ressource introuvable.
     #[error("Introuvable : {0}")]
     NotFound(String),
-    /// Erreur d'accès à la base locale (`SQLite`).
+    /// Error d'accès à la base locale (`SQLite`).
     #[error("Base de données : {0}")]
     Database(String),
-    /// Erreur réseau / HTTP (fournisseurs `LLM`).
+    /// Error réseau / HTTP (fournisseurs `LLM`).
     #[error("HTTP : {0}")]
     Http(String),
-    /// Erreur de (dé)sérialisation JSON.
+    /// Error de (dé)sérialisation JSON.
     #[error("Sérialisation : {0}")]
     Serialization(String),
-    /// Erreur remontée par un fournisseur IA.
+    /// Error remontée par un fournisseur IA.
     #[error("Fournisseur IA : {0}")]
     Provider(String),
     /// Opération interrompue à la demande de l'utilisateur (annulation).
@@ -63,10 +63,10 @@ impl AppError {
     /// erreurs réseau reformulées par `From<reqwest::Error>`, refus d'un fournisseur — sont
     /// reprises telles quelles : les masquer priverait de toute indication utile.
     #[must_use]
-    pub fn message_utilisateur(&self) -> String {
+    pub fn user_message(&self) -> String {
         match self {
             Self::Validation(message) | Self::Provider(message) => message.clone(),
-            Self::NotFound(quoi) => format!("Introuvable : {quoi}."),
+            Self::NotFound(resource) => format!("Introuvable : {resource}."),
             Self::Database(_) => {
                 "Le fichier de données de Candilog est illisible ou endommagé.".into()
             }
@@ -86,12 +86,12 @@ impl AppError {
 /// frontend n'aurait ni code exploitable ni phrase présentable, et le détail technique
 /// (chemins locaux, requêtes SQL) franchirait la frontière.
 #[derive(Debug, Clone, Serialize, ts_rs::TS)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "app-error.ts")]
 pub struct AppErrorDto {
     /// Code stable, cf. [`AppError::code`].
     pub code: String,
-    /// Message rédigé pour l'utilisateur, cf. [`AppError::message_utilisateur`].
+    /// Message rédigé pour l'utilisateur, cf. [`AppError::user_message`].
     pub message: String,
 }
 
@@ -99,7 +99,7 @@ impl From<&AppError> for AppErrorDto {
     fn from(error: &AppError) -> Self {
         Self {
             code: error.code().to_string(),
-            message: error.message_utilisateur(),
+            message: error.user_message(),
         }
     }
 }

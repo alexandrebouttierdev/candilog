@@ -12,7 +12,7 @@ use super::*;
 fn test_message_utilisateur_masque_le_detail_technique() {
     let brute = "timed out waiting for connection: unable to open database file: \
                  /home/alex/.local/share/com.candilog.desktop/candilog.sqlite";
-    let message = AppError::Database(brute.into()).message_utilisateur();
+    let message = AppError::Database(brute.into()).user_message();
 
     assert!(
         !message.contains('/'),
@@ -29,12 +29,12 @@ fn test_message_utilisateur_masque_le_detail_technique() {
 
     // La sérialisation souffre du même défaut : « missing field 'first_name' at line 1
     // column 344 » s'affichait à l'écran.
-    let serialisation =
+    let serialization =
         AppError::Serialization("missing field `first_name` at line 1 column 344".into())
-            .message_utilisateur();
+            .user_message();
     assert!(
-        !serialisation.contains("missing field"),
-        "le détail serde doit rester dans le journal : {serialisation}"
+        !serialization.contains("missing field"),
+        "le détail serde doit rester dans le journal : {serialization}"
     );
 }
 
@@ -42,6 +42,6 @@ fn test_message_utilisateur_masque_le_detail_technique() {
 /// les masquer priverait de toute indication sur le champ fautif.
 #[test]
 fn test_message_utilisateur_conserve_les_messages_de_validation() {
-    let message = AppError::Validation("Le poste est obligatoire.".into()).message_utilisateur();
+    let message = AppError::Validation("Le poste est obligatoire.".into()).user_message();
     assert_eq!(message, "Le poste est obligatoire.");
 }

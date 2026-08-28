@@ -1,6 +1,6 @@
-import type { Contact } from "../../services/contact.service";
+import type { Contact } from "../../services/contactService";
 import { roleMeta } from "../../model/roles";
-import { Card, CardHeader, RecordAction, RecordHeader, StatusPill, initiales } from "@/shared/ui";
+import { Card, CardHeader, RecordAction, RecordHeader, StatusPill, initials } from "@/shared/ui";
 
 /**
  * Fiche détaillée d'un contact du réseau.
@@ -18,23 +18,23 @@ export function ContactDetail({
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const nomComplet = `${contact.prenom} ${contact.nom}`;
+  const nameComplet = `${contact.first_name} ${contact.name}`;
 
   return (
     <div className="min-w-0 flex-1 overflow-y-auto bg-page">
       <RecordHeader
         round
-        initials={initiales(contact.prenom, contact.nom)}
-        title={nomComplet}
+        initials={initials(contact.first_name, contact.name)}
+        title={nameComplet}
         badge={
-          contact.roleSuivi ? (
-            <StatusPill tone="accent" icon={roleMeta(contact.roleSuivi).icon}>
-              {contact.roleSuivi}
+          contact.tracking_role ? (
+            <StatusPill tone="accent" icon={roleMeta(contact.tracking_role).icon}>
+              {contact.tracking_role}
             </StatusPill>
           ) : null
         }
         subtitle={
-          [contact.poste, contact.entrepriseNom].filter(Boolean).join(" · ") ||
+          [contact.job_title, contact.company_name].filter(Boolean).join(" · ") ||
           "Aucun contexte professionnel renseigné"
         }
         actions={
@@ -58,10 +58,10 @@ export function ContactDetail({
               </RecordAction>
             ) : null}
             <RecordAction icon="edit" onClick={onEdit}>
-              Modifier
+              Update
             </RecordAction>
             <RecordAction icon="delete" onClick={onDelete}>
-              Supprimer
+              Delete
             </RecordAction>
           </>
         }
@@ -77,7 +77,7 @@ export function ContactDetail({
               </p>
             ) : (
               <p className="text-label leading-normal text-ink-faint">
-                Aucune note. Utilisez « Modifier » pour consigner les sujets abordés et les
+                Aucune note. Utilisez « Update » pour consigner les sujets abordS et les
                 points à retenir.
               </p>
             )}
@@ -87,20 +87,20 @@ export function ContactDetail({
         <Card clipped className="max-w-[360px] flex-[1_1_280px]">
           <CardHeader compact>Informations</CardHeader>
           <div className="px-[17px] pt-1 pb-3">
-            <Ligne label="Entreprise" valeur={contact.entrepriseNom} />
-            <Ligne label="Poste" valeur={contact.poste} />
-            <Ligne
+            <Row label="Entreprise" value={contact.company_name} />
+            <Row label="Poste" value={contact.job_title} />
+            <Row
               label="E-mail"
-              valeur={contact.email}
+              value={contact.email}
               href={contact.email ? `mailto:${contact.email}` : null}
             />
-            <Ligne
+            <Row
               label="Téléphone"
-              valeur={contact.telephone}
-              href={contact.telephone ? `tel:${contact.telephone}` : null}
+              value={contact.phone}
+              href={contact.phone ? `tel:${contact.phone}` : null}
             />
-            <Ligne label="LinkedIn" valeur={contact.linkedin} href={contact.linkedin} />
-            <Ligne label="Rôle" valeur={contact.roleSuivi} />
+            <Row label="LinkedIn" value={contact.linkedin} href={contact.linkedin} />
+            <Row label="Rôle" value={contact.tracking_role} />
           </div>
         </Card>
       </div>
@@ -109,20 +109,20 @@ export function ContactDetail({
 }
 
 /** Rangée libellé / valeur de la carte « Informations » : 9 px de padding, filet bas. */
-function Ligne({
+function Row({
   label,
-  valeur,
+  value,
   href = null,
 }: {
   label: string;
-  valeur: string | null;
+  value: string | null;
   href?: string | null;
 }) {
   return (
     <div className="flex items-center justify-between gap-3.5 border-b border-line py-[9px] last:border-b-0">
       <span className="flex-none text-note text-ink-faint">{label}</span>
       <span className="min-w-0 flex-1 truncate text-right text-body font-medium text-ink">
-        {valeur ? (
+        {value ? (
           href ? (
             <a
               href={href}
@@ -130,10 +130,10 @@ function Ligne({
               rel="noreferrer noopener"
               className="text-accent underline-offset-2 hover:underline"
             >
-              {valeur}
+              {value}
             </a>
           ) : (
-            valeur
+            value
           )
         ) : (
           <span className="font-normal text-ink-faint">Non renseigné</span>

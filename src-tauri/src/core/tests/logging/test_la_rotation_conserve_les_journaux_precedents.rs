@@ -17,9 +17,9 @@ fn test_la_rotation_conserve_les_journaux_precedents() {
 
     // La session 3 vient d'être décalée en .1, la 2 en .2, la 1 en .3.
     for (rang, attendu) in [(1, "session 3"), (2, "session 2"), (3, "session 1")] {
-        let contenu = std::fs::read_to_string(journal.with_extension(format!("log.{rang}")))
+        let content = std::fs::read_to_string(journal.with_extension(format!("log.{rang}")))
             .unwrap_or_else(|_| panic!("le journal .{rang} devrait exister"));
-        assert_eq!(contenu, attendu);
+        assert_eq!(content, attendu);
     }
     assert!(
         !journal.exists(),

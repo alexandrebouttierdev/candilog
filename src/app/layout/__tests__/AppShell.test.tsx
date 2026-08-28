@@ -39,7 +39,7 @@ describe("rail de navigation", () => {
 describe("onglets contextuels", () => {
   it("expose l'onglet actif aux technologies d'assistance", () => {
     render(
-      <MemoryRouter initialEntries={["/suivi/calendrier"]}>
+      <MemoryRouter initialEntries={["/tracking/calendar"]}>
         <ContextTabs slotRef={() => {}} />
       </MemoryRouter>,
     );

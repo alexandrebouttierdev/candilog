@@ -7,13 +7,13 @@ import { useEffect, useState } from "react";
  * et une requête `SQLite` : sur une saisie de dix lettres, neuf résultats seraient calculés
  * pour être aussitôt remplacés.
  */
-export function useDebounce<T>(valeur: T, delaiMs = 250): T {
-  const [retardee, setRetardee] = useState(valeur);
+export function useDebounce<T>(value: T, delayMs = 250): T {
+  const [retardee, setRetardee] = useState(value);
 
   useEffect(() => {
-    const minuteur = setTimeout(() => setRetardee(valeur), delaiMs);
+    const minuteur = setTimeout(() => setRetardee(value), delayMs);
     return () => clearTimeout(minuteur);
-  }, [valeur, delaiMs]);
+  }, [value, delayMs]);
 
   return retardee;
 }

@@ -22,7 +22,7 @@ export function ModalHost({
   icon,
   title,
   subtitle,
-  footerNote,
+  footer_note,
   footerIcon = "info",
   footerTone = "neutral",
   submitLabel = "Enregistrer",
@@ -38,7 +38,7 @@ export function ModalHost({
   icon: string;
   title: string;
   subtitle?: string | undefined;
-  footerNote?: string | undefined;
+  footer_note?: string | undefined;
   footerIcon?: string;
   footerTone?: "neutral" | "danger";
   submitLabel?: string;
@@ -65,10 +65,10 @@ export function ModalHost({
   // focus, ce qui fait annoncer le dialogue par les lecteurs d'écran.
   useEffect(() => {
     if (!open) return;
-    const premierChamp = body.current?.querySelector<HTMLElement>(
+    const firstChamp = body.current?.querySelector<HTMLElement>(
       "input, select, textarea, button, [tabindex]:not([tabindex='-1'])",
     );
-    (premierChamp ?? panel.current)?.focus();
+    (firstChamp ?? panel.current)?.focus();
   }, [open]);
 
   if (!open) return null;
@@ -104,20 +104,20 @@ export function ModalHost({
         </div>
 
         <footer className="flex flex-none flex-wrap items-center gap-3 border-t border-line bg-surface-alt px-[22px] py-3.5">
-          {footerNote ? (
+          {footer_note ? (
             <p
               className={`flex min-w-[180px] flex-1 items-center gap-1.5 text-label ${
                 footerTone === "danger" ? "text-danger" : "text-ink-faint"
               }`}
             >
               <Icon name={footerIcon} size={15} className="flex-none" />
-              {footerNote}
+              {footer_note}
             </p>
           ) : (
             <div className="flex-1" />
           )}
           <Button variant="secondary" size="dialog" onClick={onClose}>
-            Annuler
+            Cancel
           </Button>
           {onSubmit ? (
             <Button
@@ -138,7 +138,7 @@ export function ModalHost({
 }
 
 /**
- * Titre de section d'un formulaire : icône, libellé 12,5 px/600, filet occupant le reste.
+ * Title de section d'un formulaire : icône, libellé 12,5 px/600, filet occupant le reste.
  */
 export function ModalSection({
   icon,

@@ -5,49 +5,49 @@
  */
 export type Contact = { 
 /**
- * Identifiant du contact.
+ * Id du contact.
  */
 id: string, 
 /**
- * Identifiant de l'entreprise rattachée, s'il existe.
+ * Id de l'entreprise rattachée, s'il existe.
  */
-entrepriseId: string | null, 
+company_id: string | null, 
 /**
- * Nom de l'entreprise rattachée, aplati depuis la jointure pour l'affichage en liste.
+ * Name de l'entreprise rattachée, aplati depuis la jointure pour l'affichage en liste.
  *
  * Sans lui, afficher « Nova Digital » sous chaque contact de la liste demanderait une
  * requête par ligne, ou de charger tout le répertoire des entreprises côté React.
  */
-entrepriseNom: string | null, 
+company_name: string | null, 
 /**
  * Prénom (requis).
  */
-prenom: string, 
+first_name: string, 
 /**
- * Nom (requis).
+ * Name (requis).
  */
-nom: string, 
+name: string, 
 /**
- * Poste occupé, s'il est renseigné.
+ * JobTitle occupé, s'il est renseigné.
  */
-poste: string | null, 
+job_title: string | null, 
 /**
  * Rôle du contact dans le suivi de candidature — recruteur, manager, référent.
  *
- * Texte libre, introduit par la migration 009 pour le champ « Rôle dans le suivi » des
+ * Text libre, introduit par la migration 009 pour le champ « Rôle dans le suivi » des
  * maquettes. Absent des contacts saisis avant cette migration.
  */
-roleSuivi: string | null, 
+tracking_role: string | null, 
 /**
- * Adresse e-mail, si renseignée.
+ * Address e-mail, si renseignée.
  */
 email: string | null, 
 /**
  * Téléphone, si renseigné.
  */
-telephone: string | null, 
+phone: string | null, 
 /**
- * Profil `LinkedIn`, s'il est renseigné.
+ * Profile `LinkedIn`, s'il est renseigné.
  */
 linkedin: string | null, 
 /**
@@ -57,46 +57,46 @@ notes: string | null,
 /**
  * Date de création (ISO 8601).
  */
-createdAt: string, 
+created_at: string, 
 /**
  * Date de dernière mise à jour (ISO 8601).
  */
-updatedAt: string, };
+updated_at: string, };
 
 /**
  * Champs de création et d'édition d'un contact : prénom et nom requis.
  */
-export type NouveauContact = { 
+export type NewContact = { 
 /**
- * Identifiant de l'entreprise rattachée.
+ * Id de l'entreprise rattachée.
  */
-entrepriseId: string | null, 
+company_id: string | null, 
 /**
  * Prénom (requis).
  */
-prenom: string, 
+first_name: string, 
 /**
- * Nom (requis).
+ * Name (requis).
  */
-nom: string, 
+name: string, 
 /**
- * Poste occupé.
+ * JobTitle occupé.
  */
-poste: string | null, 
+job_title: string | null, 
 /**
  * Rôle dans le suivi de candidature.
  */
-roleSuivi: string | null, 
+tracking_role: string | null, 
 /**
- * Adresse e-mail.
+ * Address e-mail.
  */
 email: string | null, 
 /**
  * Téléphone.
  */
-telephone: string | null, 
+phone: string | null, 
 /**
- * Profil `LinkedIn`.
+ * Profile `LinkedIn`.
  */
 linkedin: string | null, 
 /**

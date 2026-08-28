@@ -2,63 +2,63 @@ import { useMemo, useState, type ReactNode } from "react";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "react-router-dom";
-import { documentsService } from "../../services/documents.service";
-import type { CvVersion, ExportLettre, Lettre } from "../../services/documents.service";
-import { iaService, generationId } from "@/features/ia/services/ia.service";
-import type { AnalyseCvImporte, CvGenere, GenerationCv } from "@/features/ia/model/types";
-import { useIaProgress } from "@/features/ia/viewmodel/useIaProgress";
+import { documentsService } from "../../services/documentsService";
+import type { ResumeVersion, CoverLetterExport, CoverLetter } from "../../services/documentsService";
+import { aiService, generation_id } from "@/features/ai/services/aiService";
+import type { ImportedResumeAnalysis, GeneratedResume, ResumeGeneration } from "@/features/ai/model/types";
+import { useAiProgress } from "@/features/ai/viewmodel/useAiProgress";
 import { useUiStore } from "@/shared/lib/ui-store";
 import type { ToastMessage } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 import { ContextBarAccessory, ContextNote, ContextSearch } from "@/app/layout/ContextBar";
 import { Button, ConfirmDialog, EmptyState, ErrorBanner, FormField, Icon, PageHeader, Select, TextArea, TextInput } from "@/shared/ui";
-import { A4Preview, DocumentPanel, IaProgress, PreviewAction, ScoreBadge } from "../components/DocumentUi";
+import { A4Preview, DocumentPanel, AiProgress, PreviewAction, ScoreBadge } from "../components/DocumentUi";
 
-const CV_KEY = ["documents", "cv"] as const;
-const LETTRES_KEY = ["documents", "lettres"] as const;
+const RESUME_KEY = ["documents", "cv"] as const;
+const COVER_LETTERS_KEY = ["documents", "lettres"] as const;
 
-export function CvLibraryPage() {
+export function ResumeLibraryPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const notify = useUiStore((s) => s.notify);
-  const list = useQuery({ queryKey: CV_KEY, queryFn: documentsService.listerCv });
+  const list = useQuery({ queryKey: RESUME_KEY, queryFn: documentsService.listResume });
   const [selected, setSelected] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [recherche, setRecherche] = useState("");
-  const selectedId = selected ?? list.data?.[0]?.id ?? null;
+  const selected_id = selected ?? list.data?.[0]?.id ?? null;
   const detail = useQuery({
-    queryKey: [...CV_KEY, selectedId],
-    queryFn: () => documentsService.obtenirCv(selectedId ?? ""),
-    enabled: selectedId !== null,
+    queryKey: [...RESUME_KEY, selected_id],
+    queryFn: () => documentsService.getResume(selected_id ?? ""),
+    enabled: selected_id !== null,
   });
   const remove = useMutation({
-    mutationFn: documentsService.supprimerCv,
+    mutationFn: documentsService.deleteResume,
     onSuccess: async () => {
       setSelected(null);
       setDeleteId(null);
-      await queryClient.invalidateQueries({ queryKey: CV_KEY });
+      await queryClient.invalidateQueries({ queryKey: RESUME_KEY });
       notify({ tone: "success", title: "Version supprimée" });
     },
   });
   const dupliquer = useMutation({
     mutationFn: async () => {
       if (!detail.data) return;
-      await documentsService.enregistrerCv({
-        nom: `${detail.data.nom} (copie)`,
-        contenu: detail.data.contenu,
+      await documentsService.saveResume({
+        name: `${detail.data.name} (copie)`,
+        content: detail.data.content,
       });
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: CV_KEY });
+      await queryClient.invalidateQueries({ queryKey: RESUME_KEY });
       notify({ tone: "success", title: "Version dupliquée" });
     },
   });
-  const generation = detail.data && isGeneration(detail.data.contenu) ? detail.data.contenu : null;
+  const generation = detail.data && isGeneration(detail.data.content) ? detail.data.content : null;
   const version = detail.data;
   const versions = useMemo(() => {
     const terme = recherche.trim().toLowerCase();
     const toutes = list.data ?? [];
-    return terme ? toutes.filter((cv) => cv.nom.toLowerCase().includes(terme)) : toutes;
+    return terme ? toutes.filter((resume) => resume.name.toLowerCase().includes(terme)) : toutes;
   }, [list.data, recherche]);
 
   return (
@@ -71,8 +71,8 @@ export function CvLibraryPage() {
         title="Mes CV"
         subtitle="Vos versions prêtes à l’emploi"
         badge={list.data ? <HeaderBadge>{list.data.length} version{list.data.length > 1 ? "s" : ""}</HeaderBadge> : undefined}
-        secondary={<Button icon="upload_file" onClick={() => void navigate("/documents/analyser")}>Importer</Button>}
-        primary={<Button variant="primary" icon="auto_awesome" onClick={() => void navigate("/documents/generer-cv")}>Nouveau CV</Button>}
+        secondary={<Button icon="upload_file" onClick={() => void navigate("/documents/analyze")}>Importer</Button>}
+        primary={<Button variant="primary" icon="auto_awesome" onClick={() => void navigate("/documents/generate-resume")}>Nouveau CV</Button>}
       />
     }>
       <div className="flex min-h-0 flex-1">
@@ -100,16 +100,16 @@ export function CvLibraryPage() {
                 <p className="p-6 text-center text-ink-muted">Chargement…</p>
               ) : versions.length ? (
                 <ul className="space-y-1.5">
-                  {versions.map((cv) => (
-                    <li key={cv.id}>
+                  {versions.map((resume) => (
+                    <li key={resume.id}>
                       <button
                         type="button"
-                        aria-pressed={selectedId === cv.id}
-                        onClick={() => setSelected(cv.id)}
-                        className={`flex w-full gap-3 rounded-[10px] border p-3 text-left transition-colors ${selectedId === cv.id ? "border-accent-border bg-accent-tint" : "border-transparent hover:bg-neutral-tint"}`}
+                        aria-pressed={selected_id === resume.id}
+                        onClick={() => setSelected(resume.id)}
+                        className={`flex w-full gap-3 rounded-[10px] border p-3 text-left transition-colors ${selected_id === resume.id ? "border-accent-border bg-accent-tint" : "border-transparent hover:bg-neutral-tint"}`}
                       >
                         <span className="flex h-[50px] w-[38px] flex-none flex-col gap-[3px] rounded-[5px] border border-line bg-page px-[5px] py-1.5">
-                          <span className={`h-[3px] w-[70%] rounded-sm ${selectedId === cv.id ? "bg-accent" : "bg-accent/40"}`} />
+                          <span className={`h-[3px] w-[70%] rounded-sm ${selected_id === resume.id ? "bg-accent" : "bg-accent/40"}`} />
                           <span className="h-[2px] w-full rounded-sm bg-line" />
                           <span className="h-[2px] w-[85%] rounded-sm bg-line" />
                           <span className="h-[2px] w-[95%] rounded-sm bg-line" />
@@ -117,12 +117,12 @@ export function CvLibraryPage() {
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className="mb-[3px] flex items-center gap-2">
-                            <span className="truncate text-item font-semibold">{cv.nom}</span>
-                            {selectedId === cv.id && generation ? (
-                              <AtsChip score={generation.analyse.score} />
+                            <span className="truncate text-item font-semibold">{resume.name}</span>
+                            {selected_id === resume.id && generation ? (
+                              <AtsChip score={generation.analysis.score} />
                             ) : null}
                           </span>
-                          <span className="block text-label text-ink-faint">{date(cv.createdAt)}</span>
+                          <span className="block text-label text-ink-faint">{date(resume.created_at)}</span>
                         </span>
                       </button>
                     </li>
@@ -131,7 +131,7 @@ export function CvLibraryPage() {
               ) : recherche.trim() ? (
                 <EmptyState icon="search" title="Aucun résultat" description="Aucune version ne correspond à cette recherche." />
               ) : (
-                <EmptyState icon="description" title="Aucune version" description="Générez puis sauvegardez votre premier CV ciblé." action={<Button icon="auto_awesome" onClick={() => void navigate("/documents/generer-cv")}>Générer un CV</Button>} />
+                <EmptyState icon="description" title="Aucune version" description="Générez puis sauvegardez votre premier CV ciblé." action={<Button icon="auto_awesome" onClick={() => void navigate("/documents/generate-resume")}>GNRer un Resume</Button>} />
               )}
             </div>
           </div>
@@ -140,7 +140,7 @@ export function CvLibraryPage() {
               <div className="flex min-w-0 items-center gap-[9px]">
                 <Icon name="visibility" size={17} className="text-ink-faint" />
                 <p className="truncate text-body font-mid">
-                  {version ? `Aperçu · ${version.nom}` : "Aperçu"}
+                  {version ? `Aperçu · ${version.name}` : "Aperçu"}
                 </p>
               </div>
               {version ? (
@@ -150,12 +150,12 @@ export function CvLibraryPage() {
                       <PreviewAction
                         icon="edit"
                         onClick={() =>
-                          void navigate("/documents/generer-cv", {
-                            state: { generation, nom: version.nom },
+                          void navigate("/documents/generate-resume", {
+                            state: { generation, name: version.name },
                           })
                         }
                       >
-                        Modifier
+                        Update
                       </PreviewAction>
                       <PreviewAction
                         icon="content_copy"
@@ -166,20 +166,20 @@ export function CvLibraryPage() {
                       </PreviewAction>
                       <PreviewAction
                         icon="download"
-                        onClick={() => void exporterPdf(generation.cv, version.nom, notify)}
+                        onClick={() => void exportPdf(generation.resume, version.name, notify)}
                       >
-                        Exporter PDF
+                        Export PDF
                       </PreviewAction>
                     </>
                   ) : null}
                   <PreviewAction tone="danger" icon="delete" onClick={() => setDeleteId(version.id)}>
-                    Supprimer
+                    Delete
                   </PreviewAction>
                 </div>
               ) : null}
             </div>
             <div className="min-h-0 flex-1 overflow-auto">
-              {detail.data ? <CvSavedPreview version={detail.data} /> : <EmptyState icon="visibility" title="Sélectionnez une version" description="Son contenu détaillé apparaîtra ici." />}
+              {detail.data ? <ResumeSavedPreview version={detail.data} /> : <EmptyState icon="visibility" title="Sélectionnez une version" description="Son contenu détaillé apparaîtra ici." />}
             </div>
           </div>
         </div>
@@ -188,29 +188,29 @@ export function CvLibraryPage() {
   );
 }
 
-function CvSavedPreview({ version }: { version: CvVersion }) { const generation = isGeneration(version.contenu) ? version.contenu : null; return generation ? <A4Preview cv={generation.cv} /> : <A4Preview title={version.nom}><div className="flex min-h-[590px] items-center justify-center text-center text-[#7b8493]">Cette ancienne version ne contient pas encore d’aperçu structuré compatible.</div></A4Preview>; }
+function ResumeSavedPreview({ version }: { version: ResumeVersion }) { const generation = isGeneration(version.content) ? version.content : null; return generation ? <A4Preview resume={generation.resume} /> : <A4Preview title={version.name}><div className="flex min-h-[590px] items-center justify-center text-center text-[#7b8493]">Cette ancienne version ne contient pas encore d’aperçu structuré compatible.</div></A4Preview>; }
 
-export function CvGeneratorPage() {
+export function ResumeGeneratorPage() {
   const queryClient = useQueryClient();
   const notify = useUiStore((s) => s.notify);
   const location = useLocation();
-  const initiale = generationDepuisNavigation(location.state);
-  const [offre, setOffre] = useState("");
+  const initiale = generationFromNavigation(location.state);
+  const [job_offer, setJobOffer] = useState("");
   const [operation, setOperation] = useState<string | null>(null);
-  const [result, setResult] = useState<GenerationCv | null>(initiale.result);
+  const [result, setResult] = useState<ResumeGeneration | null>(initiale.result);
   const [error, setError] = useState<string | null>(null);
-  const [nom, setNom] = useState(initiale.nom);
-  const progress = useIaProgress(operation);
+  const [name, setName] = useState(initiale.name);
+  const progress = useAiProgress(operation);
 
   const run = async () => {
-    if (!offre.trim()) { setError("Collez le texte de l’offre à cibler."); return; }
-    const id = generationId();
+    if (!job_offer.trim()) { setError("Collez le texte de l’offre à cibler."); return; }
+    const id = generation_id();
     setOperation(id);
     setError(null);
     try {
-      const value = await iaService.genererCv({ generationId: id, offre });
+      const value = await aiService.generateResume({ generation_id: id, job_offer });
       setResult(value);
-      setNom(`CV — ${value.offre.titre || "Version ciblée"}`);
+      setName(`CV — ${value.job_offer.title || "Version ciblée"}`);
     } catch (e) {
       if (!(e instanceof AppError && e.code === "CANCELLED")) setError(message(e));
     } finally {
@@ -218,9 +218,9 @@ export function CvGeneratorPage() {
     }
   };
   const save = useMutation({
-    mutationFn: () => documentsService.enregistrerCv({ nom, contenu: result }),
+    mutationFn: () => documentsService.saveResume({ name, content: result }),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: CV_KEY });
+      await queryClient.invalidateQueries({ queryKey: RESUME_KEY });
       notify({ tone: "success", title: "CV ajouté à la bibliothèque" });
     },
   });
@@ -231,37 +231,37 @@ export function CvGeneratorPage() {
         icon="auto_awesome"
         title="Générer un CV"
         subtitle="Analysez une offre, générez un CV ciblé, exportez en PDF"
-        badge={operation ? <HeaderBadge>IA active</HeaderBadge> : undefined}
-        secondary={result ? <Button icon="save" disabled={!nom.trim() || save.isPending} onClick={() => save.mutate()}>Enregistrer</Button> : undefined}
-        primary={result ? <Button variant="primary" icon="download" onClick={() => void exporterPdf(result.cv, nom || "cv-candilog", notify)}>Exporter le PDF</Button> : undefined}
+        badge={operation ? <HeaderBadge>Ai active</HeaderBadge> : undefined}
+        secondary={result ? <Button icon="save" disabled={!name.trim() || save.isPending} onClick={() => save.mutate()}>Enregistrer</Button> : undefined}
+        primary={result ? <Button variant="primary" icon="download" onClick={() => void exportPdf(result.resume, name || "cv-candilog", notify)}>Exporter le PDF</Button> : undefined}
       />
     }>
       <div className="grid min-h-[660px] gap-4 xl:grid-cols-[350px_minmax(460px,1fr)_320px]">
         <DocumentPanel title="Offre ciblée" icon="target">
           <div className="space-y-4 p-4">
             <FormField label="Texte de l’offre" required help="Le texte est envoyé uniquement au fournisseur configuré.">
-              {(props) => <TextArea {...props} rows={18} value={offre} placeholder="Collez ici l’intitulé, les missions et les compétences recherchées…" onChange={(e) => setOffre(e.target.value)} />}
+              {(props) => <TextArea {...props} rows={18} value={job_offer} placeholder="Collez ici l’intitulé, les missions et les compétences recherchées…" onChange={(e) => setJobOffer(e.target.value)} />}
             </FormField>
             {error ? <ErrorBanner title="Génération impossible" message={error} /> : null}
             {operation ? (
-              <><IaProgress progress={progress} /><Button variant="danger" icon="stop" className="w-full" onClick={() => void iaService.annuler(operation)}>Annuler</Button></>
+              <><AiProgress progress={progress} /><Button variant="danger" icon="stop" className="w-full" onClick={() => void aiService.cancel(operation)}>Annuler</Button></>
             ) : (
-              <Button variant="primary" icon="auto_awesome" className="w-full" onClick={() => void run()}>Générer le CV ciblé</Button>
+              <Button variant="primary" icon="auto_awesome" className="w-full" onClick={() => void run()}>GNRer le Resume ciblé</Button>
             )}
           </div>
         </DocumentPanel>
-        <DocumentPanel title="Aperçu HTML · A4" icon="article"><A4Preview cv={result?.cv} /></DocumentPanel>
+        <DocumentPanel title="Aperçu HTML · A4" icon="article"><A4Preview resume={result?.resume} /></DocumentPanel>
         <DocumentPanel title="Analyse ATS" icon="query_stats">
           <div className="space-y-5 p-4">
             {result ? (
               <>
-                <ScoreBadge value={result.analyse.score} />
-                <p className="text-body leading-relaxed text-ink-muted">{result.analyse.recap}</p>
+                <ScoreBadge value={result.analysis.score} />
+                <p className="text-body leading-relaxed text-ink-muted">{result.analysis.recap}</p>
                 <div>
                   <p className="mb-2 text-label font-medium text-ink">Suggestions</p>
-                  <ul className="space-y-2">{result.analyse.suggestions.map((s, i) => <li key={i} className="flex gap-2 text-body text-ink-muted"><Icon name="arrow_right" size={15} className="mt-0.5 text-accent" />{s}</li>)}</ul>
+                  <ul className="space-y-2">{result.analysis.suggestions.map((s, i) => <li key={i} className="flex gap-2 text-body text-ink-muted"><Icon name="arrow_right" size={15} className="mt-0.5 text-accent" />{s}</li>)}</ul>
                 </div>
-                <FormField label="Nom de la version" required>{(props) => <TextInput {...props} value={nom} onChange={(e) => setNom(e.target.value)} />}</FormField>
+                <FormField label="Nom de la version" required>{(props) => <TextInput {...props} value={name} onChange={(e) => setName(e.target.value)} />}</FormField>
               </>
             ) : (
               <EmptyState icon="query_stats" title="Analyse en attente" description="Le score et les recommandations suivront la génération." />
@@ -280,33 +280,33 @@ export function LettersLibraryPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [recherche, setRecherche] = useState("");
-  const list = useQuery({ queryKey: LETTRES_KEY, queryFn: documentsService.listerLettres });
-  const selectedId = selected ?? list.data?.[0]?.id ?? null;
-  const selectedLetter = list.data?.find((l) => l.id === selectedId) ?? null;
-  const lettres = useMemo(() => {
+  const list = useQuery({ queryKey: COVER_LETTERS_KEY, queryFn: documentsService.listCoverLetters });
+  const selected_id = selected ?? list.data?.[0]?.id ?? null;
+  const selected_letter = list.data?.find((l) => l.id === selected_id) ?? null;
+  const cover_letters = useMemo(() => {
     const terme = recherche.trim().toLowerCase();
     const toutes = list.data ?? [];
     return terme
       ? toutes.filter(
-          (lettre) =>
-            lettre.nom.toLowerCase().includes(terme) ||
-            (lettre.entreprise ?? "").toLowerCase().includes(terme) ||
-            (lettre.poste ?? "").toLowerCase().includes(terme),
+          (cover_letter) =>
+            cover_letter.name.toLowerCase().includes(terme) ||
+            (cover_letter.company ?? "").toLowerCase().includes(terme) ||
+            (cover_letter.job_title ?? "").toLowerCase().includes(terme),
         )
       : toutes;
   }, [list.data, recherche]);
   const remove = useMutation({
-    mutationFn: documentsService.supprimerLettre,
+    mutationFn: documentsService.deleteCoverLetter,
     onSuccess: async () => {
       setSelected(null);
       setDeleteId(null);
-      await queryClient.invalidateQueries({ queryKey: LETTRES_KEY });
+      await queryClient.invalidateQueries({ queryKey: COVER_LETTERS_KEY });
     },
   });
 
   const copier = async () => {
-    if (!selectedLetter) return;
-    await navigator.clipboard.writeText(selectedLetter.contenu);
+    if (!selected_letter) return;
+    await navigator.clipboard.writeText(selected_letter.content);
     notify({ tone: "success", title: "Lettre copiée" });
   };
 
@@ -320,7 +320,7 @@ export function LettersLibraryPage() {
         title="Mes lettres de motivation"
         subtitle="Bibliothèque"
         badge={list.data ? <HeaderBadge>{list.data.length} lettre{list.data.length > 1 ? "s" : ""}</HeaderBadge> : undefined}
-        primary={<Button variant="primary" icon="auto_awesome" onClick={() => void navigate("/documents/rediger-lettre")}>Rédiger une lettre</Button>}
+        primary={<Button variant="primary" icon="auto_awesome" onClick={() => void navigate("/documents/write-cover-letter")}>Rédiger une lettre</Button>}
       />
     }>
       <div className="flex min-h-0 flex-1">
@@ -334,22 +334,22 @@ export function LettersLibraryPage() {
                 <ErrorBanner message={message(list.error)} onRetry={() => void list.refetch()} />
               ) : list.isLoading ? (
                 <p className="p-6 text-center text-ink-muted">Chargement…</p>
-              ) : lettres.length ? (
+              ) : cover_letters.length ? (
                 <ul className="space-y-1.5">
-                  {lettres.map((letter) => (
+                  {cover_letters.map((letter) => (
                     <li key={letter.id}>
                       <button
                         type="button"
-                        aria-pressed={selectedId === letter.id}
+                        aria-pressed={selected_id === letter.id}
                         onClick={() => setSelected(letter.id)}
-                        className={`w-full rounded-[10px] border px-3.5 py-3 text-left transition-colors ${selectedId === letter.id ? "border-accent-border bg-accent-tint" : "border-transparent hover:bg-neutral-tint"}`}
+                        className={`w-full rounded-[10px] border px-3.5 py-3 text-left transition-colors ${selected_id === letter.id ? "border-accent-border bg-accent-tint" : "border-transparent hover:bg-neutral-tint"}`}
                       >
                         <span className="flex items-center gap-2">
-                          <Icon name="mail" size={16} className={selectedId === letter.id ? "text-accent" : "text-ink-faint"} />
-                          <span className="min-w-0 flex-1 truncate text-[13px] font-semibold">{letter.entreprise ?? letter.nom}</span>
-                          <span className="flex-none text-label text-ink-faint">{date(letter.createdAt)}</span>
+                          <Icon name="mail" size={16} className={selected_id === letter.id ? "text-accent" : "text-ink-faint"} />
+                          <span className="min-w-0 flex-1 truncate text-[13px] font-semibold">{letter.company ?? letter.name}</span>
+                          <span className="flex-none text-label text-ink-faint">{date(letter.created_at)}</span>
                         </span>
-                        <span className="mt-1 block truncate pl-6 text-label text-ink-faint">{letter.poste ?? "Candidature"} · {libelleTon(letter.ton)}</span>
+                        <span className="mt-1 block truncate pl-6 text-label text-ink-faint">{letter.job_title ?? "Application"} · {labelTone(letter.tone)}</span>
                       </button>
                     </li>
                   ))}
@@ -357,24 +357,24 @@ export function LettersLibraryPage() {
               ) : recherche.trim() ? (
                 <EmptyState icon="search" title="Aucun résultat" description="Aucune lettre ne correspond à cette recherche." />
               ) : (
-                <EmptyState icon="mail" title="Aucune lettre enregistrée" description="Rédigez une lettre puis enregistrez-la ici." action={<Button icon="auto_awesome" onClick={() => void navigate("/documents/rediger-lettre")}>Rédiger une lettre</Button>} />
+                <EmptyState icon="mail" title="Aucune lettre enregistrée" description="Rédigez une lettre puis enregistrez-la ici." action={<Button icon="auto_awesome" onClick={() => void navigate("/documents/write-cover-letter")}>Rédiger une lettre</Button>} />
               )}
             </div>
           </div>
           <div className="flex min-w-0 flex-1 flex-col bg-page">
             <div className="flex flex-none items-center justify-between gap-3 border-b border-line bg-surface px-[22px] py-3">
-              <p className="truncate text-body font-mid">{selectedLetter?.nom ?? "Lecture"}</p>
-              {selectedLetter ? (
+              <p className="truncate text-body font-mid">{selected_letter?.name ?? "Lecture"}</p>
+              {selected_letter ? (
                 <div className="flex items-center gap-1.5">
-                  <PreviewAction icon="edit" onClick={() => void navigate("/documents/rediger-lettre", { state: { lettre: selectedLetter } })}>Modifier</PreviewAction>
+                  <PreviewAction icon="edit" onClick={() => void navigate("/documents/write-cover-letter", { state: { cover_letter: selected_letter } })}>Modifier</PreviewAction>
                   <PreviewAction icon="content_copy" onClick={() => void copier()}>Copier</PreviewAction>
-                  <PreviewAction icon="download" onClick={() => void exporterLettrePdf({ nom: selectedLetter.nom, entreprise: selectedLetter.entreprise, poste: selectedLetter.poste, contenu: selectedLetter.contenu }, notify)}>Exporter PDF</PreviewAction>
-                  <PreviewAction tone="danger" icon="delete" onClick={() => setDeleteId(selectedLetter.id)}>Supprimer</PreviewAction>
+                  <PreviewAction icon="download" onClick={() => void exportLetterPdf({ name: selected_letter.name, company: selected_letter.company, job_title: selected_letter.job_title, content: selected_letter.content }, notify)}>Exporter le PDF</PreviewAction>
+                  <PreviewAction tone="danger" icon="delete" onClick={() => setDeleteId(selected_letter.id)}>Supprimer</PreviewAction>
                 </div>
               ) : null}
             </div>
             <div className="min-h-0 flex-1 overflow-auto">
-              {selectedLetter ? <LetterPreview letter={selectedLetter} /> : <EmptyState icon="draft" title="Sélectionnez une lettre" />}
+              {selected_letter ? <LetterPreview letter={selected_letter} /> : <EmptyState icon="draft" title="Sélectionnez une lettre" />}
             </div>
           </div>
         </div>
@@ -383,30 +383,30 @@ export function LettersLibraryPage() {
   );
 }
 
-function LetterPreview({ letter }: { letter: Lettre }) { return <A4Preview title={letter.nom}><p className="mt-4 text-[11px] uppercase tracking-[0.12em] text-[#5b6ee1]">Lettre de motivation</p><h2 className="mt-3 text-[23px] font-semibold">{letter.poste ?? "Candidature"}</h2><p className="mt-1 text-[12px] text-[#6a7280]">{letter.entreprise ?? "Entreprise"}</p><div className="mt-8 whitespace-pre-wrap text-[12px] leading-[1.9]">{letter.contenu}</div></A4Preview>; }
+function LetterPreview({ letter }: { letter: CoverLetter }) { return <A4Preview title={letter.name}><p className="mt-4 text-[11px] uppercase tracking-[0.12em] text-[#5b6ee1]">Lettre de motivation</p><h2 className="mt-3 text-[23px] font-semibold">{letter.job_title ?? "Candidature"}</h2><p className="mt-1 text-[12px] text-[#6a7280]">{letter.company ?? "Entreprise"}</p><div className="mt-8 whitespace-pre-wrap text-[12px] leading-[1.9]">{letter.content}</div></A4Preview>; }
 
 export function LetterWriterPage() {
   const queryClient = useQueryClient();
   const notify = useUiStore((s) => s.notify);
   const location = useLocation();
-  const lettreInitiale = lettreDepuisNavigation(location.state);
-  const [entreprise, setEntreprise] = useState(lettreInitiale?.entreprise ?? "");
-  const [poste, setPoste] = useState(lettreInitiale?.poste ?? "");
-  const [ton, setTon] = useState(lettreInitiale?.ton || "formal");
-  const [longueur, setLongueur] = useState(lettreInitiale?.longueur || "medium");
-  const [contexte, setContexte] = useState("");
-  const [output, setOutput] = useState(lettreInitiale?.contenu ?? "");
+  const cover_letter_initiale = coverLetterFromNavigation(location.state);
+  const [company, setCompany] = useState(cover_letter_initiale?.company ?? "");
+  const [job_title, setJobTitle] = useState(cover_letter_initiale?.job_title ?? "");
+  const [tone, setTone] = useState(cover_letter_initiale?.tone || "formal");
+  const [length, setLength] = useState(cover_letter_initiale?.length || "medium");
+  const [context, setContext] = useState("");
+  const [output, setOutput] = useState(cover_letter_initiale?.content ?? "");
   const [operation, setOperation] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const progress = useIaProgress(operation);
+  const progress = useAiProgress(operation);
 
   const run = async () => {
-    const id = generationId();
+    const id = generation_id();
     setOperation(id);
     setOutput("");
     setError(null);
     try {
-      setOutput(await iaService.genererLettre({ generationId: id, entreprise: entreprise || null, poste: poste || null, ton, longueur, contexte: contexte || null, lettrePrecedente: null, instruction: null }));
+      setOutput(await aiService.generateCoverLetter({ generation_id: id, company: company || null, job_title: job_title || null, tone, length, context: context || null, previous_cover_letter: null, instruction: null }));
     } catch (e) {
       if (!(e instanceof AppError && e.code === "CANCELLED")) setError(message(e));
     } finally {
@@ -414,9 +414,9 @@ export function LetterWriterPage() {
     }
   };
   const save = useMutation({
-    mutationFn: () => documentsService.enregistrerLettre({ nom: `Lettre — ${poste || entreprise || "Candidature"}`, entreprise: entreprise || null, poste: poste || null, ton, longueur, contenu: output }),
+    mutationFn: () => documentsService.saveCoverLetter({ name: `Lettre — ${job_title || company || "Candidature"}`, company: company || null, job_title: job_title || null, tone, length, content: output }),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: LETTRES_KEY });
+      await queryClient.invalidateQueries({ queryKey: COVER_LETTERS_KEY });
       notify({ tone: "success", title: "Lettre enregistrée" });
     },
   });
@@ -428,23 +428,23 @@ export function LetterWriterPage() {
         title="Lettre de motivation"
         subtitle="Rédigez, itérez et enregistrez"
         badge={operation ? <HeaderBadge>IA active</HeaderBadge> : undefined}
-        secondary={output ? <Button icon="download" onClick={() => void exporterLettrePdf({ nom: `Lettre — ${poste || entreprise || "Candidature"}`, entreprise: entreprise || null, poste: poste || null, contenu: output }, notify)}>Exporter PDF</Button> : undefined}
+        secondary={output ? <Button icon="download" onClick={() => void exportLetterPdf({ name: `Lettre — ${job_title || company || "Candidature"}`, company: company || null, job_title: job_title || null, content: output }, notify)}>Exporter le PDF</Button> : undefined}
         primary={output ? <Button variant="primary" icon="save" disabled={save.isPending} onClick={() => save.mutate()}>Enregistrer</Button> : undefined}
       />
     }>
       <div className="grid min-h-[660px] gap-4 xl:grid-cols-[350px_minmax(480px,1fr)]">
         <DocumentPanel title="Brief de rédaction" icon="target">
           <div className="space-y-4 p-4">
-            <Champ label="Entreprise" value={entreprise} onChange={setEntreprise} />
-            <Champ label="Poste ciblé" value={poste} onChange={setPoste} />
+            <Champ label="Entreprise" value={company} onChange={setCompany} />
+            <Champ label="Poste ciblé" value={job_title} onChange={setJobTitle} />
             <div className="grid grid-cols-2 gap-3">
-              <FormField label="Ton">{(props) => <Select {...props} value={ton} onChange={(e) => setTon(e.target.value)}><option value="formal">Formel</option><option value="casual">Naturel</option><option value="creative">Créatif</option></Select>}</FormField>
-              <FormField label="Longueur">{(props) => <Select {...props} value={longueur} onChange={(e) => setLongueur(e.target.value)}><option value="short">Courte</option><option value="medium">Moyenne</option><option value="long">Longue</option></Select>}</FormField>
+              <FormField label="Ton">{(props) => <Select {...props} value={tone} onChange={(e) => setTone(e.target.value)}><option value="formal">Formel</option><option value="casual">Naturel</option><option value="creative">Créatif</option></Select>}</FormField>
+              <FormField label="Longueur">{(props) => <Select {...props} value={length} onChange={(e) => setLength(e.target.value)}><option value="short">Courte</option><option value="medium">Moyenne</option><option value="long">Longue</option></Select>}</FormField>
             </div>
-            <FormField label="Contexte ou offre">{(props) => <TextArea {...props} rows={10} value={contexte} onChange={(e) => setContexte(e.target.value)} />}</FormField>
+            <FormField label="Contexte ou offre">{(props) => <TextArea {...props} rows={10} value={context} onChange={(e) => setContext(e.target.value)} />}</FormField>
             {error ? <ErrorBanner title="Rédaction impossible" message={error} /> : null}
             {operation ? (
-              <><IaProgress progress={progress} /><Button variant="danger" icon="stop" className="w-full" onClick={() => void iaService.annuler(operation)}>Arrêter</Button></>
+              <><AiProgress progress={progress} /><Button variant="danger" icon="stop" className="w-full" onClick={() => void aiService.cancel(operation)}>Arrêter</Button></>
             ) : (
               <Button variant="primary" icon="auto_awesome" className="w-full" onClick={() => void run()}>Rédiger la lettre</Button>
             )}
@@ -453,8 +453,8 @@ export function LetterWriterPage() {
         <DocumentPanel title="Document" icon="draft">
           <A4Preview title="Lettre de motivation">
             <p className="mt-4 text-[11px] uppercase tracking-[0.12em] text-[#5b6ee1]">Lettre de motivation</p>
-            <h2 className="mt-3 text-[23px] font-semibold">{poste || "Candidature"}</h2>
-            <p className="mt-1 text-[12px] text-[#6a7280]">{entreprise || "Entreprise ciblée"}</p>
+            <h2 className="mt-3 text-[23px] font-semibold">{job_title || "Candidature"}</h2>
+            <p className="mt-1 text-[12px] text-[#6a7280]">{company || "Entreprise ciblée"}</p>
             <div className="mt-8 whitespace-pre-wrap text-[12px] leading-[1.9] text-[#303641]">{output || "La lettre apparaîtra ici après la rédaction."}</div>
           </A4Preview>
         </DocumentPanel>
@@ -463,24 +463,24 @@ export function LetterWriterPage() {
   );
 }
 
-export function CvAnalysisPage() {
+export function ResumeAnalysisPage() {
   const [path, setPath] = useState<string | null>(null);
-  const [offre, setOffre] = useState("");
+  const [job_offer, setJobOffer] = useState("");
   const [operation, setOperation] = useState<string | null>(null);
-  const [result, setResult] = useState<AnalyseCvImporte | null>(null);
+  const [result, setResult] = useState<ImportedResumeAnalysis | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const progress = useIaProgress(operation);
+  const progress = useAiProgress(operation);
   const choose = async () => {
     const file = await open({ multiple: false, filters: [{ name: "PDF", extensions: ["pdf"] }] });
     if (typeof file === "string") setPath(file);
   };
   const run = async () => {
-    if (!path || !offre.trim()) { setError("Sélectionnez un PDF et collez l’offre ciblée."); return; }
-    const id = generationId();
+    if (!path || !job_offer.trim()) { setError("Sélectionnez un PDF et collez l’offre ciblée."); return; }
+    const id = generation_id();
     setOperation(id);
     setError(null);
     try {
-      setResult(await iaService.analyserCv({ generationId: id, chemin: path, offre }));
+      setResult(await aiService.analyzeResume({ generation_id: id, path: path, job_offer }));
     } catch (e) {
       if (!(e instanceof AppError && e.code === "CANCELLED")) setError(message(e));
     } finally {
@@ -494,7 +494,7 @@ export function CvAnalysisPage() {
         title="Analyse de CV"
         subtitle="Comparez un PDF à l’offre ciblée"
         badge={<HeaderBadge icon="lock">Lecture locale</HeaderBadge>}
-        primary={<Button variant="primary" icon="bolt" disabled={operation !== null} onClick={() => void run()}>Analyser le CV</Button>}
+        primary={<Button variant="primary" icon="bolt" disabled={operation !== null} onClick={() => void run()}>Analyze le Resume</Button>}
       />
     }>
       <div className="grid gap-4 xl:grid-cols-[400px_minmax(480px,1fr)]">
@@ -506,8 +506,8 @@ export function CvAnalysisPage() {
                 <span className="font-medium text-ink">{path ? path.split("/").at(-1) : "Choisir un CV PDF"}</span>
                 <span className="text-meta text-ink-muted">PDF uniquement · 10 Mo maximum</span>
               </button>
-              <FormField label="Offre ciblée" required>{(props) => <TextArea {...props} rows={13} value={offre} onChange={(e) => setOffre(e.target.value)} />}</FormField>
-              {operation ? <IaProgress progress={progress} /> : null}
+              <FormField label="Offre ciblée" required>{(props) => <TextArea {...props} rows={13} value={job_offer} onChange={(e) => setJobOffer(e.target.value)} />}</FormField>
+              {operation ? <AiProgress progress={progress} /> : null}
               {error ? <ErrorBanner title="Analyse impossible" message={error} /> : null}
             </div>
           </DocumentPanel>
@@ -516,12 +516,12 @@ export function CvAnalysisPage() {
           {result ? (
             <>
               <DocumentPanel title="Résultat" icon="analytics">
-                <div className="grid gap-5 p-4 sm:grid-cols-[auto_1fr]"><ScoreBadge value={result.analyse.score} /><p className="text-body leading-relaxed text-ink-muted">{result.analyse.recap}</p></div>
+                <div className="grid gap-5 p-4 sm:grid-cols-[auto_1fr]"><ScoreBadge value={result.analysis.score} /><p className="text-body leading-relaxed text-ink-muted">{result.analysis.recap}</p></div>
               </DocumentPanel>
               <DocumentPanel title="Recommandations" icon="tips_and_updates">
-                <ul className="divide-y divide-line">{result.analyse.suggestions.map((s, i) => <li key={i} className="flex gap-3 px-4 py-3 text-body text-ink-muted"><span className="tabular text-accent">{i + 1}</span>{s}</li>)}</ul>
+                <ul className="divide-y divide-line">{result.analysis.suggestions.map((s, i) => <li key={i} className="flex gap-3 px-4 py-3 text-body text-ink-muted"><span className="tabular text-accent">{i + 1}</span>{s}</li>)}</ul>
               </DocumentPanel>
-              <DocumentPanel title="Aperçu du CV lu" icon="visibility"><A4Preview cv={result.cv} /></DocumentPanel>
+              <DocumentPanel title="Aperçu du CV lu" icon="visibility"><A4Preview resume={result.resume} /></DocumentPanel>
             </>
           ) : (
             <DocumentPanel title="Résultat de l’analyse" icon="analytics">
@@ -543,7 +543,7 @@ function Screen({
   header: ReactNode;
   children: ReactNode;
   padded?: boolean;
-  search?: { value: string; onChange: (valeur: string) => void; placeholder: string };
+  search?: { value: string; onChange: (value: string) => void; placeholder: string };
 }) {
   return (
     <div className="flex h-full flex-col">
@@ -558,7 +558,7 @@ function Screen({
         </ContextBarAccessory>
       ) : (
         <ContextBarAccessory>
-          <ContextNote>Documents locaux · génération IA</ContextNote>
+          <ContextNote>Documents locaux · gNRation Ai</ContextNote>
         </ContextBarAccessory>
       )}
       {header}
@@ -588,43 +588,43 @@ function Champ({ label, value, onChange }: { label: string; value: string; onCha
 }
 function message(error: unknown): string { return error instanceof AppError ? error.message : "Une erreur inattendue s’est produite."; }
 function date(value: string): string { const d = new Date(value); return Number.isNaN(d.getTime()) ? value : new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "short", year: "numeric" }).format(d); }
-function isGeneration(value: unknown): value is GenerationCv { return typeof value === "object" && value !== null && "cv" in value && "analyse" in value; }
-function generationDepuisNavigation(state: unknown): { result: GenerationCv | null; nom: string } {
+function isGeneration(value: unknown): value is ResumeGeneration { return typeof value === "object" && value !== null && "resume" in value && "analysis" in value; }
+function generationFromNavigation(state: unknown): { result: ResumeGeneration | null; name: string } {
   if (typeof state !== "object" || state === null || !("generation" in state)) {
-    return { result: null, nom: "" };
+    return { result: null, name: "" };
   }
-  const payload = state as { generation?: GenerationCv; nom?: string };
-  if (!payload.generation) return { result: null, nom: "" };
+  const payload = state as { generation?: ResumeGeneration; name?: string };
+  if (!payload.generation) return { result: null, name: "" };
   return {
     result: payload.generation,
-    nom: payload.nom ?? `CV — ${payload.generation.offre.titre || "Version ciblée"}`,
+    name: payload.name ?? `CV — ${payload.generation.job_offer.title || "Version ciblée"}`,
   };
 }
-function lettreDepuisNavigation(state: unknown): Lettre | null {
-  if (typeof state !== "object" || state === null || !("lettre" in state)) return null;
-  const payload = state as { lettre?: Lettre };
-  return payload.lettre ?? null;
+function coverLetterFromNavigation(state: unknown): CoverLetter | null {
+  if (typeof state !== "object" || state === null || !("cover_letter" in state)) return null;
+  const payload = state as { cover_letter?: CoverLetter };
+  return payload.cover_letter ?? null;
 }
-function libelleTon(ton: string): string {
-  if (ton === "casual") return "Naturel";
-  if (ton === "creative") return "Créatif";
+function labelTone(tone: string): string {
+  if (tone === "casual") return "Naturel";
+  if (tone === "creative") return "Créatif";
   return "Formel";
 }
 
-async function exporterPdf(
-  cv: CvGenere,
-  nom: string,
+async function exportPdf(
+  resume: GeneratedResume,
+  name: string,
   notify: (toast: Omit<ToastMessage, "id">) => void,
 ) {
-  const base = nom.trim().replace(/[\\/:*?"<>|]+/g, "-") || "cv-candilog";
-  const chemin = await save({
+  const base = name.trim().replace(/[\\/:*?"<>|]+/g, "-") || "resume-candilog";
+  const path = await save({
     title: "Exporter le CV en PDF",
     defaultPath: `${base}.pdf`,
     filters: [{ name: "PDF", extensions: ["pdf"] }],
   });
-  if (chemin === null) return;
+  if (path === null) return;
   try {
-    await documentsService.exporterPdf(cv, chemin);
+    await documentsService.exportPdf(resume, path);
     notify({ tone: "success", title: "CV exporté" });
   } catch (error) {
     notify({
@@ -635,19 +635,19 @@ async function exporterPdf(
   }
 }
 
-async function exporterLettrePdf(
-  lettre: ExportLettre,
+async function exportLetterPdf(
+  cover_letter: CoverLetterExport,
   notify: (toast: Omit<ToastMessage, "id">) => void,
 ) {
-  const base = lettre.nom.trim().replace(/[\\/:*?"<>|]+/g, "-") || "lettre-candilog";
-  const chemin = await save({
+  const base = cover_letter.name.trim().replace(/[\\/:*?"<>|]+/g, "-") || "lettre-candilog";
+  const path = await save({
     title: "Exporter la lettre en PDF",
     defaultPath: `${base}.pdf`,
     filters: [{ name: "PDF", extensions: ["pdf"] }],
   });
-  if (chemin === null) return;
+  if (path === null) return;
   try {
-    await documentsService.exporterLettrePdf(lettre, chemin);
+    await documentsService.exportCoverLetterPdf(cover_letter, path);
     notify({ tone: "success", title: "Lettre exportée" });
   } catch (error) {
     notify({

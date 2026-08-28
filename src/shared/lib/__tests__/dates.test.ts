@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
-  dateDepuisHorodatage,
-  heureDepuisHorodatage,
-  heureValide,
-  jourDe,
+  dateFromTimestamp,
+  timeFromTimestamp,
+  timeValide,
+  dayOf,
   versDateAffichee,
   versDateIso,
   versDateLongue,
-  versHorodatage,
+  versTimestamp,
 } from "../dates";
 
 describe("conversion de date", () => {
@@ -50,16 +50,16 @@ describe("conversion de date", () => {
 });
 
 
-describe("heure", () => {
+describe("time", () => {
   it("accepte une heure sur 24 heures", () => {
-    for (const heure of ["00:00", "09:30", "14:00", "23:59"]) {
-      expect(heureValide(heure)).toBe(true);
+    for (const time of ["00:00", "09:30", "14:00", "23:59"]) {
+      expect(timeValide(time)).toBe(true);
     }
   });
 
   it("refuse une heure impossible ou mal formée", () => {
-    for (const heure of ["24:00", "12:60", "9:30", "14h00", ""]) {
-      expect(heureValide(heure)).toBe(false);
+    for (const time of ["24:00", "12:60", "9:30", "14h00", ""]) {
+      expect(timeValide(time)).toBe(false);
     }
   });
 });
@@ -68,27 +68,27 @@ describe("horodatage d'un entretien", () => {
   it("compose la date, l'heure et le décalage local", () => {
     // Le décalage est indispensable : sans lui, un entretien saisi à 14 h s'afficherait à
     // 12 h ou 16 h selon le fuseau où la base est relue.
-    const horodatage = versHorodatage("25-08-2026", "14:00");
+    const timestamp = versTimestamp("25-08-2026", "14:00");
 
-    expect(horodatage).toMatch(/^2026-08-25T14:00:00[+-]\d{2}:\d{2}$/);
+    expect(timestamp).toMatch(/^2026-08-25T14:00:00[+-]\d{2}:\d{2}$/);
   });
 
   it("refuse une date ou une heure invalide", () => {
-    expect(versHorodatage("31-02-2026", "14:00")).toBeNull();
-    expect(versHorodatage("25-08-2026", "25:00")).toBeNull();
+    expect(versTimestamp("31-02-2026", "14:00")).toBeNull();
+    expect(versTimestamp("25-08-2026", "25:00")).toBeNull();
   });
 
   it("fait l'aller-retour vers les champs du formulaire", () => {
-    const horodatage = versHorodatage("25-08-2026", "09:05") as string;
+    const timestamp = versTimestamp("25-08-2026", "09:05") as string;
 
-    expect(dateDepuisHorodatage(horodatage)).toBe("25-08-2026");
-    expect(heureDepuisHorodatage(horodatage)).toBe("09:05");
+    expect(dateFromTimestamp(timestamp)).toBe("25-08-2026");
+    expect(timeFromTimestamp(timestamp)).toBe("09:05");
   });
 
   it("extrait le jour d'un horodatage comme d'une date nue", () => {
     // Le calendrier regroupe entretiens et relances par journée, alors que les uns portent
     // une heure et les autres non.
-    expect(jourDe("2026-08-25T14:00:00+02:00")).toBe("2026-08-25");
-    expect(jourDe("2026-08-25")).toBe("2026-08-25");
+    expect(dayOf("2026-08-25T14:00:00+02:00")).toBe("2026-08-25");
+    expect(dayOf("2026-08-25")).toBe("2026-08-25");
   });
 });

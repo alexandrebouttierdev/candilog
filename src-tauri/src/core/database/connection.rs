@@ -1,8 +1,7 @@
-//! Pool de connexions `SQLite` locales et migrations locales.
+//! Pool de connexions `SQLite` locales et initialisation du schéma.
 //!
-//! Les migrations sont des fichiers `.sql` numérotés, embarqués dans le binaire et appliqués
-//! par ordre croissant. Le curseur est `PRAGMA user_version` : une base déjà installée ne
-//! rejoue que les migrations postérieures à sa version.
+//! Le schéma complet vit dans un seul fichier `init_schema.sql`, embarqué dans le binaire.
+//! Le curseur est `PRAGMA user_version` : une base déjà à jour ne rejoue pas le fichier.
 
 use crate::core::errors::{AppError, AppResult};
 use r2d2::Pool;
@@ -12,45 +11,20 @@ use std::path::Path;
 /// Pool de connexions `SQLite` partagé par l'application.
 pub type SqlitePool = Pool<SqliteConnectionManager>;
 
-/// Migrations locales, appliquées par ordre croissant de version.
-const MIGRATIONS: &[(i64, &str)] = &[
-    (
-        1,
-        include_str!("../../../migrations/001_tables_locales.sql"),
-    ),
-    (
-        2,
-        include_str!("../../../migrations/002_purge_score_offre.sql"),
-    ),
-    (3, include_str!("../../../migrations/003_drop_offres.sql")),
-    (4, include_str!("../../../migrations/004_schema_metier.sql")),
-    (
-        5,
-        include_str!("../../../migrations/005_contraintes_enum.sql"),
-    ),
-    (6, include_str!("../../../migrations/006_index_dates.sql")),
-    (
-        7,
-        include_str!("../../../migrations/007_lettres_motivation.sql"),
-    ),
-    (
-        8,
-        include_str!("../../../migrations/008_secteurs_activite.sql"),
-    ),
-    (
-        9,
-        include_str!("../../../migrations/009_role_suivi_contacts.sql"),
-    ),
-];
+/// Versions de schéma, appliquées par ordre croissant.
+const MIGRATIONS: &[(i64, &str)] = &[(
+    1,
+    include_str!("../../../migrations/init_schema.sql"),
+)];
 
-/// Version de schéma atteinte après application de toutes les migrations.
-pub const DERNIERE_VERSION: i64 = 9;
+/// Version de schéma atteinte après application de `init_schema`.
+pub const DERNIERE_VERSION: i64 = 1;
 
 /// Applique les réglages indispensables à **chaque** connexion du pool.
 ///
 /// `foreign_keys` est désactivé par défaut dans `SQLite` et se règle par connexion : sans cet
 /// initialiseur, les clés étrangères seraient silencieusement ignorées.
-fn initialiser_connexion(conn: &mut rusqlite::Connection) -> rusqlite::Result<()> {
+fn init_connection(conn: &mut rusqlite::Connection) -> rusqlite::Result<()> {
     conn.execute_batch("PRAGMA journal_mode = WAL;")?;
     conn.pragma_update(None, "foreign_keys", "ON")?;
     conn.busy_timeout(std::time::Duration::from_secs(5))?;
@@ -79,7 +53,7 @@ pub fn open_pool(path: Option<&Path>) -> AppResult<SqlitePool> {
                 | rusqlite::OpenFlags::SQLITE_OPEN_URI,
         ),
     }
-    .with_init(initialiser_connexion);
+    .with_init(init_connection);
     // `min_idle(1)` garde une connexion vivante : une base mémoire partagée est détruite
     // dès que sa dernière connexion se ferme.
     //
@@ -93,21 +67,10 @@ pub fn open_pool(path: Option<&Path>) -> AppResult<SqlitePool> {
         .map_err(|e| AppError::Database(e.to_string()))
 }
 
-/// Applique les migrations locales non encore jouées, chacune dans sa propre transaction.
-///
-/// Les migrations qui recréent une table (procédé imposé par `SQLite`, qui ne sait pas ajouter
-/// de contrainte par `ALTER TABLE`) passent par `DROP TABLE`. Or, clés étrangères actives,
-/// `SQLite` réalise un DELETE implicite avant de supprimer une table : les `ON DELETE CASCADE`
-/// des tables enfants se déclenchent et effacent leur contenu, alors même que la table parente
-/// est aussitôt recréée à l'identique.
-///
-/// On suit donc la procédure officielle de changement de schéma : `foreign_keys` désactivé
-/// **hors** transaction (le `PRAGMA` est sans effet à l'intérieur), `foreign_key_check` avant
-/// de valider, réactivation ensuite — y compris si la migration échoue, la connexion étant
-/// rendue au pool.
+/// Applique le schéma local s'il n'est pas encore à jour, dans une transaction.
 ///
 /// # Errors
-/// Retourne `AppError::Database` si une migration échoue ou laisse une référence pendante.
+/// Retourne `AppError::Database` si l'initialisation échoue ou laisse une référence pendante.
 pub fn run_local_migrations(pool: &SqlitePool) -> AppResult<()> {
     let mut conn = pool.get().map_err(|e| AppError::Database(e.to_string()))?;
     let version: i64 = conn.query_row("PRAGMA user_version", [], |row| row.get(0))?;
@@ -116,7 +79,7 @@ pub fn run_local_migrations(pool: &SqlitePool) -> AppResult<()> {
         return Ok(());
     }
 
-    tracing::info!(depuis = version, jusqu_a = DERNIERE_VERSION, "migration");
+    tracing::info!(from = version, jusqu_a = DERNIERE_VERSION, "migration");
     conn.pragma_update(None, "foreign_keys", "OFF")?;
     let resultat = appliquer(&mut conn, &a_migrer);
     // Restaure l'état attendu par le reste de l'application avant de rendre la connexion,
@@ -132,7 +95,7 @@ fn appliquer(conn: &mut rusqlite::Connection, a_migrer: &[&(i64, &str)]) -> AppR
     for (cible, sql) in a_migrer {
         let transaction = conn.transaction()?;
         transaction.execute_batch(sql)?;
-        verifier_integrite_referentielle(&transaction, *cible)?;
+        check_integrite_referentielle(&transaction, *cible)?;
         transaction.pragma_update(None, "user_version", cible)?;
         transaction.commit()?;
         tracing::info!(version = cible, "migration appliquée");
@@ -141,11 +104,7 @@ fn appliquer(conn: &mut rusqlite::Connection, a_migrer: &[&(i64, &str)]) -> AppR
 }
 
 /// Refuse de valider une migration qui laisserait une référence pendante.
-///
-/// Les clés étrangères étant désactivées le temps de la recréation des tables, ce contrôle
-/// est le seul garde-fou : sans lui, une erreur de recopie passerait inaperçue jusqu'à la
-/// première lecture.
-fn verifier_integrite_referentielle(conn: &rusqlite::Connection, cible: i64) -> AppResult<()> {
+fn check_integrite_referentielle(conn: &rusqlite::Connection, cible: i64) -> AppResult<()> {
     let violations: i64 =
         conn.query_row("SELECT count(*) FROM pragma_foreign_key_check", [], |row| {
             row.get(0)

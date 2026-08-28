@@ -14,6 +14,6 @@ export type AppErrorDto = {
  */
 code: string, 
 /**
- * Message rédigé pour l'utilisateur, cf. [`AppError::message_utilisateur`].
+ * Message rédigé pour l'utilisateur, cf. [`AppError::user_message`].
  */
 message: string, };

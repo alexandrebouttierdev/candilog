@@ -2,14 +2,14 @@
 //! et `presentation`, et est ajoutée ici au fur et à mesure de la migration
 //! (cf. `docs/migration/01-AUDIT.md`, §7).
 
-pub mod analyses;
-pub mod candidatures;
+pub mod analytics;
+pub mod applications;
 pub mod contacts;
 pub mod documents;
-pub mod entreprises;
-pub mod entretiens;
-pub mod ia;
-pub mod parametres;
-pub mod profil;
-pub mod relances;
-pub mod secteurs;
+pub mod companies;
+pub mod interviews;
+pub mod ai;
+pub mod settings;
+pub mod profile;
+pub mod followups;
+pub mod sectors;

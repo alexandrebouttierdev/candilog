@@ -1,5 +1,5 @@
 /** Rôles proposés par les maquettes ; le champ reste libre en base. */
-export const ROLES = ["Recruteur", "Manager", "Référent", "Ancien collègue", "Autre"] as const;
+export const Roles = ["Recruteur", "Manager", "Référent", "Ancien collègue", "Autre"] as const;
 
 /** Icône et teinte d'un rôle, dans la liste maître comme sur la fiche. */
 export interface RoleMeta {

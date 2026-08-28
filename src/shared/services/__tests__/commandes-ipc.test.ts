@@ -5,7 +5,7 @@ import { globSync, readFileSync } from "node:fs";
  * Contrat entre les services frontend et les commandes Tauri.
  *
  * C'est le seul endroit où une faute de frappe ne se voit ni à la compilation Rust, ni à
- * celle de TypeScript : `ipc("entreprise_lister")` au lieu de `entreprises_lister` compile
+ * celle de TypeScript : `ipc("company_list")` au lieu de `companies_list` compile
  * des deux côtés et n'échoue qu'à l'exécution, dans la fenêtre native, sur un écran vide.
  * Ce test compare donc les deux inventaires.
  */

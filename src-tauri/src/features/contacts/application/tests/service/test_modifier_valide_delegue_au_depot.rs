@@ -6,7 +6,7 @@ use super::*;
 fn test_modifier_valide_delegue_au_depot() {
     let svc = ContactService::new(StubRepo);
     let c = svc
-        .modifier(uuid::Uuid::nil(), &nouveau("Ada", "Lovelace"))
+        .update(uuid::Uuid::nil(), &new("Ada", "Lovelace"))
         .unwrap();
-    assert_eq!(c.prenom, "Ada");
+    assert_eq!(c.first_name, "Ada");
 }

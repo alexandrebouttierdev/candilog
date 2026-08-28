@@ -3,7 +3,7 @@
 use crate::core::errors::{AppError, AppResult};
 use crate::core::pagination::Page;
 use crate::core::utils::validation::validate_optional_http_url;
-use crate::features::contacts::domain::{Contact, ContactRepository, MajContact, NouveauContact};
+use crate::features::contacts::domain::{Contact, ContactRepository, ContactUpdate, NewContact};
 
 /// Service métier des contacts, générique sur le dépôt.
 pub struct ContactService<R: ContactRepository> {
@@ -17,11 +17,11 @@ impl<R: ContactRepository> ContactService<R> {
         Self { repo }
     }
 
-    /// Liste tous les contacts.
+    /// List tous les contacts.
     ///
     /// # Errors
     /// Propage l'erreur du dépôt.
-    pub fn lister(&self) -> AppResult<Vec<Contact>> {
+    pub fn list(&self) -> AppResult<Vec<Contact>> {
         self.repo.list()
     }
 
@@ -29,15 +29,15 @@ impl<R: ContactRepository> ContactService<R> {
     ///
     /// # Errors
     /// `AppError::NotFound` si l'identifiant est inconnu.
-    pub fn obtenir(&self, id: uuid::Uuid) -> AppResult<Contact> {
+    pub fn get(&self, id: uuid::Uuid) -> AppResult<Contact> {
         self.repo.get(id)
     }
 
-    /// Charge une page du réseau sans matérialiser l'ensemble.
+    /// Payload une page du réseau sans matérialiser l'ensemble.
     ///
     /// # Errors
     /// Propage l'erreur du dépôt.
-    pub fn lister_page(&self, page: u64, page_size: u64, search: &str) -> AppResult<Page<Contact>> {
+    pub fn list_page(&self, page: u64, page_size: u64, search: &str) -> AppResult<Page<Contact>> {
         self.repo.list_page(page, page_size, search)
     }
 
@@ -46,7 +46,7 @@ impl<R: ContactRepository> ContactService<R> {
     /// # Errors
     /// `AppError::Validation` si le prénom ou le nom est vide, ou si le profil LinkedIn
     /// n'est pas une URL HTTP(S).
-    pub fn creer(&self, input: &NouveauContact) -> AppResult<Contact> {
+    pub fn create(&self, input: &NewContact) -> AppResult<Contact> {
         Self::valider(input)?;
         self.repo.create(input)
     }
@@ -56,7 +56,7 @@ impl<R: ContactRepository> ContactService<R> {
     /// # Errors
     /// `AppError::Validation` si les champs requis manquent ;
     /// `AppError::NotFound` si l'identifiant est inconnu.
-    pub fn modifier(&self, id: uuid::Uuid, input: &MajContact) -> AppResult<Contact> {
+    pub fn update(&self, id: uuid::Uuid, input: &ContactUpdate) -> AppResult<Contact> {
         Self::valider(input)?;
         self.repo.update(id, input)
     }
@@ -65,7 +65,7 @@ impl<R: ContactRepository> ContactService<R> {
     ///
     /// # Errors
     /// `AppError::Validation` si des candidatures ou des entretiens le référencent.
-    pub fn supprimer(&self, id: uuid::Uuid) -> AppResult<()> {
+    pub fn delete(&self, id: uuid::Uuid) -> AppResult<()> {
         self.repo.delete(id)
     }
 
@@ -74,8 +74,8 @@ impl<R: ContactRepository> ContactService<R> {
     /// Ces contrôles doublent ceux du schéma Zod côté React : la validation frontend sert
     /// l'ergonomie, elle ne garantit rien — une commande Tauri est appelable sans passer par
     /// le formulaire (MIGRATION.md §14).
-    fn valider(input: &NouveauContact) -> AppResult<()> {
-        if input.prenom.trim().is_empty() || input.nom.trim().is_empty() {
+    fn valider(input: &NewContact) -> AppResult<()> {
+        if input.first_name.trim().is_empty() || input.name.trim().is_empty() {
             return Err(AppError::Validation(
                 "Le prénom et le nom du contact sont requis".into(),
             ));
