@@ -3,7 +3,8 @@
 use crate::app::AppState;
 use crate::core::errors::{AppError, AppResult};
 use crate::core::utils::blocking;
-use crate::features::analytics::domain::{Analytics, Period, Dashboard};
+use crate::core::utils::validation::validate_user_file_path;
+use crate::features::analytics::domain::{Analytics, Dashboard, Period};
 use std::sync::Arc;
 use tauri::State;
 
@@ -30,9 +31,10 @@ pub async fn analytics_export_csv(
 ) -> AppResult<()> {
     let service = Arc::clone(&state.analytics);
     blocking::execute(move || {
+        let cible = validate_user_file_path(&path)?;
         let csv = service.export_csv(period, chrono::Local::now().date_naive())?;
-        std::fs::write(&path, csv).map_err(|error| {
-            tracing::error!(%error, path, "export des analyses impossible");
+        std::fs::write(&cible, csv).map_err(|error| {
+            tracing::error!(%error, path = %cible.display(), "export des analyses impossible");
             AppError::Validation("Le fichier n'a pas pu être écrit à l'emplacement choisi.".into())
         })
     })

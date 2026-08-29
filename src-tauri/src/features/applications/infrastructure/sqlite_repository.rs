@@ -1,15 +1,15 @@
 //! Dépôt `SQLite` des candidatures.
 
 use crate::core::database::helpers::{
-    connection, enum_from_text, now_iso, text_from_enum, translate_constraint,
-    translate_error, uuid_column, uuid_column_opt,
+    connection, enum_from_text, like_contains, now_iso, text_from_enum, translate_constraint,
+    translate_error, uuid_column, uuid_column_opt, LIKE_ESCAPE,
 };
 use crate::core::database::SqlitePool;
 use crate::core::errors::{AppError, AppResult};
-use crate::core::pagination::Page;
+use crate::core::pagination::{clamp_page_size, Page};
 use crate::features::applications::domain::{
-    Application, ApplicationRepository, ApplicationFilter, NewApplication,
-    PipelineBreakdown, ApplicationStatus, ApplicationSort,
+    Application, ApplicationFilter, ApplicationRepository, ApplicationSort, ApplicationStatus,
+    NewApplication, PipelineBreakdown,
 };
 use rusqlite::types::Value;
 use uuid::Uuid;
@@ -98,13 +98,12 @@ fn clauses(filter: &ApplicationFilter) -> AppResult<(String, Vec<Value>)> {
     let mut clauses = Vec::<String>::new();
     let mut values = Vec::<Value>::new();
 
-    let add =
-        |clause: &str, value: Value, values: &mut Vec<Value>, clauses: &mut Vec<String>| {
-            values.push(value);
-            clauses.push(clause.replace('?', &format!("?{}", values.len())));
-        };
+    let add = |clause: &str, value: Value, values: &mut Vec<Value>, clauses: &mut Vec<String>| {
+        values.push(value);
+        clauses.push(clause.replace('?', &format!("?{}", values.len())));
+    };
 
-    let pattern = |text: &str| Value::Text(format!("%{}%", text.trim().to_lowercase()));
+    let pattern = |text: &str| Value::Text(like_contains(text));
 
     if !filter.search.trim().is_empty() {
         values.push(pattern(&filter.search));
@@ -112,7 +111,7 @@ fn clauses(filter: &ApplicationFilter) -> AppResult<(String, Vec<Value>)> {
         values.push(pattern(&filter.search));
         let second = values.len();
         clauses.push(format!(
-            "(lower(c.job_title) LIKE ?{first} OR lower(coalesce(e.name, '')) LIKE ?{second})"
+            "(lower(c.job_title) LIKE ?{first} {LIKE_ESCAPE} OR lower(coalesce(e.name, '')) LIKE ?{second} {LIKE_ESCAPE})"
         ));
     }
     if let Some(status) = filter.status {
@@ -141,7 +140,7 @@ fn clauses(filter: &ApplicationFilter) -> AppResult<(String, Vec<Value>)> {
     }
     if !filter.city.trim().is_empty() {
         add(
-            "lower(coalesce(e.city, '')) LIKE ?",
+            &format!("lower(coalesce(e.city, '')) LIKE ? {LIKE_ESCAPE}"),
             pattern(&filter.city),
             &mut values,
             &mut clauses,
@@ -149,7 +148,7 @@ fn clauses(filter: &ApplicationFilter) -> AppResult<(String, Vec<Value>)> {
     }
     if !filter.job_title.trim().is_empty() {
         add(
-            "lower(c.job_title) LIKE ?",
+            &format!("lower(c.job_title) LIKE ? {LIKE_ESCAPE}"),
             pattern(&filter.job_title),
             &mut values,
             &mut clauses,
@@ -221,10 +220,7 @@ impl ApplicationRepository for SqliteApplicationRepository {
         let mut rows = query
             .query([id.to_string()])
             .map_err(|e| translate_error(e, "candidature"))?;
-        match rows
-            .next()
-            .map_err(|e| translate_error(e, "candidature"))?
-        {
+        match rows.next().map_err(|e| translate_error(e, "candidature"))? {
             Some(row) => row_to_application(row),
             None => Err(AppError::NotFound(format!("candidature {id}"))),
         }
@@ -238,7 +234,7 @@ impl ApplicationRepository for SqliteApplicationRepository {
     ) -> AppResult<Page<Application>> {
         let conn = connection(&self.pool)?;
         let page = page.max(1);
-        let page_size = page_size.max(1);
+        let page_size = clamp_page_size(page_size);
         let (where_sql, mut values) = clauses(filter)?;
 
         let total: u64 = conn

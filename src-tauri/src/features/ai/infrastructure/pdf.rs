@@ -1,6 +1,7 @@
 //! Lecture locale et bornée des CV PDF.
 
 use crate::core::errors::{AppError, AppResult};
+use crate::core::utils::validation::validate_user_file_path;
 use std::path::{Path, PathBuf};
 
 const MAX_PDF_BYTES: u64 = 10 * 1024 * 1024;
@@ -12,6 +13,7 @@ pub async fn extract_pdf(path: PathBuf) -> AppResult<String> {
 }
 
 fn extract(path: &Path) -> AppResult<String> {
+    let path = validate_user_file_path(path)?;
     if path
         .extension()
         .and_then(|v| v.to_str())
@@ -19,14 +21,14 @@ fn extract(path: &Path) -> AppResult<String> {
     {
         return Err(AppError::Validation("Sélectionnez un fichier PDF".into()));
     }
-    let metadata = std::fs::metadata(path)
+    let metadata = std::fs::metadata(&path)
         .map_err(|_| AppError::Validation("Le fichier PDF est introuvable".into()))?;
     if metadata.len() > MAX_PDF_BYTES {
         return Err(AppError::Validation(
             "Le PDF dépasse la limite de 10 Mo".into(),
         ));
     }
-    let bytes = std::fs::read(path)
+    let bytes = std::fs::read(&path)
         .map_err(|_| AppError::Validation("Le fichier PDF ne peut pas être lu".into()))?;
     if !bytes.starts_with(b"%PDF-") {
         return Err(AppError::Validation(

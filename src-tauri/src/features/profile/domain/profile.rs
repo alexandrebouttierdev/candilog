@@ -7,17 +7,23 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "profile.ts")]
 pub struct Identity {
+    #[serde(alias = "prenom")]
     pub first_name: String,
+    #[serde(alias = "nom")]
     pub name: String,
     pub email: String,
+    #[serde(alias = "telephone")]
     pub phone: Option<String>,
+    #[serde(alias = "ville")]
     pub city: Option<String>,
     /// Accroche courte, utilisée comme objectif ou titre de CV.
+    #[serde(alias = "titre")]
     pub title: Option<String>,
     /// Présentation détaillée du parcours et de l'objectif.
     pub resume: Option<String>,
     pub linkedin: Option<String>,
     pub github: Option<String>,
+    #[serde(alias = "siteWeb", alias = "site_web")]
     pub website: Option<String>,
 }
 
@@ -26,11 +32,15 @@ pub struct Identity {
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "profile.ts")]
 pub struct Experience {
+    #[serde(alias = "intitule")]
     pub title: String,
+    #[serde(alias = "entreprise")]
     pub company: String,
+    #[serde(alias = "lieu")]
     pub location: Option<String>,
     pub start_date: String,
     pub end_date: Option<String>,
+    #[serde(alias = "posteActuel", alias = "poste_actuel")]
     pub current: bool,
     pub description: Option<String>,
 }
@@ -40,6 +50,7 @@ pub struct Experience {
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "profile.ts")]
 pub struct Skill {
+    #[serde(alias = "nom")]
     pub name: String,
 }
 
@@ -48,8 +59,11 @@ pub struct Skill {
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "profile.ts")]
 pub struct Education {
+    #[serde(alias = "diplome")]
     pub degree: String,
+    #[serde(alias = "etablissement")]
     pub school: String,
+    #[serde(alias = "lieu")]
     pub location: Option<String>,
     pub start_date: Option<String>,
     pub end_date: Option<String>,
@@ -61,7 +75,9 @@ pub struct Education {
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "profile.ts")]
 pub struct Language {
+    #[serde(alias = "nom")]
     pub name: String,
+    #[serde(alias = "niveau")]
     pub level: String,
 }
 
@@ -70,6 +86,7 @@ pub struct Language {
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "profile.ts")]
 pub struct Project {
+    #[serde(alias = "nom")]
     pub name: String,
     pub description: Option<String>,
     pub url: Option<String>,
@@ -81,7 +98,9 @@ pub struct Project {
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "profile.ts")]
 pub struct Certification {
+    #[serde(alias = "nom")]
     pub name: String,
+    #[serde(alias = "organisme")]
     pub issuer: Option<String>,
     pub date: Option<String>,
     pub url: Option<String>,
@@ -92,11 +111,16 @@ pub struct Certification {
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "profile.ts")]
 pub struct Profile {
+    #[serde(alias = "identite")]
     pub identity: Identity,
     pub experiences: Vec<Experience>,
+    #[serde(alias = "competences")]
     pub skills: Vec<Skill>,
+    #[serde(alias = "formations")]
     pub education: Vec<Education>,
+    #[serde(alias = "langues")]
     pub languages: Vec<Language>,
+    #[serde(alias = "projets")]
     pub projects: Vec<Project>,
     pub certifications: Vec<Certification>,
 }

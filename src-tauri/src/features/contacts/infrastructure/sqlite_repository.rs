@@ -1,11 +1,12 @@
 //! Dépôt `SQLite` des contacts.
 
 use crate::core::database::helpers::{
-    connection, now_iso, translate_constraint, translate_error, uuid_column, uuid_column_opt,
+    connection, like_contains, now_iso, translate_constraint, translate_error, uuid_column,
+    uuid_column_opt, LIKE_ESCAPE,
 };
 use crate::core::database::SqlitePool;
 use crate::core::errors::{AppError, AppResult};
-use crate::core::pagination::Page;
+use crate::core::pagination::{clamp_page_size, Page};
 use crate::features::contacts::domain::{Contact, ContactRepository, NewContact};
 
 /// Implémentation `SQLite` du dépôt de contacts.
@@ -22,7 +23,8 @@ impl SqliteContactRepository {
 }
 
 /// Columns lues par [`row_vers_contact`], dans l'ordre, avec la jointure entreprise.
-const COLUMNS: &str = "c.id, c.company_id, e.name, c.first_name, c.name, c.job_title, c.tracking_role, \
+const COLUMNS: &str =
+    "c.id, c.company_id, e.name, c.first_name, c.name, c.job_title, c.tracking_role, \
                         c.email, c.phone, c.linkedin, c.notes, c.created_at, c.updated_at";
 
 /// Source des colonnes : `LEFT JOIN` et non jointure interne, un contact pouvant n'être
@@ -83,17 +85,19 @@ impl ContactRepository for SqliteContactRepository {
     fn list_page(&self, page: u64, page_size: u64, search: &str) -> AppResult<Page<Contact>> {
         let conn = connection(&self.pool)?;
         let page = page.max(1);
-        let page_size = page_size.max(1);
-        let needle = format!("%{}%", search.trim().to_lowercase());
+        let page_size = clamp_page_size(page_size);
+        let needle = like_contains(search);
         // `?1 = '%%'` court-circuite le filtre lorsque la recherche est vide : sans ce test,
         // les contacts dont le poste ou l'e-mail est NULL seraient exclus par les `LIKE`.
-        let filter = "WHERE ?1 = '%%' \
-                      OR lower(c.first_name) LIKE ?1 \
-                      OR lower(c.name) LIKE ?1 \
-                      OR lower(coalesce(c.job_title, '')) LIKE ?1 \
-                      OR lower(coalesce(c.tracking_role, '')) LIKE ?1 \
-                      OR lower(coalesce(c.email, '')) LIKE ?1 \
-                      OR lower(coalesce(e.name, '')) LIKE ?1";
+        let filter = format!(
+            "WHERE ?1 = '%%' \
+             OR lower(c.first_name) LIKE ?1 {LIKE_ESCAPE} \
+             OR lower(c.name) LIKE ?1 {LIKE_ESCAPE} \
+             OR lower(coalesce(c.job_title, '')) LIKE ?1 {LIKE_ESCAPE} \
+             OR lower(coalesce(c.tracking_role, '')) LIKE ?1 {LIKE_ESCAPE} \
+             OR lower(coalesce(c.email, '')) LIKE ?1 {LIKE_ESCAPE} \
+             OR lower(coalesce(e.name, '')) LIKE ?1 {LIKE_ESCAPE}"
+        );
         let total: u64 = conn
             .query_row(
                 &format!("SELECT count(*) FROM {SOURCE} {filter}"),

@@ -6,7 +6,7 @@ import { documentsService } from "../../services/documentsService";
 import type { ResumeVersion, CoverLetterExport, CoverLetter } from "../../services/documentsService";
 import { aiService, generation_id } from "@/features/ai/services/aiService";
 import type { ImportedResumeAnalysis, GeneratedResume, ResumeGeneration } from "@/features/ai/model/types";
-import { useAiProgress } from "@/features/ai/viewmodel/useAiProgress";
+import { useAiProgress, useCancelAiOnUnmount } from "@/features/ai/viewmodel/useAiProgress";
 import { useUiStore } from "@/shared/lib/ui-store";
 import type { ToastMessage } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
@@ -131,7 +131,7 @@ export function ResumeLibraryPage() {
               ) : recherche.trim() ? (
                 <EmptyState icon="search" title="Aucun résultat" description="Aucune version ne correspond à cette recherche." />
               ) : (
-                <EmptyState icon="description" title="Aucune version" description="Générez puis sauvegardez votre premier CV ciblé." action={<Button icon="auto_awesome" onClick={() => void navigate("/documents/generate-resume")}>GNRer un Resume</Button>} />
+                <EmptyState icon="description" title="Aucune version" description="Générez puis sauvegardez votre premier CV ciblé." action={<Button icon="auto_awesome" onClick={() => void navigate("/documents/generate-resume")}>Générer un CV</Button>} />
               )}
             </div>
           </div>
@@ -201,6 +201,7 @@ export function ResumeGeneratorPage() {
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState(initiale.name);
   const progress = useAiProgress(operation);
+  useCancelAiOnUnmount(operation);
 
   const run = async () => {
     if (!job_offer.trim()) { setError("Collez le texte de l’offre à cibler."); return; }
@@ -246,7 +247,7 @@ export function ResumeGeneratorPage() {
             {operation ? (
               <><AiProgress progress={progress} /><Button variant="danger" icon="stop" className="w-full" onClick={() => void aiService.cancel(operation)}>Annuler</Button></>
             ) : (
-              <Button variant="primary" icon="auto_awesome" className="w-full" onClick={() => void run()}>GNRer le Resume ciblé</Button>
+              <Button variant="primary" icon="auto_awesome" className="w-full" onClick={() => void run()}>Générer le CV ciblé</Button>
             )}
           </div>
         </DocumentPanel>
@@ -399,6 +400,7 @@ export function LetterWriterPage() {
   const [operation, setOperation] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const progress = useAiProgress(operation);
+  useCancelAiOnUnmount(operation);
 
   const run = async () => {
     const id = generation_id();
@@ -470,6 +472,7 @@ export function ResumeAnalysisPage() {
   const [result, setResult] = useState<ImportedResumeAnalysis | null>(null);
   const [error, setError] = useState<string | null>(null);
   const progress = useAiProgress(operation);
+  useCancelAiOnUnmount(operation);
   const choose = async () => {
     const file = await open({ multiple: false, filters: [{ name: "PDF", extensions: ["pdf"] }] });
     if (typeof file === "string") setPath(file);
@@ -494,7 +497,7 @@ export function ResumeAnalysisPage() {
         title="Analyse de CV"
         subtitle="Comparez un PDF à l’offre ciblée"
         badge={<HeaderBadge icon="lock">Lecture locale</HeaderBadge>}
-        primary={<Button variant="primary" icon="bolt" disabled={operation !== null} onClick={() => void run()}>Analyze le Resume</Button>}
+        primary={<Button variant="primary" icon="bolt" disabled={operation !== null} onClick={() => void run()}>Analyser le CV</Button>}
       />
     }>
       <div className="grid gap-4 xl:grid-cols-[400px_minmax(480px,1fr)]">

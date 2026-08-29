@@ -23,17 +23,25 @@ export function UpdatesPage() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     let dispose: (() => void) | undefined;
     void listen<UpdateProgress>("update-progress", (event) => {
       setProgress(event.payload.progress);
     })
       .then((unlisten) => {
+        if (cancelled) {
+          unlisten();
+          return;
+        }
         dispose = unlisten;
       })
       .catch(() => {
         /* revue navigateur sans runtime Tauri */
       });
-    return () => dispose?.();
+    return () => {
+      cancelled = true;
+      dispose?.();
+    };
   }, []);
 
   const check = async () => {
@@ -50,7 +58,9 @@ export function UpdatesPage() {
 
   const download = async () => {
     if (!update?.asset) {
-      await openUrl(update?.page_url ?? "https://github.com/alexandrebouttierdev/candilog-releases/releases/latest");
+      const fallback = "https://github.com/alexandrebouttierdev/candilog-releases/releases/latest";
+      const page = update?.page_url ?? fallback;
+      await openUrl(pageOfficielle(page) ? page : fallback);
       return;
     }
     setBusy("download");
@@ -133,4 +143,17 @@ export function UpdatesPage() {
       </SettingsBody>
     </div>
   );
+}
+
+function pageOfficielle(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return (
+      parsed.protocol === "https:" &&
+      parsed.hostname === "github.com" &&
+      parsed.pathname.startsWith("/alexandrebouttierdev/candilog-releases/")
+    );
+  } catch {
+    return false;
+  }
 }

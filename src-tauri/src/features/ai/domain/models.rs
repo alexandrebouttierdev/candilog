@@ -54,15 +54,25 @@ fn score_lenient<'de, D: Deserializer<'de>>(deserializer: D) -> Result<u8, D::Er
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "ai.ts")]
 pub struct StructuredListing {
-    #[serde(default, deserialize_with = "string_lenient")]
+    #[serde(default, alias = "titre", deserialize_with = "string_lenient")]
     pub title: String,
-    #[serde(default, deserialize_with = "list_lenient")]
+    #[serde(default, alias = "competences", deserialize_with = "list_lenient")]
     pub skills: Vec<String>,
-    #[serde(default, deserialize_with = "list_lenient")]
+    #[serde(
+        default,
+        alias = "savoirEtre",
+        alias = "savoir_etre",
+        deserialize_with = "list_lenient"
+    )]
     pub soft_skills: Vec<String>,
     #[serde(default)]
     pub experience: Option<String>,
-    #[serde(default, deserialize_with = "list_lenient")]
+    #[serde(
+        default,
+        alias = "motsCles",
+        alias = "mots_cles",
+        deserialize_with = "list_lenient"
+    )]
     pub keywords: Vec<String>,
 }
 
@@ -90,9 +100,9 @@ pub struct ListingAnalysis {
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "ai.ts")]
 pub struct GeneratedExperience {
-    #[serde(default, deserialize_with = "string_lenient")]
+    #[serde(default, alias = "intitule", deserialize_with = "string_lenient")]
     pub title: String,
-    #[serde(default, deserialize_with = "string_lenient")]
+    #[serde(default, alias = "entreprise", deserialize_with = "string_lenient")]
     pub company: String,
     #[serde(default, deserialize_with = "string_lenient")]
     pub description: String,
@@ -102,9 +112,9 @@ pub struct GeneratedExperience {
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "ai.ts")]
 pub struct GeneratedEducation {
-    #[serde(default, deserialize_with = "string_lenient")]
+    #[serde(default, alias = "diplome", deserialize_with = "string_lenient")]
     pub degree: String,
-    #[serde(default, deserialize_with = "string_lenient")]
+    #[serde(default, alias = "etablissement", deserialize_with = "string_lenient")]
     pub school: String,
 }
 
@@ -118,7 +128,7 @@ pub struct GeneratedResume {
     pub experiences: Vec<GeneratedExperience>,
     #[serde(default, deserialize_with = "list_lenient")]
     pub skills: Vec<String>,
-    #[serde(default)]
+    #[serde(default, alias = "formations")]
     pub education: Vec<GeneratedEducation>,
 }
 
@@ -127,7 +137,19 @@ pub struct GeneratedResume {
 #[ts(export, export_to = "ai.ts")]
 pub struct AtsRecommendation {
     pub section: String,
+    #[serde(
+        default,
+        alias = "texteOriginal",
+        alias = "texte_original",
+        deserialize_with = "string_lenient"
+    )]
     pub original_text: String,
+    #[serde(
+        default,
+        alias = "textePropose",
+        alias = "texte_propose",
+        deserialize_with = "string_lenient"
+    )]
     pub proposed_text: String,
     #[serde(default, deserialize_with = "score_lenient")]
     pub impact: u8,
@@ -143,7 +165,7 @@ pub struct AtsAnalysis {
     pub recap: String,
     #[serde(default, deserialize_with = "list_lenient")]
     pub suggestions: Vec<String>,
-    #[serde(default)]
+    #[serde(default, alias = "recommandations")]
     pub recommendations: Vec<AtsRecommendation>,
 }
 

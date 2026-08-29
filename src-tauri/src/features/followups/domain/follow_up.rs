@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 /// FollowUp effectuée sur une candidature, telle que persistée.
 #[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "snake_case")]
-#[ts(export, export_to = "followups.ts")]
+#[ts(export, export_to = "followUps.ts")]
 pub struct FollowUp {
     /// Id de la relance.
     pub id: uuid::Uuid,
@@ -33,7 +33,7 @@ pub struct FollowUp {
 /// Champs éditables d'une relance, en création comme en modification.
 #[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "snake_case")]
-#[ts(export, export_to = "followups.ts")]
+#[ts(export, export_to = "followUps.ts")]
 pub struct NewFollowUp {
     /// Id de la candidature relancée (requis).
     pub application_id: uuid::Uuid,

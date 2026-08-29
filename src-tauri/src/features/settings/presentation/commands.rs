@@ -3,10 +3,8 @@
 use crate::app::state::AppState;
 use crate::core::errors::AppResult;
 use crate::core::utils::blocking;
-use crate::features::settings::domain::{
-    About, LlmForm, UpdateInfo, Settings, UpdateProgress,
-};
-use std::path::PathBuf;
+use crate::core::utils::validation::validate_user_file_path;
+use crate::features::settings::domain::{About, LlmForm, Settings, UpdateInfo, UpdateProgress};
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter, State};
 
@@ -19,20 +17,14 @@ pub async fn settings_load(state: State<'_, AppState>) -> AppResult<Settings> {
 
 /// Valide et persiste les réglages. La clé API quitte SQLite pour le coffre.
 #[tauri::command(rename_all = "snake_case")]
-pub async fn settings_save(
-    state: State<'_, AppState>,
-    settings: Settings,
-) -> AppResult<Settings> {
+pub async fn settings_save(state: State<'_, AppState>, settings: Settings) -> AppResult<Settings> {
     let service = Arc::clone(&state.settings);
     blocking::execute(move || service.save(settings)).await
 }
 
 /// Teste le fournisseur décrit par le formulaire, sans l'enregistrer.
 #[tauri::command(rename_all = "snake_case")]
-pub async fn settings_test_connection(
-    state: State<'_, AppState>,
-    llm: LlmForm,
-) -> AppResult<()> {
+pub async fn settings_test_connection(state: State<'_, AppState>, llm: LlmForm) -> AppResult<()> {
     state.settings.test_connection(llm).await
 }
 
@@ -56,14 +48,22 @@ pub async fn settings_clear_ai_cache(state: State<'_, AppState>) -> AppResult<()
 #[tauri::command(rename_all = "snake_case")]
 pub async fn settings_export(state: State<'_, AppState>, path: String) -> AppResult<()> {
     let service = Arc::clone(&state.settings);
-    blocking::execute(move || service.export(PathBuf::from(path).as_path())).await
+    blocking::execute(move || {
+        let cible = validate_user_file_path(path)?;
+        service.export(&cible)
+    })
+    .await
 }
 
 /// Restaure un backup validé, avec retour arrière en cas d'échec.
 #[tauri::command(rename_all = "snake_case")]
 pub async fn settings_restore(state: State<'_, AppState>, path: String) -> AppResult<()> {
     let service = Arc::clone(&state.settings);
-    blocking::execute(move || service.restore(PathBuf::from(path).as_path())).await
+    blocking::execute(move || {
+        let cible = validate_user_file_path(path)?;
+        service.restore(&cible)
+    })
+    .await
 }
 
 /// Efface les données utilisateur, pas le référentiel des secteurs.

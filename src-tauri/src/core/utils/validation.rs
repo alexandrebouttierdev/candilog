@@ -1,5 +1,8 @@
 //! Validations partagées des données reçues à la frontière IPC.
 
+use std::net::IpAddr;
+use std::path::{Component, Path, PathBuf};
+
 use crate::core::errors::{AppError, AppResult};
 
 /// Valide une URL utilisateur facultative et limite les protocoles à HTTP(S).
@@ -20,18 +23,41 @@ pub fn validate_optional_http_url(value: Option<&str>, field: &str) -> AppResult
     Ok(())
 }
 
+/// Refuse un chemin vide, un octet nul, ou une traversée `..`.
+///
+/// Le sélecteur natif fournit un chemin absolu ; les `..` ne servent qu'à un appel IPC forgé.
+///
+/// # Errors
+/// Retourne `Validation` si le chemin n'est pas utilisable tel quel.
+pub fn validate_user_file_path(path: impl AsRef<Path>) -> AppResult<PathBuf> {
+    let path = path.as_ref();
+    if path.as_os_str().is_empty() {
+        return Err(AppError::Validation("Chemin de fichier invalide".into()));
+    }
+    if path.to_str().is_some_and(|value| value.contains('\0'))
+        || path.components().any(|c| matches!(c, Component::ParentDir))
+    {
+        return Err(AppError::Validation("Chemin de fichier invalide".into()));
+    }
+    Ok(path.to_path_buf())
+}
+
 /// Indique si une adresse IP appartient à une zone locale ou non routable.
 #[must_use]
-pub fn is_local_or_private_ip(ip: std::net::IpAddr) -> bool {
+pub fn is_local_or_private_ip(ip: IpAddr) -> bool {
     match ip {
-        std::net::IpAddr::V4(ip) => {
+        IpAddr::V4(ip) => {
             ip.is_private()
                 || ip.is_loopback()
                 || ip.is_link_local()
                 || ip.is_unspecified()
                 || ip.is_multicast()
+                || (ip.octets()[0] == 100 && (ip.octets()[1] & 0b1100_0000) == 64)
         }
-        std::net::IpAddr::V6(ip) => {
+        IpAddr::V6(ip) => {
+            if let Some(v4) = ip.to_ipv4_mapped() {
+                return is_local_or_private_ip(IpAddr::V4(v4));
+            }
             ip.is_loopback()
                 || ip.is_unspecified()
                 || ip.is_multicast()

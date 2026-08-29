@@ -15,6 +15,7 @@ enum StatusFactice {
 
 mod test_enum_depuis_texte_valeur_connue_retourne_la_variante;
 mod test_enum_depuis_texte_valeur_inconnue_retourne_erreur;
+mod test_like_contains_echappe_les_jokers;
 mod test_maintenant_iso_produit_un_horodatage_rfc3339;
 mod test_texte_depuis_enum_restitue_la_valeur_serialisee;
 mod test_traduire_contrainte_ligne_absente_retombe_sur_le_label_de_ressource;

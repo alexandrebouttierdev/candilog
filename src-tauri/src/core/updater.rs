@@ -19,6 +19,37 @@ pub const RELEASES_API_URL: &str =
 pub const RELEASES_PAGE_URL: &str =
     "https://github.com/alexandrebouttierdev/candilog-releases/releases/latest";
 
+/// Accepte uniquement les URL HTTPS du dépôt officiel de releases.
+#[must_use]
+pub fn url_installeur_autorisee(url: &str) -> bool {
+    let Ok(parsed) = url::Url::parse(url) else {
+        return false;
+    };
+    if parsed.scheme() != "https" {
+        return false;
+    }
+    let prefix = format!("/{RELEASES_REPO}/");
+    match parsed.host_str() {
+        Some("github.com") => parsed.path().starts_with(&prefix),
+        Some("objects.githubusercontent.com")
+        | Some("release-assets.githubusercontent.com")
+        | Some("github-releases.githubusercontent.com") => true,
+        _ => false,
+    }
+}
+
+/// # Errors
+/// Retourne `Validation` si l'URL n'appartient pas au dépôt de releases.
+pub fn assert_url_installeur_autorisee(url: &str) -> AppResult<()> {
+    if url_installeur_autorisee(url) {
+        Ok(())
+    } else {
+        Err(AppError::Validation(
+            "L'adresse de téléchargement n'est pas une release officielle Candilog.".into(),
+        ))
+    }
+}
+
 /// Résultat d'une vérification de mise à jour, avant conversion IPC.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UpdateInfo {
@@ -229,6 +260,7 @@ pub async fn download_installeur(
     name_file: &str,
     mut on_progress: impl FnMut(u8),
 ) -> AppResult<PathBuf> {
+    assert_url_installeur_autorisee(url)?;
     let response = client.get(url).send().await?.error_for_status()?;
     let total = response.content_length();
     if let Some(length) = total {
@@ -389,5 +421,21 @@ mod tests {
     fn download_refuse_un_paquet_trop_volumineux() {
         check_size_paquet(MAX_UPDATE_BYTES).unwrap();
         assert!(check_size_paquet(MAX_UPDATE_BYTES + 1).is_err());
+    }
+
+    #[test]
+    fn seules_les_url_du_depot_officiel_sont_acceptees() {
+        assert!(url_installeur_autorisee(
+            "https://github.com/alexandrebouttierdev/candilog-releases/releases/download/v0.3.0/candilog.deb"
+        ));
+        assert!(!url_installeur_autorisee(
+            "https://evil.example/malware.exe"
+        ));
+        assert!(!url_installeur_autorisee(
+            "http://github.com/alexandrebouttierdev/candilog-releases/x"
+        ));
+        assert!(!url_installeur_autorisee(
+            "https://github.com/autre/depot/releases/download/v1/x.deb"
+        ));
     }
 }

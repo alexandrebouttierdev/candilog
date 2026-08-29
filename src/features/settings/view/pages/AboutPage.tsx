@@ -55,7 +55,7 @@ export function AboutPage() {
         <SettingsCard icon="person" title="Un produit indépendant">
           <div className="flex flex-wrap items-center gap-3">
             <div className="min-w-0 flex-1">
-              <p className="text-meta font-semibold tracking-wide text-accent uppercase">ConU et dVelopp par</p>
+              <p className="text-meta font-semibold tracking-wide text-accent uppercase">Conçu et développé par</p>
               <p className="mt-1 flex items-center gap-2 text-section text-ink">
                 <Icon name="badge" size={18} className="text-accent" />
                 Alexandre Bouttier

@@ -3,12 +3,12 @@
 use crate::app::state::AppState;
 use crate::core::errors::{AppError, AppResult};
 use crate::core::utils::blocking;
+use crate::core::utils::validation::validate_user_file_path;
+use crate::features::ai::domain::GeneratedResume;
 use crate::features::documents::application::{build, build_cover_letter};
 use crate::features::documents::domain::{
-    ResumeSummary, ResumeVersion, CoverLetterExport, CoverLetter, NewResume, NewCoverLetter,
+    CoverLetter, CoverLetterExport, NewCoverLetter, NewResume, ResumeSummary, ResumeVersion,
 };
-use crate::features::ai::domain::GeneratedResume;
-use std::path::Path;
 use std::sync::Arc;
 use tauri::State;
 use uuid::Uuid;
@@ -16,16 +16,15 @@ use uuid::Uuid;
 #[tauri::command(rename_all = "snake_case")]
 pub async fn documents_resume_list(state: State<'_, AppState>) -> AppResult<Vec<ResumeSummary>> {
     let service = state.documents.clone();
-    tauri::async_runtime::spawn_blocking(move || service.resume_list())
-        .await
-        .map_err(|e| crate::core::errors::AppError::Database(e.to_string()))?
+    blocking::execute(move || service.resume_list()).await
 }
 #[tauri::command(rename_all = "snake_case")]
-pub async fn documents_resume_get(state: State<'_, AppState>, id: Uuid) -> AppResult<ResumeVersion> {
+pub async fn documents_resume_get(
+    state: State<'_, AppState>,
+    id: Uuid,
+) -> AppResult<ResumeVersion> {
     let service = state.documents.clone();
-    tauri::async_runtime::spawn_blocking(move || service.resume_get(id))
-        .await
-        .map_err(|e| crate::core::errors::AppError::Database(e.to_string()))?
+    blocking::execute(move || service.resume_get(id)).await
 }
 #[tauri::command(rename_all = "snake_case")]
 pub async fn documents_resume_save(
@@ -33,16 +32,12 @@ pub async fn documents_resume_save(
     input: NewResume,
 ) -> AppResult<ResumeVersion> {
     let service = state.documents.clone();
-    tauri::async_runtime::spawn_blocking(move || service.resume_save(&input))
-        .await
-        .map_err(|e| crate::core::errors::AppError::Database(e.to_string()))?
+    blocking::execute(move || service.resume_save(&input)).await
 }
 #[tauri::command(rename_all = "snake_case")]
 pub async fn documents_resume_delete(state: State<'_, AppState>, id: Uuid) -> AppResult<()> {
     let service = state.documents.clone();
-    tauri::async_runtime::spawn_blocking(move || service.resume_delete(id))
-        .await
-        .map_err(|e| crate::core::errors::AppError::Database(e.to_string()))?
+    blocking::execute(move || service.resume_delete(id)).await
 }
 
 /// Exporte un CV généré au chemin choisi dans le sélecteur natif.
@@ -57,11 +52,12 @@ pub async fn documents_resume_export_pdf(
 ) -> AppResult<()> {
     let profile = Arc::clone(&state.profile);
     blocking::execute(move || {
+        let cible = validate_user_file_path(&path)?;
         let payload = profile.load()?;
         build(&payload.profile, &resume)
-            .render_pdf(Path::new(&path))
+            .render_pdf(&cible)
             .map_err(|error| {
-                tracing::error!(%error, path, "export PDF impossible");
+                tracing::error!(%error, path = %cible.display(), "export PDF impossible");
                 AppError::Validation("Le PDF n'a pas pu être écrit à l'emplacement choisi.".into())
             })
     })
@@ -80,29 +76,31 @@ pub async fn documents_cover_letter_export_pdf(
 ) -> AppResult<()> {
     let profile = Arc::clone(&state.profile);
     blocking::execute(move || {
+        let cible = validate_user_file_path(&path)?;
         let payload = profile.load()?;
         build_cover_letter(&payload.profile, &cover_letter)
-            .render_pdf(Path::new(&path))
+            .render_pdf(&cible)
             .map_err(|error| {
-                tracing::error!(%error, path, "export PDF de lettre impossible");
+                tracing::error!(%error, path = %cible.display(), "export PDF de lettre impossible");
                 AppError::Validation("Le PDF n'a pas pu être écrit à l'emplacement choisi.".into())
             })
     })
     .await
 }
 #[tauri::command(rename_all = "snake_case")]
-pub async fn documents_cover_letters_list(state: State<'_, AppState>) -> AppResult<Vec<CoverLetter>> {
+pub async fn documents_cover_letters_list(
+    state: State<'_, AppState>,
+) -> AppResult<Vec<CoverLetter>> {
     let service = state.documents.clone();
-    tauri::async_runtime::spawn_blocking(move || service.cover_letters_list())
-        .await
-        .map_err(|e| crate::core::errors::AppError::Database(e.to_string()))?
+    blocking::execute(move || service.cover_letters_list()).await
 }
 #[tauri::command(rename_all = "snake_case")]
-pub async fn documents_cover_letter_get(state: State<'_, AppState>, id: Uuid) -> AppResult<CoverLetter> {
+pub async fn documents_cover_letter_get(
+    state: State<'_, AppState>,
+    id: Uuid,
+) -> AppResult<CoverLetter> {
     let service = state.documents.clone();
-    tauri::async_runtime::spawn_blocking(move || service.cover_letter_get(id))
-        .await
-        .map_err(|e| crate::core::errors::AppError::Database(e.to_string()))?
+    blocking::execute(move || service.cover_letter_get(id)).await
 }
 #[tauri::command(rename_all = "snake_case")]
 pub async fn documents_cover_letter_save(
@@ -110,14 +108,10 @@ pub async fn documents_cover_letter_save(
     input: NewCoverLetter,
 ) -> AppResult<CoverLetter> {
     let service = state.documents.clone();
-    tauri::async_runtime::spawn_blocking(move || service.cover_letter_save(&input))
-        .await
-        .map_err(|e| crate::core::errors::AppError::Database(e.to_string()))?
+    blocking::execute(move || service.cover_letter_save(&input)).await
 }
 #[tauri::command(rename_all = "snake_case")]
 pub async fn documents_cover_letter_delete(state: State<'_, AppState>, id: Uuid) -> AppResult<()> {
     let service = state.documents.clone();
-    tauri::async_runtime::spawn_blocking(move || service.cover_letter_delete(id))
-        .await
-        .map_err(|e| crate::core::errors::AppError::Database(e.to_string()))?
+    blocking::execute(move || service.cover_letter_delete(id)).await
 }

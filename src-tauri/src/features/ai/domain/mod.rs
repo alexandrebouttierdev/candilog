@@ -6,4 +6,4 @@ mod scoring;
 
 pub use config::*;
 pub use models::*;
-pub use scoring::{score_resume_imported, profile_score};
+pub use scoring::{ground_generated_resume, profile_score, score_resume_imported};

@@ -9,7 +9,7 @@ import type {
 } from "../services/applicationService";
 import type { ApplicationFilterValues } from "../model/schemas/application-filter.schema";
 import type { ApplicationSort } from "@/shared/types/generated/applications";
-import { PAGE_SIZE } from "@/shared/types/page";
+import { KANBAN_PAGE_SIZE, PAGE_SIZE } from "@/shared/types/page";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 
@@ -67,9 +67,9 @@ export function useApplicationsViewModel() {
     [search, filters, sort, descending],
   );
 
-  // Le Kanban affiche les quatre colonnes d'un coup : il demande une page assez large pour
-  // les remplir, là où la List s'en tient à la densité choisie dans son pied.
-  const page_size = view === "kanban" ? PAGE_SIZE * 4 : sizePage;
+  // Le Kanban affiche les quatre colonnes d'un coup : une page de 32 lignes tronquait
+  // silencieusement le pipeline dès ~30 candidatures.
+  const page_size = view === "kanban" ? KANBAN_PAGE_SIZE : sizePage;
 
   const list = useQuery({
     queryKey: [...APPLICATIONS_KEY, "page", { page, page_size, filter }],

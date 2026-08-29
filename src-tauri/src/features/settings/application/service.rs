@@ -8,7 +8,7 @@ use crate::core::updater::{self, UpdateInfo as ReleaseInfo};
 use crate::features::ai::domain::{LlmConfig, ProviderKind};
 use crate::features::ai::infrastructure::{build_provider, LlmGenerator};
 use crate::features::settings::domain::{
-    About, AppSettings, UpdateAsset, LlmForm, UpdateInfo, Settings, SettingsRepository,
+    About, AppSettings, LlmForm, Settings, SettingsRepository, UpdateAsset, UpdateInfo,
 };
 use std::path::{Path, PathBuf};
 
@@ -18,7 +18,6 @@ pub struct SettingsService<R: SettingsRepository, C: CoffreSecrets> {
     coffre: C,
     pool: SqlitePool,
     db_path: PathBuf,
-    http: reqwest::Client,
 }
 
 impl<R: SettingsRepository, C: CoffreSecrets> SettingsService<R, C> {
@@ -29,7 +28,6 @@ impl<R: SettingsRepository, C: CoffreSecrets> SettingsService<R, C> {
             coffre,
             pool,
             db_path,
-            http: updater::client_github().unwrap_or_else(|_| reqwest::Client::new()),
         }
     }
 
@@ -134,7 +132,8 @@ impl<R: SettingsRepository, C: CoffreSecrets> SettingsService<R, C> {
     /// Retourne une erreur réseau si l'API est inaccessible.
     pub async fn check_update(&self) -> AppResult<Option<UpdateInfo>> {
         let actuelle = updater::version_locale()?;
-        Ok(updater::check(&self.http, &actuelle)
+        let client = updater::client_github()?;
+        Ok(updater::check(&client, &actuelle)
             .await?
             .map(UpdateInfo::from))
     }
@@ -149,7 +148,9 @@ impl<R: SettingsRepository, C: CoffreSecrets> SettingsService<R, C> {
         name: String,
         notifier: impl FnMut(u8),
     ) -> AppResult<PathBuf> {
-        let path = updater::download_installeur(&self.http, &url, &name, notifier).await?;
+        updater::assert_url_installeur_autorisee(&url)?;
+        let client = updater::client_github()?;
+        let path = updater::download_installeur(&client, &url, &name, notifier).await?;
         updater::ouvrir_file(&path)?;
         Ok(path)
     }

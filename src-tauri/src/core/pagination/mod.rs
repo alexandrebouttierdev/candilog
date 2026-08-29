@@ -6,6 +6,14 @@
 
 use serde::Serialize;
 
+/// Plafond d'une page IPC : au-delà, SQLite et la mémoire du processus paient trop cher.
+pub const MAX_PAGE_SIZE: u64 = 10_000;
+
+#[must_use]
+pub fn clamp_page_size(page_size: u64) -> u64 {
+    page_size.clamp(1, MAX_PAGE_SIZE)
+}
+
 /// Page de résultats et ses métadonnées.
 #[derive(Debug, Clone, Serialize, ts_rs::TS)]
 #[serde(rename_all = "snake_case")]
@@ -41,7 +49,7 @@ impl<T: ts_rs::TS> Page<T> {
     /// indéfini et ferait diviser par zéro le calcul de la tranche.
     #[must_use]
     pub fn new(items: Vec<T>, total: u64, page: u64, page_size: u64) -> Self {
-        let page_size = page_size.max(1);
+        let page_size = clamp_page_size(page_size);
         Self {
             items,
             total,

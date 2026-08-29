@@ -88,6 +88,11 @@ pub fn import(pool: &SqlitePool, db_path: &Path, source_path: &Path) -> AppResul
 
     let Err(echec) = remplacer(pool, source_path) else {
         tracing::info!("backup restauré");
+        if secours.exists() {
+            if let Err(error) = std::fs::remove_file(&secours) {
+                tracing::warn!(path = %secours.display(), %error, "copie de secours non supprimée");
+            }
+        }
         return Ok(());
     };
     tracing::error!(error = %echec, "restauration échouée, retour arrière");

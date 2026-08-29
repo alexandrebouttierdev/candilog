@@ -1,11 +1,12 @@
 //! Dépôt `SQLite` des entreprises.
 
 use crate::core::database::helpers::{
-    connection, now_iso, translate_constraint, translate_error, uuid_column, uuid_column_opt,
+    connection, like_contains, now_iso, translate_constraint, translate_error, uuid_column,
+    uuid_column_opt, LIKE_ESCAPE,
 };
 use crate::core::database::SqlitePool;
 use crate::core::errors::{AppError, AppResult};
-use crate::core::pagination::Page;
+use crate::core::pagination::{clamp_page_size, Page};
 use crate::features::companies::domain::{Company, CompanyRepository, NewCompany};
 
 /// Implémentation `SQLite` du dépôt d'entreprises.
@@ -82,10 +83,12 @@ impl CompanyRepository for SqliteCompanyRepository {
     ) -> AppResult<Page<Company>> {
         let conn = connection(&self.pool)?;
         let page = page.max(1);
-        let page_size = page_size.max(1);
-        let needle = format!("%{}%", search.trim().to_lowercase());
+        let page_size = clamp_page_size(page_size);
+        let needle = like_contains(search);
         let selected_type = company_type.unwrap_or_default().trim().to_lowercase();
-        let filter = "WHERE (?1 = '%%' OR lower(name) LIKE ?1 OR lower(coalesce(sector, '')) LIKE ?1 OR lower(coalesce(city, '')) LIKE ?1) AND (?2 = '' OR lower(trim(coalesce(type, ''))) = ?2)";
+        let filter = format!(
+            "WHERE (?1 = '%%' OR lower(name) LIKE ?1 {LIKE_ESCAPE} OR lower(coalesce(sector, '')) LIKE ?1 {LIKE_ESCAPE} OR lower(coalesce(city, '')) LIKE ?1 {LIKE_ESCAPE}) AND (?2 = '' OR lower(trim(coalesce(type, ''))) = ?2)"
+        );
         let total: u64 = conn
             .query_row(
                 &format!("SELECT count(*) FROM companies {filter}"),

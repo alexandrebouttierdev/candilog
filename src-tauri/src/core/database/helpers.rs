@@ -9,6 +9,25 @@ use crate::core::errors::{AppError, AppResult};
 use r2d2_sqlite::SqliteConnectionManager;
 use serde::{de::DeserializeOwned, Serialize};
 
+/// Fragment SQL à coller après un `LIKE ?` pour honorer [`like_contains`].
+pub const LIKE_ESCAPE: &str = "ESCAPE char(92)";
+
+/// Motif `LIKE` insensible à la casse, avec `%` / `_` / `\` échappés.
+#[must_use]
+pub fn like_contains(text: &str) -> String {
+    let mut escaped = String::new();
+    for c in text.trim().to_lowercase().chars() {
+        match c {
+            '%' | '_' | '\\' => {
+                escaped.push('\\');
+                escaped.push(c);
+            }
+            _ => escaped.push(c),
+        }
+    }
+    format!("%{escaped}%")
+}
+
 /// Connection empruntée au pool.
 pub type Connection = r2d2::PooledConnection<SqliteConnectionManager>;
 

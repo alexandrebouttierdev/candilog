@@ -44,7 +44,8 @@ export function useDismissable({
     document.addEventListener("keydown", handler, true);
     return () => {
       document.removeEventListener("keydown", handler, true);
-      stack.splice(stack.indexOf(token), 1);
+      const i = stack.indexOf(token);
+      if (i >= 0) stack.splice(i, 1);
     };
   }, [open, onDismiss, onSubmit]);
 }

@@ -2,14 +2,19 @@ import { useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import type { Profile } from "@/shared/types/generated/profile";
 import { aiService, generation_id } from "@/features/ai/services/aiService";
-import { useAiProgress } from "@/features/ai/viewmodel/useAiProgress";
+import { useAiProgress, useCancelAiOnUnmount } from "@/features/ai/viewmodel/useAiProgress";
 import { AiProgress } from "@/features/documents/view/components/DocumentUi";
 import { AppError } from "@/shared/types/app-error";
 import { Button, ErrorBanner, Icon, ModalHost } from "@/shared/ui";
 
 /** Import PDF avec aperçu explicite avant fusion dans le profil existant. */
 export function ProfileImportModal({ open: visible, profile, busy, onClose, onSubmit }: { open: boolean; profile: Profile; busy: boolean; onClose: () => void; onSubmit: (profile: Profile) => Promise<unknown> }) {
-  const [path, setPath] = useState<string | null>(null); const [operation, setOperation] = useState<string | null>(null); const [extracted, setExtracted] = useState<Profile | null>(null); const [error, setError] = useState<string | null>(null); const progress = useAiProgress(operation);
+  const [path, setPath] = useState<string | null>(null);
+  const [operation, setOperation] = useState<string | null>(null);
+  const [extracted, setExtracted] = useState<Profile | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const progress = useAiProgress(operation);
+  useCancelAiOnUnmount(operation);
   const choisir = async () => { const file = await open({ multiple:false, filters:[{ name:"PDF", extensions:["pdf"] }] }); if (typeof file !== "string") return; setPath(file); setExtracted(null); setError(null); };
   const analyze = async () => { if (!path) return; const id = generation_id(); setOperation(id); setError(null); try { setExtracted((await aiService.importProfile({ generation_id:id, path:path })).profile); } catch(e) { if (!(e instanceof AppError && e.code === "CANCELLED")) setError(e instanceof AppError ? e.message : "Le CV n’a pas pu être analysé."); } finally { setOperation(null); } };
   const appliquer = async () => { if (!extracted) return; await onSubmit(fusionnerProfile(profile, extracted)); onClose(); };
