@@ -1,10 +1,11 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { type ApplicationFilterValues } from "../../model/schemas/application-filter.schema";
 import { Contracts, Statuses, contract_label } from "../../model/statuses";
 import { FORMAT_DATE, versDateAffichee, versDateIso } from "@/shared/lib/dates";
 import {
   ActiveFilterChip,
   ClearFiltersButton,
+  DateInput,
   FilterBar,
   FilterGroup,
   FilterMenu,
@@ -53,6 +54,19 @@ function CompactField({
   );
 }
 
+const ERREUR_DATE = `Date invalide — format attendu ${FORMAT_DATE}.`;
+
+function messageDate(raw: string, auBlur: boolean): string | undefined {
+  const trimmed = raw.trim();
+  if (trimmed === "" || versDateIso(trimmed) !== null) return undefined;
+  if (auBlur || /^\d{2}-\d{2}-\d{4}$/.test(trimmed)) return ERREUR_DATE;
+  return undefined;
+}
+
+function affichee(iso: string | null): string {
+  return iso ? versDateAffichee(iso) : "";
+}
+
 /**
  * Toolbar du suivi : recherche 300 px, bouton Filtres, chips, actions.
  */
@@ -76,22 +90,42 @@ export function ApplicationFilters({
   onReset: () => void;
   actions?: ReactNode;
 }) {
-  const [start, setStart] = useState("");
-  const [end, setEnd] = useState("");
+  const [start, setStart] = useState(() => affichee(filters.start_date));
+  const [end, setEnd] = useState(() => affichee(filters.end_date));
+  const [startError, setStartError] = useState<string | undefined>();
+  const [endError, setEndError] = useState<string | undefined>();
+  const [bornes, setBornes] = useState({
+    start: filters.start_date,
+    end: filters.end_date,
+  });
 
-  useEffect(() => {
-    setStart(filters.start_date ? versDateAffichee(filters.start_date) : "");
-    setEnd(filters.end_date ? versDateAffichee(filters.end_date) : "");
-  }, [filters.start_date, filters.end_date]);
+  if (filters.start_date !== bornes.start || filters.end_date !== bornes.end) {
+    setBornes({ start: filters.start_date, end: filters.end_date });
+    setStart(affichee(filters.start_date));
+    setEnd(affichee(filters.end_date));
+    setStartError(undefined);
+    setEndError(undefined);
+  }
 
-  const commitDate = (raw: string, key: "start_date" | "end_date") => {
+  const commitDate = (
+    raw: string,
+    key: "start_date" | "end_date",
+    setError: (message: string | undefined) => void,
+    auBlur: boolean,
+  ) => {
     const trimmed = raw.trim();
     if (trimmed === "") {
+      setError(undefined);
       onApply(patch(filters, { [key]: null }));
       return;
     }
     const iso = versDateIso(trimmed);
-    if (iso) onApply(patch(filters, { [key]: iso }));
+    if (iso) {
+      setError(undefined);
+      onApply(patch(filters, { [key]: iso }));
+      return;
+    }
+    setError(messageDate(raw, auBlur));
   };
 
   const period = periodValue(filters.start_date, filters.end_date);
@@ -144,22 +178,41 @@ export function ApplicationFilters({
           />
         </FilterGroup>
         <FilterGroup label="Période">
-          <CompactField
-            value={start}
-            placeholder={`${FORMAT_DATE} — début`}
-            onChange={(value) => {
-              setStart(value);
-              commitDate(value, "start_date");
-            }}
-          />
-          <CompactField
-            value={end}
-            placeholder={`${FORMAT_DATE} — fin`}
-            onChange={(value) => {
-              setEnd(value);
-              commitDate(value, "end_date");
-            }}
-          />
+          <div className="flex w-full flex-col gap-1.5">
+            <DateInput
+              dense
+              className="w-full"
+              aria-label="Début de période"
+              placeholder={`${FORMAT_DATE} — début`}
+              value={start}
+              invalid={Boolean(startError)}
+              onChange={(event) => {
+                setStart(event.target.value);
+                commitDate(event.target.value, "start_date", setStartError, false);
+              }}
+              onBlur={(event) =>
+                commitDate(event.target.value, "start_date", setStartError, true)
+              }
+            />
+            <DateInput
+              dense
+              className="w-full"
+              aria-label="Fin de période"
+              placeholder={`${FORMAT_DATE} — fin`}
+              value={end}
+              invalid={Boolean(endError)}
+              onChange={(event) => {
+                setEnd(event.target.value);
+                commitDate(event.target.value, "end_date", setEndError, false);
+              }}
+              onBlur={(event) =>
+                commitDate(event.target.value, "end_date", setEndError, true)
+              }
+            />
+            {startError || endError ? (
+              <p className="text-meta leading-[1.45] text-danger">{startError ?? endError}</p>
+            ) : null}
+          </div>
         </FilterGroup>
       </FilterMenu>
 

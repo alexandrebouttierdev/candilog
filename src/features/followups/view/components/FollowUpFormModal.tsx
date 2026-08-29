@@ -11,11 +11,11 @@ import type { NewFollowUp, FollowUp } from "../../services/followUpService";
 import { versDateAffichee } from "@/shared/lib/dates";
 import {
   ApplicationPicker,
+  DateInput,
   FormField,
   ModalHost,
   Select,
   TextArea,
-  TextInput,
 } from "@/shared/ui";
 
 function vide(application_id: string | null, day: string | null): FollowUpFormInput {
@@ -124,11 +124,9 @@ export function FollowUpFormModal({
           <div className="grid grid-cols-2 gap-4">
             <FormField label="Date" required error={errors.follow_up_date?.message}>
               {(props) => (
-                <TextInput
+                <DateInput
                   {...props}
                   {...form.register("follow_up_date")}
-                  placeholder="JJ-MM-AAAA"
-                  inputMode="numeric"
                   invalid={Boolean(errors.follow_up_date)}
                 />
               )}

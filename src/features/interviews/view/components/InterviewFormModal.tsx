@@ -13,11 +13,13 @@ import { useQuery } from "@tanstack/react-query";
 import { dateFromTimestamp, timeFromTimestamp, versDateAffichee } from "@/shared/lib/dates";
 import {
   ApplicationPicker,
+  DateInput,
   FormField,
   ModalHost,
   Select,
   TextArea,
   TextInput,
+  TimeInput,
 } from "@/shared/ui";
 
 function vide(application_id: string | null, day: string | null): InterviewFormInput {
@@ -158,11 +160,9 @@ export function InterviewFormModal({
           <div className="grid grid-cols-3 gap-4">
             <FormField label="Date" required error={errors.date?.message}>
               {(props) => (
-                <TextInput
+                <DateInput
                   {...props}
                   {...form.register("date")}
-                  placeholder="JJ-MM-AAAA"
-                  inputMode="numeric"
                   invalid={Boolean(errors.date)}
                 />
               )}
@@ -170,11 +170,9 @@ export function InterviewFormModal({
 
             <FormField label="Heure" required error={errors.time?.message}>
               {(props) => (
-                <TextInput
+                <TimeInput
                   {...props}
                   {...form.register("time")}
-                  placeholder="HH:MM"
-                  inputMode="numeric"
                   invalid={Boolean(errors.time)}
                 />
               )}

@@ -12,6 +12,7 @@ export { EntityPicker } from "./EntityPicker";
 export { FilterBar, FilterMenu, FilterGroup, FilterOption, ActiveFilterChip, ClearFiltersButton } from "./FilterBar";
 export type { EntityOption } from "./EntityPicker";
 export { Banner, ErrorBanner } from "./ErrorBanner";
+export { DateInput, TimeInput } from "./DateInput";
 export { SearchInput, Select, TextArea, TextInput } from "./Field";
 export { FormField, controlClasses } from "./FormField";
 export { GlassSurface } from "./GlassSurface";

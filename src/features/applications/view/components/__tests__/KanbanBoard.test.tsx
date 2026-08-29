@@ -85,10 +85,12 @@ describe("KanbanBoard", () => {
     );
 
     const carte = screen.getByText("Développeur").closest("article");
+    const setDragImage = vi.fn();
     const transfert = dataTransfer();
+    transfert.setDragImage = setDragImage;
     fireEvent.dragStart(carte!, { dataTransfer: transfert });
 
-    expect(transfert.setDragImage).toHaveBeenCalled();
+    expect(setDragImage).toHaveBeenCalled();
   });
 
   it("demande une création au statut de la colonne cliquée", () => {

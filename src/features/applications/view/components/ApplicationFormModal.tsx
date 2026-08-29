@@ -11,7 +11,7 @@ import { Contracts, Statuses, contract_label } from "../../model/statuses";
 import type { Application, NewApplication } from "../../services/applicationService";
 import { useQuery } from "@tanstack/react-query";
 import { companyService } from "@/features/companies/services/companyService";
-import { EntityPicker, FormField, ModalHost, Select, TextArea, TextInput } from "@/shared/ui";
+import { DateInput, EntityPicker, FormField, ModalHost, Select, TextArea, TextInput } from "@/shared/ui";
 
 /** Date du jour au format saisi, valeur par défaut du champ « Date d'envoi ». */
 function today(): string {
@@ -162,11 +162,9 @@ export function ApplicationFormModal({
 
             <FormField label="Date d'envoi" required error={errors.sent_date?.message}>
               {(props) => (
-                <TextInput
+                <DateInput
                   {...props}
                   {...form.register("sent_date")}
-                  placeholder="JJ-MM-AAAA"
-                  inputMode="numeric"
                   invalid={Boolean(errors.sent_date)}
                 />
               )}
