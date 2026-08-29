@@ -54,6 +54,7 @@ impl ContactRepository for StubRepo {
         page: u64,
         page_size: u64,
         _search: &str,
+        _tracking_role: Option<&str>,
     ) -> AppResult<crate::core::pagination::Page<Contact>> {
         Ok(crate::core::pagination::Page::new(
             vec![],

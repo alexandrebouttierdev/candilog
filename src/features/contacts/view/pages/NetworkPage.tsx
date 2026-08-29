@@ -3,8 +3,8 @@ import { useContactsViewModel } from "../../viewmodel/useContactsViewModel";
 import type { Contact } from "../../services/contactService";
 import { ContactFormModal } from "../components/ContactFormModal";
 import { ContactDetail } from "../components/ContactDetail";
+import { ContactFilters } from "../components/ContactFilters";
 import { roleMeta } from "../../model/roles";
-import { ContextBarAccessory, ContextSearch } from "@/app/layout/ContextBar";
 import {
   Button,
   ConfirmDialog,
@@ -28,22 +28,21 @@ export function NetworkPage() {
     cible: null,
   });
   const [aDelete, setADelete] = useState<Contact | null>(null);
+  const aucunResultat = Boolean(vm.search) || vm.filtersActifs > 0;
 
   return (
     <div className="flex h-full flex-col">
-      <ContextBarAccessory>
-        <ContextSearch
-          value={vm.search}
-          placeholder="Rechercher un contact…"
-          onChange={vm.rechercher}
-        />
-      </ContextBarAccessory>
+      <PageHeader icon="hub" title="Réseau" subtitle="Vos contacts professionnels" />
 
-      <PageHeader
-        icon="hub"
-        title="Réseau"
-        subtitle="Vos contacts professionnels"
-        primary={
+      <ContactFilters
+        search={vm.search}
+        onSearch={vm.rechercher}
+        tracking_role={vm.tracking_role}
+        count={vm.filtersActifs}
+        total={vm.isLoading ? null : vm.total}
+        onSelectRole={vm.filtrerParRole}
+        onReset={vm.resetFilters}
+        actions={
           <Button
             variant="primary"
             icon="person_add"
@@ -87,11 +86,24 @@ export function NetworkPage() {
           ) : vm.items.length === 0 ? (
             <EmptyState
               icon="hub"
-              title={vm.search ? "Aucun résultat" : "Aucun contact"}
+              title={aucunResultat ? "Aucun résultat" : "Aucun contact"}
               description={
-                vm.search
-                  ? "Aucun contact ne correspond à cette recherche."
+                aucunResultat
+                  ? "Aucun contact ne correspond à ces critères."
                   : "Ajoutez un interlocuteur pour garder trace de vos échanges."
+              }
+              action={
+                aucunResultat ? (
+                  <Button
+                    icon="filter_alt_off"
+                    onClick={() => {
+                      vm.resetFilters();
+                      vm.rechercher("");
+                    }}
+                  >
+                    Tout effacer
+                  </Button>
+                ) : undefined
               }
             />
           ) : (

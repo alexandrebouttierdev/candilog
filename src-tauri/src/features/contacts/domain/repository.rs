@@ -18,11 +18,17 @@ pub trait ContactRepository: Send + Sync {
     /// `AppError::NotFound` si l'identifiant est inconnu.
     fn get(&self, id: uuid::Uuid) -> AppResult<Contact>;
 
-    /// Payload une page filtrée par recherche libre.
+    /// Payload une page filtrée par recherche libre et par rôle de suivi.
     ///
     /// # Errors
     /// Retourne `AppError::Database` si la requête échoue.
-    fn list_page(&self, page: u64, page_size: u64, search: &str) -> AppResult<Page<Contact>>;
+    fn list_page(
+        &self,
+        page: u64,
+        page_size: u64,
+        search: &str,
+        tracking_role: Option<&str>,
+    ) -> AppResult<Page<Contact>>;
 
     /// Crée un contact.
     ///

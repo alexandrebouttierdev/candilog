@@ -82,37 +82,50 @@ impl ContactRepository for SqliteContactRepository {
         })
     }
 
-    fn list_page(&self, page: u64, page_size: u64, search: &str) -> AppResult<Page<Contact>> {
+    fn list_page(
+        &self,
+        page: u64,
+        page_size: u64,
+        search: &str,
+        tracking_role: Option<&str>,
+    ) -> AppResult<Page<Contact>> {
         let conn = connection(&self.pool)?;
         let page = page.max(1);
         let page_size = clamp_page_size(page_size);
         let needle = like_contains(search);
+        let selected_role = tracking_role.unwrap_or_default().trim().to_lowercase();
         // `?1 = '%%'` court-circuite le filtre lorsque la recherche est vide : sans ce test,
         // les contacts dont le poste ou l'e-mail est NULL seraient exclus par les `LIKE`.
         let filter = format!(
-            "WHERE ?1 = '%%' \
+            "WHERE (?1 = '%%' \
              OR lower(c.first_name) LIKE ?1 {LIKE_ESCAPE} \
              OR lower(c.name) LIKE ?1 {LIKE_ESCAPE} \
              OR lower(coalesce(c.job_title, '')) LIKE ?1 {LIKE_ESCAPE} \
              OR lower(coalesce(c.tracking_role, '')) LIKE ?1 {LIKE_ESCAPE} \
              OR lower(coalesce(c.email, '')) LIKE ?1 {LIKE_ESCAPE} \
-             OR lower(coalesce(e.name, '')) LIKE ?1 {LIKE_ESCAPE}"
+             OR lower(coalesce(e.name, '')) LIKE ?1 {LIKE_ESCAPE}) \
+             AND (?2 = '' OR lower(trim(coalesce(c.tracking_role, ''))) = ?2)"
         );
         let total: u64 = conn
             .query_row(
                 &format!("SELECT count(*) FROM {SOURCE} {filter}"),
-                [&needle],
+                rusqlite::params![needle, selected_role],
                 |row| row.get(0),
             )
             .map_err(|e| translate_error(e, "contacts"))?;
         let mut query = conn
             .prepare(&format!(
-                "SELECT {COLUMNS} FROM {SOURCE} {filter} {ORDRE} LIMIT ?2 OFFSET ?3"
+                "SELECT {COLUMNS} FROM {SOURCE} {filter} {ORDRE} LIMIT ?3 OFFSET ?4"
             ))
             .map_err(|e| translate_error(e, "contacts"))?;
         let rows = query
             .query_map(
-                rusqlite::params![needle, page_size, Page::<Contact>::offset(page, page_size)],
+                rusqlite::params![
+                    needle,
+                    selected_role,
+                    page_size,
+                    Page::<Contact>::offset(page, page_size)
+                ],
                 row_vers_contact,
             )
             .map_err(|e| translate_error(e, "contacts"))?;

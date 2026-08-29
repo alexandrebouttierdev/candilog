@@ -15,16 +15,18 @@ pub async fn contacts_list(state: State<'_, AppState>) -> AppResult<Vec<Contact>
     blocking::execute(move || service.list()).await
 }
 
-/// Payload une page du réseau, filtrée par recherche libre.
+/// Payload une page du réseau, filtrée par recherche libre et par rôle.
 #[tauri::command(rename_all = "snake_case")]
 pub async fn contacts_list_page(
     state: State<'_, AppState>,
     page: u64,
     page_size: u64,
     search: String,
+    tracking_role: Option<String>,
 ) -> AppResult<Page<Contact>> {
     let service = Arc::clone(&state.contacts);
-    blocking::execute(move || service.list_page(page, page_size, &search)).await
+    blocking::execute(move || service.list_page(page, page_size, &search, tracking_role.as_deref()))
+        .await
 }
 
 /// Récupère un contact par identifiant.
@@ -36,10 +38,7 @@ pub async fn contacts_get(state: State<'_, AppState>, id: uuid::Uuid) -> AppResu
 
 /// Crée un contact.
 #[tauri::command(rename_all = "snake_case")]
-pub async fn contacts_create(
-    state: State<'_, AppState>,
-    input: NewContact,
-) -> AppResult<Contact> {
+pub async fn contacts_create(state: State<'_, AppState>, input: NewContact) -> AppResult<Contact> {
     let service = Arc::clone(&state.contacts);
     blocking::execute(move || service.create(&input)).await
 }

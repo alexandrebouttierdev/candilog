@@ -22,11 +22,13 @@ export function useContactsViewModel() {
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const [tracking_role, setTrackingRole] = useState<string | null>(null);
   const [selected_id, setSelectedId] = useState<string | null>(null);
 
   const list = useQuery({
-    queryKey: [...CONTACTS_KEY, "page", { page, search }],
-    queryFn: () => contactService.listPage({ page, page_size: PAGE_SIZE, search }),
+    queryKey: [...CONTACTS_KEY, "page", { page, search, tracking_role }],
+    queryFn: () =>
+      contactService.listPage({ page, page_size: PAGE_SIZE, search, tracking_role }),
   });
 
   const invalider = useCallback(async () => {
@@ -90,6 +92,19 @@ export function useContactsViewModel() {
     setPage(1);
   }, []);
 
+  const filtrerParRole = useCallback((value: string | null) => {
+    setTrackingRole(value);
+    setPage(1);
+  }, []);
+
+  const resetFilters = useCallback(() => {
+    setTrackingRole(null);
+    setPage(1);
+  }, []);
+
+  /** Count de critères actifs, hors recherche libre, pour la pastille du bouton Filtres. */
+  const filtersActifs = tracking_role ? 1 : 0;
+
   const items: Contact[] = list.data?.items ?? [];
   // Comme pour les entreprises, la fiche de droite n'est jamais vide tant que la page
   // contient au moins un contact.
@@ -101,6 +116,8 @@ export function useContactsViewModel() {
     page,
     page_size: PAGE_SIZE,
     search,
+    tracking_role,
+    filtersActifs,
     selection,
     selected_id: selection?.id ?? null,
     isLoading: list.isPending,
@@ -110,6 +127,8 @@ export function useContactsViewModel() {
 
     setPage,
     rechercher,
+    filtrerParRole,
+    resetFilters,
     selectionner: setSelectedId,
     recharger: () => void list.refetch(),
     create: creation.mutateAsync,

@@ -131,6 +131,14 @@ export function useCompaniesViewModel() {
     setPage(1);
   }, []);
 
+  const resetFilters = useCallback(() => {
+    setCompanyType(null);
+    setPage(1);
+  }, []);
+
+  /** Count de critères actifs, hors recherche libre, pour la pastille du bouton Filtres. */
+  const filtersActifs = company_type ? 1 : 0;
+
   return {
     items,
     total: list.data?.total ?? 0,
@@ -138,6 +146,7 @@ export function useCompaniesViewModel() {
     page_size: PAGE_SIZE,
     search,
     company_type,
+    filtersActifs,
     types: types.data ?? [],
     selection,
     selected_id,
@@ -152,6 +161,7 @@ export function useCompaniesViewModel() {
     setPage,
     rechercher,
     filtrerParType,
+    resetFilters,
     selectionner: setSelectedId,
     recharger: () => void list.refetch(),
     create: creation.mutateAsync,

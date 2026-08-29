@@ -4,7 +4,7 @@ import { useCompaniesViewModel } from "../../viewmodel/useCompaniesViewModel";
 import type { Company } from "../../services/companyService";
 import { CompanyFormModal } from "../components/CompanyFormModal";
 import { CompanyDetail } from "../components/CompanyDetail";
-import { ContextBarAccessory, ContextSearch } from "@/app/layout/ContextBar";
+import { CompanyFilters } from "../components/CompanyFilters";
 import {
   Button,
   ConfirmDialog,
@@ -15,7 +15,6 @@ import {
   MasterListTag,
   PageHeader,
   Pager,
-  Select,
   Skeleton,
   wordInitials,
 } from "@/shared/ui";
@@ -30,39 +29,26 @@ export function CompaniesPage() {
     cible: null,
   });
   const [aDelete, setADelete] = useState<Company | null>(null);
+  const aucunResultat = Boolean(vm.search) || vm.filtersActifs > 0;
 
   return (
     <div className="flex h-full flex-col">
-      <ContextBarAccessory>
-        <ContextSearch
-          value={vm.search}
-          placeholder="Rechercher une entreprise…"
-          onChange={vm.rechercher}
-        />
-      </ContextBarAccessory>
-
       <PageHeader
         icon="apartment"
         title="Entreprises"
         subtitle="Répertoire des sociétés suivies"
-        secondary={
-          vm.types.length > 0 ? (
-            <Select
-              dense
-              aria-label="Filtrer par type"
-              value={vm.company_type ?? ""}
-              onChange={(event) => vm.filtrerParType(event.target.value || null)}
-            >
-              <option value="">Tous les types</option>
-              {vm.types.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </Select>
-          ) : null
-        }
-        primary={
+      />
+
+      <CompanyFilters
+        search={vm.search}
+        onSearch={vm.rechercher}
+        company_type={vm.company_type}
+        types={vm.types}
+        count={vm.filtersActifs}
+        total={vm.isLoading ? null : vm.total}
+        onSelectType={vm.filtrerParType}
+        onReset={vm.resetFilters}
+        actions={
           <Button
             variant="primary"
             icon="add"
@@ -106,11 +92,24 @@ export function CompaniesPage() {
           ) : vm.items.length === 0 ? (
             <EmptyState
               icon="apartment"
-              title={vm.search ? "Aucun résultat" : "Aucune entreprise"}
+              title={aucunResultat ? "Aucun résultat" : "Aucune entreprise"}
               description={
-                vm.search
-                  ? "Aucune entreprise ne correspond à cette recherche."
+                aucunResultat
+                  ? "Aucune entreprise ne correspond à ces critères."
                   : "Ajoutez une société pour commencer à suivre vos candidatures."
+              }
+              action={
+                aucunResultat ? (
+                  <Button
+                    icon="filter_alt_off"
+                    onClick={() => {
+                      vm.resetFilters();
+                      vm.rechercher("");
+                    }}
+                  >
+                    Tout effacer
+                  </Button>
+                ) : undefined
               }
             />
           ) : (

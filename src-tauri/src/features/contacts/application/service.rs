@@ -33,12 +33,18 @@ impl<R: ContactRepository> ContactService<R> {
         self.repo.get(id)
     }
 
-    /// Payload une page du réseau sans matérialiser l'ensemble.
+    /// Payload une page du réseau filtrée par recherche et par rôle, sans matérialiser l'ensemble.
     ///
     /// # Errors
     /// Propage l'erreur du dépôt.
-    pub fn list_page(&self, page: u64, page_size: u64, search: &str) -> AppResult<Page<Contact>> {
-        self.repo.list_page(page, page_size, search)
+    pub fn list_page(
+        &self,
+        page: u64,
+        page_size: u64,
+        search: &str,
+        tracking_role: Option<&str>,
+    ) -> AppResult<Page<Contact>> {
+        self.repo.list_page(page, page_size, search, tracking_role)
     }
 
     /// Valide puis crée le contact.

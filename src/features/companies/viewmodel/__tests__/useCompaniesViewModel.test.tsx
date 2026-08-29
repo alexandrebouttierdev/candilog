@@ -166,4 +166,34 @@ describe("ViewModel des entreprises", () => {
     await waitFor(() => expect(result.current.error).toBeInstanceOf(AppError));
     expect(result.current.items).toEqual([]);
   });
+
+  it("compte le type actif sans la recherche libre", async () => {
+    vi.spyOn(companyService, "listPage").mockResolvedValue(page([ent("Nova Digital")]));
+
+    const { result } = renderHook(() => useCompaniesViewModel(), { wrapper });
+    await waitFor(() => expect(result.current.items).toHaveLength(1));
+
+    act(() => result.current.rechercher("nova"));
+    expect(result.current.filtersActifs).toBe(0);
+
+    act(() => result.current.filtrerParType("ESN"));
+    expect(result.current.filtersActifs).toBe(1);
+  });
+
+  it("ôte le type au reset et revient à la première page", async () => {
+    vi.spyOn(companyService, "listPage").mockResolvedValue(page([ent("Nova Digital")], 40));
+
+    const { result } = renderHook(() => useCompaniesViewModel(), { wrapper });
+    await waitFor(() => expect(result.current.items).toHaveLength(1));
+
+    act(() => result.current.setPage(3));
+    act(() => result.current.filtrerParType("ESN"));
+    await waitFor(() => expect(result.current.page).toBe(1));
+
+    act(() => result.current.setPage(2));
+    act(() => result.current.resetFilters());
+
+    expect(result.current.company_type).toBeNull();
+    expect(result.current.page).toBe(1);
+  });
 });

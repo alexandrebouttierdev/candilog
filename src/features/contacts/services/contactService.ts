@@ -10,8 +10,12 @@ export type { Contact, NewContact };
 export const contactService = {
   list: () => ipc<Contact[]>("contacts_list"),
 
-  listPage: (params: { page: number; page_size: number; search: string }) =>
-    ipc<Page<Contact>>("contacts_list_page", params),
+  listPage: (params: {
+    page: number;
+    page_size: number;
+    search: string;
+    tracking_role: string | null;
+  }) => ipc<Page<Contact>>("contacts_list_page", params),
 
   get: (id: string) => ipc<Contact>("contacts_get", { id }),
 
