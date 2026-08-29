@@ -58,7 +58,7 @@ export function Select({
           invalid,
           cn(
             "appearance-none pr-9",
-            dense && "h-control min-h-control rounded-button bg-surface shadow-e1",
+            dense && "h-control min-h-control rounded-button bg-fill",
           ),
         )}
         {...props}
@@ -79,19 +79,27 @@ export function SearchInput({
   value,
   onValueChange,
   placeholder,
+  variant = "field",
   className,
   ...props
 }: Omit<InputHTMLAttributes<HTMLInputElement>, "onChange" | "value"> & {
   value: string;
   onValueChange: (value: string) => void;
   placeholder: string;
+  /** `toolbar` : 30 px, 300 px max, pour la barre d'un tableau. */
+  variant?: "field" | "toolbar";
 }) {
+  const toolbar = variant === "toolbar";
+
   return (
-    <div className={cn("relative min-w-0", className)}>
+    <div className={cn("relative min-w-0", toolbar && "w-full max-w-[300px] flex-[0_1_300px]", className)}>
       <Icon
         name="search"
         size={16}
-        className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-faint"
+        className={cn(
+          "pointer-events-none absolute top-1/2 -translate-y-1/2",
+          toolbar ? "left-2.5 text-ink-disabled" : "left-3 text-ink-faint",
+        )}
       />
       <input
         type="search"
@@ -99,7 +107,12 @@ export function SearchInput({
         onChange={(event) => onValueChange(event.target.value)}
         placeholder={placeholder}
         aria-label={placeholder}
-        className={controlClasses(false, "pl-9")}
+        className={controlClasses(
+          false,
+          toolbar
+            ? "h-control min-h-control rounded-button border-control bg-fill py-0 pr-2.5 pl-8 text-note"
+            : "pl-9",
+        )}
         {...props}
       />
     </div>

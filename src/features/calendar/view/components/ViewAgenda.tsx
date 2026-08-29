@@ -57,7 +57,7 @@ export function ViewWeek({
                 className={cn(
                   "tabular flex size-6 flex-none items-center justify-center rounded-pill text-meta",
                   day.today
-                    ? "bg-accent font-medium text-white"
+                    ? "bg-accent font-medium text-on-accent"
                     : day.in_month
                       ? "text-ink-muted hover:bg-neutral-tint hover:text-ink"
                       : "text-ink-faint hover:bg-neutral-tint",

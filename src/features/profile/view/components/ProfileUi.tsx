@@ -101,7 +101,7 @@ export function SectionCard({
   children: ReactNode;
 }) {
   return (
-    <section className="overflow-hidden rounded-card border border-line bg-surface shadow-e1">
+    <section className="overflow-hidden rounded-card border border-line bg-surface">
       <header className="flex items-center justify-between gap-3 border-b border-line px-[18px] py-[13px]">
         <div className="flex min-w-0 items-center gap-2">
           <Icon name={icon} size={17} className="flex-none text-ink-faint" />

@@ -7,9 +7,12 @@ import {
   ConfirmDialog,
   ErrorBanner,
   FormField,
+  InspectorSectionLabel,
   PageHeader,
+  SegmentedControl,
   Select,
   Skeleton,
+  StatusPill,
   TextInput,
 } from "@/shared/ui";
 import { settingsService } from "../../services/settingsService";
@@ -22,12 +25,13 @@ import {
   versProvider,
   type FournisseurOption,
 } from "../../model/providers";
-import { ProviderGrid } from "../components/ProviderGrid";
-import { SettingsBody, SettingsCard } from "../components/SettingsUi";
+import { ProviderGrid, defFournisseur, logoFournisseur } from "../components/ProviderGrid";
+import { SettingsBody } from "../components/SettingsUi";
+import { cn } from "@/shared/lib/cn";
 
 const MODES: Array<{ value: AnalysisMode; label: string }> = [
-  { value: "auto", label: "Automatique" },
-  { value: "small", label: "Petit modèle" },
+  { value: "auto", label: "Auto" },
+  { value: "small", label: "Petit" },
   { value: "standard", label: "Standard" },
   { value: "advanced", label: "Avancé" },
 ];
@@ -111,15 +115,22 @@ export function AiPage() {
     }
   };
 
+  const fournisseur = llm ? defFournisseur(llm.provider) : null;
+  const logo = fournisseur ? logoFournisseur(fournisseur.id) : null;
+
   return (
     <div className="flex h-full flex-col">
       <ContextBarAccessory>
-        <ContextNote>Candilog · données locales</ContextNote>
+        <ContextNote>
+          {fournisseur
+            ? `${fournisseur.label}${llm?.model ? ` · ${llm.model}` : ""}`
+            : "Candilog · données locales"}
+        </ContextNote>
       </ContextBarAccessory>
       <PageHeader
         icon="smart_toy"
         title="Intelligence artificielle"
-        subtitle="Fournisseur, modèle et comportement"
+        subtitle="Le moteur reste sous votre contrôle"
         primary={
           <Button variant="primary" icon="save" disabled={!form || vm.isSaving} onClick={() => void save()}>
             Enregistrer
@@ -127,154 +138,168 @@ export function AiPage() {
         }
       />
 
-      {vm.isLoading || !form || !llm ? (
-        <div className="space-y-3 p-6" role="status" aria-label="Chargement des réglages">
-          <Skeleton className="h-24 w-full rounded-card" />
-          <Skeleton className="h-48 w-full rounded-card" />
+      {vm.isLoading || !form || !llm || !fournisseur || !logo ? (
+        <div className="space-y-4 px-[18px] pt-4" role="status" aria-label="Chargement des réglages">
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-40 w-full" />
         </div>
       ) : vm.error && !vm.data ? (
-        <div className="p-6">
+        <div className="px-[18px] pt-4">
           <ErrorBanner
-            message={vm.error instanceof AppError ? vm.error.message : "Les réglages n’ont pas pu être chargés."}
+            message={vm.error instanceof AppError ? vm.error.message : "Les réglages n'ont pas pu être chargés."}
             onRetry={vm.recharger}
           />
         </div>
       ) : (
         <SettingsBody>
-          <div className="flex flex-wrap items-start gap-4">
-          <SettingsCard
-            icon="smart_toy"
-            title="Fournisseur"
-            hint="Choisissez le moteur utilisé pour les générations"
-            className="min-w-0 flex-[1_1_480px] overflow-hidden rounded-card border border-line bg-surface shadow-e1"
-          >
-            <ProviderGrid value={llm.provider} onChange={choisirFournisseur} />
-            <div className="mt-5 space-y-4 rounded-card bg-surface-alt p-4">
-              <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-                <FormField label="Modèle" required>
-                  {(props) =>
-                    models.length > 0 ? (
-                      <Select {...props} value={llm.model} onChange={(event) => patchLlm({ model: event.target.value })}>
-                        {models.map((model) => (
-                          <option key={model} value={model}>
-                            {model}
-                          </option>
-                        ))}
-                      </Select>
-                    ) : (
-                      <TextInput
-                        {...props}
-                        value={llm.model}
-                        onChange={(event) => patchLlm({ model: event.target.value })}
-                      />
-                    )
-                  }
-                </FormField>
-                <Button variant="secondary" icon="refresh" onClick={() => void actualiserModels()}>
-                  Actualiser
-                </Button>
-              </div>
-              <FormField label="Endpoint" required={idProvider(llm.provider) === "custom"}>
-                {(props) => (
-                  <TextInput
-                    {...props}
-                    value={llm.endpoint ?? ""}
-                    onChange={(event) => patchLlm({ endpoint: event.target.value || null })}
-                  />
-                )}
-              </FormField>
-              {idProvider(llm.provider) !== "ollama" ? (
-                <FormField
-                  label="Clé API"
-                  required={idProvider(llm.provider) !== "custom"}
-                  help="Stockée dans le coffre système, jamais en clair dans la base."
-                >
+          <div className="flex items-start gap-4 py-1">
+            <span className="flex size-11 flex-none items-center justify-center rounded-control bg-fill">
+              <img
+                src={logo.src}
+                alt=""
+                width={26}
+                height={26}
+                className={cn("size-[26px]", logo.mono && "dark:invert")}
+              />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-eyebrow uppercase text-ink-label">Fournisseur</p>
+              <p className="mt-1 text-title text-ink">{fournisseur.label}</p>
+              <p className="mt-1 truncate text-note text-ink-faint">
+                {fournisseur.hint}
+                {llm.model ? ` · ${llm.model}` : ""}
+              </p>
+            </div>
+            <div className="flex flex-none flex-col items-end gap-1.5 pt-0.5">
+              {test === "ok" ? <StatusPill tone="success">Connecté</StatusPill> : null}
+              {test === "error" ? <StatusPill tone="danger">Hors ligne</StatusPill> : null}
+              {test === "pending" ? <StatusPill tone="neutral">Test…</StatusPill> : null}
+              <Button variant="ghost" icon="wifi" disabled={test === "pending"} onClick={() => void runTest()}>
+                Tester
+              </Button>
+            </div>
+          </div>
+          {testMessage && test === "error" ? (
+            <p className="text-note text-danger" role="status">
+              {testMessage}
+            </p>
+          ) : null}
+
+          <ProviderGrid value={llm.provider} onChange={choisirFournisseur} />
+
+          <div className="grid gap-x-10 gap-y-6 min-[980px]:grid-cols-2">
+            <section className="min-w-0">
+              <InspectorSectionLabel>Connexion</InspectorSectionLabel>
+              <div className="flex flex-col gap-3.5">
+                <div className="grid gap-2 min-[520px]:grid-cols-[minmax(0,1fr)_auto] min-[520px]:items-end">
+                  <FormField label="Modèle" required>
+                    {(props) =>
+                      models.length > 0 ? (
+                        <Select {...props} value={llm.model} onChange={(event) => patchLlm({ model: event.target.value })}>
+                          {models.map((model) => (
+                            <option key={model} value={model}>
+                              {model}
+                            </option>
+                          ))}
+                        </Select>
+                      ) : (
+                        <TextInput
+                          {...props}
+                          value={llm.model}
+                          onChange={(event) => patchLlm({ model: event.target.value })}
+                        />
+                      )
+                    }
+                  </FormField>
+                  <Button variant="secondary" icon="refresh" onClick={() => void actualiserModels()}>
+                    Actualiser
+                  </Button>
+                </div>
+                <FormField label="Endpoint" required={idProvider(llm.provider) === "custom"}>
                   {(props) => (
                     <TextInput
                       {...props}
-                      type="password"
-                      autoComplete="off"
-                      value={llm.api_key ?? ""}
-                      onChange={(event) => patchLlm({ api_key: event.target.value || null })}
+                      value={llm.endpoint ?? ""}
+                      onChange={(event) => patchLlm({ endpoint: event.target.value || null })}
                     />
                   )}
                 </FormField>
-              ) : null}
-              <div className="grid gap-4 sm:grid-cols-2">
-                <FormField label="Mode d'analyse">
-                  {(props) => (
-                    <Select
-                      {...props}
-                      value={llm.mode}
-                      onChange={(event) => patchLlm({ mode: event.target.value as AnalysisMode })}
-                    >
-                      {MODES.map((mode) => (
-                        <option key={mode.value} value={mode.value}>
-                          {mode.label}
-                        </option>
-                      ))}
-                    </Select>
-                  )}
-                </FormField>
-                <FormField label={`Température (${llm.temperature.toFixed(1)})`}>
-                  {(props) => (
-                    <input
-                      {...props}
-                      type="range"
-                      min={0}
-                      max={2}
-                      step={0.1}
-                      value={llm.temperature}
-                      onChange={(event) => patchLlm({ temperature: Number(event.target.value) })}
-                      className="h-11 w-full accent-[var(--accent)]"
-                    />
-                  )}
-                </FormField>
-              </div>
-            </div>
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              <Button variant="ghost" icon="wifi" disabled={test === "pending"} onClick={() => void runTest()}>
-                Tester la connexion
-              </Button>
-              <Button variant="ghost" icon="delete" onClick={() => setCacheOpen(true)}>
-                Vider le cache IA
-              </Button>
-              {testMessage ? (
-                <p className={test === "ok" ? "text-meta text-success" : "text-meta text-danger"} role="status">
-                  {testMessage}
-                </p>
-              ) : null}
-            </div>
-          </SettingsCard>
-
-          <div className="flex max-w-[420px] min-w-0 flex-[1_1_320px] flex-col gap-4">
-          <SettingsCard icon="contrast" title="Apparence">
-            <div role="radiogroup" aria-label="Thème" className="grid grid-cols-3 gap-2">
-              {THEMES.map((theme) => {
-                const selected = form.theme === theme.value;
-                return (
-                  <button
-                    key={theme.value}
-                    type="button"
-                    role="radio"
-                    aria-checked={selected}
-                    onClick={() => {
-                      setDraft({ ...form, theme: theme.value });
-                      setTheme(theme.value);
-                      applyTheme(theme.value);
-                    }}
-                    className={[
-                      "min-h-11 rounded-card border px-3 py-2 text-label font-medium",
-                      selected ? "border-accent bg-accent-tint text-ink" : "border-line bg-surface text-ink-muted hover:bg-neutral-tint",
-                    ].join(" ")}
+                {idProvider(llm.provider) !== "ollama" ? (
+                  <FormField
+                    label="Clé API"
+                    required={idProvider(llm.provider) !== "custom"}
+                    help="Stockée dans le coffre système, jamais en clair dans la base."
                   >
-                    {theme.label}
+                    {(props) => (
+                      <TextInput
+                        {...props}
+                        type="password"
+                        autoComplete="off"
+                        value={llm.api_key ?? ""}
+                        onChange={(event) => patchLlm({ api_key: event.target.value || null })}
+                      />
+                    )}
+                  </FormField>
+                ) : null}
+              </div>
+            </section>
+
+            <section className="min-w-0">
+              <InspectorSectionLabel>Génération</InspectorSectionLabel>
+              <div className="flex flex-col gap-4">
+                <div>
+                  <p className="mb-1.5 text-note text-ink-subtle">Mode d'analyse</p>
+                  <SegmentedControl
+                    label="Mode d'analyse"
+                    value={llm.mode}
+                    onChange={(mode) => patchLlm({ mode })}
+                    options={MODES}
+                  />
+                </div>
+                <div>
+                  <div className="mb-1.5 flex items-baseline justify-between">
+                    <p className="text-note text-ink-subtle">Température</p>
+                    <p className="font-mono tabular text-note text-ink">{llm.temperature.toFixed(1)}</p>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={2}
+                    step={0.1}
+                    value={llm.temperature}
+                    aria-label="Température"
+                    onChange={(event) => patchLlm({ temperature: Number(event.target.value) })}
+                    className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-fill accent-accent"
+                  />
+                </div>
+
+                <InspectorSectionLabel>Apparence</InspectorSectionLabel>
+                <SegmentedControl
+                  label="Thème"
+                  value={form.theme}
+                  onChange={(theme) => {
+                    setDraft({ ...form, theme });
+                    setTheme(theme);
+                    applyTheme(theme);
+                  }}
+                  options={THEMES}
+                />
+
+                <div className="border-t border-field pt-3">
+                  <button
+                    type="button"
+                    onClick={() => setCacheOpen(true)}
+                    className="text-label font-semibold text-ink-muted hover:text-ink"
+                  >
+                    Vider le cache IA
                   </button>
-                );
-              })}
-            </div>
-          </SettingsCard>
-          </div>
+                  <p className="mt-1 text-meta leading-relaxed text-ink-disabled">
+                    Les réponses déjà calculées seront oubliées.
+                  </p>
+                </div>
+              </div>
+            </section>
           </div>
         </SettingsBody>
       )}

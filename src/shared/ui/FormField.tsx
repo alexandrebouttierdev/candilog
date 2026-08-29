@@ -80,11 +80,11 @@ export function FormField({
 export function controlClasses(invalid = false, extra?: string): string {
   return cn(
     "min-h-field w-full rounded-field border bg-page px-3 text-body text-ink",
-    "placeholder:text-ink-faint",
-    "transition-[border-color,background-color,box-shadow] duration-150",
-    "disabled:cursor-not-allowed disabled:bg-neutral-tint disabled:text-ink-faint",
-    "focus:bg-surface focus:shadow-[0_0_0_3px_var(--color-accent-tint)] focus:outline-none",
-    invalid ? "border-danger focus:border-danger" : "border-line focus:border-accent",
+    "placeholder:text-ink-disabled",
+    "transition-[border-color,background-color] duration-hover",
+    "disabled:cursor-not-allowed disabled:bg-fill disabled:text-ink-faint",
+    "focus:bg-accent-tint-08 focus:outline-none",
+    invalid ? "border-danger focus:border-danger" : "border-control focus:border-accent-focus",
     extra,
   );
 }

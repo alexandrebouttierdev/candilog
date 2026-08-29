@@ -43,10 +43,12 @@ export function ApplicationCard({
         if (event.key === "Enter" && onSelect) onSelect();
       }}
       className={cn(
-        "min-w-0 rounded-tile border bg-surface px-[13px] py-3 shadow-e1",
-        "transition-[border-color,background-color] duration-150",
+        "min-w-0 rounded-tile border bg-surface px-3 py-2.5",
+        "transition-[border-color,background-color,box-shadow] duration-hover",
         draggable && "cursor-grab active:cursor-grabbing",
-        selected ? "border-accent bg-accent-tint" : "border-line hover:border-accent-border",
+        selected
+          ? "row-selected border-accent-border"
+          : "border-line hover:border-control-strong",
       )}
     >
       <div className="mb-[9px] flex items-start gap-[9px]">

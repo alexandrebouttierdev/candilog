@@ -38,10 +38,10 @@ export interface SectionDef {
 export const Sections: readonly SectionDef[] = [
   {
     key: "accueil",
-    short_label: "Accueil",
-    long_label: "Tableau de bord",
-    icon: "space_dashboard",
-    routes: [{ path: "/", label: "Vue d'ensemble", icon: "donut_small" }],
+    short_label: "Aujourd'hui",
+    long_label: "Aujourd'hui",
+    icon: "today",
+    routes: [{ path: "/", label: "Aujourd'hui", icon: "today" }],
   },
   {
     key: "suivi",

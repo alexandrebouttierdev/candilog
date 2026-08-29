@@ -107,7 +107,7 @@ export function Pager({
             className={cn(
               "tabular h-pager min-w-pager rounded-control border px-[7px] text-note font-mid transition-colors duration-150",
               number === page
-                ? "border-accent bg-accent text-white"
+                ? "border-accent bg-accent text-on-accent"
                 : "border-line bg-surface text-ink-muted hover:bg-neutral-tint",
             )}
           >

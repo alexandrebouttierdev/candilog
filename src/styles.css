@@ -1,121 +1,226 @@
 @import "tailwindcss";
-/* Jeu d'icônes des maquettes, embarqué localement : la politique de sécurité de
-   contenu de la fenêtre Tauri interdit les requêtes vers fonts.googleapis.com, et une
-   application de bureau doit rester utilisable hors ligne. */
 @import "material-symbols/rounded.css";
 
-/* ------------------------------------------------------------------------ */
-/* Jetons Candilog — repris littéralement des maquettes SPECDESIGN            */
-/*                                                                           */
-/* Les couleurs sont copiées en oklch depuis l'objet `c` des maquettes plutôt */
-/* que depuis la colonne hexadécimale du guide : celle-ci est une conversion  */
-/* destinée aux `ResourceDictionary` Avalonia, qui ne connaît pas oklch, et   */
-/* elle s'écarte du rendu réel de plusieurs points de clarté (le fond sombre  */
-/* notamment). Le navigateur, lui, sait rendre oklch — autant viser la source.*/
-/*                                                                           */
-/* Les jetons sont des variables CSS et non des valeurs `@theme` figées :     */
-/* la préférence de thème a trois états (clair, sombre, système), et seul un  */
-/* triple jeu de déclarations les couvre sans JavaScript. `:root` porte le    */
-/* thème clair, la requête `prefers-color-scheme` le thème sombre lorsque     */
-/* l'utilisateur n'a rien forcé, et `[data-theme]` l'emporte dans les deux    */
-/* sens quand il a choisi.                                                   */
-/* ------------------------------------------------------------------------ */
+/* Jetons Candilog — dark-first, surfaces glass, accent indigo centralisé. */
 
 :root {
-  --candilog-page: oklch(0.975 0.004 258);
-  --candilog-surface: oklch(1 0 0);
-  --candilog-surface-alt: oklch(0.985 0.004 258);
-  --candilog-border: oklch(0.905 0.007 258);
-  --candilog-border-strong: oklch(0.83 0.009 258);
-  --candilog-text-primary: oklch(0.215 0.015 258);
-  --candilog-text-secondary: oklch(0.475 0.013 258);
-  --candilog-text-tertiary: oklch(0.615 0.011 258);
-  --candilog-accent: oklch(0.5 0.17 262);
-  --candilog-accent-tint: oklch(0.945 0.03 262);
-  --candilog-accent-border: oklch(0.83 0.07 262);
-  --candilog-success: oklch(0.56 0.13 155);
-  --candilog-success-tint: oklch(0.945 0.045 155);
-  --candilog-success-border: oklch(0.85 0.07 155);
-  --candilog-warning: oklch(0.65 0.14 85);
-  --candilog-warning-tint: oklch(0.95 0.05 85);
-  --candilog-danger: oklch(0.55 0.18 25);
-  --candilog-danger-tint: oklch(0.95 0.045 25);
-  --candilog-danger-border: oklch(0.86 0.07 25);
-  --candilog-neutral-tint: oklch(0.958 0.006 258);
-  --candilog-scrim: oklch(0.93 0.006 258);
-
-  /* Élévation — guide section 3. Le niveau 0 est un filet, pas une ombre. */
-  --candilog-shadow-1: 0 1px 2px rgb(20 26 45 / 0.06);
-  --candilog-shadow-accent: 0 1px 2px rgb(41 87 216 / 0.35);
-  --candilog-shadow-2: 0 8px 24px -12px rgb(20 26 45 / 0.18);
-  --candilog-shadow-3: 0 30px 70px -26px rgb(20 26 45 / 0.38);
-  --candilog-shadow-paper: 0 10px 34px -14px rgb(20 26 45 / 0.28);
+  --candilog-page: #f2f3f6;
+  --candilog-surface: #ffffff;
+  --candilog-surface-alt: #f7f8fa;
+  --candilog-surface-elevated: #f4f5f8;
+  --candilog-surface-raised: #eef0f4;
+  --candilog-surface-hover: rgb(15 18 32 / 0.045);
+  --candilog-border: rgb(15 18 32 / 0.08);
+  --candilog-border-strong: rgb(15 18 32 / 0.14);
+  --candilog-border-section: rgb(15 18 32 / 0.07);
+  --candilog-border-field: rgb(15 18 32 / 0.055);
+  --candilog-border-overlay: rgb(15 18 32 / 0.12);
+  --candilog-border-overlay-strong: rgb(15 18 32 / 0.16);
+  --candilog-border-control: rgb(15 18 32 / 0.1);
+  --candilog-border-control-strong: rgb(15 18 32 / 0.12);
+  --candilog-border-on-accent: rgb(255 255 255 / 0.28);
+  --candilog-text-primary: #111216;
+  --candilog-text-strong: #1a1b21;
+  --candilog-text-secondary: #3d3f48;
+  --candilog-text-tertiary: #5c5e68;
+  --candilog-text-subtle: #6e7078;
+  --candilog-text-muted-2: #7a7c85;
+  --candilog-text-label: #6e7078;
+  --candilog-text-disabled: #8a8c95;
+  --candilog-accent: #4f5fe8;
+  --candilog-accent-hover: #6372f2;
+  --candilog-accent-text: #3d4fd4;
+  --candilog-accent-text-soft: #4f5fe8;
+  --candilog-accent-tint: rgb(79 95 232 / 0.1);
+  --candilog-accent-tint-08: rgb(79 95 232 / 0.07);
+  --candilog-accent-tint-12: rgb(79 95 232 / 0.12);
+  --candilog-accent-border: rgb(79 95 232 / 0.28);
+  --candilog-accent-focus: rgb(79 95 232 / 0.55);
+  --candilog-text-on-accent: #ffffff;
+  --candilog-fill: rgb(15 18 32 / 0.04);
+  --candilog-fill-hover: rgb(15 18 32 / 0.08);
+  --candilog-glass-rail: rgb(255 255 255 / 0.78);
+  --candilog-glass-rail-border: rgb(15 18 32 / 0.08);
+  --candilog-glass-subnav: rgb(247 248 250 / 0.72);
+  --candilog-glass-subnav-border: rgb(15 18 32 / 0.07);
+  --candilog-glass-topbar: rgb(255 255 255 / 0.76);
+  --candilog-glass-topbar-border: rgb(15 18 32 / 0.08);
+  --candilog-glass-inspector: rgb(255 255 255 / 0.8);
+  --candilog-glass-inspector-border: rgb(15 18 32 / 0.08);
+  --candilog-glass-popover: rgb(255 255 255 / 0.94);
+  --candilog-glass-menu: rgb(255 255 255 / 0.96);
+  --candilog-glass-palette: rgb(255 255 255 / 0.92);
+  --candilog-glass-modal: rgb(255 255 255 / 0.96);
+  --candilog-glass-fallback: #f7f8fa;
+  --candilog-scrim-palette: rgb(8 9 12 / 0.4);
+  --candilog-blur-shell: 20px;
+  --candilog-blur-subnav: 16px;
+  --candilog-blur-overlay: 30px;
+  --candilog-success: #1f9a5c;
+  --candilog-success-text: #178a50;
+  --candilog-success-tint: rgb(53 192 122 / 0.12);
+  --candilog-success-border: rgb(53 192 122 / 0.22);
+  --candilog-warning: #c47a12;
+  --candilog-warning-tint: rgb(255 183 77 / 0.16);
+  --candilog-danger: #d63d42;
+  --candilog-danger-text: #c93a3f;
+  --candilog-danger-tint: rgb(255 90 95 / 0.1);
+  --candilog-danger-border: rgb(255 90 95 / 0.22);
+  --candilog-neutral-tint: rgb(15 18 32 / 0.045);
+  --candilog-scrim: rgb(242 243 246 / 0.86);
+  --candilog-shadow-1: none;
+  --candilog-shadow-accent: none;
+  --candilog-shadow-2: 0 18px 44px rgb(15 18 32 / 0.12);
+  --candilog-shadow-3: 0 40px 90px rgb(15 18 32 / 0.18);
+  --candilog-shadow-paper: 0 10px 34px rgb(15 18 32 / 0.1);
+  --candilog-shadow-overlay: 0 40px 90px rgb(15 18 32 / 0.22);
+  --candilog-shadow-menu: 0 22px 54px rgb(15 18 32 / 0.16);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --candilog-page: oklch(0.165 0.012 258);
-    --candilog-surface: oklch(0.205 0.014 258);
-    --candilog-surface-alt: oklch(0.185 0.013 258);
-    --candilog-border: oklch(0.295 0.014 258);
-    --candilog-border-strong: oklch(0.38 0.016 258);
-    --candilog-text-primary: oklch(0.955 0.006 258);
-    --candilog-text-secondary: oklch(0.73 0.01 258);
-    --candilog-text-tertiary: oklch(0.575 0.012 258);
-    --candilog-accent: oklch(0.7 0.15 262);
-    --candilog-accent-tint: oklch(0.29 0.06 262);
-    --candilog-accent-border: oklch(0.42 0.09 262);
-    --candilog-success: oklch(0.73 0.13 155);
-    --candilog-success-tint: oklch(0.29 0.06 155);
-    --candilog-success-border: oklch(0.42 0.09 155);
-    --candilog-warning: oklch(0.79 0.13 85);
-    --candilog-warning-tint: oklch(0.31 0.06 85);
-    --candilog-danger: oklch(0.7 0.16 25);
-    --candilog-danger-tint: oklch(0.31 0.06 25);
-    --candilog-danger-border: oklch(0.44 0.1 25);
-    --candilog-neutral-tint: oklch(0.245 0.014 258);
-    --candilog-scrim: oklch(0.13 0.01 258);
-
-    --candilog-shadow-1: 0 1px 2px rgb(0 0 0 / 0.4);
-    --candilog-shadow-accent: 0 1px 2px rgb(0 0 0 / 0.4);
-    --candilog-shadow-2: 0 8px 24px -12px rgb(0 0 0 / 0.6);
-    --candilog-shadow-3: 0 26px 70px -24px rgb(0 0 0 / 0.8);
-    --candilog-shadow-paper: 0 8px 30px -12px rgb(0 0 0 / 0.75);
+    --candilog-page: #08090c;
+    --candilog-surface: #111216;
+    --candilog-surface-alt: #0c0d10;
+    --candilog-surface-elevated: #15161b;
+    --candilog-surface-raised: #17181d;
+    --candilog-surface-hover: rgb(255 255 255 / 0.05);
+    --candilog-border: rgb(255 255 255 / 0.07);
+    --candilog-border-strong: rgb(255 255 255 / 0.1);
+    --candilog-border-section: rgb(255 255 255 / 0.055);
+    --candilog-border-field: rgb(255 255 255 / 0.045);
+    --candilog-border-overlay: rgb(255 255 255 / 0.1);
+    --candilog-border-overlay-strong: rgb(255 255 255 / 0.11);
+    --candilog-border-control: rgb(255 255 255 / 0.08);
+    --candilog-border-control-strong: rgb(255 255 255 / 0.09);
+    --candilog-border-on-accent: rgb(255 255 255 / 0.12);
+    --candilog-text-primary: #f4f4f5;
+    --candilog-text-strong: #e6e6e9;
+    --candilog-text-secondary: #c9cad1;
+    --candilog-text-tertiary: #a9aab2;
+    --candilog-text-subtle: #7a7c85;
+    --candilog-text-muted-2: #8a8c95;
+    --candilog-text-label: #5e6068;
+    --candilog-text-disabled: #62646c;
+    --candilog-accent: #6b7cff;
+    --candilog-accent-hover: #8491ff;
+    --candilog-accent-text: #9aa6ff;
+    --candilog-accent-text-soft: #b0baff;
+    --candilog-accent-tint: rgb(107 124 255 / 0.13);
+    --candilog-accent-tint-08: rgb(107 124 255 / 0.09);
+    --candilog-accent-tint-12: rgb(107 124 255 / 0.12);
+    --candilog-accent-border: rgb(107 124 255 / 0.22);
+    --candilog-accent-focus: rgb(107 124 255 / 0.55);
+    --candilog-text-on-accent: #f4f4f5;
+    --candilog-fill: rgb(255 255 255 / 0.05);
+    --candilog-fill-hover: rgb(255 255 255 / 0.09);
+    --candilog-glass-rail: rgb(17 18 22 / 0.72);
+    --candilog-glass-rail-border: rgb(255 255 255 / 0.07);
+    --candilog-glass-subnav: rgb(15 16 20 / 0.6);
+    --candilog-glass-subnav-border: rgb(255 255 255 / 0.06);
+    --candilog-glass-topbar: rgb(17 18 22 / 0.7);
+    --candilog-glass-topbar-border: rgb(255 255 255 / 0.07);
+    --candilog-glass-inspector: rgb(17 18 22 / 0.66);
+    --candilog-glass-inspector-border: rgb(255 255 255 / 0.07);
+    --candilog-glass-popover: rgb(26 27 33 / 0.92);
+    --candilog-glass-menu: rgb(28 29 35 / 0.94);
+    --candilog-glass-palette: rgb(24 25 31 / 0.9);
+    --candilog-glass-modal: rgb(26 27 33 / 0.94);
+    --candilog-glass-fallback: #16171c;
+    --candilog-scrim-palette: rgb(4 4 6 / 0.55);
+    --candilog-success: #35c07a;
+    --candilog-success-text: #4fd394;
+    --candilog-success-tint: rgb(53 192 122 / 0.13);
+    --candilog-success-border: rgb(53 192 122 / 0.2);
+    --candilog-warning: #ffb74d;
+    --candilog-warning-tint: rgb(255 183 77 / 0.13);
+    --candilog-danger: #ff5a5f;
+    --candilog-danger-text: #ff8085;
+    --candilog-danger-tint: rgb(255 90 95 / 0.13);
+    --candilog-danger-border: rgb(255 90 95 / 0.22);
+    --candilog-neutral-tint: rgb(255 255 255 / 0.04);
+    --candilog-scrim: rgb(4 4 6 / 0.6);
+    --candilog-shadow-1: none;
+    --candilog-shadow-accent: none;
+    --candilog-shadow-2: 0 18px 44px rgb(0 0 0 / 0.55);
+    --candilog-shadow-3: 0 40px 90px rgb(0 0 0 / 0.7);
+    --candilog-shadow-paper: 0 8px 30px rgb(0 0 0 / 0.55);
+    --candilog-shadow-overlay: 0 40px 90px rgb(0 0 0 / 0.65);
+    --candilog-shadow-menu: 0 22px 54px rgb(0 0 0 / 0.6);
   }
 }
 
 :root[data-theme="dark"] {
-  --candilog-page: oklch(0.165 0.012 258);
-  --candilog-surface: oklch(0.205 0.014 258);
-  --candilog-surface-alt: oklch(0.185 0.013 258);
-  --candilog-border: oklch(0.295 0.014 258);
-  --candilog-border-strong: oklch(0.38 0.016 258);
-  --candilog-text-primary: oklch(0.955 0.006 258);
-  --candilog-text-secondary: oklch(0.73 0.01 258);
-  --candilog-text-tertiary: oklch(0.575 0.012 258);
-  --candilog-accent: oklch(0.7 0.15 262);
-  --candilog-accent-tint: oklch(0.29 0.06 262);
-  --candilog-accent-border: oklch(0.42 0.09 262);
-  --candilog-success: oklch(0.73 0.13 155);
-  --candilog-success-tint: oklch(0.29 0.06 155);
-  --candilog-success-border: oklch(0.42 0.09 155);
-  --candilog-warning: oklch(0.79 0.13 85);
-  --candilog-warning-tint: oklch(0.31 0.06 85);
-  --candilog-danger: oklch(0.7 0.16 25);
-  --candilog-danger-tint: oklch(0.31 0.06 25);
-  --candilog-danger-border: oklch(0.44 0.1 25);
-  --candilog-neutral-tint: oklch(0.245 0.014 258);
-  --candilog-scrim: oklch(0.13 0.01 258);
-
-  --candilog-shadow-1: 0 1px 2px rgb(0 0 0 / 0.4);
-  --candilog-shadow-accent: 0 1px 2px rgb(0 0 0 / 0.4);
-  --candilog-shadow-2: 0 8px 24px -12px rgb(0 0 0 / 0.6);
-  --candilog-shadow-3: 0 26px 70px -24px rgb(0 0 0 / 0.8);
-  --candilog-shadow-paper: 0 8px 30px -12px rgb(0 0 0 / 0.75);
+  --candilog-page: #08090c;
+  --candilog-surface: #111216;
+  --candilog-surface-alt: #0c0d10;
+  --candilog-surface-elevated: #15161b;
+  --candilog-surface-raised: #17181d;
+  --candilog-surface-hover: rgb(255 255 255 / 0.05);
+  --candilog-border: rgb(255 255 255 / 0.07);
+  --candilog-border-strong: rgb(255 255 255 / 0.1);
+  --candilog-border-section: rgb(255 255 255 / 0.055);
+  --candilog-border-field: rgb(255 255 255 / 0.045);
+  --candilog-border-overlay: rgb(255 255 255 / 0.1);
+  --candilog-border-overlay-strong: rgb(255 255 255 / 0.11);
+  --candilog-border-control: rgb(255 255 255 / 0.08);
+  --candilog-border-control-strong: rgb(255 255 255 / 0.09);
+  --candilog-border-on-accent: rgb(255 255 255 / 0.12);
+  --candilog-text-primary: #f4f4f5;
+  --candilog-text-strong: #e6e6e9;
+  --candilog-text-secondary: #c9cad1;
+  --candilog-text-tertiary: #a9aab2;
+  --candilog-text-subtle: #7a7c85;
+  --candilog-text-muted-2: #8a8c95;
+  --candilog-text-label: #5e6068;
+  --candilog-text-disabled: #62646c;
+  --candilog-accent: #6b7cff;
+  --candilog-accent-hover: #8491ff;
+  --candilog-accent-text: #9aa6ff;
+  --candilog-accent-text-soft: #b0baff;
+  --candilog-accent-tint: rgb(107 124 255 / 0.13);
+  --candilog-accent-tint-08: rgb(107 124 255 / 0.09);
+  --candilog-accent-tint-12: rgb(107 124 255 / 0.12);
+  --candilog-accent-border: rgb(107 124 255 / 0.22);
+  --candilog-accent-focus: rgb(107 124 255 / 0.55);
+  --candilog-text-on-accent: #f4f4f5;
+  --candilog-fill: rgb(255 255 255 / 0.05);
+  --candilog-fill-hover: rgb(255 255 255 / 0.09);
+  --candilog-glass-rail: rgb(17 18 22 / 0.72);
+  --candilog-glass-rail-border: rgb(255 255 255 / 0.07);
+  --candilog-glass-subnav: rgb(15 16 20 / 0.6);
+  --candilog-glass-subnav-border: rgb(255 255 255 / 0.06);
+  --candilog-glass-topbar: rgb(17 18 22 / 0.7);
+  --candilog-glass-topbar-border: rgb(255 255 255 / 0.07);
+  --candilog-glass-inspector: rgb(17 18 22 / 0.66);
+  --candilog-glass-inspector-border: rgb(255 255 255 / 0.07);
+  --candilog-glass-popover: rgb(26 27 33 / 0.92);
+  --candilog-glass-menu: rgb(28 29 35 / 0.94);
+  --candilog-glass-palette: rgb(24 25 31 / 0.9);
+  --candilog-glass-modal: rgb(26 27 33 / 0.94);
+  --candilog-glass-fallback: #16171c;
+  --candilog-scrim-palette: rgb(4 4 6 / 0.55);
+  --candilog-success: #35c07a;
+  --candilog-success-text: #4fd394;
+  --candilog-success-tint: rgb(53 192 122 / 0.13);
+  --candilog-success-border: rgb(53 192 122 / 0.2);
+  --candilog-warning: #ffb74d;
+  --candilog-warning-tint: rgb(255 183 77 / 0.13);
+  --candilog-danger: #ff5a5f;
+  --candilog-danger-text: #ff8085;
+  --candilog-danger-tint: rgb(255 90 95 / 0.13);
+  --candilog-danger-border: rgb(255 90 95 / 0.22);
+  --candilog-neutral-tint: rgb(255 255 255 / 0.04);
+  --candilog-scrim: rgb(4 4 6 / 0.6);
+  --candilog-shadow-1: none;
+  --candilog-shadow-accent: none;
+  --candilog-shadow-2: 0 18px 44px rgb(0 0 0 / 0.55);
+  --candilog-shadow-3: 0 40px 90px rgb(0 0 0 / 0.7);
+  --candilog-shadow-paper: 0 8px 30px rgb(0 0 0 / 0.55);
+  --candilog-shadow-overlay: 0 40px 90px rgb(0 0 0 / 0.65);
+  --candilog-shadow-menu: 0 22px 54px rgb(0 0 0 / 0.6);
 }
 
-/* `dark:` suit la même logique que les jetons : préférence système sauf choix
-   explicite. Rare — les jetons couvrent la quasi-totalité des besoins. */
 @custom-variant dark {
   @media (prefers-color-scheme: dark) {
     &:where(:root:not([data-theme="light"]) *, :root:not([data-theme="light"])) {
@@ -131,102 +236,130 @@
   --color-page: var(--candilog-page);
   --color-surface: var(--candilog-surface);
   --color-surface-alt: var(--candilog-surface-alt);
+  --color-surface-elevated: var(--candilog-surface-elevated);
+  --color-surface-raised: var(--candilog-surface-raised);
+  --color-surface-hover: var(--candilog-surface-hover);
   --color-line: var(--candilog-border);
   --color-line-strong: var(--candilog-border-strong);
+  --color-line-soft: var(--candilog-border-section);
+  --color-field: var(--candilog-border-field);
+  --color-overlay: var(--candilog-border-overlay);
+  --color-overlay-strong: var(--candilog-border-overlay-strong);
+  --color-control: var(--candilog-border-control);
+  --color-control-strong: var(--candilog-border-control-strong);
+  --color-on-accent-border: var(--candilog-border-on-accent);
+  --color-glass-rail: var(--candilog-glass-rail-border);
+  --color-glass-subnav: var(--candilog-glass-subnav-border);
+  --color-glass-topbar: var(--candilog-glass-topbar-border);
+  --color-glass-inspector: var(--candilog-glass-inspector-border);
   --color-ink: var(--candilog-text-primary);
+  --color-ink-strong: var(--candilog-text-strong);
   --color-ink-muted: var(--candilog-text-secondary);
-  --color-ink-faint: var(--candilog-text-tertiary);
+  --color-ink-tertiary: var(--candilog-text-tertiary);
+  --color-ink-faint: var(--candilog-text-subtle);
+  --color-ink-subtle: var(--candilog-text-subtle);
+  --color-ink-muted-2: var(--candilog-text-muted-2);
+  --color-ink-label: var(--candilog-text-label);
+  --color-ink-disabled: var(--candilog-text-disabled);
   --color-accent: var(--candilog-accent);
+  --color-accent-hover: var(--candilog-accent-hover);
+  --color-accent-text: var(--candilog-accent-text);
+  --color-accent-text-soft: var(--candilog-accent-text-soft);
   --color-accent-tint: var(--candilog-accent-tint);
+  --color-accent-tint-08: var(--candilog-accent-tint-08);
+  --color-accent-tint-12: var(--candilog-accent-tint-12);
   --color-accent-border: var(--candilog-accent-border);
+  --color-accent-focus: var(--candilog-accent-focus);
+  --color-on-accent: var(--candilog-text-on-accent);
+  --color-fill: var(--candilog-fill);
+  --color-fill-hover: var(--candilog-fill-hover);
   --color-success: var(--candilog-success);
+  --color-success-text: var(--candilog-success-text);
   --color-success-tint: var(--candilog-success-tint);
   --color-success-border: var(--candilog-success-border);
   --color-warning: var(--candilog-warning);
   --color-warning-tint: var(--candilog-warning-tint);
   --color-danger: var(--candilog-danger);
+  --color-danger-text: var(--candilog-danger-text);
   --color-danger-tint: var(--candilog-danger-tint);
   --color-danger-border: var(--candilog-danger-border);
   --color-neutral-tint: var(--candilog-neutral-tint);
   --color-scrim: var(--candilog-scrim);
 
-  /* Typographie — police système, comme les maquettes. */
-  --font-sans: -apple-system, "Segoe UI", system-ui, sans-serif;
-  --font-mono: ui-monospace, Menlo, Consolas, monospace;
+  --font-sans: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
 
-  /* Échelle relevée dans les maquettes, du plus grand au plus petit. Les tailles
-     sont exprimées en rem pour respecter le zoom, sur une base de 16 px.
-     
-     Toutes portent `line-height: normal`, comme les maquettes, qui ne déclarent
-     d'interligne que sur les paragraphes explicatifs (1,5) et deux exceptions
-     ponctuelles. Sans cela Tailwind applique 1,5 partout et chaque ligne de
-     tableau gagne trois pixels — l'écart s'accumule sur toute la hauteur. */
-  --text-display: 1.375rem; /* 22 px — nom sur une fiche, numéro de version */
-  --text-display--line-height: normal;
-  --text-display--font-weight: 650;
+  --text-display: 1.4375rem;
+  --text-display--line-height: 1;
+  --text-display--font-weight: 600;
   --text-display--letter-spacing: -0.02em;
-  --text-title: 1.25rem; /* 20 px — titre de page */
-  --text-title--line-height: normal;
-  --text-title--font-weight: 650;
-  --text-title--letter-spacing: -0.02em;
-  --text-heading: 1.1875rem; /* 19 px — titre de fiche, chiffre clé */
-  --text-heading--line-height: normal;
-  --text-heading--font-weight: 650;
-  --text-heading--letter-spacing: -0.015em;
-  --text-kpi: 1.625rem; /* 26 px — valeur de KPI, chiffres tabulaires */
-  --text-kpi--line-height: normal;
-  --text-kpi--font-weight: 650;
-  --text-kpi--letter-spacing: -0.025em;
-  --text-section: 0.84375rem; /* 13,5 px — titre de section */
-  --text-section--line-height: normal;
+  --text-title: 0.90625rem;
+  --text-title--line-height: 1;
+  --text-title--font-weight: 600;
+  --text-title--letter-spacing: -0.01em;
+  --text-heading: 1.125rem;
+  --text-heading--line-height: 1;
+  --text-heading--font-weight: 600;
+  --text-kpi: 1.125rem;
+  --text-kpi--line-height: 1;
+  --text-kpi--font-weight: 600;
+  --text-section: 0.84375rem;
+  --text-section--line-height: 1;
   --text-section--font-weight: 600;
-  --text-item: 0.8125rem; /* 13 px — titre de ligne, titre de carte */
-  --text-item--line-height: normal;
-  --text-body: 0.78125rem; /* 12,5 px — corps */
-  --text-body--line-height: normal;
-  --text-note: 0.75rem; /* 12 px — libellé secondaire, valeur de tableau */
-  --text-note--line-height: normal;
-  --text-label: 0.71875rem; /* 11,5 px — libellé de champ, pastille */
-  --text-label--line-height: normal;
-  --text-meta: 0.6875rem; /* 11 px — métadonnée */
-  --text-meta--line-height: normal;
-  --text-eyebrow: 0.65625rem; /* 10,5 px — sur-titre, en-tête de tableau */
-  --text-eyebrow--line-height: normal;
+  --text-section--letter-spacing: -0.01em;
+  --text-item: 0.8125rem;
+  --text-item--line-height: 1;
+  --text-body: 0.78125rem;
+  --text-body--line-height: 1;
+  --text-body--letter-spacing: 0.005em;
+  --text-note: 0.75rem;
+  --text-note--line-height: 1;
+  --text-label: 0.71875rem;
+  --text-label--line-height: 1;
+  --text-meta: 0.6875rem;
+  --text-meta--line-height: 1;
+  --text-eyebrow: 0.65625rem;
+  --text-eyebrow--line-height: 1;
   --text-eyebrow--font-weight: 600;
-  --text-eyebrow--letter-spacing: 0.06em;
-  --text-tag: 0.65625rem; /* 10,5 px sans capitales ni interlettrage — étiquette de carte */
-  --text-tag--line-height: normal;
-  --text-micro: 0.625rem; /* 10 px — libellé du rail, axe de graphique */
-  --text-micro--line-height: normal;
+  --text-eyebrow--letter-spacing: 0.07em;
+  --text-tag: 0.65625rem;
+  --text-tag--line-height: 1;
+  --text-micro: 0.65625rem;
+  --text-micro--line-height: 1;
 
-  /* Les maquettes utilisent deux graisses intermédiaires que Tailwind ne nomme pas :
-     550 pour le demi-gras courant, 650 pour les titres et les chiffres. */
-  --font-weight-mid: 550;
-  --font-weight-strong: 650;
+  --font-weight-mid: 500;
+  --font-weight-strong: 600;
 
-  /* Rayons — relevés dans les maquettes. */
   --radius-card: 12px;
-  --radius-tile: 10px; /* pastille d'icône, tuile du rail, carte de kanban */
+  --radius-tile: 10px;
   --radius-field: 9px;
   --radius-button: 8px;
-  --radius-control: 7px; /* puce de filtre, bouton de pagination */
+  --radius-control: 8px;
   --radius-pill: 6px;
-  --radius-chip: 5px;
-  --radius-tag: 4px;
+  --radius-chip: 7px;
+  --radius-tag: 5px;
+  --radius-overlay: 14px;
 
-  /* Hauteurs de contrôle et densité. */
-  --spacing-control: 33px; /* bouton */
-  --spacing-field: 36px; /* champ */
-  --spacing-row: 44px; /* ligne de tableau */
-  --spacing-tab: 30px; /* onglet contextuel, contrôle de barre d'outils */
-  --spacing-chip: 29px; /* puce de filtre */
-  --spacing-pager: 28px; /* bouton de pagination */
+  --spacing-control: 30px;
+  --spacing-field: 31px;
+  --spacing-row: 38px;
+  --spacing-row-normal: 46px;
+  --spacing-tab: 30px;
+  --spacing-chip: 26px;
+  --spacing-pager: 24px;
+  --spacing-topbar: 46px;
+  --spacing-rail: 68px;
+  --spacing-subnav: 186px;
 
+  --shadow-overlay: var(--candilog-shadow-overlay);
+  --shadow-menu: var(--candilog-shadow-menu);
   --shadow-e1: var(--candilog-shadow-1);
   --shadow-accent: var(--candilog-shadow-accent);
   --shadow-e2: var(--candilog-shadow-2);
   --shadow-e3: var(--candilog-shadow-3);
   --shadow-paper: var(--candilog-shadow-paper);
+
+  --duration-hover: 120ms;
 }
 
 @layer base {
@@ -239,25 +372,21 @@
     color: var(--color-ink);
     font-family: var(--font-sans);
     font-size: var(--text-body);
-    /* Les maquettes laissent l'interligne à `normal` ; la préparation de Tailwind
-       impose 1,5, ce qui gonfle toute ligne dépourvue de jeton typographique. */
+    letter-spacing: 0.005em;
     line-height: normal;
     -webkit-font-smoothing: antialiased;
   }
 
   ::selection {
-    background: rgb(41 87 216 / 0.22);
+    background: var(--candilog-accent-tint-12);
+    color: var(--color-ink);
   }
 
-  /* Anneau de focus accent, jamais supprimé — guide section 7. */
   :focus-visible {
-    outline: 2px solid var(--color-accent);
-    outline-offset: 2px;
+    outline: 1px solid var(--color-accent-focus);
+    outline-offset: 0;
   }
 
-  /* Barres de défilement discrètes et toujours présentes : le guide interdit de les
-     masquer sur les zones larges, mais la barre système par défaut est deux fois trop
-     épaisse pour la densité des maquettes. */
   * {
     scrollbar-color: var(--color-line-strong) transparent;
     scrollbar-width: thin;
@@ -289,8 +418,120 @@
 }
 
 @layer utilities {
-  /* Chiffres tabulaires : KPI, dates, pagination — règle du guide section 1. */
   .tabular {
     font-variant-numeric: tabular-nums;
+  }
+
+  .kbd {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 5px;
+    background: var(--candilog-fill);
+    padding: 2px 5px;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--color-ink-disabled);
+  }
+
+  .row-selected {
+    background: var(--candilog-accent-tint-08);
+    box-shadow: inset 2px 0 0 var(--color-accent);
+  }
+
+  .glass-rail,
+  .glass-topbar,
+  .glass-inspector {
+    backdrop-filter: blur(var(--candilog-blur-shell));
+    -webkit-backdrop-filter: blur(var(--candilog-blur-shell));
+  }
+
+  .glass-rail {
+    background: var(--candilog-glass-rail);
+  }
+
+  .glass-subnav {
+    background: var(--candilog-glass-subnav);
+    backdrop-filter: blur(var(--candilog-blur-subnav));
+    -webkit-backdrop-filter: blur(var(--candilog-blur-subnav));
+  }
+
+  .glass-topbar {
+    background: var(--candilog-glass-topbar);
+  }
+
+  .glass-inspector {
+    background: var(--candilog-glass-inspector);
+  }
+
+  .glass-popover {
+    background: var(--candilog-glass-popover);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+  }
+
+  .glass-menu {
+    background: var(--candilog-glass-menu);
+    backdrop-filter: blur(26px);
+    -webkit-backdrop-filter: blur(26px);
+  }
+
+  .glass-palette,
+  .glass-modal {
+    backdrop-filter: blur(var(--candilog-blur-overlay));
+    -webkit-backdrop-filter: blur(var(--candilog-blur-overlay));
+  }
+
+  .glass-palette {
+    background: var(--candilog-glass-palette);
+  }
+
+  .glass-modal {
+    background: var(--candilog-glass-modal);
+  }
+
+  .scrim-palette {
+    background: var(--candilog-scrim-palette);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+  }
+
+  @keyframes palette-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px) scale(0.985);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  .palette-in {
+    animation: palette-in 150ms cubic-bezier(0.2, 0.9, 0.3, 1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .palette-in {
+      animation: none;
+    }
+  }
+
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass-rail,
+    .glass-topbar,
+    .glass-inspector {
+      background: var(--candilog-glass-fallback);
+    }
+
+    .glass-subnav {
+      background: var(--candilog-surface-alt);
+    }
+
+    .glass-popover,
+    .glass-modal,
+    .glass-palette,
+    .glass-menu {
+      background: var(--candilog-surface-elevated);
+    }
   }
 }

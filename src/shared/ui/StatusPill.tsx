@@ -40,10 +40,10 @@ export function StatusPill({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-[5px] font-mid whitespace-nowrap",
+        "inline-flex h-5 items-center gap-[7px] font-medium whitespace-nowrap",
         compact
-          ? "rounded-chip px-2 py-[3px] text-label"
-          : "rounded-pill px-[9px] py-1 text-label",
+          ? "rounded-chip px-1.5 text-label"
+          : "rounded-pill px-2 text-label",
         TONES[tone],
         className,
       )}

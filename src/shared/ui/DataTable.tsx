@@ -68,7 +68,7 @@ export function DataTable<TRow, TSortKey extends string = string>({
   return (
     <div
       role="table"
-      className="min-w-0 overflow-hidden rounded-card border border-line bg-surface shadow-e1"
+      className="min-w-0 overflow-hidden rounded-card border border-line bg-surface"
     >
       {header}
 
@@ -76,7 +76,7 @@ export function DataTable<TRow, TSortKey extends string = string>({
         <div
           role="row"
           style={{ gridTemplateColumns: template }}
-          className="grid bg-neutral-tint px-[19px] py-[9px]"
+          className="grid h-[34px] items-center bg-surface-elevated px-3.5"
         >
           {columns.map((column) => {
             const sortable = column.sort_key !== undefined && onSortChange !== undefined;
@@ -112,7 +112,7 @@ export function DataTable<TRow, TSortKey extends string = string>({
                     : undefined
                 }
                 className={cn(
-                  "min-w-0 text-eyebrow text-ink-faint uppercase",
+                  "min-w-0 text-eyebrow uppercase tracking-[0.05em] text-ink-disabled",
                   column.numeric && "text-right",
                 )}
               >
@@ -158,11 +158,11 @@ export function DataTable<TRow, TSortKey extends string = string>({
               }
               style={{ gridTemplateColumns: template }}
               className={cn(
-                "grid items-center border-t border-line px-[19px] py-3",
-                onRowClick && "cursor-pointer transition-colors duration-150",
+                "grid h-row items-center border-t border-field px-3.5",
+                onRowClick && "cursor-pointer transition-colors duration-hover",
                 isSelected?.(row)
-                  ? "bg-accent-tint"
-                  : onRowClick && "hover:bg-neutral-tint",
+                  ? "row-selected"
+                  : onRowClick && "hover:bg-surface-hover",
               )}
             >
               {columns.map((column) => (

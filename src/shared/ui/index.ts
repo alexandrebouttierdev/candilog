@@ -2,27 +2,37 @@ export { Button, IconButton } from "./Button";
 export type { ButtonVariant } from "./Button";
 export { ApplicationPicker } from "./ApplicationPicker";
 export { Card, CardHeader, CardLink, CardMeta, CardTitle } from "./Card";
+export { CommandPalette, CommandPaletteTrigger, useCommandPalette } from "./CommandPalette";
 export { ConfirmDialog } from "./ConfirmDialog";
 export { CellIdentity, DataTable } from "./DataTable";
 export type { Column, SortState } from "./DataTable";
 export { DetailDrawer, DrawerRow, DrawerSection } from "./DetailDrawer";
 export { EmptyState } from "./EmptyState";
 export { EntityPicker } from "./EntityPicker";
-export { FilterBar, FilterChip } from "./FilterBar";
+export { FilterBar, FilterMenu, FilterGroup, FilterOption, ActiveFilterChip, ClearFiltersButton } from "./FilterBar";
 export type { EntityOption } from "./EntityPicker";
 export { Banner, ErrorBanner } from "./ErrorBanner";
 export { SearchInput, Select, TextArea, TextInput } from "./Field";
 export { FormField, controlClasses } from "./FormField";
+export { GlassSurface } from "./GlassSurface";
 export { Icon } from "./Icon";
+export {
+  Inspector,
+  InspectorEmpty,
+  InspectorRow,
+  InspectorSectionLabel,
+} from "./Inspector";
 export { MasterList, MasterListItem, MasterListTag, initials, wordInitials } from "./MasterList";
 export { ModalHost, ModalSection } from "./ModalHost";
 export { PageHeader, SegmentedControl } from "./PageHeader";
 export { ColumnPager, Pager, page_bounds } from "./Pager";
 export { RecordAction, RecordHeader, RecordStat } from "./RecordHeader";
 export { Skeleton, SkeletonRows } from "./Skeleton";
+export { SplitPane, TripleSplitPane } from "./SplitPane";
 export { StatCard } from "./StatCard";
 export { StatusPill, Tag } from "./StatusPill";
 export type { Tone } from "./StatusPill";
 export { TimelineList } from "./TimelineList";
 export type { TimelineEntry } from "./TimelineList";
+export { Toolbar } from "./Toolbar";
 export { Toaster } from "./Toaster";

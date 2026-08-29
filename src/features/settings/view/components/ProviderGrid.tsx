@@ -1,4 +1,3 @@
-import { Icon } from "@/shared/ui";
 import { cn } from "@/shared/lib/cn";
 import {
   FOURNISSEURS,
@@ -24,7 +23,16 @@ const LOGOS: Record<FournisseurOption["id"], { src: string; mono: boolean }> = {
   custom: { src: logoCustom, mono: true },
 };
 
-/** Grid de choix du fournisseur IA : des cartes, pas une liste déroulante. */
+export function logoFournisseur(id: FournisseurOption["id"]) {
+  return LOGOS[id];
+}
+
+export function defFournisseur(provider: ProviderKind): FournisseurOption {
+  const id = idProvider(provider);
+  return FOURNISSEURS.find((item) => item.id === id) ?? FOURNISSEURS[0]!;
+}
+
+/** Tuiles logo du fournisseur : sélection par barre d'accent, pas de cartes. */
 export function ProviderGrid({
   value,
   onChange,
@@ -38,7 +46,7 @@ export function ProviderGrid({
     <div
       role="radiogroup"
       aria-label="Fournisseur IA"
-      className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 [grid-template-columns:repeat(auto-fit,minmax(min(140px,100%),1fr))]"
+      className="grid grid-cols-4 gap-1.5 min-[720px]:grid-cols-7"
     >
       {FOURNISSEURS.map((fournisseur) => {
         const selected = fournisseur.id === actif;
@@ -52,26 +60,21 @@ export function ProviderGrid({
             aria-label={fournisseur.label}
             onClick={() => onChange(fournisseur.id)}
             className={cn(
-              "flex min-w-0 items-center gap-[9px] rounded-field border px-3 py-[11px] text-left",
-              "transition-[background-color,border-color] duration-150",
-              selected
-                ? "border-accent-border bg-accent-tint"
-                : "border-line bg-surface hover:bg-neutral-tint",
+              "flex min-w-0 flex-col items-center gap-1.5 rounded-none px-1.5 py-2",
+              "transition-colors duration-hover",
+              selected ? "row-selected" : "hover:bg-surface-hover",
             )}
           >
-            <span className="flex size-8 flex-none items-center justify-center rounded-control bg-surface ring-1 ring-inset ring-line">
+            <span className="flex size-8 flex-none items-center justify-center rounded-control bg-fill">
               <img
                 src={logo.src}
                 alt={fournisseur.label}
-                width={20}
-                height={20}
-                className={cn("size-5", logo.mono && "dark:invert")}
+                width={18}
+                height={18}
+                className={cn("size-[18px]", logo.mono && "dark:invert")}
               />
             </span>
-            <span className="min-w-0 flex-1 truncate text-body font-mid text-ink">
-              {fournisseur.label}
-            </span>
-            {selected ? <Icon name="check" size={16} className="ml-auto flex-none text-accent" /> : null}
+            <span className="w-full truncate text-center text-meta text-ink">{fournisseur.label}</span>
           </button>
         );
       })}

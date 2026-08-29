@@ -89,7 +89,7 @@ export function MasterListItem({
         className={cn(
           "flex size-8 flex-none items-center justify-center text-label font-strong",
           round ? "rounded-full" : "rounded-field",
-          selected ? "bg-accent text-white" : "bg-neutral-tint text-ink-muted",
+          selected ? "bg-accent text-on-accent" : "bg-fill text-ink-muted",
         )}
       >
         {initials}

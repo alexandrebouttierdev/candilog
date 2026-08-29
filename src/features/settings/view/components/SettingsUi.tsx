@@ -5,7 +5,7 @@ import { Icon } from "@/shared/ui";
 export function SettingsBody({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-0 flex-1 overflow-y-auto">
-      <div className="flex flex-col gap-4 px-7 pt-[22px] pb-[34px]">{children}</div>
+      <div className="flex flex-col gap-4 px-[18px] pt-4 pb-[22px]">{children}</div>
     </div>
   );
 }
@@ -30,7 +30,7 @@ export function SettingsCard({
     <section
       className={
         className ??
-        "min-w-0 overflow-hidden rounded-card border border-line bg-surface shadow-e1"
+        "min-w-0 overflow-hidden rounded-card border border-line bg-surface"
       }
     >
       <div className="border-b border-line px-[18px] py-[14px]">
@@ -56,7 +56,7 @@ export function SettingsHero({
   description: string;
 }) {
   return (
-    <section className="w-full min-w-0 rounded-card border border-line bg-surface px-[18px] py-5 shadow-e1">
+    <section className="w-full min-w-0 border-b border-line-soft pb-4">
       <p className="text-eyebrow text-accent uppercase">{kicker}</p>
       <h2 className="mt-1 text-title text-ink">{title}</h2>
       <p className="mt-2 max-w-2xl text-body leading-relaxed text-ink-muted">{description}</p>
@@ -77,7 +77,7 @@ export function ActionCard({
   children: ReactNode;
 }) {
   return (
-    <section className="flex min-h-44 min-w-0 flex-1 flex-col overflow-hidden rounded-card border border-line bg-surface shadow-e1">
+    <section className="flex min-h-44 min-w-0 flex-1 flex-col overflow-hidden rounded-card border border-line bg-surface">
       <div className="flex items-center gap-2 border-b border-line px-[18px] py-[14px]">
         <span className="flex size-[26px] items-center justify-center rounded-control bg-accent-tint text-accent">
           <Icon name={icon} size={15} />

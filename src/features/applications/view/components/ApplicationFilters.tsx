@@ -1,151 +1,205 @@
-import { useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  applicationFilterSchema,
-  FILTER_VIDE,
-  type ApplicationFilterInput,
-  type ApplicationFilterValues,
-} from "../../model/schemas/application-filter.schema";
+import { useEffect, useState, type ReactNode } from "react";
+import { type ApplicationFilterValues } from "../../model/schemas/application-filter.schema";
 import { Contracts, Statuses, contract_label } from "../../model/statuses";
-import { versDateAffichee } from "@/shared/lib/dates";
-import { Button, FormField, ModalHost, Select, TextInput } from "@/shared/ui";
+import { FORMAT_DATE, versDateAffichee, versDateIso } from "@/shared/lib/dates";
+import {
+  ActiveFilterChip,
+  ClearFiltersButton,
+  FilterBar,
+  FilterGroup,
+  FilterMenu,
+  FilterOption,
+  SearchInput,
+} from "@/shared/ui";
+import { cn } from "@/shared/lib/cn";
 
-/** Reconstitue les valeurs saisies depuis les filtres appliqués. */
-function from(filters: ApplicationFilterValues): ApplicationFilterInput {
-  return {
-    status: filters.status,
-    contract: filters.contract,
-    company_id: filters.company_id,
-    city: filters.city,
-    job_title: filters.job_title,
-    start_date: filters.start_date ? versDateAffichee(filters.start_date) : "",
-    end_date: filters.end_date ? versDateAffichee(filters.end_date) : "",
-  };
+function patch(
+  filters: ApplicationFilterValues,
+  update: Partial<ApplicationFilterValues>,
+): ApplicationFilterValues {
+  return { ...filters, ...update };
+}
+
+function periodValue(start: string | null, end: string | null): string | null {
+  if (start && end) return `${versDateAffichee(start)} → ${versDateAffichee(end)}`;
+  if (start) return `Depuis le ${versDateAffichee(start)}`;
+  if (end) return `Jusqu'au ${versDateAffichee(end)}`;
+  return null;
+}
+
+function CompactField({
+  value,
+  placeholder,
+  onChange,
+}: {
+  value: string;
+  placeholder: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <input
+      value={value}
+      placeholder={placeholder}
+      onChange={(event) => onChange(event.target.value)}
+      className={cn(
+        "h-[25px] min-h-[25px] w-full rounded-chip border border-control bg-fill px-2 text-label text-ink",
+        "placeholder:text-ink-disabled focus:border-accent focus:outline-none",
+      )}
+    />
+  );
 }
 
 /**
- * Filters cumulables du suivi.
- *
- * En modale plutôt qu'en barre dépliante : sept critères tiennent mal dans un bandeau, et
- * les maquettes montrent une barre de pastilles résumant l'état plutôt que les champs eux-mêmes.
+ * Toolbar du suivi : recherche 300 px, bouton Filtres, chips, actions.
  */
 export function ApplicationFilters({
-  open,
+  search,
+  onSearch,
   filters,
-  onClose,
+  count,
   onApply,
   onReset,
+  actions,
 }: {
-  open: boolean;
+  search: string;
+  onSearch: (value: string) => void;
   filters: ApplicationFilterValues;
-  onClose: () => void;
+  count: number;
   onApply: (values: ApplicationFilterValues) => void;
   onReset: () => void;
+  actions?: ReactNode;
 }) {
-  const form = useForm<ApplicationFilterInput, unknown, ApplicationFilterValues>({
-    resolver: zodResolver(applicationFilterSchema),
-    defaultValues: FILTER_VIDE,
-  });
+  const [start, setStart] = useState("");
+  const [end, setEnd] = useState("");
 
   useEffect(() => {
-    if (open) form.reset(from(filters));
-  }, [open, filters, form]);
+    setStart(filters.start_date ? versDateAffichee(filters.start_date) : "");
+    setEnd(filters.end_date ? versDateAffichee(filters.end_date) : "");
+  }, [filters.start_date, filters.end_date]);
 
-  const appliquer = form.handleSubmit((values) => {
-    onApply(values);
-    onClose();
-  });
+  const commitDate = (raw: string, key: "start_date" | "end_date") => {
+    const trimmed = raw.trim();
+    if (trimmed === "") {
+      onApply(patch(filters, { [key]: null }));
+      return;
+    }
+    const iso = versDateIso(trimmed);
+    if (iso) onApply(patch(filters, { [key]: iso }));
+  };
 
-  const errors = form.formState.errors;
+  const period = periodValue(filters.start_date, filters.end_date);
 
   return (
-    <ModalHost
-      open={open}
-      icon="filter_alt"
-      title="Filtrer les candidatures"
-      subtitle="Les critères se cumulent"
-      footer_note="Les dates sont saisies au format JJ-MM-AAAA."
-      submitLabel="Appliquer"
-      submitIcon="filter_alt"
-      onClose={onClose}
-      onSubmit={() => void appliquer()}
-      width="560px"
-    >
-      <form onSubmit={(event) => void appliquer(event)} className="grid grid-cols-2 gap-4">
-        <FormField label="Statut">
-          {(props) => (
-            <Select {...props} {...form.register("status")}>
-              <option value="">Tous</option>
-              {Statuses.map((status) => (
-                <option key={status.value} value={status.value}>
-                  {status.label}
-                </option>
-              ))}
-            </Select>
-          )}
-        </FormField>
-
-        <FormField label="Contrat">
-          {(props) => (
-            <Select {...props} {...form.register("contract")}>
-              <option value="">Tous</option>
-              {Contracts.map((contract) => (
-                <option key={contract} value={contract}>
-                  {contract_label(contract)}
-                </option>
-              ))}
-            </Select>
-          )}
-        </FormField>
-
-        <FormField label="Poste">
-          {(props) => (
-            <TextInput {...props} {...form.register("job_title")} placeholder="Développeur…" />
-          )}
-        </FormField>
-
-        <FormField label="Ville">
-          {(props) => <TextInput {...props} {...form.register("city")} placeholder="Rennes…" />}
-        </FormField>
-
-        <FormField label="Envoyée à partir du" error={errors.start_date?.message}>
-          {(props) => (
-            <TextInput
-              {...props}
-              {...form.register("start_date")}
-              placeholder="JJ-MM-AAAA"
-              inputMode="numeric"
-              invalid={Boolean(errors.start_date)}
+    <FilterBar actions={actions}>
+      <SearchInput
+        variant="toolbar"
+        value={search}
+        onValueChange={onSearch}
+        placeholder="Rechercher…"
+      />
+      <FilterMenu count={count}>
+        <FilterGroup label="Statut">
+          {Statuses.map((status) => (
+            <FilterOption
+              key={status.value}
+              label={status.label}
+              selected={filters.status === status.value}
+              onSelect={() =>
+                onApply(
+                  patch(filters, {
+                    status: filters.status === status.value ? null : status.value,
+                  }),
+                )
+              }
             />
-          )}
-        </FormField>
-
-        <FormField label="Jusqu'au" error={errors.end_date?.message}>
-          {(props) => (
-            <TextInput
-              {...props}
-              {...form.register("end_date")}
-              placeholder="JJ-MM-AAAA"
-              inputMode="numeric"
-              invalid={Boolean(errors.end_date)}
+          ))}
+        </FilterGroup>
+        <FilterGroup label="Contrat">
+          {Contracts.map((contract) => (
+            <FilterOption
+              key={contract}
+              label={contract_label(contract)}
+              selected={filters.contract === contract}
+              onSelect={() =>
+                onApply(
+                  patch(filters, {
+                    contract: filters.contract === contract ? null : contract,
+                  }),
+                )
+              }
             />
-          )}
-        </FormField>
-
-        <div className="col-span-2">
-          <Button
-            variant="ghost"
-            icon="filter_alt_off"
-            onClick={() => {
-              onReset();
-              onClose();
+          ))}
+        </FilterGroup>
+        <FilterGroup label="Poste">
+          <CompactField
+            value={filters.job_title}
+            placeholder="Développeur…"
+            onChange={(job_title) => onApply(patch(filters, { job_title }))}
+          />
+        </FilterGroup>
+        <FilterGroup label="Ville">
+          <CompactField
+            value={filters.city}
+            placeholder="Rennes…"
+            onChange={(city) => onApply(patch(filters, { city }))}
+          />
+        </FilterGroup>
+        <FilterGroup label="Période">
+          <CompactField
+            value={start}
+            placeholder={`${FORMAT_DATE} — début`}
+            onChange={(value) => {
+              setStart(value);
+              commitDate(value, "start_date");
             }}
-          >
-            Réinitialiser tous les filtres
-          </Button>
-        </div>
-      </form>
-    </ModalHost>
+          />
+          <CompactField
+            value={end}
+            placeholder={`${FORMAT_DATE} — fin`}
+            onChange={(value) => {
+              setEnd(value);
+              commitDate(value, "end_date");
+            }}
+          />
+        </FilterGroup>
+      </FilterMenu>
+
+      {filters.status ? (
+        <ActiveFilterChip
+          field="Statut"
+          value={Statuses.find((status) => status.value === filters.status)?.label ?? filters.status}
+          onRemove={() => onApply(patch(filters, { status: null }))}
+        />
+      ) : null}
+      {filters.contract ? (
+        <ActiveFilterChip
+          field="Contrat"
+          value={contract_label(filters.contract)}
+          onRemove={() => onApply(patch(filters, { contract: null }))}
+        />
+      ) : null}
+      {filters.job_title ? (
+        <ActiveFilterChip
+          field="Poste"
+          value={filters.job_title}
+          onRemove={() => onApply(patch(filters, { job_title: "" }))}
+        />
+      ) : null}
+      {filters.city ? (
+        <ActiveFilterChip
+          field="Ville"
+          value={filters.city}
+          onRemove={() => onApply(patch(filters, { city: "" }))}
+        />
+      ) : null}
+      {period ? (
+        <ActiveFilterChip
+          field="Période"
+          value={period}
+          onRemove={() => onApply(patch(filters, { start_date: null, end_date: null }))}
+        />
+      ) : null}
+      {count > 0 ? <ClearFiltersButton onClick={onReset} /> : null}
+    </FilterBar>
   );
 }

@@ -24,7 +24,7 @@ export function DocumentPanel({
   return (
     <section
       className={cn(
-        "overflow-hidden rounded-card border border-line bg-surface shadow-e1",
+        "overflow-hidden rounded-card border border-line bg-surface",
         className,
       )}
     >

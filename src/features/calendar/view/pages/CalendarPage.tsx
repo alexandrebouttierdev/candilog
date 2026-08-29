@@ -162,7 +162,7 @@ export function CalendarPage() {
               onClick={() => setView(item.id)}
               className={cn(
                 "h-7 rounded-[6px] px-2.5 text-meta font-medium transition-[background-color,color] duration-150",
-                view === item.id ? "bg-surface text-ink shadow-e1" : "text-ink-muted hover:text-ink",
+                view === item.id ? "bg-surface text-ink" : "text-ink-muted hover:text-ink",
               )}
             >
               {item.label}

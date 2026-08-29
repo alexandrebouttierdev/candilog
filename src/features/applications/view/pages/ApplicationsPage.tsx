@@ -10,7 +10,6 @@ import { ApplicationFormModal } from "../components/ApplicationFormModal";
 import { ApplicationFilters } from "../components/ApplicationFilters";
 import { ApplicationDetail } from "../components/ApplicationDetail";
 import { KanbanBoard } from "../components/KanbanBoard";
-import { ContextBarAccessory, ContextSearch } from "@/app/layout/ContextBar";
 import {
   Button,
   CellIdentity,
@@ -18,9 +17,7 @@ import {
   DataTable,
   EmptyState,
   ErrorBanner,
-  FilterBar,
-  FilterChip,
-  PageHeader,
+  InspectorEmpty,
   Pager,
   SegmentedControl,
   SkeletonRows,
@@ -44,7 +41,6 @@ export function ApplicationsPage() {
     ouvert: searchParams.get("nouvelle") === "1",
     cible: null,
   });
-  const [filtersOuverts, setFiltersOuverts] = useState(false);
   const [aDelete, setADelete] = useState<Application | null>(null);
   const [exportEnCours, setExportEnCours] = useState(false);
 
@@ -146,89 +142,39 @@ export function ApplicationsPage() {
     },
   ];
 
-  const filters = vm.filters;
-
   return (
     <div className="flex h-full flex-col">
-      <ContextBarAccessory>
-        <ContextSearch
-          value={vm.search}
-          onChange={vm.rechercher}
-          placeholder="Rechercher un poste, une entreprise…"
-          width={250}
-        />
-      </ContextBarAccessory>
-
-      <PageHeader
-        icon="work"
-        title="Candidatures"
-        subtitle="Suivi de vos dossiers"
-        toolbar={
-          <SegmentedControl
-            label="Mode d’affichage"
-            value={vm.view}
-            onChange={vm.setView}
-            options={[
-              { value: "kanban", label: "Kanban", icon: "view_kanban" },
-              { value: "liste", label: "Liste", icon: "view_list" },
-            ]}
-          />
-        }
-        secondary={
-          <Button icon="download" disabled={exportEnCours} onClick={() => void exporter()}>
-            Export
-          </Button>
-        }
-        primary={
-          <Button
-            variant="primary"
-            icon="add"
-            onClick={() => setForm({ ouvert: true, cible: null })}
-          >
-            Nouvelle candidature
-          </Button>
+      <ApplicationFilters
+        search={vm.search}
+        onSearch={vm.rechercher}
+        filters={vm.filters}
+        count={vm.filtersActifs}
+        onApply={vm.appliquerFilters}
+        onReset={vm.resetFilters}
+        actions={
+          <>
+            <SegmentedControl
+              label="Mode d'affichage"
+              value={vm.view}
+              onChange={vm.setView}
+              options={[
+                { value: "kanban", label: "Board", icon: "view_kanban" },
+                { value: "liste", label: "Liste", icon: "view_list" },
+              ]}
+            />
+            <Button icon="download" disabled={exportEnCours} onClick={() => void exporter()}>
+              Export
+            </Button>
+            <Button
+              variant="primary"
+              icon="add"
+              onClick={() => setForm({ ouvert: true, cible: null })}
+            >
+              Nouvelle
+            </Button>
+          </>
         }
       />
-
-      <FilterBar
-        summary={
-          vm.isLoading
-            ? null
-            : `${vm.total} candidature${vm.total > 1 ? "s" : ""}${
-                vm.filtersActifs > 0 ? " · filtrées" : ""
-              }`
-        }
-      >
-        <FilterChip
-          icon="filter_alt"
-          label={filters.status ? status_meta(filters.status).label : "Statut"}
-          active={filters.status !== null}
-          onClick={() => setFiltersOuverts(true)}
-        />
-        <FilterChip
-          icon="badge"
-          label={filters.contract ? contract_label(filters.contract) : "Contrat"}
-          active={filters.contract !== null}
-          onClick={() => setFiltersOuverts(true)}
-        />
-        <FilterChip
-          icon="apartment"
-          label={filters.city || "Ville"}
-          active={filters.city !== ""}
-          onClick={() => setFiltersOuverts(true)}
-        />
-        <FilterChip
-          icon="date_range"
-          label={periodLabel(filters.start_date, filters.end_date)}
-          active={filters.start_date !== null || filters.end_date !== null}
-          onClick={() => setFiltersOuverts(true)}
-        />
-        {vm.filtersActifs > 0 ? (
-          <Button variant="ghost" icon="filter_alt_off" onClick={vm.resetFilters}>
-            Effacer
-          </Button>
-        ) : null}
-      </FilterBar>
 
       <div className="flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col">
@@ -245,7 +191,7 @@ export function ApplicationsPage() {
             </div>
           ) : vm.isLoading ? (
             <div className="px-7 pt-[18px]">
-              <div className="overflow-hidden rounded-card border border-line bg-surface shadow-e1">
+              <div className="overflow-hidden rounded-card border border-line bg-surface">
                 <SkeletonRows rows={6} columns={5} />
               </div>
             </div>
@@ -262,8 +208,14 @@ export function ApplicationsPage() {
                 }
                 action={
                   vm.search || vm.filtersActifs > 0 ? (
-                    <Button icon="filter_alt_off" onClick={vm.resetFilters}>
-                      Effacer les filters
+                    <Button
+                      icon="filter_alt_off"
+                      onClick={() => {
+                        vm.resetFilters();
+                        vm.rechercher("");
+                      }}
+                    >
+                      Tout effacer
                     </Button>
                   ) : (
                     <Button
@@ -287,7 +239,7 @@ export function ApplicationsPage() {
               onCreate={() => setForm({ ouvert: true, cible: null })}
             />
           ) : (
-            <div className="min-h-0 flex-1 overflow-auto px-7 pt-[18px] pb-[26px]">
+            <div className="min-h-0 flex-1 overflow-auto px-4 pt-3 pb-5">
               <DataTable
                 columns={columns}
                 rows={vm.items}
@@ -320,6 +272,10 @@ export function ApplicationsPage() {
             onDelete={() => setADelete(vm.selection)}
             onStatusChange={(status) => void vm.changeStatus({ id: vm.selection!.id, status })}
           />
+        ) : vm.view === "liste" && vm.total > 0 ? (
+          <aside className="glass-inspector flex w-[380px] flex-none flex-col border-l border-glass-inspector">
+            <InspectorEmpty />
+          </aside>
         ) : null}
       </div>
 
@@ -333,14 +289,6 @@ export function ApplicationsPage() {
             ? vm.update({ id: form.cible.id, input: values })
             : vm.create(values)
         }
-      />
-
-      <ApplicationFilters
-        open={filtersOuverts}
-        filters={vm.filters}
-        onClose={() => setFiltersOuverts(false)}
-        onApply={vm.appliquerFilters}
-        onReset={vm.resetFilters}
       />
 
       <ConfirmDialog
@@ -358,14 +306,6 @@ export function ApplicationsPage() {
       />
     </div>
   );
-}
-
-/** Libellé de la puce de période : la borne renseignée, ou les deux. */
-function periodLabel(start: string | null, end: string | null): string {
-  if (start && end) return `${versDateAffichee(start)} → ${versDateAffichee(end)}`;
-  if (start) return `Depuis le ${versDateAffichee(start)}`;
-  if (end) return `Jusqu’au ${versDateAffichee(end)}`;
-  return "Période";
 }
 
 /** Initials de l'entreprise, pour la pastille de la colonne « Poste ». */

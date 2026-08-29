@@ -1,18 +1,18 @@
 import type { Application } from "../../services/applicationService";
 import { Statuses, contract_label, status_meta } from "../../model/statuses";
 import { daysFrom, versDateAffichee } from "@/shared/lib/dates";
-import { Button, DetailDrawer, DrawerRow, DrawerSection, Icon } from "@/shared/ui";
+import {
+  Button,
+  Icon,
+  IconButton,
+  Inspector,
+  InspectorRow,
+  InspectorSectionLabel,
+} from "@/shared/ui";
 import type { ApplicationStatus } from "../../services/applicationService";
 import { cn } from "@/shared/lib/cn";
 
-/**
- * Panneau latéral de détail d'une candidature.
- *
- * Reprend le panneau des maquettes : encadré de statut en teinte accent, groupes
- * libellé/valeur à filet, puis notes. Le statut y est **modifiable directement** : c'est
- * l'équivalent clavier du glisser-déposer du Kanban, et la vue List n'offrirait sinon aucun
- * moyen de faire avancer un dossier.
- */
+/** Panneau latéral de détail d'une candidature. */
 export function ApplicationDetail({
   application,
   onClose,
@@ -37,9 +37,8 @@ export function ApplicationDetail({
   };
 
   return (
-    <DetailDrawer
+    <Inspector
       open
-      initials={initials(application.company_name ?? application.job_title)}
       title={application.job_title}
       subtitle={[
         application.company_name ?? "Entreprise inconnue",
@@ -51,93 +50,74 @@ export function ApplicationDetail({
       onClose={onClose}
       actions={
         <>
-          <Button variant="danger" icon="delete" onClick={onDelete}>
-            Supprimer
-          </Button>
-          <span className="flex-1" />
-          <Button variant="primary" icon="edit" onClick={onEdit}>
+          <Button variant="secondary" icon="edit" onClick={onEdit}>
             Modifier
           </Button>
+          <IconButton icon="delete" label="Supprimer" onClick={onDelete} className="text-danger" />
         </>
       }
-    >
-      <div className="mb-[18px] flex items-center gap-3 rounded-tile border border-accent-border bg-accent-tint px-3.5 py-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-note font-semibold text-accent">Statut de la candidature</p>
-          <p className="mt-0.5 text-meta text-ink-muted">Choisissez l’étape du suivi</p>
-        </div>
-        <div className="relative flex h-8 flex-none items-center gap-2 rounded-button border border-line bg-surface pr-8 pl-[11px]">
+      headerExtra={
+        <div className="flex items-center gap-2">
           <span aria-hidden className={cn("size-1.5 rounded-full", POINT[status.tone])} />
-          <span className="text-body font-mid text-ink">{status.label}</span>
-          <Icon
-            name="expand_more"
-            size={17}
-            className="pointer-events-none absolute right-2 text-ink-faint"
-          />
-          <select
-            aria-label="Changer le statut"
-            value={application.status}
-            onChange={(event) => onStatusChange(event.target.value as ApplicationStatus)}
-            className="absolute inset-0 cursor-pointer opacity-0"
-          >
-            {Statuses.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <DrawerSection icon="work" title="Candidature">
-        <DrawerRow label="Contrat">{contract_label(application.contract_type)}</DrawerRow>
-        <DrawerRow label="Envoyée le">
-          <span className="tabular">{versDateAffichee(application.sent_date)}</span>
-        </DrawerRow>
-        <DrawerRow label="Ancienneté">{daysFrom(application.sent_date)} jours</DrawerRow>
-        <DrawerRow label="Ville" tone={application.company_city ? undefined : "muted"}>
-          {application.company_city ?? "Non renseignée"}
-        </DrawerRow>
-        <DrawerRow label="Offre" tone={application.job_url ? "accent" : "muted"}>
-          {application.job_url ? (
-            // `rel` et `target` explicites : l'application est servie depuis un contexte
-            // local, un lien externe sans `noreferrer` exposerait son origine.
-            <a
-              href={application.job_url}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="underline-offset-2 hover:underline"
+          <div className="relative flex h-[29px] flex-1 items-center gap-2 rounded-control border border-control bg-surface pr-7 pl-2.5">
+            <span className="text-body text-ink">{status.label}</span>
+            <Icon
+              name="expand_more"
+              size={15}
+              className="pointer-events-none absolute right-1.5 text-ink-faint"
+            />
+            <select
+              aria-label="Changer le statut"
+              value={application.status}
+              onChange={(event) => onStatusChange(event.target.value as ApplicationStatus)}
+              className="absolute inset-0 cursor-pointer opacity-0"
             >
-              {application.job_url}
-            </a>
-          ) : (
-            "Aucun lien"
-          )}
-        </DrawerRow>
-      </DrawerSection>
+              {Statuses.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      }
+    >
+      <InspectorSectionLabel>Candidature</InspectorSectionLabel>
+      <InspectorRow label="Contrat">{contract_label(application.contract_type)}</InspectorRow>
+      <InspectorRow label="Envoyée le">
+        <span className="tabular">{versDateAffichee(application.sent_date)}</span>
+      </InspectorRow>
+      <InspectorRow label="Ancienneté">{daysFrom(application.sent_date)} jours</InspectorRow>
+      <InspectorRow label="Ville" tone={application.company_city ? undefined : "muted"}>
+        {application.company_city ?? "Non renseignée"}
+      </InspectorRow>
+      <InspectorRow label="Offre" tone={application.job_url ? "accent" : "muted"}>
+        {application.job_url ? (
+          <a
+            href={application.job_url}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="underline-offset-2 hover:underline"
+          >
+            Ouvrir l'offre
+          </a>
+        ) : (
+          "Aucun lien"
+        )}
+      </InspectorRow>
 
-      <DrawerSection icon="notes" title="Notes">
+      <div className="mt-4 border-t border-line-soft pt-3">
+        <InspectorSectionLabel>Notes</InspectorSectionLabel>
         {application.notes ? (
-          <p className="text-body leading-normal whitespace-pre-wrap text-ink">
+          <p className="text-body leading-normal whitespace-pre-wrap text-ink-strong">
             {application.notes}
           </p>
         ) : (
-          <p className="text-label leading-normal text-ink-faint">
-            Aucune note. Utilisez « Modifier » pour consigner le contexte de la candidature.
+          <p className="text-note text-ink-faint">
+            Aucune note. Utilisez « Modifier » pour consigner le contexte.
           </p>
         )}
-      </DrawerSection>
-    </DetailDrawer>
+      </div>
+    </Inspector>
   );
-}
-
-/** Initials de l'entreprise, pour la pastille d'en-tête du panneau. */
-function initials(value: string): string {
-  return value
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((mot) => mot[0])
-    .join("")
-    .toUpperCase();
 }

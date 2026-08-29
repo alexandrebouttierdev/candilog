@@ -3,7 +3,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { render, screen } from "@testing-library/react";
 import { AppShell } from "../AppShell";
 import { NavRail } from "../NavRail";
-import { ContextTabs } from "../ContextTabs";
+import { TopBar } from "../TopBar";
 
 describe("coque applicative", () => {
   it("offre un lien d'évitement vers le contenu et un seul main", () => {
@@ -24,31 +24,29 @@ describe("coque applicative", () => {
 });
 
 describe("rail de navigation", () => {
-  it("conserve les libellés et un nom accessible, comme les maquettes", () => {
+  it("expose des entrées accessibles par icône avec libellé complet", () => {
     render(
       <MemoryRouter>
         <NavRail />
       </MemoryRouter>,
     );
-    expect(screen.getByRole("link", { name: "Tableau de bord" })).toBeInTheDocument();
-    expect(screen.getByText("Accueil")).toHaveClass("text-micro", "font-mid");
-    expect(screen.getByRole("button", { name: "Passer en thème sombre" })).toHaveTextContent("Clair");
+    expect(screen.getByRole("navigation", { name: "Navigation principale" })).toHaveClass("z-20");
+    expect(screen.getByRole("link", { name: "Aujourd'hui" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Passer en thème sombre" })).toBeInTheDocument();
     const logo = screen.getByRole("img", { name: "Candilog" });
-    expect(logo).toHaveAttribute("width", "40");
-    expect(logo).toHaveAttribute("height", "40");
-    expect(logo).toHaveClass("size-10");
+    expect(logo).toHaveAttribute("width", "36");
+    expect(logo).toHaveAttribute("height", "36");
   });
 });
 
-describe("onglets contextuels", () => {
-  it("expose l'onglet actif aux technologies d'assistance", () => {
+describe("barre supérieure", () => {
+  it("affiche le titre de l'écran actif", () => {
     render(
       <MemoryRouter initialEntries={["/tracking/calendar"]}>
-        <ContextTabs slotRef={() => {}} />
+        <TopBar slotRef={() => {}} onOpenPalette={() => {}} />
       </MemoryRouter>,
     );
-    expect(screen.getByRole("tab", { name: /Calendrier/ })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByRole("tab", { name: /Candidatures/ })).toHaveAttribute("aria-selected", "false");
-    expect(screen.getByRole("tab", { name: /Calendrier/ })).toHaveClass("bg-accent-tint");
+    expect(screen.getByRole("heading", { name: "Calendrier" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Rechercher ou exécuter" })).toBeInTheDocument();
   });
 });

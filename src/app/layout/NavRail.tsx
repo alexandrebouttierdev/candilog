@@ -4,16 +4,10 @@ import { applyTheme, useUiStore } from "@/shared/lib/ui-store";
 import type { ThemePref } from "@/shared/types/generated/settings";
 import { settingsService } from "@/features/settings/services/settingsService";
 import { Icon } from "@/shared/ui/Icon";
+import { cn } from "@/shared/lib/cn";
 import logoCandilog from "@/assets/logo-candilog.png";
 
-/**
- * Rail de navigation de premier niveau.
- *
- * Géométrie des maquettes : 86 px de large, marque en 40 px, tuiles de 10 px de rayon
- * espacées de 3 px dans une gouttière de 9 px, basculeur de thème collé en bas. Sous
- * 1200 px la largeur tombe à 72 px (guide SPECDESIGN, section 7) mais les libellés
- * restent : ils tiennent, et un rail d'icônes muettes est illisible.
- */
+/** Rail compact : 68 px, items 42×36, tooltip immédiat. */
 export function NavRail() {
   const { pathname } = useLocation();
   const active = sectionForPath(pathname);
@@ -29,29 +23,36 @@ export function NavRail() {
   return (
     <nav
       aria-label="Navigation principale"
-      className="flex w-[72px] flex-none flex-col items-center overflow-hidden border-r border-line bg-surface-alt pt-[18px] pb-3.5 min-[1200px]:w-[86px]"
+      className="glass-rail relative z-20 flex w-rail flex-none flex-col items-center overflow-visible border-r border-glass-rail pt-3 pb-2.5"
     >
-      <img src={logoCandilog} alt="Candilog" width={40} height={40} className="mb-4 size-10" />
-      <div className="flex min-h-0 flex-1 flex-col gap-[3px] self-stretch px-[9px]">
-        {Sections.map((section) => {
+      <img src={logoCandilog} alt="Candilog" width={36} height={36} className="mb-3 size-9" />
+      <span aria-hidden className="mb-2.5 h-px w-6 bg-line" />
+      <div className="flex min-h-0 flex-1 flex-col gap-1 self-stretch overflow-visible px-[13px]">
+        {Sections.map((section, index) => {
           const isActive = section.key === active.key;
           return (
-            <NavLink
-              key={section.key}
-              to={section.routes[0]!.path}
-              title={section.long_label}
-              aria-label={section.long_label}
-              aria-current={isActive ? "page" : undefined}
-              className={[
-                "flex min-w-0 flex-col items-center gap-[5px] rounded-tile px-1 pt-[9px] pb-[7px]",
-                "transition-colors duration-[120ms]",
-                "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
-                isActive ? "bg-accent-tint text-accent" : "text-ink-faint hover:bg-neutral-tint",
-              ].join(" ")}
-            >
-              <Icon name={section.icon} size={21} />
-              <span className="max-w-full truncate text-micro font-mid">{section.short_label}</span>
-            </NavLink>
+            <div key={section.key} className="group relative flex justify-center">
+              <NavLink
+                to={section.routes[0]!.path}
+                title={section.long_label}
+                aria-label={section.long_label}
+                aria-current={isActive ? "page" : undefined}
+                className={cn(
+                  "flex h-9 w-[42px] flex-none items-center justify-center rounded-tile",
+                  "transition-colors duration-hover ease-in-out",
+                  "focus-visible:outline-1 focus-visible:outline-accent-focus",
+                  isActive
+                    ? "border border-accent-border bg-accent-tint text-accent-hover"
+                    : "text-ink-subtle hover:bg-surface-hover hover:text-ink-muted",
+                )}
+              >
+                <Icon name={section.icon} size={20} />
+              </NavLink>
+              <span className="pointer-events-none absolute top-1/2 left-[54px] z-[60] flex -translate-y-1/2 items-center gap-2.5 rounded-button border border-overlay bg-[var(--candilog-glass-menu)] px-2.5 py-1.5 whitespace-nowrap opacity-0 shadow-menu backdrop-blur-[14px] group-hover:opacity-100">
+                <span className="text-note whitespace-nowrap text-ink">{section.long_label}</span>
+                <span className="kbd">⌘{index + 1}</span>
+              </span>
+            </div>
           );
         })}
       </div>
@@ -70,12 +71,9 @@ export function NavRail() {
               /* Revue navigateur sans backend : le thème reste en session. */
             });
         }}
-        className="mx-[9px] flex flex-col items-center gap-1.5 self-stretch rounded-tile py-[9px] text-ink-faint transition-colors duration-[120ms] hover:bg-neutral-tint"
+        className="mt-1 flex h-9 w-[42px] flex-none items-center justify-center rounded-tile text-ink-subtle transition-colors duration-hover hover:bg-surface-hover hover:text-ink-muted"
       >
-        <Icon name={sombre ? "dark_mode" : "light_mode"} size={19} />
-        <span className="max-w-full truncate text-micro font-mid">
-          {sombre ? "Sombre" : "Clair"}
-        </span>
+        <Icon name={sombre ? "dark_mode" : "light_mode"} size={20} />
       </button>
     </nav>
   );

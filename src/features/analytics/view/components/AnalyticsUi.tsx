@@ -65,7 +65,7 @@ export function UpcomingList({ upcoming_items }: { upcoming_items: readonly Upco
           <li key={`${upcoming_item.kind}-${upcoming_item.id}`} className="border-t border-line">
             <Link
               to="/tracking/calendar"
-              className="flex items-center gap-3 py-[11px] transition-colors duration-150 hover:bg-neutral-tint"
+              className="flex items-center gap-3 py-[11px] transition-colors duration-hover hover:bg-surface-hover"
             >
               <span
                 className={cn(
@@ -112,10 +112,14 @@ export function ActivityChart({
   activity,
   height = 98,
   gap = 8,
+  showCounts = true,
+  shortLabels = false,
 }: {
   activity: readonly ActivityWeek[];
   height?: number;
   gap?: number;
+  showCounts?: boolean;
+  shortLabels?: boolean;
 }) {
   if (activity.every((week) => week.count === 0)) {
     return (
@@ -142,9 +146,11 @@ export function ActivityChart({
             key={week.start}
             className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1.5"
           >
-            <span className="tabular text-eyebrow font-normal tracking-normal text-ink-faint">
-              {week.count}
-            </span>
+            {showCounts ? (
+              <span className="tabular text-eyebrow font-normal tracking-normal text-ink-faint">
+                {week.count}
+              </span>
+            ) : null}
             <div
               style={{ height: `${(week.count / maximum) * 100}%` }}
               className={cn(
@@ -161,7 +167,7 @@ export function ActivityChart({
             key={week.start}
             className="min-w-0 flex-1 truncate text-center text-eyebrow font-normal tracking-normal text-ink-faint"
           >
-            {formatDate(week.start, "court")}
+            {formatDate(week.start, shortLabels ? "numeric" : "court")}
           </span>
         ))}
       </div>
@@ -488,9 +494,12 @@ export function initials(value: string): string {
     .toUpperCase();
 }
 
-function formatDate(value: string, format: "court" | "long"): string {
+function formatDate(value: string, format: "court" | "long" | "numeric"): string {
   const date = new Date(`${value.slice(0, 10)}T12:00:00`);
   if (Number.isNaN(date.getTime())) return value.slice(0, 10);
+  if (format === "numeric") {
+    return new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "2-digit" }).format(date);
+  }
   return new Intl.DateTimeFormat("fr-FR", {
     day: format === "long" ? "2-digit" : "numeric",
     month: "short",

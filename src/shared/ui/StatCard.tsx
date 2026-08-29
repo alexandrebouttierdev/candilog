@@ -52,7 +52,7 @@ export function StatCard({
   return (
     <div
       className={cn(
-        "min-w-0 rounded-card border border-line bg-surface px-[18px] py-4 shadow-e1",
+        "min-w-0 rounded-card border border-line bg-surface px-[11px] py-2.5",
         className,
       )}
     >

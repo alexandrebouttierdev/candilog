@@ -22,7 +22,7 @@ export function Icon({
       className={`material-symbols-rounded select-none leading-none ${className}`}
       style={{
         fontSize: size,
-        fontVariationSettings: `'FILL' ${filled ? 1 : 0}, 'wght' 400, 'GRAD' 0, 'opsz' ${size}`,
+        fontVariationSettings: `'FILL' ${filled ? 1 : 0}, 'wght' 300, 'GRAD' 0, 'opsz' ${Math.min(size, 20)}`,
       }}
     >
       {name}

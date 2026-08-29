@@ -23,7 +23,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "min-w-0 rounded-card border border-line bg-surface shadow-e1",
+        "min-w-0 rounded-card border border-line bg-surface",
         padded && "px-[19px] py-[17px]",
         clipped && "overflow-hidden",
         className,
