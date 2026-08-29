@@ -13,6 +13,8 @@ describe("AnalyticsUi", () => {
     );
 
     expect(screen.getByRole("img", { name: "Candidatures envoyées par semaine" })).toBeInTheDocument();
+    expect(screen.getByText("1")).toBeInTheDocument();
+    expect(screen.getByText("3")).toBeInTheDocument();
     expect(screen.getByText(/Semaine du 17 août : 1 candidature/)).toBeInTheDocument();
     expect(screen.getByText(/Semaine du 24 août : 3 candidatures/)).toBeInTheDocument();
   });

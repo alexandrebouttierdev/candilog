@@ -75,8 +75,8 @@ describe("écran Aujourd'hui", () => {
     expect(screen.getByText("Prochainement")).toBeInTheDocument();
     expect(screen.getByText("30 derniers jours")).toBeInTheDocument();
     expect(screen.getByText("À relancer")).toBeInTheDocument();
-    expect(screen.getByText("Nova Digital")).toBeInTheDocument();
-    expect(screen.getByText("Atlas Studio")).toBeInTheDocument();
+    expect(screen.getAllByText("Nova Digital").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Atlas Studio").length).toBeGreaterThan(0);
     expect(screen.queryByText("Rien de prévu")).not.toBeInTheDocument();
   });
 

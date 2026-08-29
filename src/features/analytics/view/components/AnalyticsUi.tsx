@@ -147,9 +147,7 @@ export function ActivityChart({
             className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1.5"
           >
             {showCounts ? (
-              <span className="tabular text-eyebrow font-normal tracking-normal text-ink-faint">
-                {week.count}
-              </span>
+              <span className="font-mono tabular text-meta text-ink">{week.count}</span>
             ) : null}
             <div
               style={{ height: `${(week.count / maximum) * 100}%` }}

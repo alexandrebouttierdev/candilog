@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
+import { render, screen } from "@testing-library/react";
 import type { Dashboard, UpcomingItem } from "@/shared/types/generated/analytics";
-import { formatEventTime, formatWhenShort, isTodayEmpty, splitUpcoming } from "../TodayUi";
+import {
+  buildTodos,
+  formatEventTime,
+  formatWhenShort,
+  isTodayEmpty,
+  splitUpcoming,
+  TodoRows,
+} from "../TodayUi";
 
 function item(kind: string, id: string): UpcomingItem {
   return {
@@ -81,5 +89,56 @@ describe("splitUpcoming", () => {
 
   it("reste vide sans échéance", () => {
     expect(splitUpcoming([])).toEqual({ next: null, rest: [] });
+  });
+});
+
+describe("buildTodos", () => {
+  const now = new Date(2026, 7, 29);
+
+  it("place les relances en retard en tête, puis les actions du jour", () => {
+    const todos = buildTodos(2, [item("relance", "r1"), item("entretien", "e1")], now);
+    expect(todos.map((todo) => todo.key)).toEqual(["overdue", "prep-e1", "relance-r1"]);
+    expect(todos[0]?.kind).toBe("En retard");
+    expect(todos[1]?.kind).toBe("Préparer");
+    expect(todos[2]?.kind).toBe("Email");
+  });
+
+  it("ignore les échéances qui ne sont pas aujourd'hui", () => {
+    const demain: UpcomingItem = { ...item("entretien", "e2"), date: "2026-08-30T09:00:00+02:00" };
+    expect(buildTodos(0, [demain], now)).toEqual([]);
+  });
+});
+
+describe("TodoRows", () => {
+  const now = new Date(2026, 7, 29);
+
+  it("affiche une file d'actions avec le compte et sans case à cocher", () => {
+    render(
+      <TodoRows
+        overdue={1}
+        items={[item("entretien", "e1")]}
+        now={now}
+        onOpenApplications={() => {}}
+        onOpenCalendar={() => {}}
+      />,
+    );
+    expect(screen.getByRole("region", { name: "À faire" })).toBeInTheDocument();
+    expect(screen.getByLabelText("2 à faire")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Relancer les candidatures en retard/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Nova Digital/ })).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+  });
+
+  it("reste visible quand il n'y a rien à traiter", () => {
+    render(
+      <TodoRows
+        overdue={0}
+        items={[]}
+        now={now}
+        onOpenApplications={() => {}}
+        onOpenCalendar={() => {}}
+      />,
+    );
+    expect(screen.getByText("Rien à traiter aujourd'hui.")).toBeInTheDocument();
   });
 });

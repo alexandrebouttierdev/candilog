@@ -49,4 +49,18 @@ describe("barre supérieure", () => {
     expect(screen.getByRole("heading", { name: "Calendrier" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Rechercher ou exécuter" })).toBeInTheDocument();
   });
+
+  it("fixe la recherche à gauche et le titre au centre, indépendamment du libellé", () => {
+    render(
+      <MemoryRouter initialEntries={["/settings/ai"]}>
+        <TopBar slotRef={() => {}} onOpenPalette={() => {}} />
+      </MemoryRouter>,
+    );
+    const header = screen.getByRole("banner");
+    const title = screen.getByRole("heading", { name: "Intelligence artificielle" });
+    const search = screen.getByRole("button", { name: "Rechercher ou exécuter" });
+    expect(header).toHaveClass("grid");
+    expect(header.firstElementChild).toContainElement(title);
+    expect(search.parentElement).toHaveClass("col-start-1");
+  });
 });

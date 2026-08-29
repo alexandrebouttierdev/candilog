@@ -86,6 +86,7 @@ export function TodayStats({
     { label: "Candidatures", value: applications },
     { label: "Réponses", value: responses },
     { label: "Entretiens", value: interviews },
+    ...(overdue > 0 ? [{ label: "À relancer", value: overdue, warn: true }] : []),
   ];
 
   return (
@@ -95,25 +96,26 @@ export function TodayStats({
         {items.map((item, index) => (
           <div
             key={item.label}
-            className={cn(
-              "flex min-w-[7.5rem] flex-col pr-7",
-              index > 0 && "border-l border-field pl-7",
-            )}
+            className={cn("flex min-w-[7.5rem] flex-col pr-7", index > 0 && "border-l border-field pl-7")}
           >
-            <dt className="order-2 mt-1.5 text-eyebrow uppercase text-ink-label">{item.label}</dt>
-            <dd className="order-1 font-mono tabular text-heading tracking-tight text-ink">
+            <dt
+              className={cn(
+                "order-2 mt-1.5 text-eyebrow uppercase",
+                item.warn ? "text-warning" : "text-ink-label",
+              )}
+            >
+              {item.label}
+            </dt>
+            <dd
+              className={cn(
+                "order-1 font-mono tabular text-heading tracking-tight",
+                item.warn ? "text-warning" : "text-ink",
+              )}
+            >
               {item.value}
             </dd>
           </div>
         ))}
-        {overdue > 0 ? (
-          <div className="ml-auto flex min-w-[7.5rem] flex-col border-l border-field pl-7">
-            <dt className="order-2 mt-1.5 text-eyebrow uppercase text-warning">À relancer</dt>
-            <dd className="order-1 font-mono tabular text-heading tracking-tight text-warning">
-              {overdue}
-            </dd>
-          </div>
-        ) : null}
       </dl>
     </div>
   );
@@ -221,67 +223,131 @@ export function UpcomingEmpty() {
   );
 }
 
+export type TodoRow = {
+  key: string;
+  when: string;
+  name: string;
+  detail: string;
+  kind: string;
+  warn: boolean;
+  target: "applications" | "calendar";
+};
+
+/** File du jour : relances en retard d'abord, puis entretiens et relances d'aujourd'hui. */
+export function buildTodos(
+  overdue: number,
+  items: readonly UpcomingItem[],
+  now = new Date(),
+): TodoRow[] {
+  const todos: TodoRow[] = [];
+  if (overdue > 0) {
+    todos.push({
+      key: "overdue",
+      when: String(overdue),
+      name: "Relancer les candidatures en retard",
+      detail: overdue > 1 ? `${overdue} échéances dépassées` : "Échéance dépassée",
+      kind: "En retard",
+      warn: true,
+      target: "applications",
+    });
+  }
+
+  const today = todayIso(now);
+  const interviews: TodoRow[] = [];
+  const relances: TodoRow[] = [];
+  for (const item of items) {
+    if (eventDay(item.date) !== today) continue;
+    if (isInterview(item)) {
+      interviews.push({
+        key: `prep-${item.id}`,
+        when: formatWhenShort(item.date, now),
+        name: item.company_name ?? "Entreprise",
+        detail: item.job_title ?? "Candidature",
+        kind: "Préparer",
+        warn: false,
+        target: "calendar",
+      });
+    } else {
+      relances.push({
+        key: `relance-${item.id}`,
+        when: formatWhenShort(item.date, now),
+        name: item.company_name ?? "Entreprise",
+        detail: item.job_title ?? "Candidature",
+        kind: item.detail || "Relance",
+        warn: false,
+        target: "applications",
+      });
+    }
+  }
+
+  return [...todos, ...interviews, ...relances];
+}
+
 export function TodoRows({
   overdue,
-  nextInterview,
+  items,
+  now,
   onOpenApplications,
   onOpenCalendar,
 }: {
   overdue: number;
-  nextInterview: UpcomingItem | null;
+  items: readonly UpcomingItem[];
+  now?: Date;
   onOpenApplications: () => void;
   onOpenCalendar: () => void;
 }) {
-  const rows: { key: string; label: string; onClick: () => void; warn?: boolean }[] = [];
-
-  if (overdue > 0) {
-    rows.push({
-      key: "relances",
-      label: `Relancer ${overdue} candidature${overdue > 1 ? "s" : ""} en retard`,
-      onClick: onOpenApplications,
-      warn: true,
-    });
-  }
-
-  if (nextInterview && isInterview(nextInterview) && eventDay(nextInterview.date) === todayIso()) {
-    rows.push({
-      key: "preparer",
-      label: `Préparer l'entretien chez ${nextInterview.company_name ?? "cette entreprise"}`,
-      onClick: onOpenCalendar,
-    });
-  }
-
-  if (rows.length === 0) return null;
+  const todos = buildTodos(overdue, items, now);
 
   return (
-    <section className="mt-6">
-      <InspectorSectionLabel>À faire</InspectorSectionLabel>
-      <ul className="flex flex-col">
-        {rows.map((row) => (
-          <li key={row.key} className="border-t border-field first:border-t-0">
-            <button
-              type="button"
-              onClick={row.onClick}
-              className="flex h-10 w-full items-center gap-2.5 text-left transition-colors duration-hover hover:bg-surface-hover"
-            >
-              <span
-                className={cn(
-                  "flex size-[13px] flex-none rounded-[3px] border",
-                  row.warn ? "border-warning" : "border-control",
-                )}
-              />
-              <span
-                className={cn(
-                  "min-w-0 truncate text-body leading-snug",
-                  row.warn ? "text-warning" : "text-ink-strong",
-                )}
+    <section className="mt-6" aria-label="À faire">
+      <div className="flex items-center gap-2">
+        <InspectorSectionLabel>À faire</InspectorSectionLabel>
+        {todos.length > 0 ? (
+          <span
+            aria-label={`${todos.length} à faire`}
+            className={cn(
+              "mb-[7px] inline-flex h-5 min-w-5 items-center justify-center rounded-chip px-1.5",
+              "font-mono tabular text-note font-semibold",
+              todos.some((todo) => todo.warn) ? "bg-warning-tint text-warning" : "bg-fill text-ink",
+            )}
+          >
+            {todos.length}
+          </span>
+        ) : null}
+      </div>
+      {todos.length === 0 ? (
+        <p className="py-3 text-note leading-relaxed text-ink-faint">Rien à traiter aujourd'hui.</p>
+      ) : (
+        <ul className="flex flex-col">
+          {todos.map((todo) => (
+            <li key={todo.key} className="border-t border-field">
+              <button
+                type="button"
+                onClick={todo.target === "calendar" ? onOpenCalendar : onOpenApplications}
+                className="grid h-10 w-full grid-cols-[3.25rem_minmax(0,1fr)_auto] items-center gap-3 text-left transition-colors duration-hover hover:bg-surface-hover"
               >
-                {row.label}
-              </span>
-            </button>
-          </li>
-        ))}
-      </ul>
+                <span
+                  className={cn(
+                    "tabular overflow-hidden font-mono text-meta whitespace-nowrap",
+                    todo.warn ? "text-warning" : "text-ink-disabled",
+                  )}
+                >
+                  {todo.when}
+                </span>
+                <IdentityLine name={todo.name} detail={todo.detail} />
+                <span
+                  className={cn(
+                    "flex-none text-meta",
+                    todo.warn ? "text-warning" : todo.target === "calendar" ? "text-accent-text" : "text-ink-faint",
+                  )}
+                >
+                  {todo.kind}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }
@@ -332,9 +398,12 @@ export function TodayActivity({ activity }: { activity: readonly ActivityWeek[] 
   if (activity.every((week) => week.count === 0)) return null;
 
   return (
-    <section className="mt-6">
-      <InspectorSectionLabel>Activité</InspectorSectionLabel>
-      <ActivityChart activity={activity} height={56} gap={5} showCounts={false} shortLabels />
+    <section className="mt-6" aria-label="Activité">
+      <div className="flex items-center gap-2">
+        <InspectorSectionLabel>Activité</InspectorSectionLabel>
+        <p className="mb-[7px] text-meta text-ink-faint">candidatures / semaine</p>
+      </div>
+      <ActivityChart activity={activity} height={72} gap={5} showCounts shortLabels />
     </section>
   );
 }

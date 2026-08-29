@@ -229,7 +229,7 @@ export function CommandPaletteTrigger({ onClick }: { onClick: () => void }) {
       type="button"
       onClick={onClick}
       aria-label="Rechercher ou exécuter"
-      className="ml-1 flex h-[29px] w-[220px] flex-none items-center gap-2 rounded-control border border-line bg-fill px-2.5 text-note text-ink-faint transition-colors duration-hover hover:bg-fill-hover hover:text-ink-muted"
+      className="flex h-[29px] w-[220px] max-w-full flex-none items-center gap-2 rounded-control border border-line bg-fill px-2.5 text-note text-ink-faint transition-colors duration-hover hover:bg-fill-hover hover:text-ink-muted"
     >
       <Icon name="search" size={16} />
       <span className="min-w-0 flex-1 truncate text-left">Rechercher ou exécuter…</span>

@@ -70,7 +70,6 @@ export function DashboardPage() {
 function TodayWorkspace({ data }: { data: Dashboard }) {
   const navigate = useNavigate();
   const { next, rest } = splitUpcoming(data.upcoming_items);
-  const nextInterview = data.upcoming_items.find((item) => item.kind === "entretien") ?? null;
 
   if (isTodayEmpty(data)) {
     return <TodayEmpty onCreate={() => void navigate("/tracking/applications?nouvelle=1")} />;
@@ -109,7 +108,7 @@ function TodayWorkspace({ data }: { data: Dashboard }) {
 
           <TodoRows
             overdue={data.performance.overdue_follow_ups}
-            nextInterview={nextInterview}
+            items={data.upcoming_items}
             onOpenApplications={() => void navigate("/tracking/applications")}
             onOpenCalendar={() => void navigate("/tracking/calendar")}
           />

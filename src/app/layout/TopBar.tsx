@@ -3,7 +3,7 @@ import { sectionForPath } from "@/app/router/routes";
 import { CommandPaletteTrigger } from "@/shared/ui/CommandPalette";
 import { Icon } from "@/shared/ui/Icon";
 
-/** Topbar 46 px : icône de section, titre, recherche globale. */
+/** Topbar 46 px : recherche à gauche, titre centré, actions à droite. */
 export function TopBar({
   slotRef,
   onOpenPalette,
@@ -19,12 +19,18 @@ export function TopBar({
     ) ?? section.routes[0]!;
 
   return (
-    <header className="glass-topbar flex h-topbar flex-none items-center gap-2.5 border-b border-glass-topbar pr-3 pl-3.5">
-      <Icon name={route.icon} size={17} className="flex-none text-ink-disabled" />
-      <h1 className="min-w-0 truncate text-section text-ink">{route.label}</h1>
-      <CommandPaletteTrigger onClick={onOpenPalette} />
-      <span className="flex-1" />
-      <div ref={slotRef} className="flex flex-none items-center gap-2" />
+    <header className="glass-topbar grid h-topbar flex-none grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-b border-glass-topbar pr-3 pl-3.5">
+      <div className="col-start-2 row-start-1 flex min-w-0 max-w-[min(36vw,16rem)] items-center justify-center gap-2">
+        <Icon name={route.icon} size={17} className="flex-none text-ink-disabled" />
+        <h1 className="truncate text-section text-ink">{route.label}</h1>
+      </div>
+      <div className="col-start-1 row-start-1 min-w-0 justify-self-start">
+        <CommandPaletteTrigger onClick={onOpenPalette} />
+      </div>
+      <div
+        ref={slotRef}
+        className="col-start-3 row-start-1 flex min-w-0 items-center justify-end justify-self-end gap-2"
+      />
     </header>
   );
 }
