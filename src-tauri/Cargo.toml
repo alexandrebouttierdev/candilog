@@ -5,7 +5,7 @@ edition = "2021"
 rust-version = "1.91"
 description = "Candilog — suivi de candidatures, entretiens et relances avec assistance IA locale"
 authors = ["Candilog"]
-license = "MIT"
+license = "PolyForm-Noncommercial-1.0.0"
 
 [lib]
 # Tauri exige une bibliothèque nommée `<nom>_lib` sur mobile ; la garder sur desktop

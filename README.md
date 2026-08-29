@@ -110,3 +110,21 @@ L'architecture, le modèle de données et le processus de publication sont décr
 [`docs/`](docs/). Les binaires sont publiés sur le dépôt dédié
 `alexandrebouttierdev/candilog-releases`, déclenché à chaque push sur `master` de ce
 dépôt source — voir [`docs/RELEASES.md`](docs/RELEASES.md).
+
+## Licence
+
+Candilog est un projet **source available avec double licence**.
+
+### Usage non commercial
+
+Le code Candilog est mis à disposition sous la **PolyForm Noncommercial License 1.0.0** pour les usages autorisés par cette licence. Consultez le [texte officiel](./LICENSE), qui reste la référence.
+
+### Usage commercial
+
+Toute utilisation commerciale nécessite une licence commerciale séparée, accordée explicitement par le titulaire des droits. Consultez [`COMMERCIAL_LICENSE.md`](./COMMERCIAL_LICENSE.md) pour comprendre la démarche ; ce document n'accorde pas à lui seul de droits commerciaux.
+
+### Contributions
+
+Les contributions sont les bienvenues lorsqu'elles respectent les règles décrites dans [`CONTRIBUTING.md`](./CONTRIBUTING.md) et le mécanisme de contribution et de licence prévu par le projet, notamment le [`CLA.md`](./CLA.md) lorsqu'il est requis.
+
+Copyright © 2026 Alexandre Bouttier
