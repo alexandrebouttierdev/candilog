@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Application, ApplicationStatus } from "../../services/applicationService";
 import type { PipelineBreakdown } from "../../services/applicationService";
 import { Statuses } from "../../model/statuses";
 import { ApplicationCard } from "./ApplicationCard";
+import type { ApercuGlisse } from "./ApplicationCard";
 import { Icon } from "@/shared/ui";
 import { cn } from "@/shared/lib/cn";
 import type { Tone } from "@/shared/ui";
@@ -53,7 +54,20 @@ export function KanbanBoard({
   onCreate: () => void;
 }) {
   const [glissee, setGlissee] = useState<Application | null>(null);
+  const [apercu, setApercu] = useState<ApercuGlisse | null>(null);
   const [cible, setCible] = useState<ApplicationStatus | null>(null);
+
+  const enGlisse = glissee !== null;
+  useEffect(() => {
+    if (!enGlisse) return;
+    const suivre = (event: DragEvent) => {
+      setApercu((actuel) =>
+        actuel ? { ...actuel, x: event.clientX, y: event.clientY } : actuel,
+      );
+    };
+    document.addEventListener("dragover", suivre);
+    return () => document.removeEventListener("dragover", suivre);
+  }, [enGlisse]);
 
   const compteurs: Record<ApplicationStatus, number> = {
     EN_ATTENTE: breakdown.pending,
@@ -76,14 +90,23 @@ export function KanbanBoard({
                 // `preventDefault` est ce qui autorise le dépôt : sans lui, le navigateur
                 // refuse la cible et le curseur affiche « interdit ».
                 event.preventDefault();
+                event.dataTransfer.dropEffect = "move";
                 setCible(status.value);
               }}
-              onDragLeave={() => setCible((value) => (value === status.value ? null : value))}
-              onDrop={() => {
-                if (glissee && glissee.status !== status.value) {
-                  onStatusChange(glissee.id, status.value);
+              onDragLeave={(event) => {
+                const suivant = event.relatedTarget;
+                if (suivant instanceof Node && event.currentTarget.contains(suivant)) return;
+                setCible((value) => (value === status.value ? null : value));
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                const id = event.dataTransfer.getData("text/plain");
+                const dragged = applications.find((item) => item.id === id);
+                if (dragged && dragged.status !== status.value) {
+                  onStatusChange(dragged.id, status.value);
                 }
                 setGlissee(null);
+                setApercu(null);
                 setCible(null);
               }}
               className={cn(
@@ -127,13 +150,18 @@ export function KanbanBoard({
                       key={application.id}
                       application={application}
                       draggable
+                      dragging={glissee?.id === application.id}
                       selected={application.id === selected_id}
                       checked={checkedIds.has(application.id)}
                       onSelect={() => onSelect(application.id)}
                       onToggleSelect={() => onToggleSelect(application.id)}
-                      onDragStart={() => setGlissee(application)}
+                      onDragStart={(suivant) => {
+                        setGlissee(application);
+                        setApercu(suivant);
+                      }}
                       onDragEnd={() => {
                         setGlissee(null);
+                        setApercu(null);
                         setCible(null);
                       }}
                     />
@@ -152,6 +180,19 @@ export function KanbanBoard({
           );
         })}
       </div>
+      {glissee && apercu ? (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none fixed z-50 opacity-90 shadow-e2"
+          style={{
+            left: apercu.x - apercu.grabX,
+            top: apercu.y - apercu.grabY,
+            width: apercu.width > 0 ? apercu.width : undefined,
+          }}
+        >
+          <ApplicationCard application={glissee} />
+        </div>
+      ) : null}
     </div>
   );
 }
