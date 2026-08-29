@@ -37,14 +37,18 @@ export function KanbanBoard({
   applications,
   breakdown,
   selected_id,
+  checkedIds,
   onSelect,
+  onToggleSelect,
   onStatusChange,
   onCreate,
 }: {
   applications: readonly Application[];
   breakdown: PipelineBreakdown;
   selected_id: string | null;
+  checkedIds: ReadonlySet<string>;
   onSelect: (id: string) => void;
+  onToggleSelect: (id: string) => void;
   onStatusChange: (id: string, status: ApplicationStatus) => void;
   onCreate: () => void;
 }) {
@@ -124,7 +128,9 @@ export function KanbanBoard({
                       application={application}
                       draggable
                       selected={application.id === selected_id}
+                      checked={checkedIds.has(application.id)}
                       onSelect={() => onSelect(application.id)}
+                      onToggleSelect={() => onToggleSelect(application.id)}
                       onDragStart={() => setGlissee(application)}
                       onDragEnd={() => {
                         setGlissee(null);

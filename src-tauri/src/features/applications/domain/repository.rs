@@ -52,6 +52,9 @@ pub struct ApplicationFilter {
     pub sort: ApplicationSort,
     /// Sort descendant.
     pub descending: bool,
+    /// Identifiants retenus pour un export ou une action groupée ; vide = tout le filtre.
+    #[serde(default)]
+    pub ids: Vec<Uuid>,
 }
 
 /// Répartition du pipeline par statut, calculée par `SQLite`.

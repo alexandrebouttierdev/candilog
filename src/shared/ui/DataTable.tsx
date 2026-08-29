@@ -24,6 +24,17 @@ export interface SortState<TSortKey extends string> {
   readonly direction: "asc" | "desc";
 }
 
+/** Sélection de lignes pour une action groupée (export, suppression). */
+export interface TableSelection {
+  readonly selected: ReadonlySet<string>;
+  readonly onToggle: (id: string) => void;
+  readonly onTogglePage: (ids: readonly string[], checked: boolean) => void;
+  /** Libellé d'accessibilité d'une case de ligne. */
+  readonly rowLabel?: string;
+  /** Libellé d'accessibilité de la case d'en-tête (page courante). */
+  readonly pageLabel?: string;
+}
+
 /**
  * Table dense du guide SPECDESIGN.
  *
@@ -45,6 +56,7 @@ export function DataTable<TRow, TSortKey extends string = string>({
   onSortChange,
   onRowClick,
   isSelected,
+  selection,
   header,
   empty_state,
   footer,
@@ -56,6 +68,8 @@ export function DataTable<TRow, TSortKey extends string = string>({
   onSortChange?: (key: TSortKey) => void;
   onRowClick?: (row: TRow) => void;
   isSelected?: (row: TRow) => boolean;
+  /** Colonne de cases à cocher, indépendante de la ligne ouverte dans l'inspecteur. */
+  selection?: TableSelection;
   /** Bandeau titré au-dessus des en-têtes de colonnes — un `CardHeader`. */
   header?: ReactNode;
   /** Affiché à la place du corps lorsque `rows` est vide. */
@@ -63,7 +77,18 @@ export function DataTable<TRow, TSortKey extends string = string>({
   /** Pied du tableau, à l'intérieur de la carte — typiquement un `Pager`. */
   footer?: ReactNode;
 }) {
-  const template = columns.map((column) => `${column.grow ?? 1}fr`).join(" ");
+  const template = [
+    selection ? "28px" : null,
+    ...columns.map((column) => `${column.grow ?? 1}fr`),
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const pageIds = rows.map(row_key);
+  const selectedOnPage = selection
+    ? pageIds.filter((id) => selection.selected.has(id)).length
+    : 0;
+  const pageTouteSelectionnee = pageIds.length > 0 && selectedOnPage === pageIds.length;
+  const pagePartielle = selectedOnPage > 0 && !pageTouteSelectionnee;
 
   return (
     <div
@@ -78,6 +103,16 @@ export function DataTable<TRow, TSortKey extends string = string>({
           style={{ gridTemplateColumns: template }}
           className="grid h-[34px] items-center bg-surface-elevated px-3.5"
         >
+          {selection ? (
+            <div role="columnheader" className="flex items-center">
+              <SelectionCheck
+                checked={pageTouteSelectionnee}
+                indeterminate={pagePartielle}
+                label={selection.pageLabel ?? "Sélectionner les lignes de la page"}
+                onChange={() => selection.onTogglePage(pageIds, !pageTouteSelectionnee)}
+              />
+            </div>
+          ) : null}
           {columns.map((column) => {
             const sortable = column.sort_key !== undefined && onSortChange !== undefined;
             const activeSort = sort && sort.key === column.sort_key ? sort : undefined;
@@ -165,6 +200,15 @@ export function DataTable<TRow, TSortKey extends string = string>({
                   : onRowClick && "hover:bg-surface-hover",
               )}
             >
+              {selection ? (
+                <div role="cell" className="flex items-center">
+                  <SelectionCheck
+                    checked={selection.selected.has(row_key(row))}
+                    label={selection.rowLabel ?? "Sélectionner cette ligne"}
+                    onChange={() => selection.onToggle(row_key(row))}
+                  />
+                </div>
+              ) : null}
               {columns.map((column) => (
                 <div
                   key={column.key}
@@ -181,6 +225,32 @@ export function DataTable<TRow, TSortKey extends string = string>({
 
       {footer}
     </div>
+  );
+}
+
+function SelectionCheck({
+  checked,
+  indeterminate = false,
+  label,
+  onChange,
+}: {
+  checked: boolean;
+  indeterminate?: boolean;
+  label: string;
+  onChange: () => void;
+}) {
+  return (
+    <input
+      type="checkbox"
+      checked={checked}
+      aria-label={label}
+      ref={(node) => {
+        if (node) node.indeterminate = indeterminate;
+      }}
+      onClick={(event) => event.stopPropagation()}
+      onKeyDown={(event) => event.stopPropagation()}
+      onChange={onChange}
+    />
   );
 }
 

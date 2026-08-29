@@ -5,7 +5,7 @@ export { Card, CardHeader, CardLink, CardMeta, CardTitle } from "./Card";
 export { CommandPalette, CommandPaletteTrigger, useCommandPalette } from "./CommandPalette";
 export { ConfirmDialog } from "./ConfirmDialog";
 export { CellIdentity, DataTable } from "./DataTable";
-export type { Column, SortState } from "./DataTable";
+export type { Column, SortState, TableSelection } from "./DataTable";
 export { DetailDrawer, DrawerRow, DrawerSection } from "./DetailDrawer";
 export { EmptyState } from "./EmptyState";
 export { EntityPicker } from "./EntityPicker";

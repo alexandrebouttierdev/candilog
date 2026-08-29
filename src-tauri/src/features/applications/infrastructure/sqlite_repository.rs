@@ -170,6 +170,14 @@ fn clauses(filter: &ApplicationFilter) -> AppResult<(String, Vec<Value>)> {
             &mut clauses,
         );
     }
+    if !filter.ids.is_empty() {
+        let mut placeholders = Vec::new();
+        for id in &filter.ids {
+            values.push(Value::Text(id.to_string()));
+            placeholders.push(format!("?{}", values.len()));
+        }
+        clauses.push(format!("c.id IN ({})", placeholders.join(", ")));
+    }
 
     let sql = if clauses.is_empty() {
         String::new()

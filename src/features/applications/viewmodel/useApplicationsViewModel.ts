@@ -63,6 +63,7 @@ export function useApplicationsViewModel() {
       end_date: filters.end_date,
       sort,
       descending,
+      ids: [],
     }),
     [search, filters, sort, descending],
   );
@@ -142,6 +143,24 @@ export function useApplicationsViewModel() {
     onError: signalerEchec("Suppression impossible"),
   });
 
+  const suppressionMultiple = useMutation({
+    mutationFn: async (ids: readonly string[]) => {
+      for (const id of ids) {
+        await applicationService.delete(id);
+      }
+      return ids.length;
+    },
+    onSuccess: async (count, ids) => {
+      await invalider();
+      if (selected_id && ids.includes(selected_id)) setSelectedId(null);
+      notify({
+        tone: "success",
+        title: count === 1 ? "Candidature supprimée" : `${count} candidatures supprimées`,
+      });
+    },
+    onError: signalerEchec("Suppression impossible"),
+  });
+
   const rechercher = useCallback((value: string) => {
     setSearch(value);
     setPage(1);
@@ -207,7 +226,7 @@ export function useApplicationsViewModel() {
     isLoading: list.isPending,
     error: list.error,
     isSaving: creation.isPending || modification.isPending,
-    isDeleting: suppression.isPending,
+    isDeleting: suppression.isPending || suppressionMultiple.isPending,
 
     setView,
     setPage,
@@ -226,5 +245,6 @@ export function useApplicationsViewModel() {
     update: modification.mutateAsync,
     changeStatus: changementStatus.mutateAsync,
     delete: suppression.mutateAsync,
+    deleteMany: suppressionMultiple.mutateAsync,
   };
 }

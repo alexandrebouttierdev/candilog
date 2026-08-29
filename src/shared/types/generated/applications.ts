@@ -106,7 +106,11 @@ sort: ApplicationSort,
 /**
  * Sort descendant.
  */
-descending: boolean, };
+descending: boolean, 
+/**
+ * Identifiants retenus pour un export ou une action groupée ; vide = tout le filtre.
+ */
+ids: Array<string>, };
 
 /**
  * Champs éditables d'une candidature, en création comme en modification.

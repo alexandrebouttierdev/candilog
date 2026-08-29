@@ -97,6 +97,49 @@ describe("DataTable", () => {
     expect(screen.getByText("Poste")).toBeInTheDocument();
   });
 
+  it("permet de cocher une ligne sans ouvrir la fiche", async () => {
+    const onToggle = vi.fn();
+    const onRowClick = vi.fn();
+    render(
+      <DataTable
+        columns={COLUMNS}
+        rows={Rows}
+        row_key={(row) => row.id}
+        onRowClick={onRowClick}
+        selection={{
+          selected: new Set(),
+          onToggle,
+          onTogglePage: vi.fn(),
+        }}
+      />,
+    );
+
+    await userEvent.click(screen.getAllByRole("checkbox", { name: "Sélectionner cette ligne" })[0]!);
+
+    expect(onToggle).toHaveBeenCalledWith("1");
+    expect(onRowClick).not.toHaveBeenCalled();
+  });
+
+  it("coche ou décoche toutes les lignes de la page depuis l'en-tête", async () => {
+    const onTogglePage = vi.fn();
+    render(
+      <DataTable
+        columns={COLUMNS}
+        rows={Rows}
+        row_key={(row) => row.id}
+        selection={{
+          selected: new Set(),
+          onToggle: vi.fn(),
+          onTogglePage,
+        }}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("checkbox", { name: "Sélectionner les lignes de la page" }));
+
+    expect(onTogglePage).toHaveBeenCalledWith(["1", "2"], true);
+  });
+
   it("ouvre la ligne au clavier autant qu'à la souris", async () => {
     const onRowClick = vi.fn();
     render(

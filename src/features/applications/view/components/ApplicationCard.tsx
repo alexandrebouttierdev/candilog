@@ -16,15 +16,19 @@ import { cn } from "@/shared/lib/cn";
 export function ApplicationCard({
   application,
   selected = false,
+  checked = false,
   draggable = false,
   onSelect,
+  onToggleSelect,
   onDragStart,
   onDragEnd,
 }: {
   application: Application;
   selected?: boolean;
+  checked?: boolean;
   draggable?: boolean;
   onSelect?: () => void;
+  onToggleSelect?: () => void;
   onDragStart?: () => void;
   onDragEnd?: () => void;
 }) {
@@ -52,6 +56,17 @@ export function ApplicationCard({
       )}
     >
       <div className="mb-[9px] flex items-start gap-[9px]">
+        {onToggleSelect ? (
+          <input
+            type="checkbox"
+            checked={checked}
+            aria-label={`Sélectionner ${application.job_title}`}
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => event.stopPropagation()}
+            onChange={onToggleSelect}
+            className="mt-1.5 flex-none"
+          />
+        ) : null}
         <span
           aria-hidden="true"
           className="flex size-[26px] flex-none items-center justify-center rounded-control bg-neutral-tint text-eyebrow font-strong tracking-normal text-ink-muted"

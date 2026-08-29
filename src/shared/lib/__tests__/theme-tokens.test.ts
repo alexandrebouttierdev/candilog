@@ -24,4 +24,10 @@ describe("jetons Tailwind", () => {
     const texts = themeNames("text");
     expect(colors.filter((name) => texts.includes(name))).toEqual([]);
   });
+
+  it("redessine les cases à cocher que le preflight Tailwind rend transparentes", () => {
+    expect(styles).toContain("--candilog-border-checkbox:");
+    expect(styles).toMatch(/input\[type="checkbox"\][\s\S]*?appearance:\s*none/);
+    expect(styles).toMatch(/input\[type="checkbox"\][\s\S]*?background-color:\s*var\(--color-fill\)/);
+  });
 });

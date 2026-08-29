@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { save } from "@tauri-apps/plugin-dialog";
 import { useApplicationsViewModel } from "../../viewmodel/useApplicationsViewModel";
@@ -41,8 +41,9 @@ export function ApplicationsPage() {
     ouvert: searchParams.get("nouvelle") === "1",
     cible: null,
   });
-  const [aDelete, setADelete] = useState<Application | null>(null);
+  const [aDelete, setADelete] = useState<string[] | null>(null);
   const [exportEnCours, setExportEnCours] = useState(false);
+  const [cochees, setCochees] = useState<Set<string>>(() => new Set());
 
   // Le bouton principal du Dashboard ouvre réellement la création, sans dupliquer le
   // formulaire ni son ViewModel dans une autre feature. Le paramètre reste dans l'URL le
@@ -55,14 +56,15 @@ export function ApplicationsPage() {
   };
 
   /**
-   * Exporte le filtre courant.
+   * Exporte le filtre courant, ou uniquement les lignes cochées.
    *
    * La destination est choisie dans le sélecteur natif : la fenêtre n'a aucune permission
    * d'écriture, et la commande Rust n'écrit qu'au chemin que l'utilisateur désigne (§44).
    */
   const exporter = async () => {
+    const ids = [...cochees];
     const path = await save({
-      title: "Exporter les candidatures",
+      title: ids.length > 0 ? "Exporter la sélection" : "Exporter les candidatures",
       defaultPath: "candidatures.csv",
       filters: [{ name: "CSV", extensions: ["csv"] }],
     });
@@ -70,7 +72,24 @@ export function ApplicationsPage() {
 
     setExportEnCours(true);
     try {
-      const rows = await applicationService.exportCsv(vm.filter, path);
+      // Les identifiants cochés suffisent : les combiner au filtre courant exclurait
+      // une ligne sélectionnée puis masquée par une recherche ou un statut.
+      const filter =
+        ids.length > 0
+          ? {
+              ...vm.filter,
+              search: "",
+              status: null,
+              contract: null,
+              company_id: null,
+              city: "",
+              job_title: "",
+              start_date: null,
+              end_date: null,
+              ids,
+            }
+          : vm.filter;
+      const rows = await applicationService.exportCsv(filter, path);
       notify({
         tone: "success",
         title: "Export terminé",
@@ -86,6 +105,37 @@ export function ApplicationsPage() {
       setExportEnCours(false);
     }
   };
+
+  const basculerCoche = (id: string) => {
+    setCochees((actuel) => {
+      const suivant = new Set(actuel);
+      if (suivant.has(id)) suivant.delete(id);
+      else suivant.add(id);
+      return suivant;
+    });
+  };
+
+  const basculerPage = (ids: readonly string[], checked: boolean) => {
+    setCochees((actuel) => {
+      const suivant = new Set(actuel);
+      for (const id of ids) {
+        if (checked) suivant.add(id);
+        else suivant.delete(id);
+      }
+      return suivant;
+    });
+  };
+
+  const suppressionEnCours = useMemo(() => {
+    if (!aDelete || aDelete.length === 0) return null;
+    const unique =
+      aDelete.length === 1
+        ? (vm.selection?.id === aDelete[0]
+            ? vm.selection
+            : vm.items.find((item) => item.id === aDelete[0]))
+        : undefined;
+    return { ids: aDelete, unique };
+  }, [aDelete, vm.items, vm.selection]);
 
   const columns: Column<Application, ApplicationSort>[] = [
     {
@@ -142,6 +192,8 @@ export function ApplicationsPage() {
     },
   ];
 
+  const fiche = vm.selection;
+
   return (
     <div className="flex h-full flex-col">
       <ApplicationFilters
@@ -158,12 +210,29 @@ export function ApplicationsPage() {
               value={vm.view}
               onChange={vm.setView}
               options={[
-                { value: "kanban", label: "Board", icon: "view_kanban" },
+                { value: "kanban", label: "Kanban", icon: "view_kanban" },
                 { value: "liste", label: "Liste", icon: "view_list" },
               ]}
             />
+            {cochees.size > 0 ? (
+              <>
+                <span className="text-note font-semibold text-ink">
+                  {cochees.size} sélectionnée{cochees.size > 1 ? "s" : ""}
+                </span>
+                <Button variant="ghost" onClick={() => setCochees(new Set())}>
+                  Tout désélectionner
+                </Button>
+                <Button
+                  variant="danger"
+                  icon="delete"
+                  onClick={() => setADelete([...cochees])}
+                >
+                  Supprimer
+                </Button>
+              </>
+            ) : null}
             <Button icon="download" disabled={exportEnCours} onClick={() => void exporter()}>
-              Export
+              Exporter
             </Button>
             <Button
               variant="primary"
@@ -234,7 +303,9 @@ export function ApplicationsPage() {
               applications={vm.items}
               breakdown={vm.breakdown}
               selected_id={vm.selected_id}
+              checkedIds={cochees}
               onSelect={vm.selectionner}
+              onToggleSelect={basculerCoche}
               onStatusChange={(id, status) => void vm.changeStatus({ id, status })}
               onCreate={() => setForm({ ouvert: true, cible: null })}
             />
@@ -248,6 +319,13 @@ export function ApplicationsPage() {
                 onSortChange={vm.trierPar}
                 onRowClick={(row) => vm.selectionner(row.id)}
                 isSelected={(row) => row.id === vm.selected_id}
+                selection={{
+                  selected: cochees,
+                  onToggle: basculerCoche,
+                  onTogglePage: basculerPage,
+                  rowLabel: "Sélectionner cette candidature",
+                  pageLabel: "Sélectionner les candidatures de la page",
+                }}
                 footer={
                   <Pager
                     page={vm.page}
@@ -264,13 +342,13 @@ export function ApplicationsPage() {
           )}
         </div>
 
-        {vm.selection ? (
+        {fiche ? (
           <ApplicationDetail
-            application={vm.selection}
+            application={fiche}
             onClose={() => vm.selectionner(null)}
-            onEdit={() => setForm({ ouvert: true, cible: vm.selection })}
-            onDelete={() => setADelete(vm.selection)}
-            onStatusChange={(status) => void vm.changeStatus({ id: vm.selection!.id, status })}
+            onEdit={() => setForm({ ouvert: true, cible: fiche })}
+            onDelete={() => setADelete([fiche.id])}
+            onStatusChange={(status) => void vm.changeStatus({ id: fiche.id, status })}
           />
         ) : vm.view === "liste" && vm.total > 0 ? (
           <aside className="glass-inspector flex w-[380px] flex-none flex-col border-l border-glass-inspector">
@@ -292,16 +370,33 @@ export function ApplicationsPage() {
       />
 
       <ConfirmDialog
-        open={aDelete !== null}
-        title="Supprimer cette candidature ?"
-        description={`« ${aDelete?.job_title ?? ""} » chez ${aDelete?.company_name ?? "cette entreprise"} sera définitivement supprimée, ainsi que les entretiens et relances rattachés.`}
+        open={suppressionEnCours !== null}
+        title={
+          suppressionEnCours && suppressionEnCours.ids.length > 1
+            ? `Supprimer ${suppressionEnCours.ids.length} candidatures ?`
+            : "Supprimer cette candidature ?"
+        }
+        description={
+          suppressionEnCours && suppressionEnCours.ids.length > 1
+            ? "Les candidatures sélectionnées seront définitivement supprimées, ainsi que les entretiens et relances rattachés."
+            : suppressionEnCours?.unique
+              ? `« ${suppressionEnCours.unique.job_title} » chez ${suppressionEnCours.unique.company_name ?? "cette entreprise"} sera définitivement supprimée, ainsi que les entretiens et relances rattachés.`
+              : "Cette candidature sera définitivement supprimée, ainsi que les entretiens et relances rattachés."
+        }
         note="L'entreprise et le contact associés sont conservés."
         busy={vm.isDeleting}
         onCancel={() => setADelete(null)}
         onConfirm={() => {
-          const cible = aDelete;
+          const ids = aDelete;
           setADelete(null);
-          if (cible) void vm.delete(cible.id);
+          if (!ids || ids.length === 0) return;
+          void (ids.length === 1 ? vm.delete(ids[0]!) : vm.deleteMany(ids)).then(() => {
+            setCochees((actuel) => {
+              const suivant = new Set(actuel);
+              for (const id of ids) suivant.delete(id);
+              return suivant;
+            });
+          });
         }}
       />
     </div>

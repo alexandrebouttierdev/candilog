@@ -65,6 +65,7 @@ export function useCompaniesViewModel() {
           end_date: null,
           sort: "date",
           descending: true,
+          ids: [],
         },
       }),
   });

@@ -60,6 +60,7 @@ export function ApplicationPicker({
             end_date: null,
             sort: "date",
             descending: true,
+            ids: [],
           },
         });
         return {

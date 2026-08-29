@@ -194,6 +194,38 @@ describe("ViewModel des candidatures", () => {
     expect(useUiStore.getState().toasts.at(-1)?.tone).toBe("error");
   });
 
+  it("n'envoie pas la sélection dans la requête de liste", async () => {
+    // La sélection sert l'export et la suppression groupée : la mettre dans la clé de
+    // liste rechargerait la page à chaque case cochée.
+    const listPage = vi
+      .spyOn(applicationService, "listPage")
+      .mockResolvedValue(page([cand("Développeur")]));
+
+    renderHook(() => useApplicationsViewModel(), { wrapper });
+    await waitFor(() => expect(listPage).toHaveBeenCalled());
+
+    expect(listPage.mock.calls[0]![0].filter.ids).toEqual([]);
+  });
+
+  it("supprime chaque identifiant d'une sélection et referme le détail", async () => {
+    vi.spyOn(applicationService, "listPage").mockResolvedValue(
+      page([cand("Développeur"), cand("Designer")]),
+    );
+    const supprimer = vi.spyOn(applicationService, "delete").mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => useApplicationsViewModel(), { wrapper });
+    await waitFor(() => expect(result.current.items).toHaveLength(2));
+
+    act(() => result.current.selectionner("Développeur"));
+    await act(async () => {
+      await result.current.deleteMany(["Développeur", "Designer"]);
+    });
+
+    expect(supprimer).toHaveBeenCalledTimes(2);
+    expect(result.current.selected_id).toBeNull();
+    expect(useUiStore.getState().toasts.at(-1)?.title).toBe("2 candidatures supprimées");
+  });
+
   it("referme le détail de la candidature supprimée", async () => {
     vi.spyOn(applicationService, "listPage").mockResolvedValue(page([cand("Développeur")]));
     vi.spyOn(applicationService, "delete").mockResolvedValue(undefined);

@@ -18,6 +18,7 @@
   --candilog-border-overlay-strong: rgb(15 18 32 / 0.16);
   --candilog-border-control: rgb(15 18 32 / 0.1);
   --candilog-border-control-strong: rgb(15 18 32 / 0.12);
+  --candilog-border-checkbox: #3d3f48;
   --candilog-border-on-accent: rgb(255 255 255 / 0.28);
   --candilog-text-primary: #111216;
   --candilog-text-strong: #1a1b21;
@@ -93,6 +94,7 @@
     --candilog-border-overlay-strong: rgb(255 255 255 / 0.11);
     --candilog-border-control: rgb(255 255 255 / 0.08);
     --candilog-border-control-strong: rgb(255 255 255 / 0.09);
+    --candilog-border-checkbox: rgb(255 255 255 / 0.4);
     --candilog-border-on-accent: rgb(255 255 255 / 0.12);
     --candilog-text-primary: #f4f4f5;
     --candilog-text-strong: #e6e6e9;
@@ -165,6 +167,7 @@
   --candilog-border-overlay-strong: rgb(255 255 255 / 0.11);
   --candilog-border-control: rgb(255 255 255 / 0.08);
   --candilog-border-control-strong: rgb(255 255 255 / 0.09);
+  --candilog-border-checkbox: rgb(255 255 255 / 0.4);
   --candilog-border-on-accent: rgb(255 255 255 / 0.12);
   --candilog-text-primary: #f4f4f5;
   --candilog-text-strong: #e6e6e9;
@@ -247,6 +250,7 @@
   --color-overlay-strong: var(--candilog-border-overlay-strong);
   --color-control: var(--candilog-border-control);
   --color-control-strong: var(--candilog-border-control-strong);
+  --color-checkbox: var(--candilog-border-checkbox);
   --color-on-accent-border: var(--candilog-border-on-accent);
   --color-glass-rail: var(--candilog-glass-rail-border);
   --color-glass-subnav: var(--candilog-glass-subnav-border);
@@ -365,6 +369,54 @@
 @layer base {
   html {
     color-scheme: light dark;
+  }
+
+  :root[data-theme="light"] {
+    color-scheme: light;
+  }
+
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+  }
+
+  /*
+   * Le preflight Tailwind pose `background-color: transparent` et `border-radius: 0`
+   * sur tout `input`. La case native disparaît alors, surtout en light sur une
+   * surface blanche : il ne reste plus de fond ni de filet. On la redessine.
+   */
+  input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 15px;
+    height: 15px;
+    margin: 0;
+    flex-shrink: 0;
+    cursor: pointer;
+    border: 2px solid var(--color-checkbox);
+    border-radius: 4px;
+    background-color: var(--color-fill);
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 11px 11px;
+    accent-color: unset;
+  }
+
+  input[type="checkbox"]:hover:not(:disabled) {
+    border-color: var(--color-ink-faint);
+  }
+
+  input[type="checkbox"]:checked,
+  input[type="checkbox"]:indeterminate {
+    border-color: var(--color-accent);
+    background-color: var(--color-accent);
+  }
+
+  input[type="checkbox"]:checked {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23fff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round' d='M3.2 8.2 6.6 11.5 12.8 4.5'/%3E%3C/svg%3E");
+  }
+
+  input[type="checkbox"]:indeterminate {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23fff' stroke-width='2.2' stroke-linecap='round' d='M3.5 8h9'/%3E%3C/svg%3E");
   }
 
   body {
