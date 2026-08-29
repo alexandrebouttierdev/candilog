@@ -1,5 +1,7 @@
 # Architecture native Candilog
 
+L'interface suit `docs/DESIGN.md` : ne pas inventer de style en dehors de ce système.
+
 Candilog est une application desktop Tauri 2. React rend l'interface ; Rust porte le métier,
 SQLite et l'IA. Le pont IPC est le seul contrat entre les deux côtés.
 
