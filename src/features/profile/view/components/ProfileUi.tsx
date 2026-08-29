@@ -3,13 +3,20 @@ import type { Identity } from "@/shared/types/generated/profile";
 import { cn } from "@/shared/lib/cn";
 import { Icon, Skeleton } from "@/shared/ui";
 
-export type ProfileTab = "experiences" | "skills" | "education" | "projects" | "languages";
+export type ProfileTab =
+  | "experiences"
+  | "skills"
+  | "education"
+  | "projects"
+  | "certifications"
+  | "languages";
 
 const TAB_LABELS: Record<ProfileTab, { label: string; icon: string }> = {
   experiences: { label: "Expériences", icon: "work_history" },
   skills: { label: "Compétences", icon: "psychology" },
   education: { label: "Formations", icon: "school" },
   projects: { label: "Projets", icon: "rocket_launch" },
+  certifications: { label: "Certifications", icon: "workspace_premium" },
   languages: { label: "Langues", icon: "translate" },
 };
 

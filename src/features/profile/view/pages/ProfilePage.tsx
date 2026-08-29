@@ -73,6 +73,7 @@ export function ProfilePage() {
                   skills: vm.data.profile.skills.length,
                   education: vm.data.profile.education.length,
                   projects: vm.data.profile.projects.length,
+                  certifications: vm.data.profile.certifications.length,
                   languages: vm.data.profile.languages.length,
                 }}
               />
@@ -91,18 +92,18 @@ export function ProfilePage() {
                   </SectionCard>
                 </ProfilePanel>
                 <ProfilePanel tab="education" active={tab === "education"}>
-                  <div className="flex flex-col gap-4">
-                    <SectionCard icon="school" title="Formations" onEdit={() => setSection("education")}>
-                      <EducationList profile={vm.data.profile} onEdit={() => setSection("education")} />
-                    </SectionCard>
-                    <SectionCard icon="workspace_premium" title="Certifications" onEdit={() => setSection("certifications")}>
-                      <SimpleList items={vm.data.profile.certifications.map((item) => ({ title: item.name, meta: item.issuer, body: item.date }))} empty="Aucune certification ajoutée" action="Ajouter une certification" onEdit={() => setSection("certifications")} />
-                    </SectionCard>
-                  </div>
+                  <SectionCard icon="school" title="Formations" onEdit={() => setSection("education")}>
+                    <EducationList profile={vm.data.profile} onEdit={() => setSection("education")} />
+                  </SectionCard>
                 </ProfilePanel>
                 <ProfilePanel tab="projects" active={tab === "projects"}>
                   <SectionCard icon="rocket_launch" title="Projets" onEdit={() => setSection("projects")}>
                     <SimpleList items={vm.data.profile.projects.map((item) => ({ title: item.name, meta: item.technologies, body: item.description }))} empty="Aucun projet ajouté" action="Ajouter un projet" onEdit={() => setSection("projects")} />
+                  </SectionCard>
+                </ProfilePanel>
+                <ProfilePanel tab="certifications" active={tab === "certifications"}>
+                  <SectionCard icon="workspace_premium" title="Certifications" onEdit={() => setSection("certifications")}>
+                    <SimpleList items={vm.data.profile.certifications.map((item) => ({ title: item.name, meta: item.issuer, body: item.date }))} empty="Aucune certification ajoutée" action="Ajouter une certification" onEdit={() => setSection("certifications")} />
                   </SectionCard>
                 </ProfilePanel>
                 <ProfilePanel tab="languages" active={tab === "languages"}>
