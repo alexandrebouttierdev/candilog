@@ -1,13 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { openUrl } from "@tauri-apps/plugin-opener";
 import { ContextBarAccessory, ContextNote } from "@/app/layout/ContextBar";
-import { Button, Icon, PageHeader, StatusPill } from "@/shared/ui";
+import { Button, InspectorRow, PageHeader } from "@/shared/ui";
+import logoCandilog from "@/assets/logo-candilog.png";
 import { settingsService } from "../../services/settingsService";
 import { A_ABOUT_KEY } from "../../viewmodel/useSettingsViewModel";
-import { ActionCard, SettingsBody, SettingsCard, SettingsHero } from "../components/SettingsUi";
+import { SettingsBody, SettingsCard } from "../components/SettingsUi";
 
-/** Identité du produit, indépendance et données locales. */
+/** Identité du produit : qui l'a fait, où vivent les données, comment mettre à jour. */
 export function AboutPage() {
   const navigate = useNavigate();
   const info = useQuery({ queryKey: A_ABOUT_KEY, queryFn: settingsService.about });
@@ -20,58 +20,50 @@ export function AboutPage() {
       </ContextBarAccessory>
       <PageHeader icon="info" title="À propos" subtitle="Candilog, un produit indépendant" />
       <SettingsBody>
-        <SettingsHero
-          kicker="Candilog desktop"
-          title="Votre recherche d'emploi, enfin au même endroit."
-          description="Un cockpit pour suivre vos candidatures, développer votre réseau et produire des documents professionnels cohérents."
-        />
-        <div className="flex flex-wrap items-center gap-2">
-          <StatusPill tone="neutral">{`Version ${version}`}</StatusPill>
-          <StatusPill tone="accent">Tauri · React · SQLite</StatusPill>
-        </div>
-        <div className="grid gap-4 md:grid-cols-3">
-          <ActionCard
-            icon="lock"
-            title="Vos données restent locales"
-            description="Candidatures, contacts et documents sont conservés dans votre base SQLite."
-          >
-            <StatusPill tone="success">Local-first</StatusPill>
-          </ActionCard>
-          <ActionCard
-            icon="desktop_windows"
-            title="Une expérience vraiment native"
-            description="Fenêtre desktop, navigation clavier et intégration au système, sans compte obligatoire."
-          >
-            <StatusPill tone="accent">100 % natif</StatusPill>
-          </ActionCard>
-          <ActionCard
-            icon="smart_toy"
-            title="Une IA sous votre contrôle"
-            description="Vous choisissez le fournisseur, le modèle et les contenus à analyser."
-          >
-            <StatusPill tone="neutral">Configurable</StatusPill>
-          </ActionCard>
-        </div>
-        <SettingsCard icon="person" title="Un produit indépendant">
-          <div className="flex flex-wrap items-center gap-3">
+        <div className="mx-auto flex w-full max-w-[720px] flex-col gap-4">
+          <div className="flex items-start gap-4 py-1">
+            <span className="flex size-11 flex-none items-center justify-center rounded-control bg-fill">
+              <img src={logoCandilog} alt="" width={26} height={26} className="size-[26px]" />
+            </span>
             <div className="min-w-0 flex-1">
-              <p className="text-meta font-semibold tracking-wide text-accent uppercase">Conçu et développé par</p>
-              <p className="mt-1 flex items-center gap-2 text-section text-ink">
-                <Icon name="badge" size={18} className="text-accent" />
-                Alexandre Bouttier
-              </p>
-              <p className="mt-1 text-meta text-ink-muted">
-                Pensé pour une recherche d'emploi exigeante, concrète et locale.
+              <p className="text-eyebrow uppercase text-ink-label">Application</p>
+              <p className="mt-1 text-title text-ink">Candilog</p>
+              <p className="mt-1 text-note text-ink-faint">
+                Candidatures, réseau et documents — tout reste ici.
               </p>
             </div>
-            <Button variant="secondary" icon="open_in_new" onClick={() => void openUrl("https://www.alexandrebouttier.fr")}>
-              Visiter le site
-            </Button>
-            <Button variant="primary" icon="system_update" onClick={() => void navigate("/settings/updates")}>
-              Vérifier les mises à jour
-            </Button>
+            <p className="tabular flex-none pt-5 text-item font-semibold text-ink">{version}</p>
           </div>
-        </SettingsCard>
+
+          <SettingsCard icon="inventory_2" title="Sur cet appareil">
+            <InspectorRow label="Données">Conservées sur cet ordinateur</InspectorRow>
+            <InspectorRow label="IA">Vous choisissez le fournisseur et le modèle</InspectorRow>
+          </SettingsCard>
+
+          <SettingsCard icon="badge" title="Conçu et développé par">
+            <div className="flex flex-wrap items-center gap-3">
+              <p className="min-w-0 flex-1 text-section text-ink">Alexandre Bouttier</p>
+              <Button
+                variant="secondary"
+                icon="open_in_new"
+                onClick={() => {
+                  void import("@tauri-apps/plugin-opener").then(({ openUrl }) =>
+                    openUrl("https://www.alexandrebouttier.fr"),
+                  );
+                }}
+              >
+                Visiter le site
+              </Button>
+              <Button
+                variant="primary"
+                icon="system_update"
+                onClick={() => void navigate("/settings/updates")}
+              >
+                Vérifier les mises à jour
+              </Button>
+            </div>
+          </SettingsCard>
+        </div>
       </SettingsBody>
     </div>
   );
