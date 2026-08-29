@@ -34,7 +34,9 @@ fn json_historique_est_lu_et_restitue_sans_changer_de_schema() {
 
     let json: String = connection(&repo.pool)
         .unwrap()
-        .query_row("SELECT data FROM profile WHERE id = 1", [], |row| row.get(0))
+        .query_row("SELECT data FROM profile WHERE id = 1", [], |row| {
+            row.get(0)
+        })
         .unwrap();
     assert!(json.contains("\"first_name\""));
     assert!(json.contains("\"headline\":\"Développeuse Rust\""));

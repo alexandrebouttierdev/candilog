@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { profileService } from "../services/profileService";
-import type { Profile, ProfilePayload } from "../services/profileService";
+import type { ImportProfileRequest, Profile, ProfilePayload } from "../services/profileService";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 
@@ -25,13 +25,27 @@ export function useProfileViewModel() {
       });
     },
   });
+  const applyImport = useMutation({
+    mutationFn: (request: ImportProfileRequest) => profileService.applyImport(request),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: PROFILE_KEY });
+    },
+    onError: (error: unknown) => {
+      notify({
+        tone: "error",
+        title: "Import impossible",
+        detail: error instanceof AppError ? error.message : undefined,
+      });
+    },
+  });
 
   return {
     data: query.data,
     error: query.error,
     isLoading: query.isPending,
-    isSaving: save.isPending,
+    isSaving: save.isPending || applyImport.isPending,
     recharger: () => void query.refetch(),
     save: save.mutateAsync,
+    applyImport: applyImport.mutateAsync,
   };
 }

@@ -6,6 +6,7 @@ import { applicationService } from "@/features/applications/services/application
 import { PAGE_SIZE } from "@/shared/types/page";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
+import { useDebounce } from "@/shared/hooks/useDebounce";
 
 /** Root des clés de cache de la feature, pour invalider d'un seul appel. */
 export const COMPANIES_KEY = ["entreprises"] as const;
@@ -24,13 +25,14 @@ export function useCompaniesViewModel() {
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const searchQuery = useDebounce(search);
   const [company_type, setCompanyType] = useState<string | null>(null);
   const [selected_id, setSelectedId] = useState<string | null>(null);
 
   const list = useQuery({
-    queryKey: [...COMPANIES_KEY, "page", { page, search, company_type }],
+    queryKey: [...COMPANIES_KEY, "page", { page, search: searchQuery, company_type }],
     queryFn: () =>
-      companyService.listPage({ page, page_size: PAGE_SIZE, search, company_type }),
+      companyService.listPage({ page, page_size: PAGE_SIZE, search: searchQuery, company_type }),
   });
 
   const types = useQuery({

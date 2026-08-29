@@ -1,17 +1,17 @@
 //! Construction et lancement de l'application Tauri.
 
 use crate::app::state::AppState;
+use crate::features::ai::presentation::commands as ai;
 use crate::features::analytics::presentation::commands as analytics;
 use crate::features::applications::presentation::commands as applications;
+use crate::features::companies::presentation::commands as companies;
 use crate::features::contacts::presentation::commands as contacts;
 use crate::features::documents::presentation::commands as documents;
-use crate::features::companies::presentation::commands as companies;
-use crate::features::interviews::presentation::commands as interviews;
-use crate::features::ai::presentation::commands as ai;
-use crate::features::settings::presentation::commands as settings;
-use crate::features::profile::presentation::commands as profile;
 use crate::features::followups::presentation::commands as followups;
+use crate::features::interviews::presentation::commands as interviews;
+use crate::features::profile::presentation::commands as profile;
 use crate::features::sectors::presentation::commands as sectors;
+use crate::features::settings::presentation::commands as settings;
 
 /// Démarre Candilog : journal, état applicatif, plugins, commandes.
 ///
@@ -95,6 +95,7 @@ pub fn run() {
             settings::settings_about,
             profile::profile_load,
             profile::profile_save,
+            profile::profile_apply_import,
             followups::follow_ups_list_between,
             followups::follow_ups_create,
             followups::follow_ups_update,

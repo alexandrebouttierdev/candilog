@@ -6,7 +6,7 @@ use crate::core::database::helpers::{
 use crate::core::database::SqlitePool;
 use crate::core::errors::AppResult;
 use crate::features::analytics::domain::{
-    ToFollowUp, AnalyticsRepository, UpcomingItem, Step, Metrics, Performance, ActivityWeek,
+    ActivityWeek, AnalyticsRepository, Metrics, Performance, Step, ToFollowUp, UpcomingItem,
 };
 use crate::features::applications::domain::{Application, ApplicationStatus, ContractType};
 
@@ -185,8 +185,7 @@ impl AnalyticsRepository for SqliteAnalyticsRepository {
                 })
             })
             .map_err(|error| translate_error(error, "activité hebdomadaire"))?;
-        rows
-            .collect::<Result<Vec<_>, _>>()
+        rows.collect::<Result<Vec<_>, _>>()
             .map_err(|error| translate_error(error, "activité hebdomadaire"))
     }
 

@@ -3,7 +3,7 @@
 use crate::app::AppState;
 use crate::core::errors::AppResult;
 use crate::core::utils::blocking;
-use crate::features::followups::domain::{NewFollowUp, FollowUp};
+use crate::features::followups::domain::{FollowUp, NewFollowUp};
 use std::sync::Arc;
 use tauri::State;
 

@@ -1,6 +1,7 @@
 use super::*;
 use crate::features::profile::domain::{
-    Certification, Skill, Experience, Education, Language, Project,
+    Certification, Education, Experience, ImportProfileRequest, ImportResolution,
+    ImportScalarDecision, ImportSkillDecision, Language, Project, Skill,
 };
 use std::sync::Mutex;
 
@@ -49,7 +50,9 @@ fn profil_complet_atteint_cent() {
             current: true,
             ..Experience::default()
         }],
-        skills: vec![Skill { name: "Rust".into() }],
+        skills: vec![Skill {
+            name: "Rust".into(),
+        }],
         education: vec![Education {
             degree: "Master".into(),
             school: "Université".into(),
@@ -133,4 +136,100 @@ fn une_entree_legacy_incomplete_ne_gonfle_pas_le_score() {
     assert!(payload
         .incomplete_sections
         .contains(&"vos compétences".into()));
+}
+
+fn empty_request() -> ImportProfileRequest {
+    ImportProfileRequest {
+        identity: vec![],
+        experiences: vec![],
+        skills: vec![],
+        education: vec![],
+        languages: vec![],
+        projects: vec![],
+        certifications: vec![],
+    }
+}
+
+#[test]
+fn preview_import_ne_modifie_pas_le_profil() {
+    let existing = Profile {
+        identity: Identity {
+            email: "camille@example.fr".into(),
+            ..Identity::default()
+        },
+        skills: vec![Skill {
+            name: "Rust".into(),
+        }],
+        ..Profile::default()
+    };
+    let repo = Memoire {
+        profile: Mutex::new(Some(existing.clone())),
+    };
+    let service = ProfileService::new(repo);
+    let extracted = Profile {
+        identity: Identity {
+            first_name: "Camille".into(),
+            ..Identity::default()
+        },
+        skills: vec![Skill {
+            name: "React".into(),
+        }],
+        ..Profile::default()
+    };
+
+    let preview = service.preview_import(&extracted).unwrap();
+    let after = service.load().unwrap();
+
+    assert_eq!(after.profile, existing);
+    assert_eq!(preview.counts.identity, 1);
+    assert_eq!(preview.counts.skills, 1);
+}
+
+#[test]
+fn apply_import_ecrit_une_seule_fois() {
+    let repo = Memoire::default();
+    let service = ProfileService::new(repo);
+    let mut request = empty_request();
+    request.skills = vec![ImportSkillDecision {
+        id: "skill-0".into(),
+        selected: true,
+        value: Skill {
+            name: "TypeScript".into(),
+        },
+        existing_index: None,
+        resolution: ImportResolution::AddAsNew,
+    }];
+
+    let result = service.apply_import(&request).unwrap();
+    let loaded = service.load().unwrap();
+
+    assert_eq!(result.added, 1);
+    assert_eq!(loaded.profile.skills[0].name, "TypeScript");
+}
+
+#[test]
+fn apply_import_ne_ecrit_pas_si_la_validation_echoue() {
+    let existing = Profile {
+        skills: vec![Skill {
+            name: "Rust".into(),
+        }],
+        ..Profile::default()
+    };
+    let repo = Memoire {
+        profile: Mutex::new(Some(existing.clone())),
+    };
+    let service = ProfileService::new(repo);
+    let mut request = empty_request();
+    request.identity = vec![ImportScalarDecision {
+        id: "email".into(),
+        selected: true,
+        value: "pas-un-email".into(),
+        resolution: ImportResolution::Replace,
+    }];
+
+    let error = service.apply_import(&request).unwrap_err();
+    let after = service.load().unwrap();
+
+    assert!(matches!(error, AppError::Validation(_)));
+    assert_eq!(after.profile, existing);
 }

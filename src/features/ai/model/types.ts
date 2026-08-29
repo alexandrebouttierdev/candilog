@@ -11,7 +11,7 @@ export type {
   GeneratedEducation,
   ResumeGeneration,
   StructuredListing,
-  ExtractedProfile,
+  ProfileImportProgress,
   AiProgress,
   AtsRecommendation,
   MatchScore,

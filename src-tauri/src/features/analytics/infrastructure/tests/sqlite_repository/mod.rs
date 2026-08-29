@@ -19,12 +19,7 @@ fn context() -> (SqliteAnalyticsRepository, Uuid) {
     (SqliteAnalyticsRepository::new(pool), company)
 }
 
-fn application(
-    repo: &SqliteAnalyticsRepository,
-    company: Uuid,
-    status: &str,
-    date: &str,
-) -> Uuid {
+fn application(repo: &SqliteAnalyticsRepository, company: Uuid, status: &str, date: &str) -> Uuid {
     let id = Uuid::new_v4();
     connection(&repo.pool)
         .unwrap()

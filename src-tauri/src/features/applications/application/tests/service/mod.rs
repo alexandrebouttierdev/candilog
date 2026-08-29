@@ -25,7 +25,7 @@ fn cand(job_title: &str, status: ApplicationStatus) -> Application {
 fn new(job_title: &str) -> NewApplication {
     NewApplication {
         job_title: job_title.into(),
-        company_id: uuid::Uuid::nil(),
+        company_id: uuid::Uuid::from_u128(1),
         contract_type: ContractType::Cdi,
         status: ApplicationStatus::Pending,
         sent_date: "2026-08-20".into(),
@@ -72,6 +72,7 @@ impl ApplicationRepository for StubRepo {
 mod test_changer_statut_delegue_au_depot;
 mod test_creer_poste_vide_retourne_validation;
 mod test_creer_refuse_un_lien_d_offre_non_http;
+mod test_creer_refuse_une_entreprise_vide;
 mod test_creer_valide_delegue_au_depot;
 mod test_date_dans_un_autre_format_est_refusee;
 mod test_modifier_valide_les_memes_regles_que_creer;

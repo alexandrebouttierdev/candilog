@@ -28,7 +28,11 @@ fn test_le_filtre_par_statuts_retient_toutes_les_valeurs_cochees() {
         .unwrap();
 
     assert_eq!(page.total, 2);
-    let titres: Vec<_> = page.items.iter().map(|item| item.job_title.as_str()).collect();
+    let titres: Vec<_> = page
+        .items
+        .iter()
+        .map(|item| item.job_title.as_str())
+        .collect();
     assert!(titres.contains(&"Beta"));
     assert!(titres.contains(&"Gamma"));
     assert!(!titres.contains(&"Alpha"));

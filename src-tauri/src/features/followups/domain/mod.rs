@@ -3,5 +3,5 @@
 pub mod follow_up;
 pub mod repository;
 
-pub use follow_up::{NewFollowUp, FollowUp};
+pub use follow_up::{FollowUp, NewFollowUp};
 pub use repository::FollowUpRepository;

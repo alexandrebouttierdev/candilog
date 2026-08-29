@@ -4,7 +4,7 @@ use crate::core::database::helpers::connection;
 use crate::core::database::SqlitePool;
 use crate::core::errors::{AppError, AppResult};
 use crate::core::secrets::{CoffreSecrets, SecretStore};
-use crate::features::ai::domain::{LlmConfig, SettingsStockes, ProviderKind};
+use crate::features::ai::domain::{LlmConfig, ProviderKind, SettingsStockes};
 use rusqlite::OptionalExtension;
 
 pub fn load_config(pool: &SqlitePool) -> AppResult<LlmConfig> {

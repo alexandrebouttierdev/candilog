@@ -7,7 +7,7 @@ use crate::core::database::helpers::{
 use crate::core::database::SqlitePool;
 use crate::core::errors::{AppError, AppResult};
 use crate::features::interviews::domain::{
-    InterviewAnalysis, Interview, InterviewRepository, NewInterview,
+    Interview, InterviewAnalysis, InterviewRepository, NewInterview,
 };
 use uuid::Uuid;
 
@@ -78,10 +78,7 @@ fn collecter(
         .query(params)
         .map_err(|e| translate_error(e, "entretiens"))?;
     let mut items = Vec::new();
-    while let Some(row) = rows
-        .next()
-        .map_err(|e| translate_error(e, "entretiens"))?
-    {
+    while let Some(row) = rows.next().map_err(|e| translate_error(e, "entretiens"))? {
         items.push(row_vers_interview(row)?);
     }
     Ok(items)
@@ -191,11 +188,7 @@ impl InterviewRepository for SqliteInterviewRepository {
         transaction
             .execute(
                 "UPDATE applications SET status = ?2, updated_at = ?3 WHERE id = ?1",
-                rusqlite::params![
-                    input.application_id.to_string(),
-                    status_interview,
-                    now
-                ],
+                rusqlite::params![input.application_id.to_string(), status_interview, now],
             )
             .map_err(|e| translate_error(e, "candidature"))?;
         if status_previous != status_interview {

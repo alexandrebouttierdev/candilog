@@ -6,19 +6,14 @@
 export type Certification = { name: string, issuer: string | null, date: string | null, url: string | null, };
 
 /**
- * Compétence professionnelle.
+ * Education académique ou professionnelle.
  */
-export type Skill = { name: string, };
+export type Education = { degree: string, school: string, location: string | null, start_date: string | null, end_date: string | null, description: string | null, };
 
 /**
  * Expérience professionnelle.
  */
 export type Experience = { title: string, company: string, location: string | null, start_date: string, end_date: string | null, current: boolean, description: string | null, };
-
-/**
- * Education académique ou professionnelle.
- */
-export type Education = { degree: string, school: string, location: string | null, start_date: string | null, end_date: string | null, description: string | null, };
 
 /**
  * Coordonnées et objectif professionnel.
@@ -32,6 +27,65 @@ title: string | null,
  * Présentation détaillée du parcours et de l'objectif.
  */
 resume: string | null, linkedin: string | null, github: string | null, website: string | null, };
+
+export type ImportCertificationDecision = { id: string, selected: boolean, value: Certification, existing_index: number | null, resolution: ImportResolution, };
+
+export type ImportCertificationItem = { id: string, proposed: Certification, existing: Certification | null, existing_index: number | null, has_conflict: boolean, };
+
+/**
+ * Compteurs des données détectées, pour le résumé de revue.
+ */
+export type ImportDetectedCounts = { identity: number, experiences: number, skills: number, education: number, languages: number, projects: number, certifications: number, };
+
+export type ImportEducationDecision = { id: string, selected: boolean, value: Education, existing_index: number | null, resolution: ImportResolution, };
+
+export type ImportEducationItem = { id: string, proposed: Education, existing: Education | null, existing_index: number | null, has_conflict: boolean, };
+
+export type ImportExperienceDecision = { id: string, selected: boolean, value: Experience, existing_index: number | null, resolution: ImportResolution, };
+
+export type ImportExperienceItem = { id: string, proposed: Experience, existing: Experience | null, existing_index: number | null, has_conflict: boolean, };
+
+export type ImportLanguageDecision = { id: string, selected: boolean, value: Language, existing_index: number | null, resolution: ImportResolution, };
+
+export type ImportLanguageItem = { id: string, proposed: Language, existing: Language | null, existing_index: number | null, has_conflict: boolean, };
+
+/**
+ * Proposition d'import : jamais persistée telle quelle.
+ */
+export type ImportProfilePreview = { identity: Array<ImportScalarItem>, experiences: Array<ImportExperienceItem>, skills: Array<ImportSkillItem>, education: Array<ImportEducationItem>, languages: Array<ImportLanguageItem>, projects: Array<ImportProjectItem>, certifications: Array<ImportCertificationItem>, counts: ImportDetectedCounts, };
+
+/**
+ * Requête d'application : uniquement des décisions validées par l'utilisateur.
+ */
+export type ImportProfileRequest = { identity: Array<ImportScalarDecision>, experiences: Array<ImportExperienceDecision>, skills: Array<ImportSkillDecision>, education: Array<ImportEducationDecision>, languages: Array<ImportLanguageDecision>, projects: Array<ImportProjectDecision>, certifications: Array<ImportCertificationDecision>, };
+
+/**
+ * Résultat d'un import appliqué en une écriture.
+ */
+export type ImportProfileResult = { added: number, replaced: number, skipped: number, };
+
+export type ImportProjectDecision = { id: string, selected: boolean, value: Project, existing_index: number | null, resolution: ImportResolution, };
+
+export type ImportProjectItem = { id: string, proposed: Project, existing: Project | null, existing_index: number | null, has_conflict: boolean, };
+
+/**
+ * Décision utilisateur pour un élément en conflit ou à ajouter.
+ */
+export type ImportResolution = "keep_existing" | "replace" | "add_as_new";
+
+/**
+ * Décision sur un champ d'identité.
+ */
+export type ImportScalarDecision = { id: string, selected: boolean, value: string, resolution: ImportResolution, };
+
+/**
+ * Champ d'identité proposé, éventuellement en conflit avec le profil actuel.
+ */
+export type ImportScalarItem = { id: string, label: string, proposed: string, existing: string | null, has_conflict: boolean, };
+
+export type ImportSkillDecision = { id: string, selected: boolean, value: Skill, existing_index: number | null, resolution: ImportResolution, };
+
+export type ImportSkillItem = { id: string, proposed: Skill, existing: Skill | null, existing_index: number | null, has_conflict: boolean, };
 
 /**
  * Language parlée et niveau associé.
@@ -64,3 +118,8 @@ updated_at: string | null, };
  * Project personnel ou professionnel.
  */
 export type Project = { name: string, description: string | null, url: string | null, technologies: string | null, };
+
+/**
+ * Compétence professionnelle.
+ */
+export type Skill = { name: string, };

@@ -2,7 +2,8 @@
 
 use crate::core::errors::{AppError, AppResult};
 use crate::features::documents::domain::{
-    ResumeRepository, ResumeSummary, ResumeVersion, CoverLetter, CoverLetterRepository, NewResume, NewCoverLetter,
+    CoverLetter, CoverLetterRepository, NewCoverLetter, NewResume, ResumeRepository, ResumeSummary,
+    ResumeVersion,
 };
 use uuid::Uuid;
 
@@ -14,7 +15,10 @@ pub struct DocumentsService<C: ResumeRepository, L: CoverLetterRepository> {
 impl<C: ResumeRepository, L: CoverLetterRepository> DocumentsService<C, L> {
     #[must_use]
     pub const fn new(resume: C, cover_letters: L) -> Self {
-        Self { resume, cover_letters }
+        Self {
+            resume,
+            cover_letters,
+        }
     }
 
     pub fn resume_save(&self, input: &NewResume) -> AppResult<ResumeVersion> {
@@ -82,7 +86,9 @@ impl<C: ResumeRepository, L: CoverLetterRepository> DocumentsService<C, L> {
 mod tests {
     use super::*;
     use crate::core::database::{open_pool, run_local_migrations};
-    use crate::features::documents::infrastructure::{SqliteResumeRepository, SqliteCoverLetterRepository};
+    use crate::features::documents::infrastructure::{
+        SqliteCoverLetterRepository, SqliteResumeRepository,
+    };
 
     fn service() -> DocumentsService<SqliteResumeRepository, SqliteCoverLetterRepository> {
         let pool = open_pool(None).unwrap();

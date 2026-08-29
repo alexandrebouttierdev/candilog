@@ -40,9 +40,7 @@ fn history(repo: &SqliteApplicationRepository, id: Uuid) -> Vec<String> {
             "SELECT status FROM status_history WHERE application_id = ?1 ORDER BY changed_at ASC",
         )
         .unwrap();
-    let rows = query
-        .query_map([id.to_string()], |row| row.get(0))
-        .unwrap();
+    let rows = query.query_map([id.to_string()], |row| row.get(0)).unwrap();
     rows.map(Result::unwrap).collect()
 }
 

@@ -1,6 +1,5 @@
 //! Types échangés avec React pour les workflows IA.
 
-use crate::features::profile::domain::Profile;
 use serde::{Deserialize, Deserializer, Serialize};
 use ts_rs::TS;
 
@@ -228,13 +227,6 @@ pub struct ProfileImportRequest {
     pub path: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[serde(rename_all = "snake_case")]
-#[ts(export, export_to = "ai.ts")]
-pub struct ExtractedProfile {
-    pub profile: Profile,
-}
-
 #[derive(Debug, Clone, Serialize, TS)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "ai.ts")]
@@ -243,4 +235,15 @@ pub struct AiProgress {
     pub step: String,
     pub progress: u8,
     pub chunk: Option<String>,
+}
+
+/// Progression d'analyse de CV : étape connue et ligne de journal, sans pourcentage.
+#[derive(Debug, Clone, Serialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "ai.ts")]
+pub struct ProfileImportProgress {
+    pub generation_id: String,
+    pub at: String,
+    pub message: String,
+    pub step: Option<String>,
 }

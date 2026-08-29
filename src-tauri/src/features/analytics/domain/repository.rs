@@ -2,7 +2,7 @@
 
 use crate::core::errors::AppResult;
 use crate::features::analytics::domain::metrics::{
-    ToFollowUp, UpcomingItem, Step, Metrics, Performance, ActivityWeek,
+    ActivityWeek, Metrics, Performance, Step, ToFollowUp, UpcomingItem,
 };
 use crate::features::applications::domain::Application;
 

@@ -12,6 +12,7 @@ import type { ApplicationSort } from "@/shared/types/generated/applications";
 import { KANBAN_PAGE_SIZE, PAGE_SIZE } from "@/shared/types/page";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
+import { useDebounce } from "@/shared/hooks/useDebounce";
 
 /** Root des clés de cache de la feature. */
 export const APPLICATIONS_KEY = ["candidatures"] as const;
@@ -45,6 +46,7 @@ export function useApplicationsViewModel() {
   const [page, setPage] = useState(1);
   const [sizePage, setSizePage] = useState<number>(PAGE_SIZE);
   const [search, setSearch] = useState("");
+  const searchQuery = useDebounce(search);
   const [filters, setFilters] = useState<ApplicationFilterValues>(INITIAL_FILTER);
   const [sort, setSort] = useState<ApplicationSort>("date");
   const [descending, setDescending] = useState(true);
@@ -53,7 +55,7 @@ export function useApplicationsViewModel() {
   /** Filter tel qu'envoyé au backend, recherche et tri compris. */
   const filter = useMemo<ApplicationFilter>(
     () => ({
-      search,
+      search: searchQuery,
       status: filters.status,
       contract: filters.contract,
       company_id: filters.company_id,
@@ -65,7 +67,7 @@ export function useApplicationsViewModel() {
       descending,
       ids: [],
     }),
-    [search, filters, sort, descending],
+    [searchQuery, filters, sort, descending],
   );
 
   // Le Kanban affiche les quatre colonnes d'un coup : une page de 32 lignes tronquait

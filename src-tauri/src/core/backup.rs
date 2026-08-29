@@ -52,6 +52,12 @@ pub fn validate(path: &Path) -> AppResult<()> {
         "contacts",
         "settings",
         "profile",
+        "sectors",
+        "status_history",
+        "follow_ups",
+        "interviews",
+        "resume_versions",
+        "cover_letters",
     ] {
         let count: i64 = connection.query_row(
             "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?1",
@@ -268,8 +274,9 @@ mod tests {
 
         let error = import(&pool, &db_path, &source_path).unwrap_err();
         assert!(
-            error.to_string().contains("restaurée"),
-            "l'échec doit signaler que la base d'origine a été remise en place : {error}"
+            error.to_string().contains("ne contient pas la table")
+                || error.to_string().contains("restaurée"),
+            "un backup incomplet doit être refusé sans toucher à la base active : {error}"
         );
 
         let connection = pool.get().unwrap();

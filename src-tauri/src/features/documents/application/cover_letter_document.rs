@@ -11,7 +11,10 @@ pub fn build_cover_letter(profile: &Profile, cover_letter: &CoverLetterExport) -
     let name = format!("{} {}", identity.first_name, identity.name)
         .trim()
         .to_owned();
-    let subject = match (cover_letter.job_title.as_deref(), cover_letter.company.as_deref()) {
+    let subject = match (
+        cover_letter.job_title.as_deref(),
+        cover_letter.company.as_deref(),
+    ) {
         (Some(job_title), Some(company))
             if !job_title.trim().is_empty() && !company.trim().is_empty() =>
         {

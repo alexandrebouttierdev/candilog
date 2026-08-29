@@ -3,7 +3,9 @@
 use crate::app::AppState;
 use crate::core::errors::AppResult;
 use crate::core::utils::blocking;
-use crate::features::profile::domain::{Profile, ProfilePayload};
+use crate::features::profile::domain::{
+    ImportProfileRequest, ImportProfileResult, Profile, ProfilePayload,
+};
 use std::sync::Arc;
 use tauri::State;
 
@@ -22,4 +24,14 @@ pub async fn profile_save(
 ) -> AppResult<ProfilePayload> {
     let service = Arc::clone(&state.profile);
     blocking::execute(move || service.save(&profile)).await
+}
+
+/// Applique un import de CV après revue utilisateur.
+#[tauri::command(rename_all = "snake_case")]
+pub async fn profile_apply_import(
+    state: State<'_, AppState>,
+    request: ImportProfileRequest,
+) -> AppResult<ImportProfileResult> {
+    let service = Arc::clone(&state.profile);
+    blocking::execute(move || service.apply_import(&request)).await
 }

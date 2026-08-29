@@ -28,7 +28,11 @@ fn test_le_filtre_par_identifiants_restreint_l_export() {
         .unwrap();
 
     assert_eq!(page.total, 2);
-    let titres: Vec<_> = page.items.iter().map(|item| item.job_title.as_str()).collect();
+    let titres: Vec<_> = page
+        .items
+        .iter()
+        .map(|item| item.job_title.as_str())
+        .collect();
     assert!(titres.contains(&"Alpha"));
     assert!(titres.contains(&"Gamma"));
     assert!(!titres.contains(&"Beta"));

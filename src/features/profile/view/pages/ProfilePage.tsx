@@ -72,6 +72,7 @@ export function ProfilePage() {
                   experiences: vm.data.profile.experiences.length,
                   skills: vm.data.profile.skills.length,
                   education: vm.data.profile.education.length,
+                  projects: vm.data.profile.projects.length,
                   languages: vm.data.profile.languages.length,
                 }}
               />
@@ -94,13 +95,15 @@ export function ProfilePage() {
                     <SectionCard icon="school" title="Formations" onEdit={() => setSection("education")}>
                       <EducationList profile={vm.data.profile} onEdit={() => setSection("education")} />
                     </SectionCard>
-                    <SectionCard icon="rocket_launch" title="Projets" onEdit={() => setSection("projects")}>
-                      <SimpleList items={vm.data.profile.projects.map((item) => ({ title: item.name, meta: item.technologies, body: item.description }))} empty="Aucun projet ajouté" action="Ajouter un projet" onEdit={() => setSection("projects")} />
-                    </SectionCard>
                     <SectionCard icon="workspace_premium" title="Certifications" onEdit={() => setSection("certifications")}>
                       <SimpleList items={vm.data.profile.certifications.map((item) => ({ title: item.name, meta: item.issuer, body: item.date }))} empty="Aucune certification ajoutée" action="Ajouter une certification" onEdit={() => setSection("certifications")} />
                     </SectionCard>
                   </div>
+                </ProfilePanel>
+                <ProfilePanel tab="projects" active={tab === "projects"}>
+                  <SectionCard icon="rocket_launch" title="Projets" onEdit={() => setSection("projects")}>
+                    <SimpleList items={vm.data.profile.projects.map((item) => ({ title: item.name, meta: item.technologies, body: item.description }))} empty="Aucun projet ajouté" action="Ajouter un projet" onEdit={() => setSection("projects")} />
+                  </SectionCard>
                 </ProfilePanel>
                 <ProfilePanel tab="languages" active={tab === "languages"}>
                   <SectionCard icon="translate" title="Langues" onEdit={() => setSection("languages")}>
@@ -155,7 +158,14 @@ export function ProfilePage() {
       </div>
 
       {vm.data && section ? <ProfileSectionModal key={section} section={section} profile={vm.data.profile} busy={vm.isSaving} onClose={() => setSection(null)} onSubmit={vm.save} /> : null}
-      {vm.data ? <ProfileImportModal open={importOpen} profile={vm.data.profile} busy={vm.isSaving} onClose={() => setImportOpen(false)} onSubmit={vm.save} /> : null}
+      {vm.data && importOpen ? (
+        <ProfileImportModal
+          open
+          busy={vm.isSaving}
+          onClose={() => setImportOpen(false)}
+          onApply={vm.applyImport}
+        />
+      ) : null}
     </div>
   );
 }

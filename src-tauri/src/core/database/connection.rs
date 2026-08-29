@@ -12,10 +12,7 @@ use std::path::Path;
 pub type SqlitePool = Pool<SqliteConnectionManager>;
 
 /// Versions de schéma, appliquées par ordre croissant.
-const MIGRATIONS: &[(i64, &str)] = &[(
-    1,
-    include_str!("../../../migrations/init_schema.sql"),
-)];
+const MIGRATIONS: &[(i64, &str)] = &[(1, include_str!("../../../migrations/init_schema.sql"))];
 
 /// Version de schéma atteinte après application de `init_schema`.
 pub const DERNIERE_VERSION: i64 = 1;

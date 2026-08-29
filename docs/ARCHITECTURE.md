@@ -19,10 +19,10 @@ Vue React → ViewModel (hook) → service frontend → invoke
 
 - `src/` : frontend feature-first (vues, ViewModels, services IPC).
 - `src-tauri/src/app/` : état partagé (`AppState`) et démarrage.
-- `src-tauri/src/core/` : chemins, base, erreurs, journal, événements, sauvegardes, mises à jour.
-- `src-tauri/src/features/` : domaines métier (domain, application, infrastructure, presentation).
-- `src-tauri/src/infrastructure/` : IA, PDF, HTTP, filesystem, coffre à secrets.
-- `src-tauri/migrations/` : schéma SQLite historique embarqué.
+- `src-tauri/src/core/` : chemins, base, erreurs, journal, événements, sauvegardes, mises à jour, coffre à secrets.
+- `src-tauri/src/features/` : domaines métier (domain, application, infrastructure, presentation). L'IA vit dans `features/ai/` (prompts, providers HTTP, extraction PDF, scoring ATS).
+- `src-tauri/src/infrastructure/` : PDF d'export (CV et lettres).
+- `src-tauri/migrations/` : schéma SQLite embarqué (`init_schema.sql`, `PRAGMA user_version`).
 
 Le `domain` n'importe ni Tauri ni rusqlite. Les vues n'appellent jamais `invoke` directement :
 elles passent par `src/shared/services/ipc.ts`. Les providers IA sont derrière `LlmProvider`.

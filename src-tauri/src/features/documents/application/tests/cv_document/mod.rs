@@ -1,7 +1,7 @@
 //! Tests du modèle de CV fusionné.
 
 use super::*;
-use crate::features::ai::domain::{GeneratedResume, GeneratedExperience, GeneratedEducation};
+use crate::features::ai::domain::{GeneratedEducation, GeneratedExperience, GeneratedResume};
 use crate::features::profile::domain::{Experience, Identity, Language, Profile, Project};
 
 fn profile() -> Profile {

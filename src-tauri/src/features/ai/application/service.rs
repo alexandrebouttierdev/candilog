@@ -4,7 +4,9 @@ use crate::core::database::SqlitePool;
 use crate::core::errors::{AppError, AppResult};
 use crate::features::ai::domain::*;
 use crate::features::ai::infrastructure::{build_provider, extract_pdf, load_config, LlmGenerator};
-use crate::features::profile::domain::{Profile, ProfileRepository};
+use crate::features::profile::domain::{
+    build_preview, ImportProfilePreview, Profile, ProfileRepository,
+};
 use crate::features::profile::infrastructure::SqliteProfileRepository;
 use std::collections::HashMap;
 use std::future::Future;
@@ -76,12 +78,13 @@ impl AiService {
 
     pub async fn analyze_listing(&self, text: String) -> AppResult<ListingAnalysis> {
         text_requis(&text, "L'offre")?;
-        let job_offer: StructuredListing = generate_json(
+        let mut job_offer: StructuredListing = generate_json(
             self.provider().await?,
             &bloc_donnees("offre", &text),
             JOB_OFFER_SYSTEM,
         )
         .await?;
+        ground_extracted_listing(&text, &mut job_offer);
         let score = profile_score(&self.profile()?, &job_offer);
         Ok(ListingAnalysis { job_offer, score })
     }
@@ -122,7 +125,7 @@ impl AiService {
             15,
             None,
         );
-        let job_offer: StructuredListing = cancel(
+        let mut job_offer: StructuredListing = cancel(
             token,
             generate_json(
                 provider.clone(),
@@ -131,6 +134,7 @@ impl AiService {
             ),
         )
         .await?;
+        ground_extracted_listing(&request.job_offer, &mut job_offer);
         let score = profile_score(&profile, &job_offer);
         progres(
             notifier,
@@ -153,11 +157,13 @@ impl AiService {
         ground_generated_resume(&profile, &mut resume);
         progres(notifier, &request.generation_id, "Analyse ATS", 78, None);
         let context_ats = serde_json::json!({"cv":resume,"offre":job_offer}).to_string();
-        let analysis: AtsAnalysis = cancel(
+        let mut analysis: AtsAnalysis = cancel(
             token,
             generate_json(provider, &bloc_donnees("analyse", &context_ats), ATS_SYSTEM),
         )
         .await?;
+        // Le chiffre LLM n'est jamais exposé : l'UI et les DTO portent le score Rust.
+        analysis.score = score.total;
         progres(notifier, &request.generation_id, "Terminé", 100, None);
         Ok(ResumeGeneration {
             resume,
@@ -240,6 +246,7 @@ impl AiService {
         };
         progres(&notifier, &id, "Lecture locale du PDF", 10, None);
         let text = extract_pdf(PathBuf::from(&request.path)).await?;
+        text_requis(&text, "Le CV")?;
         let provider = self.provider().await?;
         progres(&notifier, &id, "Structuration du CV", 30, None);
         let resume: GeneratedResume = cancel(
@@ -252,7 +259,7 @@ impl AiService {
         )
         .await?;
         progres(&notifier, &id, "Analyse de l'offre", 55, None);
-        let job_offer: StructuredListing = cancel(
+        let mut job_offer: StructuredListing = cancel(
             &token,
             generate_json(
                 provider.clone(),
@@ -261,9 +268,10 @@ impl AiService {
             ),
         )
         .await?;
+        ground_extracted_listing(&request.job_offer, &mut job_offer);
         let score = score_resume_imported(&resume, &job_offer);
         progres(&notifier, &id, "Recommandations ATS", 78, None);
-        let analysis: AtsAnalysis = cancel(
+        let mut analysis: AtsAnalysis = cancel(
             &token,
             generate_json(
                 provider,
@@ -275,6 +283,7 @@ impl AiService {
             ),
         )
         .await?;
+        analysis.score = score.total;
         progres(&notifier, &id, "Terminé", 100, None);
         Ok(ImportedResumeAnalysis {
             resume,
@@ -287,18 +296,39 @@ impl AiService {
     pub async fn import_profile(
         &self,
         request: ProfileImportRequest,
-        notifier: impl Fn(AiProgress),
-    ) -> AppResult<ExtractedProfile> {
+        notifier: impl Fn(ProfileImportProgress),
+    ) -> AppResult<ImportProfilePreview> {
         let id = request.generation_id.clone();
         let token = self.start(&id);
         let _guard = GenerationEnCours {
             service: self,
             id: id.clone(),
         };
-        progres(&notifier, &id, "Lecture locale du PDF", 15, None);
-        let text = extract_pdf(PathBuf::from(&request.path)).await?;
-        progres(&notifier, &id, "Extraction du profil", 45, None);
-        let mut profile: Profile = cancel(
+        emit_import(
+            &notifier,
+            &id,
+            Some("Lecture du fichier…"),
+            "Lecture du fichier",
+        );
+        let text = match extract_pdf(PathBuf::from(&request.path)).await {
+            Ok(text) => text,
+            Err(error) => {
+                emit_import(&notifier, &id, None, "Lecture du fichier impossible");
+                return Err(error);
+            }
+        };
+        emit_import(
+            &notifier,
+            &id,
+            Some("Extraction du contenu…"),
+            "Texte extrait",
+        );
+        if let Err(error) = text_requis(&text, "Le CV") {
+            emit_import(&notifier, &id, None, "Extraction du contenu impossible");
+            return Err(error);
+        }
+        emit_import(&notifier, &id, Some("Analyse du CV…"), "Analyse démarrée");
+        let mut profile: Profile = match cancel(
             &token,
             generate_json(
                 self.provider().await?,
@@ -306,19 +336,35 @@ impl AiService {
                 PROFILE_SYSTEM,
             ),
         )
-        .await?;
+        .await
+        {
+            Ok(profile) => profile,
+            Err(AppError::Cancelled) => return Err(AppError::Cancelled),
+            Err(error) => {
+                emit_import(&notifier, &id, None, "Analyse du CV impossible");
+                return Err(error);
+            }
+        };
         nettoyer_profile(&mut profile);
         if profile.identity.first_name.trim().is_empty()
             && profile.identity.name.trim().is_empty()
             && profile.experiences.is_empty()
             && profile.skills.is_empty()
         {
+            emit_import(&notifier, &id, None, "Aucune donnée exploitable");
             return Err(AppError::Provider(
                 "Aucune donnée de profil exploitable n'a été trouvée dans le CV".into(),
             ));
         }
-        progres(&notifier, &id, "Vérification requise", 100, None);
-        Ok(ExtractedProfile { profile })
+        emit_detected(&notifier, &id, &profile);
+        emit_import(
+            &notifier,
+            &id,
+            Some("Préparation de la revue…"),
+            "Analyse terminée",
+        );
+        let current = self.profile()?;
+        Ok(build_preview(&current, &profile))
     }
 }
 
@@ -406,6 +452,62 @@ fn progres(
         chunk,
     });
 }
+
+fn emit_import(
+    notifier: &impl Fn(ProfileImportProgress),
+    id: &str,
+    step: Option<&str>,
+    message: &str,
+) {
+    notifier(ProfileImportProgress {
+        generation_id: id.into(),
+        at: chrono::Utc::now().to_rfc3339(),
+        message: message.into(),
+        step: step.map(str::to_owned),
+    });
+}
+
+fn emit_detected(notifier: &impl Fn(ProfileImportProgress), id: &str, profile: &Profile) {
+    let lines = [
+        counted(
+            profile.experiences.len(),
+            "expérience détectée",
+            "expériences détectées",
+        ),
+        counted(
+            profile.skills.len(),
+            "compétence détectée",
+            "compétences détectées",
+        ),
+        counted(
+            profile.education.len(),
+            "formation détectée",
+            "formations détectées",
+        ),
+        counted(
+            profile.languages.len(),
+            "langue détectée",
+            "langues détectées",
+        ),
+        counted(profile.projects.len(), "projet détecté", "projets détectés"),
+        counted(
+            profile.certifications.len(),
+            "certification détectée",
+            "certifications détectées",
+        ),
+    ];
+    for line in lines.into_iter().flatten() {
+        emit_import(notifier, id, None, &line);
+    }
+}
+
+fn counted(count: usize, singular: &str, plural: &str) -> Option<String> {
+    match count {
+        0 => None,
+        1 => Some(format!("1 {singular}")),
+        n => Some(format!("{n} {plural}")),
+    }
+}
 fn decouper_fragments(text: &str) -> Vec<String> {
     let mut out = Vec::new();
     let mut start = 0;
@@ -470,6 +572,23 @@ mod tests {
         .unwrap();
         assert_eq!(profile.identity.first_name, "Camille");
         assert_eq!(profile.skills[0].name, "Rust");
+    }
+
+    #[test]
+    fn extrait_un_profil_quand_le_modele_renvoie_des_listes_a_la_place_de_chaines() {
+        let profile: Profile = parse_json(
+            r#"{"identite":{"prenom":"Camille","nom":"Martin","email":"c@example.fr","telephone":null,"ville":null,"titre":null,"resume":["Parcours produit","Objectif lead"],"linkedin":null,"github":null,"siteWeb":null},"experiences":[{"intitule":"Dev","entreprise":"Lumen","lieu":null,"start_date":"2022-03","end_date":null,"posteActuel":true,"description":["Lead frontend","Recrutement"]}],"competences":["Rust",{"nom":"React"}],"formations":[],"langues":[],"projets":[{"nom":"Candilog","description":null,"url":null,"technologies":["Rust","React"]}],"certifications":[]}"#,
+        )
+        .expect("une liste à la place d'une chaîne ne doit pas faire échouer l'analyse");
+        assert!(profile.experiences[0]
+            .description
+            .as_deref()
+            .is_some_and(|text| text.contains("Lead frontend")));
+        assert_eq!(profile.skills.len(), 2);
+        assert!(profile.projects[0]
+            .technologies
+            .as_deref()
+            .is_some_and(|text| text.contains("React")));
     }
     #[test]
     fn fragments_reconstituent_le_texte() {

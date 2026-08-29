@@ -39,7 +39,7 @@ export function ConfirmDialog({
   if (!open) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/70 p-[34px] backdrop-blur-[2px]">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/70 p-[34px] backdrop-blur-[2px]">
       <div
         role="alertdialog"
         aria-modal="true"

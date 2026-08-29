@@ -113,6 +113,32 @@ descending: boolean,
 ids: Array<string>, };
 
 /**
+ * Column de tri de la vue List.
+ *
+ * Enum et non chaîne libre : la valeur est interpolée dans le `ORDER BY`, où une chaîne
+ * venue de l'IPC ouvrirait une injection. Le jeu fermé rend celle-ci impossible sans avoir
+ * à échapper quoi que ce soit.
+ */
+export type ApplicationSort = "job_title" | "company" | "status" | "date";
+
+/**
+ * Étape de la candidature dans le pipeline.
+ *
+ * Les quatre valeurs sont contraintes en base par un `CHECK` (`init_schema`) : y ajouter
+ * une variante demande une migration, ce qui est voulu — le Kanban a une colonne par
+ * statut, et un statut inconnu casserait la répartition.
+ */
+export type ApplicationStatus = "EN_ATTENTE" | "RELANCEE" | "ENTRETIEN" | "REFUS";
+
+/**
+ * Type de contrat visé.
+ *
+ * Les valeurs sérialisées reprennent la casse exacte stockée en base et contrainte par le
+ * `CHECK` de `init_schema` : les renommer romprait la lecture des données existantes.
+ */
+export type ContractType = "CDI" | "CDD" | "Freelance" | "Stage" | "Alternance" | "Interim" | "Autre";
+
+/**
  * Champs éditables d'une candidature, en création comme en modification.
  */
 export type NewApplication = { 
@@ -165,29 +191,3 @@ interview: number,
  * Count de candidatures refusées.
  */
 rejected: number, };
-
-/**
- * Étape de la candidature dans le pipeline.
- *
- * Les quatre valeurs sont contraintes en base par un `CHECK` (migration 005) : y ajouter
- * une variante demande une migration, ce qui est voulu — le Kanban a une colonne par
- * statut, et un statut inconnu casserait la répartition.
- */
-export type ApplicationStatus = "EN_ATTENTE" | "RELANCEE" | "ENTRETIEN" | "REFUS";
-
-/**
- * Column de tri de la vue List.
- *
- * Enum et non chaîne libre : la valeur est interpolée dans le `ORDER BY`, où une chaîne
- * venue de l'IPC ouvrirait une injection. Le jeu fermé rend celle-ci impossible sans avoir
- * à échapper quoi que ce soit.
- */
-export type ApplicationSort = "job_title" | "company" | "status" | "date";
-
-/**
- * Type de contrat visé.
- *
- * Les valeurs sérialisées reprennent la casse exacte stockée en base et contrainte par le
- * `CHECK` de la migration 005 : les renommer romprait la lecture des données existantes.
- */
-export type ContractType = "CDI" | "CDD" | "Freelance" | "Stage" | "Alternance" | "Interim" | "Autre";

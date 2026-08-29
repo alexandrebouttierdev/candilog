@@ -6,6 +6,6 @@ pub mod status;
 
 pub use application::{Application, NewApplication};
 pub use repository::{
-    ApplicationRepository, ApplicationFilter, PipelineBreakdown, ApplicationSort,
+    ApplicationFilter, ApplicationRepository, ApplicationSort, PipelineBreakdown,
 };
 pub use status::{ApplicationStatus, ContractType};

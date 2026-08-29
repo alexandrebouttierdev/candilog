@@ -1,9 +1,7 @@
 //! Contract d'accès aux entretiens.
 
 use crate::core::errors::AppResult;
-use crate::features::interviews::domain::interview::{
-    InterviewAnalysis, Interview, NewInterview,
-};
+use crate::features::interviews::domain::interview::{Interview, InterviewAnalysis, NewInterview};
 use uuid::Uuid;
 
 /// Accès aux entretiens.

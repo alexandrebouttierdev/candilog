@@ -2,7 +2,7 @@
 
 use crate::app::AppState;
 use crate::core::errors::{AppError, AppResult};
-use crate::core::pagination::{Page, MAX_PAGE_SIZE};
+use crate::core::pagination::Page;
 use crate::core::utils::blocking;
 use crate::core::utils::validation::validate_user_file_path;
 use crate::features::applications::application::export;
@@ -100,13 +100,13 @@ pub async fn applications_export_csv(
     let service = Arc::clone(&state.applications);
     blocking::execute(move || {
         let cible = validate_user_file_path(&path)?;
-        let page = service.list_page(1, MAX_PAGE_SIZE, &filter)?;
-        let csv = export::vers_csv(&page.items)?;
+        let items = service.list_matching(&filter)?;
+        let csv = export::vers_csv(&items)?;
         std::fs::write(&cible, csv).map_err(|error| {
             tracing::error!(%error, path = %cible.display(), "export CSV impossible");
             AppError::Validation("Le fichier n'a pas pu être écrit à l'emplacement choisi.".into())
         })?;
-        Ok(page.total)
+        Ok(items.len() as u64)
     })
     .await
 }

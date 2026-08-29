@@ -6,6 +6,7 @@ import { PAGE_SIZE } from "@/shared/types/page";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 import { COMPANIES_KEY } from "@/features/companies/viewmodel/useCompaniesViewModel";
+import { useDebounce } from "@/shared/hooks/useDebounce";
 
 /** Root des clés de cache de la feature. */
 export const CONTACTS_KEY = ["contacts"] as const;
@@ -22,13 +23,14 @@ export function useContactsViewModel() {
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const searchQuery = useDebounce(search);
   const [tracking_role, setTrackingRole] = useState<string | null>(null);
   const [selected_id, setSelectedId] = useState<string | null>(null);
 
   const list = useQuery({
-    queryKey: [...CONTACTS_KEY, "page", { page, search, tracking_role }],
+    queryKey: [...CONTACTS_KEY, "page", { page, search: searchQuery, tracking_role }],
     queryFn: () =>
-      contactService.listPage({ page, page_size: PAGE_SIZE, search, tracking_role }),
+      contactService.listPage({ page, page_size: PAGE_SIZE, search: searchQuery, tracking_role }),
   });
 
   const invalider = useCallback(async () => {

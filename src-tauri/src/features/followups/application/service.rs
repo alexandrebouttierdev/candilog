@@ -1,7 +1,7 @@
 //! Cas d'usage des relances.
 
 use crate::core::errors::{AppError, AppResult};
-use crate::features::followups::domain::{NewFollowUp, FollowUp, FollowUpRepository};
+use crate::features::followups::domain::{FollowUp, FollowUpRepository, NewFollowUp};
 use uuid::Uuid;
 
 /// Service métier des relances, générique sur le dépôt.

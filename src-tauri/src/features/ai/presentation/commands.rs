@@ -3,15 +3,24 @@
 use crate::app::state::AppState;
 use crate::core::errors::AppResult;
 use crate::features::ai::domain::{
-    ImportedResumeAnalysis, ListingAnalysis, ResumeAnalysisRequest, ResumeGenerationRequest, ProfileImportRequest,
-    CoverLetterRequest, ResumeGeneration, ExtractedProfile, AiProgress,
+    AiProgress, CoverLetterRequest, ImportedResumeAnalysis, ListingAnalysis, ProfileImportProgress,
+    ProfileImportRequest, ResumeAnalysisRequest, ResumeGeneration, ResumeGenerationRequest,
 };
+use crate::features::profile::domain::ImportProfilePreview;
 use tauri::{AppHandle, Emitter, State};
 
 fn notifier(app: AppHandle) -> impl Fn(AiProgress) {
     move |progress| {
         if let Err(error) = app.emit("ia-progression", progress) {
             tracing::warn!(%error, "progression IA non émise");
+        }
+    }
+}
+
+fn import_notifier(app: AppHandle) -> impl Fn(ProfileImportProgress) {
+    move |progress| {
+        if let Err(error) = app.emit("profile_import_progress", progress) {
+            tracing::warn!(%error, "journal d'import non émis");
         }
     }
 }
@@ -48,7 +57,10 @@ pub async fn ai_analyze_resume(
     state: State<'_, AppState>,
     request: ResumeAnalysisRequest,
 ) -> AppResult<ImportedResumeAnalysis> {
-    state.ai.analyze_resume_imported(request, notifier(app)).await
+    state
+        .ai
+        .analyze_resume_imported(request, notifier(app))
+        .await
 }
 
 #[tauri::command(rename_all = "snake_case")]
@@ -56,8 +68,8 @@ pub async fn ai_import_profile(
     app: AppHandle,
     state: State<'_, AppState>,
     request: ProfileImportRequest,
-) -> AppResult<ExtractedProfile> {
-    state.ai.import_profile(request, notifier(app)).await
+) -> AppResult<ImportProfilePreview> {
+    state.ai.import_profile(request, import_notifier(app)).await
 }
 
 #[tauri::command(rename_all = "snake_case")]

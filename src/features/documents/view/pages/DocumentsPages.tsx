@@ -256,7 +256,7 @@ export function ResumeGeneratorPage() {
           <div className="space-y-5 p-4">
             {result ? (
               <>
-                <ScoreBadge value={result.analysis.score} />
+                <ScoreBadge value={result.profile_score.total} />
                 <p className="text-body leading-relaxed text-ink-muted">{result.analysis.recap}</p>
                 <div>
                   <p className="mb-2 text-label font-medium text-ink">Suggestions</p>
@@ -519,7 +519,7 @@ export function ResumeAnalysisPage() {
           {result ? (
             <>
               <DocumentPanel title="Résultat" icon="analytics">
-                <div className="grid gap-5 p-4 sm:grid-cols-[auto_1fr]"><ScoreBadge value={result.analysis.score} /><p className="text-body leading-relaxed text-ink-muted">{result.analysis.recap}</p></div>
+                <div className="grid gap-5 p-4 sm:grid-cols-[auto_1fr]"><ScoreBadge value={result.score.total} /><p className="text-body leading-relaxed text-ink-muted">{result.analysis.recap}</p></div>
               </DocumentPanel>
               <DocumentPanel title="Recommandations" icon="tips_and_updates">
                 <ul className="divide-y divide-line">{result.analysis.suggestions.map((s, i) => <li key={i} className="flex gap-3 px-4 py-3 text-body text-ink-muted"><span className="tabular text-accent">{i + 1}</span>{s}</li>)}</ul>

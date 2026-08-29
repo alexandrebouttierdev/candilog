@@ -29,18 +29,13 @@ pub async fn companies_list_page(
     company_type: Option<String>,
 ) -> AppResult<Page<Company>> {
     let service = Arc::clone(&state.companies);
-    blocking::execute(move || {
-        service.list_page(page, page_size, &search, company_type.as_deref())
-    })
-    .await
+    blocking::execute(move || service.list_page(page, page_size, &search, company_type.as_deref()))
+        .await
 }
 
 /// Récupère une entreprise par identifiant.
 #[tauri::command(rename_all = "snake_case")]
-pub async fn companies_get(
-    state: State<'_, AppState>,
-    id: uuid::Uuid,
-) -> AppResult<Company> {
+pub async fn companies_get(state: State<'_, AppState>, id: uuid::Uuid) -> AppResult<Company> {
     let service = Arc::clone(&state.companies);
     blocking::execute(move || service.get(id)).await
 }
@@ -54,10 +49,7 @@ pub async fn companies_list_types(state: State<'_, AppState>) -> AppResult<Vec<S
 
 /// Crée une entreprise.
 #[tauri::command(rename_all = "snake_case")]
-pub async fn companies_create(
-    state: State<'_, AppState>,
-    input: NewCompany,
-) -> AppResult<Company> {
+pub async fn companies_create(state: State<'_, AppState>, input: NewCompany) -> AppResult<Company> {
     let service = Arc::clone(&state.companies);
     blocking::execute(move || service.create(&input)).await
 }

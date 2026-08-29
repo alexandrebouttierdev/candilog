@@ -2,7 +2,9 @@
 
 use crate::features::ai::domain::GeneratedResume;
 use crate::features::profile::domain::Profile;
-use crate::infrastructure::pdf::{ResumeEducation, ResumeExperience, ResumeLanguage, ResumePdf, ResumeProject};
+use crate::infrastructure::pdf::{
+    ResumeEducation, ResumeExperience, ResumeLanguage, ResumePdf, ResumeProject,
+};
 
 /// Construit le modèle de CV, en fusionnant le profil (identité, coordonnées,
 /// projets, langues, périodes) et le CV généré (contenu reformulé).
@@ -105,8 +107,7 @@ fn decouper_puces(description: &str) -> Vec<String> {
     description
         .lines()
         .map(|row| {
-            row
-                .trim()
+            row.trim()
                 .trim_start_matches(['·', '-', '•', '*', ' '])
                 .trim()
                 .to_owned()

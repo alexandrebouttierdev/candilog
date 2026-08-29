@@ -13,10 +13,7 @@ fn test_date_sans_heure_est_refusee() {
         let mut input = new(date);
         input.interview_date = date.into();
         assert!(
-            matches!(
-                service.save(None, &input),
-                Err(AppError::Validation(_))
-            ),
+            matches!(service.save(None, &input), Err(AppError::Validation(_))),
             "la date « {date} » aurait dû être refusée"
         );
     }

@@ -2,7 +2,7 @@
 
 use crate::core::errors::{AppError, AppResult};
 use crate::features::interviews::domain::{
-    InterviewAnalysis, Interview, InterviewRepository, NewInterview,
+    Interview, InterviewAnalysis, InterviewRepository, NewInterview,
 };
 use uuid::Uuid;
 

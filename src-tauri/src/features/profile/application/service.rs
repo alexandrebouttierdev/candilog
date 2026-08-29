@@ -2,7 +2,10 @@
 
 use crate::core::errors::{AppError, AppResult};
 use crate::core::utils::validation::validate_optional_http_url;
-use crate::features::profile::domain::{Identity, Profile, ProfilePayload, ProfileRepository};
+use crate::features::profile::domain::{
+    apply_decisions, build_preview, Identity, ImportProfilePreview, ImportProfileRequest,
+    ImportProfileResult, Profile, ProfilePayload, ProfileRepository,
+};
 
 /// Service métier du profil, générique sur son dépôt.
 pub struct ProfileService<R: ProfileRepository> {
@@ -26,6 +29,21 @@ impl<R: ProfileRepository> ProfileService<R> {
         valider(profile)?;
         let (profile, updated_at) = self.repo.save(profile)?;
         Ok(enrichir(profile, Some(updated_at)))
+    }
+
+    /// Compare un CV extrait au profil actuel sans rien écrire.
+    pub fn preview_import(&self, extracted: &Profile) -> AppResult<ImportProfilePreview> {
+        let (current, _) = self.repo.get()?;
+        Ok(build_preview(&current, extracted))
+    }
+
+    /// Applique les décisions d'import en une seule écriture.
+    pub fn apply_import(&self, request: &ImportProfileRequest) -> AppResult<ImportProfileResult> {
+        let (current, _) = self.repo.get()?;
+        let (merged, result) = apply_decisions(&current, request)?;
+        valider(&merged)?;
+        self.repo.save(&merged)?;
+        Ok(result)
     }
 }
 
@@ -65,9 +83,10 @@ fn sections_complete(profile: &Profile) -> [(&'static str, bool); 7] {
         ),
         (
             "une formation",
-            profile.education.iter().any(|item| {
-                !item.degree.trim().is_empty() && !item.school.trim().is_empty()
-            }),
+            profile
+                .education
+                .iter()
+                .any(|item| !item.degree.trim().is_empty() && !item.school.trim().is_empty()),
         ),
         (
             "une langue",
@@ -151,7 +170,11 @@ fn valider(profile: &Profile) -> AppResult<()> {
             "Chaque langue nécessite un nom et un niveau".into(),
         ));
     }
-    if profile.projects.iter().any(|item| item.name.trim().is_empty()) {
+    if profile
+        .projects
+        .iter()
+        .any(|item| item.name.trim().is_empty())
+    {
         return Err(AppError::Validation(
             "Chaque projet nécessite un nom".into(),
         ));

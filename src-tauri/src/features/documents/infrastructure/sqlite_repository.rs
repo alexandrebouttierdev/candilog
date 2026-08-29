@@ -4,7 +4,8 @@ use crate::core::database::helpers::{connection, now_iso, translate_error, uuid_
 use crate::core::database::SqlitePool;
 use crate::core::errors::{AppError, AppResult};
 use crate::features::documents::domain::{
-    ResumeRepository, ResumeSummary, ResumeVersion, CoverLetter, CoverLetterRepository, NewResume, NewCoverLetter,
+    CoverLetter, CoverLetterRepository, NewCoverLetter, NewResume, ResumeRepository, ResumeSummary,
+    ResumeVersion,
 };
 use uuid::Uuid;
 
@@ -80,7 +81,10 @@ impl ResumeRepository for SqliteResumeRepository {
     fn delete(&self, id: Uuid) -> AppResult<()> {
         let conn = connection(&self.pool)?;
         let count = conn
-            .execute("DELETE FROM resume_versions WHERE id = ?1", [id.to_string()])
+            .execute(
+                "DELETE FROM resume_versions WHERE id = ?1",
+                [id.to_string()],
+            )
             .map_err(|e| translate_error(e, "version de CV"))?;
         if count == 0 {
             return Err(AppError::NotFound(format!("version de CV {id}")));
@@ -98,7 +102,8 @@ impl SqliteCoverLetterRepository {
         Self { pool }
     }
 }
-const COVER_LETTER_COLUMNS: &str = "id, name, company, job_title, tone, length, content, created_at";
+const COVER_LETTER_COLUMNS: &str =
+    "id, name, company, job_title, tone, length, content, created_at";
 fn cover_letter_row(row: &rusqlite::Row) -> rusqlite::Result<CoverLetter> {
     Ok(CoverLetter {
         id: uuid_column(row, 0)?,
@@ -152,10 +157,7 @@ impl CoverLetterRepository for SqliteCoverLetterRepository {
 
     fn delete(&self, id: Uuid) -> AppResult<()> {
         let count = connection(&self.pool)?
-            .execute(
-                "DELETE FROM cover_letters WHERE id = ?1",
-                [id.to_string()],
-            )
+            .execute("DELETE FROM cover_letters WHERE id = ?1", [id.to_string()])
             .map_err(|e| translate_error(e, "lettre de motivation"))?;
         if count == 0 {
             return Err(AppError::NotFound(format!("lettre de motivation {id}")));

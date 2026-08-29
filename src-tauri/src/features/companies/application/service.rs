@@ -3,9 +3,7 @@
 use crate::core::errors::{AppError, AppResult};
 use crate::core::pagination::Page;
 use crate::core::utils::validation::validate_optional_http_url;
-use crate::features::companies::domain::{
-    Company, CompanyRepository, CompanyUpdate, NewCompany,
-};
+use crate::features::companies::domain::{Company, CompanyRepository, CompanyUpdate, NewCompany};
 
 /// Service métier des entreprises, générique sur le dépôt.
 pub struct CompanyService<R: CompanyRepository> {

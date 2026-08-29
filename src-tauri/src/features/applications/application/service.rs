@@ -1,11 +1,11 @@
 //! Cas d'usage des candidatures.
 
 use crate::core::errors::{AppError, AppResult};
-use crate::core::pagination::Page;
+use crate::core::pagination::{Page, MAX_PAGE_SIZE};
 use crate::core::utils::validation::validate_optional_http_url;
 use crate::features::applications::domain::{
-    Application, ApplicationRepository, ApplicationFilter, NewApplication,
-    PipelineBreakdown, ApplicationStatus,
+    Application, ApplicationFilter, ApplicationRepository, ApplicationStatus, NewApplication,
+    PipelineBreakdown,
 };
 use uuid::Uuid;
 
@@ -48,6 +48,30 @@ impl<R: ApplicationRepository> ApplicationService<R> {
         filter: &ApplicationFilter,
     ) -> AppResult<Page<Application>> {
         self.repo.list_page(page, page_size, filter)
+    }
+
+    /// Toutes les candidatures du filtre, page par page, pour un export complet.
+    ///
+    /// `list_page` plafonne à `MAX_PAGE_SIZE` : un export qui s'arrêterait à la première
+    /// page tronquerait silencieusement le CSV tout en renvoyant `total` comme si tout
+    /// avait été écrit.
+    ///
+    /// # Errors
+    /// Propage l'erreur du dépôt.
+    pub fn list_matching(&self, filter: &ApplicationFilter) -> AppResult<Vec<Application>> {
+        let mut page = 1;
+        let mut items = Vec::new();
+        loop {
+            let chunk = self.repo.list_page(page, MAX_PAGE_SIZE, filter)?;
+            let received = chunk.items.len();
+            let total = chunk.total;
+            items.extend(chunk.items);
+            if items.len() as u64 >= total || received == 0 {
+                break;
+            }
+            page += 1;
+        }
+        Ok(items)
     }
 
     /// Report les candidatures par statut, pour les en-têtes de colonnes du Kanban.
@@ -101,6 +125,9 @@ impl<R: ApplicationRepository> ApplicationService<R> {
     fn valider(input: &NewApplication) -> AppResult<()> {
         if input.job_title.trim().is_empty() {
             return Err(AppError::Validation("Le poste est requis".into()));
+        }
+        if input.company_id.is_nil() {
+            return Err(AppError::Validation("L'entreprise est requise".into()));
         }
         if chrono::NaiveDate::parse_from_str(&input.sent_date, "%Y-%m-%d").is_err() {
             return Err(AppError::Validation("La date d'envoi est invalide".into()));

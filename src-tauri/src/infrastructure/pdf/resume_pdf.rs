@@ -389,8 +389,7 @@ impl Plan<'_> {
         value
             .chars()
             .map(|caractere| {
-                font
-                    .lookup_glyph_index(caractere as u32)
+                font.lookup_glyph_index(caractere as u32)
                     .and_then(|glyphe| font.get_glyph_width(glyphe))
                     .map_or(0.0, |largeur| largeur as f32 * echelle)
             })
@@ -433,14 +432,7 @@ impl Plan<'_> {
     ) -> f32 {
         let mut y = self.y;
         for row in self.decouper(weight, size, value, largeur_max) {
-            self.text(
-                x,
-                y + ASCENT * size,
-                weight,
-                size,
-                couleur.clone(),
-                &row,
-            );
+            self.text(x, y + ASCENT * size, weight, size, couleur.clone(), &row);
             y += interligne;
         }
         let consommee = y - self.y;
@@ -495,10 +487,8 @@ impl Plan<'_> {
         let mut contact_x = x;
         let elements = coordonnees(resume, self.icones);
         for (icon, text) in elements {
-            let largeur_element = pt(12.0)
-                + pt(4.2)
-                + self.largeur_text(Weight::Medium, pt(10.88), &text)
-                + pt(14.4);
+            let largeur_element =
+                pt(12.0) + pt(4.2) + self.largeur_text(Weight::Medium, pt(10.88), &text) + pt(14.4);
             if contact_x + largeur_element > x + CONTENT_W && contact_x > x {
                 contact_x = x;
                 self.y += pt(10.88) + pt(3.6);

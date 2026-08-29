@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CompletionBar, ProfilePanel, ProfileTabs } from "../ProfileUi";
 
-const counts = { experiences: 2, skills: 5, education: 1, languages: 3 };
+const counts = { experiences: 2, skills: 5, education: 1, projects: 4, languages: 3 };
 
 describe("interface du profil", () => {
   it("expose la section active comme un véritable onglet", async () => {

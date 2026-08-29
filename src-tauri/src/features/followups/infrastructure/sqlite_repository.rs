@@ -5,7 +5,7 @@ use crate::core::database::helpers::{
 };
 use crate::core::database::SqlitePool;
 use crate::core::errors::{AppError, AppResult};
-use crate::features::followups::domain::{NewFollowUp, FollowUp, FollowUpRepository};
+use crate::features::followups::domain::{FollowUp, FollowUpRepository, NewFollowUp};
 use uuid::Uuid;
 
 /// Implémentation `SQLite` du dépôt de relances.

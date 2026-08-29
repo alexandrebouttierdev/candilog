@@ -1,7 +1,7 @@
 //! Contract d'accès aux relances.
 
 use crate::core::errors::AppResult;
-use crate::features::followups::domain::follow_up::{NewFollowUp, FollowUp};
+use crate::features::followups::domain::follow_up::{FollowUp, NewFollowUp};
 use uuid::Uuid;
 
 /// Accès aux relances.

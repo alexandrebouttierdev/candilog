@@ -1,9 +1,7 @@
 //! Composition des agrégats du tableau de bord et de l'écran Analytics.
 
 use crate::core::errors::{AppError, AppResult};
-use crate::features::analytics::domain::{
-    Analytics, AnalyticsRepository, Step, Period, Dashboard,
-};
+use crate::features::analytics::domain::{Analytics, AnalyticsRepository, Dashboard, Period, Step};
 use chrono::NaiveDate;
 
 /// Service d'analyses, générique sur le dépôt pour rester testable sans `SQLite`.

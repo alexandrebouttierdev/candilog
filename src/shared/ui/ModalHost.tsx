@@ -29,6 +29,8 @@ export function ModalHost({
   submitIcon = "check",
   submitDisabled = false,
   busy = false,
+  cancelLabel = "Annuler",
+  flush = false,
   onClose,
   onSubmit,
   width = "620px",
@@ -45,6 +47,9 @@ export function ModalHost({
   submitIcon?: string;
   submitDisabled?: boolean;
   busy?: boolean;
+  cancelLabel?: string;
+  /** Corps sans gouttière, pour un split liste / détail. */
+  flush?: boolean;
   onClose: () => void;
   onSubmit?: () => void;
   width?: string;
@@ -82,7 +87,7 @@ export function ModalHost({
         aria-label={title}
         tabIndex={-1}
         style={{ width, maxWidth: "100%" }}
-        className="flex max-h-full flex-col overflow-hidden rounded-[14px] border border-line bg-surface shadow-e3"
+        className={`flex max-h-full flex-col overflow-hidden rounded-[14px] border border-line bg-surface shadow-e3${flush ? " h-[min(720px,100%)]" : ""}`}
       >
         <header className="flex flex-none items-start gap-[13px] border-b border-line px-[22px] py-[18px]">
           <span className="flex size-[34px] flex-none items-center justify-center rounded-tile bg-accent-tint text-accent">
@@ -99,7 +104,14 @@ export function ModalHost({
           <IconButton icon="close" label="Fermer" onClick={onClose} />
         </header>
 
-        <div ref={body} className="min-h-0 flex-1 overflow-y-auto px-[22px] pt-1.5 pb-[18px]">
+        <div
+          ref={body}
+          className={
+            flush
+              ? "flex min-h-0 flex-1 flex-col overflow-hidden"
+              : "min-h-0 flex-1 overflow-y-auto px-[22px] pt-1.5 pb-[18px]"
+          }
+        >
           {children}
         </div>
 
@@ -117,7 +129,7 @@ export function ModalHost({
             <div className="flex-1" />
           )}
           <Button variant="secondary" size="dialog" onClick={onClose}>
-            Annuler
+            {cancelLabel}
           </Button>
           {onSubmit ? (
             <Button

@@ -103,7 +103,7 @@ describe("ViewModel des candidatures", () => {
     act(() => result.current.rechercher("nova"));
 
     await waitFor(() => expect(result.current.page).toBe(1));
-    expect(listPage.mock.calls.at(-1)![0].filter.search).toBe("nova");
+    await waitFor(() => expect(listPage.mock.calls.at(-1)?.[0].filter.search).toBe("nova"));
   });
 
   it("inverse la direction quand on retrie la colonne courante", async () => {

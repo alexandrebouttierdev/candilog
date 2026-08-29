@@ -4,8 +4,8 @@ use crate::core::database::helpers::{connection, now_iso, translate_error};
 use crate::core::database::SqlitePool;
 use crate::core::errors::{AppError, AppResult};
 use crate::features::profile::domain::{
-    Certification, Skill, Experience, Education, Identity, Language, Profile, ProfileRepository,
-    Project,
+    Certification, Education, Experience, Identity, Language, Profile, ProfileRepository, Project,
+    Skill,
 };
 use rusqlite::OptionalExtension;
 use serde::{Deserialize, Serialize};

@@ -1,29 +1,42 @@
 //! Entités du profil exposées à React.
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 
 /// Coordonnées et objectif professionnel.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "profile.ts")]
 pub struct Identity {
-    #[serde(alias = "prenom")]
+    #[serde(default, alias = "prenom", deserialize_with = "string_lenient")]
     pub first_name: String,
-    #[serde(alias = "nom")]
+    #[serde(default, alias = "nom", deserialize_with = "string_lenient")]
     pub name: String,
+    #[serde(default, deserialize_with = "string_lenient")]
     pub email: String,
-    #[serde(alias = "telephone")]
+    #[serde(
+        default,
+        alias = "telephone",
+        deserialize_with = "option_string_lenient"
+    )]
     pub phone: Option<String>,
-    #[serde(alias = "ville")]
+    #[serde(default, alias = "ville", deserialize_with = "option_string_lenient")]
     pub city: Option<String>,
     /// Accroche courte, utilisée comme objectif ou titre de CV.
-    #[serde(alias = "titre")]
+    #[serde(default, alias = "titre", deserialize_with = "option_string_lenient")]
     pub title: Option<String>,
     /// Présentation détaillée du parcours et de l'objectif.
+    #[serde(default, deserialize_with = "option_string_lenient")]
     pub resume: Option<String>,
+    #[serde(default, deserialize_with = "option_string_lenient")]
     pub linkedin: Option<String>,
+    #[serde(default, deserialize_with = "option_string_lenient")]
     pub github: Option<String>,
-    #[serde(alias = "siteWeb", alias = "site_web")]
+    #[serde(
+        default,
+        alias = "siteWeb",
+        alias = "site_web",
+        deserialize_with = "option_string_lenient"
+    )]
     pub website: Option<String>,
 }
 
@@ -32,16 +45,19 @@ pub struct Identity {
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "profile.ts")]
 pub struct Experience {
-    #[serde(alias = "intitule")]
+    #[serde(default, alias = "intitule", deserialize_with = "string_lenient")]
     pub title: String,
-    #[serde(alias = "entreprise")]
+    #[serde(default, alias = "entreprise", deserialize_with = "string_lenient")]
     pub company: String,
-    #[serde(alias = "lieu")]
+    #[serde(default, alias = "lieu", deserialize_with = "option_string_lenient")]
     pub location: Option<String>,
+    #[serde(default, deserialize_with = "string_lenient")]
     pub start_date: String,
+    #[serde(default, deserialize_with = "option_string_lenient")]
     pub end_date: Option<String>,
-    #[serde(alias = "posteActuel", alias = "poste_actuel")]
+    #[serde(default, alias = "posteActuel", alias = "poste_actuel")]
     pub current: bool,
+    #[serde(default, deserialize_with = "option_string_lenient")]
     pub description: Option<String>,
 }
 
@@ -50,7 +66,7 @@ pub struct Experience {
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "profile.ts")]
 pub struct Skill {
-    #[serde(alias = "nom")]
+    #[serde(default, alias = "nom", deserialize_with = "string_lenient")]
     pub name: String,
 }
 
@@ -59,14 +75,17 @@ pub struct Skill {
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "profile.ts")]
 pub struct Education {
-    #[serde(alias = "diplome")]
+    #[serde(default, alias = "diplome", deserialize_with = "string_lenient")]
     pub degree: String,
-    #[serde(alias = "etablissement")]
+    #[serde(default, alias = "etablissement", deserialize_with = "string_lenient")]
     pub school: String,
-    #[serde(alias = "lieu")]
+    #[serde(default, alias = "lieu", deserialize_with = "option_string_lenient")]
     pub location: Option<String>,
+    #[serde(default, deserialize_with = "option_string_lenient")]
     pub start_date: Option<String>,
+    #[serde(default, deserialize_with = "option_string_lenient")]
     pub end_date: Option<String>,
+    #[serde(default, deserialize_with = "option_string_lenient")]
     pub description: Option<String>,
 }
 
@@ -75,9 +94,9 @@ pub struct Education {
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "profile.ts")]
 pub struct Language {
-    #[serde(alias = "nom")]
+    #[serde(default, alias = "nom", deserialize_with = "string_lenient")]
     pub name: String,
-    #[serde(alias = "niveau")]
+    #[serde(default, alias = "niveau", deserialize_with = "string_lenient")]
     pub level: String,
 }
 
@@ -86,10 +105,13 @@ pub struct Language {
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "profile.ts")]
 pub struct Project {
-    #[serde(alias = "nom")]
+    #[serde(default, alias = "nom", deserialize_with = "string_lenient")]
     pub name: String,
+    #[serde(default, deserialize_with = "option_string_lenient")]
     pub description: Option<String>,
+    #[serde(default, deserialize_with = "option_string_lenient")]
     pub url: Option<String>,
+    #[serde(default, deserialize_with = "option_string_lenient")]
     pub technologies: Option<String>,
 }
 
@@ -98,11 +120,17 @@ pub struct Project {
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "profile.ts")]
 pub struct Certification {
-    #[serde(alias = "nom")]
+    #[serde(default, alias = "nom", deserialize_with = "string_lenient")]
     pub name: String,
-    #[serde(alias = "organisme")]
+    #[serde(
+        default,
+        alias = "organisme",
+        deserialize_with = "option_string_lenient"
+    )]
     pub issuer: Option<String>,
+    #[serde(default, deserialize_with = "option_string_lenient")]
     pub date: Option<String>,
+    #[serde(default, deserialize_with = "option_string_lenient")]
     pub url: Option<String>,
 }
 
@@ -111,17 +139,19 @@ pub struct Certification {
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "profile.ts")]
 pub struct Profile {
-    #[serde(alias = "identite")]
+    #[serde(default, alias = "identite")]
     pub identity: Identity,
+    #[serde(default)]
     pub experiences: Vec<Experience>,
-    #[serde(alias = "competences")]
+    #[serde(default, alias = "competences", deserialize_with = "skills_lenient")]
     pub skills: Vec<Skill>,
-    #[serde(alias = "formations")]
+    #[serde(default, alias = "formations")]
     pub education: Vec<Education>,
-    #[serde(alias = "langues")]
+    #[serde(default, alias = "langues")]
     pub languages: Vec<Language>,
-    #[serde(alias = "projets")]
+    #[serde(default, alias = "projets")]
     pub projects: Vec<Project>,
+    #[serde(default)]
     pub certifications: Vec<Certification>,
 }
 
@@ -138,4 +168,70 @@ pub struct ProfilePayload {
     pub incomplete_sections: Vec<String>,
     /// Timestamp du dernier enregistrement, absent pour un profil neuf.
     pub updated_at: Option<String>,
+}
+
+/// Les modèles LLM envoient souvent une liste de puces là où le profil attend une chaîne.
+fn string_lenient<'de, D: Deserializer<'de>>(deserializer: D) -> Result<String, D::Error> {
+    Ok(text_from_value(serde_json::Value::deserialize(
+        deserializer,
+    )?))
+}
+
+fn option_string_lenient<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<String>, D::Error> {
+    let text = text_from_value(serde_json::Value::deserialize(deserializer)?);
+    Ok(if text.trim().is_empty() {
+        None
+    } else {
+        Some(text)
+    })
+}
+
+fn skills_lenient<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Vec<Skill>, D::Error> {
+    let value = serde_json::Value::deserialize(deserializer)?;
+    Ok(match value {
+        serde_json::Value::Array(items) => items.into_iter().filter_map(skill_from_value).collect(),
+        serde_json::Value::String(name) if !name.trim().is_empty() => vec![Skill { name }],
+        _ => Vec::new(),
+    })
+}
+
+fn skill_from_value(value: serde_json::Value) -> Option<Skill> {
+    match value {
+        serde_json::Value::String(name) if !name.trim().is_empty() => Some(Skill { name }),
+        serde_json::Value::Object(map) => {
+            let name = map
+                .get("name")
+                .or_else(|| map.get("nom"))
+                .map(|item| text_from_value(item.clone()))?;
+            if name.trim().is_empty() {
+                None
+            } else {
+                Some(Skill { name })
+            }
+        }
+        _ => None,
+    }
+}
+
+fn text_from_value(value: serde_json::Value) -> String {
+    match value {
+        serde_json::Value::String(text) => text,
+        serde_json::Value::Number(number) => number.to_string(),
+        serde_json::Value::Bool(flag) => flag.to_string(),
+        serde_json::Value::Array(items) => items
+            .into_iter()
+            .map(text_from_value)
+            .filter(|text| !text.trim().is_empty())
+            .collect::<Vec<_>>()
+            .join("\n"),
+        serde_json::Value::Object(map) => map
+            .into_values()
+            .map(text_from_value)
+            .filter(|text| !text.trim().is_empty())
+            .collect::<Vec<_>>()
+            .join(" — "),
+        serde_json::Value::Null => String::new(),
+    }
 }

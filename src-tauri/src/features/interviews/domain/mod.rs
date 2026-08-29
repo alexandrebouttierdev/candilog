@@ -3,5 +3,5 @@
 pub mod interview;
 pub mod repository;
 
-pub use interview::{InterviewAnalysis, Interview, NewInterview, InterviewType};
+pub use interview::{Interview, InterviewAnalysis, InterviewType, NewInterview};
 pub use repository::InterviewRepository;

@@ -10,14 +10,9 @@ export type About = { version: string, name: string, };
  */
 export type AnalysisMode = "auto" | "small" | "standard" | "advanced";
 
-export type UpdateAsset = { name: string, url: string, };
-
 export type LlmForm = { provider: ProviderKind, api_key: string | null, endpoint: string | null, model: string, temperature: number, mode: AnalysisMode, };
 
-/**
- * Mise à jour proposée par GitHub Releases.
- */
-export type UpdateInfo = { version: string, notes: string, page_url: string, asset: UpdateAsset | null, };
+export type ProviderKind = "ollama" | "claude" | "openai" | "gemini" | "mistral" | "nvidia" | { "custom": string };
 
 /**
  * Forme IPC destinée à React.
@@ -25,13 +20,18 @@ export type UpdateInfo = { version: string, notes: string, page_url: string, ass
 export type Settings = { llm: LlmForm, theme: ThemePref, language: string, };
 
 /**
- * Progress du téléchargement d'un installeur.
- */
-export type UpdateProgress = { progress: number, };
-
-export type ProviderKind = "ollama" | "claude" | "openai" | "gemini" | "mistral" | "nvidia" | { "custom": string };
-
-/**
  * Préférence de thème, identique à l'enum historique.
  */
 export type ThemePref = "light" | "dark" | "system";
+
+export type UpdateAsset = { name: string, url: string, };
+
+/**
+ * Mise à jour proposée par GitHub Releases.
+ */
+export type UpdateInfo = { version: string, notes: string, page_url: string, asset: UpdateAsset | null, };
+
+/**
+ * Progress du téléchargement d'un installeur.
+ */
+export type UpdateProgress = { progress: number, };

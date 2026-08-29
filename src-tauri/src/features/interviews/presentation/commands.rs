@@ -20,10 +20,7 @@ pub async fn interviews_list_between(
 
 /// Récupère un entretien par identifiant.
 #[tauri::command(rename_all = "snake_case")]
-pub async fn interviews_get(
-    state: State<'_, AppState>,
-    id: uuid::Uuid,
-) -> AppResult<Interview> {
+pub async fn interviews_get(state: State<'_, AppState>, id: uuid::Uuid) -> AppResult<Interview> {
     let service = Arc::clone(&state.interviews);
     blocking::execute(move || service.get(id)).await
 }

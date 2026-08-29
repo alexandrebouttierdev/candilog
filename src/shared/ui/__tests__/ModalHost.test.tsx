@@ -45,6 +45,16 @@ describe("ModalHost", () => {
     expect(onSubmit).toHaveBeenCalledOnce();
   });
 
+  it("permet de renommer l'action secondaire", () => {
+    render(
+      <ModalHost open icon="check" title="Profil importé" cancelLabel="Fermer" onClose={vi.fn()}>
+        <p>Terminé</p>
+      </ModalHost>,
+    );
+    expect(screen.getAllByRole("button", { name: "Fermer" }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByRole("button", { name: "Annuler" })).not.toBeInTheDocument();
+  });
+
   it("n'affiche pas d'action primaire quand il n'y a rien à soumettre", () => {
     render(
       <ModalHost open icon="visibility" title="Détail" onClose={vi.fn()}>

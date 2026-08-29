@@ -185,7 +185,11 @@ impl Plan<'_> {
             18.0,
             name,
         );
-        if let Some(city) = cover_letter.city.as_deref().filter(|v| !v.trim().is_empty()) {
+        if let Some(city) = cover_letter
+            .city
+            .as_deref()
+            .filter(|v| !v.trim().is_empty())
+        {
             self.bloc_text(
                 Weight::Regular,
                 10.0,
@@ -327,8 +331,7 @@ impl Plan<'_> {
         value
             .chars()
             .map(|caractere| {
-                font
-                    .lookup_glyph_index(caractere as u32)
+                font.lookup_glyph_index(caractere as u32)
                     .and_then(|glyphe| font.get_glyph_width(glyphe))
                     .map_or(0.0, |largeur| largeur as f32 * echelle)
             })

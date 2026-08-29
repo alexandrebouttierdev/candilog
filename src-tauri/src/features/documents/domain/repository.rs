@@ -1,6 +1,6 @@
 //! Contracts d'accès aux bibliothèques locales.
 
-use super::{ResumeSummary, ResumeVersion, CoverLetter, NewResume, NewCoverLetter};
+use super::{CoverLetter, NewCoverLetter, NewResume, ResumeSummary, ResumeVersion};
 use crate::core::errors::AppResult;
 use uuid::Uuid;
 
