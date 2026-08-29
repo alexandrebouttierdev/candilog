@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { ContextBarAccessory, ContextNote } from "@/app/layout/ContextBar";
 import { Button, InspectorRow, PageHeader } from "@/shared/ui";
-import logoCandilog from "@/assets/logo-candilog.png";
+import logoCandilog from "@/assets/logo-candilog.svg";
 import { settingsService } from "../../services/settingsService";
 import { A_ABOUT_KEY } from "../../viewmodel/useSettingsViewModel";
 import { SettingsBody, SettingsCard } from "../components/SettingsUi";

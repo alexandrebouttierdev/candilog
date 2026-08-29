@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-labelledby="title desc">
+  <title id="title">Candilog</title>
+  <desc id="desc">Monogramme C avec coche</desc>
+  <defs>
+    <linearGradient id="candilogMarkGradient" x1="18" y1="16" x2="80" y2="82" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6b7cff"/>
+      <stop offset="0.52" stop-color="#4f5fe8"/>
+      <stop offset="1" stop-color="#3d4fd4"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(4.2 0)">
+    <path d="M 67.5 24.5 A 33.5 33.5 0 1 0 67.5 71.5"
+      fill="none" stroke="url(#candilogMarkGradient)" stroke-width="14" stroke-linecap="round"/>
+    <path d="M 59.5 55.5 L 68 64 L 80.5 48.5"
+      fill="none" stroke="#4FC27A" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

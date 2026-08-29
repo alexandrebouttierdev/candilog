@@ -5,7 +5,8 @@ import type { ThemePref } from "@/shared/types/generated/settings";
 import { settingsService } from "@/features/settings/services/settingsService";
 import { Icon } from "@/shared/ui/Icon";
 import { cn } from "@/shared/lib/cn";
-import logoCandilog from "@/assets/logo-candilog.png";
+import logoCandilog from "@/assets/logo-candilog.svg";
+import logoCandilogDark from "@/assets/logo-candilog-dark.svg";
 
 /** Rail compact : 68 px, items 42×36, tooltip immédiat. */
 export function NavRail() {
@@ -25,7 +26,13 @@ export function NavRail() {
       aria-label="Navigation principale"
       className="glass-rail relative z-20 flex w-rail flex-none flex-col items-center overflow-visible border-r border-glass-rail pt-3 pb-2.5"
     >
-      <img src={logoCandilog} alt="Candilog" width={36} height={36} className="mb-3 size-9" />
+      <img
+        src={sombre ? logoCandilogDark : logoCandilog}
+        alt="Candilog"
+        width={36}
+        height={36}
+        className="mb-3 size-9"
+      />
       <span aria-hidden className="mb-2.5 h-px w-6 bg-line" />
       <div className="flex min-h-0 flex-1 flex-col gap-1 self-stretch overflow-visible px-[13px]">
         {Sections.map((section, index) => {

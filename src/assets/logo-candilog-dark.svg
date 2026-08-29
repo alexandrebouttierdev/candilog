@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-labelledby="title desc">
+  <title id="title">Candilog</title>
+  <desc id="desc">Monogramme Candilog pour fond sombre</desc>
+  <g transform="translate(4.2 0)">
+    <path d="M 67.5 24.5 A 33.5 33.5 0 1 0 67.5 71.5"
+      fill="none" stroke="#6b7cff" stroke-width="14" stroke-linecap="round"/>
+    <path d="M 59.5 55.5 L 68 64 L 80.5 48.5"
+      fill="none" stroke="#4FC27A" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

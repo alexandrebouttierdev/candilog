@@ -142,7 +142,7 @@ Focus clavier : `outline 1px accent-focus`, offset 0 — déjà sur `:focus-visi
 
 Composant : `Icon` (`src/shared/ui/Icon.tsx`). Tailles usuelles : 14 (pastille), 15–16 (bouton, nav), 17 (header de carte), 20 (empty).
 
-Noms d’icônes des sections : `src/app/router/routes.ts`. Logo produit : `src/assets/logo-candilog.png` (36×36 dans le rail).
+Noms d’icônes des sections : `src/app/router/routes.ts`. Logo produit : `src/assets/logo-candilog.svg` (36×36 dans le rail ; variante sombre `logo-candilog-dark.svg` ; coche `#4FC27A`).
 
 ---
 
