@@ -56,8 +56,8 @@ export function useCompaniesViewModel() {
         page_size: PAGE_SIZE,
         filter: {
           search: "",
-          status: null,
-          contract: null,
+          status: [],
+          contract: [],
           company_id: ficheId,
           city: "",
           job_title: "",

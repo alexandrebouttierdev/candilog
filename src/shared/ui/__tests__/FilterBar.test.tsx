@@ -15,7 +15,7 @@ describe("filtres de tableau", () => {
     const onRemove = vi.fn();
     render(<ActiveFilterChip field="Statut" value="Entretien" onRemove={onRemove} />);
     expect(screen.getByText("Statut · Entretien")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Retirer le filtre Statut" }));
+    await userEvent.click(screen.getByRole("button", { name: "Retirer le filtre Statut Entretien" }));
     expect(onRemove).toHaveBeenCalledOnce();
   });
 });

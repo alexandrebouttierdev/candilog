@@ -32,11 +32,12 @@ function borneFacultative() {
  */
 export const applicationFilterSchema = z
   .object({
-    status: z.enum(["EN_ATTENTE", "RELANCEE", "ENTRETIEN", "REFUS"]).nullable().default(null),
+    status: z
+      .array(z.enum(["EN_ATTENTE", "RELANCEE", "ENTRETIEN", "REFUS"]))
+      .default([]),
     contract: z
-      .enum(["CDI", "CDD", "Freelance", "Stage", "Alternance", "Interim", "Autre"])
-      .nullable()
-      .default(null),
+      .array(z.enum(["CDI", "CDD", "Freelance", "Stage", "Alternance", "Interim", "Autre"]))
+      .default([]),
     company_id: z
       .string()
       .transform((value) => (value === "" ? null : value))
@@ -64,8 +65,8 @@ export type ApplicationFilterInput = z.input<typeof applicationFilterSchema>;
 
 /** Filter vide, état par défaut de l'écran. */
 export const FILTER_VIDE: ApplicationFilterInput = {
-  status: null,
-  contract: null,
+  status: [],
+  contract: [],
   company_id: null,
   city: "",
   job_title: "",

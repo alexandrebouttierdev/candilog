@@ -144,7 +144,7 @@ export function ActiveFilterChip({
       </span>
       <button
         type="button"
-        aria-label={`Retirer le filtre ${field}`}
+        aria-label={`Retirer le filtre ${field} ${value}`}
         onClick={onRemove}
         className="flex size-5 flex-none items-center justify-center rounded-[4px] text-accent-text-soft hover:bg-accent-tint-12"
       >

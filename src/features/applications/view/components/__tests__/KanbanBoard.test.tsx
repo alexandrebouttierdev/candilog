@@ -90,4 +90,26 @@ describe("KanbanBoard", () => {
 
     expect(transfert.setDragImage).toHaveBeenCalled();
   });
+
+  it("demande une création au statut de la colonne cliquée", () => {
+    const onCreate = vi.fn();
+    render(
+      <KanbanBoard
+        applications={[cand("Développeur", "EN_ATTENTE")]}
+        breakdown={{ pending: 1, followed_up: 0, interview: 0, rejected: 0 }}
+        selected_id={null}
+        checkedIds={new Set()}
+        onSelect={vi.fn()}
+        onToggleSelect={vi.fn()}
+        onStatusChange={vi.fn()}
+        onCreate={onCreate}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Nouvelle candidature au statut Entretien" }),
+    );
+
+    expect(onCreate).toHaveBeenCalledWith("ENTRETIEN");
+  });
 });

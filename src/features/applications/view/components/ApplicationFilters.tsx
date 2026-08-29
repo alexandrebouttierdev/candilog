@@ -20,6 +20,10 @@ function patch(
   return { ...filters, ...update };
 }
 
+function toggle<T>(values: readonly T[], value: T): T[] {
+  return values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
+}
+
 function periodValue(start: string | null, end: string | null): string | null {
   if (start && end) return `${versDateAffichee(start)} → ${versDateAffichee(end)}`;
   if (start) return `Depuis le ${versDateAffichee(start)}`;
@@ -57,6 +61,7 @@ export function ApplicationFilters({
   onSearch,
   filters,
   count,
+  total,
   onApply,
   onReset,
   actions,
@@ -65,6 +70,8 @@ export function ApplicationFilters({
   onSearch: (value: string) => void;
   filters: ApplicationFilterValues;
   count: number;
+  /** Total renvoyé par SQLite après application du filtre courant. */
+  total: number | null;
   onApply: (values: ApplicationFilterValues) => void;
   onReset: () => void;
   actions?: ReactNode;
@@ -103,13 +110,9 @@ export function ApplicationFilters({
             <FilterOption
               key={status.value}
               label={status.label}
-              selected={filters.status === status.value}
+              selected={filters.status.includes(status.value)}
               onSelect={() =>
-                onApply(
-                  patch(filters, {
-                    status: filters.status === status.value ? null : status.value,
-                  }),
-                )
+                onApply(patch(filters, { status: toggle(filters.status, status.value) }))
               }
             />
           ))}
@@ -119,13 +122,9 @@ export function ApplicationFilters({
             <FilterOption
               key={contract}
               label={contract_label(contract)}
-              selected={filters.contract === contract}
+              selected={filters.contract.includes(contract)}
               onSelect={() =>
-                onApply(
-                  patch(filters, {
-                    contract: filters.contract === contract ? null : contract,
-                  }),
-                )
+                onApply(patch(filters, { contract: toggle(filters.contract, contract) }))
               }
             />
           ))}
@@ -164,20 +163,28 @@ export function ApplicationFilters({
         </FilterGroup>
       </FilterMenu>
 
-      {filters.status ? (
+      {filters.status.map((value) => (
         <ActiveFilterChip
+          key={`status-${value}`}
           field="Statut"
-          value={Statuses.find((status) => status.value === filters.status)?.label ?? filters.status}
-          onRemove={() => onApply(patch(filters, { status: null }))}
+          value={Statuses.find((status) => status.value === value)?.label ?? value}
+          onRemove={() =>
+            onApply(patch(filters, { status: filters.status.filter((item) => item !== value) }))
+          }
         />
-      ) : null}
-      {filters.contract ? (
+      ))}
+      {filters.contract.map((value) => (
         <ActiveFilterChip
+          key={`contract-${value}`}
           field="Contrat"
-          value={contract_label(filters.contract)}
-          onRemove={() => onApply(patch(filters, { contract: null }))}
+          value={contract_label(value)}
+          onRemove={() =>
+            onApply(
+              patch(filters, { contract: filters.contract.filter((item) => item !== value) }),
+            )
+          }
         />
-      ) : null}
+      ))}
       {filters.job_title ? (
         <ActiveFilterChip
           field="Poste"
@@ -200,6 +207,11 @@ export function ApplicationFilters({
         />
       ) : null}
       {count > 0 ? <ClearFiltersButton onClick={onReset} /> : null}
+      {total !== null ? (
+        <p className="tabular text-note font-semibold text-ink" aria-live="polite">
+          {total} candidature{total === 1 ? "" : "s"}
+        </p>
+      ) : null}
     </FilterBar>
   );
 }

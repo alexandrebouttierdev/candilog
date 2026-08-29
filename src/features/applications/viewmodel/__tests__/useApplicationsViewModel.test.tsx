@@ -146,8 +146,8 @@ describe("ViewModel des candidatures", () => {
 
     act(() =>
       result.current.appliquerFilters({
-        status: "ENTRETIEN",
-        contract: "CDI",
+        status: ["ENTRETIEN"],
+        contract: ["CDI"],
         company_id: null,
         city: "",
         job_title: "",

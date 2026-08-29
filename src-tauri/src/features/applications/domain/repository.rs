@@ -34,10 +34,12 @@ pub enum ApplicationSort {
 pub struct ApplicationFilter {
     /// Recherche libre sur le poste et le nom de l'entreprise.
     pub search: String,
-    /// Status exact.
-    pub status: Option<ApplicationStatus>,
-    /// Type de contrat exact.
-    pub contract: Option<ContractType>,
+    /// Statuts retenus ; vide = tous.
+    #[serde(default)]
+    pub status: Vec<ApplicationStatus>,
+    /// Types de contrat retenus ; vide = tous.
+    #[serde(default)]
+    pub contract: Vec<ContractType>,
     /// Company liée.
     pub company_id: Option<Uuid>,
     /// City de l'entreprise liée, en recherche partielle.

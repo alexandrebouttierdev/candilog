@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 import { ApplicationsPage } from "../ApplicationsPage";
 import { applicationService } from "../../../services/applicationService";
 import type { Application } from "../../../services/applicationService";
+import { companyService } from "@/features/companies/services/companyService";
 import { useUiStore } from "@/shared/lib/ui-store";
 
 function cand(job_title: string): Application {
@@ -54,12 +55,20 @@ beforeEach(() => {
     page_size: 32,
     total_pages: 1,
   });
+  vi.spyOn(companyService, "listPage").mockResolvedValue({
+    items: [],
+    total: 0,
+    page: 1,
+    page_size: 8,
+    total_pages: 0,
+  });
 });
 
 describe("écran Candidatures — sélection multiple", () => {
   it("affiche les actions groupées dès qu'une carte est cochée", async () => {
     render(<ApplicationsPage />, { wrapper });
     await waitFor(() => expect(screen.getByText("Développeur")).toBeInTheDocument());
+    expect(screen.getByText("2 candidatures")).toBeInTheDocument();
 
     expect(screen.queryByText("1 sélectionnée")).not.toBeInTheDocument();
 
@@ -94,5 +103,19 @@ describe("écran Candidatures — sélection multiple", () => {
     await userEvent.click(within(dialog).getByRole("button", { name: "Supprimer" }));
 
     await waitFor(() => expect(supprimer).toHaveBeenCalledTimes(2));
+  });
+});
+
+describe("écran Candidatures — création depuis le Kanban", () => {
+  it("préremplit le statut de la colonne dont on a cliqué le plus", async () => {
+    render(<ApplicationsPage />, { wrapper });
+    await waitFor(() => expect(screen.getByText("Développeur")).toBeInTheDocument());
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Nouvelle candidature au statut Entretien" }),
+    );
+
+    expect(screen.getByRole("dialog", { name: "Nouvelle candidature" })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByLabelText("Statut")).toHaveValue("ENTRETIEN"));
   });
 });

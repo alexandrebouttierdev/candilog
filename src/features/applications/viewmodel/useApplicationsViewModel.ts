@@ -21,8 +21,8 @@ export type TrackingView = "kanban" | "liste";
 
 /** Filters appliqués, dans leur forme validée. */
 const INITIAL_FILTER: ApplicationFilterValues = {
-  status: null,
-  contract: null,
+  status: [],
+  contract: [],
   company_id: null,
   city: "",
   job_title: "",
@@ -179,9 +179,9 @@ export function useApplicationsViewModel() {
   /** Count de critères actifs, hors recherche libre, pour la pastille du bouton Filters. */
   const filtersActifs = useMemo(
     () =>
+      filters.status.length +
+      filters.contract.length +
       [
-        filters.status,
-        filters.contract,
         filters.company_id,
         filters.city || null,
         filters.job_title || null,

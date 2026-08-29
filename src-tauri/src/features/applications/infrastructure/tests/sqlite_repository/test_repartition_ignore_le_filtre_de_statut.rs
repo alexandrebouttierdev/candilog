@@ -15,7 +15,7 @@ fn test_repartition_ignore_le_filtre_de_statut() {
 
     let breakdown = repo
         .breakdown(&ApplicationFilter {
-            status: Some(ApplicationStatus::Interview),
+            status: vec![ApplicationStatus::Interview],
             ..ApplicationFilter::default()
         })
         .unwrap();

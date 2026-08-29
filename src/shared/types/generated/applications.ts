@@ -72,13 +72,13 @@ export type ApplicationFilter = {
  */
 search: string, 
 /**
- * Status exact.
+ * Statuts retenus ; vide = tous.
  */
-status: ApplicationStatus | null, 
+status: Array<ApplicationStatus>, 
 /**
- * Type de contrat exact.
+ * Types de contrat retenus ; vide = tous.
  */
-contract: ContractType | null, 
+contract: Array<ContractType>, 
 /**
  * Company liée.
  */

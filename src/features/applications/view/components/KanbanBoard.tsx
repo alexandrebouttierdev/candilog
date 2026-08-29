@@ -4,7 +4,7 @@ import type { PipelineBreakdown } from "../../services/applicationService";
 import { Statuses } from "../../model/statuses";
 import { ApplicationCard } from "./ApplicationCard";
 import type { ApercuGlisse } from "./ApplicationCard";
-import { Icon } from "@/shared/ui";
+import { IconButton } from "@/shared/ui";
 import { cn } from "@/shared/lib/cn";
 import type { Tone } from "@/shared/ui";
 
@@ -51,7 +51,7 @@ export function KanbanBoard({
   onSelect: (id: string) => void;
   onToggleSelect: (id: string) => void;
   onStatusChange: (id: string, status: ApplicationStatus) => void;
-  onCreate: () => void;
+  onCreate: (status: ApplicationStatus) => void;
 }) {
   const [glissee, setGlissee] = useState<Application | null>(null);
   const [apercu, setApercu] = useState<ApercuGlisse | null>(null);
@@ -123,18 +123,17 @@ export function KanbanBoard({
                 <h3 className="min-w-0 truncate text-body font-semibold text-ink">
                   {status.label}
                 </h3>
-                <span className="tabular flex-none rounded-chip bg-neutral-tint px-1.5 py-0.5 text-meta font-semibold text-ink-faint">
+                <span className="tabular flex-none rounded-chip border border-control bg-fill px-1.5 py-0.5 text-note font-semibold text-ink">
                   {compteurs[status.value]}
                 </span>
                 <span className="flex-1" />
-                <button
-                  type="button"
-                  aria-label={`Nouvelle candidature au statut ${status.label}`}
-                  onClick={onCreate}
-                  className="flex flex-none items-center text-ink-faint transition-colors duration-150 hover:text-ink"
-                >
-                  <Icon name="add" size={17} />
-                </button>
+                <IconButton
+                  icon="add"
+                  label={`Nouvelle candidature au statut ${status.label}`}
+                  size={16}
+                  className="size-[26px]"
+                  onClick={() => onCreate(status.value)}
+                />
               </header>
 
               <div className="flex flex-1 flex-col gap-2 p-2.5">

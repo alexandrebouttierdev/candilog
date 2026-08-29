@@ -18,12 +18,12 @@ function today(): string {
   return versDateAffichee(new Date().toISOString().slice(0, 10));
 }
 
-function vide(): ApplicationFormInput {
+function vide(status: ApplicationFormInput["status"] = "EN_ATTENTE"): ApplicationFormInput {
   return {
     job_title: "",
     company_id: "",
     contract_type: "CDI",
-    status: "EN_ATTENTE",
+    status,
     sent_date: today(),
     job_url: "",
     notes: "",
@@ -51,12 +51,15 @@ function from(application: Application): ApplicationFormInput {
 export function ApplicationFormModal({
   open,
   application,
+  defaultStatus = null,
   busy,
   onClose,
   onSubmit,
 }: {
   open: boolean;
   application: Application | null;
+  /** Statut proposé à la création, typiquement celui de la colonne Kanban. */
+  defaultStatus?: Application["status"] | null;
   busy: boolean;
   onClose: () => void;
   onSubmit: (values: NewApplication) => Promise<unknown>;
@@ -67,8 +70,10 @@ export function ApplicationFormModal({
   });
 
   useEffect(() => {
-    if (open) form.reset(application ? from(application) : vide());
-  }, [open, application, form]);
+    if (open) {
+      form.reset(application ? from(application) : vide(defaultStatus ?? "EN_ATTENTE"));
+    }
+  }, [open, application, defaultStatus, form]);
 
   const save = form.handleSubmit(async (values) => {
     await onSubmit(values);

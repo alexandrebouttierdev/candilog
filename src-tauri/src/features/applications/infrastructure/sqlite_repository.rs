@@ -114,21 +114,21 @@ fn clauses(filter: &ApplicationFilter) -> AppResult<(String, Vec<Value>)> {
             "(lower(c.job_title) LIKE ?{first} {LIKE_ESCAPE} OR lower(coalesce(e.name, '')) LIKE ?{second} {LIKE_ESCAPE})"
         ));
     }
-    if let Some(status) = filter.status {
-        add(
-            "c.status = ?",
-            Value::Text(text_from_enum(&status)?),
-            &mut values,
-            &mut clauses,
-        );
+    if !filter.status.is_empty() {
+        let mut placeholders = Vec::new();
+        for status in &filter.status {
+            values.push(Value::Text(text_from_enum(status)?));
+            placeholders.push(format!("?{}", values.len()));
+        }
+        clauses.push(format!("c.status IN ({})", placeholders.join(", ")));
     }
-    if let Some(contract) = filter.contract {
-        add(
-            "c.contract_type = ?",
-            Value::Text(text_from_enum(&contract)?),
-            &mut values,
-            &mut clauses,
-        );
+    if !filter.contract.is_empty() {
+        let mut placeholders = Vec::new();
+        for contract in &filter.contract {
+            values.push(Value::Text(text_from_enum(contract)?));
+            placeholders.push(format!("?{}", values.len()));
+        }
+        clauses.push(format!("c.contract_type IN ({})", placeholders.join(", ")));
     }
     if let Some(company_id) = filter.company_id {
         add(
@@ -290,7 +290,7 @@ impl ApplicationRepository for SqliteApplicationRepository {
         // La répartition ignore le filtre de statut : le Kanban affiche les quatre colonnes,
         // et n'en compter qu'une viderait les trois autres.
         let mut sans_status = filter.clone();
-        sans_status.status = None;
+        sans_status.status.clear();
         let (where_sql, mut values) = clauses(&sans_status)?;
 
         let statuses = [

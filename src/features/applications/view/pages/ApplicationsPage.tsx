@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { save } from "@tauri-apps/plugin-dialog";
 import { useApplicationsViewModel } from "../../viewmodel/useApplicationsViewModel";
-import type { Application } from "../../services/applicationService";
+import type { Application, ApplicationStatus } from "../../services/applicationService";
 import { applicationService } from "../../services/applicationService";
 import { contract_label, status_meta } from "../../model/statuses";
 import { versDateAffichee } from "@/shared/lib/dates";
@@ -37,9 +37,14 @@ export function ApplicationsPage() {
   const vm = useApplicationsViewModel();
   const [searchParams, setSearchParams] = useSearchParams();
   const notify = useUiStore((state) => state.notify);
-  const [form, setForm] = useState<{ ouvert: boolean; cible: Application | null }>({
+  const [form, setForm] = useState<{
+    ouvert: boolean;
+    cible: Application | null;
+    statut: ApplicationStatus | null;
+  }>({
     ouvert: searchParams.get("nouvelle") === "1",
     cible: null,
+    statut: null,
   });
   const [aDelete, setADelete] = useState<string[] | null>(null);
   const [exportEnCours, setExportEnCours] = useState(false);
@@ -49,7 +54,7 @@ export function ApplicationsPage() {
   // formulaire ni son ViewModel dans une autre feature. Le paramètre reste dans l'URL le
   // temps de la modale, puis est consommé à sa fermeture.
   const fermerForm = () => {
-    setForm({ ouvert: false, cible: null });
+    setForm({ ouvert: false, cible: null, statut: null });
     if (searchParams.get("nouvelle") === "1") {
       setSearchParams({}, { replace: true });
     }
@@ -79,8 +84,8 @@ export function ApplicationsPage() {
           ? {
               ...vm.filter,
               search: "",
-              status: null,
-              contract: null,
+              status: [],
+              contract: [],
               company_id: null,
               city: "",
               job_title: "",
@@ -201,6 +206,7 @@ export function ApplicationsPage() {
         onSearch={vm.rechercher}
         filters={vm.filters}
         count={vm.filtersActifs}
+        total={vm.isLoading ? null : vm.total}
         onApply={vm.appliquerFilters}
         onReset={vm.resetFilters}
         actions={
@@ -237,7 +243,7 @@ export function ApplicationsPage() {
             <Button
               variant="primary"
               icon="add"
-              onClick={() => setForm({ ouvert: true, cible: null })}
+              onClick={() => setForm({ ouvert: true, cible: null, statut: null })}
             >
               Nouvelle
             </Button>
@@ -290,7 +296,7 @@ export function ApplicationsPage() {
                     <Button
                       variant="primary"
                       icon="add"
-                      onClick={() => setForm({ ouvert: true, cible: null })}
+                      onClick={() => setForm({ ouvert: true, cible: null, statut: null })}
                     >
                       Nouvelle candidature
                     </Button>
@@ -307,7 +313,7 @@ export function ApplicationsPage() {
               onSelect={vm.selectionner}
               onToggleSelect={basculerCoche}
               onStatusChange={(id, status) => void vm.changeStatus({ id, status })}
-              onCreate={() => setForm({ ouvert: true, cible: null })}
+              onCreate={(statut) => setForm({ ouvert: true, cible: null, statut })}
             />
           ) : (
             <div className="min-h-0 flex-1 overflow-auto px-4 pt-3 pb-5">
@@ -346,7 +352,7 @@ export function ApplicationsPage() {
           <ApplicationDetail
             application={fiche}
             onClose={() => vm.selectionner(null)}
-            onEdit={() => setForm({ ouvert: true, cible: fiche })}
+            onEdit={() => setForm({ ouvert: true, cible: fiche, statut: null })}
             onDelete={() => setADelete([fiche.id])}
             onStatusChange={(status) => void vm.changeStatus({ id: fiche.id, status })}
           />
@@ -360,6 +366,7 @@ export function ApplicationsPage() {
       <ApplicationFormModal
         open={form.ouvert}
         application={form.cible}
+        defaultStatus={form.statut}
         busy={vm.isSaving}
         onClose={fermerForm}
         onSubmit={(values) =>

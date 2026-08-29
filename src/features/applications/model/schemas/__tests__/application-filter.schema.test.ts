@@ -50,4 +50,14 @@ describe("schéma des filtres de candidatures", () => {
   it("normalise l'entreprise non choisie en null", () => {
     expect(applicationFilterSchema.parse({ ...FILTER_VIDE, company_id: "" }).company_id).toBeNull();
   });
+
+  it("accepte plusieurs statuts et contrats", () => {
+    const resultat = applicationFilterSchema.parse({
+      ...FILTER_VIDE,
+      status: ["ENTRETIEN", "REFUS"],
+      contract: ["CDI", "CDD"],
+    });
+    expect(resultat.status).toEqual(["ENTRETIEN", "REFUS"]);
+    expect(resultat.contract).toEqual(["CDI", "CDD"]);
+  });
 });

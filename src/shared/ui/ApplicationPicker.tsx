@@ -51,8 +51,8 @@ export function ApplicationPicker({
           page_size,
           filter: {
             search,
-            status: null,
-            contract: null,
+            status: [],
+            contract: [],
             company_id: null,
             city: "",
             job_title: "",
