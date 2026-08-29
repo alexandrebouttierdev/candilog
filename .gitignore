@@ -30,3 +30,8 @@ output/playwright/
 AUDIT_APP_REPORT.md
 AUDIT_TECHNIQUE.md
 
+# Rapports d'audit locaux (générés par AUDIT_APP_PROMPT.md)
+docs/AUDIT_REPORT.md
+docs/AUDIT.md
+docs/audits/
+
