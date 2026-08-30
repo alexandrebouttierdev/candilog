@@ -18,6 +18,10 @@ import { settingsService } from "../../services/settingsService";
 import { useSettingsViewModel } from "../../viewmodel/useSettingsViewModel";
 import { applyTheme, useUiStore } from "@/shared/lib/ui-store";
 import {
+  completionSoundEnabled,
+  setCompletionSoundEnabled,
+} from "@/shared/lib/completion-sound";
+import {
   endpointDefaut,
   idProvider,
   modelDefaut,
@@ -41,6 +45,11 @@ const THEMES: Array<{ value: ThemePref; label: string }> = [
   { value: "system", label: "Système" },
 ];
 
+const SONS = [
+  { value: "on", label: "Activé" },
+  { value: "off", label: "Désactivé" },
+] as const;
+
 /** Intelligence artificielle : fournisseur, modèle, comportement et apparence. */
 export function AiPage() {
   const vm = useSettingsViewModel();
@@ -49,6 +58,11 @@ export function AiPage() {
   const [apiKeyDraft, setApiKeyDraft] = useState("");
   const [models, setModels] = useState<string[]>([]);
   const [test, setTest] = useState<"idle" | "pending" | "ok" | "error">("idle");
+  // Préférence locale, appliquée immédiatement : elle ne passe pas par le brouillon des
+  // réglages puisqu'elle n'est pas enregistrée en base.
+  const [son, setSon] = useState<"on" | "off">(() =>
+    completionSoundEnabled() ? "on" : "off",
+  );
   const [testMessage, setTestMessage] = useState<string | null>(null);
   const form = draft ?? vm.data ?? null;
   const llm = form?.llm;
@@ -297,16 +311,31 @@ export function AiPage() {
                 </div>
 
                 <InspectorSectionLabel>Apparence</InspectorSectionLabel>
-                <SegmentedControl
-                  label="Thème"
-                  value={form.theme}
-                  onChange={(theme) => {
-                    setDraft({ ...form, theme });
-                    setTheme(theme);
-                    applyTheme(theme);
-                  }}
-                  options={THEMES}
-                />
+                <div>
+                  <p className="mb-1.5 text-note text-ink-subtle">Thème</p>
+                  <SegmentedControl
+                    label="Thème"
+                    value={form.theme}
+                    onChange={(theme) => {
+                      setDraft({ ...form, theme });
+                      setTheme(theme);
+                      applyTheme(theme);
+                    }}
+                    options={THEMES}
+                  />
+                </div>
+                <div>
+                  <p className="mb-1.5 text-note text-ink-subtle">Son de fin de traitement</p>
+                  <SegmentedControl
+                    label="Son de fin de traitement"
+                    value={son}
+                    onChange={(valeur) => {
+                      setSon(valeur);
+                      setCompletionSoundEnabled(valeur === "on");
+                    }}
+                    options={SONS}
+                  />
+                </div>
               </div>
             </section>
           </div>

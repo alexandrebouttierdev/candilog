@@ -46,6 +46,11 @@ Les traitements sont asynchrones côté Rust. La progression remonte par événe
 `ia-progression` pour la génération et l'analyse, `profile_import_progress` pour l'import
 de profil. La télémétrie est best-effort et ne masque jamais le résultat métier.
 
+La fin d'un traitement est aussi annoncée par un signal sonore, émis une seule fois dans
+`features/ai/services/aiService.ts` pour que plus aucun écran ne puisse l'oublier. La
+préférence « Son de fin de traitement » (Réglages → IA) est locale à la machine
+(`shared/lib/completion-sound.ts`, `localStorage`) et active par défaut.
+
 Chaque génération possède un `CancellationToken`, indexé par `generation_id` ;
 `ai_cancel` le déclenche. L'annulation abandonne le futur en cours — la requête HTTP est
 portée par ce futur, elle s'interrompt donc avec lui. Relancer une génération avec un
