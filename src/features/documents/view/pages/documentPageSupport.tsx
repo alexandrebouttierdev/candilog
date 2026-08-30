@@ -4,7 +4,7 @@ import type { CoverLetter, CoverLetterExport } from "../../services/documentsSer
 import { documentsService } from "../../services/documentsService";
 import type { ToastMessage } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
-import { ContextBarAccessory, ContextNote, ContextSearch } from "@/app/layout/ContextBar";
+import { ContextBarAccessory, ContextSearch } from "@/app/layout/ContextBar";
 import { Button, FormField, Icon, TextArea, TextInput } from "@/shared/ui";
 import { useUiStore } from "@/shared/lib/ui-store";
 
@@ -33,11 +33,7 @@ export function Screen({
             width={230}
           />
         </ContextBarAccessory>
-      ) : (
-        <ContextBarAccessory>
-          <ContextNote>Documents locaux · génération IA</ContextNote>
-        </ContextBarAccessory>
-      )}
+      ) : null}
       {header}
       <div className={padded ? "min-h-0 flex-1 overflow-y-auto p-5 min-[1200px]:p-6" : "flex min-h-0 flex-1 flex-col overflow-hidden"}>
         {children}

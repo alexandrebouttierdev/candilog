@@ -148,8 +148,8 @@ describe("collage d'une offre depuis le presse-papiers", () => {
 });
 
 describe("retouche de la lettre sur la page", () => {
-  it("enregistre le texte tel qu'il a été modifié dans l'aperçu", async () => {
-    vi.spyOn(aiService, "generateCoverLetter").mockResolvedValue("Madame, Monsieur,");
+  async function lettreGeneree(contenu = "Madame, Monsieur,") {
+    vi.spyOn(aiService, "generateCoverLetter").mockResolvedValue(contenu);
     const save = vi.spyOn(documentsService, "saveCoverLetter").mockResolvedValue({
       id: "lettre-1",
       name: "Lettre — Candidature",
@@ -157,24 +157,101 @@ describe("retouche de la lettre sur la page", () => {
       job_title: null,
       tone: "formal",
       length: "medium",
-      content: "Madame, Monsieur, Astek",
+      content: contenu,
       created_at: "2026-08-30T00:00:00Z",
     });
-
     render(<LetterWriterPage />, { wrapper });
     await userEvent.type(screen.getByLabelText("Contexte ou offre"), "Une offre");
     await userEvent.click(screen.getByRole("button", { name: /Rédiger la lettre/ }));
-
     const corps = await screen.findByLabelText("Contenu de la lettre");
-    await waitFor(() => expect(corps).toHaveValue("Madame, Monsieur,"));
-    await userEvent.type(corps, " Astek");
+    await waitFor(() => expect(corps).toHaveTextContent("Madame, Monsieur,"));
+    return { corps, save };
+  }
 
+  it("enregistre le texte tel qu'il a été modifié dans l'aperçu", async () => {
+    const { corps, save } = await lettreGeneree();
+
+    await userEvent.type(corps, " Astek");
     await userEvent.click(screen.getByRole("button", { name: /Enregistrer/ }));
 
     await waitFor(() =>
-      expect(save).toHaveBeenCalledWith(
-        expect.objectContaining({ content: "Madame, Monsieur, Astek" }),
-      ),
+      expect(save.mock.lastCall?.[0].content).toContain("Astek"),
     );
+  });
+
+  it("porte l'alignement demandé jusqu'au contenu enregistré", async () => {
+    const { corps, save } = await lettreGeneree();
+
+    await userEvent.click(corps);
+    await userEvent.click(screen.getByRole("button", { name: "Centrer" }));
+    await userEvent.click(screen.getByRole("button", { name: /Enregistrer/ }));
+
+    await waitFor(() =>
+      expect(save.mock.lastCall?.[0].content).toBe('<p align="center">Madame, Monsieur,</p>'),
+    );
+  });
+
+  it("porte la taille de texte demandée jusqu'au contenu enregistré", async () => {
+    const { corps, save } = await lettreGeneree();
+
+    await userEvent.click(corps);
+    await userEvent.selectOptions(screen.getByLabelText("Taille du texte"), "large");
+    await userEvent.click(screen.getByRole("button", { name: /Enregistrer/ }));
+
+    await waitFor(() =>
+      expect(save.mock.lastCall?.[0].content).toBe('<p size="large">Madame, Monsieur,</p>'),
+    );
+  });
+});
+
+describe("itérations sur la lettre", () => {
+  async function redigerUneLettre(contenu = "Madame, Monsieur,") {
+    vi.spyOn(aiService, "generateCoverLetter").mockResolvedValue(contenu);
+    render(<LetterWriterPage />, { wrapper });
+    await userEvent.type(screen.getByLabelText("Contexte ou offre"), "Une offre");
+    await userEvent.click(screen.getByRole("button", { name: /Rédiger la lettre/ }));
+  }
+
+  it("remplace le brief par les itérations et annonce la durée de rédaction", async () => {
+    await redigerUneLettre();
+
+    expect(await screen.findByText(/Lettre rédigée en/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Que faut-il changer ?")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Contexte ou offre")).not.toBeInTheDocument();
+  });
+
+  it("cumule les consignes successives dans la demande envoyée au modèle", async () => {
+    await redigerUneLettre();
+    const generate = vi.mocked(aiService.generateCoverLetter);
+
+    await userEvent.type(await screen.findByLabelText("Que faut-il changer ?"), "Plus court");
+    await userEvent.click(screen.getByRole("button", { name: /Régénérer avec cette consigne/ }));
+    await waitFor(() => expect(screen.getByText(/Lettre régénérée en/)).toBeInTheDocument());
+
+    await userEvent.type(screen.getByLabelText("Que faut-il changer ?"), "Plus formel");
+    await userEvent.click(screen.getByRole("button", { name: /Régénérer avec cette consigne/ }));
+
+    await waitFor(() =>
+      expect(generate.mock.lastCall?.[0].instruction).toBe("Plus court ; Plus formel"),
+    );
+  });
+
+  it("abandonne la lettre et rend le brief après confirmation", async () => {
+    await redigerUneLettre();
+
+    await userEvent.click(await screen.findByRole("button", { name: "Annuler" }));
+    await userEvent.click(screen.getByRole("button", { name: "Abandonner" }));
+
+    expect(screen.getByLabelText("Contexte ou offre")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Enregistrer/ })).not.toBeInTheDocument();
+  });
+
+  it("laisse rouvrir le brief pour changer le ton ou l'offre", async () => {
+    await redigerUneLettre();
+
+    await userEvent.click(await screen.findByRole("button", { name: "Revenir au brief" }));
+
+    expect(screen.getByLabelText("Contexte ou offre")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Revenir aux itérations" })).toBeInTheDocument();
   });
 });

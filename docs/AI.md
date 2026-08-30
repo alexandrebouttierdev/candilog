@@ -37,6 +37,11 @@ sélection d'identifiants du catalogue de faits et des mots-clés du brief
 du brief est simplement écarté, parce qu'une paraphrase du modèle ne justifie pas de faire
 échouer toute la rédaction — la lettre reste dans tous les cas limitée aux faits vérifiés.
 
+Les itérations de l'écran passent par le champ `instruction` du brief : les consignes
+successives sont cumulées et renvoyées ensemble, faute de quoi « plus court » puis « plus
+formel » ne vaudraient jamais en même temps. Elles orientent la **sélection de faits**, pas
+la prose : le corps reste assemblé par Candilog.
+
 Le score ATS affiché est toujours le calcul déterministe Rust (`profile_score` /
 `score_resume_imported`, `domain/scoring.rs`), jamais le chiffre renvoyé par le modèle.
 

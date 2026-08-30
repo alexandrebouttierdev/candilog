@@ -37,6 +37,17 @@ describe("jetons Tailwind", () => {
     expect(styles).toMatch(/input\[type="checkbox"\][\s\S]*?background-color:\s*var\(--color-fill\)/);
   });
 
+  it("donne à la feuille sa propre sélection, illisible sinon en thème sombre", () => {
+    // La feuille reste blanche en thème sombre : héritée de l'application, la sélection y
+    // écrivait en encre claire sur fond clair, et le texte sélectionné disparaissait.
+    expect(styles).toContain("--paper-selection:");
+    // Chaque surface papier doit être couverte : la lettre a changé de conteneur une fois,
+    // et la sélection est redevenue illisible sans que rien ne le signale.
+    const regle = styles.match(/([^}]*)::selection\s*{\s*background:\s*var\(--paper-selection\)/);
+    expect(regle?.[1]).toContain(".paper-preview");
+    expect(regle?.[1]).toContain(".letter-paper");
+  });
+
   it("centralise les couleurs et le rayon de l'aperçu papier dans les jetons", () => {
     expect(styles).toContain("--paper-bg:");
     expect(styles).toContain("--paper-ink:");

@@ -62,7 +62,7 @@ export function ResumeGeneratorPage() {
         icon="auto_awesome"
         title="Générer un CV"
         subtitle="Analysez une offre, générez un CV ciblé, exportez en PDF"
-        badge={operation ? <HeaderBadge>IA active</HeaderBadge> : timer.durationMs !== null ? <HeaderBadge icon="schedule">Généré en {formatDuration(timer.durationMs)}</HeaderBadge> : undefined}
+        badge={operation === null && timer.durationMs !== null ? <HeaderBadge icon="schedule">Généré en {formatDuration(timer.durationMs)}</HeaderBadge> : undefined}
         secondary={result ? <Button icon="save" disabled={!name.trim() || save.isPending} onClick={() => save.mutate()}>Enregistrer</Button> : undefined}
         primary={result ? <Button variant="primary" icon="download" onClick={() => void exportPdf(result.resume, notify)}>Exporter le PDF</Button> : undefined}
       />

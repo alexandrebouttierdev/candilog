@@ -78,9 +78,13 @@
   --candilog-shadow-menu: 0 22px 54px rgb(15 18 32 / 0.16);
   /* La feuille représente le document imprimé et ne s'inverse donc jamais en thème sombre. */
   --paper-bg: #ffffff;
-  --paper-ink: #1a1c22;
-  --paper-muted: #6a7280;
+  /* Encres exactes du moteur PDF (`cover_letter_pdf.rs` : TEXT et SECONDAIRE). */
+  --paper-ink: #1a1a1a;
+  --paper-muted: #5b6070;
   --paper-border: #e6e8ee;
+  /* Sélection sur la feuille : la feuille reste blanche en thème sombre, sa sélection ne
+     peut donc pas hériter de celle de l'application, qui y écrirait en encre claire. */
+  --paper-selection: #cfe0ff;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -377,6 +381,115 @@
 }
 
 @layer components {
+  /*
+   * Feuille A4 de la lettre, calquée sur `cover_letter_pdf.rs`.
+   *
+   * Le PDF compose en points sur une page de 595,28 × 841,89 pt avec 56,7 pt de marge :
+   * la marge vaut donc 9,525 % de la largeur, et la colonne de texte 481,88 pt. `--pt`
+   * convertit un point du moteur en unité d'écran relative à cette colonne, ce qui rend
+   * l'aperçu identique à l'impression quelle que soit la largeur affichée.
+   */
+  .letter-paper {
+    container-type: inline-size;
+    width: 100%;
+    max-width: 560px;
+    aspect-ratio: 595.28 / 841.89;
+    padding: 9.525%;
+    border: 1px solid var(--paper-border);
+    border-radius: var(--radius-paper);
+    background: var(--paper-bg);
+    color: var(--paper-ink);
+    box-shadow: var(--candilog-shadow-paper);
+    font-family: "Geist Papier", var(--font-sans);
+  }
+
+  .letter-page {
+    --pt: calc(100cqw / 481.88);
+  }
+
+  .letter-page > * {
+    margin: 0;
+  }
+
+  .letter-name {
+    font-size: calc(13 * var(--pt));
+    line-height: calc(18 * var(--pt));
+    font-weight: 600;
+  }
+
+  .letter-meta {
+    font-size: calc(10 * var(--pt));
+    line-height: calc(14 * var(--pt));
+    color: var(--paper-muted);
+  }
+
+  .letter-date {
+    margin-top: calc(18 * var(--pt));
+    font-size: calc(10 * var(--pt));
+    line-height: calc(16 * var(--pt));
+    color: var(--paper-muted);
+  }
+
+  .letter-subject {
+    margin-top: calc(10 * var(--pt));
+    font-size: calc(11 * var(--pt));
+    line-height: calc(18 * var(--pt));
+    font-weight: 500;
+  }
+
+  .letter-body {
+    margin-top: calc(8 * var(--pt));
+  }
+
+  /* Tout enfant direct est un paragraphe : la zone éditable produit aussi des `div`. */
+  .letter-body > * {
+    margin: 0 0 calc(8 * var(--pt));
+    font-size: calc(11 * var(--pt));
+    line-height: calc(16.5 * var(--pt));
+  }
+
+  .letter-body > *:last-child {
+    margin-bottom: 0;
+  }
+
+  /* Un paragraphe vide sépare deux blocs : sans hauteur, la frappe suivante saute. */
+  .letter-body > *:empty {
+    min-height: calc(16.5 * var(--pt));
+  }
+
+  .letter-body > [data-size="small"] {
+    font-size: calc(9.9 * var(--pt));
+  }
+
+  .letter-body > [data-size="large"] {
+    font-size: calc(12.65 * var(--pt));
+  }
+
+  .letter-body:empty::before {
+    content: attr(data-placeholder);
+    font-size: calc(11 * var(--pt));
+    line-height: calc(16.5 * var(--pt));
+    color: var(--paper-muted);
+  }
+
+  .letter-signature {
+    margin-top: calc(20 * var(--pt));
+    font-size: calc(11 * var(--pt));
+    line-height: calc(16 * var(--pt));
+    font-weight: 500;
+  }
+
+  /* Toute surface « papier » — aperçu de CV comme feuille de lettre — porte sa propre
+     sélection : elle reste blanche en thème sombre et ne peut donc pas hériter de celle de
+     l'application, qui y écrirait en encre claire sur fond clair. */
+  .paper-preview ::selection,
+  .paper-preview::selection,
+  .letter-paper ::selection,
+  .letter-paper::selection {
+    background: var(--paper-selection);
+    color: var(--paper-ink);
+  }
+
   .paper-preview {
     width: 100%;
     max-width: 560px;
@@ -388,6 +501,36 @@
     color: var(--paper-ink);
     box-shadow: var(--candilog-shadow-paper);
   }
+}
+
+/* Polices de l'export PDF, réutilisées telles quelles par l'aperçu : deux jeux de fichiers
+   donneraient deux rendus, et l'aperçu cesserait d'être fidèle à la page imprimée. */
+@font-face {
+  font-family: "Geist Papier";
+  font-weight: 400;
+  font-display: block;
+  src: url("../src-tauri/assets/fonts/Geist-Regular.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Geist Papier";
+  font-weight: 500;
+  font-display: block;
+  src: url("../src-tauri/assets/fonts/Geist-Medium.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Geist Papier";
+  font-weight: 600;
+  font-display: block;
+  src: url("../src-tauri/assets/fonts/Geist-SemiBold.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Geist Papier";
+  font-weight: 700;
+  font-display: block;
+  src: url("../src-tauri/assets/fonts/Geist-Bold.ttf") format("truetype");
 }
 
 @layer base {

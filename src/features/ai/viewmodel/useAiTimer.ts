@@ -27,10 +27,12 @@ export function useAiTimer(running: boolean) {
       setStartedAt(now);
       setDurationMs(null);
     },
-    /** Fige la durée totale ; sans départ connu, rien n'est affiché. */
-    stop: () => {
+    /** Fige la durée totale et la retourne ; sans départ connu, rien n'est affiché. */
+    stop: (): number | null => {
       const debut = startedAtRef.current;
-      setDurationMs(debut === null ? null : Date.now() - debut);
+      const duree = debut === null ? null : Date.now() - debut;
+      setDurationMs(duree);
+      return duree;
     },
   };
 }

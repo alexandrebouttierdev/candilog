@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "react-router-dom";
 import { documentsService, type CoverLetter } from "../../services/documentsService";
@@ -8,8 +8,10 @@ import { useAiTimer } from "@/features/ai/viewmodel/useAiTimer";
 import { formatDuration } from "@/shared/lib/duration";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
-import { Button, ConfirmDialog, EmptyState, ErrorBanner, FormField, Icon, PageHeader, Pager, Select } from "@/shared/ui";
-import { A4Preview, AiProgress, DocumentPanel, PreviewAction } from "../components/DocumentUi";
+import { Button, ConfirmDialog, EmptyState, ErrorBanner, FormField, Icon, PageHeader, Pager, Select, TextArea } from "@/shared/ui";
+import { AiProgress, DocumentPanel, PreviewAction } from "../components/DocumentUi";
+import { LetterContent, LetterEditor } from "../components/LetterEditor";
+import { LetterPaper } from "../components/LetterPaper";
 import { PAGE_SIZE } from "@/shared/types/page";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { Champ, ChampOffre, COVER_LETTERS_KEY, HeaderBadge, Screen, coverLetterFromNavigation, date, detail, exportLetterPdf, labelTone, message } from "./documentPageSupport";
@@ -125,44 +127,110 @@ export function LettersLibraryPage() {
   );
 }
 
-function LetterPreview({ letter }: { letter: CoverLetter }) { return <A4Preview title={letter.name}><p className="mt-4 text-[11px] uppercase tracking-[0.12em] text-paper-muted">Lettre de motivation</p><h2 className="mt-3 text-[23px] font-semibold">{letter.job_title ?? "Candidature"}</h2><p className="mt-1 text-[12px] text-paper-muted">{letter.company ?? "Entreprise"}</p><div className="mt-8 whitespace-pre-wrap text-[12px] leading-[1.9]">{letter.content}</div></A4Preview>; }
+/** Aperçu d'une lettre enregistrée : la même feuille que l'éditeur, donc que le PDF. */
+function LetterPreview({ letter }: { letter: CoverLetter }) {
+  return (
+    <div className="flex justify-center bg-page p-[26px]">
+      <LetterPaper jobTitle={letter.job_title} company={letter.company}>
+        <LetterContent content={letter.content} />
+      </LetterPaper>
+    </div>
+  );
+}
+
+/** Nombre de consignes réinjectées : au-delà, le brief devient illisible pour le modèle. */
+const MAX_CONSIGNES = 8;
+
+type Echange = { auteur: "vous" | "candilog"; texte: string };
 
 /**
- * Corps de la lettre, édité **sur la feuille** : ce qui est lu à l'écran est exactement ce
- * qui sera enregistré et exporté en PDF. La zone est une saisie transparente calée sur la
- * typographie du papier plutôt qu'un éditeur riche : la lettre est stockée en texte brut,
- * et faire croire à du gras qui disparaîtrait à l'export serait pire que pas d'éditeur.
+ * Suite du travail une fois la première lettre écrite.
+ *
+ * Le brief n'a plus rien à demander à ce stade : ce qui reste à faire, c'est demander des
+ * ajustements. Les consignes s'accumulent — « plus court » puis « plus formel » doivent
+ * valoir ensemble — et chaque régénération journalise le temps qu'elle a pris, à l'endroit
+ * où l'utilisateur regarde.
  */
-function LetterBody({
-  value,
-  readOnly,
-  onChange,
+function IterationPanel({
+  echanges,
+  consigne,
+  busy,
+  error,
+  progress,
+  onConsigneChange,
+  onSubmit,
+  onCancel,
+  onReopenBrief,
 }: {
-  value: string;
-  readOnly: boolean;
-  onChange: (value: string) => void;
+  echanges: Echange[];
+  consigne: string;
+  busy: boolean;
+  error: string | null;
+  progress: ReactNode;
+  onConsigneChange: (value: string) => void;
+  onSubmit: () => void;
+  onCancel: () => void;
+  onReopenBrief: () => void;
 }) {
-  const zone = useRef<HTMLTextAreaElement | null>(null);
-
-  // La feuille grandit avec le texte : une barre de défilement interne à la page A4
-  // couperait la lettre en deux et ne correspondrait à aucun rendu imprimé.
-  useLayoutEffect(() => {
-    const element = zone.current;
-    if (!element) return;
-    element.style.height = "auto";
-    element.style.height = `${element.scrollHeight}px`;
-  }, [value]);
-
   return (
-    <textarea
-      ref={zone}
-      value={value}
-      readOnly={readOnly}
-      aria-label="Contenu de la lettre"
-      placeholder="La lettre apparaîtra ici après la rédaction. Vous pouvez aussi l'écrire ou la retoucher directement sur cette page."
-      onChange={(event) => onChange(event.target.value)}
-      className="mt-8 min-h-[420px] w-full resize-none border-0 bg-transparent p-0 text-[12px] leading-[1.9] text-paper-ink outline-none placeholder:text-paper-muted focus:outline-none"
-    />
+    <DocumentPanel title="Itérations" icon="forum" className="flex min-h-0 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col">
+        <ol className="min-h-0 flex-1 space-y-2 overflow-y-auto p-4">
+          {echanges.map((echange, index) => (
+            <li
+              key={`${echange.auteur}-${index}`}
+              className={echange.auteur === "vous" ? "flex justify-end" : "flex justify-start"}
+            >
+              <span
+                className={
+                  echange.auteur === "vous"
+                    ? "max-w-[85%] rounded-card bg-accent-tint px-3 py-2 text-body text-ink"
+                    : "inline-flex max-w-[85%] items-center gap-1.5 rounded-card bg-fill px-3 py-2 text-meta text-ink-muted"
+                }
+              >
+                {echange.auteur === "candilog" ? <Icon name="schedule" size={14} className="flex-none" /> : null}
+                {echange.texte}
+              </span>
+            </li>
+          ))}
+        </ol>
+        <div className="space-y-3 border-t border-line p-4">
+          {error ? <ErrorBanner title="Rédaction impossible" message={error} /> : null}
+          {busy ? (
+            <>
+              {progress}
+              <Button variant="danger" icon="stop" className="w-full" onClick={onCancel}>Arrêter</Button>
+            </>
+          ) : (
+            <>
+              <FormField label="Que faut-il changer ?">
+                {(props) => (
+                  <TextArea
+                    {...props}
+                    rows={3}
+                    value={consigne}
+                    placeholder="Ex. « Mets en avant ma dernière expérience » ou « Va droit au but »"
+                    onChange={(event) => onConsigneChange(event.target.value)}
+                  />
+                )}
+              </FormField>
+              <Button
+                variant="primary"
+                icon="auto_awesome"
+                className="w-full"
+                disabled={consigne.trim() === ""}
+                onClick={onSubmit}
+              >
+                Régénérer avec cette consigne
+              </Button>
+              <Button variant="ghost" icon="target" className="w-full" onClick={onReopenBrief}>
+                Revenir au brief
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+    </DocumentPanel>
   );
 }
 
@@ -179,19 +247,36 @@ export function LetterWriterPage() {
   const [output, setOutput] = useState(cover_letter_initiale?.content ?? "");
   const [operation, setOperation] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [echanges, setEchanges] = useState<Echange[]>([]);
+  const [consignes, setConsignes] = useState<string[]>([]);
+  const [consigne, setConsigne] = useState("");
+  const [briefOuvert, setBriefOuvert] = useState(false);
+  const [abandonOuvert, setAbandonOuvert] = useState(false);
   const progress = useAiProgress(operation);
   useCancelAiOnUnmount(operation);
   const timer = useAiTimer(operation !== null);
+  // Le brief laisse la place aux itérations dès qu'une lettre existe : c'est là que se
+  // poursuit le travail, et le rouvrir reste possible pour changer le ton ou l'offre.
+  const enIteration = echanges.length > 0 && !briefOuvert;
 
-  const run = async () => {
+  const run = async (instruction: string | null) => {
     const id = generation_id();
+    const suite = instruction === null ? consignes : [...consignes, instruction].slice(-MAX_CONSIGNES);
     setOperation(id);
-    setOutput("");
     setError(null);
+    if (instruction === null) setOutput("");
+    if (instruction !== null) {
+      setConsignes(suite);
+      setConsigne("");
+      setEchanges((current) => [...current, { auteur: "vous", texte: instruction }]);
+    }
     timer.start();
     try {
-      setOutput(await aiService.generateCoverLetter({ generation_id: id, company: company || null, job_title: job_title || null, tone, length, context: context || null, previous_cover_letter: null, instruction: null }));
-      timer.stop();
+      const lettre = await aiService.generateCoverLetter({ generation_id: id, company: company || null, job_title: job_title || null, tone, length, context: context || null, previous_cover_letter: null, instruction: suite.length > 0 ? suite.join(" ; ") : null });
+      const duree = timer.stop();
+      setOutput(lettre);
+      setEchanges((current) => [...current, { auteur: "candilog", texte: `${instruction === null ? "Lettre rédigée" : "Lettre régénérée"} en ${formatDuration(duree ?? 0)}` }]);
+      setBriefOuvert(false);
     } catch (e) {
       if (!(e instanceof AppError && e.code === "CANCELLED")) setError(message(e));
     } finally {
@@ -211,19 +296,36 @@ export function LetterWriterPage() {
   });
 
   return (
-    <Screen header={
+    <Screen padded={false} header={
       <PageHeader
         icon="edit_note"
         title="Lettre de motivation"
         subtitle="Rédigez, itérez et enregistrez"
-        badge={operation ? <HeaderBadge>IA active</HeaderBadge> : timer.durationMs !== null ? <HeaderBadge icon="schedule">Rédigée en {formatDuration(timer.durationMs)}</HeaderBadge> : undefined}
-        secondary={output ? <Button icon="download" onClick={() => void exportLetterPdf({ name: `Lettre — ${job_title || company || "Candidature"}`, company: company || null, job_title: job_title || null, content: output }, notify)}>Exporter le PDF</Button> : undefined}
+        secondary={output ? (
+          <>
+            <Button icon="download" onClick={() => void exportLetterPdf({ name: `Lettre — ${job_title || company || "Candidature"}`, company: company || null, job_title: job_title || null, content: output }, notify)}>Exporter le PDF</Button>
+            <Button icon="close" onClick={() => setAbandonOuvert(true)}>Annuler</Button>
+          </>
+        ) : undefined}
         primary={output ? <Button variant="primary" icon="save" disabled={save.isPending} onClick={() => save.mutate()}>Enregistrer</Button> : undefined}
       />
     }>
-      <div className="grid min-h-[660px] gap-4 xl:grid-cols-[350px_minmax(480px,1fr)]">
-        <DocumentPanel title="Brief de rédaction" icon="target">
-          <div className="space-y-4 p-4">
+      <div className="grid min-h-0 flex-1 gap-4 overflow-hidden p-5 min-[1200px]:p-6 xl:grid-cols-[350px_minmax(480px,1fr)]">
+        {enIteration ? (
+          <IterationPanel
+            echanges={echanges}
+            consigne={consigne}
+            busy={operation !== null}
+            error={error}
+            progress={operation ? <AiProgress progress={progress} elapsedMs={timer.elapsedMs} /> : null}
+            onConsigneChange={setConsigne}
+            onSubmit={() => void run(consigne.trim())}
+            onCancel={() => { if (operation) void aiService.cancel(operation); }}
+            onReopenBrief={() => setBriefOuvert(true)}
+          />
+        ) : (
+        <DocumentPanel title="Brief de rédaction" icon="target" className="flex min-h-0 flex-col">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
             <Champ label="Entreprise" value={company} onChange={setCompany} />
             <Champ label="Poste ciblé" value={job_title} onChange={setJobTitle} />
             <div className="grid grid-cols-2 gap-3">
@@ -235,19 +337,40 @@ export function LetterWriterPage() {
             {operation ? (
               <><AiProgress progress={progress} elapsedMs={timer.elapsedMs} /><Button variant="danger" icon="stop" className="w-full" onClick={() => void aiService.cancel(operation)}>Arrêter</Button></>
             ) : (
-              <Button variant="primary" icon="auto_awesome" className="w-full" onClick={() => void run()}>Rédiger la lettre</Button>
+              <div className="flex flex-col gap-2">
+                <Button variant="primary" icon="auto_awesome" className="w-full" onClick={() => void run(null)}>{echanges.length > 0 ? "Rédiger une nouvelle lettre" : "Rédiger la lettre"}</Button>
+                {echanges.length > 0 ? (
+                  <Button variant="ghost" icon="forum" className="w-full" onClick={() => setBriefOuvert(false)}>Revenir aux itérations</Button>
+                ) : null}
+              </div>
             )}
           </div>
         </DocumentPanel>
-        <DocumentPanel title="Document" icon="draft">
-          <A4Preview title="Lettre de motivation">
-            <p className="mt-4 text-[11px] uppercase tracking-[0.12em] text-paper-muted">Lettre de motivation</p>
-            <h2 className="mt-3 text-[23px] font-semibold">{job_title || "Candidature"}</h2>
-            <p className="mt-1 text-[12px] text-paper-muted">{company || "Entreprise ciblée"}</p>
-            <LetterBody value={output} readOnly={operation !== null} onChange={setOutput} />
-          </A4Preview>
-        </DocumentPanel>
+        )}
+        <LetterEditor
+          value={output}
+          readOnly={operation !== null}
+          jobTitle={job_title}
+          company={company}
+          onChange={setOutput}
+        />
       </div>
+      <ConfirmDialog
+        open={abandonOuvert}
+        title="Abandonner cette lettre ?"
+        description="La lettre affichée et les consignes de l'itération seront perdues."
+        note="Le brief, lui, est conservé : vous pourrez relancer une rédaction."
+        confirmLabel="Abandonner"
+        onCancel={() => setAbandonOuvert(false)}
+        onConfirm={() => {
+          setAbandonOuvert(false);
+          setOutput("");
+          setEchanges([]);
+          setConsignes([]);
+          setConsigne("");
+          setBriefOuvert(false);
+        }}
+      />
     </Screen>
   );
 }

@@ -292,7 +292,12 @@ Fermeture : `useDismissable` (Escape + clic extérieur) — calendrier, FilterMe
 ### Documents générés
 
 - L'aperçu A4 de la lettre est **éditable sur place** : le texte affiché est celui qui sera
-  enregistré et exporté. Pas d'éditeur riche tant que la lettre est stockée en texte brut.
+  enregistré et exporté.
+- Barre d'outils de la lettre : gras, souligné, taille (petite / normale / grande) et
+  alignement. Rien d'autre — un bouton dont l'effet disparaîtrait à l'export serait un
+  piège, et les polices embarquées n'ont pas d'italique.
+- Une fois la lettre écrite, le brief laisse la place au bloc **Itérations** : consignes
+  cumulées, durée de chaque régénération, retour au brief possible.
 - Les champs d'offre et de contexte portent un bouton « Coller » (lecture native du
   presse-papiers), en plus du Ctrl+V habituel.
 
