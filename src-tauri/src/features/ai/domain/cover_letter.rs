@@ -166,7 +166,8 @@ pub fn build_fact_catalog(profile: &Profile) -> Vec<GroundedFact> {
 /// Assemble une lettre depuis des références vérifiées, sans prose factuelle produite par l'IA.
 ///
 /// # Errors
-/// Refuse un identifiant inconnu, un mot-clé absent du brief ou une option non prise en charge.
+/// Refuse un identifiant de fait inconnu ou une option non prise en charge. Les mots-clés
+/// absents du brief sont écartés silencieusement.
 pub fn render_grounded_letter(
     catalog: &[GroundedFact],
     plan: &CoverLetterPlan,
@@ -213,10 +214,11 @@ pub fn render_grounded_letter(
     let mut seen_keywords = HashSet::new();
     for keyword in &plan.motivation_keywords {
         let key = search_key(keyword);
+        // Un mot-clé reformulé par le modèle (« innovation » pour « innovant ») est écarté,
+        // pas fatal : la lettre ne cite que le brief, et une paraphrase ne doit pas faire
+        // échouer toute la rédaction.
         if key.is_empty() || !contains_search_term(&brief, keyword) {
-            return Err(AppError::Provider(
-                "La réponse IA référence un mot-clé absent du brief.".into(),
-            ));
+            continue;
         }
         if seen_keywords.insert(key) && keywords.len() < 5 {
             keywords.push(keyword.trim());
@@ -340,16 +342,16 @@ mod tests {
     }
 
     #[test]
-    fn un_mot_cle_absent_du_brief_est_refuse() {
+    fn un_mot_cle_absent_du_brief_est_ecarte_sans_faire_echouer_la_lettre() {
         let plan = CoverLetterPlan {
             selected_fact_ids: vec!["experience:0".into()],
-            motivation_keywords: vec!["Kubernetes".into()],
+            motivation_keywords: vec!["Kubernetes".into(), "APIs".into()],
         };
 
-        assert!(matches!(
-            render_grounded_letter(&catalog(), &plan, &request()),
-            Err(AppError::Provider(_))
-        ));
+        let text = render_grounded_letter(&catalog(), &plan, &request()).unwrap();
+
+        assert!(!text.contains("Kubernetes"));
+        assert!(text.contains("Votre besoin autour de APIs"));
     }
 
     #[test]
@@ -361,6 +363,8 @@ mod tests {
             motivation_keywords: vec!["go".into()],
         };
 
-        assert!(render_grounded_letter(&catalog(), &plan, &request).is_err());
+        let text = render_grounded_letter(&catalog(), &plan, &request).unwrap();
+
+        assert!(!text.contains("Votre besoin autour de"));
     }
 }

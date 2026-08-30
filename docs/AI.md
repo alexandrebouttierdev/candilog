@@ -31,6 +31,12 @@ Le récapitulatif et les suggestions de `AtsAnalysis` restent du texte libre du 
 bornés, mais non recadrés sur les faits. L'interface les présente comme un commentaire, à
 côté du score, qui est calculé par Candilog.
 
+La lettre de motivation est **assemblée**, pas rédigée : le modèle ne renvoie qu'une
+sélection d'identifiants du catalogue de faits et des mots-clés du brief
+(`domain/cover_letter.rs`). Un identifiant inconnu invalide la réponse ; un mot-clé absent
+du brief est simplement écarté, parce qu'une paraphrase du modèle ne justifie pas de faire
+échouer toute la rédaction — la lettre reste dans tous les cas limitée aux faits vérifiés.
+
 Le score ATS affiché est toujours le calcul déterministe Rust (`profile_score` /
 `score_resume_imported`, `domain/scoring.rs`), jamais le chiffre renvoyé par le modèle.
 
