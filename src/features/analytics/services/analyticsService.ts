@@ -11,6 +11,6 @@ export type * from "@/shared/types/generated/analytics";
 export const analyticsService = {
   dashboard: () => ipc<Dashboard>("analytics_dashboard"),
   load: (period: Period) => ipc<Analytics>("analytics_load", { period }),
-  exportCsv: (period: Period, path: string) =>
-    ipc<void>("analytics_export_csv", { period, path }),
+  exportCsv: (period: Period) =>
+    ipc<boolean>("analytics_export_csv", { period }),
 };

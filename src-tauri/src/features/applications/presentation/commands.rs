@@ -2,15 +2,15 @@
 
 use crate::app::AppState;
 use crate::core::errors::{AppError, AppResult};
+use crate::core::files::{atomic_write, select_save_target};
 use crate::core::pagination::Page;
 use crate::core::utils::blocking;
-use crate::core::utils::validation::validate_user_file_path;
 use crate::features::applications::application::export;
 use crate::features::applications::domain::{
     Application, ApplicationFilter, ApplicationStatus, NewApplication, PipelineBreakdown,
 };
 use std::sync::Arc;
-use tauri::State;
+use tauri::{AppHandle, State};
 
 /// Payload une page de candidatures, filtrée et triée.
 #[tauri::command(rename_all = "snake_case")]
@@ -93,20 +93,33 @@ pub async fn applications_delete(state: State<'_, AppState>, id: uuid::Uuid) -> 
 /// sur quarante serait un piège silencieux.
 #[tauri::command(rename_all = "snake_case")]
 pub async fn applications_export_csv(
+    app: AppHandle,
     state: State<'_, AppState>,
     filter: ApplicationFilter,
-    path: String,
-) -> AppResult<u64> {
+) -> AppResult<Option<u64>> {
+    let Some(cible) = select_save_target(
+        &app,
+        "Exporter les candidatures",
+        "candidatures.csv",
+        "Fichier CSV",
+        "csv",
+    )?
+    else {
+        return Ok(None);
+    };
     let service = Arc::clone(&state.applications);
     blocking::execute(move || {
-        let cible = validate_user_file_path(&path)?;
         let items = service.list_matching(&filter)?;
         let csv = export::vers_csv(&items)?;
-        std::fs::write(&cible, csv).map_err(|error| {
-            tracing::error!(%error, path = %cible.display(), "export CSV impossible");
-            AppError::Validation("Le fichier n'a pas pu être écrit à l'emplacement choisi.".into())
+        atomic_write(&cible, "csv", |temporaire| {
+            std::fs::write(temporaire, &csv).map_err(|error| {
+                tracing::error!(%error, "export CSV impossible");
+                AppError::Validation(
+                    "Le fichier n'a pas pu être écrit à l'emplacement choisi.".into(),
+                )
+            })
         })?;
-        Ok(items.len() as u64)
+        Ok(Some(items.len() as u64))
     })
     .await
 }

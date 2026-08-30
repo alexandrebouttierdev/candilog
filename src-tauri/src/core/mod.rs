@@ -5,6 +5,7 @@ pub mod config;
 pub mod database;
 pub mod errors;
 pub mod events;
+pub mod files;
 pub mod logging;
 pub mod pagination;
 pub mod secrets;

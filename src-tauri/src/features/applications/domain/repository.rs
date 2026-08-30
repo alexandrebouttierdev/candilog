@@ -130,6 +130,7 @@ pub trait ApplicationRepository: Send + Sync {
     /// Supprime une candidature ; ses relances, entretiens et historique suivent en cascade.
     ///
     /// # Errors
-    /// Retourne `AppError::Database` si la suppression échoue.
+    /// `AppError::NotFound` si l'identifiant est inconnu ; `AppError::Database` si la
+    /// suppression échoue.
     fn delete(&self, id: Uuid) -> AppResult<()>;
 }

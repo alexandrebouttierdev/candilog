@@ -1,14 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { open } from "@tauri-apps/plugin-dialog";
 import { aiService } from "@/features/ai/services/aiService";
 import type { ImportProfilePreview } from "@/shared/types/generated/profile";
 import { ProfileImportModal } from "../ProfileImportModal";
-
-vi.mock("@tauri-apps/plugin-dialog", () => ({
-  open: vi.fn(),
-}));
 
 vi.mock("@/features/ai/services/aiService", () => ({
   aiService: { importProfile: vi.fn(), cancel: vi.fn() },
@@ -64,18 +59,17 @@ describe("ProfileImportModal", () => {
   });
 
   it("applique l'import même si tout conserve l'existant", async () => {
-    vi.mocked(open).mockResolvedValue("/tmp/cv.pdf");
     vi.mocked(aiService.importProfile).mockResolvedValue(conflictOnlyPreview());
     const onApply = vi.fn().mockResolvedValue({ added: 0, replaced: 0, skipped: 1 });
 
     render(<ProfileImportModal open busy={false} onClose={vi.fn()} onApply={onApply} />);
 
-    await userEvent.click(screen.getByRole("button", { name: /Choisir un CV PDF/ }));
-    await userEvent.click(screen.getByRole("button", { name: "Analyser le CV" }));
+    await userEvent.click(screen.getByRole("button", { name: /Choisir et analyser un CV PDF/ }));
     await userEvent.click(
       screen.getByRole("button", { name: "Importer les éléments sélectionnés" }),
     );
 
     expect(onApply).toHaveBeenCalledOnce();
+    expect(aiService.importProfile).toHaveBeenCalledWith({ generation_id: "gen-1" });
   });
 });

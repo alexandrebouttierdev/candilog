@@ -7,9 +7,26 @@ import { PAGE_SIZE } from "@/shared/types/page";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 import { useDebounce } from "@/shared/hooks/useDebounce";
+import type { ApplicationFilter } from "@/features/applications/services/applicationService";
 
 /** Root des clés de cache de la feature, pour invalider d'un seul appel. */
 export const COMPANIES_KEY = ["entreprises"] as const;
+
+function applicationsForCompany(company_id: string | null): ApplicationFilter {
+  return {
+    search: "",
+    status: [],
+    contract: [],
+    company_id,
+    city: "",
+    job_title: "",
+    start_date: null,
+    end_date: null,
+    sort: "date",
+    descending: true,
+    ids: [],
+  };
+}
 
 /**
  * Orchestration de l'écran Companies : liste paginée, recherche, filtre, sélection,
@@ -56,21 +73,24 @@ export function useCompaniesViewModel() {
       applicationService.listPage({
         page: 1,
         page_size: PAGE_SIZE,
-        filter: {
-          search: "",
-          status: [],
-          contract: [],
-          company_id: ficheId,
-          city: "",
-          job_title: "",
-          start_date: null,
-          end_date: null,
-          sort: "date",
-          descending: true,
-          ids: [],
-        },
+        filter: applicationsForCompany(ficheId),
       }),
   });
+
+  const breakdown = useQuery({
+    queryKey: [...COMPANIES_KEY, "repartition", ficheId],
+    enabled: ficheId !== null,
+    queryFn: () => applicationService.breakdown(applicationsForCompany(ficheId)),
+  });
+  const companyMetrics = {
+    total:
+      (breakdown.data?.pending ?? 0) +
+      (breakdown.data?.followed_up ?? 0) +
+      (breakdown.data?.interview ?? 0) +
+      (breakdown.data?.rejected ?? 0),
+    interview: breakdown.data?.interview ?? 0,
+    pending: breakdown.data?.pending ?? 0,
+  };
 
   /** Recharge toute la feature : liste, filtres et fiche sélectionnée. */
   const invalider = useCallback(
@@ -155,6 +175,7 @@ export function useCompaniesViewModel() {
     /** Applications rattachées à la fiche ouverte, page la plus récente. */
     applicationsLiees: liees.data?.items ?? [],
     totalApplicationsLiees: liees.data?.total ?? 0,
+    companyMetrics,
     isLoading: list.isPending,
     error: list.error,
     isSaving: creation.isPending || modification.isPending,

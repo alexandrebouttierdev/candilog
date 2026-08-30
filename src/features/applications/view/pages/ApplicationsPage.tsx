@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { save } from "@tauri-apps/plugin-dialog";
 import { useApplicationsViewModel } from "../../viewmodel/useApplicationsViewModel";
 import type { Application, ApplicationStatus } from "../../services/applicationService";
 import { applicationService } from "../../services/applicationService";
@@ -63,18 +62,10 @@ export function ApplicationsPage() {
   /**
    * Exporte le filtre courant, ou uniquement les lignes cochées.
    *
-   * La destination est choisie dans le sélecteur natif : la fenêtre n'a aucune permission
-   * d'écriture, et la commande Rust n'écrit qu'au chemin que l'utilisateur désigne (§44).
+   * Le sélecteur et l'écriture appartiennent entièrement à la commande Rust native.
    */
   const exporter = async () => {
     const ids = [...cochees];
-    const path = await save({
-      title: ids.length > 0 ? "Exporter la sélection" : "Exporter les candidatures",
-      defaultPath: "candidatures.csv",
-      filters: [{ name: "CSV", extensions: ["csv"] }],
-    });
-    if (path === null) return;
-
     setExportEnCours(true);
     try {
       // Les identifiants cochés suffisent : les combiner au filtre courant exclurait
@@ -94,7 +85,8 @@ export function ApplicationsPage() {
               ids,
             }
           : vm.filter;
-      const rows = await applicationService.exportCsv(filter, path);
+      const rows = await applicationService.exportCsv(filter);
+      if (rows === null) return;
       notify({
         tone: "success",
         title: "Export terminé",

@@ -9,11 +9,11 @@ import {
 import { TYPES_INTERVIEW } from "../../model/types";
 import type { Interview, NewInterview } from "../../services/interviewService";
 import { contactService } from "@/features/contacts/services/contactService";
-import { useQuery } from "@tanstack/react-query";
 import { dateFromTimestamp, timeFromTimestamp, versDateAffichee } from "@/shared/lib/dates";
 import {
   ApplicationPicker,
   DateInput,
+  EntityPicker,
   FormField,
   ModalHost,
   Select,
@@ -76,12 +76,6 @@ export function InterviewFormModal({
   onClose: () => void;
   onSubmit: (values: NewInterview) => Promise<unknown>;
 }) {
-  const contacts = useQuery({
-    queryKey: ["contacts", "tous"],
-    queryFn: contactService.list,
-    enabled: open,
-  });
-
   const form = useForm<InterviewFormInput, unknown, InterviewFormValues>({
     resolver: zodResolver(interviewFormSchema),
     defaultValues: vide(null, null),
@@ -141,15 +135,41 @@ export function InterviewFormModal({
 
             <FormField label="Interlocuteur">
               {(props) => (
-                <Select {...props} {...form.register("contact_id")}>
-                  <option value="">Aucun</option>
-                  {contacts.data?.map((contact) => (
-                    <option key={contact.id} value={contact.id}>
-                      {contact.first_name} {contact.name}
-                      {contact.company_name ? ` — ${contact.company_name}` : ""}
-                    </option>
-                  ))}
-                </Select>
+                <Controller
+                  control={form.control}
+                  name="contact_id"
+                  render={({ field }) => (
+                    <EntityPicker
+                      id={props.id}
+                      describedBy={props["aria-describedby"]}
+                      invalid={props["aria-invalid"]}
+                      value={field.value || null}
+                      selectedLabel={
+                        interview && interview.contact_id === field.value
+                          ? interview.contact_name
+                          : null
+                      }
+                      placeholder="Rechercher un contact…"
+                      emptyHelp="Aucun contact trouvé."
+                      queryKey={["contacts"]}
+                      fetchPage={async (params) => {
+                        const result = await contactService.listPage({
+                          ...params,
+                          tracking_role: null,
+                        });
+                        return {
+                          ...result,
+                          items: result.items.map((contact) => ({
+                            id: contact.id,
+                            label: `${contact.first_name} ${contact.name}`,
+                            meta: contact.company_name ?? undefined,
+                          })),
+                        };
+                      }}
+                      onChange={(id) => field.onChange(id ?? "")}
+                    />
+                  )}
+                />
               )}
             </FormField>
           </div>

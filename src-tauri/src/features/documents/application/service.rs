@@ -1,6 +1,7 @@
 //! Validation des CV et lettres avant persistance.
 
 use crate::core::errors::{AppError, AppResult};
+use crate::core::pagination::Page;
 use crate::features::documents::domain::{
     CoverLetter, CoverLetterRepository, NewCoverLetter, NewResume, ResumeRepository, ResumeSummary,
     ResumeVersion,
@@ -42,6 +43,14 @@ impl<C: ResumeRepository, L: CoverLetterRepository> DocumentsService<C, L> {
     pub fn resume_list(&self) -> AppResult<Vec<ResumeSummary>> {
         self.resume.list()
     }
+    pub fn resume_list_page(
+        &self,
+        page: u64,
+        page_size: u64,
+        search: &str,
+    ) -> AppResult<Page<ResumeSummary>> {
+        self.resume.list_page(page, page_size, search)
+    }
     pub fn resume_get(&self, id: Uuid) -> AppResult<ResumeVersion> {
         self.resume.get(id)
     }
@@ -73,6 +82,14 @@ impl<C: ResumeRepository, L: CoverLetterRepository> DocumentsService<C, L> {
 
     pub fn cover_letters_list(&self) -> AppResult<Vec<CoverLetter>> {
         self.cover_letters.list()
+    }
+    pub fn cover_letters_list_page(
+        &self,
+        page: u64,
+        page_size: u64,
+        search: &str,
+    ) -> AppResult<Page<CoverLetter>> {
+        self.cover_letters.list_page(page, page_size, search)
     }
     pub fn cover_letter_get(&self, id: Uuid) -> AppResult<CoverLetter> {
         self.cover_letters.get(id)

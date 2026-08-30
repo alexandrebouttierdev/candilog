@@ -7,6 +7,7 @@ import { companyService } from "../../services/companyService";
 import type { Company } from "../../services/companyService";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
+import { applicationService } from "@/features/applications/services/applicationService";
 
 /** Entreprise minimale, pour n'écrire que ce que chaque test observe. */
 function ent(name: string, id = name): Company {
@@ -42,6 +43,19 @@ beforeEach(() => {
   vi.restoreAllMocks();
   useUiStore.setState({ toasts: [] });
   vi.spyOn(companyService, "listTypes").mockResolvedValue([]);
+  vi.spyOn(applicationService, "listPage").mockResolvedValue({
+    items: [],
+    total: 8,
+    page: 1,
+    page_size: 8,
+    total_pages: 1,
+  });
+  vi.spyOn(applicationService, "breakdown").mockResolvedValue({
+    pending: 0,
+    followed_up: 0,
+    interview: 0,
+    rejected: 0,
+  });
 });
 
 describe("ViewModel des entreprises", () => {
@@ -54,6 +68,22 @@ describe("ViewModel des entreprises", () => {
 
     await waitFor(() => expect(result.current.items).toHaveLength(2));
     expect(result.current.total).toBe(2);
+  });
+
+  it("calcule les KPI de la fiche sur tout le pipeline", async () => {
+    vi.spyOn(companyService, "listPage").mockResolvedValue(page([ent("Nova Digital")]));
+    vi.spyOn(applicationService, "breakdown").mockResolvedValue({
+      pending: 9,
+      followed_up: 4,
+      interview: 7,
+      rejected: 3,
+    });
+
+    const { result } = renderHook(() => useCompaniesViewModel(), { wrapper });
+
+    await waitFor(() => expect(result.current.companyMetrics.total).toBe(23));
+    expect(result.current.companyMetrics.interview).toBe(7);
+    expect(result.current.companyMetrics.pending).toBe(9);
   });
 
   it("transmet la recherche au backend au lieu de filtrer localement", async () => {

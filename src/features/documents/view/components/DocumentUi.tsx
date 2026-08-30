@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { GeneratedResume, AiProgress } from "@/features/ai/model/types";
 import { cn } from "@/shared/lib/cn";
 import { Icon } from "@/shared/ui";
+import { PaperPreview } from "./PaperPreview";
 
 /**
  * Carte de document : filet, rayon 12 px, en-tête 13 px/600 à 14 px / 18 px.
@@ -54,14 +55,11 @@ export function A4Preview({
 }) {
   return (
     <div className="flex min-h-0 flex-1 justify-center overflow-auto bg-page p-[26px]">
-      <article
-        aria-label={title}
-        className="h-fit w-full max-w-[560px] rounded-[4px] border border-line bg-white px-[42px] py-[38px] text-[#1a1c22] shadow-paper"
-      >
+      <PaperPreview title={title}>
         {children ??
           (resume ? (
             <>
-              <h2 className="text-display text-[#1a1c22]">{resume.resume || "Profil professionnel"}</h2>
+              <h2 className="text-display text-paper-ink">{resume.resume || "Profil professionnel"}</h2>
               <Section title="Compétences">
                 <p>{resume.skills.join(" · ")}</p>
               </Section>
@@ -69,7 +67,7 @@ export function A4Preview({
                 {resume.experiences.map((item, index) => (
                   <div key={`${item.title}-${index}`} className="mb-[9px]">
                     <p className="text-label font-semibold">{item.title} · {item.company}</p>
-                    <p className="mt-[3px] text-[10.5px] leading-[1.55] text-[#5b6070]">
+                    <p className="mt-[3px] text-[10.5px] leading-[1.55] text-paper-muted">
                       {item.description}
                     </p>
                   </div>
@@ -84,11 +82,11 @@ export function A4Preview({
               </Section>
             </>
           ) : (
-            <div className="flex min-h-[590px] items-center justify-center text-center text-[12px] text-[#7b8493]">
+            <div className="flex min-h-[590px] items-center justify-center text-center text-[12px] text-paper-muted">
               Le document apparaîtra ici après la génération.
             </div>
           ))}
-      </article>
+      </PaperPreview>
     </div>
   );
 }
@@ -96,7 +94,7 @@ export function A4Preview({
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="mt-[18px]">
-      <h3 className="mb-[9px] border-b border-[#e6e8ee] pb-[5px] text-[10px] font-bold tracking-[0.1em] text-[#8a90a0] uppercase">
+      <h3 className="mb-[9px] border-b border-paper-border pb-[5px] text-[10px] font-bold tracking-[0.1em] text-paper-muted uppercase">
         {title}
       </h3>
       <div className="text-[11.5px] leading-[1.55]">{children}</div>

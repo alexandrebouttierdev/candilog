@@ -26,7 +26,8 @@ export function useSettingsViewModel() {
     },
   });
   const save = useMutation({
-    mutationFn: (settings: Settings) => settingsService.save(settings),
+    mutationFn: ({ settings, apiKey }: { settings: Settings; apiKey: string | null }) =>
+      settingsService.save(settings, apiKey),
     onSuccess: (backups) => {
       queryClient.setQueryData(SETTINGS_KEY, backups);
       setTheme(backups.theme);
@@ -41,13 +42,37 @@ export function useSettingsViewModel() {
       });
     },
   });
+  const clearApiKey = useMutation({
+    mutationFn: settingsService.clearApiKey,
+    onSuccess: () => {
+      queryClient.setQueryData<Settings>(SETTINGS_KEY, (current) =>
+        current
+          ? {
+              ...current,
+              llm: { ...current.llm, api_key_configured: false },
+            }
+          : current,
+      );
+      notify({ tone: "success", title: "Clé API supprimée" });
+    },
+    onError: (error: unknown) => {
+      notify({
+        tone: "error",
+        title: "Suppression impossible",
+        detail: message(error),
+      });
+    },
+  });
 
   return {
     data: query.data,
     error: query.error,
     isLoading: query.isPending,
     isSaving: save.isPending,
+    isClearingApiKey: clearApiKey.isPending,
     recharger: () => void query.refetch(),
-    save: save.mutateAsync,
+    save: (settings: Settings, apiKey: string | null) =>
+      save.mutateAsync({ settings, apiKey }),
+    clearApiKey: clearApiKey.mutateAsync,
   };
 }

@@ -14,6 +14,9 @@ pub enum AppError {
     /// Error d'accès à la base locale (`SQLite`).
     #[error("Base de données : {0}")]
     Database(String),
+    /// Base ou sauvegarde créée par une version de données qui n'est plus prise en charge.
+    #[error("Données incompatibles : {0}")]
+    IncompatibleData(String),
     /// Error réseau / HTTP (fournisseurs `LLM`).
     #[error("HTTP : {0}")]
     Http(String),
@@ -45,6 +48,7 @@ impl AppError {
             Self::Validation(_) => "VALIDATION_ERROR",
             Self::NotFound(_) => "NOT_FOUND",
             Self::Database(_) => "DATABASE_ERROR",
+            Self::IncompatibleData(_) => "INCOMPATIBLE_DATA",
             Self::Http(_) => "HTTP_ERROR",
             Self::Serialization(_) => "SERIALIZATION_ERROR",
             Self::Provider(_) => "PROVIDER_ERROR",
@@ -59,9 +63,9 @@ impl AppError {
     /// (il part au journal, cf. `tracing`) mais incompréhensible à l'écran, et il divulgue
     /// l'arborescence locale dans la moindre capture d'écran de support.
     ///
-    /// Les variantes dont le message est *déjà* rédigé pour l'utilisateur — validation métier,
-    /// erreurs réseau reformulées par `From<reqwest::Error>`, refus d'un fournisseur — sont
-    /// reprises telles quelles : les masquer priverait de toute indication utile.
+    /// Les variantes dont le message est *déjà* rédigé pour l'utilisateur — validation métier
+    /// et refus d'un fournisseur — sont reprises telles quelles. Le détail HTTP est toujours
+    /// masqué car une erreur `reqwest` peut inclure l'URL et ses paramètres sensibles.
     #[must_use]
     pub fn user_message(&self) -> String {
         match self {
@@ -70,7 +74,13 @@ impl AppError {
             Self::Database(_) => {
                 "Le fichier de données de Candilog est illisible ou endommagé.".into()
             }
-            Self::Http(message) => format!("Problème réseau : {message}."),
+            Self::IncompatibleData(_) => "Cette base a été créée par une ancienne version de \
+                Candilog. Déplacez-la ou supprimez-la avant de relancer l'application."
+                .into(),
+            Self::Http(_) => {
+                "La connexion au service distant a échoué. Vérifiez votre réseau et réessayez."
+                    .into()
+            }
             Self::Serialization(_) => {
                 "Une donnée enregistrée est illisible : son format n'est pas reconnu.".into()
             }
@@ -111,7 +121,11 @@ impl serde::Serialize for AppError {
     /// y placer la trace évite d'avoir à la répéter dans chaque commande, et garantit qu'aucune
     /// erreur n'est reformulée sans laisser d'empreinte exploitable dans le journal.
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        tracing::error!(code = self.code(), detail = %self, "erreur remontée à l'interface");
+        if matches!(self, Self::Http(_)) {
+            tracing::error!(code = self.code(), "erreur HTTP remontée à l'interface");
+        } else {
+            tracing::error!(code = self.code(), detail = %self, "erreur remontée à l'interface");
+        }
         AppErrorDto::from(self).serialize(serializer)
     }
 }
@@ -130,12 +144,16 @@ impl From<serde_json::Error> for AppError {
 
 impl From<reqwest::Error> for AppError {
     fn from(error: reqwest::Error) -> Self {
-        if error.is_timeout() {
-            Self::Http("le fournisseur IA met trop de temps à répondre".into())
-        } else if error.is_connect() {
-            Self::Http("le fournisseur IA est injoignable".into())
+        let is_timeout = error.is_timeout();
+        let is_connect = error.is_connect();
+        let status = error.status().map(|value| value.as_u16());
+        tracing::warn!(is_timeout, is_connect, ?status, "requête HTTP échouée");
+        if is_timeout {
+            Self::Http("délai dépassé".into())
+        } else if is_connect {
+            Self::Http("connexion impossible".into())
         } else {
-            Self::Http(error.to_string())
+            Self::Http("requête distante échouée".into())
         }
     }
 }

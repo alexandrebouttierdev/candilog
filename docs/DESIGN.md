@@ -286,6 +286,15 @@ Fermeture : `useDismissable` (Escape + clic extérieur) — calendrier, FilterMe
 
 ---
 
+## Documents PDF
+
+- CV : exactement une page A4 (210 × 297 mm).
+- Lettre de motivation : exactement une page A4 (210 × 297 mm).
+- Le rendu réduit d'abord les espacements, puis la typographie jusqu'au seuil lisible défini par le moteur.
+- Si le contenu ne tient toujours pas, l'export est refusé avec un message demandant de le raccourcir. Aucun texte n'est tronqué, superposé ou placé hors page silencieusement.
+
+---
+
 ## 12. Accessibilité (plancher)
 
 - Un `h1` par écran (`PageHeader`).

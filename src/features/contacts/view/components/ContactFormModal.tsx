@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   contactFormSchema,
@@ -9,8 +9,7 @@ import {
 import { Roles } from "../../model/roles";
 import type { Contact, NewContact } from "../../services/contactService";
 import { companyService } from "@/features/companies/services/companyService";
-import { useQuery } from "@tanstack/react-query";
-import { FormField, ModalHost, Select, TextArea, TextInput } from "@/shared/ui";
+import { EntityPicker, FormField, ModalHost, Select, TextArea, TextInput } from "@/shared/ui";
 
 const VIDE: ContactFormInput = {
   first_name: "",
@@ -57,16 +56,6 @@ export function ContactFormModal({
   onClose: () => void;
   onSubmit: (values: NewContact) => Promise<unknown>;
 }) {
-  // Le sélecteur d'entreprise charge le répertoire complet, sans pagination : il alimente
-  // une liste déroulante, et un `select` natif ne saurait pas demander la page suivante.
-  // Un EntityPicker paginé sera introduit avec les candidatures, dont le répertoire
-  // d'entreprises est le même mais l'usage plus intensif.
-  const companies = useQuery({
-    queryKey: ["entreprises", "toutes"],
-    queryFn: companyService.list,
-    enabled: open,
-  });
-
   const form = useForm<ContactFormInput, unknown, ContactFormValues>({
     resolver: zodResolver(contactFormSchema),
     defaultValues: VIDE,
@@ -152,14 +141,41 @@ export function ContactFormModal({
           <div className="grid grid-cols-2 gap-4">
             <FormField label="Entreprise">
               {(props) => (
-                <Select {...props} {...form.register("company_id")}>
-                  <option value="">Aucune</option>
-                  {companies.data?.map((company) => (
-                    <option key={company.id} value={company.id}>
-                      {company.name}
-                    </option>
-                  ))}
-                </Select>
+                <Controller
+                  control={form.control}
+                  name="company_id"
+                  render={({ field }) => (
+                    <EntityPicker
+                      id={props.id}
+                      describedBy={props["aria-describedby"]}
+                      invalid={props["aria-invalid"]}
+                      value={field.value || null}
+                      selectedLabel={
+                        contact && contact.company_id === field.value
+                          ? contact.company_name
+                          : null
+                      }
+                      placeholder="Rechercher une entreprise…"
+                      emptyHelp="Aucune entreprise trouvée."
+                      queryKey={["entreprises"]}
+                      fetchPage={async (params) => {
+                        const result = await companyService.listPage({
+                          ...params,
+                          company_type: null,
+                        });
+                        return {
+                          ...result,
+                          items: result.items.map((company) => ({
+                            id: company.id,
+                            label: company.name,
+                            meta: company.city ?? undefined,
+                          })),
+                        };
+                      }}
+                      onChange={(id) => field.onChange(id ?? "")}
+                    />
+                  )}
+                />
               )}
             </FormField>
 

@@ -60,6 +60,13 @@ impl<T: ts_rs::TS> Page<T> {
     }
 
     /// Décalage `SQL OFFSET` correspondant à une page, sans débordement.
+    ///
+    /// ```
+    /// use candilog_lib::core::pagination::Page;
+    ///
+    /// assert_eq!(Page::<String>::offset(1, 8), 0);
+    /// assert_eq!(Page::<String>::offset(3, 8), 16);
+    /// ```
     #[must_use]
     pub fn offset(page: u64, page_size: u64) -> u64 {
         page.saturating_sub(1).saturating_mul(page_size.max(1))

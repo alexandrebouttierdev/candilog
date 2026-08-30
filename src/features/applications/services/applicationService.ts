@@ -38,7 +38,7 @@ export const applicationService = {
 
   delete: (id: string) => ipc<void>("applications_delete", { id }),
 
-  /** Écrit au chemin choisi tout le filtre courant, et renvoie le nombre de lignes. */
-  exportCsv: (filter: ApplicationFilter, path: string) =>
-    ipc<number>("applications_export_csv", { filter, path }),
+  /** Ouvre le dialogue natif côté Rust et renvoie le nombre de lignes, ou null si annulé. */
+  exportCsv: (filter: ApplicationFilter) =>
+    ipc<number | null>("applications_export_csv", { filter }),
 };

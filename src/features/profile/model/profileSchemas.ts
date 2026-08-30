@@ -88,3 +88,12 @@ export const educationSchema = z.array(educationItemSchema);
 export const languagesSchema = z.array(languageSchema);
 export const projectsSchema = z.array(projectSchema);
 export const certificationsSchema = z.array(certificationSchema);
+
+// `useFieldArray` exige un objet racine stable. Les schémas de section conservent les
+// schémas métier ci-dessus et ne déballent `items` qu'au moment de fusionner le profil.
+export const experiencesFormSchema = z.object({ items: experiencesSchema });
+export const skillsFormSchema = z.object({ items: skillsSchema });
+export const educationFormSchema = z.object({ items: educationSchema });
+export const languagesFormSchema = z.object({ items: languagesSchema });
+export const projectsFormSchema = z.object({ items: projectsSchema });
+export const certificationsFormSchema = z.object({ items: certificationsSchema });

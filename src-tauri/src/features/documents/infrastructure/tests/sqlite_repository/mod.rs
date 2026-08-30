@@ -40,3 +40,51 @@ fn lettre_est_enregistree_et_supprimee() {
     repo.delete(saved.id).unwrap();
     assert!(repo.list().unwrap().is_empty());
 }
+
+#[test]
+fn cv_pagination_filtre_avant_la_limite() {
+    let repo = SqliteResumeRepository::new(pool());
+    for index in 0..25 {
+        repo.save(&NewResume {
+            name: if index % 2 == 0 {
+                format!("CV Cible {index:02}")
+            } else {
+                format!("CV Autre {index:02}")
+            },
+            content: serde_json::json!({}),
+        })
+        .unwrap();
+    }
+
+    let page = repo.list_page(2, 8, "cible").unwrap();
+
+    assert_eq!(page.total, 13);
+    assert_eq!(page.items.len(), 5);
+    assert!(page.items.iter().all(|item| item.name.contains("Cible")));
+}
+
+#[test]
+fn lettres_pagination_filtre_avant_la_limite() {
+    let repo = SqliteCoverLetterRepository::new(pool());
+    for index in 0..25 {
+        repo.save(&NewCoverLetter {
+            name: if index % 2 == 0 {
+                format!("Lettre Cible {index:02}")
+            } else {
+                format!("Lettre Autre {index:02}")
+            },
+            company: None,
+            job_title: None,
+            tone: "formal".into(),
+            length: "medium".into(),
+            content: "Contenu".into(),
+        })
+        .unwrap();
+    }
+
+    let page = repo.list_page(2, 8, "cible").unwrap();
+
+    assert_eq!(page.total, 13);
+    assert_eq!(page.items.len(), 5);
+    assert!(page.items.iter().all(|item| item.name.contains("Cible")));
+}

@@ -51,6 +51,7 @@ fn status(repo: &SqliteFollowUpRepository, application_id: Uuid) -> String {
 
 mod test_create_ne_touche_pas_au_statut_de_la_candidature;
 mod test_create_sur_candidature_inconnue_retourne_une_phrase_lisible;
+mod test_delete_identifiant_inconnu_retourne_not_found;
 mod test_la_plage_du_calendrier_inclut_ses_bornes;
 mod test_le_poste_et_l_entreprise_sont_aplatis;
 mod test_update_identifiant_inconnu_retourne_not_found;

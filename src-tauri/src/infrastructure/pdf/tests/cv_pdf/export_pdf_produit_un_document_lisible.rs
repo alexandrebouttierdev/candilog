@@ -13,7 +13,8 @@ fn export_pdf_produit_un_document_lisible() {
         skills: vec!["Linux".into()],
         ..ResumePdf::default()
     };
-    resume.render_pdf(&path).unwrap();
+    std::fs::write(&path, resume.render_bytes().unwrap()).unwrap();
     let document = lopdf::Document::load(path).unwrap();
     assert_eq!(document.get_pages().len(), 1);
+    assert_a4_media_box(&document);
 }

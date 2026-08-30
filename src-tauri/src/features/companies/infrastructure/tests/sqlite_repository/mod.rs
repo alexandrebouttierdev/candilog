@@ -24,6 +24,7 @@ fn entree(name: &str) -> NewCompany {
 mod test_create_puis_list_restitue_le_secteur_lie;
 mod test_create_puis_list_restitue_les_champs;
 mod test_delete_entreprise_avec_candidature_retourne_validation;
+mod test_delete_identifiant_inconnu_retourne_not_found;
 mod test_delete_supprime_l_entreprise;
 mod test_list_trie_par_nom_croissant;
 mod test_pagination_accede_aux_elements_apres_deux_cents;

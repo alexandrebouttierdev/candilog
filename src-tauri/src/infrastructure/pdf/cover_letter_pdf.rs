@@ -1,12 +1,16 @@
 //! Export PDF d'une lettre de motivation, polices Geist embarquées.
 
 use crate::core::errors::{AppError, AppResult};
+use crate::infrastructure::pdf::page::{
+    ensure_inside, Density, LayoutBounds, Margins, A4, DENSITY_PROFILES, MIN_BODY_FONT_PT,
+};
 use chrono::{Datelike, Local};
 use printpdf::{
     Color, FontId, Op, ParsedFont, PdfDocument, PdfFontHandle, PdfPage, PdfSaveOptions, Point, Pt,
     Rgb, TextItem,
 };
 use std::path::Path;
+use unicode_segmentation::UnicodeSegmentation;
 
 #[derive(Clone, Copy)]
 enum Weight {
@@ -51,10 +55,8 @@ fn rgb(r: f32, g: f32, b: f32) -> Color {
     })
 }
 
-const PAGE_W: f32 = 595.28;
-const PAGE_H: f32 = 841.89;
 const MARGIN: f32 = 56.7;
-const CONTENT_W: f32 = PAGE_W - 2.0 * MARGIN;
+const CONTENT_W: f32 = A4.width_pt - 2.0 * MARGIN;
 const ASCENT: f32 = 0.8;
 const TEXT: (f32, f32, f32) = (26.0, 26.0, 26.0);
 const SECONDAIRE: (f32, f32, f32) = (91.0, 96.0, 112.0);
@@ -73,6 +75,28 @@ impl CoverLetterPdf {
     /// # Errors
     /// Font illisible ou écriture du fichier impossible.
     pub fn render_pdf(&self, path: &Path) -> AppResult<()> {
+        let bytes = self.render_bytes()?;
+        std::fs::write(path, bytes)
+            .map_err(|error| AppError::Database(format!("Impossible d'exporter le PDF : {error}")))
+    }
+
+    /// Planifie entièrement une page A4 avant de la sérialiser.
+    ///
+    /// # Errors
+    /// Refuse le document si aucune densité lisible ne tient sur une page.
+    pub fn render_bytes(&self) -> AppResult<Vec<u8>> {
+        for density in DENSITY_PROFILES {
+            if let Some(bytes) = self.render_density(density)? {
+                return Ok(bytes);
+            }
+        }
+        Err(AppError::Validation(
+            "La lettre ne tient pas sur une page A4. Raccourcissez son contenu avant l'export."
+                .into(),
+        ))
+    }
+
+    fn render_density(&self, density: Density) -> AppResult<Option<Vec<u8>>> {
         let mut avertissements = Vec::new();
         let (regular, medium, semibold) = load_fonts()?;
         let mut document = PdfDocument::new("Lettre Candilog");
@@ -87,22 +111,26 @@ impl CoverLetterPdf {
 
         let mut plan = Plan {
             ops: Vec::new(),
-            pages: Vec::new(),
             fonts: &fonts,
             y: MARGIN,
+            density,
+            bounds: LayoutBounds::default(),
+            overflow: false,
         };
         plan.composer(self);
-
-        let pages: Vec<PdfPage> = plan
-            .pages_finales()
-            .into_iter()
-            .map(|ops| PdfPage::new(printpdf::Mm(210.0), printpdf::Mm(297.0), ops))
-            .collect();
+        let margins = Margins::uniform(MARGIN);
+        if plan.overflow || ensure_inside(plan.bounds, margins, "overflow").is_err() {
+            return Ok(None);
+        }
+        let page = PdfPage::new(
+            printpdf::Mm(A4.width_mm),
+            printpdf::Mm(A4.height_mm),
+            plan.ops,
+        );
         let octets = document
-            .with_pages(pages)
+            .with_pages(vec![page])
             .save(&PdfSaveOptions::default(), &mut avertissements);
-        std::fs::write(path, octets)
-            .map_err(|error| AppError::Database(format!("Impossible d'exporter le PDF : {error}")))
+        Ok(Some(octets))
     }
 }
 
@@ -145,31 +173,29 @@ fn date_du_day() -> String {
 
 struct Plan<'a> {
     ops: Vec<Op>,
-    pages: Vec<Vec<Op>>,
     fonts: &'a Fonts,
     y: f32,
+    density: Density,
+    bounds: LayoutBounds,
+    overflow: bool,
 }
 
 impl Plan<'_> {
     fn pdf_y(&self, y_haut: f32) -> f32 {
-        PAGE_H - y_haut
+        A4.height_pt - y_haut
     }
 
-    fn pages_finales(mut self) -> Vec<Vec<Op>> {
-        if !self.ops.is_empty() {
-            self.pages.push(self.ops);
-        }
-        if self.pages.is_empty() {
-            self.pages.push(Vec::new());
-        }
-        self.pages
+    fn font_size(&self, size: f32) -> f32 {
+        (size * self.density.font_scale).max(MIN_BODY_FONT_PT.min(size))
     }
 
-    fn assurer_place(&mut self, hauteur: f32) {
-        if self.y + hauteur > PAGE_H - MARGIN {
-            self.pages.push(std::mem::take(&mut self.ops));
-            self.y = MARGIN;
-        }
+    fn spacing(&self, value: f32) -> f32 {
+        value * self.density.spacing_scale
+    }
+
+    fn avance(&mut self, value: f32) {
+        self.y += self.spacing(value);
+        self.bounds.max_y = self.bounds.max_y.max(self.y);
     }
 
     fn composer(&mut self, cover_letter: &CoverLetterPdf) {
@@ -207,7 +233,7 @@ impl Plan<'_> {
                 cover_letter.email.trim(),
             );
         }
-        self.y += 18.0;
+        self.avance(18.0);
         let location = cover_letter
             .city
             .as_deref()
@@ -223,7 +249,7 @@ impl Plan<'_> {
             16.0,
             &location,
         );
-        self.y += 10.0;
+        self.avance(10.0);
         self.bloc_text(
             Weight::Medium,
             11.0,
@@ -231,7 +257,7 @@ impl Plan<'_> {
             18.0,
             &cover_letter.subject,
         );
-        self.y += 8.0;
+        self.avance(8.0);
         for paragraphe in cover_letter.corps.split("\n\n") {
             let text = paragraphe.trim();
             if text.is_empty() {
@@ -244,9 +270,9 @@ impl Plan<'_> {
                 16.5,
                 text,
             );
-            self.y += 8.0;
+            self.avance(8.0);
         }
-        self.y += 12.0;
+        self.avance(12.0);
         self.bloc_text(
             Weight::Medium,
             11.0,
@@ -275,6 +301,8 @@ impl Plan<'_> {
         interligne: f32,
         value: &str,
     ) {
+        let actual_size = self.font_size(size);
+        let actual_line_height = self.spacing(interligne).max(actual_size * 1.1);
         for row_brute in value.lines() {
             let rows = if row_brute.trim().is_empty() {
                 vec![String::new()]
@@ -282,18 +310,23 @@ impl Plan<'_> {
                 self.decouper(weight, size, row_brute, CONTENT_W)
             };
             for row in rows {
-                self.assurer_place(interligne);
+                if self.y + actual_line_height > A4.height_pt - MARGIN {
+                    self.overflow = true;
+                    self.bounds.max_y = self.y + actual_line_height;
+                    return;
+                }
                 if !row.is_empty() {
                     self.text(
                         MARGIN,
-                        self.y + ASCENT * size,
+                        self.y + ASCENT * actual_size,
                         weight,
                         size,
                         couleur.clone(),
                         &row,
                     );
                 }
-                self.y += interligne;
+                self.y += actual_line_height;
+                self.bounds.max_y = self.bounds.max_y.max(self.y);
             }
         }
     }
@@ -307,6 +340,15 @@ impl Plan<'_> {
         couleur: Color,
         value: &str,
     ) {
+        if self.overflow {
+            return;
+        }
+        let size = self.font_size(size);
+        self.bounds.max_x = self
+            .bounds
+            .max_x
+            .max(x + self.largeur_text_actual(weight, size, value));
+        self.bounds.max_y = self.bounds.max_y.max(ligne_de_base_haut + size * 0.25);
         self.ops.push(Op::StartTextSection);
         self.ops.push(Op::SetFont {
             font: PdfFontHandle::External(self.fonts.id(weight).clone()),
@@ -326,6 +368,10 @@ impl Plan<'_> {
     }
 
     fn largeur_text(&self, weight: Weight, size: f32, value: &str) -> f32 {
+        self.largeur_text_actual(weight, self.font_size(size), value)
+    }
+
+    fn largeur_text_actual(&self, weight: Weight, size: f32, value: &str) -> f32 {
         let font = self.fonts.source(weight);
         let echelle = size / f32::from(font.units_per_em);
         value
@@ -342,22 +388,51 @@ impl Plan<'_> {
         let mut rows = Vec::new();
         let mut courante = String::new();
         for mot in value.split_whitespace() {
-            let candidate = if courante.is_empty() {
-                mot.to_owned()
-            } else {
-                format!("{courante} {mot}")
-            };
-            if self.largeur_text(weight, size, &candidate) <= largeur_max || courante.is_empty() {
-                courante = candidate;
-            } else {
-                rows.push(std::mem::take(&mut courante));
-                courante = mot.to_owned();
+            for fragment in self.decouper_token(weight, size, mot, largeur_max) {
+                let candidate = if courante.is_empty() {
+                    fragment.clone()
+                } else {
+                    format!("{courante} {fragment}")
+                };
+                if self.largeur_text(weight, size, &candidate) <= largeur_max {
+                    courante = candidate;
+                } else {
+                    if !courante.is_empty() {
+                        rows.push(std::mem::take(&mut courante));
+                    }
+                    courante = fragment;
+                }
             }
         }
         if !courante.is_empty() {
             rows.push(courante);
         }
         rows
+    }
+
+    fn decouper_token(
+        &self,
+        weight: Weight,
+        size: f32,
+        token: &str,
+        largeur_max: f32,
+    ) -> Vec<String> {
+        if self.largeur_text(weight, size, token) <= largeur_max {
+            return vec![token.to_owned()];
+        }
+        let mut fragments = Vec::new();
+        let mut current = String::new();
+        for grapheme in token.graphemes(true) {
+            let candidate = format!("{current}{grapheme}");
+            if !current.is_empty() && self.largeur_text(weight, size, &candidate) > largeur_max {
+                fragments.push(std::mem::take(&mut current));
+            }
+            current.push_str(grapheme);
+        }
+        if !current.is_empty() {
+            fragments.push(current);
+        }
+        fragments
     }
 }
 

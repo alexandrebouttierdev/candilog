@@ -141,8 +141,12 @@ impl FollowUpRepository for SqliteFollowUpRepository {
 
     fn delete(&self, id: Uuid) -> AppResult<()> {
         let conn = connection(&self.pool)?;
-        conn.execute("DELETE FROM follow_ups WHERE id = ?1", [id.to_string()])
+        let deleted = conn
+            .execute("DELETE FROM follow_ups WHERE id = ?1", [id.to_string()])
             .map_err(|e| translate_error(e, "relance"))?;
+        if deleted == 0 {
+            return Err(AppError::NotFound(format!("relance {id}")));
+        }
         Ok(())
     }
 }

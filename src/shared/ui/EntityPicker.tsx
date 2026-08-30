@@ -54,6 +54,7 @@ export function EntityPicker({
   const [ouvert, setOuvert] = useState(false);
   const [saisie, setSaisie] = useState("");
   const [page, setPage] = useState(1);
+  const [selectedOption, setSelectedOption] = useState<EntityOption | null>(null);
   const recherche = useDebounce(saisie);
   const conteneur = useRef<HTMLDivElement>(null);
   const listId = useId();
@@ -94,7 +95,11 @@ export function EntityPicker({
           aria-autocomplete="list"
           aria-invalid={invalid}
           aria-describedby={describedBy}
-          value={ouvert ? saisie : (selectedLabel ?? "")}
+          value={
+            ouvert
+              ? saisie
+              : (selectedOption?.id === value ? selectedOption.label : selectedLabel) ?? ""
+          }
           placeholder={placeholder}
           onFocus={() => {
             setOuvert(true);
@@ -143,6 +148,7 @@ export function EntityPicker({
                     role="option"
                     aria-selected={option.id === value}
                     onClick={() => {
+                      setSelectedOption(option);
                       onChange(option.id);
                       setOuvert(false);
                     }}

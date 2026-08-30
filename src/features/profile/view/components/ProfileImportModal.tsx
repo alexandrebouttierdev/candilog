@@ -1,7 +1,6 @@
 import { useId, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { open as openFileDialog } from "@tauri-apps/plugin-dialog";
 import type {
   ImportProfilePreview,
   ImportProfileRequest,
@@ -49,7 +48,6 @@ export function ProfileImportModal({
   onApply: (request: ImportProfileRequest) => Promise<ImportProfileResult>;
 }) {
   const formId = useId();
-  const [path, setPath] = useState<string | null>(null);
   const [operation, setOperation] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>("pick");
   const [preview, setPreview] = useState<ImportProfilePreview | null>(null);
@@ -77,20 +75,7 @@ export function ProfileImportModal({
   useWatch({ control: form.control });
   const marked = countMarked(form.getValues());
 
-  const choose = async () => {
-    const file = await openFileDialog({
-      multiple: false,
-      filters: [{ name: "PDF", extensions: ["pdf"] }],
-    });
-    if (typeof file !== "string") return;
-    setPath(file);
-    setPreview(null);
-    setError(null);
-    setPhase("pick");
-  };
-
   const analyze = async () => {
-    if (!path) return;
     const id = generation_id();
     const start = Date.now();
     setOperation(id);
@@ -98,7 +83,11 @@ export function ProfileImportModal({
     setPhase("analyze");
     setError(null);
     try {
-      const next = await aiService.importProfile({ generation_id: id, path });
+      const next = await aiService.importProfile({ generation_id: id });
+      if (next === null) {
+        setPhase("pick");
+        return;
+      }
       setPreview(next);
       form.reset(previewToFormValues(next));
       setAnalysisMs(Date.now() - start);
@@ -191,19 +180,7 @@ export function ProfileImportModal({
         width={phase === "review" ? "880px" : "720px"}
       >
         {phase === "pick" ? (
-          <PickFile path={path} onChoose={() => void choose()} />
-        ) : null}
-        {phase === "pick" && path ? (
-          <div className="mt-4">
-            <Button
-              variant="primary"
-              icon="auto_awesome"
-              className="w-full"
-              onClick={() => void analyze()}
-            >
-              Analyser le CV
-            </Button>
-          </div>
+          <PickFile onChoose={() => void analyze()} />
         ) : null}
         {phase === "analyze" ? (
           <ImportAnalysisPanel
@@ -263,10 +240,8 @@ export function ProfileImportModal({
 }
 
 function PickFile({
-  path,
   onChoose,
 }: {
-  path: string | null;
   onChoose: () => void;
 }) {
   return (
@@ -277,12 +252,12 @@ function PickFile({
         className="flex w-full flex-col items-center gap-2 rounded-card border border-dashed border-line px-6 py-6 text-center"
       >
         <Icon
-          name={path ? "picture_as_pdf" : "upload_file"}
+          name="upload_file"
           size={22}
           className="text-ink-faint"
         />
         <span className="text-body font-medium text-ink">
-          {path ? path.split("/").at(-1) : "Choisir un CV PDF"}
+          Choisir et analyser un CV PDF
         </span>
         <span className="text-meta text-ink-muted">
           Lecture locale · 10 Mo maximum

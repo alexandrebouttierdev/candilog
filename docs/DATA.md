@@ -12,3 +12,11 @@ démarrage par `SqliteSectorRepository::ensure_catalog()` (idempotent). Le libel
 `companies.sector` reste dénormalisé pour l'affichage et la recherche.
 
 Les sauvegardes doivent utiliser l'API backup SQLite. Une restauration doit valider l'en-tête, ouvrir la base, exécuter `PRAGMA integrity_check`, vérifier les versions puis remplacer la base avec possibilité de retour arrière.
+
+## Compatibilité des bases
+
+Seule la lignée du schéma courant est prise en charge. Une base ou une sauvegarde d'une
+ancienne génération est refusée en lecture seule, avant l'ouverture du pool et donc avant
+toute écriture de migration, de journal WAL ou de pragma. Candilog ne la migre et ne la
+supprime jamais automatiquement : il faut déplacer ou supprimer manuellement le fichier
+signalé avant de relancer l'application.

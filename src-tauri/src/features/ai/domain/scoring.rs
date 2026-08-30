@@ -1,8 +1,10 @@
 //! Score ATS local et déterministe, sans appel réseau.
 
-use super::{GeneratedResume, MatchScore, StructuredListing};
+use super::normalization::{contains_search_term, deduplicate_labels};
+use super::{search_key, GeneratedResume, MatchScore, StructuredListing};
 use crate::features::profile::domain::Profile;
 use chrono::Datelike;
+use std::collections::HashSet;
 
 /// Pondération du score de compétences dans le total profil.
 const WEIGHT_SKILLS: u16 = 40;
@@ -10,23 +12,21 @@ const WEIGHT_SKILLS: u16 = 40;
 const WEIGHT_EXPERIENCE: u16 = 40;
 /// Pondération des mots-clés ATS dans le total profil.
 const WEIGHT_ATS: u16 = 20;
-/// Arrondi entier (équivalent à `+ 0,5` avant la division par 100).
-const ROUNDING: u16 = 50;
-
 #[must_use]
 pub fn profile_score(profile: &Profile, job_offer: &StructuredListing) -> MatchScore {
-    let names: Vec<String> = profile
+    let names: HashSet<String> = profile
         .skills
         .iter()
-        .map(|c| c.name.to_lowercase())
+        .map(|skill| search_key(&skill.name))
+        .filter(|name| !name.is_empty())
         .collect();
-    let (present, missing): (Vec<_>, Vec<_>) = job_offer
-        .skills
+    let offer_skills = deduplicate_labels(&job_offer.skills);
+    let (present, missing): (Vec<_>, Vec<_>) = offer_skills
         .iter()
         .cloned()
-        .partition(|c| names.contains(&c.to_lowercase()));
-    let skills = percentage(present.len(), job_offer.skills.len());
-    let text = format!(
+        .partition(|skill| names.contains(&search_key(skill)));
+    let skills = percentage(present.len(), offer_skills.len());
+    let text = search_key(&format!(
         "{} {} {}",
         profile.identity.title.as_deref().unwrap_or_default(),
         profile.identity.resume.as_deref().unwrap_or_default(),
@@ -40,14 +40,10 @@ pub fn profile_score(profile: &Profile, job_offer: &StructuredListing) -> MatchS
             ))
             .collect::<Vec<_>>()
             .join(" ")
-    )
-    .to_lowercase();
-    let key = job_offer
-        .keywords
-        .iter()
-        .filter(|m| contains_term(&text, m))
-        .count();
-    let ats = percentage(key, job_offer.keywords.len());
+    ));
+    let keywords = deduplicate_labels(&job_offer.keywords);
+    let key = keywords.iter().filter(|m| contains_term(&text, m)).count();
+    let ats = percentage(key, keywords.len());
     let requis = job_offer.experience.as_deref().map_or(0, first_entier);
     let current = chrono::Utc::now().year();
     let annees: usize = profile
@@ -60,15 +56,17 @@ pub fn profile_score(profile: &Profile, job_offer: &StructuredListing) -> MatchS
             })
         })
         .sum();
-    let experience = annees
-        .saturating_mul(100)
-        .checked_div(requis)
-        .map_or(100, |v| v.min(100) as u8);
-    let total = ((u16::from(skills) * WEIGHT_SKILLS
-        + u16::from(experience) * WEIGHT_EXPERIENCE
-        + u16::from(ats) * WEIGHT_ATS
-        + ROUNDING)
-        / 100) as u8;
+    let experience = (requis > 0).then(|| {
+        annees
+            .saturating_mul(100)
+            .checked_div(requis)
+            .map_or(0, |value| value.min(100) as u8)
+    });
+    let total = weighted_total(&[
+        (skills, WEIGHT_SKILLS),
+        (experience, WEIGHT_EXPERIENCE),
+        (ats, WEIGHT_ATS),
+    ]);
     MatchScore {
         total,
         skills,
@@ -84,24 +82,26 @@ pub fn score_resume_imported(
     resume: &GeneratedResume,
     job_offer: &StructuredListing,
 ) -> MatchScore {
-    let names: Vec<String> = resume.skills.iter().map(|c| c.to_lowercase()).collect();
-    let (present, missing): (Vec<_>, Vec<_>) = job_offer
+    let names: HashSet<String> = resume
         .skills
         .iter()
-        .cloned()
-        .partition(|c| names.contains(&c.to_lowercase()));
-    let skills = percentage(present.len(), job_offer.skills.len());
-    let text = resume_text(resume);
-    let key = job_offer
-        .keywords
+        .map(|skill| search_key(skill))
+        .filter(|name| !name.is_empty())
+        .collect();
+    let offer_skills = deduplicate_labels(&job_offer.skills);
+    let (present, missing): (Vec<_>, Vec<_>) = offer_skills
         .iter()
-        .filter(|m| contains_term(&text, m))
-        .count();
-    let ats = percentage(key, job_offer.keywords.len());
+        .cloned()
+        .partition(|skill| names.contains(&search_key(skill)));
+    let skills = percentage(present.len(), offer_skills.len());
+    let text = resume_text(resume);
+    let keywords = deduplicate_labels(&job_offer.keywords);
+    let key = keywords.iter().filter(|m| contains_term(&text, m)).count();
+    let ats = percentage(key, keywords.len());
     MatchScore {
-        total: ((u16::from(skills) * 2 + u16::from(ats)) / 3) as u8,
+        total: weighted_total(&[(skills, WEIGHT_SKILLS), (ats, WEIGHT_ATS)]),
         skills,
-        experience: 0,
+        experience: None,
         ats,
         present,
         missing,
@@ -110,57 +110,82 @@ pub fn score_resume_imported(
 
 /// Retire du CV généré les faits absents du profil source.
 pub fn ground_generated_resume(profile: &Profile, resume: &mut GeneratedResume) {
-    let skills: Vec<String> = profile
+    resume.resume = profile.identity.resume.clone().unwrap_or_default();
+
+    let mut seen_skills = HashSet::new();
+    resume.skills = resume
         .skills
         .iter()
-        .map(|c| c.name.trim().to_lowercase())
-        .filter(|c| !c.is_empty())
+        .filter_map(|generated| {
+            let key = search_key(generated);
+            let source = profile
+                .skills
+                .iter()
+                .find(|source| search_key(&source.name) == key)?;
+            seen_skills
+                .insert(key)
+                .then(|| source.name.trim().to_owned())
+        })
         .collect();
-    if skills.is_empty() {
-        resume.skills.clear();
-    } else {
-        resume.skills.retain(|c| allowed_term(c, &skills));
-    }
 
-    let companies: Vec<String> = profile
+    let mut seen_experiences = HashSet::new();
+    resume.experiences = resume
         .experiences
         .iter()
-        .map(|e| e.company.trim().to_lowercase())
-        .filter(|c| !c.is_empty())
+        .filter_map(|generated| {
+            let key = (search_key(&generated.title), search_key(&generated.company));
+            let source = profile.experiences.iter().find(|source| {
+                search_key(&source.title) == key.0 && search_key(&source.company) == key.1
+            })?;
+            seen_experiences
+                .insert(key)
+                .then(|| super::GeneratedExperience {
+                    title: source.title.clone(),
+                    company: source.company.clone(),
+                    description: source.description.clone().unwrap_or_default(),
+                })
+        })
         .collect();
-    let titles: Vec<String> = profile
-        .experiences
-        .iter()
-        .map(|e| e.title.trim().to_lowercase())
-        .filter(|c| !c.is_empty())
-        .collect();
-    if companies.is_empty() && titles.is_empty() {
-        resume.experiences.clear();
-    } else {
-        resume
-            .experiences
-            .retain(|e| allowed_term(&e.company, &companies) || allowed_term(&e.title, &titles));
-    }
 
-    let schools: Vec<String> = profile
+    let mut seen_education = HashSet::new();
+    resume.education = resume
         .education
         .iter()
-        .map(|e| e.school.trim().to_lowercase())
-        .filter(|c| !c.is_empty())
+        .filter_map(|generated| {
+            let key = (search_key(&generated.degree), search_key(&generated.school));
+            let source = profile.education.iter().find(|source| {
+                search_key(&source.degree) == key.0 && search_key(&source.school) == key.1
+            })?;
+            seen_education
+                .insert(key)
+                .then(|| super::GeneratedEducation {
+                    degree: source.degree.clone(),
+                    school: source.school.clone(),
+                })
+        })
         .collect();
-    let degrees: Vec<String> = profile
-        .education
-        .iter()
-        .map(|e| e.degree.trim().to_lowercase())
-        .filter(|c| !c.is_empty())
-        .collect();
-    if schools.is_empty() && degrees.is_empty() {
-        resume.education.clear();
-    } else {
-        resume
-            .education
-            .retain(|e| allowed_term(&e.school, &schools) || allowed_term(&e.degree, &degrees));
+}
+
+/// Retire d'un CV parsé tout fait qui ne figure pas explicitement dans le texte du PDF.
+pub fn ground_imported_resume(source: &str, resume: &mut GeneratedResume) {
+    if !contains_term(source, &resume.resume) {
+        resume.resume.clear();
     }
+    resume.experiences.retain_mut(|experience| {
+        let grounded =
+            contains_term(source, &experience.title) && contains_term(source, &experience.company);
+        if grounded && !contains_term(source, &experience.description) {
+            experience.description.clear();
+        }
+        grounded
+    });
+    resume.education.retain(|education| {
+        contains_term(source, &education.degree) && contains_term(source, &education.school)
+    });
+    resume.skills = deduplicate_labels(&resume.skills)
+        .into_iter()
+        .filter(|skill| contains_term(source, skill))
+        .collect();
 }
 
 /// Ne conserve que les termes extraits d'une offre qui apparaissent vraiment dans le texte.
@@ -175,19 +200,8 @@ pub fn ground_extracted_listing(source: &str, listing: &mut StructuredListing) {
     listing.keywords.retain(|term| contains_term(source, term));
 }
 
-/// Correspondance par mot entier : « Go » ne passe pas pour « Google ».
-fn allowed_term(candidate: &str, allowed: &[String]) -> bool {
-    let candidate = candidate.trim();
-    if candidate.is_empty() {
-        return false;
-    }
-    allowed
-        .iter()
-        .any(|known| contains_term(known, candidate) || contains_term(candidate, known))
-}
-
 fn resume_text(resume: &GeneratedResume) -> String {
-    format!(
+    search_key(&format!(
         "{} {} {} {}",
         resume.resume,
         resume.skills.join(" "),
@@ -203,38 +217,31 @@ fn resume_text(resume: &GeneratedResume) -> String {
             .map(|e| format!("{} {}", e.degree, e.school))
             .collect::<Vec<_>>()
             .join(" ")
-    )
-    .to_lowercase()
+    ))
 }
 
 /// Correspondance par mot : `"go"` ne match pas `"ongoing"`.
 fn contains_term(haystack: &str, needle: &str) -> bool {
-    let needle = needle.trim().to_lowercase();
-    if needle.is_empty() {
-        return false;
-    }
-    let haystack = haystack.to_lowercase();
-    haystack.match_indices(&needle).any(|(index, _)| {
-        let before_ok = index == 0
-            || !haystack[..index]
-                .chars()
-                .next_back()
-                .is_some_and(char::is_alphanumeric);
-        let after = index + needle.len();
-        let after_ok = after >= haystack.len()
-            || !haystack[after..]
-                .chars()
-                .next()
-                .is_some_and(char::is_alphanumeric);
-        before_ok && after_ok
-    })
+    contains_search_term(haystack, needle)
 }
 
-fn percentage(count: usize, total: usize) -> u8 {
-    count
-        .saturating_mul(100)
-        .checked_div(total)
-        .map_or(100, |v| v.min(100) as u8)
+fn percentage(count: usize, total: usize) -> Option<u8> {
+    (total > 0).then(|| count.saturating_mul(100).saturating_div(total).min(100) as u8)
+}
+
+fn weighted_total(values: &[(Option<u8>, u16)]) -> u8 {
+    let (sum, weight) = values.iter().fold(
+        (0_u32, 0_u32),
+        |(sum, weight), (value, dimension_weight)| {
+            value.map_or((sum, weight), |score| {
+                (
+                    sum + u32::from(score) * u32::from(*dimension_weight),
+                    weight + u32::from(*dimension_weight),
+                )
+            })
+        },
+    );
+    (sum + weight / 2).checked_div(weight).unwrap_or_default() as u8
 }
 fn first_entier(value: &str) -> usize {
     value
@@ -322,15 +329,15 @@ mod tests {
         );
         assert_eq!(score.present, vec!["Rust"]);
         assert_eq!(score.missing, vec!["React"]);
-        assert_eq!(score.skills, 50);
+        assert_eq!(score.skills, Some(50));
         assert!(score.total > 0);
     }
 
     #[test]
     fn offre_sans_competences_ne_penalise_pas() {
         let score = profile_score(&profile_rust(), &offre(vec![], vec![], None));
-        assert_eq!(score.skills, 100);
-        assert_eq!(score.ats, 100);
+        assert_eq!(score.skills, None);
+        assert_eq!(score.ats, None);
         assert_eq!(score.missing, Vec::<String>::new());
     }
 
@@ -338,10 +345,10 @@ mod tests {
     fn cv_vide_contre_offre_complete_donne_zero_competence() {
         let vide = Profile::default();
         let score = profile_score(&vide, &offre(vec!["Rust"], vec!["cli"], Some("3 ans")));
-        assert_eq!(score.skills, 0);
+        assert_eq!(score.skills, Some(0));
         assert_eq!(score.present, Vec::<String>::new());
         assert_eq!(score.missing, vec!["Rust"]);
-        assert_eq!(score.ats, 0);
+        assert_eq!(score.ats, Some(0));
     }
 
     #[test]
@@ -350,9 +357,9 @@ mod tests {
             &profile_rust(),
             &offre(vec!["Rust"], vec!["cli"], Some("1 an")),
         );
-        assert_eq!(score.skills, 100);
-        assert_eq!(score.ats, 100);
-        assert_eq!(score.experience, 100);
+        assert_eq!(score.skills, Some(100));
+        assert_eq!(score.ats, Some(100));
+        assert_eq!(score.experience, Some(100));
         assert_eq!(score.total, 100);
     }
 
@@ -362,14 +369,14 @@ mod tests {
             &profile_rust(),
             &offre(vec!["rust", "RUST"], vec!["CLI"], None),
         );
-        assert_eq!(score.skills, 100);
-        assert_eq!(score.ats, 100);
+        assert_eq!(score.skills, Some(100));
+        assert_eq!(score.ats, Some(100));
         let mut cafe = profile_rust();
         cafe.skills = vec![Skill {
             name: "Café".into(),
         }];
         let accent = profile_score(&cafe, &offre(vec!["café"], vec![], None));
-        assert_eq!(accent.skills, 100);
+        assert_eq!(accent.skills, Some(100));
     }
 
     #[test]
@@ -377,13 +384,13 @@ mod tests {
         let mut profile = profile_rust();
         profile.identity.resume = Some("travail ongoing sur le moteur".into());
         let score = profile_score(&profile, &offre(vec![], vec!["go"], None));
-        assert_eq!(score.ats, 0);
+        assert_eq!(score.ats, Some(0));
     }
 
     #[test]
     fn mots_cles_dupliques_comptent_chacun() {
         let score = profile_score(&profile_rust(), &offre(vec![], vec!["cli", "cli"], None));
-        assert_eq!(score.ats, 100);
+        assert_eq!(score.ats, Some(100));
     }
 
     #[test]
@@ -395,8 +402,8 @@ mod tests {
             education: vec![],
         };
         let score = score_resume_imported(&resume, &offre(vec!["Rust"], vec!["title"], None));
-        assert_eq!(score.skills, 100);
-        assert_eq!(score.ats, 0);
+        assert_eq!(score.skills, Some(100));
+        assert_eq!(score.ats, Some(0));
     }
 
     #[test]
@@ -433,6 +440,99 @@ mod tests {
         assert_eq!(resume.experiences[0].company, "Nova");
         assert_eq!(resume.education.len(), 1);
         assert_eq!(resume.education[0].school, "INSA");
+    }
+
+    #[test]
+    fn grounding_exige_la_paire_titre_entreprise_et_recopie_la_source() {
+        let mut resume = GeneratedResume {
+            resume: "Accroche inventée".into(),
+            experiences: vec![
+                GeneratedExperience {
+                    title: "Ingénieure".into(),
+                    company: "Entreprise inventée".into(),
+                    description: "Mission inventée".into(),
+                },
+                GeneratedExperience {
+                    title: "ingénieure".into(),
+                    company: "NOVA".into(),
+                    description: "Mission reformulée".into(),
+                },
+            ],
+            skills: vec!["rust".into()],
+            education: vec![],
+        };
+
+        ground_generated_resume(&profile_rust(), &mut resume);
+
+        assert_eq!(resume.resume, "Systèmes et CLI");
+        assert_eq!(resume.experiences.len(), 1);
+        assert_eq!(resume.experiences[0].title, "Ingénieure");
+        assert_eq!(resume.experiences[0].company, "Nova");
+        assert_eq!(resume.experiences[0].description, "APIs Rust");
+        assert_eq!(resume.skills, vec!["Rust"]);
+    }
+
+    #[test]
+    fn grounding_exige_la_paire_diplome_ecole() {
+        let mut resume = GeneratedResume {
+            education: vec![
+                GeneratedEducation {
+                    degree: "Doctorat".into(),
+                    school: "INSA".into(),
+                },
+                GeneratedEducation {
+                    degree: "master".into(),
+                    school: "insa".into(),
+                },
+            ],
+            ..GeneratedResume::default()
+        };
+
+        ground_generated_resume(&profile_rust(), &mut resume);
+
+        assert_eq!(resume.education.len(), 1);
+        assert_eq!(resume.education[0].degree, "Master");
+        assert_eq!(resume.education[0].school, "INSA");
+    }
+
+    #[test]
+    fn grounding_du_cv_importe_retire_les_faits_absents_du_pdf() {
+        let source = "Ingénieure chez Nova. APIs Rust. Master à l'INSA. Compétence Rust.";
+        let mut resume = GeneratedResume {
+            resume: "Résumé inventé".into(),
+            experiences: vec![
+                GeneratedExperience {
+                    title: "Ingénieure".into(),
+                    company: "Nova".into(),
+                    description: "APIs Rust".into(),
+                },
+                GeneratedExperience {
+                    title: "CEO".into(),
+                    company: "Google".into(),
+                    description: "Direction".into(),
+                },
+            ],
+            skills: vec!["Rust".into(), "Cobol".into()],
+            education: vec![
+                GeneratedEducation {
+                    degree: "Master".into(),
+                    school: "INSA".into(),
+                },
+                GeneratedEducation {
+                    degree: "Doctorat".into(),
+                    school: "INSA".into(),
+                },
+            ],
+        };
+
+        ground_imported_resume(source, &mut resume);
+
+        assert!(resume.resume.is_empty());
+        assert_eq!(resume.experiences.len(), 1);
+        assert_eq!(resume.experiences[0].description, "APIs Rust");
+        assert_eq!(resume.skills, vec!["Rust"]);
+        assert_eq!(resume.education.len(), 1);
+        assert_eq!(resume.education[0].degree, "Master");
     }
 
     #[test]
@@ -489,8 +589,32 @@ mod tests {
             education: vec![],
         };
         let score = score_resume_imported(&resume, &offre(vec!["Rust", "Go"], vec!["cli"], None));
-        assert_eq!(score.skills, 50);
-        assert_eq!(score.ats, 0);
+        assert_eq!(score.skills, Some(50));
+        assert_eq!(score.ats, Some(0));
         assert_eq!(score.total, 33);
+    }
+
+    #[test]
+    fn offre_sans_exigence_exclut_les_dimensions_du_total() {
+        let score = profile_score(&Profile::default(), &StructuredListing::default());
+
+        assert_eq!(score.skills, None);
+        assert_eq!(score.experience, None);
+        assert_eq!(score.ats, None);
+        assert_eq!(score.total, 0);
+    }
+
+    #[test]
+    fn termes_dupliques_casse_et_accents_ne_comptent_qu_une_fois() {
+        let mut profile = profile_rust();
+        profile.skills = vec![Skill {
+            name: "cafe".into(),
+        }];
+
+        let score = profile_score(&profile, &offre(vec!["Café", "cafe", "CAFÉ"], vec![], None));
+
+        assert_eq!(score.skills, Some(100));
+        assert_eq!(score.present, vec!["Café"]);
+        assert!(score.missing.is_empty());
     }
 }

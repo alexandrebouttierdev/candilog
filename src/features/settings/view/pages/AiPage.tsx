@@ -47,6 +47,7 @@ export function AiPage() {
   const vm = useSettingsViewModel();
   const setTheme = useUiStore((state) => state.setTheme);
   const [draft, setDraft] = useState<Settings | null>(null);
+  const [apiKeyDraft, setApiKeyDraft] = useState("");
   const [models, setModels] = useState<string[]>([]);
   const [test, setTest] = useState<"idle" | "pending" | "ok" | "error">("idle");
   const [testMessage, setTestMessage] = useState<string | null>(null);
@@ -73,8 +74,9 @@ export function AiPage() {
 
   const save = async () => {
     if (!form) return;
-    await vm.save(form);
+    await vm.save(form, apiKeyDraft.trim() || null);
     setDraft(null);
+    setApiKeyDraft("");
   };
 
   const runTest = async () => {
@@ -82,7 +84,7 @@ export function AiPage() {
     setTest("pending");
     setTestMessage(null);
     try {
-      await settingsService.testConnection(llm);
+      await settingsService.testConnection(llm, apiKeyDraft.trim() || null);
       setTest("ok");
       setTestMessage("Connexion établie.");
     } catch (error) {
@@ -94,7 +96,7 @@ export function AiPage() {
   const actualiserModels = async () => {
     if (!llm) return;
     try {
-      const list = await settingsService.listModels(llm);
+      const list = await settingsService.listModels(llm, apiKeyDraft.trim() || null);
       setModels(list);
       if (list.length > 0 && !list.includes(llm.model)) {
         patchLlm({ model: list[0] ?? llm.model });
@@ -113,6 +115,19 @@ export function AiPage() {
     } finally {
       setCacheBusy(false);
     }
+  };
+
+  const clearApiKey = async () => {
+    await vm.clearApiKey();
+    setApiKeyDraft("");
+    setDraft((current) =>
+      current
+        ? {
+            ...current,
+            llm: { ...current.llm, api_key_configured: false },
+          }
+        : current,
+    );
   };
 
   const fournisseur = llm ? defFournisseur(llm.provider) : null;
@@ -229,16 +244,36 @@ export function AiPage() {
                   <FormField
                     label="Clé API"
                     required={idProvider(llm.provider) !== "custom"}
-                    help="Stockée dans le coffre système, jamais en clair dans la base."
+                    help={
+                      llm.api_key_configured
+                        ? "Une clé est configurée dans le coffre système. Saisissez-en une nouvelle uniquement pour la remplacer."
+                        : "Stockée dans le coffre système, jamais renvoyée à l'interface ni écrite dans la base."
+                    }
                   >
                     {(props) => (
-                      <TextInput
-                        {...props}
-                        type="password"
-                        autoComplete="off"
-                        value={llm.api_key ?? ""}
-                        onChange={(event) => patchLlm({ api_key: event.target.value || null })}
-                      />
+                      <div className="flex items-center gap-2">
+                        <TextInput
+                          {...props}
+                          type="password"
+                          autoComplete="new-password"
+                          value={apiKeyDraft}
+                          placeholder={llm.api_key_configured ? "Clé configurée" : "Saisir la clé API"}
+                          onChange={(event) => {
+                            setApiKeyDraft(event.target.value);
+                            setTest("idle");
+                          }}
+                        />
+                        {llm.api_key_configured ? (
+                          <Button
+                            variant="ghost"
+                            icon="delete"
+                            disabled={vm.isClearingApiKey}
+                            onClick={() => void clearApiKey()}
+                          >
+                            Supprimer
+                          </Button>
+                        ) : null}
+                      </div>
                     )}
                   </FormField>
                 ) : null}

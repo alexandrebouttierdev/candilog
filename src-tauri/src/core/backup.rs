@@ -1,6 +1,6 @@
 //! Backup et validation des bases SQLite Candilog.
 
-use crate::core::database::{run_local_migrations, SqlitePool, DERNIERE_VERSION};
+use crate::core::database::{run_local_migrations, validate_database_file, SqlitePool};
 use crate::core::errors::{AppError, AppResult};
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -38,6 +38,7 @@ pub fn validate(path: &Path) -> AppResult<()> {
             "Le fichier sélectionné n'est pas une base SQLite.".into(),
         ));
     }
+    validate_database_file(path)?;
     let connection =
         rusqlite::Connection::open_with_flags(path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)?;
     let integrity: String = connection.query_row("PRAGMA integrity_check", [], |row| row.get(0))?;
@@ -69,14 +70,6 @@ pub fn validate(path: &Path) -> AppResult<()> {
                 "Le backup ne contient pas la table Candilog {table}."
             )));
         }
-    }
-    let version: i64 = connection.query_row("PRAGMA user_version", [], |row| row.get(0))?;
-    if version > DERNIERE_VERSION {
-        return Err(AppError::Validation(format!(
-            "Ce backup a été créé par une version plus récente de Candilog (schéma {version}, \
-             cette version gère le schéma {DERNIERE_VERSION}). Installez la mise à jour de \
-             Candilog pour pouvoir le restaurer."
-        )));
     }
     Ok(())
 }
@@ -201,6 +194,28 @@ mod tests {
     }
 
     #[test]
+    fn backup_historique_est_refuse_sans_modifier_la_source() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("historique.sqlite");
+        {
+            let connection = rusqlite::Connection::open(&path).unwrap();
+            connection
+                .execute_batch(
+                    "CREATE TABLE candidatures(id TEXT PRIMARY KEY);
+                     INSERT INTO candidatures(id) VALUES ('historique');
+                     PRAGMA user_version = 9;",
+                )
+                .unwrap();
+        }
+        let before = std::fs::read(&path).unwrap();
+
+        let error = validate(&path).unwrap_err();
+
+        assert!(matches!(error, AppError::IncompatibleData(_)));
+        assert_eq!(std::fs::read(&path).unwrap(), before);
+    }
+
+    #[test]
     fn export_produit_une_base_candilog_valide() {
         let directory = tempfile::tempdir().unwrap();
         let destination = directory.path().join("copie.sqlite");
@@ -274,8 +289,7 @@ mod tests {
 
         let error = import(&pool, &db_path, &source_path).unwrap_err();
         assert!(
-            error.to_string().contains("ne contient pas la table")
-                || error.to_string().contains("restaurée"),
+            matches!(&error, AppError::IncompatibleData(_)),
             "un backup incomplet doit être refusé sans toucher à la base active : {error}"
         );
 

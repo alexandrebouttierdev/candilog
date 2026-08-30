@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState, type ReactNode } from "react";
 import { cn } from "@/shared/lib/cn";
+import { usePointerDrag } from "@/shared/hooks/usePointerDrag";
 
 /**
  * Panneaux redimensionnables horizontaux (workspace desktop).
@@ -27,35 +28,25 @@ export function SplitPane({
   const [leftWidth, setLeftWidth] = useState(defaultLeftWidth);
   const [dragging, setDragging] = useState(false);
 
-  const onPointerDown = useCallback(
-    (event: React.PointerEvent) => {
-      event.preventDefault();
+  const dragStart = useRef({ x: 0, width: defaultLeftWidth });
+  const startPointerDrag = usePointerDrag(
+    (moveEvent) => {
       const container = containerRef.current;
       if (!container) return;
-
-      const startX = event.clientX;
-      const startWidth = leftWidth;
-
-      const onMove = (moveEvent: Event) => {
-        const clientX = (moveEvent as globalThis.PointerEvent).clientX;
-        const containerWidth = container.offsetWidth;
-        const delta = clientX - startX;
-        const maxAllowed = containerWidth - minRight - 7;
-        const next = Math.min(maxLeft, Math.max(minLeft, startWidth + delta));
-        setLeftWidth(Math.min(next, maxAllowed));
-      };
-
-      const onUp = () => {
-        setDragging(false);
-        document.removeEventListener("pointermove", onMove);
-        document.removeEventListener("pointerup", onUp);
-      };
-
-      setDragging(true);
-      document.addEventListener("pointermove", onMove);
-      document.addEventListener("pointerup", onUp);
+      const delta = moveEvent.clientX - dragStart.current.x;
+      const maxAllowed = container.offsetWidth - minRight - 7;
+      const next = Math.min(maxLeft, Math.max(minLeft, dragStart.current.width + delta));
+      setLeftWidth(Math.min(next, maxAllowed));
     },
-    [leftWidth, minLeft, maxLeft, minRight],
+    () => setDragging(false),
+  );
+  const onPointerDown = useCallback(
+    (event: React.PointerEvent) => {
+      dragStart.current = { x: event.clientX, width: leftWidth };
+      setDragging(true);
+      startPointerDrag(event);
+    },
+    [leftWidth, startPointerDrag],
   );
 
   return (
@@ -119,44 +110,40 @@ export function TripleSplitPane({
   const [leftWidth, setLeftWidth] = useState(defaultLeftWidth);
   const [rightWidth, setRightWidth] = useState(defaultRightWidth);
   const [dragging, setDragging] = useState<"left" | "right" | null>(null);
+  const dragStart = useRef<{ side: "left" | "right"; x: number; left: number; right: number }>({
+    side: "left",
+    x: 0,
+    left: 0,
+    right: 0,
+  });
+
+  const startPointerDrag = usePointerDrag(
+    (moveEvent) => {
+      const container = containerRef.current;
+      if (!container) return;
+      const { side, x, left, right } = dragStart.current;
+      const delta = moveEvent.clientX - x;
+
+      if (side === "left") {
+        const maxAllowed = container.offsetWidth - rightWidth - minCenter - 14;
+        const next = Math.min(maxLeft, Math.max(minLeft, left + delta));
+        setLeftWidth(Math.min(next, maxAllowed));
+      } else {
+        const maxAllowed = container.offsetWidth - leftWidth - minCenter - 14;
+        const next = Math.min(maxRight, Math.max(minRight, right - delta));
+        setRightWidth(Math.min(next, maxAllowed));
+      }
+    },
+    () => setDragging(null),
+  );
 
   const startDrag = useCallback(
     (side: "left" | "right", event: React.PointerEvent) => {
-      event.preventDefault();
-      const container = containerRef.current;
-      if (!container) return;
-
-      const startX = event.clientX;
-      const startLeft = leftWidth;
-      const startRight = rightWidth;
-
-      const onMove = (moveEvent: Event) => {
-        const clientX = (moveEvent as globalThis.PointerEvent).clientX;
-        const containerWidth = container.offsetWidth;
-        const delta = clientX - startX;
-
-        if (side === "left") {
-          const maxAllowed = containerWidth - rightWidth - minCenter - 14;
-          const next = Math.min(maxLeft, Math.max(minLeft, startLeft + delta));
-          setLeftWidth(Math.min(next, maxAllowed));
-        } else {
-          const maxAllowed = containerWidth - leftWidth - minCenter - 14;
-          const next = Math.min(maxRight, Math.max(minRight, startRight - delta));
-          setRightWidth(Math.min(next, maxAllowed));
-        }
-      };
-
-      const onUp = () => {
-        setDragging(null);
-        document.removeEventListener("pointermove", onMove);
-        document.removeEventListener("pointerup", onUp);
-      };
-
+      dragStart.current = { side, x: event.clientX, left: leftWidth, right: rightWidth };
       setDragging(side);
-      document.addEventListener("pointermove", onMove);
-      document.addEventListener("pointerup", onUp);
+      startPointerDrag(event);
     },
-    [leftWidth, rightWidth, minLeft, maxLeft, minCenter, minRight, maxRight],
+    [leftWidth, rightWidth, startPointerDrag],
   );
 
   return (

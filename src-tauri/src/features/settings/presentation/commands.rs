@@ -2,9 +2,11 @@
 
 use crate::app::state::AppState;
 use crate::core::errors::AppResult;
+use crate::core::files::{atomic_write, select_save_target, select_source};
 use crate::core::utils::blocking;
-use crate::core::utils::validation::validate_user_file_path;
-use crate::features::settings::domain::{About, LlmForm, Settings, UpdateInfo, UpdateProgress};
+use crate::features::settings::domain::{
+    About, LlmForm, ResetOutcome, Settings, UpdateInfo, UpdateProgress,
+};
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter, State};
 
@@ -17,15 +19,30 @@ pub async fn settings_load(state: State<'_, AppState>) -> AppResult<Settings> {
 
 /// Valide et persiste les réglages. La clé API quitte SQLite pour le coffre.
 #[tauri::command(rename_all = "snake_case")]
-pub async fn settings_save(state: State<'_, AppState>, settings: Settings) -> AppResult<Settings> {
+pub async fn settings_save(
+    state: State<'_, AppState>,
+    settings: Settings,
+    api_key: Option<String>,
+) -> AppResult<Settings> {
     let service = Arc::clone(&state.settings);
-    blocking::execute(move || service.save(settings)).await
+    blocking::execute(move || service.save(settings, api_key)).await
+}
+
+/// Supprime la clé API du coffre natif sans modifier les autres réglages.
+#[tauri::command(rename_all = "snake_case")]
+pub async fn settings_clear_api_key(state: State<'_, AppState>) -> AppResult<()> {
+    let service = Arc::clone(&state.settings);
+    blocking::execute(move || service.clear_api_key()).await
 }
 
 /// Teste le fournisseur décrit par le formulaire, sans l'enregistrer.
 #[tauri::command(rename_all = "snake_case")]
-pub async fn settings_test_connection(state: State<'_, AppState>, llm: LlmForm) -> AppResult<()> {
-    state.settings.test_connection(llm).await
+pub async fn settings_test_connection(
+    state: State<'_, AppState>,
+    llm: LlmForm,
+    api_key: Option<String>,
+) -> AppResult<()> {
+    state.settings.test_connection(llm, api_key).await
 }
 
 /// List les modèles du fournisseur décrit par le formulaire.
@@ -33,8 +50,9 @@ pub async fn settings_test_connection(state: State<'_, AppState>, llm: LlmForm) 
 pub async fn settings_list_models(
     state: State<'_, AppState>,
     llm: LlmForm,
+    api_key: Option<String>,
 ) -> AppResult<Vec<String>> {
-    state.settings.list_models(llm).await
+    state.settings.list_models(llm, api_key).await
 }
 
 /// Vide le cache des réponses IA.
@@ -46,29 +64,48 @@ pub async fn settings_clear_ai_cache(state: State<'_, AppState>) -> AppResult<()
 
 /// Exporte la base vers le chemin choisi dans le sélecteur natif.
 #[tauri::command(rename_all = "snake_case")]
-pub async fn settings_export(state: State<'_, AppState>, path: String) -> AppResult<()> {
+pub async fn settings_export(app: AppHandle, state: State<'_, AppState>) -> AppResult<bool> {
+    let Some(cible) = select_save_target(
+        &app,
+        "Exporter une sauvegarde Candilog",
+        "candilog.sqlite",
+        "Base SQLite",
+        "sqlite",
+    )?
+    else {
+        return Ok(false);
+    };
     let service = Arc::clone(&state.settings);
     blocking::execute(move || {
-        let cible = validate_user_file_path(path)?;
-        service.export(&cible)
+        atomic_write(&cible, "sqlite", |temporaire| service.export(temporaire))?;
+        Ok(true)
     })
     .await
 }
 
 /// Restaure un backup validé, avec retour arrière en cas d'échec.
 #[tauri::command(rename_all = "snake_case")]
-pub async fn settings_restore(state: State<'_, AppState>, path: String) -> AppResult<()> {
+pub async fn settings_restore(app: AppHandle, state: State<'_, AppState>) -> AppResult<bool> {
+    let Some(source) = select_source(
+        &app,
+        "Restaurer une sauvegarde Candilog",
+        "Sauvegarde Candilog",
+        &["sqlite", "bak"],
+    )?
+    else {
+        return Ok(false);
+    };
     let service = Arc::clone(&state.settings);
     blocking::execute(move || {
-        let cible = validate_user_file_path(path)?;
-        service.restore(&cible)
+        service.restore(&source)?;
+        Ok(true)
     })
     .await
 }
 
 /// Efface les données utilisateur, pas le référentiel des secteurs.
 #[tauri::command(rename_all = "snake_case")]
-pub async fn settings_reset(state: State<'_, AppState>) -> AppResult<()> {
+pub async fn settings_reset(state: State<'_, AppState>) -> AppResult<ResetOutcome> {
     let service = Arc::clone(&state.settings);
     blocking::execute(move || service.reset()).await
 }

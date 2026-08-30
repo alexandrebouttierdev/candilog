@@ -10,6 +10,10 @@ fn test_code_est_stable_par_variante() {
         (AppError::Validation(String::new()), "VALIDATION_ERROR"),
         (AppError::NotFound(String::new()), "NOT_FOUND"),
         (AppError::Database(String::new()), "DATABASE_ERROR"),
+        (
+            AppError::IncompatibleData(String::new()),
+            "INCOMPATIBLE_DATA",
+        ),
         (AppError::Http(String::new()), "HTTP_ERROR"),
         (
             AppError::Serialization(String::new()),

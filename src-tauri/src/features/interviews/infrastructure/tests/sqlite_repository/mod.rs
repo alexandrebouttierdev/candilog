@@ -65,6 +65,7 @@ fn steps(repo: &SqliteInterviewRepository, application_id: Uuid) -> i64 {
         .unwrap()
 }
 
+mod test_delete_identifiant_inconnu_retourne_not_found;
 mod test_enregistrer_deux_fois_n_historise_qu_une_etape;
 mod test_enregistrer_fait_avancer_la_candidature;
 mod test_enregistrer_sur_candidature_inconnue_retourne_une_phrase_lisible;

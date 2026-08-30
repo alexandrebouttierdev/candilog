@@ -231,8 +231,12 @@ impl ContactRepository for SqliteContactRepository {
                     .to_owned(),
             ));
         }
-        tx.execute("DELETE FROM contacts WHERE id = ?1", [id.to_string()])
+        let deleted = tx
+            .execute("DELETE FROM contacts WHERE id = ?1", [id.to_string()])
             .map_err(|e| translate_error(e, "contact"))?;
+        if deleted == 0 {
+            return Err(AppError::NotFound(format!("contact {id}")));
+        }
         tx.commit().map_err(|e| translate_error(e, "contact"))?;
         Ok(())
     }

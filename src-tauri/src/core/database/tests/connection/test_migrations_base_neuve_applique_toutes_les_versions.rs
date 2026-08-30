@@ -10,7 +10,7 @@ fn test_migrations_base_neuve_applique_toutes_les_versions() {
     let version: i64 = conn
         .query_row("PRAGMA user_version", [], |r| r.get(0))
         .unwrap();
-    assert_eq!(version, DERNIERE_VERSION);
+    assert_eq!(version, LATEST_SCHEMA_VERSION);
     for table in ["llm_calls", "ats_scores", "ai_cache", "app_kv"] {
         let n: i64 = conn
             .query_row(

@@ -28,7 +28,7 @@ import {
 export function CompanyDetail({
   company,
   applications,
-  total_applications,
+  metrics,
   onEdit,
   onDelete,
   onOuvrirApplication,
@@ -36,15 +36,12 @@ export function CompanyDetail({
 }: {
   company: Company;
   applications: readonly Application[];
-  total_applications: number;
+  metrics: { total: number; interview: number; pending: number };
   onEdit: () => void;
   onDelete: () => void;
   onOuvrirApplication: (application: Application) => void;
   onToutVoir: () => void;
 }) {
-  const interviews = applications.filter((item) => item.status === "ENTRETIEN").length;
-  const pending = applications.filter((item) => item.status === "EN_ATTENTE").length;
-
   return (
     <div className="min-w-0 flex-1 overflow-y-auto bg-page">
       <RecordHeader
@@ -82,13 +79,13 @@ export function CompanyDetail({
         stats={
           <>
             <RecordStat icon="work" iconClassName="text-accent" label="Candidatures">
-              {total_applications}
+              {metrics.total}
             </RecordStat>
             <RecordStat icon="event_available" iconClassName="text-success" label="Entretiens">
-              {interviews}
+              {metrics.interview}
             </RecordStat>
             <RecordStat icon="hourglass_top" label="En attente">
-              {pending}
+              {metrics.pending}
             </RecordStat>
           </>
         }

@@ -1,8 +1,11 @@
 //! Persistance dans les tables historiques `resume_versions` et `cover_letters_motivation`.
 
-use crate::core::database::helpers::{connection, now_iso, translate_error, uuid_column};
+use crate::core::database::helpers::{
+    connection, like_contains, now_iso, translate_error, uuid_column, LIKE_ESCAPE,
+};
 use crate::core::database::SqlitePool;
 use crate::core::errors::{AppError, AppResult};
+use crate::core::pagination::{clamp_page_size, Page};
 use crate::features::documents::domain::{
     CoverLetter, CoverLetterRepository, NewCoverLetter, NewResume, ResumeRepository, ResumeSummary,
     ResumeVersion,
@@ -57,6 +60,40 @@ impl ResumeRepository for SqliteResumeRepository {
             .map_err(|e| translate_error(e, "versions de CV"))?;
         rows.collect::<Result<Vec<_>, _>>()
             .map_err(|e| translate_error(e, "versions de CV"))
+    }
+
+    fn list_page(&self, page: u64, page_size: u64, search: &str) -> AppResult<Page<ResumeSummary>> {
+        let conn = connection(&self.pool)?;
+        let pattern = like_contains(search);
+        let where_clause = format!("lower(name) LIKE ?1 {LIKE_ESCAPE}");
+        let total: u64 = conn
+            .query_row(
+                &format!("SELECT count(*) FROM resume_versions WHERE {where_clause}"),
+                [&pattern],
+                |row| row.get(0),
+            )
+            .map_err(|error| translate_error(error, "versions de CV"))?;
+        let page_size = clamp_page_size(page_size);
+        let offset = Page::<ResumeSummary>::offset(page, page_size);
+        let mut query = conn
+            .prepare(&format!(
+                "SELECT id, name, created_at FROM resume_versions WHERE {where_clause} \
+                 ORDER BY created_at DESC, rowid DESC LIMIT ?2 OFFSET ?3"
+            ))
+            .map_err(|error| translate_error(error, "versions de CV"))?;
+        let rows = query
+            .query_map(rusqlite::params![pattern, page_size, offset], |row| {
+                Ok(ResumeSummary {
+                    id: uuid_column(row, 0)?,
+                    name: row.get(1)?,
+                    created_at: row.get(2)?,
+                })
+            })
+            .map_err(|error| translate_error(error, "versions de CV"))?;
+        let items = rows
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|error| translate_error(error, "versions de CV"))?;
+        Ok(Page::new(items, total, page, page_size))
     }
 
     fn get(&self, id: Uuid) -> AppResult<ResumeVersion> {
@@ -143,6 +180,41 @@ impl CoverLetterRepository for SqliteCoverLetterRepository {
             .map_err(|e| translate_error(e, "lettres de motivation"))?;
         rows.collect::<Result<Vec<_>, _>>()
             .map_err(|e| translate_error(e, "lettres de motivation"))
+    }
+
+    fn list_page(&self, page: u64, page_size: u64, search: &str) -> AppResult<Page<CoverLetter>> {
+        let conn = connection(&self.pool)?;
+        let pattern = like_contains(search);
+        let where_clause = format!(
+            "(lower(name) LIKE ?1 {LIKE_ESCAPE} \
+             OR lower(coalesce(company, '')) LIKE ?1 {LIKE_ESCAPE} \
+             OR lower(coalesce(job_title, '')) LIKE ?1 {LIKE_ESCAPE})"
+        );
+        let total: u64 = conn
+            .query_row(
+                &format!("SELECT count(*) FROM cover_letters WHERE {where_clause}"),
+                [&pattern],
+                |row| row.get(0),
+            )
+            .map_err(|error| translate_error(error, "lettres de motivation"))?;
+        let page_size = clamp_page_size(page_size);
+        let offset = Page::<CoverLetter>::offset(page, page_size);
+        let mut query = conn
+            .prepare(&format!(
+                "SELECT {COVER_LETTER_COLUMNS} FROM cover_letters WHERE {where_clause} \
+                 ORDER BY created_at DESC, rowid DESC LIMIT ?2 OFFSET ?3"
+            ))
+            .map_err(|error| translate_error(error, "lettres de motivation"))?;
+        let rows = query
+            .query_map(
+                rusqlite::params![pattern, page_size, offset],
+                cover_letter_row,
+            )
+            .map_err(|error| translate_error(error, "lettres de motivation"))?;
+        let items = rows
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|error| translate_error(error, "lettres de motivation"))?;
+        Ok(Page::new(items, total, page, page_size))
     }
 
     fn get(&self, id: Uuid) -> AppResult<CoverLetter> {

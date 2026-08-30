@@ -46,6 +46,7 @@ pub trait ContactRepository: Send + Sync {
     /// Supprime un contact.
     ///
     /// # Errors
-    /// `AppError::Validation` si des candidatures ou des entretiens le référencent.
+    /// `AppError::NotFound` si l'identifiant est inconnu ; `AppError::Validation` si des
+    /// candidatures ou des entretiens le référencent.
     fn delete(&self, id: uuid::Uuid) -> AppResult<()>;
 }

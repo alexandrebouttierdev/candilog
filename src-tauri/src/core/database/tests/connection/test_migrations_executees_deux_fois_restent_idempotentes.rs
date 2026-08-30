@@ -11,5 +11,5 @@ fn test_migrations_executees_deux_fois_restent_idempotentes() {
     let version: i64 = conn
         .query_row("PRAGMA user_version", [], |r| r.get(0))
         .unwrap();
-    assert_eq!(version, DERNIERE_VERSION);
+    assert_eq!(version, LATEST_SCHEMA_VERSION);
 }

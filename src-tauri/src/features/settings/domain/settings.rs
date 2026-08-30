@@ -54,7 +54,7 @@ pub struct Settings {
 #[ts(export, export_to = "settings.ts")]
 pub struct LlmForm {
     pub provider: ProviderKind,
-    pub api_key: Option<String>,
+    pub api_key_configured: bool,
     pub endpoint: Option<String>,
     pub model: String,
     pub temperature: f32,
@@ -63,8 +63,15 @@ pub struct LlmForm {
 
 impl From<AppSettings> for Settings {
     fn from(value: AppSettings) -> Self {
+        Self::from_app(value, false)
+    }
+}
+
+impl Settings {
+    #[must_use]
+    pub fn from_app(value: AppSettings, api_key_configured: bool) -> Self {
         Self {
-            llm: LlmForm::from(value.llm),
+            llm: LlmForm::from_config(value.llm, api_key_configured),
             theme: value.theme,
             language: value.language,
         }
@@ -83,9 +90,16 @@ impl From<Settings> for AppSettings {
 
 impl From<LlmConfig> for LlmForm {
     fn from(value: LlmConfig) -> Self {
+        Self::from_config(value, false)
+    }
+}
+
+impl LlmForm {
+    #[must_use]
+    pub fn from_config(value: LlmConfig, api_key_configured: bool) -> Self {
         Self {
             provider: value.provider,
-            api_key: value.api_key,
+            api_key_configured,
             endpoint: value.endpoint,
             model: value.model,
             temperature: value.temperature,
@@ -98,7 +112,7 @@ impl From<LlmForm> for LlmConfig {
     fn from(value: LlmForm) -> Self {
         Self {
             provider: value.provider,
-            api_key: value.api_key,
+            api_key: None,
             endpoint: value.endpoint,
             model: value.model,
             temperature: value.temperature,
@@ -141,4 +155,13 @@ pub struct UpdateAsset {
 #[ts(export, export_to = "settings.ts")]
 pub struct UpdateProgress {
     pub progress: u8,
+}
+
+/// Résultat détaillé d'une réinitialisation locale.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "settings.ts")]
+pub struct ResetOutcome {
+    pub data_cleared: bool,
+    pub secret_cleared: bool,
 }

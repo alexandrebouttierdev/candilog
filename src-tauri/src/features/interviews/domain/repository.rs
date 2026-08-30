@@ -43,7 +43,8 @@ pub trait InterviewRepository: Send + Sync {
     /// Supprime un entretien.
     ///
     /// # Errors
-    /// Retourne `AppError::Database` si la suppression échoue.
+    /// `AppError::NotFound` si l'identifiant est inconnu ; `AppError::Database` si la
+    /// suppression échoue.
     fn delete(&self, id: Uuid) -> AppResult<()>;
 
     /// Enregistre l'analyse `IA` du compte rendu.

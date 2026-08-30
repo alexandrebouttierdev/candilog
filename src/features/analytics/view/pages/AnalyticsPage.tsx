@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { save } from "@tauri-apps/plugin-dialog";
 import type { ToFollowUp, Period } from "@/shared/types/generated/analytics";
 import { useAnalyticsViewModel } from "../../viewmodel/useAnalyticsViewModel";
 import { analyticsService } from "../../services/analyticsService";
@@ -40,15 +39,10 @@ export function AnalyticsPage() {
   const [exportEnCours, setExportEnCours] = useState(false);
 
   const exporter = async () => {
-    const path = await save({
-      title: "Exporter les analyses",
-      defaultPath: "analyses-candilog.csv",
-      filters: [{ name: "CSV", extensions: ["csv"] }],
-    });
-    if (path === null) return;
     setExportEnCours(true);
     try {
-      await analyticsService.exportCsv(vm.period, path);
+      const exported = await analyticsService.exportCsv(vm.period);
+      if (!exported) return;
       notify({ tone: "success", title: "Analyses exportées" });
     } catch (error) {
       notify({

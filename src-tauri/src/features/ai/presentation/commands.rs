@@ -2,6 +2,7 @@
 
 use crate::app::state::AppState;
 use crate::core::errors::AppResult;
+use crate::core::files::select_source;
 use crate::features::ai::domain::{
     AiProgress, CoverLetterRequest, ImportedResumeAnalysis, ListingAnalysis, ProfileImportProgress,
     ProfileImportRequest, ResumeAnalysisRequest, ResumeGeneration, ResumeGenerationRequest,
@@ -56,11 +57,15 @@ pub async fn ai_analyze_resume(
     app: AppHandle,
     state: State<'_, AppState>,
     request: ResumeAnalysisRequest,
-) -> AppResult<ImportedResumeAnalysis> {
+) -> AppResult<Option<ImportedResumeAnalysis>> {
+    let Some(path) = select_source(&app, "Analyser un CV", "Document PDF", &["pdf"])? else {
+        return Ok(None);
+    };
     state
         .ai
-        .analyze_resume_imported(request, notifier(app))
+        .analyze_resume_imported(request, path, notifier(app))
         .await
+        .map(Some)
 }
 
 #[tauri::command(rename_all = "snake_case")]
@@ -68,8 +73,15 @@ pub async fn ai_import_profile(
     app: AppHandle,
     state: State<'_, AppState>,
     request: ProfileImportRequest,
-) -> AppResult<ImportProfilePreview> {
-    state.ai.import_profile(request, import_notifier(app)).await
+) -> AppResult<Option<ImportProfilePreview>> {
+    let Some(path) = select_source(&app, "Importer un CV", "Document PDF", &["pdf"])? else {
+        return Ok(None);
+    };
+    state
+        .ai
+        .import_profile(request, path, import_notifier(app))
+        .await
+        .map(Some)
 }
 
 #[tauri::command(rename_all = "snake_case")]

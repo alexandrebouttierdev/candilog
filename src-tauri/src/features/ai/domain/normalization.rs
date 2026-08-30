@@ -1,0 +1,68 @@
+//! Normalisation commune aux comparaisons IA et ATS.
+
+use std::collections::HashSet;
+use unicode_normalization::{char::is_combining_mark, UnicodeNormalization};
+
+/// Produit une clé de recherche insensible à la casse, aux accents et aux espaces répétés.
+#[must_use]
+pub fn search_key(value: &str) -> String {
+    value
+        .nfd()
+        .filter(|character| !is_combining_mark(*character))
+        .flat_map(char::to_lowercase)
+        .collect::<String>()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// Déduplique des libellés normalisés tout en conservant le premier libellé original.
+pub(super) fn deduplicate_labels(values: &[String]) -> Vec<String> {
+    let mut seen = HashSet::new();
+    values
+        .iter()
+        .filter_map(|value| {
+            let key = search_key(value);
+            (!key.is_empty() && seen.insert(key)).then(|| value.clone())
+        })
+        .collect()
+}
+
+/// Recherche un terme normalisé en respectant ses frontières alphanumériques.
+pub(super) fn contains_search_term(haystack: &str, needle: &str) -> bool {
+    let needle = search_key(needle);
+    if needle.is_empty() {
+        return false;
+    }
+    let haystack = search_key(haystack);
+    haystack.match_indices(&needle).any(|(index, _)| {
+        let before_ok = index == 0
+            || !haystack[..index]
+                .chars()
+                .next_back()
+                .is_some_and(char::is_alphanumeric);
+        let after = index + needle.len();
+        let after_ok = after >= haystack.len()
+            || !haystack[after..]
+                .chars()
+                .next()
+                .is_some_and(char::is_alphanumeric);
+        before_ok && after_ok
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn normalise_accents_casse_et_espaces() {
+        assert_eq!(search_key("  CAFÉ\tCrème  "), "cafe creme");
+    }
+
+    #[test]
+    fn deduplication_conserve_le_premier_libelle() {
+        let values = vec!["Café".into(), "cafe".into(), "CAFÉ".into()];
+        assert_eq!(deduplicate_labels(&values), vec!["Café"]);
+    }
+}

@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { open, save } from "@tauri-apps/plugin-dialog";
 import { useQueryClient } from "@tanstack/react-query";
 import { ContextBarAccessory, ContextNote } from "@/app/layout/ContextBar";
 import { AppError } from "@/shared/types/app-error";
@@ -14,18 +13,13 @@ export function BackupsPage() {
   const notify = useUiStore((state) => state.notify);
   const [busy, setBusy] = useState<"export" | "import" | "reset" | null>(null);
   const [resetOpen, setResetOpen] = useState(false);
-  const [importPath, setImportPath] = useState<string | null>(null);
+  const [restoreOpen, setRestoreOpen] = useState(false);
 
   const exporter = async () => {
-    const path = await save({
-      title: "Exporter une sauvegarde Candilog",
-      defaultPath: "candilog.sqlite",
-      filters: [{ name: "Base SQLite", extensions: ["sqlite"] }],
-    });
-    if (path === null) return;
     setBusy("export");
     try {
-      await settingsService.export(path);
+      const exported = await settingsService.export();
+      if (!exported) return;
       notify({ tone: "success", title: "Sauvegarde créée" });
     } catch (error) {
       notify({
@@ -38,22 +32,17 @@ export function BackupsPage() {
     }
   };
 
-  const choisirRestauration = async () => {
-    const file = await open({
-      multiple: false,
-      filters: [{ name: "Base SQLite", extensions: ["sqlite", "bak"] }],
-    });
-    if (typeof file === "string") setImportPath(file);
-  };
-
   const restore = async () => {
-    if (!importPath) return;
     setBusy("import");
     try {
-      await settingsService.restore(importPath);
+      const restored = await settingsService.restore();
+      if (!restored) {
+        setRestoreOpen(false);
+        return;
+      }
       await queryClient.invalidateQueries();
       notify({ tone: "success", title: "Sauvegarde restaurée" });
-      setImportPath(null);
+      setRestoreOpen(false);
     } catch (error) {
       notify({
         tone: "error",
@@ -68,9 +57,23 @@ export function BackupsPage() {
   const reset = async () => {
     setBusy("reset");
     try {
-      await settingsService.reset();
+      const outcome = await settingsService.reset();
       await queryClient.invalidateQueries();
-      notify({ tone: "success", title: "Données réinitialisées" });
+      if (!outcome.data_cleared) {
+        notify({
+          tone: "error",
+          title: "Réinitialisation incomplète",
+          detail: "Les données locales n’ont pas toutes été supprimées.",
+        });
+      } else if (!outcome.secret_cleared) {
+        notify({
+          tone: "error",
+          title: "Données effacées, clé encore présente",
+          detail: "Supprimez manuellement la clé Candilog dans le coffre de mots de passe du système.",
+        });
+      } else {
+        notify({ tone: "success", title: "Données et clé API réinitialisées" });
+      }
       setResetOpen(false);
     } catch (error) {
       notify({
@@ -110,8 +113,8 @@ export function BackupsPage() {
             title="Restaurer une sauvegarde"
             description="Choisissez un fichier Candilog existant avant de confirmer la restauration."
           >
-            <Button variant="secondary" icon="folder_open" disabled={busy !== null} onClick={() => void choisirRestauration()}>
-              Choisir un file
+            <Button variant="secondary" icon="folder_open" disabled={busy !== null} onClick={() => setRestoreOpen(true)}>
+              Restaurer
             </Button>
           </ActionCard>
         </div>
@@ -131,13 +134,13 @@ export function BackupsPage() {
       </SettingsBody>
 
       <ConfirmDialog
-        open={importPath !== null}
+        open={restoreOpen}
         title="Restaurer cette sauvegarde ?"
         description="La base actuelle sera remplacée par le fichier choisi. Une copie de secours est prise avant l’écriture."
         note="En cas d’échec, vos données d’origine sont remises en place."
         confirmLabel="Restaurer"
         busy={busy === "import"}
-        onCancel={() => setImportPath(null)}
+        onCancel={() => setRestoreOpen(false)}
         onConfirm={() => void restore()}
       />
       <ConfirmDialog

@@ -18,16 +18,16 @@ export type ImportedResumeAnalysis = { resume: GeneratedResume, job_offer: Struc
 
 export type ListingAnalysis = { job_offer: StructuredListing, score: MatchScore, };
 
-export type MatchScore = { total: number, skills: number, experience: number, ats: number, present: Array<string>, missing: Array<string>, };
+export type MatchScore = { total: number, skills: number | null, experience: number | null, ats: number | null, present: Array<string>, missing: Array<string>, };
 
 /**
  * Progression d'analyse de CV : étape connue et ligne de journal, sans pourcentage.
  */
 export type ProfileImportProgress = { generation_id: string, at: string, message: string, step: string | null, };
 
-export type ProfileImportRequest = { generation_id: string, path: string, };
+export type ProfileImportRequest = { generation_id: string, };
 
-export type ResumeAnalysisRequest = { generation_id: string, path: string, job_offer: string, };
+export type ResumeAnalysisRequest = { generation_id: string, job_offer: string, };
 
 export type ResumeGeneration = { resume: GeneratedResume, analysis: AtsAnalysis, job_offer: StructuredListing, profile_score: MatchScore, };
 

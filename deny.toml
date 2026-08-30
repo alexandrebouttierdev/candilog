@@ -7,7 +7,27 @@ all-features = true
 
 [advisories]
 version = 2
-ignore = []
+# Revue prévue le 2026-11-30. Ces avis `unmaintained` n'ont aucune mise à jour sûre :
+# GTK3 est imposé par le runtime Tauri Linux stable et `rust-unic` par `urlpattern` dans
+# `tauri-utils`. Les vulnérabilités corrigibles ne doivent jamais être ajoutées ici.
+ignore = [
+    { id = "RUSTSEC-2024-0413", reason = "GTK3 transitif via Tauri Linux; aucune mise à jour sûre" },
+    { id = "RUSTSEC-2024-0416", reason = "GTK3 transitif via Tauri Linux; aucune mise à jour sûre" },
+    { id = "RUSTSEC-2024-0412", reason = "GTK3 transitif via Tauri Linux; aucune mise à jour sûre" },
+    { id = "RUSTSEC-2024-0418", reason = "GTK3 transitif via Tauri Linux; aucune mise à jour sûre" },
+    { id = "RUSTSEC-2024-0411", reason = "GTK3 transitif via Tauri Linux; aucune mise à jour sûre" },
+    { id = "RUSTSEC-2024-0417", reason = "GTK3 transitif via Tauri Linux; aucune mise à jour sûre" },
+    { id = "RUSTSEC-2024-0414", reason = "GTK3 transitif via Tauri Linux; aucune mise à jour sûre" },
+    { id = "RUSTSEC-2024-0415", reason = "GTK3 transitif via Tauri Linux; aucune mise à jour sûre" },
+    { id = "RUSTSEC-2024-0420", reason = "GTK3 transitif via Tauri Linux; aucune mise à jour sûre" },
+    { id = "RUSTSEC-2024-0419", reason = "GTK3 transitif via Tauri Linux; aucune mise à jour sûre" },
+    { id = "RUSTSEC-2024-0370", reason = "proc-macro-error transitif via GTK3; aucune mise à jour sûre" },
+    { id = "RUSTSEC-2025-0081", reason = "rust-unic transitif via tauri-utils/urlpattern; aucune mise à jour sûre" },
+    { id = "RUSTSEC-2025-0075", reason = "rust-unic transitif via tauri-utils/urlpattern; aucune mise à jour sûre" },
+    { id = "RUSTSEC-2025-0080", reason = "rust-unic transitif via tauri-utils/urlpattern; aucune mise à jour sûre" },
+    { id = "RUSTSEC-2025-0100", reason = "rust-unic transitif via tauri-utils/urlpattern; aucune mise à jour sûre" },
+    { id = "RUSTSEC-2025-0098", reason = "rust-unic transitif via tauri-utils/urlpattern; aucune mise à jour sûre" },
+]
 
 [licenses]
 version = 2

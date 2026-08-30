@@ -192,7 +192,8 @@ impl CompanyRepository for SqliteCompanyRepository {
 
     fn delete(&self, id: uuid::Uuid) -> AppResult<()> {
         let conn = connection(&self.pool)?;
-        conn.execute("DELETE FROM companies WHERE id = ?1", [id.to_string()])
+        let deleted = conn
+            .execute("DELETE FROM companies WHERE id = ?1", [id.to_string()])
             .map_err(|e| {
                 translate_constraint(
                     e,
@@ -200,6 +201,9 @@ impl CompanyRepository for SqliteCompanyRepository {
                     "entreprise",
                 )
             })?;
+        if deleted == 0 {
+            return Err(AppError::NotFound(format!("entreprise {id}")));
+        }
         Ok(())
     }
 }

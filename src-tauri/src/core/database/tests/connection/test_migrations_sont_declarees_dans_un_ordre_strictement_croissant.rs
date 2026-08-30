@@ -17,7 +17,7 @@ fn test_migrations_sont_declarees_dans_un_ordre_strictement_croissant() {
     );
     assert_eq!(
         versions.last().copied(),
-        Some(DERNIERE_VERSION),
-        "DERNIERE_VERSION ne correspond pas à la dernière migration déclarée"
+        Some(LATEST_SCHEMA_VERSION),
+        "LATEST_SCHEMA_VERSION ne correspond pas à la dernière migration déclarée"
     );
 }

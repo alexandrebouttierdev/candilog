@@ -1,5 +1,16 @@
 # Releases natives
 
+## Revue des dépendances natives
+
+La politique `cargo-deny` n'ignore que les avis « non maintenu » sans correctif sûr du
+runtime Tauri Linux stable : GTK3 (et `proc-macro-error` via GTK3), ainsi que les crates
+`rust-unic` tirées par `urlpattern` dans `tauri-utils`. Ces exceptions sont réexaminées le
+30 novembre 2026 ou dès qu'une version stable de Tauri retire ces chaînes.
+
+La chaîne PDF, elle, a été corrigée : le vendor `pdf-extract` compile avec `lopdf 0.44`, ce
+qui retire `ttf-parser` non maintenu. Une dépendance yanked ou un avis disposant d'une mise à
+jour sûre reste bloquant et ne doit pas rejoindre la liste d'exceptions.
+
 Les releases sont publiées sur le dépôt public GitHub
 [`alexandrebouttierdev/candilog-releases`](https://github.com/alexandrebouttierdev/candilog-releases),
 **distinct** du dépôt source `alexandrebouttierdev/candilog`. Le dépôt source ne contient que

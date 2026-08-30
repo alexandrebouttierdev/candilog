@@ -59,7 +59,8 @@ pub trait CompanyRepository: Send + Sync {
     /// Supprime une entreprise.
     ///
     /// # Errors
-    /// `AppError::Validation` si des candidatures y sont rattachées : la contrainte
-    /// `ON DELETE RESTRICT` refuse alors la suppression.
+    /// `AppError::NotFound` si l'identifiant est inconnu ; `AppError::Validation` si des
+    /// candidatures y sont rattachées : la contrainte `ON DELETE RESTRICT` refuse alors la
+    /// suppression.
     fn delete(&self, id: uuid::Uuid) -> AppResult<()>;
 }

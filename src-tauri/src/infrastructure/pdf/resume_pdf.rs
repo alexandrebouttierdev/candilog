@@ -4,12 +4,16 @@
 //! binaire, aucune dépendance système n'est requise côté utilisateur.
 
 use crate::core::errors::{AppError, AppResult};
+use crate::infrastructure::pdf::page::{
+    ensure_inside, Density, LayoutBounds, Margins, A4, DENSITY_PROFILES, MIN_BODY_FONT_PT,
+};
 use printpdf::{
     Color, FontId, Line, LinePoint, Mm, Op, PaintMode, ParsedFont, PdfDocument, PdfFontHandle,
     PdfPage, PdfSaveOptions, Point, Polygon, PolygonRing, Pt, RawImage, Rgb, TextItem,
     WindingOrder, XObjectId, XObjectTransform,
 };
 use std::path::Path;
+use unicode_segmentation::UnicodeSegmentation;
 
 /// Graisse de texte, miroir des quatre instances statiques embarquées.
 #[derive(Clone, Copy)]
@@ -138,8 +142,8 @@ const CHIP_BG: (f32, f32, f32) = (245.0, 245.0, 247.0);
 // Métriques de page et de typographie (px convertis en points, 1 px = 0,75 pt).
 // ---------------------------------------------------------------------------
 
-const PAGE_W: f32 = 595.28;
-const PAGE_H: f32 = 841.89;
+const PAGE_W: f32 = A4.width_pt;
+const PAGE_H: f32 = A4.height_pt;
 const PAGE_MARGIN: f32 = 14.17; // @page { margin: 0,5 cm }
 const CONTENT_X: f32 = PAGE_MARGIN + 22.4 * PX; // padding horizontal 1,4 rem du template
 const CONTENT_W: f32 = PAGE_W - 2.0 * CONTENT_X;
@@ -159,6 +163,27 @@ impl ResumePdf {
     /// Retourne une erreur si une police ou une icône embarquée ne peut pas
     /// être décodée, ou si le document ne peut pas être enregistré.
     pub fn render_pdf(&self, path: &Path) -> AppResult<()> {
+        std::fs::write(path, self.render_bytes()?)
+            .map_err(|error| AppError::Database(format!("Impossible d'exporter le PDF : {error}")))
+    }
+
+    /// Produit les octets après validation complète de la page.
+    ///
+    /// # Errors
+    /// Refuse un contenu qui dépasse la page A4.
+    pub fn render_bytes(&self) -> AppResult<Vec<u8>> {
+        for density in DENSITY_PROFILES {
+            if let Some(bytes) = self.render_density(density)? {
+                return Ok(bytes);
+            }
+        }
+        Err(AppError::Validation(
+            "Le CV ne tient pas sur une page A4. Raccourcissez le profil ou retirez des éléments."
+                .into(),
+        ))
+    }
+
+    fn render_density(&self, density: Density) -> AppResult<Option<Vec<u8>>> {
         let mut avertissements = Vec::new();
 
         let (regular, medium, semibold, bold) = load_fonts()?;
@@ -213,6 +238,9 @@ impl ResumePdf {
             fonts: &fonts,
             icones: &icones,
             y: PAGE_MARGIN,
+            density,
+            bounds: LayoutBounds::default(),
+            overflow: false,
         };
 
         plan.entete(self);
@@ -222,12 +250,18 @@ impl ResumePdf {
         plan.section_projects(self);
         plan.section_education_languages(self);
 
-        let page = PdfPage::new(Mm(210.0), Mm(297.0), plan.ops);
-        let octets = document
-            .with_pages(vec![page])
-            .save(&PdfSaveOptions::default(), &mut avertissements);
-        std::fs::write(path, octets)
-            .map_err(|error| AppError::Database(format!("Impossible d'exporter le PDF : {error}")))
+        if plan.overflow
+            || ensure_inside(plan.bounds, Margins::uniform(PAGE_MARGIN), "overflow").is_err()
+        {
+            return Ok(None);
+        }
+
+        let page = PdfPage::new(Mm(A4.width_mm), Mm(A4.height_mm), plan.ops);
+        Ok(Some(
+            document
+                .with_pages(vec![page])
+                .save(&PdfSaveOptions::default(), &mut avertissements),
+        ))
     }
 }
 
@@ -261,9 +295,20 @@ struct Plan<'a> {
     icones: &'a Icones,
     /// Curseur vertical (haut de la prochaine ligne), en points depuis le haut.
     y: f32,
+    density: Density,
+    bounds: LayoutBounds,
+    overflow: bool,
 }
 
 impl Plan<'_> {
+    fn font_size(&self, size: f32) -> f32 {
+        (size * self.density.font_scale).max(MIN_BODY_FONT_PT.min(size))
+    }
+
+    fn spacing(&self, value: f32) -> f32 {
+        value * self.density.spacing_scale
+    }
+
     fn pdf_y(&self, y_haut: f32) -> f32 {
         PAGE_H - y_haut
     }
@@ -277,11 +322,21 @@ impl Plan<'_> {
         rayon: f32,
         couleur: Color,
     ) {
+        if self.overflow {
+            return;
+        }
+        let hauteur = self.spacing(hauteur);
         let rayon = rayon.min(largeur / 2.0).min(hauteur / 2.0);
         let gauche = x;
         let droite = x + largeur;
         let haut = y_haut;
         let bas = y_haut + hauteur;
+        self.bounds.max_x = self.bounds.max_x.max(droite);
+        self.bounds.max_y = self.bounds.max_y.max(bas);
+        if droite > PAGE_W - PAGE_MARGIN || bas > PAGE_H - PAGE_MARGIN {
+            self.overflow = true;
+            return;
+        }
         let point = |px: f32, py: f32, bezier: bool| LinePoint {
             p: Point {
                 x: Pt(px),
@@ -315,6 +370,15 @@ impl Plan<'_> {
     }
 
     fn row_h(&mut self, x1: f32, x2: f32, y_haut: f32, couleur: Color, epaisseur: f32) {
+        if self.overflow {
+            return;
+        }
+        self.bounds.max_x = self.bounds.max_x.max(x2);
+        self.bounds.max_y = self.bounds.max_y.max(y_haut);
+        if x2 > PAGE_W - PAGE_MARGIN || y_haut > PAGE_H - PAGE_MARGIN {
+            self.overflow = true;
+            return;
+        }
         self.ops.push(Op::SetOutlineColor { col: couleur });
         self.ops.push(Op::SetOutlineThickness { pt: Pt(epaisseur) });
         self.ops.push(Op::DrawLine {
@@ -349,6 +413,18 @@ impl Plan<'_> {
         couleur: Color,
         value: &str,
     ) {
+        if self.overflow {
+            return;
+        }
+        let size = self.font_size(size);
+        let max_x = x + self.largeur_text_actual(weight, size, value);
+        let max_y = ligne_de_base_haut + size * 0.25;
+        self.bounds.max_x = self.bounds.max_x.max(max_x);
+        self.bounds.max_y = self.bounds.max_y.max(max_y);
+        if max_x > PAGE_W - PAGE_MARGIN || max_y > PAGE_H - PAGE_MARGIN {
+            self.overflow = true;
+            return;
+        }
         self.ops.push(Op::StartTextSection);
         self.ops.push(Op::SetFont {
             font: PdfFontHandle::External(self.fonts.id(weight).clone()),
@@ -368,6 +444,16 @@ impl Plan<'_> {
     }
 
     fn icon(&mut self, x: f32, y_haut: f32, size: f32, id: &XObjectId) {
+        if self.overflow {
+            return;
+        }
+        let size = size * self.density.font_scale;
+        self.bounds.max_x = self.bounds.max_x.max(x + size);
+        self.bounds.max_y = self.bounds.max_y.max(y_haut + size);
+        if x + size > PAGE_W - PAGE_MARGIN || y_haut + size > PAGE_H - PAGE_MARGIN {
+            self.overflow = true;
+            return;
+        }
         // Les PNG sont rasterisés en 48 px ; on place au facteur taille/48.
         let echelle = size / 48.0;
         self.ops.push(Op::UseXobject {
@@ -384,6 +470,10 @@ impl Plan<'_> {
     }
 
     fn largeur_text(&self, weight: Weight, size: f32, value: &str) -> f32 {
+        self.largeur_text_actual(weight, self.font_size(size), value)
+    }
+
+    fn largeur_text_actual(&self, weight: Weight, size: f32, value: &str) -> f32 {
         let font = self.fonts.source(weight);
         let echelle = size / f32::from(font.units_per_em);
         value
@@ -400,22 +490,51 @@ impl Plan<'_> {
         let mut rows = Vec::new();
         let mut courante = String::new();
         for mot in value.split_whitespace() {
-            let candidate = if courante.is_empty() {
-                mot.to_owned()
-            } else {
-                format!("{courante} {mot}")
-            };
-            if self.largeur_text(weight, size, &candidate) <= largeur_max || courante.is_empty() {
-                courante = candidate;
-            } else {
-                rows.push(std::mem::take(&mut courante));
-                courante = mot.to_owned();
+            for fragment in self.decouper_token(weight, size, mot, largeur_max) {
+                let candidate = if courante.is_empty() {
+                    fragment.clone()
+                } else {
+                    format!("{courante} {fragment}")
+                };
+                if self.largeur_text(weight, size, &candidate) <= largeur_max {
+                    courante = candidate;
+                } else {
+                    if !courante.is_empty() {
+                        rows.push(std::mem::take(&mut courante));
+                    }
+                    courante = fragment;
+                }
             }
         }
         if !courante.is_empty() {
             rows.push(courante);
         }
         rows
+    }
+
+    fn decouper_token(
+        &self,
+        weight: Weight,
+        size: f32,
+        token: &str,
+        largeur_max: f32,
+    ) -> Vec<String> {
+        if self.largeur_text(weight, size, token) <= largeur_max {
+            return vec![token.to_owned()];
+        }
+        let mut fragments = Vec::new();
+        let mut current = String::new();
+        for grapheme in token.graphemes(true) {
+            let candidate = format!("{current}{grapheme}");
+            if !current.is_empty() && self.largeur_text(weight, size, &candidate) > largeur_max {
+                fragments.push(std::mem::take(&mut current));
+            }
+            current.push_str(grapheme);
+        }
+        if !current.is_empty() {
+            fragments.push(current);
+        }
+        fragments
     }
 
     /// Trace un paragraphe et rend la hauteur consommée.
@@ -431,12 +550,27 @@ impl Plan<'_> {
         value: &str,
     ) -> f32 {
         let mut y = self.y;
+        let actual_size = self.font_size(size);
+        let actual_line_height = self.spacing(interligne).max(actual_size * 1.1);
         for row in self.decouper(weight, size, value, largeur_max) {
-            self.text(x, y + ASCENT * size, weight, size, couleur.clone(), &row);
-            y += interligne;
+            if y + actual_line_height > PAGE_H - PAGE_MARGIN {
+                self.overflow = true;
+                self.bounds.max_y = y + actual_line_height;
+                break;
+            }
+            self.text(
+                x,
+                y + ASCENT * actual_size,
+                weight,
+                size,
+                couleur.clone(),
+                &row,
+            );
+            y += actual_line_height;
         }
         let consommee = y - self.y;
         self.y = y;
+        self.bounds.max_y = self.bounds.max_y.max(self.y);
         consommee
     }
 }
@@ -450,7 +584,7 @@ impl Plan<'_> {
         let x = CONTENT_X;
         let haut_padding = pt(13.6);
         let bas_padding = pt(12.0);
-        self.y = PAGE_MARGIN + haut_padding;
+        self.y = PAGE_MARGIN + self.spacing(haut_padding);
 
         self.text(
             x,
@@ -460,7 +594,7 @@ impl Plan<'_> {
             rgb(TEXT.0, TEXT.1, TEXT.2),
             &resume.name,
         );
-        self.y += pt(32.0) * 1.1;
+        self.avance(pt(32.0) * 1.1);
 
         self.text(
             x,
@@ -470,10 +604,10 @@ impl Plan<'_> {
             rgb(ACCENT.0, ACCENT.1, ACCENT.2),
             &resume.subtitle,
         );
-        self.y += pt(13.12) * 1.4;
+        self.avance(pt(13.12) * 1.4);
 
         // Row de séparation du header.
-        let sep_y = self.y + pt(7.2);
+        let sep_y = self.y + self.spacing(pt(7.2));
         self.row_h(
             x,
             x + CONTENT_W,
@@ -481,7 +615,7 @@ impl Plan<'_> {
             rgb(BORDURE.0, BORDURE.1, BORDURE.2),
             1.0,
         );
-        self.y = sep_y + pt(5.4);
+        self.y = sep_y + self.spacing(pt(5.4));
 
         // Coordonnées.
         let mut contact_x = x;
@@ -491,7 +625,7 @@ impl Plan<'_> {
                 pt(12.0) + pt(4.2) + self.largeur_text(Weight::Medium, pt(10.88), &text) + pt(14.4);
             if contact_x + largeur_element > x + CONTENT_W && contact_x > x {
                 contact_x = x;
-                self.y += pt(10.88) + pt(3.6);
+                self.avance(pt(10.88) + pt(3.6));
             }
             self.icon(contact_x, self.y, pt(12.0), &icon);
             contact_x += pt(12.0) + pt(4.2);
@@ -505,7 +639,7 @@ impl Plan<'_> {
             );
             contact_x += self.largeur_text(Weight::Medium, pt(10.88), &text) + pt(14.4);
         }
-        self.y += pt(10.88) + bas_padding;
+        self.avance(pt(10.88) + bas_padding);
     }
 
     fn title_section(&mut self, x: f32, title: &str) {
@@ -517,7 +651,7 @@ impl Plan<'_> {
             rgb(ACCENT.0, ACCENT.1, ACCENT.2),
             &title.to_uppercase(),
         );
-        self.y += pt(9.92) + pt(4.48);
+        self.avance(pt(9.92) + pt(4.48));
         let largeur = self.largeur_text(Weight::Bold, pt(9.92), &title.to_uppercase());
         self.row_h(
             x,
@@ -526,7 +660,7 @@ impl Plan<'_> {
             rgb(ACCENT.0, ACCENT.1, ACCENT.2),
             1.5,
         );
-        self.y += pt(1.5) + pt(4.48);
+        self.avance(pt(1.5) + pt(4.48));
     }
 
     fn section_profile(&mut self, resume: &ResumePdf) {
@@ -552,7 +686,7 @@ impl Plan<'_> {
             let largeur = self.largeur_text(Weight::Medium, pt(10.56), skill) + 2.0 * pt(6.4);
             if x + largeur > CONTENT_X + CONTENT_W {
                 x = CONTENT_X;
-                self.y += pt(10.56) + 2.0 * pt(1.92) + pt(2.64);
+                self.avance(pt(10.56) + 2.0 * pt(1.92) + pt(2.64));
             }
             self.polygone_arrondi(
                 x,
@@ -575,7 +709,7 @@ impl Plan<'_> {
         if resume.skills.is_empty() {
             self.y = y_base;
         } else {
-            self.y += pt(10.56) + 2.0 * pt(1.92) + pt(2.64);
+            self.avance(pt(10.56) + 2.0 * pt(1.92) + pt(2.64));
         }
     }
 
@@ -598,7 +732,7 @@ impl Plan<'_> {
             rgb(TEXT.0, TEXT.1, TEXT.2),
             &experience.title,
         );
-        self.y += pt(13.12) * 1.35;
+        self.avance(pt(13.12) * 1.35);
 
         let mut meta = experience.company.clone();
         if !experience.meta.is_empty() {
@@ -614,7 +748,7 @@ impl Plan<'_> {
             rgb(SECONDAIRE.0, SECONDAIRE.1, SECONDAIRE.2),
             &meta,
         );
-        self.y += pt(11.2) * 1.4;
+        self.avance(pt(11.2) * 1.4);
 
         for puce in &experience.bullets {
             self.puce(x, puce);
@@ -659,7 +793,7 @@ impl Plan<'_> {
                 rgb(TEXT.0, TEXT.1, TEXT.2),
                 &project.name,
             );
-            self.y += pt(13.12) * 1.35;
+            self.avance(pt(13.12) * 1.35);
             if !project.meta.is_empty() {
                 self.text(
                     x,
@@ -669,7 +803,7 @@ impl Plan<'_> {
                     rgb(SECONDAIRE.0, SECONDAIRE.1, SECONDAIRE.2),
                     &project.meta,
                 );
-                self.y += pt(11.2) * 1.4;
+                self.avance(pt(11.2) * 1.4);
             }
             for puce in &project.bullets {
                 self.puce(x, puce);
@@ -694,7 +828,7 @@ impl Plan<'_> {
                 rgb(TEXT.0, TEXT.1, TEXT.2),
                 &education.degree,
             );
-            self.y += pt(12.16) * 1.4;
+            self.avance(pt(12.16) * 1.4);
             self.text(
                 x_gauche,
                 self.y + ASCENT * pt(10.88),
@@ -703,7 +837,7 @@ impl Plan<'_> {
                 rgb(SECONDAIRE.0, SECONDAIRE.1, SECONDAIRE.2),
                 &education.school,
             );
-            self.y += pt(10.88) * 1.4;
+            self.avance(pt(10.88) * 1.4);
             if !education.date.is_empty() {
                 self.text(
                     x_gauche,
@@ -713,7 +847,7 @@ impl Plan<'_> {
                     rgb(MUTED.0, MUTED.1, MUTED.2),
                     &education.date,
                 );
-                self.y += pt(9.6) * 1.4;
+                self.avance(pt(9.6) * 1.4);
             }
             self.avance(pt(4.0));
         }
@@ -730,7 +864,7 @@ impl Plan<'_> {
                 rgb(TEXT.0, TEXT.1, TEXT.2),
                 &format!("{} · {}", language.name, language.level),
             );
-            self.y += pt(12.16) * 1.4;
+            self.avance(pt(12.16) * 1.4);
         }
         let end_languages = self.y;
 
@@ -738,7 +872,11 @@ impl Plan<'_> {
     }
 
     fn avance(&mut self, distance: f32) {
-        self.y += distance;
+        self.y += self.spacing(distance);
+        self.bounds.max_y = self.bounds.max_y.max(self.y);
+        if self.y > PAGE_H - PAGE_MARGIN {
+            self.overflow = true;
+        }
     }
 }
 

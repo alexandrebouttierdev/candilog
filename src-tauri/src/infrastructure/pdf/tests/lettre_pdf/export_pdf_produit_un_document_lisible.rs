@@ -13,7 +13,8 @@ fn export_pdf_produit_un_document_lisible() {
         subject: "Objet : candidature au poste de Développeur".into(),
         corps: "Madame, Monsieur,\n\nJe vous adresse ma candidature.\n\nCordialement,".into(),
     };
-    cover_letter.render_pdf(&path).unwrap();
+    std::fs::write(&path, cover_letter.render_bytes().unwrap()).unwrap();
     let document = lopdf::Document::load(path).unwrap();
-    assert!(!document.get_pages().is_empty());
+    assert_eq!(document.get_pages().len(), 1);
+    assert_a4_media_box(&document);
 }

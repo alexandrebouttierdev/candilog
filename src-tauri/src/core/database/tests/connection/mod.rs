@@ -1,7 +1,11 @@
 //! Helpers communs et déclaration des cas de test.
 use super::*;
 
+mod test_base_historique_est_refusee_avant_toute_ecriture;
+mod test_base_version_zero_non_vide_est_refusee;
 mod test_connexion_du_pool_active_les_cles_etrangeres;
+mod test_controle_de_volume;
+mod test_migration_002_indexe_les_documents;
 mod test_migration_006_indexe_les_dates;
 mod test_migration_008_cree_le_referentiel_des_secteurs;
 mod test_migration_metier_cree_toutes_les_tables;

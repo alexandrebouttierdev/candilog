@@ -1,7 +1,7 @@
 //! État applicatif partagé, construit une fois au démarrage et injecté par Tauri.
 
 use crate::core::config::AppPaths;
-use crate::core::database::{open_pool, run_local_migrations, SqlitePool};
+use crate::core::database::{open_pool, run_local_migrations, validate_database_file, SqlitePool};
 use crate::core::errors::AppResult;
 use crate::core::secrets::SecretStore;
 use crate::features::ai::application::AiService;
@@ -101,6 +101,7 @@ impl AppState {
     /// échoue, et `AppError::Validation` si le dossier de données est introuvable.
     pub fn persistent() -> AppResult<Self> {
         let paths = AppPaths::discover()?;
+        validate_database_file(&paths.database)?;
         let pool = open_pool(Some(&paths.database))?;
         run_local_migrations(&pool)?;
         // Le fichier de base n'existe pas encore au moment où les chemins sont résolus :

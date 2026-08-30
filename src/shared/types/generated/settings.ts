@@ -10,9 +10,14 @@ export type About = { version: string, name: string, };
  */
 export type AnalysisMode = "auto" | "small" | "standard" | "advanced";
 
-export type LlmForm = { provider: ProviderKind, api_key: string | null, endpoint: string | null, model: string, temperature: number, mode: AnalysisMode, };
+export type LlmForm = { provider: ProviderKind, api_key_configured: boolean, endpoint: string | null, model: string, temperature: number, mode: AnalysisMode, };
 
 export type ProviderKind = "ollama" | "claude" | "openai" | "gemini" | "mistral" | "nvidia" | { "custom": string };
+
+/**
+ * Résultat détaillé d'une réinitialisation locale.
+ */
+export type ResetOutcome = { data_cleared: boolean, secret_cleared: boolean, };
 
 /**
  * Forme IPC destinée à React.

@@ -451,8 +451,12 @@ impl ApplicationRepository for SqliteApplicationRepository {
         let conn = connection(&self.pool)?;
         // FollowUps, entretiens et historique de statut partent en cascade (`ON DELETE
         // CASCADE` du schéma) ; l'entreprise et le contact sont conservés.
-        conn.execute("DELETE FROM applications WHERE id = ?1", [id.to_string()])
+        let deleted = conn
+            .execute("DELETE FROM applications WHERE id = ?1", [id.to_string()])
             .map_err(|e| translate_error(e, "candidature"))?;
+        if deleted == 0 {
+            return Err(AppError::NotFound(format!("candidature {id}")));
+        }
         Ok(())
     }
 }

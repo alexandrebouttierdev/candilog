@@ -76,6 +76,11 @@
   --candilog-shadow-paper: 0 10px 34px rgb(15 18 32 / 0.1);
   --candilog-shadow-overlay: 0 40px 90px rgb(15 18 32 / 0.22);
   --candilog-shadow-menu: 0 22px 54px rgb(15 18 32 / 0.16);
+  /* La feuille représente le document imprimé et ne s'inverse donc jamais en thème sombre. */
+  --paper-bg: #ffffff;
+  --paper-ink: #1a1c22;
+  --paper-muted: #6a7280;
+  --paper-border: #e6e8ee;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -289,6 +294,10 @@
   --color-danger-border: var(--candilog-danger-border);
   --color-neutral-tint: var(--candilog-neutral-tint);
   --color-scrim: var(--candilog-scrim);
+  --color-paper: var(--paper-bg);
+  --color-paper-ink: var(--paper-ink);
+  --color-paper-muted: var(--paper-muted);
+  --color-paper-border: var(--paper-border);
 
   --font-sans: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
@@ -343,6 +352,7 @@
   --radius-chip: 7px;
   --radius-tag: 5px;
   --radius-overlay: 14px;
+  --radius-paper: 4px;
 
   --spacing-control: 30px;
   --spacing-field: 31px;
@@ -364,6 +374,20 @@
   --shadow-paper: var(--candilog-shadow-paper);
 
   --duration-hover: 120ms;
+}
+
+@layer components {
+  .paper-preview {
+    width: 100%;
+    max-width: 560px;
+    height: fit-content;
+    padding: 38px 42px;
+    border: 1px solid var(--paper-border);
+    border-radius: var(--radius-paper);
+    background: var(--paper-bg);
+    color: var(--paper-ink);
+    box-shadow: var(--candilog-shadow-paper);
+  }
 }
 
 @layer base {

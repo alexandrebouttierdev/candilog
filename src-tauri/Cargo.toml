@@ -48,6 +48,8 @@ dirs = "5"
 # `reqwest::Url` : la validation vit dans `core` et n'a aucune raison de faire dépendre le
 # socle d'un client HTTP.
 url = "2"
+unicode-normalization = "0.1"
+unicode-segmentation = "1"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
 async-trait = "0.1"
 keyring = "4.1.5"
@@ -59,7 +61,9 @@ ts-rs = { version = "12", features = ["serde-compat", "uuid-impl", "chrono-impl"
 
 [dev-dependencies]
 tempfile = "3"
-lopdf = "0.42"
+# Les tests inspectent uniquement la structure PDF. Les fonctions de polices activées par
+# défaut tirent `ttf-parser`, désormais non maintenu, sans être utilisées ici.
+lopdf = { version = "0.44", default-features = false }
 
 [profile.release]
 lto = "thin"

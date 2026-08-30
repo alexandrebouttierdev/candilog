@@ -2,11 +2,11 @@
 
 use crate::app::AppState;
 use crate::core::errors::{AppError, AppResult};
+use crate::core::files::{atomic_write, select_save_target};
 use crate::core::utils::blocking;
-use crate::core::utils::validation::validate_user_file_path;
 use crate::features::analytics::domain::{Analytics, Dashboard, Period};
 use std::sync::Arc;
-use tauri::State;
+use tauri::{AppHandle, State};
 
 /// Payload le tableau de bord à la date locale courante.
 #[tauri::command(rename_all = "snake_case")]
@@ -25,18 +25,32 @@ pub async fn analytics_load(state: State<'_, AppState>, period: Period) -> AppRe
 /// Écrit l'export CSV des analyses au chemin choisi dans le sélecteur natif.
 #[tauri::command(rename_all = "snake_case")]
 pub async fn analytics_export_csv(
+    app: AppHandle,
     state: State<'_, AppState>,
     period: Period,
-    path: String,
-) -> AppResult<()> {
+) -> AppResult<bool> {
+    let Some(cible) = select_save_target(
+        &app,
+        "Exporter les analyses",
+        "analyses.csv",
+        "Fichier CSV",
+        "csv",
+    )?
+    else {
+        return Ok(false);
+    };
     let service = Arc::clone(&state.analytics);
     blocking::execute(move || {
-        let cible = validate_user_file_path(&path)?;
         let csv = service.export_csv(period, chrono::Local::now().date_naive())?;
-        std::fs::write(&cible, csv).map_err(|error| {
-            tracing::error!(%error, path = %cible.display(), "export des analyses impossible");
-            AppError::Validation("Le fichier n'a pas pu être écrit à l'emplacement choisi.".into())
-        })
+        atomic_write(&cible, "csv", |temporaire| {
+            std::fs::write(temporaire, &csv).map_err(|error| {
+                tracing::error!(%error, "export des analyses impossible");
+                AppError::Validation(
+                    "Le fichier n'a pas pu être écrit à l'emplacement choisi.".into(),
+                )
+            })
+        })?;
+        Ok(true)
     })
     .await
 }

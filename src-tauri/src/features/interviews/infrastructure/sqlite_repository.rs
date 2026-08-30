@@ -216,8 +216,12 @@ impl InterviewRepository for SqliteInterviewRepository {
         let conn = connection(&self.pool)?;
         // La candidature garde son statut : supprimer un entretien annulé ne veut pas dire
         // que la candidature n'a jamais atteint cette étape.
-        conn.execute("DELETE FROM interviews WHERE id = ?1", [id.to_string()])
+        let deleted = conn
+            .execute("DELETE FROM interviews WHERE id = ?1", [id.to_string()])
             .map_err(|e| translate_error(e, "entretien"))?;
+        if deleted == 0 {
+            return Err(AppError::NotFound(format!("entretien {id}")));
+        }
         Ok(())
     }
 

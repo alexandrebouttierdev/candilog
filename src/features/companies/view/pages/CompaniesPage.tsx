@@ -139,7 +139,7 @@ export function CompaniesPage() {
             <CompanyDetail
               company={vm.selection}
               applications={vm.applicationsLiees}
-              total_applications={vm.totalApplicationsLiees}
+              metrics={vm.companyMetrics}
               onEdit={() => setForm({ ouvert: true, cible: vm.selection })}
               onDelete={() => setADelete(vm.selection)}
               onOuvrirApplication={() => void naviguer("/tracking/applications")}

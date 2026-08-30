@@ -3,7 +3,7 @@
 use crate::core::database::helpers::connection;
 use crate::core::database::SqlitePool;
 use crate::core::errors::{AppError, AppResult};
-use crate::core::secrets::{CoffreSecrets, SecretStore};
+use crate::core::secrets::{SecretStore, SecretStoreContract};
 use crate::features::ai::domain::{LlmConfig, ProviderKind, SettingsStockes};
 use rusqlite::OptionalExtension;
 
@@ -11,7 +11,10 @@ pub fn load_config(pool: &SqlitePool) -> AppResult<LlmConfig> {
     load_config_avec(pool, &SecretStore)
 }
 
-pub fn load_config_avec(pool: &SqlitePool, coffre: &impl CoffreSecrets) -> AppResult<LlmConfig> {
+pub fn load_config_avec(
+    pool: &SqlitePool,
+    secret_store: &impl SecretStoreContract,
+) -> AppResult<LlmConfig> {
     let raw: Option<String> = connection(pool)?
         .query_row("SELECT data FROM settings WHERE id = 1", [], |row| {
             row.get(0)
@@ -34,7 +37,7 @@ pub fn load_config_avec(pool: &SqlitePool, coffre: &impl CoffreSecrets) -> AppRe
             .trim()
             .is_empty()
     {
-        config.api_key = coffre.load_api_key()?;
+        config.api_key = secret_store.load_api_key()?;
     }
     if !config.est_configure() {
         return Err(AppError::Provider(
@@ -83,7 +86,7 @@ mod tests {
 
     struct CoffreFixe(Option<String>);
 
-    impl CoffreSecrets for CoffreFixe {
+    impl SecretStoreContract for CoffreFixe {
         fn load_api_key(&self) -> AppResult<Option<String>> {
             Ok(self.0.clone())
         }

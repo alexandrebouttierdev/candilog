@@ -10,10 +10,11 @@ describe("useCancelAiOnUnmount", () => {
   });
 
   it("n'annule pas quand l'opération se termine sans quitter l'écran", () => {
+    const initialProps: { generation_id: string | null } = { generation_id: "op-1" };
     const { rerender } = renderHook(
       ({ generation_id }: { generation_id: string | null }) =>
         useCancelAiOnUnmount(generation_id),
-      { initialProps: { generation_id: "op-1" as string | null } },
+      { initialProps },
     );
 
     rerender({ generation_id: null });

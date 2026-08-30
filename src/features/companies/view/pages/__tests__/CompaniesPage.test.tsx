@@ -55,6 +55,12 @@ beforeEach(() => {
     page_size: 8,
     total_pages: 0,
   });
+  vi.spyOn(applicationService, "breakdown").mockResolvedValue({
+    pending: 0,
+    followed_up: 0,
+    interview: 0,
+    rejected: 0,
+  });
 });
 
 describe("écran Entreprises — barre de filtres", () => {

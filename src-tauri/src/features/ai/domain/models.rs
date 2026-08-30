@@ -80,9 +80,9 @@ pub struct StructuredListing {
 #[ts(export, export_to = "ai.ts")]
 pub struct MatchScore {
     pub total: u8,
-    pub skills: u8,
-    pub experience: u8,
-    pub ats: u8,
+    pub skills: Option<u8>,
+    pub experience: Option<u8>,
+    pub ats: Option<u8>,
     pub present: Vec<String>,
     pub missing: Vec<String>,
 }
@@ -215,7 +215,6 @@ pub struct ImportedResumeAnalysis {
 #[ts(export, export_to = "ai.ts")]
 pub struct ResumeAnalysisRequest {
     pub generation_id: String,
-    pub path: String,
     pub job_offer: String,
 }
 
@@ -224,7 +223,6 @@ pub struct ResumeAnalysisRequest {
 #[ts(export, export_to = "ai.ts")]
 pub struct ProfileImportRequest {
     pub generation_id: String,
-    pub path: String,
 }
 
 #[derive(Debug, Clone, Serialize, TS)]

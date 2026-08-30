@@ -12,10 +12,54 @@ use std::path::Path;
 pub type SqlitePool = Pool<SqliteConnectionManager>;
 
 /// Versions de schéma, appliquées par ordre croissant.
-const MIGRATIONS: &[(i64, &str)] = &[(1, include_str!("../../../migrations/init_schema.sql"))];
+const MIGRATIONS: &[(i64, &str)] = &[
+    (1, include_str!("../../../migrations/init_schema.sql")),
+    (
+        2,
+        include_str!("../../../migrations/002_document_indexes.sql"),
+    ),
+];
 
 /// Version de schéma atteinte après application de `init_schema`.
-pub const DERNIERE_VERSION: i64 = 1;
+pub const LATEST_SCHEMA_VERSION: i64 = 2;
+
+/// Vérifie qu'un fichier existant appartient à la génération de schéma prise en charge.
+///
+/// L'inspection est strictement en lecture seule et doit précéder [`open_pool`] : ce dernier
+/// active WAL et d'autres pragmas qui peuvent modifier le fichier. Un chemin absent ou un
+/// fichier vide représente une nouvelle base ; une base non vide sans version est ambiguë et
+/// donc refusée au même titre qu'une version supérieure au schéma courant.
+///
+/// # Errors
+/// Retourne [`AppError::IncompatibleData`] pour une génération abandonnée, ou l'erreur SQLite
+/// si le fichier n'est pas lisible comme une base.
+pub fn validate_database_file(path: &Path) -> AppResult<()> {
+    if !path.exists() {
+        return Ok(());
+    }
+    let metadata = std::fs::metadata(path)
+        .map_err(|error| AppError::Database(format!("métadonnées inaccessibles : {error}")))?;
+    if metadata.len() == 0 {
+        return Ok(());
+    }
+
+    let connection =
+        rusqlite::Connection::open_with_flags(path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)?;
+    let version: i64 = connection.query_row("PRAGMA user_version", [], |row| row.get(0))?;
+    let user_tables: i64 = connection.query_row(
+        "SELECT count(*) FROM sqlite_master \
+         WHERE type = 'table' AND name NOT LIKE 'sqlite_%'",
+        [],
+        |row| row.get(0),
+    )?;
+
+    if version > LATEST_SCHEMA_VERSION || (version == 0 && user_tables > 0) {
+        return Err(AppError::IncompatibleData(format!(
+            "version de schéma {version}"
+        )));
+    }
+    Ok(())
+}
 
 /// Applique les réglages indispensables à **chaque** connexion du pool.
 ///
@@ -76,7 +120,7 @@ pub fn run_local_migrations(pool: &SqlitePool) -> AppResult<()> {
         return Ok(());
     }
 
-    tracing::info!(from = version, jusqu_a = DERNIERE_VERSION, "migration");
+    tracing::info!(from = version, jusqu_a = LATEST_SCHEMA_VERSION, "migration");
     conn.pragma_update(None, "foreign_keys", "OFF")?;
     let resultat = appliquer(&mut conn, &a_migrer);
     // Restaure l'état attendu par le reste de l'application avant de rendre la connexion,

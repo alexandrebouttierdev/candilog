@@ -17,7 +17,7 @@ fn test_migrations_base_heritee_ne_rejoue_pas_les_versions_deja_appliquees() {
                     VALUES ('score_offre', 'ollama', 'm', 1, 1, '2026-01-01T00:00:00Z');",
         )
         .unwrap();
-        conn.pragma_update(None, "user_version", DERNIERE_VERSION)
+        conn.pragma_update(None, "user_version", LATEST_SCHEMA_VERSION)
             .unwrap();
     }
     run_local_migrations(&pool).unwrap();
@@ -33,5 +33,5 @@ fn test_migrations_base_heritee_ne_rejoue_pas_les_versions_deja_appliquees() {
     let version: i64 = conn
         .query_row("PRAGMA user_version", [], |r| r.get(0))
         .unwrap();
-    assert_eq!(version, DERNIERE_VERSION);
+    assert_eq!(version, LATEST_SCHEMA_VERSION);
 }

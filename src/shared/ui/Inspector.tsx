@@ -3,6 +3,7 @@ import { cn } from "@/shared/lib/cn";
 import { Icon } from "./Icon";
 import { IconButton } from "./Button";
 import { useDismissable } from "@/shared/hooks/useDismissable";
+import { usePointerDrag } from "@/shared/hooks/usePointerDrag";
 
 const DEFAULT_WIDTH = 380;
 const MIN_WIDTH = 320;
@@ -38,29 +39,21 @@ export function Inspector({
 
   useDismissable({ open, onDismiss: onClose });
 
+  const startPointerDrag = usePointerDrag(
+    (moveEvent) => {
+      const delta = startRef.current.x - moveEvent.clientX;
+      const next = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, startRef.current.w + delta));
+      setWidth(next);
+    },
+    () => setDragging(false),
+  );
   const onResizeStart = useCallback(
     (event: React.PointerEvent) => {
-      event.preventDefault();
       startRef.current = { x: event.clientX, w: width };
-
-      const onMove = (moveEvent: Event) => {
-        const clientX = (moveEvent as globalThis.PointerEvent).clientX;
-        const delta = startRef.current.x - clientX;
-        const next = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, startRef.current.w + delta));
-        setWidth(next);
-      };
-
-      const onUp = () => {
-        setDragging(false);
-        document.removeEventListener("pointermove", onMove);
-        document.removeEventListener("pointerup", onUp);
-      };
-
       setDragging(true);
-      document.addEventListener("pointermove", onMove);
-      document.addEventListener("pointerup", onUp);
+      startPointerDrag(event);
     },
-    [width],
+    [width, startPointerDrag],
   );
 
   if (!open) return null;

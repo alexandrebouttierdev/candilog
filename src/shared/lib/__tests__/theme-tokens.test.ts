@@ -7,6 +7,12 @@ const styles = readFileSync(
   resolve(dirname(fileURLToPath(import.meta.url)), "../../../styles.css"),
   "utf8",
 );
+const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../../features/documents/view");
+const documentSources = [
+  "components/DocumentUi.tsx",
+  "components/PaperPreview.tsx",
+  "pages/DocumentsPages.tsx",
+].map((path) => readFileSync(resolve(sourceRoot, path), "utf8"));
 
 function themeNames(kind: "color" | "text"): string[] {
   const seen = new Set<string>();
@@ -29,5 +35,17 @@ describe("jetons Tailwind", () => {
     expect(styles).toContain("--candilog-border-checkbox:");
     expect(styles).toMatch(/input\[type="checkbox"\][\s\S]*?appearance:\s*none/);
     expect(styles).toMatch(/input\[type="checkbox"\][\s\S]*?background-color:\s*var\(--color-fill\)/);
+  });
+
+  it("centralise les couleurs et le rayon de l'aperçu papier dans les jetons", () => {
+    expect(styles).toContain("--paper-bg:");
+    expect(styles).toContain("--paper-ink:");
+    expect(styles).toContain("--paper-muted:");
+    expect(styles).toContain("--paper-border:");
+    for (const source of documentSources) {
+      expect(source).not.toMatch(/#[0-9a-f]{3,8}\b/i);
+      expect(source).not.toMatch(/rgb\(/i);
+      expect(source).not.toMatch(/rounded-\[/);
+    }
   });
 });
