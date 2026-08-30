@@ -36,6 +36,7 @@ pub fn run() {
     if let Err(error) = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .manage(state)
         .invoke_handler(tauri::generate_handler![
             analytics::analytics_dashboard,
@@ -61,6 +62,7 @@ pub fn run() {
             contacts::contacts_create,
             contacts::contacts_update,
             contacts::contacts_delete,
+            documents::documents_read_clipboard,
             documents::documents_resume_list,
             documents::documents_resume_list_page,
             documents::documents_resume_get,

@@ -287,6 +287,13 @@ Fermeture : `useDismissable` (Escape + clic extérieur) — calendrier, FilterMe
 
 ---
 
+### Documents générés
+
+- Les champs d'offre et de contexte portent un bouton « Coller » (lecture native du
+  presse-papiers), en plus du Ctrl+V habituel.
+
+---
+
 ## Documents PDF
 
 - CV : exactement une page A4 (210 × 297 mm).

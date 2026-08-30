@@ -20,6 +20,9 @@ tauri-build = { version = "2.6", features = [] }
 tauri = { version = "2.11", features = [] }
 tauri-plugin-opener = "2.5"
 tauri-plugin-dialog = "2.7"
+# Lecture du presse-papiers : `navigator.clipboard.readText` n'est pas exposé par la
+# webview WebKitGTK, le collage d'une offre doit donc passer par une commande Rust.
+tauri-plugin-clipboard-manager = "2.3"
 
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "fs", "io-util"] }
 tokio-util = "0.7"

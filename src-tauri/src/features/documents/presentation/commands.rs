@@ -1,6 +1,7 @@
 //! Frontière IPC des CV et lettres.
 
 use crate::app::state::AppState;
+use crate::core::clipboard;
 use crate::core::errors::{AppError, AppResult};
 use crate::core::files::{atomic_write, select_save_target};
 use crate::core::pagination::Page;
@@ -13,6 +14,12 @@ use crate::features::documents::domain::{
 use std::sync::Arc;
 use tauri::{AppHandle, State};
 use uuid::Uuid;
+
+/// Texte du presse-papiers, pour le bouton « Coller » des champs d'offre.
+#[tauri::command(rename_all = "snake_case")]
+pub async fn documents_read_clipboard(app: AppHandle) -> AppResult<String> {
+    clipboard::read_text(&app)
+}
 
 #[tauri::command(rename_all = "snake_case")]
 pub async fn documents_resume_list(state: State<'_, AppState>) -> AppResult<Vec<ResumeSummary>> {

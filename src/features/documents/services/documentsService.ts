@@ -6,6 +6,8 @@ import type { Page } from "@/shared/types/page";
 export type * from "@/shared/types/generated/documents";
 
 export const documentsService = {
+  /** Texte du presse-papiers : la webview ne sait pas le lire, le natif si. */
+  readClipboard: () => ipc<string>("documents_read_clipboard"),
   listResume: () => ipc<ResumeSummary[]>("documents_resume_list"),
   listResumePage: (params: { page: number; page_size: number; search: string }) =>
     ipc<Page<ResumeSummary>>("documents_resume_list_page", params),

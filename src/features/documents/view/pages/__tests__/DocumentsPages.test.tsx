@@ -116,15 +116,10 @@ describe("échecs d'enregistrement", () => {
 });
 
 describe("collage d'une offre depuis le presse-papiers", () => {
-  function stubClipboard(readText: () => Promise<string>) {
-    Object.defineProperty(navigator, "clipboard", {
-      value: { readText },
-      configurable: true,
-    });
-  }
-
-  it("remplit le champ avec le contenu du presse-papiers", async () => {
-    stubClipboard(() => Promise.resolve("Administrateur Système et Réseau chez Astek"));
+  it("remplit le champ avec le contenu lu côté natif", async () => {
+    vi.spyOn(documentsService, "readClipboard").mockResolvedValue(
+      "Administrateur Système et Réseau chez Astek",
+    );
 
     render(<LetterWriterPage />, { wrapper });
     await userEvent.click(screen.getByRole("button", { name: "Coller" }));
@@ -137,7 +132,9 @@ describe("collage d'une offre depuis le presse-papiers", () => {
   });
 
   it("prévient quand le presse-papiers est inaccessible au lieu de rester muet", async () => {
-    stubClipboard(() => Promise.reject(new Error("refusé")));
+    vi.spyOn(documentsService, "readClipboard").mockRejectedValue(
+      new AppError({ code: "VALIDATION_ERROR", message: "Le presse-papiers ne contient pas de texte." }),
+    );
 
     render(<LetterWriterPage />, { wrapper });
     await userEvent.click(screen.getByRole("button", { name: "Coller" }));

@@ -29,6 +29,10 @@ Vue React → ViewModel (hook) → service frontend → invoke
 - `src-tauri/src/infrastructure/` : PDF d'export (CV et lettres).
 - `src-tauri/migrations/` : schéma SQLite embarqué (`init_schema.sql`, `PRAGMA user_version`).
 
+Les accès au système restent natifs : dialogues de fichier (`core/files.rs`) et lecture du
+presse-papiers (`core/clipboard.rs`, commande `documents_read_clipboard`). La webview
+n'expose ni l'un ni l'autre, et aucune permission large n'est ouverte côté capacités.
+
 Le `domain` n'importe ni Tauri ni rusqlite. Les vues n'appellent jamais `invoke` directement :
 elles passent par `src/shared/services/ipc.ts`. Les providers IA sont derrière `LlmProvider`.
 La clé API reste dans le coffre natif via `keyring`.

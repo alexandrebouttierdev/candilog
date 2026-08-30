@@ -1,6 +1,7 @@
 //! Socle technique partagé par toutes les features.
 
 pub mod backup;
+pub mod clipboard;
 pub mod config;
 pub mod database;
 pub mod errors;

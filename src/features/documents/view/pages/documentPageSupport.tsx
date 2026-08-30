@@ -83,6 +83,9 @@ export function AtsChip({ score }: { score: number }) {
  * Ces champs reçoivent une annonce entière copiée depuis un navigateur : le bouton évite
  * d'avoir à viser la zone de texte avant de faire Ctrl+V, et remplace le contenu existant
  * comme le ferait un collage sur une sélection complète.
+ *
+ * La lecture passe par le natif : `navigator.clipboard.readText` n'existe pas dans la
+ * webview WebKitGTK, le bouton y échouait systématiquement.
  */
 export function ChampOffre({
   label,
@@ -105,17 +108,17 @@ export function ChampOffre({
 
   const coller = async () => {
     try {
-      const texte = await navigator.clipboard.readText();
+      const texte = await documentsService.readClipboard();
       if (!texte.trim()) {
         notify({ tone: "info", title: "Le presse-papiers est vide" });
         return;
       }
       onChange(texte);
-    } catch {
+    } catch (error) {
       notify({
         tone: "error",
         title: "Collage impossible",
-        detail: "Le presse-papiers n'est pas accessible ; utilisez Ctrl+V dans le champ.",
+        detail: detail(error) ?? "Utilisez Ctrl+V dans le champ.",
       });
     }
   };
