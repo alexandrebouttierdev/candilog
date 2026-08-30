@@ -1,0 +1,21 @@
+---
+description: Interface de l'application — appliquer docs/DESIGN.md
+globs: src/**/*.tsx,src/styles.css
+alwaysApply: false
+---
+
+# Interface Candilog
+
+`docs/DESIGN.md` fait autorité sur l'apparence. Le lire avant de créer ou modifier un
+écran, un composant ou un style.
+
+- Importer les primitives depuis `@/shared/ui` plutôt que de recréer un bouton, un champ,
+  une pastille, une barre de filtres ou une modale.
+- Aucun hexadécimal ni `rgb()` dans le TSX : uniquement les classes de thème
+  (`bg-surface`, `text-ink`, `border-line`, `text-accent`…). Vérifier clair **et** sombre.
+- Densité imposée : contrôles 30 px, filets 1 px, pas d'ombre sur le contenu (seulement
+  sur les overlays).
+- Un composant métier reste dans sa feature ; seul le générique va dans `shared/ui`.
+- Libellés en français, identifiants en anglais. Ne pas exposer la pile technique à
+  l'utilisateur.
+- Traiter les trois états : vide, chargement, erreur.

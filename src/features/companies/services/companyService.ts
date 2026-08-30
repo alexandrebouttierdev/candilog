@@ -7,7 +7,7 @@ export type { Company, CompanyFilter, NewCompany };
 /**
  * Seule couche du frontend qui connaisse les commandes Tauri des entreprises.
  *
- * Les ViewModels l'appellent, les vues jamais (MIGRATION.md §7). Chercher les appelants de
+ * Les ViewModels l'appellent, les vues jamais (docs/CODE_RULES.md §4). Chercher les appelants de
  * ce module donne la liste exhaustive de ce que l'interface fait du répertoire.
  */
 export const companyService = {

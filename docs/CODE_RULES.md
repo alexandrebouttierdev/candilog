@@ -5,7 +5,8 @@ les bonnes pratiques. Ces règles s'appliquent à tout nouveau code, toute modif
 tout refactoring. Ce ne sont pas des recommandations.
 
 Avant toute modification significative : lire ce fichier, plus `docs/ARCHITECTURE.md` et
-`docs/DESIGN.md` si l'écran ou les couches sont concernés.
+`docs/DESIGN.md` si l'écran ou les couches sont concernés. `AGENTS.md`, à la racine, est
+le point d'entrée court des agents IA et renvoie ici — il ne remplace pas ce document.
 
 En cas de conflit avec une autre règle du dépôt, signaler le conflit et appliquer la
 variante la plus sûre, idiomatique, et alignée sur le code existant. Ne pas inventer une
@@ -95,7 +96,7 @@ Respecter l'idiome de chaque langage. Pas de convention globale artificielle.
 
 | Quoi | Convention | Exemple |
 | --- | --- | --- |
-| Composants, types, interfaces, enums | `PascalCase` | `ApplicationInspector` |
+| Composants, types, interfaces, enums | `PascalCase` | `ApplicationDetail` |
 | Variables, fonctions, hooks, props, state | `camelCase` | `selectedApplication`, `useApplications` |
 | Hooks | préfixe `use` | `useApplicationsViewModel` |
 | Fichiers composants | `PascalCase.tsx` | `KanbanBoard.tsx` |
@@ -170,8 +171,8 @@ Les vues et ViewModels n'importent **jamais** `invoke`. ESLint l'interdit. Tout 
 `ipc()`.
 
 **UI partagée vs UI de feature :** `Button`, `ModalHost`, `Inspector`, `SplitPane`,
-`DataTable` restent dans `shared/ui`. `ApplicationInspector`, `ResumePreview`,
-`AtsScorePanel` restent dans leur feature. Ne pas tout pousser dans `shared` « au cas où ».
+`DataTable` restent dans `shared/ui`. `ApplicationDetail`, `KanbanBoard`, `ProfileUi`
+restent dans leur feature. Ne pas tout pousser dans `shared` « au cas où ».
 
 Zustand ne duplique pas les données serveur. TanStack Query est la cache métier.
 Le ViewModel n'est pas un second backend TypeScript.
@@ -344,7 +345,9 @@ Concevoir pour : rapidité, robustesse, économie de tokens, maintenabilité.
 - score ATS déterministe en Rust, pas un chiffre LLM pris tel quel ;
 - opérations longues : pas de blocage UI, état de chargement, timeout, erreur provider,
   anti double-soumission, annulation (`CancellationToken` + `ai_cancel`) ;
-- bornes (`MAX_TEXTE_IA`), HTTPS hors Ollama, rejet des IP privées pour les endpoints distants.
+- bornes déclarées dans `features/ai/domain/validation.rs` (`MAX_SOURCE_CHARS`,
+  `MAX_CONTEXT_CHARS`, `MAX_STRUCTURED_CHARS`, `MAX_ITEMS`, `MAX_ITEM_CHARS`), HTTPS hors
+  Ollama, rejet des IP privées pour les endpoints distants.
 
 ---
 
@@ -494,7 +497,15 @@ cargo clippy --manifest-path src-tauri/Cargo.toml --locked --all-targets -- -D w
 cargo test --manifest-path src-tauri/Cargo.toml --locked --all-targets
 ```
 
-Audit d'éventuelles nouvelles crates : `cargo-deny` / job CI `quality`.
+Audit d'éventuelles nouvelles crates :
+
+```bash
+cargo deny --manifest-path src-tauri/Cargo.toml check
+```
+
+Aucune CI ne rejoue ces vérifications : le seul workflow du dépôt
+(`.github/workflows/release.yml`) construit et publie les binaires. Ce qui n'est pas
+lancé ici ne l'est nulle part.
 
 ---
 
@@ -505,12 +516,28 @@ Audit d'éventuelles nouvelles crates : `cargo-deny` / job CI `quality`.
 | `docs/CODE_RULES.md` | qualité, conventions, tests, sécurité du code |
 | `docs/ARCHITECTURE.md` | couches et frontières |
 | `docs/DESIGN.md` | UI, jetons, interdits visuels |
-| `docs/DATA.md` | SQLite, migrations, relations |
-| `docs/AI.md` | providers, cache, annulation IA |
+| `docs/DATA.md` | SQLite, schéma, relations, chemins de données |
+| `docs/AI.md` | providers, prompts, cache, annulation IA |
+| `docs/DEVELOPMENT.md` | prérequis, exécution, régénération des types, validations |
+| `docs/RELEASES.md` | publication des binaires et politique `cargo-deny` |
+| `AGENTS.md` | point d'entrée des agents IA (renvoie vers ce tableau) |
 
 `DESIGN.md` prime sur l'apparence. `ARCHITECTURE.md` prime sur le placement des couches.
 Le présent fichier prime sur le style de code, la validation, les tests et la sécurité.
 
-**Écart connu avec le prompt d'origine de ces règles :** sqlx n'est pas dans le projet
-(rusqlite l'est) ; `z.infer` est remplacé par `z.input` / `z.output` ; il n'y a pas de
-couche DTO distincte des structs `domain` + ts-rs. Ces choix du dépôt l'emportent.
+**Choix du dépôt, souvent contredits par les habitudes générales :** SQL via rusqlite et
+non sqlx ; `z.input` / `z.output` plutôt que `z.infer` ; pas de couche DTO distincte des
+structs `domain` annotées ts-rs. Ces choix l'emportent sur toute convention externe.
+
+---
+
+## 22. Documentation
+
+Toute modification qui change le comportement, l'architecture, la configuration, les
+commandes de développement, une API publique ou une fonctionnalité documentée met à jour
+la documentation correspondante **dans la même tâche**. Une modification interne sans
+impact documentaire ne doit produire aucun changement Markdown.
+
+Documenter l'architecture, les responsabilités, les conventions, les commandes et les
+décisions — pas l'implémentation ligne par ligne : le code reste la source de vérité des
+détails. Ne jamais documenter une commande, un script ou un fichier qui n'existe pas.

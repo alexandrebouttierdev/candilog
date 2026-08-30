@@ -40,8 +40,8 @@ function from(contact: Contact): ContactFormInput {
 /**
  * Modale de création et de modification d'un contact.
  *
- * Structure reprise de `SPECDESIGN/Modales.dc.html` : « Identité » puis « Context
- * professionnel ».
+ * Structure de formulaire du design system (`docs/DESIGN.md` §9) : « Identité » puis
+ * « Context professionnel ».
  */
 export function ContactFormModal({
   open,

@@ -1,3 +1,5 @@
-//! Événements Tauri émis vers le frontend (progression, streaming, annulation).
+//! Module de réservation pour des événements Tauri partagés.
 //!
-//! Vide tant qu'aucune feature à traitement long n'est migrée (cf. tranche T7).
+//! Vide : les événements existants (`ia-progression`, `profile_import_progress`,
+//! `update-progress`) sont émis depuis la couche `presentation` de leur feature, seule à
+//! connaître leur charge utile. Cf. `docs/ARCHITECTURE.md`.

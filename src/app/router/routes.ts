@@ -1,9 +1,8 @@
 /**
  * Carte des écrans de Candilog.
  *
- * Reprend à l'identique la navigation de l'application Iced (`src/navigation/mod.rs`) et
- * des maquettes SPECDESIGN : sept sections dans le rail, chacune ouvrant un écran par
- * défaut et exposant ses onglets contextuels.
+ * Sept sections dans le rail, chacune ouvrant un écran par défaut et exposant ses
+ * onglets contextuels. La coque est décrite dans `docs/DESIGN.md` §8.
  */
 
 export type SectionKey =
@@ -20,7 +19,7 @@ export interface RouteDef {
   readonly path: string;
   /** Libellé de l'onglet contextuel. */
   readonly label: string;
-  /** Name d'icône Material Symbols, tel que retenu par les maquettes. */
+  /** Name d'icône Material Symbols (cf. `docs/DESIGN.md` §6). */
   readonly icon: string;
 }
 

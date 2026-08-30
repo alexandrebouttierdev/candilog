@@ -1,6 +1,6 @@
 # Les types TypeScript dérivés des DTO Rust (`ts-rs`) sont écrits directement dans le
 # frontend : le contrat IPC n'a ainsi qu'une seule source, le Rust, et un DTO modifié sans
-# mise à jour du type TS fait échouer `tsc` (MIGRATION.md §26).
+# mise à jour du type TS fait échouer `tsc` (cf. `docs/DEVELOPMENT.md`).
 #
 # La configuration est placée à la racine du projet — et non sous `src-tauri/` — parce que
 # Cargo lit `.cargo/config.toml` depuis le répertoire courant et ses ancêtres, jamais depuis

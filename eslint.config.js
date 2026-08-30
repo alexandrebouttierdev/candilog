@@ -15,7 +15,6 @@ export default tseslint.config(
       // son propre `tsconfig.json` : le linter de l'application n'a pas ses types.
       "website/**",
       "vendor/**",
-      "SPECDESIGN/**",
       "docs/**",
       ".npm-cache/**",
       ".pnp.cjs",
@@ -31,8 +30,8 @@ export default tseslint.config(
       parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },
     },
     rules: {
-      // Le §36 de MIGRATION.md interdit de reconstruire le backend en TypeScript : les
-      // appels IPC passent tous par `shared/services/ipc.ts`, jamais par `invoke` direct.
+      // `docs/CODE_RULES.md` §4 : les appels IPC passent tous par
+      // `shared/services/ipc.ts`, jamais par `invoke` direct.
       "no-restricted-imports": [
         "error",
         {
@@ -41,7 +40,7 @@ export default tseslint.config(
               name: "@tauri-apps/api/core",
               importNames: ["invoke"],
               message:
-                "Passez par `ipc()` de @/shared/services/ipc — les vues et ViewModels n'appellent jamais invoke directement (MIGRATION.md §7).",
+                "Passez par `ipc()` de @/shared/services/ipc — les vues et ViewModels n'appellent jamais invoke directement (docs/CODE_RULES.md §4).",
             },
           ],
         },

@@ -1,43 +1,22 @@
 ---
-description: Règles contractuelles de qualité Candilog — lire docs/CODE_RULES.md avant toute modification
+description: Point d'entrée des règles Candilog — AGENTS.md puis docs/CODE_RULES.md
 alwaysApply: true
 ---
 
-# CODE_RULES (obligatoire)
+# Règles Candilog
 
-Avant d'écrire ou de modifier du code, appliquer `docs/CODE_RULES.md`. Ce n'est pas optionnel.
+Les règles du projet vivent dans `AGENTS.md` (racine) et, pour le détail contractuel,
+dans `docs/CODE_RULES.md`. Les lire avant d'écrire ou de modifier du code ; ce n'est pas
+optionnel. Le périmètre travaillé peut ajouter ses propres règles : `src/AGENTS.md`,
+`src-tauri/AGENTS.md`, `website/AGENTS.md`.
 
-## Pile (ne pas substituer)
+Rappels non négociables, détaillés dans ces documents :
 
-Tauri 2, React 19, TypeScript strict, RHF + Zod, TanStack Query, Zustand UI-only.
-Rust + **rusqlite** (pas sqlx). IPC `snake_case` + types **ts-rs** (`src/shared/types/generated/` = ne pas éditer).
-UI = `src/shared/ui/` (pas shadcn).
+- ne pas éditer `src/shared/types/generated/` (généré par ts-rs depuis Rust) ;
+- pas d'`invoke` hors `src/shared/services/ipc.ts` ;
+- ne pas substituer la pile (rusqlite, design system maison, TanStack Query, Zustand UI) ;
+- aucune rustine pour faire passer lint, typecheck ou clippy ;
+- aucune commande Git destructive, aucun commit sans demande explicite.
 
-## Langue
-
-UI, commentaires, commits : **français**. Identifiants de code : **anglais**.
-Exception : champs IPC/DTO/formulaires en `snake_case` Rust (`job_title`). Enums persistés inchangés (`EN_ATTENTE`).
-
-## Architecture
-
-```text
-Vue → ViewModel → *Service.ts → ipc() → commande Tauri fine → Service Rust → Repository → SQLite
-```
-
-Jamais `invoke` hors `src/shared/services/ipc.ts`. Domain Rust sans Tauri ni rusqlite.
-UI métier dans la feature ; primitives dans `shared/ui`.
-
-## Qualité
-
-simplicité > lisibilité > maintenabilité > abstraction.
-Pas de `any`, unwrap applicatif, `unsafe`, SQL concaténé, `SELECT *`, catch vide injustifié.
-Formulaires d'entité : RHF + Zod (`z.input` / `z.output`). Revalider en Rust.
-IA en Rust : prompts centralisés, DATA ≠ INSTRUCTIONS, parse → validate → grounding.
-Toute logique non triviale + tout bug corrigé : test. Pas de rustine CI (`as any`, `#[allow]`, eslint-disable).
-
-## Fin de tâche
-
-`npm run lint && npm test && npm run build`
-`cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check`
-`cargo clippy --manifest-path src-tauri/Cargo.toml --locked --all-targets -- -D warnings`
-`cargo test --manifest-path src-tauri/Cargo.toml --locked --all-targets`
+Fin de tâche : lancer les validations listées dans `AGENTS.md` (§ Validation avant de
+terminer). Aucune CI ne les rejoue.

@@ -21,7 +21,7 @@ export interface ApercuGlisse {
  * 26 px, intitulé 12,5 px/600 sur 1,35 d'interligne, puis une ligne d'attributs — contrat,
  * ville, ancienneté. Le survol passe le filet en accent.
  *
- * Composant **métier** : il reste dans sa feature, pas dans `shared/ui` (MIGRATION.md §35).
+ * Composant **métier** : il reste dans sa feature, pas dans `shared/ui` (docs/CODE_RULES.md §4).
  */
 export function ApplicationCard({
   application,

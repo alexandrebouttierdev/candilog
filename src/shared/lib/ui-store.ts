@@ -21,7 +21,7 @@ interface UiState {
 /**
  * État global d'interface.
  *
- * Zustand n'accueille que ce qui est **transverse et non serveur** (MIGRATION.md §16) :
+ * Zustand n'accueille que ce qui est **transverse et non serveur** (docs/CODE_RULES.md §4) :
  * ici, la préférence de thème et la file de notifications. Les données métier restent dans
  * TanStack Query, qui sait déjà les mettre en cache et les invalider ; les dupliquer ici
  * créerait deux vérités à resynchroniser.

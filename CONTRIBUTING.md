@@ -5,10 +5,16 @@ Les contributions à Candilog sont les bienvenues. Avant de proposer une modific
 ## Préparer une contribution
 
 - Limitez chaque contribution à un objectif clair et évitez les changements sans rapport.
-- Respectez l'architecture et les conventions décrites dans [`docs/`](./docs/).
+- Respectez l'architecture et les conventions décrites dans [`docs/CODE_RULES.md`](./docs/CODE_RULES.md), [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) et, pour l'interface, [`docs/DESIGN.md`](./docs/DESIGN.md).
+- Installez l'environnement et lancez le projet en suivant [`docs/DEVELOPMENT.md`](./docs/DEVELOPMENT.md).
 - Ajoutez ou adaptez les tests utiles au changement proposé.
-- Exécutez les validations applicables documentées dans le [`README.md`](./README.md).
+- Mettez à jour la documentation concernée dans la même contribution lorsque le comportement, la configuration ou une commande change.
+- Exécutez les validations applicables documentées dans le [`README.md`](./README.md) : aucune CI ne les rejoue.
+- Rédigez les messages de commit en français, avec un préfixe Conventional Commits (`feat:`, `fix:`, `refactor:`, `test:`, `docs:`).
 - Décrivez dans la Pull Request le besoin traité, la solution retenue et les contrôles exécutés.
+
+Si vous travaillez avec un agent IA, [`AGENTS.md`](./AGENTS.md) rassemble les règles
+absolues du dépôt et les commandes de validation.
 
 ## Licence des contributions
 

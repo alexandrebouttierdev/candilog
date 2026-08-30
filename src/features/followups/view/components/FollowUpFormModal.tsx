@@ -39,9 +39,9 @@ function from(follow_up: FollowUp): FollowUpFormInput {
 /**
  * Modale de programmation et de modification d'une relance.
  *
- * Structure reprise de `SPECDESIGN/Modales.dc.html` : « Application concernée » puis
- * « Planification ». Pas de champ heure, contrairement à l'entretien : une relance se
- * programme au jour.
+ * Structure de formulaire du design system (`docs/DESIGN.md` §9) : « Application
+ * concernée » puis « Planification ». Pas de champ heure, contrairement à l'entretien :
+ * une relance se programme au jour.
  */
 export function FollowUpFormModal({
   open,

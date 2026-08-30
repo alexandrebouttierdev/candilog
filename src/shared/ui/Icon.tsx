@@ -1,5 +1,5 @@
 /**
- * Icône Material Symbols Rounded, jeu retenu par les maquettes SPECDESIGN.
+ * Icône Material Symbols Rounded, jeu retenu par le design system (`docs/DESIGN.md` §6).
  *
  * La police est embarquée localement (`shared/ui/material-symbols.css`) : la politique de
  * sécurité de contenu de la fenêtre Tauri interdit les requêtes vers des hôtes externes,

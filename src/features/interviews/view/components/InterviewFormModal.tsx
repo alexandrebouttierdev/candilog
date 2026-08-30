@@ -51,8 +51,8 @@ function from(interview: Interview): InterviewFormInput {
 /**
  * Modale de planification et de modification d'un entretien.
  *
- * Structure reprise de `SPECDESIGN/Modales.dc.html` : sections « Context » et
- * « Organisation », date et heure séparées, champ « Url / lieu » unique.
+ * Structure de formulaire du design system (`docs/DESIGN.md` §9) : sections « Context »
+ * et « Organisation », date et heure séparées, champ « Url / lieu » unique.
  *
  * Le compte rendu n'est proposé qu'en modification : il se rédige après l'entretien, et
  * l'offrir à la planification suggérerait qu'il faut l'écrire tout de suite.

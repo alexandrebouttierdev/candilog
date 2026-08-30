@@ -6,7 +6,7 @@ use crate::core::errors::{AppError, AppResult};
 ///
 /// Les dépôts s'appuient sur `rusqlite`, dont l'API est synchrone : appelée directement dans
 /// une commande `async`, une requête bloquerait le fil d'événements de Tauri et figerait
-/// l'interface le temps de l'accès disque (MIGRATION.md §28). Toutes les commandes passent
+/// l'interface le temps de l'accès disque (docs/CODE_RULES.md §5). Toutes les commandes passent
 /// donc par cette fonction.
 ///
 /// # Errors

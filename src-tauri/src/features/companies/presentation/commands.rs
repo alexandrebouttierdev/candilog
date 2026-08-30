@@ -1,6 +1,6 @@
 //! Commands Tauri des entreprises.
 //!
-//! Les commandes restent fines (MIGRATION.md §22) : elles reprennent le service depuis
+//! Les commandes restent fines (docs/CODE_RULES.md §5) : elles reprennent le service depuis
 //! l'état, délèguent, et laissent `AppError` se sérialiser en `{ code, message }`. Aucune
 //! règle métier ni aucun SQL ici.
 

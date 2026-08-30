@@ -79,7 +79,7 @@ impl<R: ContactRepository> ContactService<R> {
     ///
     /// Ces contrôles doublent ceux du schéma Zod côté React : la validation frontend sert
     /// l'ergonomie, elle ne garantit rien — une commande Tauri est appelable sans passer par
-    /// le formulaire (MIGRATION.md §14).
+    /// le formulaire (docs/CODE_RULES.md §9).
     fn valider(input: &NewContact) -> AppResult<()> {
         if input.first_name.trim().is_empty() || input.name.trim().is_empty() {
             return Err(AppError::Validation(

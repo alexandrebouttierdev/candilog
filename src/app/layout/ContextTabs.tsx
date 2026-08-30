@@ -6,7 +6,7 @@ import { Icon } from "@/shared/ui/Icon";
  * Onglets contextuels de la section active.
  *
  * Barre de 46 px, pastilles de 30 px, gouttière de 3 px : la géométrie des maquettes
- * SPECDESIGN, identique sur tous les écrans. La barre est rendue même lorsque la section
+ * `docs/DESIGN.md`, identique sur tous les écrans. La barre est rendue même lorsque la section
  * n'a qu'un écran — c'est le chrome constant des maquettes, et son emplacement droit
  * porte la recherche ou la note de contexte de chaque écran.
  */

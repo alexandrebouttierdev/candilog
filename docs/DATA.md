@@ -51,6 +51,20 @@ Le service Rust valide, mais n'est pas la seule barrière : `CHECK` sur `company
 clés étrangères vers les référentiels sont réelles — `PRAGMA foreign_keys = ON` est posé
 par l'initialiseur de **chaque** connexion du pool.
 
+## Permissions du dossier de données
+
+La base contient l'intégralité des données personnelles : profil, CV générés, coordonnées
+des contacts, notes d'entretien. Sur Unix, `AppPaths` force donc `700` sur le dossier de
+données et son sous-dossier `exports`, et `600` sur `candilog.sqlite`, ses journaux WAL et
+SHM ainsi que `candilog.log` — le `umask` de session donnerait sinon `755` / `644`. Les
+permissions sont réappliquées après l'ouverture de la base, le fichier n'existant pas
+encore au premier démarrage. Un échec est journalisé sans empêcher le démarrage.
+
+Hors Unix, il n'existe pas d'équivalent portable : sous Windows, la protection repose sur
+les ACL héritées du profil utilisateur.
+
+## Sauvegardes
+
 Les sauvegardes doivent utiliser l'API backup SQLite. Une restauration doit valider l'en-tête, ouvrir la base, exécuter `PRAGMA integrity_check`, vérifier les versions puis remplacer la base avec possibilité de retour arrière.
 
 ## Compatibilité des bases

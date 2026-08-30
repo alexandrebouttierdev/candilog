@@ -1,6 +1,6 @@
 [package]
 name = "candilog"
-version = "0.3.0"
+version = "0.0.1"
 edition = "2021"
 rust-version = "1.91"
 description = "Candilog — suivi de candidatures, entretiens et relances avec assistance IA locale"
@@ -26,7 +26,7 @@ tokio-util = "0.7"
 futures-util = "0.3"
 
 # `rusqlite` et `r2d2` sont conservés depuis l'application Iced : les dépôts SQL et
-# leurs tests sont repris tels quels (cf. docs/migration/01-AUDIT.md, décision B).
+# leurs tests sont repris tels quels. Pas de sqlx en plus (cf. docs/CODE_RULES.md §0).
 # Les commandes Tauri restent asynchrones en enveloppant les appels de service dans
 # `tauri::async_runtime::spawn_blocking`.
 rusqlite = { version = "0.32", features = ["bundled", "backup"] }

@@ -34,7 +34,7 @@ Chaque asset est publié sous deux noms :
 
 - le nom stable `-latest` (`candilog-ubuntu-latest.deb`) : URL immuable pour le site
   (`releases/latest/download/...`) ;
-- le nom versionné (`candilog-ubuntu-0.3.0.deb`) : référence immuable pour la mise à jour
+- le nom versionné (`candilog-ubuntu-0.0.1.deb`) : référence immuable pour la mise à jour
   in-app.
 
 Si le tag `v<version>` existe déjà, la publication est sautée : pousser sans monter la

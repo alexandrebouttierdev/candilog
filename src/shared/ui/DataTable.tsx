@@ -36,7 +36,7 @@ export interface TableSelection {
 }
 
 /**
- * Table dense du guide SPECDESIGN.
+ * Table dense du design system (`docs/DESIGN.md` §9).
  *
  * Grid CSS plutôt que `<table>` : les maquettes répartissent les colonnes en fractions
  * (`2.2fr 1.3fr 0.9fr 1.1fr 1fr 0.7fr`) et alignent verticalement des cellules à deux

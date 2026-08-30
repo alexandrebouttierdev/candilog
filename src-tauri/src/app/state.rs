@@ -57,7 +57,7 @@ pub type Referentials = Arc<ReferentialService<SqliteReferentialRepository>>;
 ///
 /// Un unique exemplaire est construit au démarrage puis confié à Tauri via `manage` : les
 /// commandes le reçoivent en `State<'_, AppState>` et ne recréent jamais ni connexion, ni
-/// dépôt, ni client HTTP (MIGRATION.md §23).
+/// dépôt, ni client HTTP (docs/ARCHITECTURE.md).
 ///
 /// Les services sont derrière `Arc` parce qu'une commande `async` doit s'approprier ce
 /// qu'elle déplace vers `spawn_blocking` : elle ne peut pas y emprunter l'état, dont la

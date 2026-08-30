@@ -24,7 +24,7 @@ import type { ThemePref } from "@/shared/lib/ui-store";
 /**
  * Planche de vérification du design system.
  *
- * Sert à comparer les composants aux maquettes SPECDESIGN dans les deux thèmes et à
+ * Sert à comparer les composants aux règles de `docs/DESIGN.md` dans les deux thèmes et à
  * éprouver les états au clavier. N'est atteignable que par l'URL `/_design`, jamais depuis
  * la navigation : c'est un outil de revue, pas un écran de l'application.
  */
@@ -117,7 +117,7 @@ export function DesignGallery() {
       <PageHeader
         icon="palette"
         title="Design system"
-        subtitle="Planche de vérification — SPECDESIGN"
+        subtitle="Planche de vérification"
         secondary={
           <div className="flex items-center gap-1 rounded-button border border-line bg-surface p-0.5">
             {THEMES.map((value) => (

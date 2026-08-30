@@ -22,9 +22,8 @@ pub trait FollowUpRepository: Send + Sync {
     ///
     /// Ne touche **pas** au statut de la candidature, contrairement à l'enregistrement d'un
     /// entretien. C'est le comportement de l'application Iced, conservé tel quel : le statut
-    /// « Relancée » reste posé à la main. L'asymétrie est signalée dans
-    /// `docs/migration/02-JOURNAL.md` — la corriger serait un changement de comportement,
-    /// pas une migration.
+    /// « Relancée » reste posé à la main. L'asymétrie est assumée — la corriger serait un
+    /// changement de comportement, pas une correction.
     ///
     /// # Errors
     /// `AppError::Validation` si la candidature liée est introuvable.

@@ -1,11 +1,11 @@
 import { PageHeader, EmptyState } from "@/shared/ui";
 
 /**
- * Jalon d'écran non encore migré.
+ * Écran de repli pour une route déclarée sans page dédiée.
  *
  * Volontairement explicite plutôt que joli : un écran qui se contenterait d'être vide
- * serait indiscernable d'un écran en panne, et des données factices contreviendraient au
- * §52 de `MIGRATION.md`.
+ * serait indiscernable d'un écran en panne, et des données factices tromperaient
+ * l'utilisateur.
  */
 export function PlaceholderPage({
   icon,

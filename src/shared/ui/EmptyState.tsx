@@ -9,7 +9,7 @@ import { cn } from "@/shared/lib/cn";
  * de 36 px, titre 13 px/600 puis explication 11,5 px et action. `bordered` peut être
  * désactivé lorsque l'état vide occupe déjà une carte à filet plein.
  *
- * Le guide SPECDESIGN demande un état vide **par carte** plutôt qu'un écran vide global :
+ * Le design system demande un état vide **par carte** plutôt qu'un écran vide global :
  * ce composant est donc dimensionné pour être inséré dans un conteneur, pas pour occuper
  * la fenêtre.
  */
