@@ -27,13 +27,16 @@ import {
   type ImportProfileFormValues,
 } from "../../model/import-review.schema";
 import { useElapsedClock } from "../../viewmodel/useElapsedClock";
-import { useProfileImportProgress } from "../../viewmodel/useProfileImportProgress";
+import {
+  useProfileImportProgress,
+  type ImportJournalEntry,
+} from "../../viewmodel/useProfileImportProgress";
 import { ImportAnalysisPanel } from "./ImportAnalysisPanel";
 import { ImportDonePanel } from "./ImportDonePanel";
 import { ImportJournal } from "./ImportJournal";
 import { ImportReviewForm } from "./ImportReviewForm";
 
-type Phase = "pick" | "analyze" | "review" | "error" | "done";
+type Phase = "pick" | "picking" | "analyze" | "review" | "error" | "done";
 
 /** Import d'un CV : analyse sans écriture, puis revue obligatoire. */
 export function ProfileImportModal({
@@ -52,8 +55,8 @@ export function ProfileImportModal({
   const [phase, setPhase] = useState<Phase>("pick");
   const [preview, setPreview] = useState<ImportProfilePreview | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [startedAt, setStartedAt] = useState<number | null>(null);
-  const [analysisMs, setAnalysisMs] = useState(0);
+  const [requestedAt, setRequestedAt] = useState<number | null>(null);
+  const [finishedAt, setFinishedAt] = useState<number | null>(null);
   const [result, setResult] = useState<ImportProfileResult | null>(null);
   const [totalMs, setTotalMs] = useState(0);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -61,8 +64,18 @@ export function ProfileImportModal({
     useState<ImportProfileRequest | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const progress = useProfileImportProgress(operation);
-  const elapsedMs = useElapsedClock(phase === "analyze", startedAt);
   useCancelAiOnUnmount(operation);
+
+  // Le sélecteur de fichier natif est ouvert par la commande Rust : le clic ne déclenche
+  // rien d'autre. L'analyse ne commence qu'au premier événement de progression, émis une
+  // fois le CV choisi, et c'est cet instant qui date la progression comme la durée.
+  const analysisStartedAt = firstEventAt(progress.entries);
+  const view: Phase =
+    phase === "picking" && analysisStartedAt !== null ? "analyze" : phase;
+  const startedAt = analysisStartedAt ?? requestedAt;
+  const elapsedMs = useElapsedClock(view === "analyze", startedAt);
+  const analysisMs =
+    finishedAt !== null && startedAt !== null ? finishedAt - startedAt : 0;
 
   const form = useForm<
     ImportProfileFormInput,
@@ -77,10 +90,10 @@ export function ProfileImportModal({
 
   const analyze = async () => {
     const id = generation_id();
-    const start = Date.now();
     setOperation(id);
-    setStartedAt(start);
-    setPhase("analyze");
+    setRequestedAt(Date.now());
+    setFinishedAt(null);
+    setPhase("picking");
     setError(null);
     try {
       const next = await aiService.importProfile({ generation_id: id });
@@ -90,7 +103,7 @@ export function ProfileImportModal({
       }
       setPreview(next);
       form.reset(previewToFormValues(next));
-      setAnalysisMs(Date.now() - start);
+      setFinishedAt(Date.now());
       setPhase("review");
     } catch (caught) {
       if (caught instanceof AppError && caught.code === "CANCELLED") {
@@ -102,7 +115,7 @@ export function ProfileImportModal({
           ? caught.message
           : "L'analyse du CV n'a pas pu être terminée.",
       );
-      setAnalysisMs(Date.now() - start);
+      setFinishedAt(Date.now());
       setPhase("error");
     } finally {
       setOperation(null);
@@ -155,11 +168,13 @@ export function ProfileImportModal({
   };
 
   const subtitle =
-    phase === "review"
+    view === "review"
       ? `Analyse terminée en ${formatDuration(analysisMs)}`
-      : phase === "done"
+      : view === "done"
         ? "Les éléments choisis ont été enregistrés"
-        : "L'IA prépare une proposition ; rien n'est enregistré";
+        : view === "picking"
+          ? "Choisissez le CV à analyser ; rien n'est encore lancé"
+          : "L'IA prépare une proposition ; rien n'est enregistré";
 
   return (
     <>
@@ -168,28 +183,28 @@ export function ProfileImportModal({
         icon="upload_file"
         title="Importer depuis un CV"
         subtitle={subtitle}
-        cancelLabel={phase === "done" ? "Fermer" : "Annuler"}
+        cancelLabel={view === "done" ? "Fermer" : "Annuler"}
         submitLabel="Importer les éléments sélectionnés"
         submitIcon="playlist_add_check"
-        submitDisabled={phase !== "review" || marked === 0}
+        submitDisabled={view !== "review" || marked === 0}
         busy={busy}
         onClose={close}
-        {...(phase === "review"
+        {...(view === "review"
           ? { onSubmit: () => void form.handleSubmit(apply, refuse)(), flush: true }
           : {})}
-        width={phase === "review" ? "880px" : "720px"}
+        width={view === "review" ? "880px" : "720px"}
       >
-        {phase === "pick" ? (
-          <PickFile onChoose={() => void analyze()} />
+        {view === "pick" || view === "picking" ? (
+          <PickFile waiting={view === "picking"} onChoose={() => void analyze()} />
         ) : null}
-        {phase === "analyze" ? (
+        {view === "analyze" ? (
           <ImportAnalysisPanel
             step={progress.step}
             elapsedMs={elapsedMs}
             entries={progress.entries}
           />
         ) : null}
-        {phase === "error" ? (
+        {view === "error" ? (
           <div className="space-y-4 pt-3">
             <ErrorBanner
               title="Import impossible"
@@ -206,7 +221,7 @@ export function ProfileImportModal({
             <ImportJournal entries={progress.entries} defaultOpen />
           </div>
         ) : null}
-        {phase === "review" && preview ? (
+        {view === "review" && preview ? (
           <ImportReviewForm
             preview={preview}
             entries={progress.entries}
@@ -216,7 +231,7 @@ export function ProfileImportModal({
             onSubmit={(values) => void apply(values)}
           />
         ) : null}
-        {phase === "done" && result ? (
+        {view === "done" && result ? (
           <ImportDonePanel result={result} totalMs={totalMs} />
         ) : null}
       </ModalHost>
@@ -240,16 +255,19 @@ export function ProfileImportModal({
 }
 
 function PickFile({
+  waiting,
   onChoose,
 }: {
+  waiting: boolean;
   onChoose: () => void;
 }) {
   return (
     <div className="pt-3">
       <button
         type="button"
+        disabled={waiting}
         onClick={onChoose}
-        className="flex w-full flex-col items-center gap-2 rounded-card border border-dashed border-line px-6 py-6 text-center"
+        className="flex w-full flex-col items-center gap-2 rounded-card border border-dashed border-line px-6 py-6 text-center disabled:cursor-default"
       >
         <Icon
           name="upload_file"
@@ -257,14 +275,24 @@ function PickFile({
           className="text-ink-faint"
         />
         <span className="text-body font-medium text-ink">
-          Choisir et analyser un CV PDF
+          {waiting ? "Sélection du fichier…" : "Choisir et analyser un CV PDF"}
         </span>
         <span className="text-meta text-ink-muted">
-          Lecture locale · 10 Mo maximum
+          {waiting
+            ? "La fenêtre de sélection de votre système est ouverte : l'analyse démarrera une fois le CV choisi."
+            : "Lecture locale · 10 Mo maximum"}
         </span>
       </button>
     </div>
   );
+}
+
+/** Instant du premier événement d'analyse, seul repère fiable du début du traitement. */
+function firstEventAt(entries: ImportJournalEntry[]): number | null {
+  const first = entries[0];
+  if (!first) return null;
+  const at = Date.parse(first.at);
+  return Number.isNaN(at) ? null : at;
 }
 
 function confirmDescription(
