@@ -160,8 +160,14 @@ export function ContactFormModal({
                       queryKey={["entreprises"]}
                       fetchPage={async (params) => {
                         const result = await companyService.listPage({
-                          ...params,
-                          company_type: null,
+                          page: params.page,
+                          page_size: params.page_size,
+                          filter: {
+                            search: params.search,
+                            sector_id: null,
+                            company_type_id: null,
+                            company_size: null,
+                          },
                         });
                         return {
                           ...result,

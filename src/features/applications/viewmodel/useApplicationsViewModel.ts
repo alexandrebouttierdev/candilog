@@ -7,7 +7,10 @@ import type {
   NewApplication,
   ApplicationStatus,
 } from "../services/applicationService";
-import type { ApplicationFilterValues } from "../model/schemas/application-filter.schema";
+import {
+  FILTER_VIDE,
+  type ApplicationFilterValues,
+} from "../model/schemas/application-filter.schema";
 import type { ApplicationSort } from "@/shared/types/generated/applications";
 import { KANBAN_PAGE_SIZE, PAGE_SIZE } from "@/shared/types/page";
 import { useUiStore } from "@/shared/lib/ui-store";
@@ -19,17 +22,6 @@ export const APPLICATIONS_KEY = ["candidatures"] as const;
 
 /** Mode d'affichage du suivi. */
 export type TrackingView = "kanban" | "liste";
-
-/** Filters appliqués, dans leur forme validée. */
-const INITIAL_FILTER: ApplicationFilterValues = {
-  status: [],
-  contract: [],
-  company_id: null,
-  city: "",
-  job_title: "",
-  start_date: null,
-  end_date: null,
-};
 
 /**
  * Orchestration de l'écran Tracking → Applications.
@@ -47,26 +39,14 @@ export function useApplicationsViewModel() {
   const [sizePage, setSizePage] = useState<number>(PAGE_SIZE);
   const [search, setSearch] = useState("");
   const searchQuery = useDebounce(search);
-  const [filters, setFilters] = useState<ApplicationFilterValues>(INITIAL_FILTER);
+  const [filters, setFilters] = useState<ApplicationFilterValues>(FILTER_VIDE);
   const [sort, setSort] = useState<ApplicationSort>("date");
   const [descending, setDescending] = useState(true);
   const [selected_id, setSelectedId] = useState<string | null>(null);
 
-  /** Filter tel qu'envoyé au backend, recherche et tri compris. */
+  /** Filtre tel qu'envoyé au backend, recherche et tri compris. */
   const filter = useMemo<ApplicationFilter>(
-    () => ({
-      search: searchQuery,
-      status: filters.status,
-      contract: filters.contract,
-      company_id: filters.company_id,
-      city: filters.city,
-      job_title: filters.job_title,
-      start_date: filters.start_date,
-      end_date: filters.end_date,
-      sort,
-      descending,
-      ids: [],
-    }),
+    () => ({ ...filters, search: searchQuery, sort, descending, ids: [] }),
     [searchQuery, filters, sort, descending],
   );
 
@@ -174,22 +154,30 @@ export function useApplicationsViewModel() {
   }, []);
 
   const resetFilters = useCallback(() => {
-    setFilters(INITIAL_FILTER);
+    setFilters(FILTER_VIDE);
     setPage(1);
   }, []);
 
-  /** Count de critères actifs, hors recherche libre, pour la pastille du bouton Filters. */
+  /** Nombre de critères actifs, hors recherche libre, pour la pastille du bouton Filtres. */
   const filtersActifs = useMemo(
     () =>
       filters.status.length +
-      filters.contract.length +
+      filters.application_type.length +
+      filters.contract_type_code.length +
+      filters.professional_domain_id.length +
+      filters.company_type_id.length +
+      filters.company_size.length +
+      filters.sector_id.length +
+      filters.weekly_work_schedule.length +
       [
         filters.company_id,
         filters.city || null,
         filters.job_title || null,
         filters.start_date,
         filters.end_date,
-      ].filter(Boolean).length,
+        filters.min_weekly_hours,
+        filters.max_weekly_hours,
+      ].filter((critere) => critere !== null && critere !== undefined).length,
     [filters],
   );
 

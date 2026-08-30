@@ -1,36 +1,46 @@
 //! Entité et champs éditables d'une entreprise.
 
+use crate::features::companies::domain::company_size::CompanySize;
 use serde::{Deserialize, Serialize};
 
-/// Company telle que persistée.
+/// Entreprise telle que persistée, libellés des référentiels aplatis depuis les jointures.
 #[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "companies.ts")]
 pub struct Company {
     /// Id de l'entreprise.
     pub id: uuid::Uuid,
-    /// Name de l'entreprise.
+    /// Nom de l'entreprise.
     pub name: String,
-    /// Id du secteur d'activité lié (référentiel `sectors_activity`).
-    pub sector_id: Option<uuid::Uuid>,
-    /// Libellé du secteur, dénormalisé depuis le référentiel.
+
+    /// Secteur **d'activité de l'entreprise** (référentiel `sectors`).
     ///
-    /// Conservé en plus de `sector_id` parce que l'ancienne base porte des secteurs saisis
-    /// librement, sans ligne de référentiel correspondante ; la migration 008 les rattache
-    /// mais le libellé reste la seule valeur sûre pour l'affichage et la recherche.
-    pub sector: Option<String>,
-    /// Type d'entreprise (colonne `type`), s'il est renseigné.
-    #[serde(rename = "type")]
-    #[ts(rename = "type")]
-    pub type_: Option<String>,
+    /// Ne décrit jamais le métier recherché : celui-ci relève du domaine professionnel de
+    /// la candidature.
+    pub sector_id: Option<uuid::Uuid>,
+    /// Libellé du secteur, aplati depuis la jointure sur `sectors`.
+    ///
+    /// Résolu par `JOIN` et non stocké : une seconde colonne de libellé donnerait deux
+    /// sources de vérité, que rien ne garderait d'accord.
+    pub sector_name: Option<String>,
+
+    /// Nature de l'organisation (référentiel `company_types`).
+    pub company_type_id: Option<String>,
+    /// Libellé du type d'entreprise, aplati depuis la jointure sur `company_types`.
+    pub company_type_name: Option<String>,
+
+    /// Taille de l'entreprise, dimension distincte de sa nature.
+    pub company_size: CompanySize,
+
     /// Site web, s'il est renseigné.
     pub website: Option<String>,
-    /// City, si elle est renseignée.
+    /// Ville du siège ou de l'implantation principale.
     pub city: Option<String>,
-    /// Address postale, si elle est renseignée.
+    /// Adresse du siège ou de l'implantation principale.
     pub address: Option<String>,
     /// Notes libres, si renseignées.
     pub notes: Option<String>,
+
     /// Date de création (ISO 8601).
     pub created_at: String,
     /// Date de dernière mise à jour (ISO 8601).
@@ -42,21 +52,20 @@ pub struct Company {
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "companies.ts")]
 pub struct NewCompany {
-    /// Name de l'entreprise (requis).
+    /// Nom de l'entreprise (requis).
     pub name: String,
-    /// Sector choisi dans le référentiel `sectors_activity`.
+    /// Secteur d'activité choisi dans le référentiel `sectors`.
     pub sector_id: Option<uuid::Uuid>,
-    /// Libellé du secteur, dénormalisé depuis le référentiel.
-    pub sector: Option<String>,
-    /// Type d'entreprise (colonne `type`).
-    #[serde(rename = "type")]
-    #[ts(rename = "type")]
-    pub type_: Option<String>,
+    /// Nature de l'organisation, choisie dans le référentiel `company_types`.
+    pub company_type_id: Option<String>,
+    /// Taille de l'entreprise.
+    #[serde(default)]
+    pub company_size: CompanySize,
     /// Site web.
     pub website: Option<String>,
-    /// City.
+    /// Ville du siège ou de l'implantation principale.
     pub city: Option<String>,
-    /// Address postale.
+    /// Adresse du siège ou de l'implantation principale.
     pub address: Option<String>,
     /// Notes libres.
     pub notes: Option<String>,

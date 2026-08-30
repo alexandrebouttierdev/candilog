@@ -6,7 +6,7 @@ use super::*;
 /// y ferait exécuter du code au lieu d'ouvrir une page.
 #[test]
 fn test_creer_refuse_un_lien_d_offre_non_http() {
-    let service = ApplicationService::new(StubRepo);
+    let service = ApplicationService::new(StubRepo::default());
     let mut input = new("Développeur");
     input.job_url = Some("javascript:alert(1)".into());
 

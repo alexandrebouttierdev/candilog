@@ -7,14 +7,15 @@ import {
   type CompanyFormValues,
 } from "../../model/schemas/company-form.schema";
 import type { Company, NewCompany } from "../../services/companyService";
-import { useSectors } from "@/features/sectors";
+import { CompanySizes, useReferentials } from "@/features/referentials";
 import { FormField, ModalHost, Select, TextArea, TextInput } from "@/shared/ui";
 
-/** Values d'un formulaire vierge. */
+/** Valeurs d'un formulaire vierge. */
 const VIDE: CompanyFormInput = {
   name: "",
   sector_id: "",
-  type: "",
+  company_type_id: "",
+  company_size: "UNKNOWN",
   website: "",
   city: "",
   address: "",
@@ -26,7 +27,8 @@ function from(company: Company): CompanyFormInput {
   return {
     name: company.name,
     sector_id: company.sector_id ?? "",
-    type: company.type ?? "",
+    company_type_id: company.company_type_id ?? "",
+    company_size: company.company_size,
     website: company.website ?? "",
     city: company.city ?? "",
     address: company.address ?? "",
@@ -37,8 +39,8 @@ function from(company: Company): CompanyFormInput {
 /**
  * Modale de création et de modification d'une entreprise.
  *
- * Structure reprise de `SPECDESIGN/Modales.dc.html` : deux sections, « Identité » et
- * « Localisation », et le rappel en pied que seul le nom est obligatoire.
+ * Trois sections : identité, qualification, localisation. Secteur et type d'entreprise
+ * viennent des référentiels de la base ; la taille est un jeu fermé de six valeurs.
  */
 export function CompanyFormModal({
   open,
@@ -54,7 +56,7 @@ export function CompanyFormModal({
   onClose: () => void;
   onSubmit: (values: NewCompany) => Promise<unknown>;
 }) {
-  const sectors = useSectors();
+  const referentials = useReferentials();
 
   const form = useForm<CompanyFormInput, unknown, CompanyFormValues>({
     resolver: zodResolver(companyFormSchema),
@@ -68,12 +70,7 @@ export function CompanyFormModal({
   }, [open, company, form]);
 
   const save = form.handleSubmit(async (values) => {
-    // Le libellé du secteur est dénormalisé à l'enregistrement : le backend et l'ancienne
-    // base s'en servent pour l'affichage et la recherche, l'identifiant seul ne suffit pas.
-    const sector =
-      sectors.data?.find((item) => item.id === values.sector_id)?.name ?? null;
-
-    await onSubmit({ ...values, sector });
+    await onSubmit(values);
     onClose();
   });
 
@@ -82,9 +79,7 @@ export function CompanyFormModal({
       open={open}
       icon="apartment"
       title={company ? "Modifier l'entreprise" : "Nouvelle entreprise"}
-      subtitle={
-        company ? company.name : "Ajoutez une société à votre répertoire"
-      }
+      subtitle={company ? company.name : "Ajoutez une société à votre répertoire"}
       footer_note="Seul le nom est obligatoire."
       submitDisabled={!form.formState.isValid && form.formState.isSubmitted}
       busy={busy}
@@ -106,12 +101,14 @@ export function CompanyFormModal({
               )}
             </FormField>
           </div>
+        </Section>
 
+        <Section title="Qualification" icon="category">
           <FormField label="Secteur d'activité">
             {(props) => (
               <Select {...props} {...form.register("sector_id")}>
                 <option value="">Sélectionner…</option>
-                {sectors.data?.map((sector) => (
+                {referentials.data.sectors.map((sector) => (
                   <option key={sector.id} value={sector.id}>
                     {sector.name}
                   </option>
@@ -120,9 +117,28 @@ export function CompanyFormModal({
             )}
           </FormField>
 
-          <FormField label="Type">
+          <FormField label="Type d'entreprise">
             {(props) => (
-              <TextInput {...props} {...form.register("type")} placeholder="Éditeur logiciel…" />
+              <Select {...props} {...form.register("company_type_id")}>
+                <option value="">Sélectionner…</option>
+                {referentials.data.company_types.map((type) => (
+                  <option key={type.code} value={type.code}>
+                    {type.name}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </FormField>
+
+          <FormField label="Taille de l'entreprise">
+            {(props) => (
+              <Select {...props} {...form.register("company_size")}>
+                {CompanySizes.map((size) => (
+                  <option key={size.value} value={size.value}>
+                    {size.label}
+                  </option>
+                ))}
+              </Select>
             )}
           </FormField>
         </Section>

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook, waitFor, act } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { useCompaniesViewModel } from "../useCompaniesViewModel";
+import { CRITERES_VIDES, useCompaniesViewModel } from "../useCompaniesViewModel";
 import { companyService } from "../../services/companyService";
 import type { Company } from "../../services/companyService";
 import { useUiStore } from "@/shared/lib/ui-store";
@@ -15,8 +15,10 @@ function ent(name: string, id = name): Company {
     id,
     name,
     sector_id: null,
-    sector: null,
-    type: null,
+    sector_name: null,
+    company_type_id: null,
+    company_type_name: null,
+    company_size: "UNKNOWN",
     website: null,
     city: null,
     address: null,
@@ -42,7 +44,6 @@ function wrapper({ children }: { children: ReactNode }) {
 beforeEach(() => {
   vi.restoreAllMocks();
   useUiStore.setState({ toasts: [] });
-  vi.spyOn(companyService, "listTypes").mockResolvedValue([]);
   vi.spyOn(applicationService, "listPage").mockResolvedValue({
     items: [],
     total: 8,
@@ -98,11 +99,7 @@ describe("ViewModel des entreprises", () => {
 
     act(() => result.current.rechercher("nova"));
 
-    await waitFor(() =>
-      expect(listPage).toHaveBeenLastCalledWith(
-        expect.objectContaining({ search: "nova" }),
-      ),
-    );
+    await waitFor(() => expect(listPage.mock.lastCall?.[0].filter.search).toBe("nova"));
   });
 
   it("revient à la première page à chaque nouvelle recherche", async () => {
@@ -134,8 +131,8 @@ describe("ViewModel des entreprises", () => {
       await result.current.create({
         name: "Nova Digital",
         sector_id: null,
-        sector: null,
-        type: null,
+        company_type_id: null,
+        company_size: "UNKNOWN",
         website: null,
         city: null,
         address: null,
@@ -197,7 +194,7 @@ describe("ViewModel des entreprises", () => {
     expect(result.current.items).toEqual([]);
   });
 
-  it("compte le type actif sans la recherche libre", async () => {
+  it("compte les critères actifs sans la recherche libre", async () => {
     vi.spyOn(companyService, "listPage").mockResolvedValue(page([ent("Nova Digital")]));
 
     const { result } = renderHook(() => useCompaniesViewModel(), { wrapper });
@@ -206,24 +203,53 @@ describe("ViewModel des entreprises", () => {
     act(() => result.current.rechercher("nova"));
     expect(result.current.filtersActifs).toBe(0);
 
-    act(() => result.current.filtrerParType("ESN"));
-    expect(result.current.filtersActifs).toBe(1);
+    // Type et taille sont deux axes distincts : les cumuler donne bien deux critères.
+    act(() =>
+      result.current.appliquerCriteres({
+        ...CRITERES_VIDES,
+        company_type_id: "IT_SERVICES_COMPANY",
+        company_size: "PME",
+      }),
+    );
+    expect(result.current.filtersActifs).toBe(2);
   });
 
-  it("ôte le type au reset et revient à la première page", async () => {
+  it("transmet les critères au backend plutôt que de filtrer en mémoire", async () => {
+    const listPage = vi
+      .spyOn(companyService, "listPage")
+      .mockResolvedValue(page([ent("Nova Digital")]));
+
+    const { result } = renderHook(() => useCompaniesViewModel(), { wrapper });
+    await waitFor(() => expect(result.current.items).toHaveLength(1));
+
+    act(() =>
+      result.current.appliquerCriteres({
+        ...CRITERES_VIDES,
+        company_type_id: "IT_SERVICES_COMPANY",
+      }),
+    );
+
+    await waitFor(() =>
+      expect(listPage.mock.lastCall?.[0].filter.company_type_id).toBe("IT_SERVICES_COMPANY"),
+    );
+  });
+
+  it("ôte les critères au reset et revient à la première page", async () => {
     vi.spyOn(companyService, "listPage").mockResolvedValue(page([ent("Nova Digital")], 40));
 
     const { result } = renderHook(() => useCompaniesViewModel(), { wrapper });
     await waitFor(() => expect(result.current.items).toHaveLength(1));
 
     act(() => result.current.setPage(3));
-    act(() => result.current.filtrerParType("ESN"));
+    act(() =>
+      result.current.appliquerCriteres({ ...CRITERES_VIDES, company_size: "PME" }),
+    );
     await waitFor(() => expect(result.current.page).toBe(1));
 
     act(() => result.current.setPage(2));
     act(() => result.current.resetFilters());
 
-    expect(result.current.company_type).toBeNull();
+    expect(result.current.criteres).toEqual(CRITERES_VIDES);
     expect(result.current.page).toBe(1);
   });
 });

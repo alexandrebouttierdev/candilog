@@ -17,7 +17,7 @@ fn context() -> (SqliteInterviewRepository, Uuid) {
     .unwrap();
     let application_id = Uuid::new_v4();
     conn.execute(
-        "INSERT INTO applications (id, company_id, job_title, contract_type, status, sent_date,
+        "INSERT INTO applications (id, company_id, job_title, contract_type_code, status, sent_date,
             created_at, updated_at)
          VALUES (?1, ?2, 'Développeur Frontend', 'CDI', 'EN_ATTENTE', '2026-08-20',
             '2026-08-20T00:00:00Z', '2026-08-20T00:00:00Z')",

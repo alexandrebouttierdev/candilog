@@ -41,11 +41,17 @@ fn application_liee(repo: &SqliteContactRepository, contact_id: uuid::Uuid) -> u
     let id = uuid::Uuid::new_v4();
     let conn = crate::core::database::helpers::connection(&repo.pool).unwrap();
     conn.execute(
-            "INSERT INTO applications (id, company_id, contact_id, job_title, sent_date, created_at, updated_at)
-             VALUES (?1, ?2, ?3, 'Dev', '2026-01-01', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')",
-            rusqlite::params![id.to_string(), company_id.to_string(), contact_id.to_string()],
-        )
-        .unwrap();
+        "INSERT INTO applications (id, company_id, contact_id, job_title, contract_type_code,
+                sent_date, created_at, updated_at)
+             VALUES (?1, ?2, ?3, 'Dev', 'CDI', '2026-01-01', '2026-01-01T00:00:00Z',
+                '2026-01-01T00:00:00Z')",
+        rusqlite::params![
+            id.to_string(),
+            company_id.to_string(),
+            contact_id.to_string()
+        ],
+    )
+    .unwrap();
     id
 }
 

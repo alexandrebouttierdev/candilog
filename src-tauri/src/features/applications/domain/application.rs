@@ -1,9 +1,17 @@
 //! Entité et champs éditables d'une candidature.
 
-use crate::features::applications::domain::status::{ApplicationStatus, ContractType};
+use crate::features::applications::domain::application_type::ApplicationType;
+use crate::features::applications::domain::schedule::WeeklyWorkSchedule;
+use crate::features::applications::domain::status::ApplicationStatus;
+use crate::features::companies::domain::CompanySize;
 use serde::{Deserialize, Serialize};
 
-/// Application telle que persistée, nom d'entreprise aplati depuis la jointure.
+/// Candidature telle que persistée, valeurs héritées et libellés résolus par jointure.
+///
+/// Trois champs — `city`, `address`, `company_type_id` — sont des **surcharges** : `None`
+/// signifie « hériter de l'entreprise », jamais « vide ». La valeur réellement affichée est
+/// la contrepartie `effective_*`, calculée par `SQLite`. L'interface déduit de la seule
+/// nullité de la surcharge s'il faut signaler une valeur héritée.
 #[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "applications.ts")]
@@ -14,25 +22,55 @@ pub struct Application {
     pub job_title: String,
     /// Id de l'entreprise liée.
     pub company_id: uuid::Uuid,
-    /// Name de l'entreprise liée, aplati depuis la jointure ; `None` si non résolu.
+    /// Nom de l'entreprise liée, aplati depuis la jointure ; `None` si non résolu.
     pub company_name: Option<String>,
-    /// City de l'entreprise liée, aplatie depuis la jointure.
-    ///
-    /// Affichée dans la colonne « Company » de la vue List et sur les cartes du Kanban :
-    /// sans elle, chaque ligne devrait relire le répertoire des entreprises.
-    pub company_city: Option<String>,
+    /// Taille de l'entreprise liée : elle appartient à l'entreprise, pas à la candidature.
+    pub company_size: CompanySize,
     /// Id du contact lié, s'il existe.
     pub contact_id: Option<uuid::Uuid>,
-    /// Type de contrat visé.
-    pub contract_type: ContractType,
-    /// Status courant dans le pipeline.
+
+    /// Réponse à une offre, ou démarche spontanée.
+    pub application_type: ApplicationType,
+
+    /// Code du type de contrat (référentiel `contract_types`).
+    pub contract_type_code: String,
+    /// Libellé français du contrat, aplati depuis la jointure sur `contract_types`.
+    pub contract_type_name: Option<String>,
+
+    /// Régime horaire hebdomadaire.
+    pub weekly_work_schedule: WeeklyWorkSchedule,
+    /// Volume horaire hebdomadaire, en heures par semaine.
+    pub weekly_hours: Option<f64>,
+
+    /// Domaine professionnel **du poste** (référentiel `professional_domains`).
+    ///
+    /// `None` signifie « non renseigné ». Il n'est jamais déduit du secteur de
+    /// l'entreprise : une banque recrute aussi des informaticiens.
+    pub professional_domain_id: Option<String>,
+    /// Libellé du domaine professionnel, aplati depuis la jointure.
+    pub professional_domain_name: Option<String>,
+
+    /// Ville propre à la candidature ; `None` = héritée de l'entreprise.
+    pub city: Option<String>,
+    /// Adresse propre à la candidature ; `None` = héritée de l'entreprise.
+    pub address: Option<String>,
+    /// Type d'entreprise propre à la candidature ; `None` = hérité de l'entreprise.
+    pub company_type_id: Option<String>,
+
+    /// Ville effective : surcharge si elle existe, sinon celle de l'entreprise.
+    pub effective_city: Option<String>,
+    /// Adresse effective : surcharge si elle existe, sinon celle de l'entreprise.
+    pub effective_address: Option<String>,
+    /// Type d'entreprise effectif : surcharge si elle existe, sinon celui de l'entreprise.
+    pub effective_company_type_id: Option<String>,
+    /// Libellé du type d'entreprise effectif, aplati depuis la jointure.
+    pub effective_company_type_name: Option<String>,
+
+    /// Statut courant dans le pipeline.
     pub status: ApplicationStatus,
     /// Date d'envoi, au format `AAAA-MM-JJ`.
-    ///
-    /// Les lignes reprises de l'ancienne base peuvent porter un horodatage ISO 8601
-    /// complet : le tri et l'affichage restent corrects, mais le format n'est pas homogène.
     pub sent_date: String,
-    /// Url vers l'offre d'origine, s'il existe.
+    /// Lien vers l'offre ; toujours `None` pour une candidature spontanée.
     pub job_url: Option<String>,
     /// Notes libres.
     pub notes: Option<String>,
@@ -51,13 +89,34 @@ pub struct NewApplication {
     pub job_title: String,
     /// Id de l'entreprise liée (requis).
     pub company_id: uuid::Uuid,
-    /// Type de contrat visé.
-    pub contract_type: ContractType,
-    /// Status initial ou cible.
+    /// Id du contact lié, s'il existe.
+    pub contact_id: Option<uuid::Uuid>,
+    /// Réponse à une offre, ou démarche spontanée.
+    #[serde(default)]
+    pub application_type: ApplicationType,
+    /// Code du type de contrat, choisi dans le référentiel `contract_types`.
+    pub contract_type_code: String,
+    /// Régime horaire hebdomadaire.
+    #[serde(default)]
+    pub weekly_work_schedule: WeeklyWorkSchedule,
+    /// Volume horaire hebdomadaire, en heures par semaine.
+    pub weekly_hours: Option<f64>,
+    /// Domaine professionnel du poste, choisi dans `professional_domains`.
+    pub professional_domain_id: Option<String>,
+    /// Surcharge de ville ; `None` laisse hériter de l'entreprise.
+    ///
+    /// La valeur héritée n'est **jamais** recopiée ici : elle serait figée, et changer
+    /// l'entreprise de la candidature laisserait derrière elle la ville de la précédente.
+    pub city: Option<String>,
+    /// Surcharge d'adresse ; `None` laisse hériter de l'entreprise.
+    pub address: Option<String>,
+    /// Surcharge du type d'entreprise ; `None` laisse hériter de l'entreprise.
+    pub company_type_id: Option<String>,
+    /// Statut initial ou cible.
     pub status: ApplicationStatus,
     /// Date d'envoi choisie par l'utilisateur, au format `AAAA-MM-JJ`.
     pub sent_date: String,
-    /// Url vers l'offre, s'il existe.
+    /// Lien vers l'offre ; ignoré pour une candidature spontanée.
     pub job_url: Option<String>,
     /// Notes libres.
     pub notes: Option<String>,

@@ -3,7 +3,9 @@
 use crate::core::errors::{AppError, AppResult};
 use crate::core::pagination::Page;
 use crate::core::utils::validation::validate_optional_http_url;
-use crate::features::companies::domain::{Company, CompanyRepository, CompanyUpdate, NewCompany};
+use crate::features::companies::domain::{
+    Company, CompanyFilter, CompanyRepository, CompanyUpdate, NewCompany,
+};
 
 /// Service métier des entreprises, générique sur le dépôt.
 pub struct CompanyService<R: CompanyRepository> {
@@ -17,7 +19,7 @@ impl<R: CompanyRepository> CompanyService<R> {
         Self { repo }
     }
 
-    /// List toutes les entreprises, pour alimenter un sélecteur.
+    /// Liste toutes les entreprises, pour alimenter un sélecteur.
     ///
     /// # Errors
     /// Propage l'erreur du dépôt.
@@ -33,7 +35,7 @@ impl<R: CompanyRepository> CompanyService<R> {
         self.repo.get(id)
     }
 
-    /// Payload une page du répertoire sans matérialiser l'ensemble.
+    /// Renvoie une page du répertoire sans matérialiser l'ensemble.
     ///
     /// # Errors
     /// Propage l'erreur du dépôt.
@@ -41,18 +43,9 @@ impl<R: CompanyRepository> CompanyService<R> {
         &self,
         page: u64,
         page_size: u64,
-        search: &str,
-        company_type: Option<&str>,
+        filter: &CompanyFilter,
     ) -> AppResult<Page<Company>> {
-        self.repo.list_page(page, page_size, search, company_type)
-    }
-
-    /// List les types réellement présents, pour le filtre du répertoire.
-    ///
-    /// # Errors
-    /// Propage l'erreur du dépôt.
-    pub fn list_types(&self) -> AppResult<Vec<String>> {
-        self.repo.list_types()
+        self.repo.list_page(page, page_size, filter)
     }
 
     /// Valide puis crée l'entreprise.

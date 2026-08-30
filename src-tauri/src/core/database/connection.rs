@@ -1,7 +1,9 @@
 //! Pool de connexions `SQLite` locales et initialisation du schéma.
 //!
-//! Le schéma complet vit dans un seul fichier `init_schema.sql`, embarqué dans le binaire.
-//! Le curseur est `PRAGMA user_version` : une base déjà à jour ne rejoue pas le fichier.
+//! Le schéma complet vit dans un seul fichier `init_schema.sql`, embarqué dans le binaire :
+//! tables, index et semences des référentiels métier. Le curseur est `PRAGMA user_version` :
+//! une base déjà à jour ne rejoue pas le fichier, et le rejouer resterait sans effet — tout y
+//! est écrit en `CREATE IF NOT EXISTS` / `INSERT OR IGNORE`.
 
 use crate::core::errors::{AppError, AppResult};
 use r2d2::Pool;
@@ -12,16 +14,14 @@ use std::path::Path;
 pub type SqlitePool = Pool<SqliteConnectionManager>;
 
 /// Versions de schéma, appliquées par ordre croissant.
-const MIGRATIONS: &[(i64, &str)] = &[
-    (1, include_str!("../../../migrations/init_schema.sql")),
-    (
-        2,
-        include_str!("../../../migrations/002_document_indexes.sql"),
-    ),
-];
+///
+/// Une seule entrée : `init_schema.sql` porte l'intégralité du modèle — tables, index et
+/// semences des référentiels. Aucune migration héritée n'est conservée, une base neuve
+/// obtient directement le schéma final.
+const MIGRATIONS: &[(i64, &str)] = &[(1, include_str!("../../../migrations/init_schema.sql"))];
 
 /// Version de schéma atteinte après application de `init_schema`.
-pub const LATEST_SCHEMA_VERSION: i64 = 2;
+pub const LATEST_SCHEMA_VERSION: i64 = 1;
 
 /// Vérifie qu'un fichier existant appartient à la génération de schéma prise en charge.
 ///

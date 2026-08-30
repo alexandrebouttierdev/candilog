@@ -2,6 +2,7 @@
 
 use super::*;
 use crate::core::database::{open_pool, run_local_migrations};
+use crate::features::applications::domain::ApplicationStatus;
 use uuid::Uuid;
 
 fn context() -> (SqliteAnalyticsRepository, Uuid) {
@@ -25,7 +26,8 @@ fn application(repo: &SqliteAnalyticsRepository, company: Uuid, status: &str, da
         .unwrap()
         .execute(
             "INSERT INTO applications (
-                id, company_id, job_title, contract_type, status, sent_date, created_at, updated_at
+                id, company_id, job_title, contract_type_code, status, sent_date,
+                created_at, updated_at
              ) VALUES (?1, ?2, 'Développeur Rust', 'CDI', ?3, ?4, ?4, ?4)",
             rusqlite::params![id.to_string(), company.to_string(), status, date],
         )
@@ -134,5 +136,8 @@ fn recentes_restituent_les_jointures_et_les_enums_du_domaine() {
     assert_eq!(items.len(), 1);
     assert_eq!(items[0].company_name.as_deref(), Some("Nova Digital"));
     assert_eq!(items[0].status, ApplicationStatus::Interview);
-    assert_eq!(items[0].contract_type, ContractType::Cdi);
+    assert_eq!(items[0].contract_type_code, "CDI");
+    assert_eq!(items[0].contract_type_name.as_deref(), Some("CDI"));
+    // Les valeurs héritées de l'entreprise sont résolues comme dans le suivi.
+    assert_eq!(items[0].effective_city.as_deref(), Some("Rennes"));
 }

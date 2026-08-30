@@ -1,4 +1,11 @@
 import type { ReactNode } from "react";
+import type { CompanyCriteria } from "../../viewmodel/useCompaniesViewModel";
+import {
+  CompanySizes,
+  companySizeLabel,
+  referenceLabel,
+  useReferentials,
+} from "@/features/referentials";
 import {
   ActiveFilterChip,
   ClearFiltersButton,
@@ -9,31 +16,39 @@ import {
   SearchInput,
 } from "@/shared/ui";
 
+/** Bascule un critère à choix unique : le resélectionner l'efface. */
+function pick<T>(current: T | null, value: T): T | null {
+  return current === value ? null : value;
+}
+
 /**
- * Toolbar du répertoire : recherche 300 px, bouton Filtres, chips, actions.
+ * Barre d'outils du répertoire : recherche, filtres, chips, actions.
+ *
+ * Secteur, type et taille sont trois axes indépendants — une société peut être « ESN + PME »
+ * comme « Association + TPE ».
  */
 export function CompanyFilters({
   search,
   onSearch,
-  company_type,
-  types,
+  criteres,
   count,
   total,
-  onSelectType,
+  onApply,
   onReset,
   actions,
 }: {
   search: string;
   onSearch: (value: string) => void;
-  company_type: string | null;
-  types: readonly string[];
+  criteres: CompanyCriteria;
   count: number;
   /** Total renvoyé par SQLite après application du filtre courant. */
   total: number | null;
-  onSelectType: (value: string | null) => void;
+  onApply: (values: CompanyCriteria) => void;
   onReset: () => void;
   actions?: ReactNode;
 }) {
+  const referentials = useReferentials();
+
   return (
     <FilterBar actions={actions}>
       <SearchInput
@@ -43,20 +58,76 @@ export function CompanyFilters({
         placeholder="Rechercher…"
       />
       <FilterMenu count={count}>
-        <FilterGroup label="Type">
-          {types.map((type) => (
+        <FilterGroup label="Secteur d'activité">
+          {referentials.data.sectors.map((sector) => (
             <FilterOption
-              key={type}
-              label={type}
-              selected={company_type === type}
-              onSelect={() => onSelectType(company_type === type ? null : type)}
+              key={sector.id}
+              label={sector.name}
+              selected={criteres.sector_id === sector.id}
+              onSelect={() =>
+                onApply({ ...criteres, sector_id: pick(criteres.sector_id, sector.id) })
+              }
+            />
+          ))}
+        </FilterGroup>
+        <FilterGroup label="Type d'entreprise">
+          {referentials.data.company_types.map((type) => (
+            <FilterOption
+              key={type.code}
+              label={type.name}
+              selected={criteres.company_type_id === type.code}
+              onSelect={() =>
+                onApply({
+                  ...criteres,
+                  company_type_id: pick(criteres.company_type_id, type.code),
+                })
+              }
+            />
+          ))}
+        </FilterGroup>
+        <FilterGroup label="Taille">
+          {CompanySizes.map((size) => (
+            <FilterOption
+              key={size.value}
+              label={size.label}
+              selected={criteres.company_size === size.value}
+              onSelect={() =>
+                onApply({
+                  ...criteres,
+                  company_size: pick(criteres.company_size, size.value),
+                })
+              }
             />
           ))}
         </FilterGroup>
       </FilterMenu>
 
-      {company_type ? (
-        <ActiveFilterChip field="Type" value={company_type} onRemove={() => onSelectType(null)} />
+      {criteres.sector_id ? (
+        <ActiveFilterChip
+          field="Secteur"
+          value={
+            referentials.data.sectors.find((sector) => sector.id === criteres.sector_id)?.name ??
+            criteres.sector_id
+          }
+          onRemove={() => onApply({ ...criteres, sector_id: null })}
+        />
+      ) : null}
+      {criteres.company_type_id ? (
+        <ActiveFilterChip
+          field="Type"
+          value={
+            referenceLabel(referentials.data.company_types, criteres.company_type_id) ??
+            criteres.company_type_id
+          }
+          onRemove={() => onApply({ ...criteres, company_type_id: null })}
+        />
+      ) : null}
+      {criteres.company_size ? (
+        <ActiveFilterChip
+          field="Taille"
+          value={companySizeLabel(criteres.company_size)}
+          onRemove={() => onApply({ ...criteres, company_size: null })}
+        />
       ) : null}
       {count > 0 ? <ClearFiltersButton onClick={onReset} /> : null}
       {total !== null ? (

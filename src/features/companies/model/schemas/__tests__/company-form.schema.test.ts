@@ -5,7 +5,8 @@ import { companyFormSchema } from "../company-form.schema";
 const BASE = {
   name: "Nova Digital",
   sector_id: "",
-  type: "",
+  company_type_id: "",
+  company_size: "UNKNOWN" as const,
   website: "",
   city: "",
   address: "",
@@ -28,7 +29,26 @@ describe("schéma du formulaire entreprise", () => {
     const resultat = companyFormSchema.parse(BASE);
     expect(resultat.city).toBeNull();
     expect(resultat.sector_id).toBeNull();
+    expect(resultat.company_type_id).toBeNull();
     expect(resultat.notes).toBeNull();
+  });
+
+  it("garde le type et la taille comme deux champs distincts", () => {
+    // Une ESN peut être une PME, un éditeur SaaS une grande entreprise : les fondre en un
+    // seul champ rendrait la moitié des combinaisons inexprimables.
+    const resultat = companyFormSchema.parse({
+      ...BASE,
+      company_type_id: "IT_SERVICES_COMPANY",
+      company_size: "PME",
+    });
+    expect(resultat.company_type_id).toBe("IT_SERVICES_COMPANY");
+    expect(resultat.company_size).toBe("PME");
+  });
+
+  it("refuse une taille hors du jeu contraint par la base", () => {
+    expect(companyFormSchema.safeParse({ ...BASE, company_size: "GEANTE" }).success).toBe(
+      false,
+    );
   });
 
   it("supprime les espaces autour du nom", () => {

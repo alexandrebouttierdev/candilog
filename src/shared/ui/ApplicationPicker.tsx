@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { applicationService } from "@/features/applications/services/applicationService";
+import { FILTER_VIDE } from "@/features/applications/model/schemas/application-filter.schema";
 import { EntityPicker } from "./EntityPicker";
 
 /**
@@ -49,19 +50,7 @@ export function ApplicationPicker({
         const resultat = await applicationService.listPage({
           page,
           page_size,
-          filter: {
-            search,
-            status: [],
-            contract: [],
-            company_id: null,
-            city: "",
-            job_title: "",
-            start_date: null,
-            end_date: null,
-            sort: "date",
-            descending: true,
-            ids: [],
-          },
+          filter: { ...FILTER_VIDE, search, sort: "date", descending: true, ids: [] },
         });
         return {
           ...resultat,

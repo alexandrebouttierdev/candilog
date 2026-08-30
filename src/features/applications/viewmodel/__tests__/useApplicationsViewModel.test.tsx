@@ -3,6 +3,7 @@ import { renderHook, waitFor, act } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { useApplicationsViewModel } from "../useApplicationsViewModel";
+import { FILTER_VIDE } from "../../model/schemas/application-filter.schema";
 import { applicationService } from "../../services/applicationService";
 import type { Application } from "../../services/applicationService";
 import { useUiStore } from "@/shared/lib/ui-store";
@@ -14,9 +15,22 @@ function cand(job_title: string, status: Application["status"] = "EN_ATTENTE"): 
     job_title,
     company_id: "e1",
     company_name: "Nova Digital",
-    company_city: "Rennes",
+    company_size: "PME",
     contact_id: null,
-    contract_type: "CDI",
+    application_type: "OFFRE",
+    contract_type_code: "CDI",
+    contract_type_name: "CDI",
+    weekly_work_schedule: "FULL_TIME",
+    weekly_hours: 35,
+    professional_domain_id: "M18",
+    professional_domain_name: "Informatique / Télécommunication",
+    city: null,
+    address: null,
+    company_type_id: null,
+    effective_city: "Rennes",
+    effective_address: null,
+    effective_company_type_id: "IT_SERVICES_COMPANY",
+    effective_company_type_name: "ESN / Société de services numériques",
     status,
     sent_date: "2026-08-20",
     job_url: null,
@@ -146,16 +160,14 @@ describe("ViewModel des candidatures", () => {
 
     act(() =>
       result.current.appliquerFilters({
+        ...FILTER_VIDE,
         status: ["ENTRETIEN"],
-        contract: ["CDI"],
-        company_id: null,
-        city: "",
-        job_title: "",
-        start_date: null,
-        end_date: null,
+        contract_type_code: ["CDI"],
+        company_size: ["PME"],
+        min_weekly_hours: 20,
       }),
     );
-    expect(result.current.filtersActifs).toBe(2);
+    expect(result.current.filtersActifs).toBe(4);
   });
 
   it("n'annonce pas de succès après un changement de statut", async () => {

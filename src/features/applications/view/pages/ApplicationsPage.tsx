@@ -3,7 +3,8 @@ import { useSearchParams } from "react-router-dom";
 import { useApplicationsViewModel } from "../../viewmodel/useApplicationsViewModel";
 import type { Application, ApplicationStatus } from "../../services/applicationService";
 import { applicationService } from "../../services/applicationService";
-import { contract_label, status_meta } from "../../model/statuses";
+import { status_meta } from "../../model/statuses";
+import { applicationTypeLabel, weeklyDurationLabel } from "@/features/referentials";
 import { versDateAffichee } from "@/shared/lib/dates";
 import { ApplicationFormModal } from "../components/ApplicationFormModal";
 import { ApplicationFilters } from "../components/ApplicationFilters";
@@ -27,6 +28,7 @@ import type { ApplicationSort } from "@/shared/types/generated/applications";
 import { AppError } from "@/shared/types/app-error";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { PAGE_SIZE } from "@/shared/types/page";
+import { FILTER_VIDE } from "../../model/schemas/application-filter.schema";
 
 /** Densités proposées par le pied de la vue List. */
 const DENSITES = [PAGE_SIZE, 25, 50] as const;
@@ -72,18 +74,7 @@ export function ApplicationsPage() {
       // une ligne sélectionnée puis masquée par une recherche ou un statut.
       const filter =
         ids.length > 0
-          ? {
-              ...vm.filter,
-              search: "",
-              status: [],
-              contract: [],
-              company_id: null,
-              city: "",
-              job_title: "",
-              start_date: null,
-              end_date: null,
-              ids,
-            }
+          ? { ...FILTER_VIDE, sort: vm.sort, descending: vm.descending, search: "", ids }
           : vm.filter;
       const rows = await applicationService.exportCsv(filter);
       if (rows === null) return;
@@ -144,7 +135,7 @@ export function ApplicationsPage() {
         <CellIdentity
           initials={initials(row.company_name ?? row.job_title)}
           title={row.job_title}
-          subtitle={row.company_city ?? undefined}
+          subtitle={row.professional_domain_name ?? undefined}
         />
       ),
     },
@@ -158,10 +149,42 @@ export function ApplicationsPage() {
       ),
     },
     {
+      key: "ville",
+      header: "Ville",
+      grow: 0.9,
+      render: (row) => (
+        <span className="truncate text-note text-ink-faint">{row.effective_city ?? "—"}</span>
+      ),
+    },
+    {
       key: "contrat",
       header: "Contrat",
       grow: 0.9,
-      render: (row) => <span className="text-note text-ink-faint">{contract_label(row.contract_type)}</span>,
+      render: (row) => (
+        <span className="text-note text-ink-faint">
+          {row.contract_type_name ?? row.contract_type_code}
+        </span>
+      ),
+    },
+    {
+      key: "duree",
+      header: "Durée",
+      grow: 1,
+      render: (row) => (
+        <span className="truncate text-note text-ink-faint">
+          {weeklyDurationLabel(row.weekly_work_schedule, row.weekly_hours)}
+        </span>
+      ),
+    },
+    {
+      key: "candidature",
+      header: "Type",
+      grow: 0.9,
+      render: (row) => (
+        <span className="truncate text-note text-ink-faint">
+          {applicationTypeLabel(row.application_type)}
+        </span>
+      ),
     },
     {
       key: "statut",

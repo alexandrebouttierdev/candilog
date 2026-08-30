@@ -1,6 +1,7 @@
 import type { Company } from "../../services/companyService";
 import type { Application } from "@/features/applications/services/applicationService";
-import { contract_label, status_meta } from "@/features/applications/model/statuses";
+import { status_meta } from "@/features/applications/model/statuses";
+import { companySizeLabel } from "@/features/referentials";
 import { versDateLongue } from "@/shared/lib/dates";
 import {
   Card,
@@ -48,15 +49,16 @@ export function CompanyDetail({
         initials={wordInitials(company.name)}
         title={company.name}
         badge={
-          company.type ? (
+          company.company_type_name ? (
             <StatusPill tone="accent" icon="business_center">
-              {company.type}
+              {company.company_type_name}
             </StatusPill>
           ) : null
         }
         subtitle={
-          [company.sector, company.city].filter(Boolean).join(" · ") ||
-          "Aucune information complémentaire"
+          [company.sector_name, companySizeLabel(company.company_size), company.city]
+            .filter(Boolean)
+            .join(" · ") || "Aucune information complémentaire"
         }
         actions={
           <>
@@ -130,7 +132,8 @@ export function CompanyDetail({
                         {application.job_title}
                       </span>
                       <span className="mt-px block truncate text-meta text-ink-faint">
-                        {contract_label(application.contract_type)} · envoyée le{" "}
+                        {application.contract_type_name ?? application.contract_type_code} ·
+                        envoyée le{" "}
                         {versDateLongue(application.sent_date)}
                       </span>
                     </span>
@@ -163,8 +166,9 @@ export function CompanyDetail({
         <Card clipped className="max-w-[360px] flex-[1_1_280px]">
           <CardHeader compact>Informations</CardHeader>
           <div className="px-[17px] pt-1 pb-3">
-            <Row label="Secteur" value={company.sector} />
-            <Row label="Type" value={company.type} />
+            <Row label="Secteur" value={company.sector_name} />
+            <Row label="Type" value={company.company_type_name} />
+            <Row label="Taille" value={companySizeLabel(company.company_size)} />
             <Row label="Ville" value={company.city} />
             <Row label="Adresse" value={company.address} />
             <Row label="Site web" value={company.website} url />

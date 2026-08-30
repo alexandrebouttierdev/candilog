@@ -38,8 +38,12 @@ describe("ContactFormModal", () => {
       expect(listPage).toHaveBeenCalledWith({
         page: 1,
         page_size: 4,
-        search: "",
-        company_type: null,
+        filter: {
+          search: "",
+          sector_id: null,
+          company_type_id: null,
+          company_size: null,
+        },
       }),
     );
     expect(list).not.toHaveBeenCalled();

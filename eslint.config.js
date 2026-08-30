@@ -11,6 +11,9 @@ export default tseslint.config(
       "src-tauri/target",
       "src/shared/types/generated",
       "src-tauri/**",
+      // `website/` est un projet Next.js autonome, avec son propre `eslint.config.mjs` et
+      // son propre `tsconfig.json` : le linter de l'application n'a pas ses types.
+      "website/**",
       "vendor/**",
       "SPECDESIGN/**",
       "docs/**",

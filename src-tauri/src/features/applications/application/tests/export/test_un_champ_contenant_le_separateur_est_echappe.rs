@@ -14,11 +14,14 @@ fn test_un_champ_contenant_le_separateur_est_echappe() {
 
     assert!(csv.contains("\"Entretien ; à relancer\nsemaine prochaine\""));
 
-    // Relu par le même dialecte, le fichier doit rendre exactement huit colonnes.
+    // Relu par le même dialecte, le fichier doit rendre exactement ses colonnes.
     let mut lecteur = csv::ReaderBuilder::new()
         .delimiter(b';')
         .from_reader(csv.as_bytes());
     let row = lecteur.records().next().unwrap().unwrap();
-    assert_eq!(row.len(), 8);
-    assert_eq!(&row[7], "Entretien ; à relancer\nsemaine prochaine");
+    assert_eq!(row.len(), COLONNES);
+    assert_eq!(
+        &row[COLONNES - 1],
+        "Entretien ; à relancer\nsemaine prochaine"
+    );
 }

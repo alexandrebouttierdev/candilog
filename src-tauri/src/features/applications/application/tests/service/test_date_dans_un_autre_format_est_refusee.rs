@@ -7,7 +7,7 @@ use super::*;
 /// résultats, sans qu'aucune erreur ne le signale.
 #[test]
 fn test_date_dans_un_autre_format_est_refusee() {
-    let service = ApplicationService::new(StubRepo);
+    let service = ApplicationService::new(StubRepo::default());
 
     for date in ["20-08-2026", "2026/08/20", "20 août 2026", ""] {
         let mut input = new("Développeur");

@@ -1,14 +1,15 @@
 //! Agrégats d'analyse calculés par `SQLite`.
 
-use crate::core::database::helpers::{
-    connection, enum_from_text, translate_error, uuid_column, uuid_column_opt,
-};
+use crate::core::database::helpers::{connection, translate_error, uuid_column};
 use crate::core::database::SqlitePool;
 use crate::core::errors::AppResult;
 use crate::features::analytics::domain::{
     ActivityWeek, AnalyticsRepository, Metrics, Performance, Step, ToFollowUp, UpcomingItem,
 };
-use crate::features::applications::domain::{Application, ApplicationStatus, ContractType};
+use crate::features::applications::domain::{
+    Application, ApplicationFilter, ApplicationRepository, ApplicationSort,
+};
+use crate::features::applications::infrastructure::SqliteApplicationRepository;
 
 /// Dépôt des analyses sur la base locale.
 pub struct SqliteAnalyticsRepository {
@@ -320,67 +321,17 @@ impl AnalyticsRepository for SqliteAnalyticsRepository {
     }
 
     fn recent(&self, limite: u64) -> AppResult<Vec<Application>> {
-        let conn = connection(&self.pool)?;
-        let mut query = conn
-            .prepare(
-                "SELECT c.id, c.job_title, c.company_id, e.name, e.city, c.contact_id,
-                        c.contract_type, c.status, c.sent_date, c.job_url, c.notes,
-                        c.created_at, c.updated_at
-                 FROM applications c
-                 LEFT JOIN companies e ON e.id = c.company_id
-                 ORDER BY c.updated_at DESC LIMIT ?1",
-            )
-            .map_err(|error| translate_error(error, "candidatures récentes"))?;
-        let mut rows = query
-            .query([limite.max(1)])
-            .map_err(|error| translate_error(error, "candidatures récentes"))?;
-        let mut items = Vec::new();
-        while let Some(row) = rows
-            .next()
-            .map_err(|error| translate_error(error, "candidatures récentes"))?
-        {
-            let contract: String = row
-                .get(6)
-                .map_err(|error| translate_error(error, "candidature récente"))?;
-            let status: String = row
-                .get(7)
-                .map_err(|error| translate_error(error, "candidature récente"))?;
-            items.push(Application {
-                id: uuid_column(row, 0)
-                    .map_err(|error| translate_error(error, "candidature récente"))?,
-                job_title: row
-                    .get(1)
-                    .map_err(|error| translate_error(error, "candidature récente"))?,
-                company_id: uuid_column(row, 2)
-                    .map_err(|error| translate_error(error, "candidature récente"))?,
-                company_name: row
-                    .get(3)
-                    .map_err(|error| translate_error(error, "candidature récente"))?,
-                company_city: row
-                    .get(4)
-                    .map_err(|error| translate_error(error, "candidature récente"))?,
-                contact_id: uuid_column_opt(row, 5)
-                    .map_err(|error| translate_error(error, "candidature récente"))?,
-                contract_type: enum_from_text::<ContractType>(&contract)?,
-                status: enum_from_text::<ApplicationStatus>(&status)?,
-                sent_date: row
-                    .get(8)
-                    .map_err(|error| translate_error(error, "candidature récente"))?,
-                job_url: row
-                    .get(9)
-                    .map_err(|error| translate_error(error, "candidature récente"))?,
-                notes: row
-                    .get(10)
-                    .map_err(|error| translate_error(error, "candidature récente"))?,
-                created_at: row
-                    .get(11)
-                    .map_err(|error| translate_error(error, "candidature récente"))?,
-                updated_at: row
-                    .get(12)
-                    .map_err(|error| translate_error(error, "candidature récente"))?,
-            });
-        }
-        Ok(items)
+        // Les candidatures récentes sont exactement celles du suivi, triées autrement : le
+        // dépôt des candidatures sait déjà résoudre les jointures et les valeurs héritées,
+        // et en recopier la requête ici en ferait une seconde à maintenir.
+        let filter = ApplicationFilter {
+            sort: ApplicationSort::Date,
+            descending: true,
+            ..ApplicationFilter::default()
+        };
+        Ok(SqliteApplicationRepository::new(self.pool.clone())
+            .list_page(1, limite.max(1), &filter)?
+            .items)
     }
 }
 

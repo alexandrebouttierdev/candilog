@@ -6,7 +6,7 @@ use super::*;
 /// valide à la création pourrait être rendue invalide par une édition.
 #[test]
 fn test_modifier_valide_les_memes_regles_que_creer() {
-    let service = ApplicationService::new(StubRepo);
+    let service = ApplicationService::new(StubRepo::default());
     let mut input = new("Développeur");
     input.sent_date = "20-08-2026".into();
 

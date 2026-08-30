@@ -1,8 +1,30 @@
-//! Contract d'accès aux entreprises.
+//! Contrat d'accès aux entreprises.
 
 use crate::core::errors::AppResult;
 use crate::core::pagination::Page;
 use crate::features::companies::domain::company::{Company, NewCompany};
+use crate::features::companies::domain::company_size::CompanySize;
+use serde::{Deserialize, Serialize};
+
+/// Critères du répertoire, appliqués par `SQLite` avant pagination.
+///
+/// Les trois dimensions restent séparées : le secteur qualifie l'activité, le type la
+/// nature de l'organisation, la taille son effectif. Une entreprise peut être « ESN + PME »
+/// comme « Association + TPE ».
+#[derive(Debug, Clone, Default, Serialize, Deserialize, ts_rs::TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "companies.ts")]
+pub struct CompanyFilter {
+    /// Recherche libre sur le nom et la ville.
+    #[serde(default)]
+    pub search: String,
+    /// Secteur d'activité retenu.
+    pub sector_id: Option<uuid::Uuid>,
+    /// Nature de l'organisation retenue.
+    pub company_type_id: Option<String>,
+    /// Taille retenue.
+    pub company_size: Option<CompanySize>,
+}
 
 /// Accès au répertoire des entreprises.
 ///
@@ -11,7 +33,7 @@ use crate::features::companies::domain::company::{Company, NewCompany};
 /// pagination, et le défaut resterait invisible jusqu'à ce que le répertoire grossisse.
 /// Chaque implémentation dit donc explicitement comment elle pagine.
 pub trait CompanyRepository: Send + Sync {
-    /// List toutes les entreprises, triées par nom.
+    /// Liste toutes les entreprises, triées par nom.
     ///
     /// Réservé aux usages qui ont réellement besoin de l'ensemble — alimenter un sélecteur
     /// d'entreprise, par exemple. Les écrans de liste passent par [`list_page`](Self::list_page).
@@ -26,7 +48,7 @@ pub trait CompanyRepository: Send + Sync {
     /// `AppError::NotFound` si l'identifiant est inconnu.
     fn get(&self, id: uuid::Uuid) -> AppResult<Company>;
 
-    /// Payload une page filtrée par recherche libre et par type.
+    /// Renvoie une page filtrée par recherche libre, secteur, type et taille.
     ///
     /// # Errors
     /// Retourne `AppError::Database` si la requête échoue.
@@ -34,20 +56,13 @@ pub trait CompanyRepository: Send + Sync {
         &self,
         page: u64,
         page_size: u64,
-        search: &str,
-        company_type: Option<&str>,
+        filter: &CompanyFilter,
     ) -> AppResult<Page<Company>>;
-
-    /// List les types non vides réellement présents, pour alimenter le filtre.
-    ///
-    /// # Errors
-    /// Retourne `AppError::Database` si la requête échoue.
-    fn list_types(&self) -> AppResult<Vec<String>>;
 
     /// Crée une entreprise.
     ///
     /// # Errors
-    /// Retourne `AppError::Database` si l'insertion échoue.
+    /// `AppError::Validation` si le secteur ou le type référencé est inconnu.
     fn create(&self, input: &NewCompany) -> AppResult<Company>;
 
     /// Remplace les champs d'une entreprise.

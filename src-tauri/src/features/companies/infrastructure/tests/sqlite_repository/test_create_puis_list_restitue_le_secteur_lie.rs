@@ -1,35 +1,37 @@
 //! Cas de test isolé.
 
 use super::*;
-use crate::features::sectors::domain::SectorRepository;
-use crate::features::sectors::infrastructure::SqliteSectorRepository;
 
+/// Le libellé du secteur n'est pas stocké : il est résolu par jointure, ce qui évite deux
+/// sources de vérité que rien ne garderait d'accord.
 #[test]
 fn create_puis_list_restitue_le_secteur_lie() {
-    let pool = open_pool(None).unwrap();
-    run_local_migrations(&pool).unwrap();
-    let sectors = SqliteSectorRepository::new(pool.clone());
-    sectors.ensure_catalog().unwrap();
-    let repo = SqliteCompanyRepository::new(pool);
-    let reference = sectors.list().unwrap().remove(0);
+    let repo = repo();
+    let sector_id = uuid::Uuid::parse_str(SECTEUR_INFORMATIQUE).unwrap();
+    let mut entree = entree("Agrial");
+    entree.sector_id = Some(sector_id);
 
-    let creee = repo
-        .create(&NewCompany {
-            name: "Agrial".into(),
-            sector_id: Some(reference.id),
-            sector: Some(reference.name.clone()),
-            type_: None,
-            website: None,
-            city: None,
-            address: None,
-            notes: None,
-        })
-        .unwrap();
-    assert_eq!(creee.sector_id, Some(reference.id));
-    assert_eq!(creee.sector.as_deref(), Some(reference.name.as_str()));
+    let creee = repo.create(&entree).unwrap();
+    assert_eq!(creee.sector_id, Some(sector_id));
+    assert_eq!(
+        creee.sector_name.as_deref(),
+        Some("Informatique / Télécommunication")
+    );
 
     let list = repo.list().unwrap();
     assert_eq!(list.len(), 1);
-    assert_eq!(list[0].sector_id, Some(reference.id));
-    assert_eq!(list[0].sector.as_deref(), Some(reference.name.as_str()));
+    assert_eq!(list[0].sector_id, Some(sector_id));
+    assert_eq!(
+        list[0].sector_name.as_deref(),
+        Some("Informatique / Télécommunication")
+    );
+}
+
+#[test]
+fn un_secteur_hors_referentiel_est_refuse() {
+    let repo = repo();
+    let mut entree = entree("Agrial");
+    entree.sector_id = Some(uuid::Uuid::new_v4());
+
+    assert!(matches!(repo.create(&entree), Err(AppError::Validation(_))));
 }

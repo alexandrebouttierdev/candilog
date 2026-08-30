@@ -10,7 +10,7 @@ use crate::features::documents::presentation::commands as documents;
 use crate::features::followups::presentation::commands as followups;
 use crate::features::interviews::presentation::commands as interviews;
 use crate::features::profile::presentation::commands as profile;
-use crate::features::sectors::presentation::commands as sectors;
+use crate::features::referentials::presentation::commands as referentials;
 use crate::features::settings::presentation::commands as settings;
 
 /// Démarre Candilog : journal, état applicatif, plugins, commandes.
@@ -51,7 +51,6 @@ pub fn run() {
             applications::applications_export_csv,
             companies::companies_list,
             companies::companies_list_page,
-            companies::companies_list_types,
             companies::companies_get,
             companies::companies_create,
             companies::companies_update,
@@ -103,7 +102,7 @@ pub fn run() {
             followups::follow_ups_create,
             followups::follow_ups_update,
             followups::follow_ups_delete,
-            sectors::sectors_list,
+            referentials::referentials_load,
         ])
         .run(tauri::generate_context!())
     {

@@ -1,8 +1,8 @@
 import { ipc } from "@/shared/services/ipc";
-import type { Company, NewCompany } from "@/shared/types/generated/companies";
+import type { Company, CompanyFilter, NewCompany } from "@/shared/types/generated/companies";
 import type { Page } from "@/shared/types/page";
 
-export type { Company, NewCompany };
+export type { Company, CompanyFilter, NewCompany };
 
 /**
  * Seule couche du frontend qui connaisse les commandes Tauri des entreprises.
@@ -14,22 +14,9 @@ export const companyService = {
   /** Toutes les entreprises, pour alimenter un sélecteur. */
   list: () => ipc<Company[]>("companies_list"),
 
-  /** Une page du répertoire, filtrée par recherche libre et par type. */
-  listPage: (params: {
-    page: number;
-    page_size: number;
-    search: string;
-    company_type: string | null;
-  }) =>
-    ipc<Page<Company>>("companies_list_page", {
-      page: params.page,
-      page_size: params.page_size,
-      search: params.search,
-      company_type: params.company_type,
-    }),
-
-  /** Types réellement présents, pour alimenter le filtre. */
-  listTypes: () => ipc<string[]>("companies_list_types"),
+  /** Une page du répertoire, filtrée par recherche libre, secteur, type et taille. */
+  listPage: (params: { page: number; page_size: number; filter: CompanyFilter }) =>
+    ipc<Page<Company>>("companies_list_page", params),
 
   get: (id: string) => ipc<Company>("companies_get", { id }),
 

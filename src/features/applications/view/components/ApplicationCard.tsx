@@ -1,6 +1,5 @@
 import type { DragEvent } from "react";
 import type { Application } from "../../services/applicationService";
-import { contract_label } from "../../model/statuses";
 import { daysFrom, versDateAffichee } from "@/shared/lib/dates";
 import { Icon, Tag } from "@/shared/ui";
 import { cn } from "@/shared/lib/cn";
@@ -117,10 +116,10 @@ export function ApplicationCard({
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5">
-        <Tag>{contract_label(application.contract_type)}</Tag>
-        {application.company_city ? (
+        <Tag>{application.contract_type_name ?? application.contract_type_code}</Tag>
+        {application.effective_city ? (
           <span className="truncate text-eyebrow font-normal tracking-normal text-ink-faint">
-            {application.company_city}
+            {application.effective_city}
           </span>
         ) : null}
         <span className="flex-1" />

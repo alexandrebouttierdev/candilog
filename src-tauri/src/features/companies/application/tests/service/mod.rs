@@ -1,6 +1,6 @@
 //! Helpers communs et déclaration des cas de test.
 use super::*;
-use crate::features::companies::domain::Company;
+use crate::features::companies::domain::{Company, CompanySize};
 
 /// Entreprise de test, renvoyée par le dépôt double.
 fn ent(name: &str) -> Company {
@@ -8,8 +8,10 @@ fn ent(name: &str) -> Company {
         id: uuid::Uuid::nil(),
         name: name.into(),
         sector_id: None,
-        sector: None,
-        type_: None,
+        sector_name: None,
+        company_type_id: None,
+        company_type_name: None,
+        company_size: CompanySize::Unknown,
         website: None,
         city: None,
         address: None,
@@ -24,8 +26,8 @@ fn new(name: &str) -> NewCompany {
     NewCompany {
         name: name.into(),
         sector_id: None,
-        sector: None,
-        type_: None,
+        company_type_id: None,
+        company_size: CompanySize::Unknown,
         website: None,
         city: None,
         address: None,
@@ -50,8 +52,7 @@ impl CompanyRepository for StubRepo {
         &self,
         page: u64,
         page_size: u64,
-        _search: &str,
-        _company_type: Option<&str>,
+        _filter: &CompanyFilter,
     ) -> AppResult<crate::core::pagination::Page<Company>> {
         Ok(crate::core::pagination::Page::new(
             vec![],
@@ -59,9 +60,6 @@ impl CompanyRepository for StubRepo {
             page,
             page_size,
         ))
-    }
-    fn list_types(&self) -> AppResult<Vec<String>> {
-        Ok(vec![])
     }
     fn create(&self, input: &NewCompany) -> AppResult<Company> {
         Ok(ent(&input.name))

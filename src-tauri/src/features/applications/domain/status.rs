@@ -1,4 +1,4 @@
-//! Status et type de contrat d'une candidature.
+//! Statut d'une candidature dans le pipeline.
 
 use serde::{Deserialize, Serialize};
 
@@ -31,50 +31,6 @@ impl std::fmt::Display for ApplicationStatus {
             Self::FollowedUp => "Relancée",
             Self::Interview => "Entretien",
             Self::Rejected => "Refusée",
-        })
-    }
-}
-
-/// Type de contrat visé.
-///
-/// Les valeurs sérialisées reprennent la casse exacte stockée en base et contrainte par le
-/// `CHECK` de `init_schema` : les renommer romprait la lecture des données existantes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ts_rs::TS)]
-#[ts(export, export_to = "applications.ts")]
-pub enum ContractType {
-    /// Contract à durée indéterminée.
-    #[serde(rename = "CDI")]
-    Cdi,
-    /// Contract à durée déterminée.
-    #[serde(rename = "CDD")]
-    Cdd,
-    /// Mission freelance.
-    #[serde(rename = "Freelance")]
-    Freelance,
-    /// Stage.
-    #[serde(rename = "Stage")]
-    Stage,
-    /// Alternance.
-    #[serde(rename = "Alternance")]
-    Alternance,
-    /// Intérim.
-    #[serde(rename = "Interim")]
-    Interim,
-    /// Autre type de contrat.
-    #[serde(rename = "Autre")]
-    Other,
-}
-
-impl std::fmt::Display for ContractType {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        formatter.write_str(match self {
-            Self::Cdi => "CDI",
-            Self::Cdd => "CDD",
-            Self::Freelance => "Freelance",
-            Self::Stage => "Stage",
-            Self::Alternance => "Alternance",
-            Self::Interim => "Intérim",
-            Self::Other => "Autre",
         })
     }
 }

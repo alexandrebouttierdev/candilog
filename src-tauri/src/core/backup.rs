@@ -54,6 +54,9 @@ pub fn validate(path: &Path) -> AppResult<()> {
         "settings",
         "profile",
         "sectors",
+        "professional_domains",
+        "company_types",
+        "contract_types",
         "status_history",
         "follow_ups",
         "interviews",
@@ -138,8 +141,12 @@ fn path_de_secours(db_path: &Path) -> PathBuf {
     }
 }
 
-/// Vide les données utilisateur en conservant le schéma, les migrations et le référentiel
-/// des secteurs.
+/// Vide les données utilisateur en conservant le schéma, les migrations et les quatre
+/// référentiels métier.
+///
+/// Les référentiels ne sont pas des données utilisateur : les effacer laisserait les
+/// formulaires sans options et rendrait toute nouvelle candidature impossible à créer, la
+/// clé étrangère du contrat étant `NOT NULL`.
 ///
 /// # Errors
 /// Retourne une erreur si la transaction SQLite échoue.
@@ -226,7 +233,7 @@ mod tests {
     }
 
     #[test]
-    fn reset_conserve_le_referentiel_des_secteurs() {
+    fn reset_conserve_les_referentiels_metier() {
         let pool = open_pool(None).unwrap();
         run_local_migrations(&pool).unwrap();
         {
@@ -243,14 +250,21 @@ mod tests {
             .query_row("SELECT COUNT(*) FROM app_kv", [], |row| row.get(0))
             .unwrap();
         assert_eq!(kv, 0);
-        let sectors: i64 = conn
-            .query_row(
-                "SELECT COUNT(*) FROM sqlite_master WHERE name = 'sectors'",
-                [],
-                |row| row.get(0),
-            )
-            .unwrap();
-        assert_eq!(sectors, 1);
+        // Les quatre catalogues survivent à la remise à zéro : sans eux, plus aucune
+        // candidature ne pourrait être créée.
+        for (table, attendu) in [
+            ("sectors", 23),
+            ("professional_domains", 22),
+            ("contract_types", 22),
+            ("company_types", 38),
+        ] {
+            let total: i64 = conn
+                .query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |row| {
+                    row.get(0)
+                })
+                .unwrap();
+            assert_eq!(total, attendu, "{table} vidé par la remise à zéro");
+        }
     }
 
     #[test]
@@ -268,7 +282,7 @@ mod tests {
                     "INSERT INTO companies (id, name, created_at, updated_at)
                         VALUES ('e1', 'Acme', '2026-01-01', '2026-01-01');
                      INSERT INTO applications
-                        (id, company_id, job_title, contract_type, status, sent_date, created_at, updated_at)
+                        (id, company_id, job_title, contract_type_code, status, sent_date, created_at, updated_at)
                         VALUES ('c1', 'e1', 'Dev', 'CDI', 'EN_ATTENTE', '2026-01-01', '2026-01-01', '2026-01-01');",
                 )
                 .unwrap();

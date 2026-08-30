@@ -2,7 +2,7 @@ use super::*;
 use crate::core::database::helpers::connection;
 use crate::features::applications::domain::{ApplicationFilter, ApplicationRepository};
 use crate::features::applications::infrastructure::SqliteApplicationRepository;
-use crate::features::companies::domain::CompanyRepository;
+use crate::features::companies::domain::{CompanyFilter, CompanyRepository};
 use crate::features::companies::infrastructure::SqliteCompanyRepository;
 use crate::features::contacts::domain::ContactRepository;
 use crate::features::contacts::infrastructure::SqliteContactRepository;
@@ -42,10 +42,13 @@ fn controle_de_volume_pagination_et_indexes() {
         }
     }
     {
-        let mut insert = tx.prepare(
-            "INSERT INTO applications (id, company_id, job_title, contract_type, status, sent_date, created_at, updated_at)
+        let mut insert = tx
+            .prepare(
+                "INSERT INTO applications (id, company_id, job_title, contract_type_code, status,
+                sent_date, created_at, updated_at)
              VALUES (?1, ?2, ?3, 'CDI', 'EN_ATTENTE', '2026-08-30', ?4, ?4)",
-        ).unwrap();
+            )
+            .unwrap();
         for index in 0_u128..10_000 {
             insert
                 .execute(rusqlite::params![
@@ -88,7 +91,7 @@ fn controle_de_volume_pagination_et_indexes() {
     tx.commit().unwrap();
 
     let companies = SqliteCompanyRepository::new(pool.clone())
-        .list_page(1_250, 8, "", None)
+        .list_page(1_250, 8, &CompanyFilter::default())
         .unwrap();
     assert_eq!(companies.total, 10_000);
     assert_eq!(companies.items.len(), 8);

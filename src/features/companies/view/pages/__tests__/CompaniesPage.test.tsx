@@ -9,14 +9,18 @@ import { companyService } from "../../../services/companyService";
 import type { Company } from "../../../services/companyService";
 import { applicationService } from "@/features/applications/services/applicationService";
 import { useUiStore } from "@/shared/lib/ui-store";
+import { referentialService } from "@/features/referentials/services/referentialService";
+import { REFERENTIELS_DE_TEST } from "@/shared/lib/test-utils";
 
 function ent(name: string): Company {
   return {
     id: name,
     name,
     sector_id: null,
-    sector: null,
-    type: "ESN",
+    sector_name: null,
+    company_type_id: "IT_SERVICES_COMPANY",
+    company_type_name: "ESN / Société de services numériques",
+    company_size: "PME",
     website: null,
     city: null,
     address: null,
@@ -47,7 +51,7 @@ beforeEach(() => {
     page_size: 8,
     total_pages: 1,
   });
-  vi.spyOn(companyService, "listTypes").mockResolvedValue(["ESN", "Cabinet"]);
+  vi.spyOn(referentialService, "load").mockResolvedValue(REFERENTIELS_DE_TEST);
   vi.spyOn(applicationService, "listPage").mockResolvedValue({
     items: [],
     total: 0,
@@ -86,12 +90,12 @@ describe("écran Entreprises — barre de filtres", () => {
     await waitFor(() => expect(screen.getAllByText("Nova Digital").length).toBeGreaterThan(0));
 
     await userEvent.click(screen.getByRole("button", { name: "Filtres" }));
-    await userEvent.click(screen.getByRole("button", { name: "Cabinet" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Client final" }));
 
+    // L'assertion porte sur l'argument réellement transmis : le code est persisté, pas le
+    // libellé français affiché dans le menu.
     await waitFor(() =>
-      expect(listPage).toHaveBeenLastCalledWith(
-        expect.objectContaining({ company_type: "Cabinet" }),
-      ),
+      expect(listPage.mock.lastCall?.[0].filter.company_type_id).toBe("FINAL_CLIENT"),
     );
   });
 });

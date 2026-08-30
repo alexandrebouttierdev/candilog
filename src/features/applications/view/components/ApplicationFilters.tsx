@@ -1,6 +1,15 @@
 import { useState, type ReactNode } from "react";
 import { type ApplicationFilterValues } from "../../model/schemas/application-filter.schema";
-import { Contracts, Statuses, contract_label } from "../../model/statuses";
+import { Statuses } from "../../model/statuses";
+import {
+  ApplicationTypes,
+  CompanySizes,
+  WeeklyWorkSchedules,
+  formatHours,
+  referenceLabel,
+  useReferentials,
+} from "@/features/referentials";
+import type { ReferenceItem } from "@/features/referentials";
 import { FORMAT_DATE, versDateAffichee, versDateIso } from "@/shared/lib/dates";
 import {
   ActiveFilterChip,
@@ -32,19 +41,30 @@ function periodValue(start: string | null, end: string | null): string | null {
   return null;
 }
 
+/** Libellé de l'amplitude horaire retenue, ou `null` si aucune borne n'est posée. */
+function hoursValue(min: number | null, max: number | null): string | null {
+  if (min !== null && max !== null) return `${formatHours(min)} → ${formatHours(max)} h`;
+  if (min !== null) return `À partir de ${formatHours(min)} h`;
+  if (max !== null) return `Jusqu'à ${formatHours(max)} h`;
+  return null;
+}
+
 function CompactField({
   value,
   placeholder,
+  inputMode,
   onChange,
 }: {
   value: string;
   placeholder: string;
+  inputMode?: "decimal";
   onChange: (value: string) => void;
 }) {
   return (
     <input
       value={value}
       placeholder={placeholder}
+      inputMode={inputMode}
       onChange={(event) => onChange(event.target.value)}
       className={cn(
         "h-[25px] min-h-[25px] w-full rounded-chip border border-control bg-fill px-2 text-label text-ink",
@@ -67,8 +87,19 @@ function affichee(iso: string | null): string {
   return iso ? versDateAffichee(iso) : "";
 }
 
+/** Nombre saisi au clavier, virgule décimale acceptée ; `null` si vide ou invalide. */
+function versHeures(raw: string): number | null {
+  const trimmed = raw.trim();
+  if (trimmed === "") return null;
+  const hours = Number(trimmed.replace(",", "."));
+  return Number.isFinite(hours) && hours > 0 ? hours : null;
+}
+
 /**
- * Toolbar du suivi : recherche 300 px, bouton Filtres, chips, actions.
+ * Barre d'outils du suivi : recherche, menu de filtres, chips, actions.
+ *
+ * Les options des quatre référentiels viennent de la base, jamais d'une liste écrite ici :
+ * une seconde copie divergerait au premier ajout.
  */
 export function ApplicationFilters({
   search,
@@ -90,6 +121,7 @@ export function ApplicationFilters({
   onReset: () => void;
   actions?: ReactNode;
 }) {
+  const referentials = useReferentials();
   const [start, setStart] = useState(() => affichee(filters.start_date));
   const [end, setEnd] = useState(() => affichee(filters.end_date));
   const [startError, setStartError] = useState<string | undefined>();
@@ -128,7 +160,27 @@ export function ApplicationFilters({
     setError(messageDate(raw, auBlur));
   };
 
+  /** Groupe de cases à cocher alimenté par un référentiel de la base. */
+  const groupeReferentiel = (
+    label: string,
+    items: readonly ReferenceItem[],
+    selection: readonly string[],
+    key: "contract_type_code" | "professional_domain_id" | "company_type_id",
+  ) => (
+    <FilterGroup label={label}>
+      {items.map((item) => (
+        <FilterOption
+          key={item.code}
+          label={item.name}
+          selected={selection.includes(item.code)}
+          onSelect={() => onApply(patch(filters, { [key]: toggle(selection, item.code) }))}
+        />
+      ))}
+    </FilterGroup>
+  );
+
   const period = periodValue(filters.start_date, filters.end_date);
+  const hours = hoursValue(filters.min_weekly_hours, filters.max_weekly_hours);
 
   return (
     <FilterBar actions={actions}>
@@ -151,17 +203,104 @@ export function ApplicationFilters({
             />
           ))}
         </FilterGroup>
-        <FilterGroup label="Contrat">
-          {Contracts.map((contract) => (
+        <FilterGroup label="Type de candidature">
+          {ApplicationTypes.map((type) => (
             <FilterOption
-              key={contract}
-              label={contract_label(contract)}
-              selected={filters.contract.includes(contract)}
+              key={type.value}
+              label={type.label}
+              selected={filters.application_type.includes(type.value)}
               onSelect={() =>
-                onApply(patch(filters, { contract: toggle(filters.contract, contract) }))
+                onApply(
+                  patch(filters, {
+                    application_type: toggle(filters.application_type, type.value),
+                  }),
+                )
               }
             />
           ))}
+        </FilterGroup>
+        {groupeReferentiel(
+          "Contrat",
+          referentials.data.contract_types,
+          filters.contract_type_code,
+          "contract_type_code",
+        )}
+        {groupeReferentiel(
+          "Domaine professionnel",
+          referentials.data.professional_domains,
+          filters.professional_domain_id,
+          "professional_domain_id",
+        )}
+        {groupeReferentiel(
+          "Type d'entreprise",
+          referentials.data.company_types,
+          filters.company_type_id,
+          "company_type_id",
+        )}
+        <FilterGroup label="Secteur d'activité">
+          {referentials.data.sectors.map((sector) => (
+            <FilterOption
+              key={sector.id}
+              label={sector.name}
+              selected={filters.sector_id.includes(sector.id)}
+              onSelect={() =>
+                onApply(patch(filters, { sector_id: toggle(filters.sector_id, sector.id) }))
+              }
+            />
+          ))}
+        </FilterGroup>
+        <FilterGroup label="Taille d'entreprise">
+          {CompanySizes.map((size) => (
+            <FilterOption
+              key={size.value}
+              label={size.label}
+              selected={filters.company_size.includes(size.value)}
+              onSelect={() =>
+                onApply(
+                  patch(filters, { company_size: toggle(filters.company_size, size.value) }),
+                )
+              }
+            />
+          ))}
+        </FilterGroup>
+        <FilterGroup label="Durée hebdomadaire">
+          {WeeklyWorkSchedules.map((schedule) => (
+            <FilterOption
+              key={schedule.value}
+              label={schedule.label}
+              selected={filters.weekly_work_schedule.includes(schedule.value)}
+              onSelect={() =>
+                onApply(
+                  patch(filters, {
+                    weekly_work_schedule: toggle(
+                      filters.weekly_work_schedule,
+                      schedule.value,
+                    ),
+                  }),
+                )
+              }
+            />
+          ))}
+        </FilterGroup>
+        <FilterGroup label="Heures par semaine">
+          <div className="flex w-full items-center gap-1.5">
+            <CompactField
+              value={filters.min_weekly_hours === null ? "" : String(filters.min_weekly_hours)}
+              placeholder="min"
+              inputMode="decimal"
+              onChange={(value) =>
+                onApply(patch(filters, { min_weekly_hours: versHeures(value) }))
+              }
+            />
+            <CompactField
+              value={filters.max_weekly_hours === null ? "" : String(filters.max_weekly_hours)}
+              placeholder="max"
+              inputMode="decimal"
+              onChange={(value) =>
+                onApply(patch(filters, { max_weekly_hours: versHeures(value) }))
+              }
+            />
+          </div>
         </FilterGroup>
         <FilterGroup label="Poste">
           <CompactField
@@ -205,9 +344,7 @@ export function ApplicationFilters({
                 setEnd(event.target.value);
                 commitDate(event.target.value, "end_date", setEndError, false);
               }}
-              onBlur={(event) =>
-                commitDate(event.target.value, "end_date", setEndError, true)
-              }
+              onBlur={(event) => commitDate(event.target.value, "end_date", setEndError, true)}
             />
             {startError || endError ? (
               <p className="text-meta leading-[1.45] text-danger">{startError ?? endError}</p>
@@ -226,18 +363,121 @@ export function ApplicationFilters({
           }
         />
       ))}
-      {filters.contract.map((value) => (
+      {filters.application_type.map((value) => (
         <ActiveFilterChip
-          key={`contract-${value}`}
-          field="Contrat"
-          value={contract_label(value)}
+          key={`type-${value}`}
+          field="Candidature"
+          value={ApplicationTypes.find((type) => type.value === value)?.label ?? value}
           onRemove={() =>
             onApply(
-              patch(filters, { contract: filters.contract.filter((item) => item !== value) }),
+              patch(filters, {
+                application_type: filters.application_type.filter((item) => item !== value),
+              }),
             )
           }
         />
       ))}
+      {filters.contract_type_code.map((value) => (
+        <ActiveFilterChip
+          key={`contract-${value}`}
+          field="Contrat"
+          value={referenceLabel(referentials.data.contract_types, value) ?? value}
+          onRemove={() =>
+            onApply(
+              patch(filters, {
+                contract_type_code: filters.contract_type_code.filter((item) => item !== value),
+              }),
+            )
+          }
+        />
+      ))}
+      {filters.professional_domain_id.map((value) => (
+        <ActiveFilterChip
+          key={`domain-${value}`}
+          field="Domaine"
+          value={referenceLabel(referentials.data.professional_domains, value) ?? value}
+          onRemove={() =>
+            onApply(
+              patch(filters, {
+                professional_domain_id: filters.professional_domain_id.filter(
+                  (item) => item !== value,
+                ),
+              }),
+            )
+          }
+        />
+      ))}
+      {filters.company_type_id.map((value) => (
+        <ActiveFilterChip
+          key={`company-type-${value}`}
+          field="Type d'entreprise"
+          value={referenceLabel(referentials.data.company_types, value) ?? value}
+          onRemove={() =>
+            onApply(
+              patch(filters, {
+                company_type_id: filters.company_type_id.filter((item) => item !== value),
+              }),
+            )
+          }
+        />
+      ))}
+      {filters.sector_id.map((value) => (
+        <ActiveFilterChip
+          key={`sector-${value}`}
+          field="Secteur"
+          value={
+            referentials.data.sectors.find((sector) => sector.id === value)?.name ?? value
+          }
+          onRemove={() =>
+            onApply(
+              patch(filters, {
+                sector_id: filters.sector_id.filter((item) => item !== value),
+              }),
+            )
+          }
+        />
+      ))}
+      {filters.company_size.map((value) => (
+        <ActiveFilterChip
+          key={`size-${value}`}
+          field="Taille"
+          value={CompanySizes.find((size) => size.value === value)?.label ?? value}
+          onRemove={() =>
+            onApply(
+              patch(filters, {
+                company_size: filters.company_size.filter((item) => item !== value),
+              }),
+            )
+          }
+        />
+      ))}
+      {filters.weekly_work_schedule.map((value) => (
+        <ActiveFilterChip
+          key={`schedule-${value}`}
+          field="Durée"
+          value={
+            WeeklyWorkSchedules.find((schedule) => schedule.value === value)?.label ?? value
+          }
+          onRemove={() =>
+            onApply(
+              patch(filters, {
+                weekly_work_schedule: filters.weekly_work_schedule.filter(
+                  (item) => item !== value,
+                ),
+              }),
+            )
+          }
+        />
+      ))}
+      {hours ? (
+        <ActiveFilterChip
+          field="Heures"
+          value={hours}
+          onRemove={() =>
+            onApply(patch(filters, { min_weekly_hours: null, max_weekly_hours: null }))
+          }
+        />
+      ) : null}
       {filters.job_title ? (
         <ActiveFilterChip
           field="Poste"

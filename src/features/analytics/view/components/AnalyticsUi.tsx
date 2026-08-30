@@ -9,7 +9,7 @@ import type {
   ActivityWeek,
 } from "@/shared/types/generated/analytics";
 import type { Application } from "@/shared/types/generated/applications";
-import { contract_label, status_meta } from "@/features/applications/model/statuses";
+import { status_meta } from "@/features/applications/model/statuses";
 import { cn } from "@/shared/lib/cn";
 import {
   Button,
@@ -281,8 +281,8 @@ function columnsRecent(): readonly Column<Application>[] {
         <CellIdentity
           initials={initials(application.company_name ?? application.job_title)}
           title={application.job_title}
-          subtitle={`${contract_label(application.contract_type)}${
-            application.company_city ? ` · ${application.company_city}` : ""
+          subtitle={`${application.contract_type_name ?? application.contract_type_code}${
+            application.effective_city ? ` · ${application.effective_city}` : ""
           }`}
         />
       ),

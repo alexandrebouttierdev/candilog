@@ -9,10 +9,14 @@ fn test_entete_precede_les_lignes() {
 
     assert_eq!(
         rows.next(),
-        Some("poste;entreprise;ville;contrat;statut;sent_date;job_url;notes")
+        Some(
+            "poste;entreprise;type_candidature;contrat;duree_hebdomadaire;heures_par_semaine;\
+             domaine_professionnel;type_entreprise;taille_entreprise;ville;adresse;statut;\
+             date_envoi;lien_offre;notes"
+        )
     );
     assert!(rows
         .next()
         .unwrap()
-        .starts_with("Développeur Frontend;Nova Digital;Rennes"));
+        .starts_with("Développeur Frontend;Nova Digital;Offre d'emploi;CDI"));
 }

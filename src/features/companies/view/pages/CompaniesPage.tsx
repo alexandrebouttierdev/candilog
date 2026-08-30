@@ -42,11 +42,10 @@ export function CompaniesPage() {
       <CompanyFilters
         search={vm.search}
         onSearch={vm.rechercher}
-        company_type={vm.company_type}
-        types={vm.types}
+        criteres={vm.criteres}
         count={vm.filtersActifs}
         total={vm.isLoading ? null : vm.total}
-        onSelectType={vm.filtrerParType}
+        onApply={vm.appliquerCriteres}
         onReset={vm.resetFilters}
         actions={
           <Button
@@ -119,12 +118,13 @@ export function CompaniesPage() {
                 initials={wordInitials(company.name)}
                 title={company.name}
                 subtitle={
-                  [company.sector, company.city].filter(Boolean).join(" · ") ||
-                  undefined
+                  [company.sector_name, company.city].filter(Boolean).join(" · ") || undefined
                 }
                 meta={
-                  company.type ? (
-                    <MasterListTag icon="business_center">{company.type}</MasterListTag>
+                  company.company_type_name ? (
+                    <MasterListTag icon="business_center">
+                      {company.company_type_name}
+                    </MasterListTag>
                   ) : undefined
                 }
                 selected={company.id === vm.selection?.id}

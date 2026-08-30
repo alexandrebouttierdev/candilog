@@ -1,15 +1,55 @@
 # Données locales
 
-La base `candilog.sqlite` est résolue par `core::config::AppPaths`. Une release utilise le dossier historique `com.candilog.desktop` du répertoire de données de l'OS ; un binaire debug utilise obligatoirement `src-tauri/.candilog-dev/` (ancré sur `CARGO_MANIFEST_DIR`) afin de ne jamais ouvrir la base utilisateur pendant le développement. Les migrations sont embarquées et appliquées dans l'ordre via `PRAGMA user_version`.
+La base `candilog.sqlite` est résolue par `core::config::AppPaths`. Une release utilise le dossier historique `com.candilog.desktop` du répertoire de données de l'OS ; un binaire debug utilise obligatoirement `src-tauri/.candilog-dev/` (ancré sur `CARGO_MANIFEST_DIR`) afin de ne jamais ouvrir la base utilisateur pendant le développement. Le schéma complet vit dans un seul fichier embarqué, `init_schema.sql`, appliqué via `PRAGMA user_version` : tables, index et semences des référentiels. Aucune migration héritée n'est conservée — une base neuve obtient directement le modèle final.
 
 Les règles de relation restent : entreprise/candidature en `RESTRICT`, candidature/dépendances en `CASCADE`, contact optionnel en `SET NULL`. Les UUID et dates ISO 8601 sont générés en Rust. Les tests n'ouvrent jamais la base utilisateur.
 
-Le référentiel `sectors` porte la liste des secteurs proposée dans le formulaire
-entreprise. Le schéma actuel (`PRAGMA user_version = 1`, fichier unique
-`init_schema.sql`) crée la table `sectors` et la colonne `companies.sector_id` ; les
-lignes canoniques et le rattachement des valeurs libres déjà saisies sont posés au
-démarrage par `SqliteSectorRepository::ensure_catalog()` (idempotent). Le libellé
-`companies.sector` reste dénormalisé pour l'affichage et la recherche.
+## Référentiels métier
+
+Le schéma courant (`PRAGMA user_version = 1`, fichier unique `init_schema.sql`) porte
+quatre catalogues **distincts**, semés par le fichier lui-même en `INSERT OR IGNORE` :
+
+| Table | Clé | Rôle |
+| --- | --- | --- |
+| `sectors` | UUID fixe | secteur d'activité **de l'entreprise** |
+| `professional_domains` | code métier (`M18`) | domaine professionnel **du poste** |
+| `company_types` | code (`IT_SERVICES_COMPANY`) | nature de l'organisation |
+| `contract_types` | code (`MIS`) | type de contrat |
+
+Ces concepts ne sont jamais fusionnés : une banque (`sector`) recrute des informaticiens
+(`professional_domain`). La taille (`companies.company_size`) est une cinquième dimension,
+indépendante du type — « ESN + PME » et « Association + TPE » doivent rester exprimables.
+
+Les identifiants des secteurs sont figés dans `init_schema.sql` plutôt que générés au
+démarrage : une sauvegarde reste ainsi lisible sur une autre installation. Le code métier
+sert de clé primaire aux trois autres catalogues — générer un UUID pour une valeur déjà
+identifiante n'ajouterait qu'une indirection.
+
+La base est l'unique source de ces listes : ni Rust ni React n'en tient de copie. Les
+libellés affichés sont résolus par jointure (`sector_name`, `contract_type_name`,
+`professional_domain_name`), jamais dupliqués en colonne — deux sources de vérité que rien
+ne garderait d'accord.
+
+## Valeurs héritées de l'entreprise
+
+`applications.city`, `applications.address` et `applications.company_type_id` sont des
+**surcharges** : `NULL` signifie « hériter de l'entreprise », jamais « vide ». La valeur
+effective est calculée en SQL (`coalesce(applications.x, companies.x)`) et exposée sous
+`effective_*`. La valeur héritée n'est jamais recopiée dans `applications` : elle se
+figerait, et changer l'entreprise de la candidature laisserait derrière elle la ville de la
+précédente. Les filtres portent donc eux aussi sur l'expression `coalesce`, faute de quoi
+une candidature qui hérite de sa ville échapperait au filtre correspondant.
+
+`company_size` appartient à l'entreprise seule : aucune surcharge n'existe côté
+candidature, et le filtre par taille passe par la jointure sur `companies`.
+
+## Contraintes portées par le schéma
+
+Le service Rust valide, mais n'est pas la seule barrière : `CHECK` sur `company_size`,
+`application_type`, `weekly_work_schedule`, `status`, sur les bornes de `weekly_hours`
+(`0 < h <= 168`), et sur l'exclusion d'un `job_url` pour une candidature `SPONTANEE`. Les
+clés étrangères vers les référentiels sont réelles — `PRAGMA foreign_keys = ON` est posé
+par l'initialiseur de **chaque** connexion du pool.
 
 Les sauvegardes doivent utiliser l'API backup SQLite. Une restauration doit valider l'en-tête, ouvrir la base, exécuter `PRAGMA integrity_check`, vérifier les versions puis remplacer la base avec possibilité de retour arrière.
 

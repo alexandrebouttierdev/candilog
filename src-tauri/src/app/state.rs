@@ -23,8 +23,8 @@ use crate::features::interviews::application::InterviewService;
 use crate::features::interviews::infrastructure::SqliteInterviewRepository;
 use crate::features::profile::application::ProfileService;
 use crate::features::profile::infrastructure::SqliteProfileRepository;
-use crate::features::sectors::application::SectorService;
-use crate::features::sectors::infrastructure::SqliteSectorRepository;
+use crate::features::referentials::application::ReferentialService;
+use crate::features::referentials::infrastructure::SqliteReferentialRepository;
 use crate::features::settings::application::SettingsService;
 use crate::features::settings::infrastructure::SqliteSettingsRepository;
 use std::path::PathBuf;
@@ -50,8 +50,8 @@ pub type SettingsHandle = Arc<SettingsService<SqliteSettingsRepository, SecretSt
 pub type Profile = Arc<ProfileService<SqliteProfileRepository>>;
 /// Service des relances tel que partagé par les commandes.
 pub type FollowUps = Arc<FollowUpService<SqliteFollowUpRepository>>;
-/// Service du référentiel des secteurs tel que partagé par les commandes.
-pub type Sectors = Arc<SectorService<SqliteSectorRepository>>;
+/// Service des référentiels métier tel que partagé par les commandes.
+pub type Referentials = Arc<ReferentialService<SqliteReferentialRepository>>;
 
 /// Dépendances partagées par toutes les commandes.
 ///
@@ -85,8 +85,8 @@ pub struct AppState {
     pub profile: Profile,
     /// Service des relances.
     pub followups: FollowUps,
-    /// Service du référentiel des secteurs d'activité.
-    pub sectors: Sectors,
+    /// Service des quatre référentiels métier.
+    pub referentials: Referentials,
     /// Pool `SQLite` local.
     pub sqlite: SqlitePool,
     /// Path du fichier de base, nécessaire à l'export et à la restauration de sauvegarde.
@@ -122,12 +122,8 @@ impl AppState {
 
     /// Assemble dépôts et services autour d'un pool déjà migré.
     fn sur_pool(pool: SqlitePool, db_path: PathBuf) -> AppResult<Self> {
-        let sectors_repo = SqliteSectorRepository::new(pool.clone());
-        // Le référentiel est garanti au démarrage : le sélecteur du formulaire entreprise
-        // serait vide sur une base neuve, et les secteurs saisis librement dans l'ancienne
-        // application resteraient sans ligne correspondante.
-        sectors_repo.ensure_catalog()?;
-
+        // Les référentiels sont semés par `init_schema.sql` : aucune étape d'amorçage n'est
+        // nécessaire ici, et les listes sont donc identiques d'une installation à l'autre.
         Ok(Self {
             analytics: Arc::new(AnalyticsService::new(SqliteAnalyticsRepository::new(
                 pool.clone(),
@@ -161,7 +157,9 @@ impl AppState {
             followups: Arc::new(FollowUpService::new(SqliteFollowUpRepository::new(
                 pool.clone(),
             ))),
-            sectors: Arc::new(SectorService::new(sectors_repo)),
+            referentials: Arc::new(ReferentialService::new(SqliteReferentialRepository::new(
+                pool.clone(),
+            ))),
             sqlite: pool,
             db_path,
         })

@@ -24,22 +24,42 @@ pub fn vers_csv(applications: &[Application]) -> AppResult<String> {
         .write_record([
             "poste",
             "entreprise",
-            "ville",
+            "type_candidature",
             "contrat",
+            "duree_hebdomadaire",
+            "heures_par_semaine",
+            "domaine_professionnel",
+            "type_entreprise",
+            "taille_entreprise",
+            "ville",
+            "adresse",
             "statut",
-            "sent_date",
-            "job_url",
+            "date_envoi",
+            "lien_offre",
             "notes",
         ])
         .map_err(error("en-tête CSV"))?;
 
     for row in applications {
+        // Ville, adresse et type d'entreprise sont exportés dans leur valeur **effective** :
+        // le CSV est relu hors de l'application, où la règle d'héritage n'existe plus.
         writer
             .write_record([
                 row.job_title.as_str(),
                 row.company_name.as_deref().unwrap_or_default(),
-                row.company_city.as_deref().unwrap_or_default(),
-                &row.contract_type.to_string(),
+                &row.application_type.to_string(),
+                row.contract_type_name
+                    .as_deref()
+                    .unwrap_or(row.contract_type_code.as_str()),
+                &row.weekly_work_schedule.to_string(),
+                &row.weekly_hours.map(|h| h.to_string()).unwrap_or_default(),
+                row.professional_domain_name.as_deref().unwrap_or_default(),
+                row.effective_company_type_name
+                    .as_deref()
+                    .unwrap_or_default(),
+                &row.company_size.to_string(),
+                row.effective_city.as_deref().unwrap_or_default(),
+                row.effective_address.as_deref().unwrap_or_default(),
                 &row.status.to_string(),
                 row.sent_date.as_str(),
                 row.job_url.as_deref().unwrap_or_default(),

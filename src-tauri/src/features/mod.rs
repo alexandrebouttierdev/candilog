@@ -11,5 +11,5 @@ pub mod documents;
 pub mod followups;
 pub mod interviews;
 pub mod profile;
-pub mod sectors;
+pub mod referentials;
 pub mod settings;
