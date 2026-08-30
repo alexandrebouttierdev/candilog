@@ -2,4 +2,4 @@
 
 pub mod app_config;
 
-pub use app_config::AppPaths;
+pub use app_config::{restreindre_fichier, AppPaths};

@@ -5,7 +5,7 @@ import { useAiProgress, useCancelAiOnUnmount } from "@/features/ai/viewmodel/use
 import { AppError } from "@/shared/types/app-error";
 import { Button, EmptyState, ErrorBanner, FormField, Icon, PageHeader, TextArea } from "@/shared/ui";
 import { A4Preview, AiProgress, DocumentPanel, ScoreBadge } from "../components/DocumentUi";
-import { HeaderBadge, Screen, message } from "./documentPageSupport";
+import { HeaderBadge, Screen, TexteNonVerifie, message } from "./documentPageSupport";
 
 export function ResumeAnalysisPage() {
   const [job_offer, setJobOffer] = useState("");
@@ -57,7 +57,13 @@ export function ResumeAnalysisPage() {
           {result ? (
             <>
               <DocumentPanel title="Résultat" icon="analytics">
-                <div className="grid gap-5 p-4 sm:grid-cols-[auto_1fr]"><ScoreBadge value={result.score.total} /><p className="text-body leading-relaxed text-ink-muted">{result.analysis.recap}</p></div>
+                <div className="grid gap-5 p-4 sm:grid-cols-[auto_1fr]">
+                  <ScoreBadge value={result.score.total} />
+                  <div className="space-y-2">
+                    <p className="text-body leading-relaxed text-ink-muted">{result.analysis.recap}</p>
+                    <TexteNonVerifie />
+                  </div>
+                </div>
               </DocumentPanel>
               <DocumentPanel title="Recommandations" icon="tips_and_updates">
                 <ul className="divide-y divide-line">{result.analysis.suggestions.map((s, i) => <li key={i} className="flex gap-3 px-4 py-3 text-body text-ink-muted"><span className="tabular text-accent">{i + 1}</span>{s}</li>)}</ul>

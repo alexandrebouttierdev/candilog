@@ -101,7 +101,28 @@ impl AppPaths {
     /// Sans équivalent portable hors Unix : les ACL Windows héritent du profil utilisateur.
     #[cfg(not(unix))]
     const fn restreindre_acces(_data_dir: &std::path::Path) {}
+}
 
+/// Restreint un fichier de données à son seul propriétaire.
+///
+/// Complète [`AppPaths::restreindre_acces`], qui ne connaît qu'une liste fixe de chemins :
+/// les sauvegardes et la copie de secours prise avant une restauration portent les mêmes
+/// données personnelles que la base, mais vivent où l'utilisateur les demande. Un échec est
+/// journalisé sans interrompre l'opération — le fichier reste exploitable, simplement moins
+/// protégé.
+#[cfg(unix)]
+pub fn restreindre_fichier(path: &std::path::Path) {
+    use std::os::unix::fs::PermissionsExt;
+    if let Err(error) = std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600)) {
+        tracing::warn!(?path, %error, "permissions du fichier non appliquées");
+    }
+}
+
+/// Sans équivalent portable hors Unix : les ACL Windows héritent du profil utilisateur.
+#[cfg(not(unix))]
+pub const fn restreindre_fichier(_path: &std::path::Path) {}
+
+impl AppPaths {
     /// Construit des chemins isolés, notamment pour les tests.
     #[must_use]
     pub fn in_directory(data_dir: PathBuf) -> Self {

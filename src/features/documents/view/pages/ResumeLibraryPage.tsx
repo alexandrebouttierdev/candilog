@@ -7,7 +7,7 @@ import { Button, ConfirmDialog, EmptyState, ErrorBanner, Icon, PageHeader, Pager
 import { A4Preview, PreviewAction } from "../components/DocumentUi";
 import { PAGE_SIZE } from "@/shared/types/page";
 import { useDebounce } from "@/shared/hooks/useDebounce";
-import { AtsChip, HeaderBadge, RESUME_KEY, Screen, date, exportPdf, isGeneration, message } from "./documentPageSupport";
+import { AtsChip, HeaderBadge, RESUME_KEY, Screen, date, detail as detailErreur, exportPdf, isGeneration, message } from "./documentPageSupport";
 
 export function ResumeLibraryPage() {
   const navigate = useNavigate();
@@ -39,6 +39,10 @@ export function ResumeLibraryPage() {
       await queryClient.invalidateQueries({ queryKey: RESUME_KEY });
       notify({ tone: "success", title: "Version supprimée" });
     },
+    onError: (error) => {
+      setDeleteId(null);
+      notify({ tone: "error", title: "Suppression impossible", detail: detailErreur(error) });
+    },
   });
   const dupliquer = useMutation({
     mutationFn: async () => {
@@ -52,6 +56,10 @@ export function ResumeLibraryPage() {
       await queryClient.invalidateQueries({ queryKey: RESUME_KEY });
       notify({ tone: "success", title: "Version dupliquée" });
     },
+    // Une version enregistrée avant le contrôle du contenu peut être refusée à la copie :
+    // sans ce gestionnaire, le clic restait sans effet visible.
+    onError: (error) =>
+      notify({ tone: "error", title: "Duplication impossible", detail: detailErreur(error) }),
   });
   const generation = detail.data && isGeneration(detail.data.content) ? detail.data.content : null;
   const version = detail.data;

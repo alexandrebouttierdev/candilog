@@ -1,20 +1,7 @@
 //! Normalisation commune aux comparaisons IA et ATS.
 
+use crate::core::utils::text::search_key;
 use std::collections::HashSet;
-use unicode_normalization::{char::is_combining_mark, UnicodeNormalization};
-
-/// Produit une clé de recherche insensible à la casse, aux accents et aux espaces répétés.
-#[must_use]
-pub fn search_key(value: &str) -> String {
-    value
-        .nfd()
-        .filter(|character| !is_combining_mark(*character))
-        .flat_map(char::to_lowercase)
-        .collect::<String>()
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ")
-}
 
 /// Déduplique des libellés normalisés tout en conservant le premier libellé original.
 pub(super) fn deduplicate_labels(values: &[String]) -> Vec<String> {
@@ -54,11 +41,6 @@ pub(super) fn contains_search_term(haystack: &str, needle: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn normalise_accents_casse_et_espaces() {
-        assert_eq!(search_key("  CAFÉ\tCrème  "), "cafe creme");
-    }
 
     #[test]
     fn deduplication_conserve_le_premier_libelle() {

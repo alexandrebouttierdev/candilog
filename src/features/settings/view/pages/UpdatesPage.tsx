@@ -67,7 +67,7 @@ export function UpdatesPage() {
     setError(null);
     setProgress(0);
     try {
-      await settingsService.downloadUpdate(update.asset.url, update.asset.name);
+      await settingsService.downloadUpdate();
     } catch (error) {
       setError(error instanceof AppError ? error.message : "Téléchargement impossible.");
     } finally {

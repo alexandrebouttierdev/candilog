@@ -24,7 +24,6 @@ fn test_le_schema_cree_toutes_les_tables() {
         "profile",
         "llm_calls",
         "ats_scores",
-        "ai_cache",
         "app_kv",
     ] {
         let n: i64 = conn
@@ -36,6 +35,17 @@ fn test_le_schema_cree_toutes_les_tables() {
             .unwrap();
         assert_eq!(n, 1, "table {table} absente");
     }
+
+    // `ai_cache` a été retirée : rien ne l'alimentait, et l'écran des réglages proposait de
+    // la vider en annonçant un effet qui ne se produisait jamais (docs/AI.md).
+    let cache: i64 = conn
+        .query_row(
+            "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='ai_cache'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(cache, 0, "ai_cache aurait dû disparaître du schéma");
 }
 
 /// Les colonnes du nouveau modèle sont présentes, et les anciennes ont bien disparu : une

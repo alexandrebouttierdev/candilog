@@ -6,17 +6,22 @@
 
 use crate::core::database::connection::SqlitePool;
 use crate::core::errors::{AppError, AppResult};
+use crate::core::utils::text::search_key;
 use r2d2_sqlite::SqliteConnectionManager;
 use serde::{de::DeserializeOwned, Serialize};
 
 /// Fragment SQL à coller après un `LIKE ?` pour honorer [`like_contains`].
 pub const LIKE_ESCAPE: &str = "ESCAPE char(92)";
 
-/// Motif `LIKE` insensible à la casse, avec `%` / `_` / `\` échappés.
+/// Motif `LIKE` normalisé, avec `%` / `_` / `\` échappés.
+///
+/// La normalisation est celle de [`search_key`], la même que celle appliquée aux colonnes par
+/// la fonction scalaire SQLite du même nom : un motif abaissé par Rust seul ne rencontrerait
+/// jamais une majuscule accentuée, que `lower()` de SQLite laisse intacte.
 #[must_use]
 pub fn like_contains(text: &str) -> String {
     let mut escaped = String::new();
-    for c in text.trim().to_lowercase().chars() {
+    for c in search_key(text).chars() {
         match c {
             '%' | '_' | '\\' => {
                 escaped.push('\\');

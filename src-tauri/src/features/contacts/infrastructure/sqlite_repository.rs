@@ -7,6 +7,7 @@ use crate::core::database::helpers::{
 use crate::core::database::SqlitePool;
 use crate::core::errors::{AppError, AppResult};
 use crate::core::pagination::{clamp_page_size, Page};
+use crate::core::utils::text::search_key;
 use crate::features::contacts::domain::{Contact, ContactRepository, NewContact};
 
 /// Implémentation `SQLite` du dépôt de contacts.
@@ -93,18 +94,18 @@ impl ContactRepository for SqliteContactRepository {
         let page = page.max(1);
         let page_size = clamp_page_size(page_size);
         let needle = like_contains(search);
-        let selected_role = tracking_role.unwrap_or_default().trim().to_lowercase();
+        let selected_role = search_key(tracking_role.unwrap_or_default());
         // `?1 = '%%'` court-circuite le filtre lorsque la recherche est vide : sans ce test,
         // les contacts dont le poste ou l'e-mail est NULL seraient exclus par les `LIKE`.
         let filter = format!(
             "WHERE (?1 = '%%' \
-             OR lower(c.first_name) LIKE ?1 {LIKE_ESCAPE} \
-             OR lower(c.name) LIKE ?1 {LIKE_ESCAPE} \
-             OR lower(coalesce(c.job_title, '')) LIKE ?1 {LIKE_ESCAPE} \
-             OR lower(coalesce(c.tracking_role, '')) LIKE ?1 {LIKE_ESCAPE} \
-             OR lower(coalesce(c.email, '')) LIKE ?1 {LIKE_ESCAPE} \
-             OR lower(coalesce(e.name, '')) LIKE ?1 {LIKE_ESCAPE}) \
-             AND (?2 = '' OR lower(trim(coalesce(c.tracking_role, ''))) = ?2)"
+             OR search_key(c.first_name) LIKE ?1 {LIKE_ESCAPE} \
+             OR search_key(c.name) LIKE ?1 {LIKE_ESCAPE} \
+             OR search_key(coalesce(c.job_title, '')) LIKE ?1 {LIKE_ESCAPE} \
+             OR search_key(coalesce(c.tracking_role, '')) LIKE ?1 {LIKE_ESCAPE} \
+             OR search_key(coalesce(c.email, '')) LIKE ?1 {LIKE_ESCAPE} \
+             OR search_key(coalesce(e.name, '')) LIKE ?1 {LIKE_ESCAPE}) \
+             AND (?2 = '' OR search_key(coalesce(c.tracking_role, '')) = ?2)"
         );
         let total: u64 = conn
             .query_row(

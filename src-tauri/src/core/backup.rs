@@ -1,11 +1,17 @@
 //! Backup et validation des bases SQLite Candilog.
 
+use crate::core::config::restreindre_fichier;
 use crate::core::database::{run_local_migrations, validate_database_file, SqlitePool};
 use crate::core::errors::{AppError, AppResult};
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
 /// Exporte un instantané cohérent via l'API backup SQLite.
+///
+/// Le fichier produit est restreint à son propriétaire avant d'être rempli : il contient
+/// l'intégralité des données personnelles, et le `umask` de session le laisserait autrement
+/// en `644` — y compris la copie de secours de [`import`], qui survit à un échec de
+/// restauration (`docs/DATA.md`).
 ///
 /// # Errors
 /// Retourne une erreur si la source ou la destination ne peuvent pas être ouvertes.
@@ -15,6 +21,9 @@ pub fn export(pool: &SqlitePool, destination: &Path) -> AppResult<()> {
         .map_err(|error| AppError::Database(error.to_string()))?;
     source.execute_batch("PRAGMA wal_checkpoint(PASSIVE);")?;
     let mut target = rusqlite::Connection::open(destination)?;
+    // Avant l'écriture : entre la création du fichier et la fin de la copie, il ne doit
+    // exister aucune fenêtre pendant laquelle les données seraient lisibles par un tiers.
+    restreindre_fichier(destination);
     let backup = rusqlite::backup::Backup::new(&source, &mut target)?;
     backup
         .run_to_completion(5, std::time::Duration::from_millis(100), None)
@@ -168,22 +177,9 @@ pub fn reset_data(pool: &SqlitePool) -> AppResult<()> {
          DELETE FROM settings;
          DELETE FROM llm_calls;
          DELETE FROM ats_scores;
-         DELETE FROM ai_cache;
          DELETE FROM app_kv;",
     )?;
     transaction.commit()?;
-    Ok(())
-}
-
-/// Vide uniquement le cache des réponses IA.
-///
-/// # Errors
-/// Retourne une erreur si la table ne peut pas être vidée.
-pub fn clear_ai_cache(pool: &SqlitePool) -> AppResult<()> {
-    let connection = pool
-        .get()
-        .map_err(|error| AppError::Database(error.to_string()))?;
-    connection.execute("DELETE FROM ai_cache", [])?;
     Ok(())
 }
 
@@ -230,6 +226,34 @@ mod tests {
         run_local_migrations(&pool).unwrap();
         export(&pool, &destination).unwrap();
         validate(&destination).unwrap();
+    }
+
+    /// La copie de secours prise par [`import`] et la sauvegarde choisie par l'utilisateur
+    /// portent l'intégralité des données personnelles. Créées sous le `umask` de session,
+    /// elles étaient lisibles en `644` alors que la base elle-même est en `600`, et la copie
+    /// de secours survit à un échec de restauration.
+    #[cfg(unix)]
+    #[test]
+    fn une_sauvegarde_n_est_lisible_que_par_son_proprietaire() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let directory = tempfile::tempdir().unwrap();
+        let destination = directory.path().join("copie.sqlite");
+        let pool = open_pool(None).unwrap();
+        run_local_migrations(&pool).unwrap();
+
+        export(&pool, &destination).unwrap();
+
+        let mode = std::fs::metadata(&destination)
+            .unwrap()
+            .permissions()
+            .mode();
+        assert_eq!(
+            mode & 0o777,
+            0o600,
+            "mode {:o} au lieu de 600",
+            mode & 0o777
+        );
     }
 
     #[test]

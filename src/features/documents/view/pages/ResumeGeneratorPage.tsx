@@ -9,7 +9,7 @@ import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 import { Button, EmptyState, ErrorBanner, FormField, Icon, PageHeader, TextArea, TextInput } from "@/shared/ui";
 import { A4Preview, AiProgress, DocumentPanel, ScoreBadge } from "../components/DocumentUi";
-import { HeaderBadge, RESUME_KEY, Screen, exportPdf, generationFromNavigation, message } from "./documentPageSupport";
+import { HeaderBadge, RESUME_KEY, Screen, TexteNonVerifie, detail, exportPdf, generationFromNavigation, message } from "./documentPageSupport";
 
 export function ResumeGeneratorPage() {
   const queryClient = useQueryClient();
@@ -45,6 +45,10 @@ export function ResumeGeneratorPage() {
       await queryClient.invalidateQueries({ queryKey: RESUME_KEY });
       notify({ tone: "success", title: "CV ajouté à la bibliothèque" });
     },
+    // Sans ce gestionnaire, un refus du service Rust laissait l'écran inchangé : le CV
+    // généré n'était pas enregistré et rien ne le disait.
+    onError: (error) =>
+      notify({ tone: "error", title: "Enregistrement impossible", detail: detail(error) }),
   });
 
   return (
@@ -79,6 +83,7 @@ export function ResumeGeneratorPage() {
               <>
                 <ScoreBadge value={result.profile_score.total} />
                 <p className="text-body leading-relaxed text-ink-muted">{result.analysis.recap}</p>
+                <TexteNonVerifie />
                 <div>
                   <p className="mb-2 text-label font-medium text-ink">Suggestions</p>
                   <ul className="space-y-2">{result.analysis.suggestions.map((s, i) => <li key={i} className="flex gap-2 text-body text-ink-muted"><Icon name="arrow_right" size={15} className="mt-0.5 text-accent" />{s}</li>)}</ul>

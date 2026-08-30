@@ -55,13 +55,6 @@ pub async fn settings_list_models(
     state.settings.list_models(llm, api_key).await
 }
 
-/// Vide le cache des réponses IA.
-#[tauri::command(rename_all = "snake_case")]
-pub async fn settings_clear_ai_cache(state: State<'_, AppState>) -> AppResult<()> {
-    let service = Arc::clone(&state.settings);
-    blocking::execute(move || service.clear_ai_cache()).await
-}
-
 /// Exporte la base vers le chemin choisi dans le sélecteur natif.
 #[tauri::command(rename_all = "snake_case")]
 pub async fn settings_export(app: AppHandle, state: State<'_, AppState>) -> AppResult<bool> {
@@ -116,20 +109,22 @@ pub async fn settings_check_update(state: State<'_, AppState>) -> AppResult<Opti
     state.settings.check_update().await
 }
 
-/// Télécharge l'installeur (événement `update-progress`) puis l'ouvre.
+/// Télécharge l'installeur (événement `update-progress`), vérifie son empreinte puis l'ouvre.
+///
+/// Sans paramètre : l'asset est résolu côté Rust depuis l'API GitHub. Laisser le frontend
+/// désigner l'URL et le nom du fichier revenait à lui laisser choisir ce que le lanceur
+/// système exécuterait (`docs/CODE_RULES.md` §14).
 #[tauri::command(rename_all = "snake_case")]
 pub async fn settings_download_update(
     app: AppHandle,
     state: State<'_, AppState>,
-    url: String,
-    name: String,
 ) -> AppResult<String> {
     let notifier = move |progress: u8| {
         if let Err(error) = app.emit("update-progress", UpdateProgress { progress }) {
             tracing::warn!(%error, "progression de mise à jour non émise");
         }
     };
-    let path = state.settings.download_update(url, name, notifier).await?;
+    let path = state.settings.download_update(notifier).await?;
     Ok(path.to_string_lossy().into_owned())
 }
 

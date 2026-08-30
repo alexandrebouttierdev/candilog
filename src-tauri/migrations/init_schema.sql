@@ -31,15 +31,6 @@ CREATE TABLE IF NOT EXISTS ats_scores (
     created_at TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS ai_cache (
-    cache_key   TEXT PRIMARY KEY,
-    cache_value TEXT NOT NULL,
-    provider    TEXT NOT NULL,
-    model       TEXT NOT NULL,
-    operation   TEXT NOT NULL,
-    created_at  TEXT NOT NULL
-);
-
 CREATE TABLE IF NOT EXISTS app_kv (
     kv_key   TEXT PRIMARY KEY,
     kv_value TEXT NOT NULL
@@ -212,8 +203,12 @@ CREATE TABLE IF NOT EXISTS cover_letters (
     name       TEXT NOT NULL,
     company    TEXT,
     job_title  TEXT,
-    tone       TEXT NOT NULL DEFAULT 'formal',
-    length     TEXT NOT NULL DEFAULT 'medium',
+    -- Catalogue fermé, comme `applications.status` : ce sont les seules valeurs que le
+    -- rendu de lettre sait interpréter, et le service n'est pas la seule barrière.
+    tone       TEXT NOT NULL DEFAULT 'formal'
+        CHECK (tone IN ('formal', 'casual', 'creative')),
+    length     TEXT NOT NULL DEFAULT 'medium'
+        CHECK (length IN ('short', 'medium', 'long')),
     content    TEXT NOT NULL,
     created_at TEXT NOT NULL
 );

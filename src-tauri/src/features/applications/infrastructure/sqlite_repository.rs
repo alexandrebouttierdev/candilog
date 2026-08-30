@@ -167,8 +167,8 @@ fn clauses(filter: &ApplicationFilter) -> AppResult<(String, Vec<Value>)> {
         values.push(pattern(&filter.search));
         let index = values.len();
         clauses.push(format!(
-            "(lower(c.job_title) LIKE ?{index} {LIKE_ESCAPE} \
-              OR lower(coalesce(e.name, '')) LIKE ?{index} {LIKE_ESCAPE})"
+            "(search_key(c.job_title) LIKE ?{index} {LIKE_ESCAPE} \
+              OR search_key(coalesce(e.name, '')) LIKE ?{index} {LIKE_ESCAPE})"
         ));
     }
 
@@ -241,7 +241,7 @@ fn clauses(filter: &ApplicationFilter) -> AppResult<(String, Vec<Value>)> {
     }
     if !filter.city.trim().is_empty() {
         add(
-            &format!("lower(coalesce({EFFECTIVE_CITY}, '')) LIKE ? {LIKE_ESCAPE}"),
+            &format!("search_key(coalesce({EFFECTIVE_CITY}, '')) LIKE ? {LIKE_ESCAPE}"),
             pattern(&filter.city),
             &mut values,
             &mut clauses,
@@ -249,7 +249,7 @@ fn clauses(filter: &ApplicationFilter) -> AppResult<(String, Vec<Value>)> {
     }
     if !filter.job_title.trim().is_empty() {
         add(
-            &format!("lower(c.job_title) LIKE ? {LIKE_ESCAPE}"),
+            &format!("search_key(c.job_title) LIKE ? {LIKE_ESCAPE}"),
             pattern(&filter.job_title),
             &mut values,
             &mut clauses,
@@ -309,8 +309,8 @@ fn clauses(filter: &ApplicationFilter) -> AppResult<(String, Vec<Value>)> {
 /// Le jeu de valeurs est fermé par l'enum : rien de ce qui vient de l'IPC n'atteint le SQL.
 const fn sort_column(sort: ApplicationSort) -> &'static str {
     match sort {
-        ApplicationSort::JobTitle => "lower(c.job_title)",
-        ApplicationSort::Company => "lower(coalesce(e.name, ''))",
+        ApplicationSort::JobTitle => "search_key(c.job_title)",
+        ApplicationSort::Company => "search_key(coalesce(e.name, ''))",
         ApplicationSort::Status => "c.status",
         ApplicationSort::Date => "c.sent_date",
     }

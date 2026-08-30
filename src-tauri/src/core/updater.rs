@@ -31,11 +31,113 @@ pub fn url_installeur_autorisee(url: &str) -> bool {
     let prefix = format!("/{RELEASES_REPO}/");
     match parsed.host_str() {
         Some("github.com") => parsed.path().starts_with(&prefix),
+        // Les hôtes d'assets servent les releases de **tous** les dépôts GitHub : les
+        // accepter sans condition revenait à n'en filtrer aucun. Le chemin redirigé porte
+        // toujours le dépôt d'origine.
         Some("objects.githubusercontent.com")
         | Some("release-assets.githubusercontent.com")
-        | Some("github-releases.githubusercontent.com") => true,
+        | Some("github-releases.githubusercontent.com") => parsed.path().contains(&prefix),
         _ => false,
     }
+}
+
+/// Nom de l'asset portant les empreintes SHA-256 de la release, publié par le workflow.
+pub const CHECKSUMS_ASSET: &str = "SHA256SUMS";
+
+/// Empreinte hexadécimale SHA-256 d'un contenu.
+#[must_use]
+pub fn sha256_hex(bytes: &[u8]) -> String {
+    use sha2::{Digest, Sha256};
+    let mut hasher = Sha256::new();
+    hasher.update(bytes);
+    hasher
+        .finalize()
+        .iter()
+        .fold(String::with_capacity(64), |mut sortie, octet| {
+            use std::fmt::Write;
+            let _ = write!(sortie, "{octet:02x}");
+            sortie
+        })
+}
+
+/// Lit l'empreinte attendue d'un fichier dans un `SHA256SUMS` au format `sha256sum`.
+#[must_use]
+pub fn empreinte_attendue(sommes: &str, name_file: &str) -> Option<String> {
+    sommes.lines().find_map(|row| {
+        let (empreinte, nom) = row.split_once(char::is_whitespace)?;
+        // `sha256sum` préfixe le nom d'un `*` en mode binaire.
+        let nom = nom.trim().trim_start_matches('*');
+        (nom == name_file && empreinte.len() == 64).then(|| empreinte.to_lowercase())
+    })
+}
+
+/// Compare le contenu téléchargé à l'empreinte publiée.
+///
+/// # Errors
+/// Retourne `Validation` si les empreintes diffèrent — le paquet ne doit alors pas être ouvert.
+pub fn verifier_empreinte(bytes: &[u8], attendue: &str) -> AppResult<()> {
+    if sha256_hex(bytes).eq_ignore_ascii_case(attendue.trim()) {
+        Ok(())
+    } else {
+        Err(AppError::Validation(
+            "L'empreinte du paquet téléchargé ne correspond pas à celle publiée par la release. \
+             Le fichier a été supprimé."
+                .into(),
+        ))
+    }
+}
+
+/// Refuse un nom d'installateur qui ne porte pas l'extension attendue par la plateforme.
+///
+/// # Errors
+/// Retourne `Validation` si l'extension ne correspond pas : le lanceur système ouvrirait
+/// sinon le fichier avec une autre application que le gestionnaire de paquets.
+pub fn assert_nom_installeur(name: &str) -> AppResult<()> {
+    let Some(extension) = extension_installeur() else {
+        return Err(AppError::Validation(
+            "Aucun installateur Candilog n'est publié pour ce système.".into(),
+        ));
+    };
+    if std::path::Path::new(name)
+        .extension()
+        .and_then(|value| value.to_str())
+        .is_some_and(|value| value.eq_ignore_ascii_case(extension))
+    {
+        Ok(())
+    } else {
+        Err(AppError::Validation(format!(
+            "L'installateur attendu pour ce système porte l'extension .{extension}."
+        )))
+    }
+}
+
+/// Chemin libre dans `dossier`, en suffixant `-1`, `-2`… tant qu'un homonyme existe.
+///
+/// Le nom vient de la release : écraser un fichier déjà présent dans le dossier
+/// Téléchargements détruirait une donnée de l'utilisateur sans le prévenir.
+#[must_use]
+pub fn chemin_libre(dossier: &Path, name_file: &str) -> PathBuf {
+    let candidat = dossier.join(name_file);
+    if !candidat.exists() {
+        return candidat;
+    }
+    let base = Path::new(name_file);
+    let racine = base
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .unwrap_or(name_file);
+    let extension = base.extension().and_then(|value| value.to_str());
+    for index in 1_u32..1_000 {
+        let nom = match extension {
+            Some(extension) => format!("{racine}-{index}.{extension}"),
+            None => format!("{racine}-{index}"),
+        };
+        let candidat = dossier.join(nom);
+        if !candidat.exists() {
+            return candidat;
+        }
+    }
+    dossier.join(format!("{racine}-{}", uuid::Uuid::new_v4()))
 }
 
 /// # Errors
@@ -57,6 +159,11 @@ pub struct UpdateInfo {
     pub notes: String,
     pub page_url: String,
     pub asset: Option<AssetInfo>,
+    /// Tous les assets publiés, `SHA256SUMS` compris.
+    ///
+    /// Conservés ici et non exposés à l'IPC : le téléchargement les relit côté Rust pour
+    /// retrouver l'empreinte attendue, sans jamais dépendre de ce que le frontend renvoie.
+    pub assets: Vec<AssetInfo>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -141,6 +248,7 @@ pub fn parse_response(json: &str, current: &Version) -> Option<UpdateInfo> {
         notes: release.body,
         page_url: release.html_url,
         asset: asset_pour_plateforme(&assets),
+        assets,
     })
 }
 
@@ -252,46 +360,98 @@ pub fn nom_de_fichier_sur(name: &str) -> String {
     }
 }
 
-/// Télécharge l'installeur dans le dossier Téléchargements.
+/// Télécharge le fichier d'empreintes de la release et en extrait celle de l'asset visé.
 ///
 /// # Errors
-/// Retourne une erreur de réseau ou d'écriture. Un fichier trop volumineux est supprimé.
+/// Retourne `Validation` si la release ne publie pas d'empreinte pour ce fichier : sans
+/// elle, rien ne distingue le paquet officiel d'un paquet substitué, et l'installateur ne
+/// doit pas être lancé.
+async fn empreinte_de_la_release(
+    client: &reqwest::Client,
+    assets: &[AssetInfo],
+    name_file: &str,
+) -> AppResult<String> {
+    let sommes = assets
+        .iter()
+        .find(|asset| asset.name == CHECKSUMS_ASSET)
+        .ok_or_else(|| {
+            AppError::Validation(format!(
+                "Cette release ne publie pas de fichier {CHECKSUMS_ASSET} : l'installateur ne peut pas être vérifié."
+            ))
+        })?;
+    assert_url_installeur_autorisee(&sommes.url)?;
+    let corps = client
+        .get(&sommes.url)
+        .send()
+        .await?
+        .error_for_status()?
+        .text()
+        .await?;
+    empreinte_attendue(&corps, name_file).ok_or_else(|| {
+        AppError::Validation(format!(
+            "Aucune empreinte publiée pour {name_file} : l'installateur ne peut pas être vérifié."
+        ))
+    })
+}
+
+/// Télécharge l'installeur dans le dossier Téléchargements, après vérification de son empreinte.
+///
+/// Le paquet est retenu en mémoire jusqu'à la comparaison : il est plafonné à
+/// [`MAX_UPDATE_BYTES`], et écrire d'abord sur disque laisserait exister, le temps de la
+/// vérification, un fichier que le lanceur système pourrait ouvrir.
+///
+/// # Errors
+/// Retourne une erreur de réseau, d'écriture, de taille ou d'empreinte.
 pub async fn download_installeur(
     client: &reqwest::Client,
+    assets: &[AssetInfo],
     url: &str,
     name_file: &str,
     mut on_progress: impl FnMut(u8),
 ) -> AppResult<PathBuf> {
     assert_url_installeur_autorisee(url)?;
+    let name_file = nom_de_fichier_sur(name_file);
+    assert_nom_installeur(&name_file)?;
+    let attendue = empreinte_de_la_release(client, assets, &name_file).await?;
+
     let response = client.get(url).send().await?.error_for_status()?;
     let total = response.content_length();
     if let Some(length) = total {
         check_size_paquet(length)?;
     }
-    let path = dossier_telechargements().join(nom_de_fichier_sur(name_file));
-    let mut file = tokio::fs::File::create(&path).await.map_err(|error| {
-        AppError::Database(format!("Création de l'installeur impossible : {error}"))
-    })?;
-    let mut recu = 0_u64;
+    let mut paquet: Vec<u8> = Vec::new();
     let mut stream = response.bytes_stream();
     while let Some(chunk) = stream.next().await {
         let chunk = chunk?;
-        if let Err(error) = check_size_paquet(recu.saturating_add(chunk.len() as u64)) {
-            drop(file);
-            let _ = tokio::fs::remove_file(&path).await;
-            return Err(error);
-        }
-        file.write_all(&chunk).await.map_err(|error| {
-            AppError::Database(format!("Écriture de l'installeur impossible : {error}"))
-        })?;
-        recu = recu.saturating_add(u64::try_from(chunk.len()).unwrap_or_default());
+        check_size_paquet(paquet.len().saturating_add(chunk.len()) as u64)?;
+        paquet.extend_from_slice(&chunk);
         if let Some(total) = total {
-            let percentage = recu
+            let percentage = (paquet.len() as u64)
                 .saturating_mul(100)
                 .checked_div(total)
                 .unwrap_or_default();
             on_progress(u8::try_from(percentage.min(100)).unwrap_or(100));
         }
+    }
+    verifier_empreinte(&paquet, &attendue)?;
+
+    // `create_new` : un homonyme déjà présent dans le dossier Téléchargements appartient à
+    // l'utilisateur et n'a pas à être remplacé par une mise à jour.
+    let path = chemin_libre(&dossier_telechargements(), &name_file);
+    let mut file = tokio::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&path)
+        .await
+        .map_err(|error| {
+            AppError::Database(format!("Création de l'installeur impossible : {error}"))
+        })?;
+    if let Err(error) = file.write_all(&paquet).await {
+        drop(file);
+        let _ = tokio::fs::remove_file(&path).await;
+        return Err(AppError::Database(format!(
+            "Écriture de l'installeur impossible : {error}"
+        )));
     }
     file.sync_all().await.map_err(|error| {
         AppError::Database(format!(
@@ -299,7 +459,7 @@ pub async fn download_installeur(
         ))
     })?;
     on_progress(100);
-    tracing::info!(path = %path.display(), "installeur téléchargé");
+    tracing::info!(path = %path.display(), "installeur téléchargé et vérifié");
     Ok(path)
 }
 
@@ -445,6 +605,84 @@ mod tests {
         ));
         assert!(!url_installeur_autorisee(
             "https://github.com/alexandrebouttierdev/candilog-releases/releases/download/v0.3.0/candilog.deb"
+        ));
+    }
+
+    /// L'installateur est lancé par le système : sans empreinte publiée et vérifiée, HTTPS
+    /// et l'allowlist d'hôtes sont les seules garanties, et aucune des deux ne dit ce que
+    /// contient le fichier reçu.
+    #[test]
+    fn l_empreinte_attendue_est_lue_dans_le_fichier_de_sommes() {
+        let sommes = "\
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  candilog-ubuntu-0.3.0.deb
+5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03  candilog-fedora-0.3.0.rpm
+";
+        assert_eq!(
+            empreinte_attendue(sommes, "candilog-fedora-0.3.0.rpm").as_deref(),
+            Some("5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03")
+        );
+        assert_eq!(empreinte_attendue(sommes, "candilog-absent.deb"), None);
+    }
+
+    /// Une empreinte qui ne correspond pas doit arrêter la chaîne avant l'ouverture du
+    /// fichier — c'est le seul point où un paquet substitué peut encore être refusé.
+    #[test]
+    fn une_empreinte_divergente_refuse_le_paquet() {
+        let vide = sha256_hex(b"");
+        assert_eq!(
+            vide,
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        );
+        assert!(verifier_empreinte(b"", &vide).is_ok());
+        assert!(matches!(
+            verifier_empreinte(b"contenu substitue", &vide),
+            Err(AppError::Validation(_))
+        ));
+    }
+
+    /// L'allowlist acceptait n'importe quel chemin sur les hôtes d'assets GitHub, qui
+    /// servent les releases de **tous** les dépôts.
+    #[test]
+    fn un_asset_d_un_autre_depot_est_refuse() {
+        assert!(!url_installeur_autorisee(
+            "https://objects.githubusercontent.com/autre/depot/malware.deb"
+        ));
+        assert!(url_installeur_autorisee(
+            "https://objects.githubusercontent.com/github-production-release-asset/alexandrebouttierdev/candilog/candilog.deb"
+        ));
+    }
+
+    /// Le nom vient de la release : rien n'empêchait d'écraser un fichier homonyme déjà
+    /// présent dans le dossier Téléchargements de l'utilisateur.
+    #[test]
+    fn un_homonyme_existant_n_est_jamais_ecrase() {
+        let directory = tempfile::tempdir().unwrap();
+        let occupe = directory.path().join("candilog.deb");
+        std::fs::write(&occupe, b"fichier de l'utilisateur").unwrap();
+
+        let libre = chemin_libre(directory.path(), "candilog.deb");
+
+        assert_ne!(libre, occupe);
+        assert_eq!(
+            std::fs::read(&occupe).unwrap(),
+            b"fichier de l'utilisateur",
+            "le fichier existant a été touché"
+        );
+        assert_eq!(
+            libre.file_name().and_then(|n| n.to_str()),
+            Some("candilog-1.deb")
+        );
+    }
+
+    /// Le nom du fichier doit porter l'extension d'installateur de la plateforme : un
+    /// paquet enregistré sous une autre extension serait ouvert par une autre application.
+    #[test]
+    fn un_nom_sans_extension_d_installateur_est_refuse() {
+        let extension = extension_installeur().expect("plateforme reconnue en test");
+        assert!(assert_nom_installeur(&format!("candilog.{extension}")).is_ok());
+        assert!(matches!(
+            assert_nom_installeur("candilog.sh"),
+            Err(AppError::Validation(_))
         ));
     }
 

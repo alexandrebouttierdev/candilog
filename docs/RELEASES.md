@@ -37,6 +37,10 @@ Chaque asset est publié sous deux noms :
 - le nom versionné (`candilog-ubuntu-0.0.1.deb`) : référence immuable pour la mise à jour
   in-app.
 
+Un asset supplémentaire, `SHA256SUMS`, porte l'empreinte de tous les fichiers de la
+release. Il est **obligatoire** : l'application refuse d'ouvrir un installateur dont
+l'empreinte n'y figure pas ou ne correspond pas.
+
 Si le tag `v<version>` existe déjà, la publication est sautée : pousser sans monter la
 version ne crée pas de doublon.
 
@@ -47,9 +51,16 @@ distante à la version locale, choisit l'asset adapté au système (`.deb` ou `.
 la famille Linux, `.exe` Windows, `.dmg` macOS), le télécharge dans le dossier
 Téléchargements puis le lance avec le programme d'installation par défaut du système.
 
+Le frontend ne désigne ni l'URL ni le nom du fichier : `settings_download_update` ne prend
+aucun argument et re-résout l'asset côté Rust. Le paquet est retenu en mémoire (plafonné à
+256 Mio), son empreinte SHA-256 est comparée à celle publiée dans `SHA256SUMS`, et il n'est
+écrit sur disque qu'ensuite — sous un nom libre, jamais en écrasant un homonyme déjà présent
+dans le dossier Téléchargements.
+
 La mise à jour est **assistée, pas automatique** : l'installation et le redémarrage restent
 entre les mains de l'utilisateur. Aucune mise à jour silencieuse n'est exécutée. La signature
-de code Windows (SmartScreen) et macOS (Gatekeeper) reste à traiter séparément.
+de code Windows (SmartScreen) et macOS (Gatekeeper) reste à traiter séparément — l'empreinte
+publiée atteste du transfert, pas de l'identité de l'éditeur.
 
 ## Côté site
 
@@ -65,4 +76,5 @@ dernière version publiée.
    ne déclenche aucune release.
    Alternative : lancer manuellement **Release** depuis l'onglet Actions.
 3. Vérifier la release créée : tag `v<version>`, assets `-latest` et versionnés pour chaque
-   plateforme.
+   plateforme, et présence de `SHA256SUMS` — sans lui, la mise à jour in-app refusera
+   d'ouvrir l'installateur.

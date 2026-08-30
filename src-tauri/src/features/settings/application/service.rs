@@ -89,12 +89,6 @@ impl<R: SettingsRepository, C: SecretStoreContract> SettingsService<R, C> {
     }
 
     /// # Errors
-    /// Propage l'erreur SQLite.
-    pub fn clear_ai_cache(&self) -> AppResult<()> {
-        backup::clear_ai_cache(&self.pool)
-    }
-
-    /// # Errors
     /// Propage l'erreur d'export.
     pub fn export(&self, destination: &Path) -> AppResult<()> {
         backup::export(&self.pool, destination)
@@ -158,16 +152,45 @@ impl<R: SettingsRepository, C: SecretStoreContract> SettingsService<R, C> {
         LlmGenerator::list_models(provider.as_ref()).await
     }
 
+    /// Construit la configuration d'un essai de connexion à partir du formulaire.
+    ///
+    /// La clé du coffre n'est reprise que si le formulaire décrit **le couple déjà
+    /// persisté** (fournisseur et endpoint effectif). Sans ce contrôle, un appel IPC forgé
+    /// pouvait déclarer un fournisseur personnalisé pointant vers une adresse quelconque et
+    /// se faire présenter le secret en en-tête d'authentification : le coffre serait
+    /// contourné par la seule commande censée le respecter.
+    ///
+    /// # Errors
+    /// `Validation` si le formulaire vise un autre fournisseur ou un autre endpoint sans
+    /// fournir explicitement la clé à utiliser.
     fn provider_config(&self, llm: LlmForm, api_key: Option<String>) -> AppResult<LlmConfig> {
         let mut config = LlmConfig::from(llm);
         if provider_cloud(&config.provider) {
             config.api_key = match non_empty_secret(api_key) {
                 Some(secret) => Some(secret),
-                None => self.secret_store.load_api_key()?,
+                None if self.correspond_aux_reglages(&config)? => {
+                    self.secret_store.load_api_key()?
+                }
+                None => {
+                    tracing::warn!(
+                        endpoint = config.endpoint_effectif(),
+                        "essai de connexion vers un fournisseur non enregistré, clé du coffre non transmise"
+                    );
+                    return Err(AppError::Validation(
+                        "Saisissez la clé API à utiliser pour ce fournisseur avant de tester la connexion".into(),
+                    ));
+                }
             };
         }
         validate_llm(&config, config.api_key.is_some())?;
         Ok(config)
+    }
+
+    /// Le formulaire vise-t-il le fournisseur et l'endpoint effectivement enregistrés ?
+    fn correspond_aux_reglages(&self, config: &LlmConfig) -> AppResult<bool> {
+        let enregistres = self.repo.get()?.llm;
+        Ok(enregistres.provider == config.provider
+            && enregistres.endpoint_effectif() == config.endpoint_effectif())
     }
 
     /// Compare la version installée à la dernière release GitHub.
@@ -182,19 +205,34 @@ impl<R: SettingsRepository, C: SecretStoreContract> SettingsService<R, C> {
             .map(UpdateInfo::from))
     }
 
-    /// Télécharge l'installeur puis l'ouvre avec le lanceur système.
+    /// Télécharge l'installeur de la dernière release, vérifie son empreinte, puis l'ouvre.
+    ///
+    /// L'asset est **re-résolu ici** à partir de l'API GitHub : le frontend ne transmet plus
+    /// ni URL ni nom de fichier. Une commande IPC forgée ne peut donc plus désigner ce qui
+    /// sera téléchargé puis confié au lanceur système.
     ///
     /// # Errors
-    /// Retourne une erreur réseau, d'écriture ou de lancement.
-    pub async fn download_update(
-        &self,
-        url: String,
-        name: String,
-        notifier: impl FnMut(u8),
-    ) -> AppResult<PathBuf> {
-        updater::assert_url_installeur_autorisee(&url)?;
+    /// Retourne une erreur réseau, d'empreinte, d'écriture ou de lancement, et
+    /// `Validation` si aucune mise à jour n'est disponible pour cette plateforme.
+    pub async fn download_update(&self, notifier: impl FnMut(u8)) -> AppResult<PathBuf> {
+        let actuelle = updater::version_locale()?;
         let client = updater::client_github()?;
-        let path = updater::download_installeur(&client, &url, &name, notifier).await?;
+        let release = updater::check(&client, &actuelle)
+            .await?
+            .ok_or_else(|| AppError::Validation("Aucune mise à jour n'est disponible.".into()))?;
+        let asset = release.asset.ok_or_else(|| {
+            AppError::Validation(
+                "Aucun installateur n'est publié pour ce système dans cette release.".into(),
+            )
+        })?;
+        let path = updater::download_installeur(
+            &client,
+            &release.assets,
+            &asset.url,
+            &asset.name,
+            notifier,
+        )
+        .await?;
         updater::ouvrir_file(&path)?;
         Ok(path)
     }
@@ -399,6 +437,30 @@ mod tests {
         );
     }
 
+    /// Le formulaire décrit un fournisseur que l'utilisateur n'a pas encore enregistré : la
+    /// clé du coffre appartient au couple (fournisseur, endpoint) persisté, et l'attacher à
+    /// une adresse arbitraire reviendrait à la présenter en `Authorization` à un tiers.
+    #[test]
+    fn un_endpoint_non_persiste_ne_recoit_pas_la_cle_du_coffre() {
+        let service = service();
+        let mut stored = AppSettings::default();
+        stored.llm.provider = ProviderKind::OpenAI;
+        stored.llm.endpoint = Some("https://api.openai.com".into());
+        stored.llm.model = "gpt-4o".into();
+        service.repo.upsert(&stored).unwrap();
+        service.secret_store.store_api_key(Some("sk-test")).unwrap();
+
+        let mut llm = ollama();
+        llm.provider = ProviderKind::Custom("maison".into());
+        llm.endpoint = Some("https://exfiltration.example".into());
+        llm.model = "gpt-4o".into();
+
+        assert!(matches!(
+            service.provider_config(llm, None),
+            Err(AppError::Validation(_))
+        ));
+    }
+
     #[test]
     fn ollama_ne_lit_pas_le_coffre() {
         let service = service();
@@ -430,15 +492,23 @@ mod tests {
         assert!(!json.contains("api_key\":"));
     }
 
+    /// La clé du coffre est reprise sans ressaisie — mais seulement pour le fournisseur et
+    /// l'endpoint réellement enregistrés, sur lesquels porte le secret.
     #[test]
     fn provider_config_charge_le_secret_du_coffre() {
         let service = service();
+        let mut stored = AppSettings::default();
+        stored.llm.provider = ProviderKind::OpenAI;
+        stored.llm.endpoint = Some("https://api.openai.com".into());
+        stored.llm.model = "gpt-4o".into();
+        service.repo.upsert(&stored).unwrap();
         service
             .secret_store
             .store_api_key(Some("sk-stored"))
             .unwrap();
         let mut llm = ollama();
         llm.provider = ProviderKind::OpenAI;
+        llm.endpoint = Some("https://api.openai.com".into());
         llm.model = "gpt-4o".into();
 
         let config = service.provider_config(llm, None).unwrap();

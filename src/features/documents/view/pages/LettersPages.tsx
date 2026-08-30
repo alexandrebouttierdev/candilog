@@ -10,7 +10,7 @@ import { Button, ConfirmDialog, EmptyState, ErrorBanner, FormField, Icon, PageHe
 import { A4Preview, AiProgress, DocumentPanel, PreviewAction } from "../components/DocumentUi";
 import { PAGE_SIZE } from "@/shared/types/page";
 import { useDebounce } from "@/shared/hooks/useDebounce";
-import { Champ, COVER_LETTERS_KEY, HeaderBadge, Screen, coverLetterFromNavigation, date, exportLetterPdf, labelTone, message } from "./documentPageSupport";
+import { Champ, COVER_LETTERS_KEY, HeaderBadge, Screen, coverLetterFromNavigation, date, detail, exportLetterPdf, labelTone, message } from "./documentPageSupport";
 
 export function LettersLibraryPage() {
   const navigate = useNavigate();
@@ -36,6 +36,10 @@ export function LettersLibraryPage() {
       setSelected(null);
       setDeleteId(null);
       await queryClient.invalidateQueries({ queryKey: COVER_LETTERS_KEY });
+    },
+    onError: (error) => {
+      setDeleteId(null);
+      notify({ tone: "error", title: "Suppression impossible", detail: detail(error) });
     },
   });
 
@@ -156,6 +160,10 @@ export function LetterWriterPage() {
       await queryClient.invalidateQueries({ queryKey: COVER_LETTERS_KEY });
       notify({ tone: "success", title: "Lettre enregistrée" });
     },
+    // Sans ce gestionnaire, un refus du service Rust laissait l'écran inchangé : la lettre
+    // n'était pas enregistrée et rien ne le disait.
+    onError: (error) =>
+      notify({ tone: "error", title: "Enregistrement impossible", detail: detail(error) }),
   });
 
   return (

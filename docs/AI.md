@@ -23,7 +23,13 @@ borné (`domain/validation.rs` : `MAX_SOURCE_CHARS`, `MAX_CONTEXT_CHARS`,
 par `ground_generated_resume`, `ground_imported_resume` et `ground_extracted_listing`.
 
 Une offre d'emploi ou un PDF importé est de la **donnée**, jamais des instructions : les
-contenus non fiables sont encadrés par `bloc_donnees`.
+contenus non fiables sont encadrés par `bloc_donnees`, dont la balise porte un identifiant
+tiré au sort à chaque appel et dont la balise fermante est neutralisée dans le contenu — un
+délimiteur fixe pouvait figurer dans l'offre elle-même et refermer le bloc.
+
+Le récapitulatif et les suggestions de `AtsAnalysis` restent du texte libre du modèle :
+bornés, mais non recadrés sur les faits. L'interface les présente comme un commentaire, à
+côté du score, qui est calculé par Candilog.
 
 Le score ATS affiché est toujours le calcul déterministe Rust (`profile_score` /
 `score_resume_imported`, `domain/scoring.rs`), jamais le chiffre renvoyé par le modèle.
@@ -41,6 +47,8 @@ identifiant déjà actif annule la précédente.
 
 ## Cache
 
-La table `ai_cache` existe dans le schéma mais rien ne l'alimente aujourd'hui. La commande
-`settings_clear_ai_cache` la vide réellement (`DELETE FROM ai_cache`) ; tant que le cache
-n'est pas implémenté, l'opération n'a aucun effet observable.
+Il n'y a pas de cache de réponses IA. La table `ai_cache`, la commande
+`settings_clear_ai_cache` et le bouton « Vider le cache IA » ont été retirés : rien
+n'alimentait la table, et l'écran des réglages annonçait à l'utilisateur un effet qui ne se
+produisait jamais. Une base de développement antérieure conserve la table, désormais
+orpheline et sans usage.

@@ -88,3 +88,40 @@ fn lettres_pagination_filtre_avant_la_limite() {
     assert_eq!(page.items.len(), 5);
     assert!(page.items.iter().all(|item| item.name.contains("Cible")));
 }
+
+/// Les deux bibliothèques comparaient un terme normalisé en Rust à une colonne passée par
+/// `lower()` de SQLite, qui laisse les majuscules accentuées intactes : un CV « CV ÉCOLE »
+/// restait introuvable par « école » comme par son propre nom.
+#[test]
+fn la_recherche_des_bibliotheques_ignore_les_accents() {
+    let cvs = SqliteResumeRepository::new(pool());
+    cvs.save(&NewResume {
+        name: "CV ÉCOLE".into(),
+        content: serde_json::json!({}),
+    })
+    .unwrap();
+    let lettres = SqliteCoverLetterRepository::new(pool());
+    lettres
+        .save(&NewCoverLetter {
+            name: "Lettre ÉCOLE".into(),
+            company: None,
+            job_title: None,
+            tone: "formal".into(),
+            length: "medium".into(),
+            content: "Contenu".into(),
+        })
+        .unwrap();
+
+    for terme in ["école", "ECOLE"] {
+        assert_eq!(
+            cvs.list_page(1, 8, terme).unwrap().total,
+            1,
+            "CV : recherche « {terme} » sans résultat"
+        );
+        assert_eq!(
+            lettres.list_page(1, 8, terme).unwrap().total,
+            1,
+            "lettres : recherche « {terme} » sans résultat"
+        );
+    }
+}

@@ -65,7 +65,7 @@ impl ResumeRepository for SqliteResumeRepository {
     fn list_page(&self, page: u64, page_size: u64, search: &str) -> AppResult<Page<ResumeSummary>> {
         let conn = connection(&self.pool)?;
         let pattern = like_contains(search);
-        let where_clause = format!("lower(name) LIKE ?1 {LIKE_ESCAPE}");
+        let where_clause = format!("search_key(name) LIKE ?1 {LIKE_ESCAPE}");
         let total: u64 = conn
             .query_row(
                 &format!("SELECT count(*) FROM resume_versions WHERE {where_clause}"),
@@ -186,9 +186,9 @@ impl CoverLetterRepository for SqliteCoverLetterRepository {
         let conn = connection(&self.pool)?;
         let pattern = like_contains(search);
         let where_clause = format!(
-            "(lower(name) LIKE ?1 {LIKE_ESCAPE} \
-             OR lower(coalesce(company, '')) LIKE ?1 {LIKE_ESCAPE} \
-             OR lower(coalesce(job_title, '')) LIKE ?1 {LIKE_ESCAPE})"
+            "(search_key(name) LIKE ?1 {LIKE_ESCAPE} \
+             OR search_key(coalesce(company, '')) LIKE ?1 {LIKE_ESCAPE} \
+             OR search_key(coalesce(job_title, '')) LIKE ?1 {LIKE_ESCAPE})"
         );
         let total: u64 = conn
             .query_row(

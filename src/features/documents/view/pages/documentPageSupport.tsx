@@ -54,6 +54,23 @@ export function HeaderBadge({ children, icon = "auto_awesome" }: { children: Rea
   );
 }
 
+/**
+ * Mention accompagnant le texte libre renvoyé par le modèle.
+ *
+ * Le score, lui, est calculé par Candilog. Le récapitulatif et les suggestions traversent
+ * en revanche la génération sans recadrage sur les faits du profil : l'offre analysée étant
+ * un contenu externe, ce texte se lit comme un commentaire, pas comme un résultat vérifié.
+ */
+export function TexteNonVerifie() {
+  return (
+    <p className="flex items-start gap-1.5 text-meta text-ink-faint">
+      <Icon name="info" size={14} className="mt-px flex-none" />
+      Commentaire rédigé par le modèle, à partir de l’offre fournie. Le score, lui, est
+      calculé par Candilog.
+    </p>
+  );
+}
+
 export function AtsChip({ score }: { score: number }) {
   const tone = score >= 80 ? "bg-success-tint text-success" : score >= 65 ? "bg-warning-tint text-warning" : "bg-neutral-tint text-ink-muted";
   return <span className={`rounded-tag px-1.5 py-0.5 text-[10.5px] font-semibold ${tone}`}>ATS {score}</span>;
@@ -63,6 +80,8 @@ export function Champ({ label, value, onChange }: { label: string; value: string
   return <FormField label={label}>{(props) => <TextInput {...props} value={value} onChange={(e) => onChange(e.target.value)} />}</FormField>;
 }
 export function message(error: unknown): string { return error instanceof AppError ? error.message : "Une erreur inattendue s’est produite."; }
+/** Détail d'un toast d'erreur : le message backend quand il y en a un, rien sinon. */
+export function detail(error: unknown): string | undefined { return error instanceof AppError ? error.message : undefined; }
 export function date(value: string): string { const d = new Date(value); return Number.isNaN(d.getTime()) ? value : new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "short", year: "numeric" }).format(d); }
 export function isGeneration(value: unknown): value is ResumeGeneration { return typeof value === "object" && value !== null && "resume" in value && "analysis" in value; }
 export function generationFromNavigation(state: unknown): { result: ResumeGeneration | null; name: string } {

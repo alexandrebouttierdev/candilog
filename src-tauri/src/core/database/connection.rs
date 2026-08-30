@@ -65,11 +65,33 @@ pub fn validate_database_file(path: &Path) -> AppResult<()> {
 ///
 /// `foreign_keys` est désactivé par défaut dans `SQLite` et se règle par connexion : sans cet
 /// initialiseur, les clés étrangères seraient silencieusement ignorées.
+///
+/// `search_key` est enregistrée ici pour la même raison : une fonction scalaire vit dans la
+/// connexion, pas dans le fichier de base. Elle donne à SQLite exactement la normalisation
+/// que les dépôts appliquent au terme recherché — `lower()` n'agit que sur l'ASCII et
+/// laisserait « ÉCOLE » hors de portée d'une recherche « école ».
 fn init_connection(conn: &mut rusqlite::Connection) -> rusqlite::Result<()> {
     conn.execute_batch("PRAGMA journal_mode = WAL;")?;
     conn.pragma_update(None, "foreign_keys", "ON")?;
     conn.busy_timeout(std::time::Duration::from_secs(5))?;
-    Ok(())
+    register_search_key(conn)
+}
+
+/// Publie [`crate::core::utils::text::search_key`] comme fonction scalaire SQLite.
+///
+/// Déclarée déterministe : SQLite peut alors la sortir d'une boucle ou l'utiliser dans un
+/// index partiel, et le résultat ne dépend que de son argument.
+fn register_search_key(conn: &rusqlite::Connection) -> rusqlite::Result<()> {
+    conn.create_scalar_function(
+        "search_key",
+        1,
+        rusqlite::functions::FunctionFlags::SQLITE_UTF8
+            | rusqlite::functions::FunctionFlags::SQLITE_DETERMINISTIC,
+        |context| {
+            let value: Option<String> = context.get(0)?;
+            Ok(value.map(|value| crate::core::utils::text::search_key(&value)))
+        },
+    )
 }
 
 /// Ouvre un pool `SQLite`. `path = None` ouvre une base en mémoire, réservée aux tests :

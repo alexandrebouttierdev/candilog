@@ -8,6 +8,22 @@ use crate::features::documents::domain::{
 };
 use uuid::Uuid;
 
+/// Borne du JSON d'une version de CV.
+///
+/// `content` est volontairement extensible — le modèle de génération évolue — mais rester
+/// non borné laissait entrer en base un blob arbitraire par un simple appel IPC. La valeur
+/// couvre très largement un CV complet sérialisé.
+pub const MAX_CONTENT_CHARS: usize = 250_000;
+
+/// Borne du texte d'une lettre, cohérente avec ce qu'un PDF d'une page peut porter.
+pub const MAX_LETTER_CHARS: usize = 20_000;
+
+/// Tons acceptés, alignés sur ceux que le rendu de lettre sait interpréter.
+const TONES: [&str; 3] = ["formal", "casual", "creative"];
+
+/// Longueurs acceptées, alignées sur celles que le rendu de lettre sait interpréter.
+const LENGTHS: [&str; 3] = ["short", "medium", "long"];
+
 pub struct DocumentsService<C: ResumeRepository, L: CoverLetterRepository> {
     resume: C,
     cover_letters: L,
@@ -22,6 +38,11 @@ impl<C: ResumeRepository, L: CoverLetterRepository> DocumentsService<C, L> {
         }
     }
 
+    /// Valide puis enregistre une version de CV.
+    ///
+    /// # Errors
+    /// `AppError::Validation` si le nom est vide ou trop long, si le contenu n'est pas un
+    /// objet JSON, ou s'il dépasse [`MAX_CONTENT_CHARS`].
     pub fn resume_save(&self, input: &NewResume) -> AppResult<ResumeVersion> {
         let name = input.name.trim();
         if name.is_empty() {
@@ -34,6 +55,7 @@ impl<C: ResumeRepository, L: CoverLetterRepository> DocumentsService<C, L> {
                 "Le nom de la version est trop long (120 max)".into(),
             ));
         }
+        valider_contenu(&input.content)?;
         self.resume.save(&NewResume {
             name: name.into(),
             content: input.content.clone(),
@@ -58,6 +80,14 @@ impl<C: ResumeRepository, L: CoverLetterRepository> DocumentsService<C, L> {
         self.resume.delete(id)
     }
 
+    /// Valide puis enregistre une lettre.
+    ///
+    /// Le ton et la longueur sont vérifiés ici comme ils le sont au rendu : les accepter
+    /// librement à la persistance laissait la même règle produire deux résultats selon la
+    /// couche traversée, et une lettre au ton inconnu échouait ensuite à la régénération.
+    ///
+    /// # Errors
+    /// `AppError::Validation` si le nom, le contenu, le ton ou la longueur sont invalides.
     pub fn cover_letter_save(&self, input: &NewCoverLetter) -> AppResult<CoverLetter> {
         let name = input.name.trim();
         if name.is_empty() {
@@ -75,6 +105,13 @@ impl<C: ResumeRepository, L: CoverLetterRepository> DocumentsService<C, L> {
                 "Générez une lettre avant de l'enregistrer".into(),
             ));
         }
+        if input.content.chars().count() > MAX_LETTER_CHARS {
+            return Err(AppError::Validation(
+                "Le contenu de la lettre est trop long".into(),
+            ));
+        }
+        valider_valeur(&input.tone, &TONES, "Le ton de la lettre")?;
+        valider_valeur(&input.length, &LENGTHS, "La longueur de la lettre")?;
         let mut nettoyee = input.clone();
         nettoyee.name = name.into();
         self.cover_letters.save(&nettoyee)
@@ -96,6 +133,34 @@ impl<C: ResumeRepository, L: CoverLetterRepository> DocumentsService<C, L> {
     }
     pub fn cover_letter_delete(&self, id: Uuid) -> AppResult<()> {
         self.cover_letters.delete(id)
+    }
+}
+
+/// Refuse un contenu de CV qui n'est pas un objet JSON borné.
+fn valider_contenu(content: &serde_json::Value) -> AppResult<()> {
+    if !content.is_object() {
+        return Err(AppError::Validation(
+            "Le contenu du CV est illisible : générez-le à nouveau avant de l'enregistrer".into(),
+        ));
+    }
+    let serialise = serde_json::to_string(content)
+        .map_err(|error| AppError::Serialization(error.to_string()))?;
+    if serialise.chars().count() > MAX_CONTENT_CHARS {
+        return Err(AppError::Validation(
+            "Le contenu du CV dépasse la taille maximale autorisée".into(),
+        ));
+    }
+    Ok(())
+}
+
+/// Refuse une valeur hors du jeu fermé accepté par le rendu.
+fn valider_valeur(value: &str, acceptes: &[&str], label: &str) -> AppResult<()> {
+    if acceptes.contains(&value) {
+        Ok(())
+    } else {
+        Err(AppError::Validation(format!(
+            "{label} n'est pas pris en charge."
+        )))
     }
 }
 
@@ -125,6 +190,77 @@ mod tests {
             })
             .unwrap_err();
         assert!(matches!(err, AppError::Validation(_)));
+    }
+
+    /// `content` traverse l'IPC en `serde_json::Value` (`unknown` côté TypeScript) et
+    /// atterrissait tel quel en base : ni forme, ni borne. Un appel forgé — ou une
+    /// génération inhabituelle — y écrivait un blob arbitraire que la bibliothèque devait
+    /// ensuite relire à l'aveugle.
+    #[test]
+    fn refuse_un_cv_dont_le_contenu_n_est_pas_un_objet() {
+        for contenu in [
+            serde_json::Value::Null,
+            serde_json::json!("texte"),
+            serde_json::json!([1, 2, 3]),
+        ] {
+            let err = service()
+                .resume_save(&NewResume {
+                    name: "CV Produit".into(),
+                    content: contenu.clone(),
+                })
+                .unwrap_err();
+            assert!(
+                matches!(err, AppError::Validation(_)),
+                "contenu {contenu} accepté"
+            );
+        }
+    }
+
+    #[test]
+    fn refuse_un_cv_dont_le_contenu_depasse_la_borne() {
+        let err = service()
+            .resume_save(&NewResume {
+                name: "CV Produit".into(),
+                content: serde_json::json!({ "resume": "x".repeat(MAX_CONTENT_CHARS) }),
+            })
+            .unwrap_err();
+        assert!(matches!(err, AppError::Validation(_)));
+    }
+
+    /// Le rendu de lettre refuse déjà tout ton hors `formal|casual|creative` et toute
+    /// longueur hors `short|medium|long`. La persistance, elle, acceptait n'importe quelle
+    /// chaîne : la même règle avait deux comportements selon la couche traversée.
+    #[test]
+    fn refuse_une_lettre_au_ton_ou_a_la_longueur_inconnus() {
+        let err = service()
+            .cover_letter_save(&NewCoverLetter {
+                name: "Lettre Nova".into(),
+                company: None,
+                job_title: None,
+                tone: "sarcastique".into(),
+                length: "medium".into(),
+                content: "Madame, Monsieur…".into(),
+            })
+            .unwrap_err();
+        assert!(
+            matches!(err, AppError::Validation(_)),
+            "ton inconnu accepté"
+        );
+
+        let err = service()
+            .cover_letter_save(&NewCoverLetter {
+                name: "Lettre Nova".into(),
+                company: None,
+                job_title: None,
+                tone: "formal".into(),
+                length: "interminable".into(),
+                content: "Madame, Monsieur…".into(),
+            })
+            .unwrap_err();
+        assert!(
+            matches!(err, AppError::Validation(_)),
+            "longueur inconnue acceptée"
+        );
     }
 
     #[test]

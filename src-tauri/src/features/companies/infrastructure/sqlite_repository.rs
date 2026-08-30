@@ -71,9 +71,9 @@ fn clauses(filter: &CompanyFilter) -> AppResult<(String, Vec<Value>)> {
         values.push(Value::Text(like_contains(&filter.search)));
         let index = values.len();
         clauses.push(format!(
-            "(lower(e.name) LIKE ?{index} {LIKE_ESCAPE} \
-              OR lower(coalesce(e.city, '')) LIKE ?{index} {LIKE_ESCAPE} \
-              OR lower(coalesce(s.name, '')) LIKE ?{index} {LIKE_ESCAPE})"
+            "(search_key(e.name) LIKE ?{index} {LIKE_ESCAPE} \
+              OR search_key(coalesce(e.city, '')) LIKE ?{index} {LIKE_ESCAPE} \
+              OR search_key(coalesce(s.name, '')) LIKE ?{index} {LIKE_ESCAPE})"
         ));
     }
     if let Some(sector_id) = filter.sector_id {

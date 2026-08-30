@@ -181,6 +181,15 @@ jobs:
           path: release-assets
           merge-multiple: true
 
+      # L'application refuse d'ouvrir un installateur dont l'empreinte n'est pas publiée
+      # ici : c'est la seule garantie sur le contenu du fichier téléchargé.
+      - name: Calculer les empreintes SHA-256
+        run: |
+          set -euo pipefail
+          cd release-assets
+          sha256sum -- * > SHA256SUMS
+          cat SHA256SUMS
+
       - name: Créer la release GitHub
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -200,5 +209,7 @@ jobs:
           - Ubuntu / Debian : \`candilog-ubuntu-latest.deb\`
           - Fedora : \`candilog-fedora-latest.rpm\`
 
-          Des copies versionnées (\`candilog-*-${VERSION}.*\`) sont aussi jointes." \
+          Des copies versionnées (\`candilog-*-${VERSION}.*\`) sont aussi jointes.
+
+          Les empreintes SHA-256 de tous les fichiers sont publiées dans \`SHA256SUMS\` ; Candilog les vérifie avant d'ouvrir un installateur." \
             release-assets/*

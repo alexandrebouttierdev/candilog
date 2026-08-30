@@ -37,13 +37,19 @@ function commandesRust(): Set<string> {
   return new Set(attributsCommandes().map((commande) => commande.nom));
 }
 
-/** Noms de commandes réellement appelés par les services frontend. */
+/**
+ * Noms de commandes réellement appelés par les services frontend.
+ *
+ * Le paramètre de type est facultatif et peut être générique : `ipc<Page<Application>>(…)`.
+ * Une capture qui s'arrête au premier `>` manque toute forme imbriquée — donc les cinq
+ * commandes paginées, c'est-à-dire le chemin de données de chaque écran de liste.
+ */
 function commandesAppelees(): Set<string> {
   const fichiers = globSync("src/features/*/services/*.ts", { cwd: racine });
   const noms = new Set<string>();
   for (const fichier of fichiers) {
     const source = readFileSync(`${racine}/${fichier}`, "utf8");
-    for (const correspondance of source.matchAll(/ipc<[^>]*>\(\s*"([^"]+)"/g)) {
+    for (const correspondance of source.matchAll(/\bipc\s*(?:<[\s\S]*?>)?\s*\(\s*"([^"]+)"/g)) {
       noms.add(correspondance[1]!);
     }
   }
@@ -66,6 +72,37 @@ describe("contrat IPC", () => {
     // les comparaisons suivantes passeraient sur deux ensembles vides.
     expect(commandesRust().size).toBeGreaterThan(0);
     expect(commandesAppelees().size).toBeGreaterThan(0);
+  });
+
+  it("collecte aussi les appels dont le type de retour est générique", () => {
+    // `ipc<Page<Application>>("…")` échappait à la capture, qui s'arrêtait au premier `>` :
+    // les cinq commandes paginées — le chemin de données de tous les écrans de liste —
+    // étaient absentes de l'inventaire, et les comparaisons suivantes ne les voyaient pas.
+    const appelees = commandesAppelees();
+    for (const commande of [
+      "applications_list_page",
+      "companies_list_page",
+      "contacts_list_page",
+      "documents_resume_list_page",
+      "documents_cover_letters_list_page",
+    ]) {
+      expect(appelees).toContain(commande);
+    }
+  });
+
+  it("couvre chaque service de feature", () => {
+    // Second garde-fou : une capture qui cesserait de fonctionner pour une forme d'appel
+    // donnée laisserait un service entier hors du contrat sans faire échouer les autres cas.
+    const services = globSync("src/features/*/services/*.ts", { cwd: racine });
+    for (const service of services) {
+      const source = readFileSync(`${racine}/${service}`, "utf8");
+      const attendus = [...source.matchAll(/"([a-z][a-z0-9_]*_[a-z0-9_]+)"/g)].map((m) => m[1]!);
+      const commandes = attendus.filter((nom) => commandesRust().has(nom));
+      expect(commandes.length, `${service} : aucune commande reconnue`).toBeGreaterThan(0);
+      for (const commande of commandes) {
+        expect(commandesAppelees(), `${service} : ${commande} non collectée`).toContain(commande);
+      }
+    }
   });
 
   it("n'appelle que des commandes qui existent côté Rust", () => {

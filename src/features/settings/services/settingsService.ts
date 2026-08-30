@@ -19,12 +19,12 @@ export const settingsService = {
     ipc<void>("settings_test_connection", { llm, api_key: api_key || null }),
   listModels: (llm: LlmForm, api_key?: string | null) =>
     ipc<string[]>("settings_list_models", { llm, api_key: api_key || null }),
-  clearAiCache: () => ipc<void>("settings_clear_ai_cache"),
   export: () => ipc<boolean>("settings_export"),
   restore: () => ipc<boolean>("settings_restore"),
   reset: () => ipc<ResetOutcome>("settings_reset"),
   checkUpdate: () => ipc<UpdateInfo | null>("settings_check_update"),
-  downloadUpdate: (url: string, name: string) =>
-    ipc<string>("settings_download_update", { url, name }),
+  // Sans argument : l'asset est résolu et son empreinte vérifiée côté Rust. Le frontend ne
+  // désigne pas ce qui sera téléchargé puis ouvert par le lanceur système.
+  downloadUpdate: () => ipc<string>("settings_download_update"),
   about: () => ipc<About>("settings_about"),
 };

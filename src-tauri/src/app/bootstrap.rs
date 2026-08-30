@@ -88,7 +88,6 @@ pub fn run() {
             settings::settings_clear_api_key,
             settings::settings_test_connection,
             settings::settings_list_models,
-            settings::settings_clear_ai_cache,
             settings::settings_export,
             settings::settings_restore,
             settings::settings_reset,

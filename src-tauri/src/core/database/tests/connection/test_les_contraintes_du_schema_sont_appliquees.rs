@@ -105,3 +105,31 @@ fn la_suppression_d_un_domaine_professionnel_detache_la_candidature() {
         .unwrap();
     assert_eq!(domaine, None);
 }
+
+/// Le ton et la longueur d'une lettre sont un catalogue fermé, interprété au rendu. Sans
+/// `CHECK`, seule la couche service les vérifiait, et un `INSERT` direct suffisait à
+/// persister une valeur que plus rien ne saurait relire.
+#[test]
+fn un_ton_ou_une_longueur_de_lettre_hors_catalogue_est_refuse() {
+    let pool = base();
+    let conn = pool.get().unwrap();
+    conn.execute(
+        "INSERT INTO cover_letters (id, name, tone, length, content, created_at)
+         VALUES ('l1', 'Lettre', 'formal', 'medium', 'Bonjour', '2026-01-01T00:00:00Z')",
+        [],
+    )
+    .unwrap();
+
+    assert!(conn
+        .execute(
+            "UPDATE cover_letters SET tone = 'sarcastique' WHERE id = 'l1'",
+            []
+        )
+        .is_err());
+    assert!(conn
+        .execute(
+            "UPDATE cover_letters SET length = 'interminable' WHERE id = 'l1'",
+            []
+        )
+        .is_err());
+}

@@ -29,7 +29,9 @@ futures-util = "0.3"
 # leurs tests sont repris tels quels. Pas de sqlx en plus (cf. docs/CODE_RULES.md §0).
 # Les commandes Tauri restent asynchrones en enveloppant les appels de service dans
 # `tauri::async_runtime::spawn_blocking`.
-rusqlite = { version = "0.32", features = ["bundled", "backup"] }
+# `functions` : la recherche expose `search_key` à SQLite pour normaliser accents et
+# casse des deux côtés de la comparaison (docs/DATA.md).
+rusqlite = { version = "0.32", features = ["bundled", "backup", "functions"] }
 r2d2 = "0.8"
 r2d2_sqlite = "0.25"
 
@@ -54,6 +56,10 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 async-trait = "0.1"
 keyring = "4.1.5"
 semver = "1"
+# Vérification de l'empreinte des installateurs de mise à jour. Déjà présent dans l'arbre de
+# dépendances (transitif) : le déclarer n'ajoute aucune crate, et réimplémenter SHA-256 à la
+# main serait exactement le genre de code qu'il ne faut pas écrire soi-même.
+sha2 = "0.10"
 jsonrepair-rs = "0.2.1"
 pdf-extract = "0.12.0"
 printpdf = { version = "0.12.5", default-features = false, features = ["png"] }

@@ -4,7 +4,6 @@ import { AppError } from "@/shared/types/app-error";
 import type { AnalysisMode, LlmForm, Settings, ThemePref } from "@/shared/types/generated/settings";
 import {
   Button,
-  ConfirmDialog,
   ErrorBanner,
   FormField,
   InspectorSectionLabel,
@@ -51,8 +50,6 @@ export function AiPage() {
   const [models, setModels] = useState<string[]>([]);
   const [test, setTest] = useState<"idle" | "pending" | "ok" | "error">("idle");
   const [testMessage, setTestMessage] = useState<string | null>(null);
-  const [cacheOpen, setCacheOpen] = useState(false);
-  const [cacheBusy, setCacheBusy] = useState(false);
   const form = draft ?? vm.data ?? null;
   const llm = form?.llm;
 
@@ -104,16 +101,6 @@ export function AiPage() {
     } catch (error) {
       setTest("error");
       setTestMessage(error instanceof AppError ? error.message : "Modèles inaccessibles.");
-    }
-  };
-
-  const clearCache = async () => {
-    setCacheBusy(true);
-    try {
-      await settingsService.clearAiCache();
-      setCacheOpen(false);
-    } finally {
-      setCacheBusy(false);
     }
   };
 
@@ -320,35 +307,11 @@ export function AiPage() {
                   }}
                   options={THEMES}
                 />
-
-                <div className="border-t border-field pt-3">
-                  <button
-                    type="button"
-                    onClick={() => setCacheOpen(true)}
-                    className="text-label font-semibold text-ink-muted hover:text-ink"
-                  >
-                    Vider le cache IA
-                  </button>
-                  <p className="mt-1 text-meta leading-relaxed text-ink-disabled">
-                    Les réponses déjà calculées seront oubliées.
-                  </p>
-                </div>
               </div>
             </section>
           </div>
         </SettingsBody>
       )}
-
-      <ConfirmDialog
-        open={cacheOpen}
-        title="Vider le cache IA ?"
-        description="Les réponses déjà calculées seront oubliées. Les prochaines analyses rappelleront le fournisseur."
-        note="Vos candidatures, CV et réglages restent intacts."
-        confirmLabel="Vider le cache"
-        busy={cacheBusy}
-        onCancel={() => setCacheOpen(false)}
-        onConfirm={() => void clearCache()}
-      />
     </div>
   );
 }
