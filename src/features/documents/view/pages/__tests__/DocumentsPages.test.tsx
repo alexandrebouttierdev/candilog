@@ -146,3 +146,35 @@ describe("collage d'une offre depuis le presse-papiers", () => {
     );
   });
 });
+
+describe("retouche de la lettre sur la page", () => {
+  it("enregistre le texte tel qu'il a été modifié dans l'aperçu", async () => {
+    vi.spyOn(aiService, "generateCoverLetter").mockResolvedValue("Madame, Monsieur,");
+    const save = vi.spyOn(documentsService, "saveCoverLetter").mockResolvedValue({
+      id: "lettre-1",
+      name: "Lettre — Candidature",
+      company: null,
+      job_title: null,
+      tone: "formal",
+      length: "medium",
+      content: "Madame, Monsieur, Astek",
+      created_at: "2026-08-30T00:00:00Z",
+    });
+
+    render(<LetterWriterPage />, { wrapper });
+    await userEvent.type(screen.getByLabelText("Contexte ou offre"), "Une offre");
+    await userEvent.click(screen.getByRole("button", { name: /Rédiger la lettre/ }));
+
+    const corps = await screen.findByLabelText("Contenu de la lettre");
+    await waitFor(() => expect(corps).toHaveValue("Madame, Monsieur,"));
+    await userEvent.type(corps, " Astek");
+
+    await userEvent.click(screen.getByRole("button", { name: /Enregistrer/ }));
+
+    await waitFor(() =>
+      expect(save).toHaveBeenCalledWith(
+        expect.objectContaining({ content: "Madame, Monsieur, Astek" }),
+      ),
+    );
+  });
+});

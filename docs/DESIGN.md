@@ -291,6 +291,8 @@ Fermeture : `useDismissable` (Escape + clic extérieur) — calendrier, FilterMe
 
 ### Documents générés
 
+- L'aperçu A4 de la lettre est **éditable sur place** : le texte affiché est celui qui sera
+  enregistré et exporté. Pas d'éditeur riche tant que la lettre est stockée en texte brut.
 - Les champs d'offre et de contexte portent un bouton « Coller » (lecture native du
   presse-papiers), en plus du Ctrl+V habituel.
 

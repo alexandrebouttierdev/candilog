@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "react-router-dom";
 import { documentsService, type CoverLetter } from "../../services/documentsService";
@@ -127,6 +127,45 @@ export function LettersLibraryPage() {
 
 function LetterPreview({ letter }: { letter: CoverLetter }) { return <A4Preview title={letter.name}><p className="mt-4 text-[11px] uppercase tracking-[0.12em] text-paper-muted">Lettre de motivation</p><h2 className="mt-3 text-[23px] font-semibold">{letter.job_title ?? "Candidature"}</h2><p className="mt-1 text-[12px] text-paper-muted">{letter.company ?? "Entreprise"}</p><div className="mt-8 whitespace-pre-wrap text-[12px] leading-[1.9]">{letter.content}</div></A4Preview>; }
 
+/**
+ * Corps de la lettre, édité **sur la feuille** : ce qui est lu à l'écran est exactement ce
+ * qui sera enregistré et exporté en PDF. La zone est une saisie transparente calée sur la
+ * typographie du papier plutôt qu'un éditeur riche : la lettre est stockée en texte brut,
+ * et faire croire à du gras qui disparaîtrait à l'export serait pire que pas d'éditeur.
+ */
+function LetterBody({
+  value,
+  readOnly,
+  onChange,
+}: {
+  value: string;
+  readOnly: boolean;
+  onChange: (value: string) => void;
+}) {
+  const zone = useRef<HTMLTextAreaElement | null>(null);
+
+  // La feuille grandit avec le texte : une barre de défilement interne à la page A4
+  // couperait la lettre en deux et ne correspondrait à aucun rendu imprimé.
+  useLayoutEffect(() => {
+    const element = zone.current;
+    if (!element) return;
+    element.style.height = "auto";
+    element.style.height = `${element.scrollHeight}px`;
+  }, [value]);
+
+  return (
+    <textarea
+      ref={zone}
+      value={value}
+      readOnly={readOnly}
+      aria-label="Contenu de la lettre"
+      placeholder="La lettre apparaîtra ici après la rédaction. Vous pouvez aussi l'écrire ou la retoucher directement sur cette page."
+      onChange={(event) => onChange(event.target.value)}
+      className="mt-8 min-h-[420px] w-full resize-none border-0 bg-transparent p-0 text-[12px] leading-[1.9] text-paper-ink outline-none placeholder:text-paper-muted focus:outline-none"
+    />
+  );
+}
+
 export function LetterWriterPage() {
   const queryClient = useQueryClient();
   const notify = useUiStore((s) => s.notify);
@@ -205,7 +244,7 @@ export function LetterWriterPage() {
             <p className="mt-4 text-[11px] uppercase tracking-[0.12em] text-paper-muted">Lettre de motivation</p>
             <h2 className="mt-3 text-[23px] font-semibold">{job_title || "Candidature"}</h2>
             <p className="mt-1 text-[12px] text-paper-muted">{company || "Entreprise ciblée"}</p>
-            <div className="mt-8 whitespace-pre-wrap text-[12px] leading-[1.9] text-paper-ink">{output || "La lettre apparaîtra ici après la rédaction."}</div>
+            <LetterBody value={output} readOnly={operation !== null} onChange={setOutput} />
           </A4Preview>
         </DocumentPanel>
       </div>
