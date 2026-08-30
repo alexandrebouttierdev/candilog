@@ -118,13 +118,7 @@ impl AiService {
             ));
         }
         let provider = self.provider().await?;
-        progres(
-            notifier,
-            &request.generation_id,
-            "Analyse de l'offre",
-            15,
-            None,
-        );
+        progres(notifier, &request.generation_id, "Analyse de l'offre", None);
         let mut job_offer: StructuredListing = cancel(
             token,
             generate_json(
@@ -136,13 +130,7 @@ impl AiService {
         .await?;
         ground_extracted_listing(&request.job_offer, &mut job_offer);
         let score = profile_score(&profile, &job_offer);
-        progres(
-            notifier,
-            &request.generation_id,
-            "Adaptation du CV",
-            45,
-            None,
-        );
+        progres(notifier, &request.generation_id, "Adaptation du CV", None);
         let context =
             serde_json::json!({"profile":profile,"offre":job_offer,"score":score}).to_string();
         let mut resume: GeneratedResume = cancel(
@@ -155,7 +143,7 @@ impl AiService {
         )
         .await?;
         ground_generated_resume(&profile, &mut resume);
-        progres(notifier, &request.generation_id, "Analyse ATS", 78, None);
+        progres(notifier, &request.generation_id, "Analyse ATS", None);
         let context_ats = serde_json::json!({"cv":resume,"offre":job_offer}).to_string();
         let mut analysis: AtsAnalysis = cancel(
             token,
@@ -164,7 +152,7 @@ impl AiService {
         .await?;
         // Le chiffre LLM n'est jamais exposé : l'UI et les DTO portent le score Rust.
         analysis.score = score.total;
-        progres(notifier, &request.generation_id, "Terminé", 100, None);
+        progres(notifier, &request.generation_id, "Terminé", None);
         Ok(ResumeGeneration {
             resume,
             analysis,
@@ -221,7 +209,7 @@ impl AiService {
             "instruction": request.instruction,
         })
         .to_string();
-        progres(&notifier, &id, "Rédaction", 20, None);
+        progres(&notifier, &id, "Rédaction", None);
         let resultat = cancel(
             &token,
             generate_json::<CoverLetterPlan>(
@@ -234,12 +222,11 @@ impl AiService {
         .and_then(|plan| render_grounded_letter(&catalog, &plan, &request));
         if let Ok(cover_letter) = &resultat {
             let fragments = decouper_fragments(cover_letter);
-            for (index, chunk) in fragments.iter().enumerate() {
+            for chunk in &fragments {
                 if token.is_cancelled() {
                     return Err(AppError::Cancelled);
                 }
-                let p = 30 + ((index + 1) * 70 / fragments.len().max(1)) as u8;
-                progres(&notifier, &id, "Rédaction", p, Some(chunk.clone()));
+                progres(&notifier, &id, "Rédaction", Some(chunk.clone()));
             }
         }
         resultat
@@ -258,11 +245,11 @@ impl AiService {
             service: self,
             id: id.clone(),
         };
-        progres(&notifier, &id, "Lecture locale du PDF", 10, None);
+        progres(&notifier, &id, "Lecture locale du PDF", None);
         let text = extract_pdf(path).await?;
         validate_source_text(&text, "Le CV")?;
         let provider = self.provider().await?;
-        progres(&notifier, &id, "Structuration du CV", 30, None);
+        progres(&notifier, &id, "Structuration du CV", None);
         let mut resume: GeneratedResume = cancel(
             &token,
             generate_json(
@@ -273,7 +260,7 @@ impl AiService {
         )
         .await?;
         ground_imported_resume(&text, &mut resume);
-        progres(&notifier, &id, "Analyse de l'offre", 55, None);
+        progres(&notifier, &id, "Analyse de l'offre", None);
         let mut job_offer: StructuredListing = cancel(
             &token,
             generate_json(
@@ -285,7 +272,7 @@ impl AiService {
         .await?;
         ground_extracted_listing(&request.job_offer, &mut job_offer);
         let score = score_resume_imported(&resume, &job_offer);
-        progres(&notifier, &id, "Recommandations ATS", 78, None);
+        progres(&notifier, &id, "Recommandations ATS", None);
         let mut analysis: AtsAnalysis = cancel(
             &token,
             generate_json(
@@ -299,7 +286,7 @@ impl AiService {
         )
         .await?;
         analysis.score = score.total;
-        progres(&notifier, &id, "Terminé", 100, None);
+        progres(&notifier, &id, "Terminé", None);
         Ok(ImportedResumeAnalysis {
             resume,
             job_offer,
@@ -456,17 +443,10 @@ fn bloc_donnees(label: &str, contenu: &str) -> String {
     let contenu = contenu.replace(&fermeture, &format!("<{label}_echappe/>"));
     format!("{DONNEES_NON_FIABLES}\n{ouverture}\n{contenu}\n{fermeture}")
 }
-fn progres(
-    notifier: &impl Fn(AiProgress),
-    id: &str,
-    step: &str,
-    progress: u8,
-    chunk: Option<String>,
-) {
+fn progres(notifier: &impl Fn(AiProgress), id: &str, step: &str, chunk: Option<String>) {
     notifier(AiProgress {
         generation_id: id.into(),
         step: step.into(),
-        progress,
         chunk,
     });
 }

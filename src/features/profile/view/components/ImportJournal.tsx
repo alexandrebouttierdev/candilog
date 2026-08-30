@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Icon } from "@/shared/ui";
-import { formatJournalTime } from "../../model/formatElapsed";
+import { formatJournalTime } from "../../model/journalTime";
 import type { ImportJournalEntry } from "../../viewmodel/useProfileImportProgress";
 
 /** Journal d'import replié par défaut, destiné à un utilisateur non technique. */

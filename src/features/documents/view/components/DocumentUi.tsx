@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { GeneratedResume, AiProgress } from "@/features/ai/model/types";
 import { cn } from "@/shared/lib/cn";
+import { formatElapsed } from "@/shared/lib/duration";
 import { Icon } from "@/shared/ui";
 import { PaperPreview } from "./PaperPreview";
 
@@ -102,20 +103,29 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-export function AiProgress({ progress }: { progress: AiProgress | null }) {
-  const value = progress?.progress ?? 5;
+/**
+ * Progression indéterminée d'un traitement IA.
+ *
+ * Aucun pourcentage : la durée dépend du fournisseur et du modèle, et le chiffre affiché
+ * jusqu'ici était une constante déguisée en mesure. Le temps écoulé est la seule
+ * information vraie que l'on puisse donner pendant l'attente.
+ */
+export function AiProgress({
+  progress,
+  elapsedMs,
+}: {
+  progress: AiProgress | null;
+  elapsedMs: number;
+}) {
   return (
     <div role="status" className="rounded-card border border-accent-border bg-accent-tint p-4">
       <div className="flex items-center gap-2">
         <Icon name="progress_activity" size={17} className="animate-spin text-accent" />
         <p className="flex-1 text-label font-medium text-ink">{progress?.step ?? "Préparation…"}</p>
-        <span className="tabular text-meta text-accent">{value}%</span>
+        <span className="tabular text-meta text-accent">{formatElapsed(elapsedMs)}</span>
       </div>
       <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface">
-        <div
-          style={{ width: `${value}%` }}
-          className="h-full rounded-full bg-accent transition-[width] duration-300"
-        />
+        <div className="import-indeterminate h-full w-1/3 rounded-full bg-accent" />
       </div>
     </div>
   );

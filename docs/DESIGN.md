@@ -245,6 +245,8 @@ Références : `ApplicationFilters`, `CompanyFilters`, `ContactFilters`.
 | Succès / échec d’écriture sans décision | `notify()` → `Toaster` (4 s, bas droite) |
 | Décision destructive | `ConfirmDialog` |
 | Rien à montrer | `EmptyState` dans le contenant, pas un écran plein décoratif |
+| Traitement IA en cours | `AiProgress` : étape, barre indéterminée et temps écoulé — **jamais** de pourcentage, il serait inventé |
+| Traitement IA terminé | Durée totale en badge d'en-tête (« Rédigée en 12 s ») |
 
 ---
 

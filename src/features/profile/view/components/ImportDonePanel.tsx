@@ -1,6 +1,6 @@
 import type { ImportProfileResult } from "@/shared/types/generated/profile";
 import { Icon, StatCard } from "@/shared/ui";
-import { formatDuration } from "../../model/formatElapsed";
+import { formatDuration } from "@/shared/lib/duration";
 
 /** Bilan d'un import réussi : totaux en cartes, pas une liste à plat. */
 export function ImportDonePanel({

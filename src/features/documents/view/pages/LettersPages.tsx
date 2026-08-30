@@ -4,6 +4,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { documentsService, type CoverLetter } from "../../services/documentsService";
 import { aiService, generation_id } from "@/features/ai/services/aiService";
 import { useAiProgress, useCancelAiOnUnmount } from "@/features/ai/viewmodel/useAiProgress";
+import { useAiTimer } from "@/features/ai/viewmodel/useAiTimer";
+import { formatDuration } from "@/shared/lib/duration";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 import { Button, ConfirmDialog, EmptyState, ErrorBanner, FormField, Icon, PageHeader, Pager, Select } from "@/shared/ui";
@@ -140,14 +142,17 @@ export function LetterWriterPage() {
   const [error, setError] = useState<string | null>(null);
   const progress = useAiProgress(operation);
   useCancelAiOnUnmount(operation);
+  const timer = useAiTimer(operation !== null);
 
   const run = async () => {
     const id = generation_id();
     setOperation(id);
     setOutput("");
     setError(null);
+    timer.start();
     try {
       setOutput(await aiService.generateCoverLetter({ generation_id: id, company: company || null, job_title: job_title || null, tone, length, context: context || null, previous_cover_letter: null, instruction: null }));
+      timer.stop();
     } catch (e) {
       if (!(e instanceof AppError && e.code === "CANCELLED")) setError(message(e));
     } finally {
@@ -172,7 +177,7 @@ export function LetterWriterPage() {
         icon="edit_note"
         title="Lettre de motivation"
         subtitle="Rédigez, itérez et enregistrez"
-        badge={operation ? <HeaderBadge>IA active</HeaderBadge> : undefined}
+        badge={operation ? <HeaderBadge>IA active</HeaderBadge> : timer.durationMs !== null ? <HeaderBadge icon="schedule">Rédigée en {formatDuration(timer.durationMs)}</HeaderBadge> : undefined}
         secondary={output ? <Button icon="download" onClick={() => void exportLetterPdf({ name: `Lettre — ${job_title || company || "Candidature"}`, company: company || null, job_title: job_title || null, content: output }, notify)}>Exporter le PDF</Button> : undefined}
         primary={output ? <Button variant="primary" icon="save" disabled={save.isPending} onClick={() => save.mutate()}>Enregistrer</Button> : undefined}
       />
@@ -189,7 +194,7 @@ export function LetterWriterPage() {
             <ChampOffre label="Contexte ou offre" rows={10} value={context} onChange={setContext} />
             {error ? <ErrorBanner title="Rédaction impossible" message={error} /> : null}
             {operation ? (
-              <><AiProgress progress={progress} /><Button variant="danger" icon="stop" className="w-full" onClick={() => void aiService.cancel(operation)}>Arrêter</Button></>
+              <><AiProgress progress={progress} elapsedMs={timer.elapsedMs} /><Button variant="danger" icon="stop" className="w-full" onClick={() => void aiService.cancel(operation)}>Arrêter</Button></>
             ) : (
               <Button variant="primary" icon="auto_awesome" className="w-full" onClick={() => void run()}>Rédiger la lettre</Button>
             )}

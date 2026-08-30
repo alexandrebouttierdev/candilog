@@ -231,7 +231,6 @@ pub struct ProfileImportRequest {
 pub struct AiProgress {
     pub generation_id: String,
     pub step: String,
-    pub progress: u8,
     pub chunk: Option<String>,
 }
 

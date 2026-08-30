@@ -5,6 +5,8 @@ import { documentsService } from "../../services/documentsService";
 import { aiService, generation_id } from "@/features/ai/services/aiService";
 import type { ResumeGeneration } from "@/features/ai/model/types";
 import { useAiProgress, useCancelAiOnUnmount } from "@/features/ai/viewmodel/useAiProgress";
+import { useAiTimer } from "@/features/ai/viewmodel/useAiTimer";
+import { formatDuration } from "@/shared/lib/duration";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 import { Button, EmptyState, ErrorBanner, FormField, Icon, PageHeader, TextInput } from "@/shared/ui";
@@ -23,14 +25,17 @@ export function ResumeGeneratorPage() {
   const [name, setName] = useState(initiale.name);
   const progress = useAiProgress(operation);
   useCancelAiOnUnmount(operation);
+  const timer = useAiTimer(operation !== null);
 
   const run = async () => {
     if (!job_offer.trim()) { setError("Collez le texte de l’offre à cibler."); return; }
     const id = generation_id();
     setOperation(id);
     setError(null);
+    timer.start();
     try {
       const value = await aiService.generateResume({ generation_id: id, job_offer });
+      timer.stop();
       setResult(value);
       setName(`CV — ${value.job_offer.title || "Version ciblée"}`);
     } catch (e) {
@@ -57,7 +62,7 @@ export function ResumeGeneratorPage() {
         icon="auto_awesome"
         title="Générer un CV"
         subtitle="Analysez une offre, générez un CV ciblé, exportez en PDF"
-        badge={operation ? <HeaderBadge>IA active</HeaderBadge> : undefined}
+        badge={operation ? <HeaderBadge>IA active</HeaderBadge> : timer.durationMs !== null ? <HeaderBadge icon="schedule">Généré en {formatDuration(timer.durationMs)}</HeaderBadge> : undefined}
         secondary={result ? <Button icon="save" disabled={!name.trim() || save.isPending} onClick={() => save.mutate()}>Enregistrer</Button> : undefined}
         primary={result ? <Button variant="primary" icon="download" onClick={() => void exportPdf(result.resume, notify)}>Exporter le PDF</Button> : undefined}
       />
@@ -76,7 +81,7 @@ export function ResumeGeneratorPage() {
             />
             {error ? <ErrorBanner title="Génération impossible" message={error} /> : null}
             {operation ? (
-              <><AiProgress progress={progress} /><Button variant="danger" icon="stop" className="w-full" onClick={() => void aiService.cancel(operation)}>Annuler</Button></>
+              <><AiProgress progress={progress} elapsedMs={timer.elapsedMs} /><Button variant="danger" icon="stop" className="w-full" onClick={() => void aiService.cancel(operation)}>Annuler</Button></>
             ) : (
               <Button variant="primary" icon="auto_awesome" className="w-full" onClick={() => void run()}>Générer le CV ciblé</Button>
             )}

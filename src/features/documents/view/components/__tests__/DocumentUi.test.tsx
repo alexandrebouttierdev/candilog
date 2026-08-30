@@ -16,13 +16,15 @@ describe("DocumentUi", () => {
     expect(screen.getByText("sur 100")).toBeInTheDocument();
   });
 
-  it("expose la progression IA aux technologies d'assistance", () => {
+  it("expose l'étape et le temps écoulé, sans pourcentage inventé", () => {
     render(
       <AiProgress
-        progress={{ generation_id: "op-1", step: "Analyse ATS", progress: 78, chunk: null }}
+        progress={{ generation_id: "op-1", step: "Analyse ATS", chunk: null }}
+        elapsedMs={72_000}
       />,
     );
     expect(screen.getByRole("status")).toHaveTextContent("Analyse ATS");
-    expect(screen.getByRole("status")).toHaveTextContent("78%");
+    expect(screen.getByRole("status")).toHaveTextContent("01:12");
+    expect(screen.getByRole("status")).not.toHaveTextContent("%");
   });
 });

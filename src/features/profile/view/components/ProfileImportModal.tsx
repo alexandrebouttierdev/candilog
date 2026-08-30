@@ -16,7 +16,7 @@ import {
   Icon,
   ModalHost,
 } from "@/shared/ui";
-import { formatDuration } from "../../model/formatElapsed";
+import { formatDuration } from "@/shared/lib/duration";
 import {
   countMarked,
   explainImportErrors,
@@ -26,7 +26,7 @@ import {
   type ImportProfileFormInput,
   type ImportProfileFormValues,
 } from "../../model/import-review.schema";
-import { useElapsedClock } from "../../viewmodel/useElapsedClock";
+import { useElapsedClock } from "@/shared/hooks/useElapsedClock";
 import {
   useProfileImportProgress,
   type ImportJournalEntry,

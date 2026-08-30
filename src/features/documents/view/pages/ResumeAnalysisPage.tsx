@@ -2,6 +2,8 @@ import { useState } from "react";
 import { aiService, generation_id } from "@/features/ai/services/aiService";
 import type { ImportedResumeAnalysis } from "@/features/ai/model/types";
 import { useAiProgress, useCancelAiOnUnmount } from "@/features/ai/viewmodel/useAiProgress";
+import { useAiTimer } from "@/features/ai/viewmodel/useAiTimer";
+import { formatDuration } from "@/shared/lib/duration";
 import { AppError } from "@/shared/types/app-error";
 import { Button, EmptyState, ErrorBanner, Icon, PageHeader } from "@/shared/ui";
 import { A4Preview, AiProgress, DocumentPanel, ScoreBadge } from "../components/DocumentUi";
@@ -14,14 +16,19 @@ export function ResumeAnalysisPage() {
   const [error, setError] = useState<string | null>(null);
   const progress = useAiProgress(operation);
   useCancelAiOnUnmount(operation);
+  const timer = useAiTimer(operation !== null);
   const run = async () => {
     if (!job_offer.trim()) { setError("Collez l’offre ciblée avant de choisir le CV PDF."); return; }
     const id = generation_id();
     setOperation(id);
     setError(null);
+    timer.start();
     try {
       const next = await aiService.analyzeResume({ generation_id: id, job_offer });
-      if (next !== null) setResult(next);
+      if (next !== null) {
+        timer.stop();
+        setResult(next);
+      }
     } catch (e) {
       if (!(e instanceof AppError && e.code === "CANCELLED")) setError(message(e));
     } finally {
@@ -34,7 +41,14 @@ export function ResumeAnalysisPage() {
         icon="query_stats"
         title="Analyse de CV"
         subtitle="Comparez un PDF à l’offre ciblée"
-        badge={<HeaderBadge icon="lock">Lecture locale</HeaderBadge>}
+        badge={
+          <>
+            {timer.durationMs !== null && operation === null ? (
+              <HeaderBadge icon="schedule">Analysé en {formatDuration(timer.durationMs)}</HeaderBadge>
+            ) : null}
+            <HeaderBadge icon="lock">Lecture locale</HeaderBadge>
+          </>
+        }
         primary={<Button variant="primary" icon="bolt" disabled={operation !== null} onClick={() => void run()}>Analyser le CV</Button>}
       />
     }>
@@ -48,7 +62,7 @@ export function ResumeAnalysisPage() {
                 <span className="text-meta text-ink-muted">PDF uniquement · 10 Mo maximum</span>
               </button>
               <ChampOffre label="Offre ciblée" required rows={13} value={job_offer} onChange={setJobOffer} />
-              {operation ? <AiProgress progress={progress} /> : null}
+              {operation ? <AiProgress progress={progress} elapsedMs={timer.elapsedMs} /> : null}
               {error ? <ErrorBanner title="Analyse impossible" message={error} /> : null}
             </div>
           </DocumentPanel>

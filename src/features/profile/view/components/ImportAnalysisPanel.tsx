@@ -1,4 +1,4 @@
-import { formatElapsed } from "../../model/formatElapsed";
+import { formatElapsed } from "@/shared/lib/duration";
 import type { ImportJournalEntry } from "../../viewmodel/useProfileImportProgress";
 import { ImportJournal } from "./ImportJournal";
 
