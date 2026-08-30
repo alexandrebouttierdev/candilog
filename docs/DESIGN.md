@@ -205,7 +205,8 @@ Références : `ApplicationFilters`, `CompanyFilters`, `ContactFilters`.
 - `MasterList` : 37 % largeur, min 300 px, `bg-surface`, filet droit.
 - Item : `MasterListItem` (initiales, titre, sous-titre, `MasterListTag`).
 - Fiche à droite ; si rien de sélectionné et liste non vide, ouvrir le premier item.
-- Pagination : `Pager` dense dans le pied de liste.
+- Pagination : `Pager` dense dans le pied de liste — dix fiches par page pour Entreprises
+  (`COMPANIES_PAGE_SIZE`), `PAGE_SIZE` ailleurs.
 
 ### Table / Kanban (Candidatures)
 

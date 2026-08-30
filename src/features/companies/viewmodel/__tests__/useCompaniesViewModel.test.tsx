@@ -8,6 +8,7 @@ import type { Company } from "../../services/companyService";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 import { applicationService } from "@/features/applications/services/applicationService";
+import { COMPANIES_PAGE_SIZE } from "@/shared/types/page";
 
 /** Entreprise minimale, pour n'écrire que ce que chaque test observe. */
 function ent(name: string, id = name): Company {
@@ -29,7 +30,13 @@ function ent(name: string, id = name): Company {
 }
 
 function page(items: Company[], total = items.length) {
-  return { items, total, page: 1, page_size: 8, total_pages: Math.max(1, Math.ceil(total / 8)) };
+  return {
+    items,
+    total,
+    page: 1,
+    page_size: COMPANIES_PAGE_SIZE,
+    total_pages: Math.max(1, Math.ceil(total / COMPANIES_PAGE_SIZE)),
+  };
 }
 
 function wrapper({ children }: { children: ReactNode }) {
@@ -69,6 +76,18 @@ describe("ViewModel des entreprises", () => {
 
     await waitFor(() => expect(result.current.items).toHaveLength(2));
     expect(result.current.total).toBe(2);
+  });
+
+  it("demande dix entreprises par page", async () => {
+    const listPage = vi
+      .spyOn(companyService, "listPage")
+      .mockResolvedValue(page([ent("Nova Digital")]));
+
+    const { result } = renderHook(() => useCompaniesViewModel(), { wrapper });
+
+    await waitFor(() => expect(listPage).toHaveBeenCalled());
+    expect(listPage.mock.lastCall?.[0].page_size).toBe(10);
+    expect(result.current.page_size).toBe(10);
   });
 
   it("calcule les KPI de la fiche sur tout le pipeline", async () => {

@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { companyService } from "../services/companyService";
 import type { Company, CompanyFilter, NewCompany } from "../services/companyService";
 import { applicationService } from "@/features/applications/services/applicationService";
-import { PAGE_SIZE } from "@/shared/types/page";
+import { COMPANIES_PAGE_SIZE, PAGE_SIZE } from "@/shared/types/page";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 import { useDebounce } from "@/shared/hooks/useDebounce";
@@ -60,7 +60,7 @@ export function useCompaniesViewModel() {
 
   const list = useQuery({
     queryKey: [...COMPANIES_KEY, "page", { page, filter }],
-    queryFn: () => companyService.listPage({ page, page_size: PAGE_SIZE, filter }),
+    queryFn: () => companyService.listPage({ page, page_size: COMPANIES_PAGE_SIZE, filter }),
   });
 
   const items: Company[] = list.data?.items ?? [];
@@ -175,7 +175,7 @@ export function useCompaniesViewModel() {
     items,
     total: list.data?.total ?? 0,
     page,
-    page_size: PAGE_SIZE,
+    page_size: COMPANIES_PAGE_SIZE,
     search,
     criteres,
     filtersActifs,
