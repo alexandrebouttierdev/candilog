@@ -6,11 +6,11 @@ import { aiService, generation_id } from "@/features/ai/services/aiService";
 import { useAiProgress, useCancelAiOnUnmount } from "@/features/ai/viewmodel/useAiProgress";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
-import { Button, ConfirmDialog, EmptyState, ErrorBanner, FormField, Icon, PageHeader, Pager, Select, TextArea } from "@/shared/ui";
+import { Button, ConfirmDialog, EmptyState, ErrorBanner, FormField, Icon, PageHeader, Pager, Select } from "@/shared/ui";
 import { A4Preview, AiProgress, DocumentPanel, PreviewAction } from "../components/DocumentUi";
 import { PAGE_SIZE } from "@/shared/types/page";
 import { useDebounce } from "@/shared/hooks/useDebounce";
-import { Champ, COVER_LETTERS_KEY, HeaderBadge, Screen, coverLetterFromNavigation, date, detail, exportLetterPdf, labelTone, message } from "./documentPageSupport";
+import { Champ, ChampOffre, COVER_LETTERS_KEY, HeaderBadge, Screen, coverLetterFromNavigation, date, detail, exportLetterPdf, labelTone, message } from "./documentPageSupport";
 
 export function LettersLibraryPage() {
   const navigate = useNavigate();
@@ -186,7 +186,7 @@ export function LetterWriterPage() {
               <FormField label="Ton">{(props) => <Select {...props} value={tone} onChange={(e) => setTone(e.target.value)}><option value="formal">Formel</option><option value="casual">Naturel</option><option value="creative">Créatif</option></Select>}</FormField>
               <FormField label="Longueur">{(props) => <Select {...props} value={length} onChange={(e) => setLength(e.target.value)}><option value="short">Courte</option><option value="medium">Moyenne</option><option value="long">Longue</option></Select>}</FormField>
             </div>
-            <FormField label="Contexte ou offre">{(props) => <TextArea {...props} rows={10} value={context} onChange={(e) => setContext(e.target.value)} />}</FormField>
+            <ChampOffre label="Contexte ou offre" rows={10} value={context} onChange={setContext} />
             {error ? <ErrorBanner title="Rédaction impossible" message={error} /> : null}
             {operation ? (
               <><AiProgress progress={progress} /><Button variant="danger" icon="stop" className="w-full" onClick={() => void aiService.cancel(operation)}>Arrêter</Button></>

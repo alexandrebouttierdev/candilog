@@ -114,3 +114,38 @@ describe("échecs d'enregistrement", () => {
     );
   });
 });
+
+describe("collage d'une offre depuis le presse-papiers", () => {
+  function stubClipboard(readText: () => Promise<string>) {
+    Object.defineProperty(navigator, "clipboard", {
+      value: { readText },
+      configurable: true,
+    });
+  }
+
+  it("remplit le champ avec le contenu du presse-papiers", async () => {
+    stubClipboard(() => Promise.resolve("Administrateur Système et Réseau chez Astek"));
+
+    render(<LetterWriterPage />, { wrapper });
+    await userEvent.click(screen.getByRole("button", { name: "Coller" }));
+
+    await waitFor(() =>
+      expect(screen.getByLabelText("Contexte ou offre")).toHaveValue(
+        "Administrateur Système et Réseau chez Astek",
+      ),
+    );
+  });
+
+  it("prévient quand le presse-papiers est inaccessible au lieu de rester muet", async () => {
+    stubClipboard(() => Promise.reject(new Error("refusé")));
+
+    render(<LetterWriterPage />, { wrapper });
+    await userEvent.click(screen.getByRole("button", { name: "Coller" }));
+
+    await waitFor(() =>
+      expect(useUiStore.getState().toasts.map((toast) => toast.title)).toContain(
+        "Collage impossible",
+      ),
+    );
+  });
+});

@@ -7,9 +7,9 @@ import type { ResumeGeneration } from "@/features/ai/model/types";
 import { useAiProgress, useCancelAiOnUnmount } from "@/features/ai/viewmodel/useAiProgress";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
-import { Button, EmptyState, ErrorBanner, FormField, Icon, PageHeader, TextArea, TextInput } from "@/shared/ui";
+import { Button, EmptyState, ErrorBanner, FormField, Icon, PageHeader, TextInput } from "@/shared/ui";
 import { A4Preview, AiProgress, DocumentPanel, ScoreBadge } from "../components/DocumentUi";
-import { HeaderBadge, RESUME_KEY, Screen, TexteNonVerifie, detail, exportPdf, generationFromNavigation, message } from "./documentPageSupport";
+import { ChampOffre, HeaderBadge, RESUME_KEY, Screen, TexteNonVerifie, detail, exportPdf, generationFromNavigation, message } from "./documentPageSupport";
 
 export function ResumeGeneratorPage() {
   const queryClient = useQueryClient();
@@ -65,9 +65,15 @@ export function ResumeGeneratorPage() {
       <div className="grid min-h-[660px] gap-4 xl:grid-cols-[350px_minmax(460px,1fr)_320px]">
         <DocumentPanel title="Offre ciblée" icon="target">
           <div className="space-y-4 p-4">
-            <FormField label="Texte de l’offre" required help="Le texte est envoyé uniquement au fournisseur configuré.">
-              {(props) => <TextArea {...props} rows={18} value={job_offer} placeholder="Collez ici l’intitulé, les missions et les compétences recherchées…" onChange={(e) => setJobOffer(e.target.value)} />}
-            </FormField>
+            <ChampOffre
+              label="Texte de l’offre"
+              required
+              help="Le texte est envoyé uniquement au fournisseur configuré."
+              rows={18}
+              value={job_offer}
+              placeholder="Collez ici l’intitulé, les missions et les compétences recherchées…"
+              onChange={setJobOffer}
+            />
             {error ? <ErrorBanner title="Génération impossible" message={error} /> : null}
             {operation ? (
               <><AiProgress progress={progress} /><Button variant="danger" icon="stop" className="w-full" onClick={() => void aiService.cancel(operation)}>Annuler</Button></>

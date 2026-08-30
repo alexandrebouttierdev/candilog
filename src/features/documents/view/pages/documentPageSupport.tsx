@@ -5,7 +5,8 @@ import { documentsService } from "../../services/documentsService";
 import type { ToastMessage } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 import { ContextBarAccessory, ContextNote, ContextSearch } from "@/app/layout/ContextBar";
-import { FormField, Icon, TextInput } from "@/shared/ui";
+import { Button, FormField, Icon, TextArea, TextInput } from "@/shared/ui";
+import { useUiStore } from "@/shared/lib/ui-store";
 
 export const RESUME_KEY = ["documents", "cv"] as const;
 export const COVER_LETTERS_KEY = ["documents", "lettres"] as const;
@@ -74,6 +75,75 @@ export function TexteNonVerifie() {
 export function AtsChip({ score }: { score: number }) {
   const tone = score >= 80 ? "bg-success-tint text-success" : score >= 65 ? "bg-warning-tint text-warning" : "bg-neutral-tint text-ink-muted";
   return <span className={`rounded-tag px-1.5 py-0.5 text-[10.5px] font-semibold ${tone}`}>ATS {score}</span>;
+}
+
+/**
+ * Champ d'offre ou de contexte, avec collage direct depuis le presse-papiers.
+ *
+ * Ces champs reçoivent une annonce entière copiée depuis un navigateur : le bouton évite
+ * d'avoir à viser la zone de texte avant de faire Ctrl+V, et remplace le contenu existant
+ * comme le ferait un collage sur une sélection complète.
+ */
+export function ChampOffre({
+  label,
+  value,
+  rows,
+  required = false,
+  help,
+  placeholder,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  rows: number;
+  required?: boolean;
+  help?: string;
+  placeholder?: string;
+  onChange: (value: string) => void;
+}) {
+  const notify = useUiStore((state) => state.notify);
+
+  const coller = async () => {
+    try {
+      const texte = await navigator.clipboard.readText();
+      if (!texte.trim()) {
+        notify({ tone: "info", title: "Le presse-papiers est vide" });
+        return;
+      }
+      onChange(texte);
+    } catch {
+      notify({
+        tone: "error",
+        title: "Collage impossible",
+        detail: "Le presse-papiers n'est pas accessible ; utilisez Ctrl+V dans le champ.",
+      });
+    }
+  };
+
+  return (
+    <FormField label={label} required={required} help={help}>
+      {(props) => (
+        <div className="flex flex-col gap-1.5">
+          <TextArea
+            {...props}
+            rows={rows}
+            value={value}
+            placeholder={placeholder}
+            onChange={(event) => onChange(event.target.value)}
+          />
+          <Button
+            variant="ghost"
+            size="dialog"
+            icon="content_paste"
+            className="self-end"
+            onClick={() => void coller()}
+          >
+            Coller
+          </Button>
+        </div>
+      )}
+    </FormField>
+  );
 }
 
 export function Champ({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {

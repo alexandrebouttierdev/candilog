@@ -3,9 +3,9 @@ import { aiService, generation_id } from "@/features/ai/services/aiService";
 import type { ImportedResumeAnalysis } from "@/features/ai/model/types";
 import { useAiProgress, useCancelAiOnUnmount } from "@/features/ai/viewmodel/useAiProgress";
 import { AppError } from "@/shared/types/app-error";
-import { Button, EmptyState, ErrorBanner, FormField, Icon, PageHeader, TextArea } from "@/shared/ui";
+import { Button, EmptyState, ErrorBanner, Icon, PageHeader } from "@/shared/ui";
 import { A4Preview, AiProgress, DocumentPanel, ScoreBadge } from "../components/DocumentUi";
-import { HeaderBadge, Screen, TexteNonVerifie, message } from "./documentPageSupport";
+import { ChampOffre, HeaderBadge, Screen, TexteNonVerifie, message } from "./documentPageSupport";
 
 export function ResumeAnalysisPage() {
   const [job_offer, setJobOffer] = useState("");
@@ -47,7 +47,7 @@ export function ResumeAnalysisPage() {
                 <span className="font-medium text-ink">Choisir et analyser un CV PDF</span>
                 <span className="text-meta text-ink-muted">PDF uniquement · 10 Mo maximum</span>
               </button>
-              <FormField label="Offre ciblée" required>{(props) => <TextArea {...props} rows={13} value={job_offer} onChange={(e) => setJobOffer(e.target.value)} />}</FormField>
+              <ChampOffre label="Offre ciblée" required rows={13} value={job_offer} onChange={setJobOffer} />
               {operation ? <AiProgress progress={progress} /> : null}
               {error ? <ErrorBanner title="Analyse impossible" message={error} /> : null}
             </div>
