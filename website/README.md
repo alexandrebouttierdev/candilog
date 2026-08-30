@@ -103,8 +103,9 @@ Aucune n'est une animation CSS infinie : elles s'arrêtent, et se nettoient au d
 
 L'export statique interdit toute route serveur : pas de `/api/download/[platform]`.
 
-## Reste à brancher
+## Téléchargements
 
-- **URL de release.** `lib/data/plateformes.ts` porte un `TODO(releases)` : les quatre
-  entrées pointent sur `/releases/latest` au lieu des artefacts `.exe`, `.dmg`, `.deb`
-  et `.rpm`.
+Les liens de `lib/data/plateformes.ts` pointent sur
+`…/releases/latest/download/candilog-<plateforme>-latest.<ext>` (Windows `.exe`,
+macOS `.dmg`, Ubuntu `.deb`, Fedora `.rpm`). GitHub sert toujours l'asset du même nom
+sur la dernière release publiée.

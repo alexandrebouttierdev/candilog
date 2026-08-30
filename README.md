@@ -107,9 +107,8 @@ données réelles. `RUST_LOG` règle le niveau de journalisation (`candilog=info
 ## Documentation
 
 L'architecture, le modèle de données et le processus de publication sont décrits dans
-[`docs/`](docs/). Les binaires sont publiés sur le dépôt dédié
-`alexandrebouttierdev/candilog-releases`, déclenché à chaque push sur `master` de ce
-dépôt source — voir [`docs/RELEASES.md`](docs/RELEASES.md).
+[`docs/`](docs/). Les binaires sont publiés en GitHub Release sur ce dépôt à chaque push
+sur `master` — voir [`docs/RELEASES.md`](docs/RELEASES.md).
 
 ## Licence
 

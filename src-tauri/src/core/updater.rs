@@ -1,6 +1,6 @@
 //! Vérification native des mises à jour publiées sur GitHub.
 //!
-//! Candilog interroge l'API GitHub du dépôt public `candilog-releases`. Un `User-Agent` est
+//! Candilog interroge l'API GitHub du dépôt public `candilog`. Un `User-Agent` est
 //! obligatoire : GitHub refuse les clients anonymes sans identifiant.
 
 use crate::core::errors::{AppError, AppResult};
@@ -10,14 +10,14 @@ use serde::Deserialize;
 use std::path::{Path, PathBuf};
 use tokio::io::AsyncWriteExt;
 
-/// Dépôt public GitHub hébergeant les releases de Candilog.
-pub const RELEASES_REPO: &str = "alexandrebouttierdev/candilog-releases";
+/// Dépôt public GitHub hébergeant le code et les releases de Candilog.
+pub const RELEASES_REPO: &str = "alexandrebouttierdev/candilog";
 /// API de la dernière release publiée sur ce dépôt.
 pub const RELEASES_API_URL: &str =
-    "https://api.github.com/repos/alexandrebouttierdev/candilog-releases/releases/latest";
+    "https://api.github.com/repos/alexandrebouttierdev/candilog/releases/latest";
 /// Page web de la release, ouverte en dernier recours quand aucun asset ne correspond.
 pub const RELEASES_PAGE_URL: &str =
-    "https://github.com/alexandrebouttierdev/candilog-releases/releases/latest";
+    "https://github.com/alexandrebouttierdev/candilog/releases/latest";
 
 /// Accepte uniquement les URL HTTPS du dépôt officiel de releases.
 #[must_use]
@@ -153,9 +153,11 @@ pub fn asset_pour_plateforme(assets: &[AssetInfo]) -> Option<AssetInfo> {
 #[must_use]
 pub fn asset_pour_extension(assets: &[AssetInfo], extension: &str) -> Option<AssetInfo> {
     let suffixe = format!(".{extension}");
+    // Préférer le nom versionné (`candilog-ubuntu-0.3.0.deb`) au jumeau `-latest`.
     assets
         .iter()
-        .find(|asset| asset.name.ends_with(&suffixe))
+        .find(|asset| asset.name.ends_with(&suffixe) && !asset.name.contains("-latest."))
+        .or_else(|| assets.iter().find(|asset| asset.name.ends_with(&suffixe)))
         .cloned()
 }
 
@@ -350,8 +352,12 @@ mod tests {
     const RESPONSE_EXEMPLE: &str = r#"{
     "tag_name": "v0.3.0",
     "body": "Nouvelle version avec corrections.",
-    "html_url": "https://github.com/alexandrebouttierdev/candilog-releases/releases/tag/v0.3.0",
+    "html_url": "https://github.com/alexandrebouttierdev/candilog/releases/tag/v0.3.0",
     "assets": [
+        {
+            "name": "candilog-ubuntu-latest.deb",
+            "browser_download_url": "https://github.com/.../candilog-ubuntu-latest.deb"
+        },
         {
             "name": "candilog-ubuntu-0.3.0.deb",
             "browser_download_url": "https://github.com/.../candilog-ubuntu-0.3.0.deb"
@@ -426,16 +432,35 @@ mod tests {
     #[test]
     fn seules_les_url_du_depot_officiel_sont_acceptees() {
         assert!(url_installeur_autorisee(
-            "https://github.com/alexandrebouttierdev/candilog-releases/releases/download/v0.3.0/candilog.deb"
+            "https://github.com/alexandrebouttierdev/candilog/releases/download/v0.3.0/candilog.deb"
         ));
         assert!(!url_installeur_autorisee(
             "https://evil.example/malware.exe"
         ));
         assert!(!url_installeur_autorisee(
-            "http://github.com/alexandrebouttierdev/candilog-releases/x"
+            "http://github.com/alexandrebouttierdev/candilog/x"
         ));
         assert!(!url_installeur_autorisee(
             "https://github.com/autre/depot/releases/download/v1/x.deb"
         ));
+        assert!(!url_installeur_autorisee(
+            "https://github.com/alexandrebouttierdev/candilog-releases/releases/download/v0.3.0/candilog.deb"
+        ));
+    }
+
+    #[test]
+    fn l_asset_versionne_est_prefere_au_jumeau_latest() {
+        let assets = [
+            AssetInfo {
+                name: "candilog-ubuntu-latest.deb".into(),
+                url: "https://example.test/latest.deb".into(),
+            },
+            AssetInfo {
+                name: "candilog-ubuntu-0.3.0.deb".into(),
+                url: "https://example.test/0.3.0.deb".into(),
+            },
+        ];
+        let choisi = asset_pour_extension(&assets, "deb").expect("deb attendu");
+        assert_eq!(choisi.name, "candilog-ubuntu-0.3.0.deb");
     }
 }

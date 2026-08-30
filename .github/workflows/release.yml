@@ -1,0 +1,204 @@
+# Build Tauri multi-plateforme et publication d'une GitHub Release publique.
+# Déclenché à chaque push sur master (et manuellement). Si le tag v<version>
+# existe déjà, le workflow s'arrête sans republier.
+
+name: Release
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-22.04
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      tag: ${{ steps.meta.outputs.tag }}
+      should_release: ${{ steps.meta.outputs.should_release }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Lire la version et vérifier le tag
+        id: meta
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          version="$(sed -n 's/^version = "\([^"]*\)"/\1/p' src-tauri/Cargo.toml | head -n1)"
+          if [ -z "$version" ]; then
+            echo "Impossible de lire la version dans src-tauri/Cargo.toml" >&2
+            exit 1
+          fi
+          tag="v${version}"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          if gh release view "$tag" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            echo "Release ${tag} déjà publiée — skip."
+          else
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+            echo "Nouvelle release ${tag}."
+          fi
+
+  build:
+    needs: prepare
+    if: needs.prepare.outputs.should_release == 'true'
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: --target universal-apple-darwin
+            rust_targets: aarch64-apple-darwin,x86_64-apple-darwin
+            bundles: macos
+          - platform: windows-latest
+            args: ""
+            rust_targets: ""
+            bundles: windows
+          - platform: ubuntu-22.04
+            args: ""
+            rust_targets: ""
+            bundles: linux
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Installer les dépendances système (Ubuntu)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            xdg-utils
+
+      - name: Installer Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - name: Installer Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.91"
+          targets: ${{ matrix.rust_targets }}
+
+      - name: Cache Cargo
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+
+      - name: Installer les dépendances frontend
+        run: npm ci
+
+      - name: Construire Candilog
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: ${{ matrix.args }}
+          uploadUpdaterJson: false
+          uploadUpdaterSignatures: false
+
+      - name: Préparer les assets renommés
+        shell: bash
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+          BUNDLES: ${{ matrix.bundles }}
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+
+          copy_pair() {
+            local src="$1"
+            local slug="$2"
+            local ext="$3"
+            if [ ! -f "$src" ]; then
+              echo "Artefact manquant : $src" >&2
+              exit 1
+            fi
+            cp "$src" "release-assets/candilog-${slug}-${VERSION}.${ext}"
+            cp "$src" "release-assets/candilog-${slug}-latest.${ext}"
+            echo "Préparé candilog-${slug}-{${VERSION},latest}.${ext}"
+          }
+
+          case "$BUNDLES" in
+            linux)
+              deb="$(ls -1 src-tauri/target/release/bundle/deb/*.deb | head -n1)"
+              rpm="$(ls -1 src-tauri/target/release/bundle/rpm/*.rpm | head -n1)"
+              copy_pair "$deb" ubuntu deb
+              copy_pair "$rpm" fedora rpm
+              ;;
+            macos)
+              dmg="$(ls -1 src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg | head -n1)"
+              copy_pair "$dmg" macos dmg
+              ;;
+            windows)
+              exe="$(ls -1 src-tauri/target/release/bundle/nsis/*.exe | head -n1)"
+              copy_pair "$exe" windows exe
+              ;;
+            *)
+              echo "Matrice inconnue : $BUNDLES" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Publier les artefacts de build
+        uses: actions/upload-artifact@v4
+        with:
+          name: candilog-${{ matrix.bundles }}
+          path: release-assets/*
+          if-no-files-found: error
+
+  publish:
+    needs: [prepare, build]
+    if: needs.prepare.outputs.should_release == 'true'
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Télécharger tous les assets
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Créer la release GitHub
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          ls -la release-assets
+          gh release create "$TAG" \
+            --repo "${{ github.repository }}" \
+            --title "Candilog ${VERSION}" \
+            --notes "Build automatique depuis \`master\` (commit ${{ github.sha }}).
+
+          Téléchargements stables (toujours la dernière version) :
+          - Windows : \`candilog-windows-latest.exe\`
+          - macOS : \`candilog-macos-latest.dmg\`
+          - Ubuntu / Debian : \`candilog-ubuntu-latest.deb\`
+          - Fedora : \`candilog-fedora-latest.rpm\`
+
+          Des copies versionnées (\`candilog-*-${VERSION}.*\`) sont aussi jointes." \
+            release-assets/*

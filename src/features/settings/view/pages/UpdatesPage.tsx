@@ -58,7 +58,7 @@ export function UpdatesPage() {
 
   const download = async () => {
     if (!update?.asset) {
-      const fallback = "https://github.com/alexandrebouttierdev/candilog-releases/releases/latest";
+      const fallback = "https://github.com/alexandrebouttierdev/candilog/releases/latest";
       const page = update?.page_url ?? fallback;
       await openUrl(pageOfficielle(page) ? page : fallback);
       return;
@@ -151,7 +151,7 @@ function pageOfficielle(url: string): boolean {
     return (
       parsed.protocol === "https:" &&
       parsed.hostname === "github.com" &&
-      parsed.pathname.startsWith("/alexandrebouttierdev/candilog-releases/")
+      parsed.pathname.startsWith("/alexandrebouttierdev/candilog/")
     );
   } catch {
     return false;
