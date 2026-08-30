@@ -52,6 +52,17 @@ l'exclusion d'un `job_url` pour une candidature `SPONTANEE`. Les
 clés étrangères vers les référentiels sont réelles — `PRAGMA foreign_keys = ON` est posé
 par l'initialiseur de **chaque** connexion du pool.
 
+## Corps d'une lettre
+
+`cover_letters.content` reste une colonne texte, mais porte la mise en forme de l'éditeur
+dans un balisage minuscule : `<p>` avec `align="center|right"` et `size="small|large"`,
+`<b>` et `<u>` à l'intérieur. La grammaire s'arrête à ce que l'export PDF sait rendre.
+
+Le contenu est ramené à cette forme canonique par `sanitize_letter` **avant** l'écriture :
+ce qui n'entre pas dans la grammaire — style d'un collage, balise inconnue — est écarté
+sans perdre les mots. Une lettre enregistrée avant l'éditeur n'a aucune balise et reste
+lue comme du texte brut, découpée sur les lignes vides.
+
 ## Recherche et normalisation
 
 `lower()` de SQLite n'agit que sur l'ASCII : il laisse « É » intact. Les dépôts comparent

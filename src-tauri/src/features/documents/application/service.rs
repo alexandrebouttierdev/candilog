@@ -3,8 +3,8 @@
 use crate::core::errors::{AppError, AppResult};
 use crate::core::pagination::Page;
 use crate::features::documents::domain::{
-    CoverLetter, CoverLetterRepository, NewCoverLetter, NewResume, ResumeRepository, ResumeSummary,
-    ResumeVersion,
+    sanitize_letter, CoverLetter, CoverLetterRepository, NewCoverLetter, NewResume,
+    ResumeRepository, ResumeSummary, ResumeVersion,
 };
 use uuid::Uuid;
 
@@ -114,6 +114,9 @@ impl<C: ResumeRepository, L: CoverLetterRepository> DocumentsService<C, L> {
         valider_valeur(&input.length, &LENGTHS, "La longueur de la lettre")?;
         let mut nettoyee = input.clone();
         nettoyee.name = name.into();
+        // Le corps porte la mise en forme de l'éditeur : il est ramené au balisage canonique
+        // avant d'entrer en base, seul endroit où l'on peut garantir que rien d'autre n'y est.
+        nettoyee.content = sanitize_letter(&input.content);
         self.cover_letters.save(&nettoyee)
     }
 

@@ -1,31 +1,35 @@
 //! Export PDF d'une lettre de motivation, polices Geist embarquées.
 
 use crate::core::errors::{AppError, AppResult};
+use crate::features::documents::domain::{parse_letter, LetterAlign, LetterParagraph, LetterRun};
 use crate::infrastructure::pdf::page::{
     ensure_inside, Density, LayoutBounds, Margins, A4, DENSITY_PROFILES, MIN_BODY_FONT_PT,
 };
 use chrono::{Datelike, Local};
 use printpdf::{
-    Color, FontId, Op, ParsedFont, PdfDocument, PdfFontHandle, PdfPage, PdfSaveOptions, Point, Pt,
-    Rgb, TextItem,
+    Color, FontId, Line, LinePoint, Op, ParsedFont, PdfDocument, PdfFontHandle, PdfPage,
+    PdfSaveOptions, Point, Pt, Rgb, TextItem,
 };
 use std::path::Path;
 use unicode_segmentation::UnicodeSegmentation;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 enum Weight {
     Regular,
     Medium,
     SemiBold,
+    Bold,
 }
 
 struct Fonts {
     regular: ParsedFont,
     medium: ParsedFont,
     semibold: ParsedFont,
+    bold: ParsedFont,
     regular_id: FontId,
     medium_id: FontId,
     semibold_id: FontId,
+    bold_id: FontId,
 }
 
 impl Fonts {
@@ -34,6 +38,7 @@ impl Fonts {
             Weight::Regular => &self.regular,
             Weight::Medium => &self.medium,
             Weight::SemiBold => &self.semibold,
+            Weight::Bold => &self.bold,
         }
     }
 
@@ -42,6 +47,7 @@ impl Fonts {
             Weight::Regular => &self.regular_id,
             Weight::Medium => &self.medium_id,
             Weight::SemiBold => &self.semibold_id,
+            Weight::Bold => &self.bold_id,
         }
     }
 }
@@ -98,15 +104,17 @@ impl CoverLetterPdf {
 
     fn render_density(&self, density: Density) -> AppResult<Option<Vec<u8>>> {
         let mut avertissements = Vec::new();
-        let (regular, medium, semibold) = load_fonts()?;
+        let (regular, medium, semibold, bold) = load_fonts()?;
         let mut document = PdfDocument::new("Lettre Candilog");
         let fonts = Fonts {
             regular_id: document.add_font(&regular),
             medium_id: document.add_font(&medium),
             semibold_id: document.add_font(&semibold),
+            bold_id: document.add_font(&bold),
             regular,
             medium,
             semibold,
+            bold,
         };
 
         let mut plan = Plan {
@@ -134,7 +142,7 @@ impl CoverLetterPdf {
     }
 }
 
-fn load_fonts() -> AppResult<(ParsedFont, ParsedFont, ParsedFont)> {
+fn load_fonts() -> AppResult<(ParsedFont, ParsedFont, ParsedFont, ParsedFont)> {
     let decodage = |octets: &[u8]| -> AppResult<ParsedFont> {
         ParsedFont::from_bytes(octets, 0, &mut Vec::new())
             .ok_or_else(|| AppError::Serialization("Police lettre illisible".into()))
@@ -143,6 +151,7 @@ fn load_fonts() -> AppResult<(ParsedFont, ParsedFont, ParsedFont)> {
         decodage(include_bytes!("../../../assets/fonts/Geist-Regular.ttf"))?,
         decodage(include_bytes!("../../../assets/fonts/Geist-Medium.ttf"))?,
         decodage(include_bytes!("../../../assets/fonts/Geist-SemiBold.ttf"))?,
+        decodage(include_bytes!("../../../assets/fonts/Geist-Bold.ttf"))?,
     ))
 }
 
@@ -169,6 +178,20 @@ fn date_du_day() -> String {
         month.get(index).copied().unwrap_or(""),
         now.year()
     )
+}
+
+/// Fragment homogène déjà mesuré.
+struct Segment {
+    weight: Weight,
+    underline: bool,
+    text: String,
+    largeur: f32,
+}
+
+/// Mot insécable : un ou plusieurs fragments collés, avec leur largeur totale.
+struct Mot {
+    segments: Vec<Segment>,
+    largeur: f32,
 }
 
 struct Plan<'a> {
@@ -258,18 +281,12 @@ impl Plan<'_> {
             &cover_letter.subject,
         );
         self.avance(8.0);
-        for paragraphe in cover_letter.corps.split("\n\n") {
-            let text = paragraphe.trim();
-            if text.is_empty() {
+        for paragraphe in parse_letter(&cover_letter.corps) {
+            if paragraphe.runs.is_empty() {
+                self.avance(8.0);
                 continue;
             }
-            self.paragraphe(
-                Weight::Regular,
-                11.0,
-                rgb(TEXT.0, TEXT.1, TEXT.2),
-                16.5,
-                text,
-            );
+            self.paragraphe_riche(&paragraphe, rgb(TEXT.0, TEXT.1, TEXT.2));
             self.avance(8.0);
         }
         self.avance(12.0);
@@ -280,6 +297,188 @@ impl Plan<'_> {
             16.0,
             name,
         );
+    }
+
+    /// Compose un paragraphe mis en forme : gras et souligné par fragment, taille et
+    /// alignement par paragraphe.
+    ///
+    /// La coupure de ligne se fait sur des **mots** et non sur des fragments : un mot dont
+    /// une partie seulement est en gras reste insécable, sinon « auto**matique** » se
+    /// couperait en deux avec un blanc au milieu.
+    fn paragraphe_riche(&mut self, paragraphe: &LetterParagraph, couleur: Color) {
+        let size = 11.0 * paragraphe.size.scale();
+        let interligne = 16.5 * paragraphe.size.scale();
+        let actual_size = self.font_size(size);
+        let hauteur_ligne = self.spacing(interligne).max(actual_size * 1.1);
+        let espace = self.largeur_text(Weight::Regular, size, " ");
+
+        for ligne in self.decouper_mots(&paragraphe.runs, size) {
+            if self.y + hauteur_ligne > A4.height_pt - MARGIN {
+                self.overflow = true;
+                self.bounds.max_y = self.y + hauteur_ligne;
+                return;
+            }
+            let largeur: f32 = ligne.iter().map(|mot| mot.largeur).sum::<f32>()
+                + espace * (ligne.len().saturating_sub(1)) as f32;
+            let mut x = match paragraphe.align {
+                LetterAlign::Left => MARGIN,
+                LetterAlign::Center => MARGIN + (CONTENT_W - largeur).max(0.0) / 2.0,
+                LetterAlign::Right => MARGIN + (CONTENT_W - largeur).max(0.0),
+            };
+            let ligne_de_base = self.y + ASCENT * actual_size;
+            for segment in self.fusionner(&ligne, size) {
+                self.text(
+                    x,
+                    ligne_de_base,
+                    segment.weight,
+                    size,
+                    couleur.clone(),
+                    &segment.text,
+                );
+                if segment.underline {
+                    self.souligner(x, x + segment.largeur, ligne_de_base + 1.6, couleur.clone());
+                }
+                x += segment.largeur;
+            }
+            self.y += hauteur_ligne;
+            self.bounds.max_y = self.bounds.max_y.max(self.y);
+        }
+    }
+
+    /// Recolle les fragments voisins de même style, espaces compris.
+    ///
+    /// Sans cette fusion, chaque mot serait un ordre d'affichage distinct : le PDF pèserait
+    /// plus lourd et surtout, copié ou relu par un ATS, le texte perdrait ses espaces.
+    fn fusionner(&self, ligne: &[Mot], size: f32) -> Vec<Segment> {
+        let mut sortie: Vec<Segment> = Vec::new();
+        let ajouter = |segment: Segment, sortie: &mut Vec<Segment>| match sortie.last_mut() {
+            Some(dernier)
+                if dernier.weight == segment.weight && dernier.underline == segment.underline =>
+            {
+                dernier.text.push_str(&segment.text);
+                dernier.largeur += segment.largeur;
+            }
+            _ => sortie.push(segment),
+        };
+        for (index, mot) in ligne.iter().enumerate() {
+            if index > 0 {
+                let (weight, underline) =
+                    sortie.last().map_or((Weight::Regular, false), |dernier| {
+                        (dernier.weight, dernier.underline)
+                    });
+                ajouter(
+                    Segment {
+                        weight,
+                        underline,
+                        text: " ".into(),
+                        largeur: self.largeur_text(weight, size, " "),
+                    },
+                    &mut sortie,
+                );
+            }
+            for segment in &mot.segments {
+                ajouter(
+                    Segment {
+                        weight: segment.weight,
+                        underline: segment.underline,
+                        text: segment.text.clone(),
+                        largeur: segment.largeur,
+                    },
+                    &mut sortie,
+                );
+            }
+        }
+        sortie
+    }
+
+    /// Regroupe les fragments en mots insécables, puis les mots en lignes.
+    fn decouper_mots(&self, runs: &[LetterRun], size: f32) -> Vec<Vec<Mot>> {
+        let mut mots: Vec<Mot> = Vec::new();
+        let mut colle = false;
+        for run in runs {
+            let weight = if run.bold {
+                Weight::Bold
+            } else {
+                Weight::Regular
+            };
+            let attache_debut = colle && !run.text.starts_with(char::is_whitespace);
+            let mut premier = true;
+            for token in run.text.split_whitespace() {
+                for fragment in self.decouper_token(weight, size, token, CONTENT_W) {
+                    let largeur = self.largeur_text(weight, size, &fragment);
+                    let segment = Segment {
+                        weight,
+                        underline: run.underline,
+                        text: fragment,
+                        largeur,
+                    };
+                    match mots.last_mut() {
+                        Some(mot) if premier && attache_debut => {
+                            mot.largeur += segment.largeur;
+                            mot.segments.push(segment);
+                        }
+                        _ => mots.push(Mot {
+                            largeur: segment.largeur,
+                            segments: vec![segment],
+                        }),
+                    }
+                    premier = false;
+                }
+            }
+            colle = !run.text.ends_with(char::is_whitespace) && !run.text.is_empty();
+        }
+
+        let espace = self.largeur_text(Weight::Regular, size, " ");
+        let mut lignes: Vec<Vec<Mot>> = Vec::new();
+        let mut courante: Vec<Mot> = Vec::new();
+        let mut largeur = 0.0;
+        for mot in mots {
+            let ajout = if courante.is_empty() {
+                mot.largeur
+            } else {
+                espace + mot.largeur
+            };
+            if !courante.is_empty() && largeur + ajout > CONTENT_W {
+                lignes.push(std::mem::take(&mut courante));
+                largeur = mot.largeur;
+            } else {
+                largeur += ajout;
+            }
+            courante.push(mot);
+        }
+        if !courante.is_empty() {
+            lignes.push(courante);
+        }
+        lignes
+    }
+
+    fn souligner(&mut self, x1: f32, x2: f32, y_haut: f32, couleur: Color) {
+        if self.overflow {
+            return;
+        }
+        self.ops.push(Op::SetOutlineColor { col: couleur });
+        self.ops.push(Op::SetOutlineThickness { pt: Pt(0.6) });
+        self.ops.push(Op::DrawLine {
+            line: Line {
+                points: vec![
+                    LinePoint {
+                        p: Point {
+                            x: Pt(x1),
+                            y: Pt(self.pdf_y(y_haut)),
+                        },
+                        bezier: false,
+                    },
+                    LinePoint {
+                        p: Point {
+                            x: Pt(x2),
+                            y: Pt(self.pdf_y(y_haut)),
+                        },
+                        bezier: false,
+                    },
+                ],
+                is_closed: false,
+            },
+        });
     }
 
     fn bloc_text(

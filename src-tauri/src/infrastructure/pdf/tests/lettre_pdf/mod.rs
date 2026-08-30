@@ -5,6 +5,7 @@ use crate::infrastructure::pdf::A4;
 mod export_pdf_produit_un_document_lisible;
 mod export_pdf_refuse_un_token_unicode_trop_long;
 mod export_pdf_refuse_une_lettre_trop_longue;
+mod export_pdf_rend_la_mise_en_forme;
 
 fn assert_a4_media_box(document: &lopdf::Document) {
     let page_id = *document.get_pages().values().next().unwrap();
