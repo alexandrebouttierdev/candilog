@@ -173,8 +173,8 @@ export function ProfileImportModal({
       : view === "done"
         ? "Les éléments choisis ont été enregistrés"
         : view === "picking"
-          ? "Choisissez le CV à analyser ; rien n'est encore lancé"
-          : "L'IA prépare une proposition ; rien n'est enregistré";
+          ? "Choisissez le CV à analyser dans la fenêtre de votre système"
+          : "Rien n'est enregistré avant votre validation";
 
   return (
     <>
