@@ -24,7 +24,10 @@ const DENSITY_STEPS: { fs: number; sp: number }[] = [
   { fs: 0.92, sp: 0.62 },
 ];
 
-const GRID = "grid grid-cols-[104px_1fr] items-start gap-[18px]";
+// La colonne d'étiquettes porte le plus long libellé du gabarit (« PROFESSIONNELLES ») à
+// son interlettrage réel : à 104 px il en sortait, et l'aperçu ne montrait plus la
+// colonne qu'exporte `resume_pdf.rs` (`LABEL_W`).
+const GRID = "grid grid-cols-[116px_1fr] items-start gap-[18px]";
 const LABEL = "resume-mono m-0 text-[calc(9.2px*var(--resume-fs))] font-medium uppercase leading-[1.4] tracking-[0.11em] text-[var(--resume-accent)]";
 const META = "resume-mono whitespace-nowrap text-[calc(9.5px*var(--resume-fs))] tabular-nums tracking-[0.01em] text-[var(--resume-subtle)]";
 const SEPARATOR = "text-[var(--resume-subtle)]";

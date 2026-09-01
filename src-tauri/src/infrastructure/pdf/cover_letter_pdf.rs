@@ -3,6 +3,7 @@
 //! Polices IBM Plex embarquées, une page, même géométrie que `LetterPaper`.
 
 use crate::core::errors::{AppError, AppResult};
+use crate::core::utils::text::{elider, segments_de_cesure};
 use crate::features::documents::domain::{parse_letter, LetterAlign, LetterParagraph, LetterRun};
 use crate::infrastructure::pdf::page::{
     ensure_inside, Density, LayoutBounds, Margins, A4, MIN_BODY_FONT_PT,
@@ -539,7 +540,7 @@ impl Plan<'_> {
                     pt(14.6),
                     rgb(INK.0, INK.1, INK.2),
                     pt(19.7),
-                    &format!("Candidature au poste de {poste}"),
+                    &format!("Candidature au poste {}", elider("de", poste)),
                 );
             });
         }
@@ -1003,9 +1004,18 @@ impl Plan<'_> {
         let mut rows = Vec::new();
         let mut courante = String::new();
         for mot in value.split_whitespace() {
-            for fragment in self.fragments_du_mot(weight, size, mot, largeur_max) {
+            // `suite` distingue un fragment qui prolonge le mot précédent — après une coupe
+            // au trait d'union — d'un mot voisin : recoller les deux par une espace donnait
+            // « Maréchal- de- Lattre » sur la ligne où le nom tenait pourtant entier.
+            for (suite, fragment) in self
+                .fragments_du_mot(weight, size, mot, largeur_max)
+                .into_iter()
+                .enumerate()
+            {
                 let candidate = if courante.is_empty() {
                     fragment.clone()
+                } else if suite > 0 {
+                    format!("{courante}{fragment}")
                 } else {
                     format!("{courante} {fragment}")
                 };
@@ -1039,9 +1049,15 @@ impl Plan<'_> {
         let mut rows = Vec::new();
         let mut courante = String::new();
         for mot in value.split_whitespace() {
-            for fragment in self.fragments_du_mot_mono(medium, size_actual, mot, largeur_max) {
+            for (suite, fragment) in self
+                .fragments_du_mot_mono(medium, size_actual, mot, largeur_max)
+                .into_iter()
+                .enumerate()
+            {
                 let candidate = if courante.is_empty() {
                     fragment.clone()
+                } else if suite > 0 {
+                    format!("{courante}{fragment}")
                 } else {
                     format!("{courante} {fragment}")
                 };
@@ -1072,6 +1088,15 @@ impl Plan<'_> {
         if self.largeur_mono_actual(medium, size_actual, token) <= largeur_max {
             return vec![token.to_owned()];
         }
+        let segments = segments_de_cesure(token);
+        if segments.len() > 1 {
+            return segments
+                .into_iter()
+                .flat_map(|segment| {
+                    self.fragments_du_mot_mono(medium, size_actual, segment, largeur_max)
+                })
+                .collect();
+        }
         let mut fragments = Vec::new();
         let mut current = String::new();
         for grapheme in token.graphemes(true) {
@@ -1097,7 +1122,10 @@ impl Plan<'_> {
         token: &str,
         largeur_max: f32,
     ) -> Vec<String> {
-        if !self.typo.coupe_les_mots {
+        // `coupe_les_mots` dit s'il est *souhaitable* de couper, pas s'il est permis de
+        // sortir du cadre : un mot plus large que sa colonne — un patronyme composé dans la
+        // colonne d'identité — doit être coupé, faute de quoi il déborde sur la lettre.
+        if !self.typo.coupe_les_mots && self.largeur_text(weight, size, token) <= largeur_max {
             return vec![token.to_owned()];
         }
         self.decouper_token(weight, size, token, largeur_max)
@@ -1112,6 +1140,14 @@ impl Plan<'_> {
     ) -> Vec<String> {
         if self.largeur_text(weight, size, token) <= largeur_max {
             return vec![token.to_owned()];
+        }
+        // Le trait d'union est la première occasion de césure, comme dans le navigateur.
+        let segments = segments_de_cesure(token);
+        if segments.len() > 1 {
+            return segments
+                .into_iter()
+                .flat_map(|segment| self.decouper_token(weight, size, segment, largeur_max))
+                .collect();
         }
         let mut fragments = Vec::new();
         let mut current = String::new();

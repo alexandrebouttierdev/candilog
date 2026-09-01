@@ -446,6 +446,9 @@
     font-weight: 600;
     line-height: 1.06;
     letter-spacing: -0.026em;
+    /* Un patronyme composé — « Delacroix-Vandenberghe » — est plus large que la colonne
+       d'identité : sans repli il en sortait, sur la feuille comme à l'export. */
+    overflow-wrap: anywhere;
     color: var(--letter-ink);
   }
 

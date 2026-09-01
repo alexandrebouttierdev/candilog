@@ -6,6 +6,7 @@ mod export_pdf_garde_les_libelles_dans_leur_colonne;
 mod export_pdf_produit_un_document_lisible;
 mod export_pdf_refuse_un_cv_trop_long;
 mod export_pdf_refuse_un_token_unicode_trop_long;
+mod export_pdf_replie_les_lignes_trop_larges;
 mod export_pdf_reproduit_toutes_les_sections;
 
 fn assert_a4_media_box(document: &lopdf::Document) {

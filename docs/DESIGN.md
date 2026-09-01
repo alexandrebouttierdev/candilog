@@ -323,7 +323,9 @@ Fermeture : `useDismissable` (Escape + clic extérieur) — calendrier, FilterMe
 - Le PDF reprend les cotes du template en pixels CSS (`pt(px)`) et son `letter-spacing`,
   faute de quoi l'aperçu et la page imprimée divergent. Tout bloc de la colonne d'identité
   se replie dans les 58 mm ; un titre long y passe sur plusieurs lignes plutôt que de
-  déborder sur la lettre.
+  déborder sur la lettre. Un **mot** plus large que la colonne — un patronyme composé — est
+  coupé : ne pas couper les mots est une préférence de composition, pas une autorisation à
+  sortir du cadre.
 - Quatre **paliers de densité** (`--letter-fs`, `--letter-sp`) compactent la feuille si le
   texte déborde. Au-delà, un bandeau `letter-overflow-warning` l'indique et **Exporter** /
   **Enregistrer** sont désactivés.
@@ -345,6 +347,22 @@ Fermeture : `useDismissable` (Escape + clic extérieur) — calendrier, FilterMe
   embarquées. Le moteur Rust (`infrastructure/pdf/resume_pdf.rs`) reproduit la même logique
   de densité que l'aperçu : espacements puis typographie jusqu'au seuil lisible. Le libellé
   de section se replie dans sa colonne (`LABEL_W`) plutôt que de déborder sur le contenu.
+- **Aperçu et export partagent la même géométrie**, jusqu'au détail :
+  - l'interlignage suit la **police** (`line-height` en multiple du corps), l'échelle de
+    densité ne compresse que les **écarts entre blocs**. Le moteur PDF appliquait l'échelle
+    d'espacement à ses interlignes : au palier le plus dense il tassait ses lignes de 24 %,
+    et un CV que l'aperçu déclarait trop long s'exportait malgré tout, dans une mise en page
+    que l'utilisateur n'avait jamais vue ;
+  - l'**interlettrage** du gabarit (nom, sous-titre, étiquettes, périodes) est appliqué à
+    l'export comme à l'écran, sans quoi les mêmes libellés sortaient plus étroits ;
+  - la colonne d'étiquettes (`LABEL_W`, `grid-cols-[116px_1fr]`) est dimensionnée pour le
+    plus long libellé du gabarit à son interlettrage réel.
+- **Aucun champ n'est posé sur une ligne unique** : intitulé, entreprise, diplôme,
+  établissement, projet, coordonnées et langues se replient dans leur colonne, et un mot
+  plus large qu'elle est coupé. Sans ce repli, un seul nom d'employeur un peu long faisait
+  refuser tout l'export — au motif, en plus, que le CV serait « trop long ».
+- Le refus nomme sa cause : un CV trop **large** n'est pas un CV trop **long**, et le
+  raccourcir n'y changerait rien.
 - Les deux moteurs remplacent par une espace tout caractère absent des polices embarquées —
   un retour à la ligne saisi dans un champ mono-ligne, par exemple — qui sortait sinon en
   rectangle vide alors que l'aperçu HTML le rendait correctement.

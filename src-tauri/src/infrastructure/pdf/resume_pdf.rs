@@ -3,6 +3,7 @@
 //! Document 100 % autonome : polices IBM Plex embarquées, aucune dépendance système.
 
 use crate::core::errors::{AppError, AppResult};
+use crate::core::utils::text::segments_de_cesure;
 use crate::infrastructure::pdf::page::{
     ensure_inside, Density, LayoutBounds, Margins, A4, DENSITY_PROFILES, MIN_BODY_FONT_PT,
 };
@@ -140,13 +141,31 @@ const MARGIN_LEFT: f32 = 16.0 * MM;
 const MARGIN_RIGHT: f32 = 16.0 * MM;
 const MARGIN_TOP: f32 = 14.0 * MM;
 const MARGIN_BOTTOM: f32 = 15.0 * MM;
-const LABEL_W: f32 = pt(104.0);
+/// Colonne des étiquettes de section : elle doit porter le plus long libellé du gabarit
+/// (« PROFESSIONNELLES ») à sa taille et à son interlettrage réels.
+const LABEL_W: f32 = pt(116.0);
 const SECTION_GAP: f32 = pt(18.0);
 const CONTENT_X: f32 = MARGIN_LEFT + LABEL_W + SECTION_GAP;
 const CONTENT_W: f32 = PAGE_W - MARGIN_RIGHT - CONTENT_X;
 const HEADER_W: f32 = PAGE_W - MARGIN_LEFT - MARGIN_RIGHT;
 const PX: f32 = 0.75;
 const ASCENT: f32 = 0.8;
+/// Pastilles de compétence : taille de police et rembourrage du gabarit HTML.
+const CHIP_SIZE: f32 = pt(10.4);
+const CHIP_PADDING_X: f32 = pt(8.0);
+const CHIP_PADDING_Y: f32 = pt(2.5);
+/// Écart horizontal entre deux pastilles, et écart vertical entre deux rangées.
+const CHIP_GAP_X: f32 = pt(5.0);
+const CHIP_GAP_Y: f32 = pt(3.5);
+/// Interlettrages du gabarit, en cadratins. Le PDF les ignorait : les mêmes libellés
+/// sortaient 17 % plus étroits qu'à l'aperçu, et la feuille imprimée n'était plus celle
+/// que l'utilisateur avait validée à l'écran.
+const TRACKING_NOM: f32 = -0.028;
+const TRACKING_SOUS_TITRE: f32 = 0.15;
+const TRACKING_LIBELLE: f32 = 0.11;
+const TRACKING_PERIODE: f32 = 0.01;
+const TRACKING_TITRE: f32 = -0.006;
+const TRACKING_GROUPE: f32 = -0.004;
 
 const INK: (f32, f32, f32) = (20.0, 22.0, 27.0);
 const BODY: (f32, f32, f32) = (58.0, 63.0, 76.0);
@@ -199,17 +218,27 @@ impl ResumePdf {
     /// # Errors
     /// Refuse un contenu qui dépasse la page A4.
     pub fn render_bytes(&self) -> AppResult<Vec<u8>> {
+        let mut dernier = Debordement::Hauteur;
         for density in DENSITY_PROFILES {
-            if let Some(bytes) = self.render_density(density)? {
-                return Ok(bytes);
+            match self.render_density(density)? {
+                Ok(bytes) => return Ok(bytes),
+                Err(cause) => dernier = cause,
             }
         }
-        Err(AppError::Validation(
-            "Le CV ne tient pas sur une page A4. Raccourcissez son contenu avant l'export.".into(),
-        ))
+        // Le message nomme la cause : un CV refusé pour une seule ligne trop large n'est pas
+        // trop long, et conseiller de le raccourcir n'y change rien.
+        Err(AppError::Validation(match dernier {
+            Debordement::Hauteur => {
+                "Le CV ne tient pas sur une page A4. Raccourcissez son contenu avant l'export."
+                    .into()
+            }
+            Debordement::Largeur => {
+                "Une ligne du CV dépasse la largeur de la page. Raccourcissez l'intitulé, l'entreprise ou le lien concerné avant l'export.".into()
+            }
+        }))
     }
 
-    fn render_density(&self, density: Density) -> AppResult<Option<Vec<u8>>> {
+    fn render_density(&self, density: Density) -> AppResult<Result<Vec<u8>, Debordement>> {
         let mut avertissements = Vec::new();
         let mut document = PdfDocument::new("CV Candilog");
         let fonts = load_fonts(&mut document)?;
@@ -221,6 +250,8 @@ impl ResumePdf {
             density,
             bounds: LayoutBounds::default(),
             overflow: false,
+            debordement: None,
+            tracking: 0.0,
         };
 
         plan.entete(self);
@@ -233,16 +264,21 @@ impl ResumePdf {
         plan.section_languages(self);
 
         if plan.overflow || ensure_inside(plan.bounds, page_margins(), "overflow").is_err() {
-            return Ok(None);
+            return Ok(Err(plan.debordement.unwrap_or(Debordement::Hauteur)));
         }
 
         let page = PdfPage::new(Mm(A4.width_mm), Mm(A4.height_mm), plan.ops);
-        Ok(Some(
-            document
-                .with_pages(vec![page])
-                .save(&PdfSaveOptions::default(), &mut avertissements),
-        ))
+        Ok(Ok(document
+            .with_pages(vec![page])
+            .save(&PdfSaveOptions::default(), &mut avertissements)))
     }
+}
+
+/// Axe par lequel une page a débordé, pour expliquer un refus d'export.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Debordement {
+    Largeur,
+    Hauteur,
 }
 
 fn load_fonts(document: &mut PdfDocument) -> AppResult<Fonts> {
@@ -279,6 +315,17 @@ fn load_fonts(document: &mut PdfDocument) -> AppResult<Fonts> {
     })
 }
 
+/// Style d'un flux d'éléments posés côte à côte, avec repli de ligne.
+struct StyleFlux {
+    x: f32,
+    largeur_max: f32,
+    face: FontFace,
+    size: f32,
+    couleur: Color,
+    gap: f32,
+    interligne: f32,
+}
+
 struct StyleParagraphe {
     x: f32,
     face: FontFace,
@@ -295,6 +342,10 @@ struct Plan<'a> {
     density: Density,
     bounds: LayoutBounds,
     overflow: bool,
+    /// Axe du premier dépassement rencontré, conservé pour expliquer le refus d'export.
+    debordement: Option<Debordement>,
+    /// Interlettrage courant, en cadratins, appliqué au dessin comme à la mesure.
+    tracking: f32,
 }
 
 impl Plan<'_> {
@@ -306,24 +357,66 @@ impl Plan<'_> {
         value * self.density.spacing_scale
     }
 
+    /// Interligne d'un bloc de texte.
+    ///
+    /// Il suit la **police**, pas l'espacement : le gabarit fixe `line-height` en multiple
+    /// de la taille de caractère (`leading-[1.45]`) et ne fait varier avec la densité que
+    /// les écarts entre blocs. En le multipliant par l'échelle d'espacement, l'export
+    /// tassait ses lignes de 24 % au palier le plus dense — un CV que l'aperçu déclarait
+    /// trop long s'exportait alors sans broncher, dans une mise en page que l'utilisateur
+    /// n'avait jamais vue.
+    fn interligne(&self, value: f32) -> f32 {
+        self.font_size(value)
+    }
+
     fn pdf_y(&self, y_haut: f32) -> f32 {
         PAGE_H - y_haut
     }
 
+    /// Dessine avec l'interlettrage donné, puis rend la valeur précédente.
+    fn avec_tracking(&mut self, tracking: f32, dessin: impl FnOnce(&mut Self)) {
+        let precedent = std::mem::replace(&mut self.tracking, tracking);
+        dessin(self);
+        self.tracking = precedent;
+    }
+
+    /// Espacement additionnel après chaque glyphe, en points, à la taille finale.
+    fn tracking_pt(&self, size_actual: f32) -> f32 {
+        self.tracking * size_actual
+    }
+
+    /// Avance d'une ligne de texte : l'interligne suit la police (cf. [`Plan::interligne`]).
+    fn avance_ligne(&mut self, interligne: f32) {
+        self.y += self.interligne(interligne);
+        self.bounds.max_y = self.bounds.max_y.max(self.y);
+        if self.y > PAGE_H - MARGIN_BOTTOM {
+            self.deborde(Debordement::Hauteur);
+        }
+    }
+
+    /// Avance d'un écart entre blocs : celui-ci suit bien l'échelle d'espacement.
     fn avance(&mut self, distance: f32) {
         self.y += self.spacing(distance);
         self.bounds.max_y = self.bounds.max_y.max(self.y);
         if self.y > PAGE_H - MARGIN_BOTTOM {
-            self.overflow = true;
+            self.deborde(Debordement::Hauteur);
         }
     }
 
     fn register(&mut self, max_x: f32, max_y: f32) {
         self.bounds.max_x = self.bounds.max_x.max(max_x);
         self.bounds.max_y = self.bounds.max_y.max(max_y);
-        if max_x > PAGE_W - MARGIN_RIGHT || max_y > PAGE_H - MARGIN_BOTTOM {
-            self.overflow = true;
+        if max_x > PAGE_W - MARGIN_RIGHT {
+            self.deborde(Debordement::Largeur);
         }
+        if max_y > PAGE_H - MARGIN_BOTTOM {
+            self.deborde(Debordement::Hauteur);
+        }
+    }
+
+    fn deborde(&mut self, axe: Debordement) {
+        self.overflow = true;
+        self.debordement.get_or_insert(axe);
     }
 
     fn text(
@@ -347,6 +440,9 @@ impl Plan<'_> {
             return;
         }
         self.ops.push(Op::StartTextSection);
+        self.ops.push(Op::SetCharacterSpacing {
+            multiplier: self.tracking_pt(size),
+        });
         self.ops.push(Op::SetFont {
             font: PdfFontHandle::External(self.fonts.id(face).clone()),
             size: Pt(size),
@@ -371,14 +467,16 @@ impl Plan<'_> {
     fn largeur_text_actual(&self, face: FontFace, size: f32, value: &str) -> f32 {
         let font = self.fonts.source(face);
         let echelle = size / f32::from(font.units_per_em);
-        value
+        let glyphes: f32 = value
             .chars()
             .map(|caractere| {
                 font.lookup_glyph_index(caractere as u32)
                     .and_then(|glyphe| font.get_glyph_width(glyphe))
                     .map_or(0.0, |largeur| largeur as f32 * echelle)
             })
-            .sum()
+            .sum();
+        // `Tc` s'applique après chaque glyphe, dernier compris, comme dans le PDF.
+        glyphes + self.tracking_pt(size) * value.chars().count() as f32
     }
 
     /// Remplace par une espace tout caractère absent de la police.
@@ -400,13 +498,29 @@ impl Plan<'_> {
             .collect()
     }
 
+    /// Replie une valeur sur la largeur disponible.
+    ///
+    /// `size` est la taille **avant** densité, comme partout ailleurs : la mesure applique
+    /// `font_size` elle-même. Mesurer à la taille brute alors que `text` dessine à la taille
+    /// mise à l'échelle rendait chaque ligne plus large que la largeur demandée au palier le
+    /// plus aéré (`font_scale` 1.04), et suffisait à faire rejeter ce palier pour débordement.
     fn decouper(&self, face: FontFace, size: f32, value: &str, largeur_max: f32) -> Vec<String> {
+        let size = self.font_size(size);
         let mut rows = Vec::new();
         let mut courante = String::new();
         for mot in value.split_whitespace() {
-            for fragment in self.decouper_token(face, size, mot, largeur_max) {
+            // `suite` distingue un fragment qui prolonge le mot précédent — après une coupe
+            // au trait d'union — d'un mot voisin : recoller les deux par une espace donnait
+            // « Maréchal- de- Lattre » sur la ligne où le nom tenait pourtant entier.
+            for (suite, fragment) in self
+                .decouper_token(face, size, mot, largeur_max)
+                .into_iter()
+                .enumerate()
+            {
                 let candidate = if courante.is_empty() {
                     fragment.clone()
+                } else if suite > 0 {
+                    format!("{courante}{fragment}")
                 } else {
                     format!("{courante} {fragment}")
                 };
@@ -436,6 +550,15 @@ impl Plan<'_> {
         if self.largeur_text(face, size, token) <= largeur_max {
             return vec![token.to_owned()];
         }
+        // Le trait d'union est la première occasion de césure, comme dans le navigateur :
+        // « Jean-Baptiste » passe à la ligne après le tiret, jamais au milieu de « Baptiste ».
+        let segments = segments_de_cesure(token);
+        if segments.len() > 1 {
+            return segments
+                .into_iter()
+                .flat_map(|segment| self.decouper_token(face, size, segment, largeur_max))
+                .collect();
+        }
         let mut fragments = Vec::new();
         let mut current = String::new();
         for grapheme in token.graphemes(true) {
@@ -454,10 +577,10 @@ impl Plan<'_> {
     fn paragraphe(&mut self, style: StyleParagraphe, value: &str) -> f32 {
         let mut y = self.y;
         let actual_size = self.font_size(style.size);
-        let actual_line_height = self.spacing(style.interligne).max(actual_size * 1.1);
+        let actual_line_height = self.interligne(style.interligne);
         for row in self.decouper(style.face, style.size, value, style.largeur_max) {
             if y + actual_line_height > PAGE_H - MARGIN_BOTTOM {
-                self.overflow = true;
+                self.deborde(Debordement::Hauteur);
                 break;
             }
             self.text(
@@ -476,13 +599,59 @@ impl Plan<'_> {
         consommee
     }
 
+    /// Hauteur d'une pastille de compétence : celle du texte, plus son rembourrage.
+    fn hauteur_chip(&self) -> f32 {
+        self.font_size(CHIP_SIZE) + 2.0 * CHIP_PADDING_Y
+    }
+
+    /// Largeur d'une pastille, mesurée à la taille réellement dessinée.
+    fn largeur_chip(&self, label: &str) -> f32 {
+        self.largeur_text(
+            FontFace::Sans(SansWeight::Regular),
+            self.font_size(CHIP_SIZE),
+            label,
+        ) + 2.0 * CHIP_PADDING_X
+    }
+
+    /// Dispose des valeurs côte à côte et passe à la ligne quand la largeur est atteinte.
+    ///
+    /// Jumeau du `flex-wrap` du gabarit : les coordonnées et les langues étaient posées sur
+    /// une ligne unique, sans repli ni mesure, et une adresse électronique un peu longue
+    /// sortait de la marge droite — ce qui faisait rejeter la page entière.
+    fn flux_horizontal(&mut self, style: &StyleFlux, parts: &[String]) {
+        if parts.is_empty() {
+            return;
+        }
+        let mut x = style.x;
+        let mut debut_de_ligne = true;
+        for part in parts {
+            for fragment in self.decouper(style.face, style.size, part, style.largeur_max) {
+                let largeur = self.largeur_text(style.face, self.font_size(style.size), &fragment);
+                let depart = if debut_de_ligne { x } else { x + style.gap };
+                if !debut_de_ligne && depart + largeur > style.x + style.largeur_max {
+                    self.avance_ligne(style.interligne);
+                    x = style.x;
+                } else {
+                    x = depart;
+                }
+                self.text(
+                    x,
+                    self.y + ASCENT * self.font_size(style.size),
+                    style.face,
+                    style.size,
+                    style.couleur.clone(),
+                    &fragment,
+                );
+                x += largeur;
+                debut_de_ligne = false;
+            }
+        }
+        self.avance_ligne(style.interligne);
+    }
+
     fn chip(&mut self, x: f32, label: &str) -> f32 {
-        let padding_x = pt(8.0);
-        let padding_y = pt(2.5);
-        let size = pt(10.4);
-        let largeur =
-            self.largeur_text(FontFace::Sans(SansWeight::Regular), size, label) + 2.0 * padding_x;
-        let hauteur = self.font_size(size) + 2.0 * padding_y;
+        let largeur = self.largeur_chip(label);
+        let hauteur = self.hauteur_chip();
         self.rect_arrondi(
             x,
             self.y,
@@ -491,11 +660,14 @@ impl Plan<'_> {
             pt(2.0),
             rgb(CHIP_BG.0, CHIP_BG.1, CHIP_BG.2),
         );
+        let taille = self.font_size(CHIP_SIZE);
+        // Le texte est centré dans la pastille : la caler sur le seul rembourrage haut
+        // laissait la jambe des lettres descendantes sortir du fond.
         self.text(
-            x + padding_x,
-            self.y + padding_y + ASCENT * self.font_size(size),
+            x + CHIP_PADDING_X,
+            self.y + (hauteur - taille) / 2.0 + ASCENT * taille,
             FontFace::Sans(SansWeight::Regular),
-            size,
+            CHIP_SIZE,
             rgb(CHIP_TEXT.0, CHIP_TEXT.1, CHIP_TEXT.2),
             label,
         );
@@ -514,7 +686,11 @@ impl Plan<'_> {
         if self.overflow {
             return;
         }
-        let hauteur = self.spacing(hauteur);
+        // La hauteur reçue est déjà celle voulue : l'échelle de densité est appliquée par
+        // l'appelant, sur la taille de police du texte que le rectangle habille. La
+        // remultiplier ici étirait la pastille de 35 % au palier le plus aéré — les rangées
+        // de compétences se chevauchaient — et la réduisait de 38 % au plus dense, où le
+        // texte sortait alors sous son fond.
         let rayon = rayon.min(largeur / 2.0).min(hauteur / 2.0);
         self.register(x + largeur, y_haut + hauteur);
         if self.overflow {
@@ -558,13 +734,17 @@ impl Plan<'_> {
 
     fn puce(&mut self, x: f32, value: &str) {
         let size = pt(11.3);
-        let marque_y = self.y + ASCENT * self.font_size(size) - pt(1.0);
+        // Le gabarit pose la pastille à `top: 0.55em` de la ligne et la rend ronde
+        // (`rounded-full`). L'export la calait sur la ligne de base et l'arrondissait à
+        // moitié : elle sortait carrée et une virgule plus bas qu'à l'aperçu.
+        let diametre = pt(3.0);
+        let marque_y = self.y + 0.55 * self.font_size(size);
         self.rect_arrondi(
             x,
             marque_y,
-            pt(3.0),
-            pt(3.0),
-            pt(1.0),
+            diametre,
+            diametre,
+            diametre / 2.0,
             rgb(ACCENT_SOFT.0, ACCENT_SOFT.1, ACCENT_SOFT.2),
         );
         self.paragraphe(
@@ -585,21 +765,23 @@ impl Plan<'_> {
         let face = FontFace::Mono(MonoWeight::Medium);
         let size = pt(9.2);
         let actual_size = self.font_size(size);
-        let interligne = self.spacing(pt(9.2 * 1.4)).max(actual_size * 1.1);
+        let interligne = self.interligne(pt(9.2 * 1.4));
         // Le libellé vit dans une colonne de `LABEL_W` : sans repli, un intitulé long
         // débordait sur le contenu placé à sa droite et le surimprimait.
         let mut y = y_label;
-        for row in self.decouper(face, size, &title.to_uppercase(), LABEL_W) {
-            self.text(
-                MARGIN_LEFT,
-                y + ASCENT * actual_size,
-                face,
-                size,
-                rgb(ACCENT.0, ACCENT.1, ACCENT.2),
-                &row,
-            );
-            y += interligne;
-        }
+        self.avec_tracking(TRACKING_LIBELLE, |plan| {
+            for row in plan.decouper(face, size, &title.to_uppercase(), LABEL_W) {
+                plan.text(
+                    MARGIN_LEFT,
+                    y + ASCENT * actual_size,
+                    face,
+                    size,
+                    rgb(ACCENT.0, ACCENT.1, ACCENT.2),
+                    &row,
+                );
+                y += interligne;
+            }
+        });
         y_label
     }
 
@@ -613,26 +795,36 @@ impl Plan<'_> {
     fn entete(&mut self, resume: &ResumePdf) {
         self.y = MARGIN_TOP;
 
-        self.text(
-            MARGIN_LEFT,
-            self.y + ASCENT * self.font_size(pt(31.0)),
-            FontFace::Sans(SansWeight::SemiBold),
-            pt(31.0),
-            rgb(INK.0, INK.1, INK.2),
-            &resume.name,
-        );
-        self.avance(pt(31.0) * 1.02);
+        // Nom et titre sont repliés sur la largeur de la feuille, comme dans l'aperçu : un
+        // nom composé ou un intitulé long tenait sur une seule ligne et sortait de la page.
+        self.avec_tracking(TRACKING_NOM, |plan| {
+            plan.paragraphe(
+                StyleParagraphe {
+                    x: MARGIN_LEFT,
+                    face: FontFace::Sans(SansWeight::SemiBold),
+                    size: pt(31.0),
+                    couleur: rgb(INK.0, INK.1, INK.2),
+                    interligne: pt(31.0) * 1.02,
+                    largeur_max: HEADER_W,
+                },
+                &resume.name,
+            );
+        });
 
         if !resume.subtitle.trim().is_empty() {
-            self.text(
-                MARGIN_LEFT,
-                self.y + ASCENT * self.font_size(pt(10.4)),
-                FontFace::Mono(MonoWeight::Medium),
-                pt(10.4),
-                rgb(ACCENT.0, ACCENT.1, ACCENT.2),
-                &resume.subtitle.to_uppercase(),
-            );
-            self.avance(pt(10.4) * 1.5);
+            self.avec_tracking(TRACKING_SOUS_TITRE, |plan| {
+                plan.paragraphe(
+                    StyleParagraphe {
+                        x: MARGIN_LEFT,
+                        face: FontFace::Mono(MonoWeight::Medium),
+                        size: pt(10.4),
+                        couleur: rgb(ACCENT.0, ACCENT.1, ACCENT.2),
+                        interligne: pt(10.4) * 1.5,
+                        largeur_max: HEADER_W,
+                    },
+                    &resume.subtitle.to_uppercase(),
+                );
+            });
         }
 
         if let Some(headline) = resume.headline.as_deref() {
@@ -703,31 +895,19 @@ impl Plan<'_> {
     }
 
     fn contact_line(&mut self, parts: &[String]) {
-        if parts.is_empty() {
-            return;
-        }
         let size = pt(10.1);
-        let mut x = MARGIN_LEFT;
-        let gap = pt(18.0);
-        for (index, part) in parts.iter().enumerate() {
-            if index > 0 {
-                x += gap;
-            }
-            self.text(
-                x,
-                self.y + ASCENT * self.font_size(size),
-                FontFace::Mono(MonoWeight::Regular),
+        self.flux_horizontal(
+            &StyleFlux {
+                x: MARGIN_LEFT,
+                largeur_max: HEADER_W,
+                face: FontFace::Mono(MonoWeight::Regular),
                 size,
-                rgb(CONTACT.0, CONTACT.1, CONTACT.2),
-                part,
-            );
-            x += self.largeur_text(
-                FontFace::Mono(MonoWeight::Regular),
-                self.font_size(size),
-                part,
-            );
-        }
-        self.avance(size * 1.45);
+                couleur: rgb(CONTACT.0, CONTACT.1, CONTACT.2),
+                gap: pt(18.0),
+                interligne: size * 1.45,
+            },
+            parts,
+        );
     }
 
     fn section_profile(&mut self, resume: &ResumePdf) {
@@ -765,32 +945,20 @@ impl Plan<'_> {
 
     fn experience_item(&mut self, experience: &ResumeExperience) {
         let title_size = pt(12.6);
-        let period_size = pt(9.5);
-        self.text(
-            CONTENT_X,
-            self.y + ASCENT * self.font_size(title_size),
-            FontFace::Sans(SansWeight::SemiBold),
-            title_size,
-            rgb(INK.0, INK.1, INK.2),
-            &experience.title,
-        );
-        if !experience.period.trim().is_empty() {
-            let period_x = CONTENT_X + CONTENT_W
-                - self.largeur_text(
-                    FontFace::Mono(MonoWeight::Regular),
-                    self.font_size(period_size),
-                    &experience.period,
-                );
-            self.text(
-                period_x,
-                self.y + ASCENT * self.font_size(period_size),
-                FontFace::Mono(MonoWeight::Regular),
-                period_size,
-                rgb(SUBTLE.0, SUBTLE.1, SUBTLE.2),
-                &experience.period,
+        let largeur_titre = self.periode_a_droite(&experience.period, pt(9.5));
+        self.avec_tracking(TRACKING_TITRE, |plan| {
+            plan.paragraphe(
+                StyleParagraphe {
+                    x: CONTENT_X,
+                    face: FontFace::Sans(SansWeight::SemiBold),
+                    size: title_size,
+                    couleur: rgb(INK.0, INK.1, INK.2),
+                    interligne: title_size * 1.35,
+                    largeur_max: largeur_titre,
+                },
+                &experience.title,
             );
-        }
-        self.avance(title_size * 1.35);
+        });
 
         let mut company_line = experience.company.clone();
         if let Some(location) = experience.location.as_deref() {
@@ -798,19 +966,53 @@ impl Plan<'_> {
                 company_line = format!("{company_line} · {location}");
             }
         }
-        self.text(
-            CONTENT_X,
-            self.y + ASCENT * self.font_size(pt(11.2)),
-            FontFace::Sans(SansWeight::Medium),
-            pt(11.2),
-            rgb(COMPANY.0, COMPANY.1, COMPANY.2),
+        self.paragraphe(
+            StyleParagraphe {
+                x: CONTENT_X,
+                face: FontFace::Sans(SansWeight::Medium),
+                size: pt(11.2),
+                couleur: rgb(COMPANY.0, COMPANY.1, COMPANY.2),
+                interligne: pt(11.2) * 1.4,
+                largeur_max: CONTENT_W,
+            },
             &company_line,
         );
-        self.avance(pt(11.2) * 1.4);
 
         for bullet in &experience.bullets {
             self.puce(CONTENT_X, bullet);
         }
+    }
+
+    /// Pose la période à droite de la colonne de contenu et retourne la largeur qui reste
+    /// pour l'intitulé, écart compris. Sans cette réserve, un intitulé long venait
+    /// s'imprimer sous la période.
+    fn periode_a_droite(&mut self, period: &str, size: f32) -> f32 {
+        if period.trim().is_empty() {
+            return CONTENT_W;
+        }
+        let face = FontFace::Mono(MonoWeight::Regular);
+        let mut largeur = 0.0;
+        self.avec_tracking(TRACKING_PERIODE, |plan| {
+            largeur = plan.largeur_text(face, plan.font_size(size), period);
+            // La période est alignée à droite : `register` ne suit que le bord droit, une
+            // période démesurée remonterait donc sans bruit jusque dans la colonne des
+            // étiquettes. Passé la moitié de la colonne, elle repart de son bord gauche et
+            // le dépassement redevient visible.
+            let x = if largeur > CONTENT_W * 0.5 {
+                CONTENT_X + CONTENT_W * 0.5
+            } else {
+                CONTENT_X + CONTENT_W - largeur
+            };
+            plan.text(
+                x,
+                plan.y + ASCENT * plan.font_size(size),
+                face,
+                size,
+                rgb(SUBTLE.0, SUBTLE.1, SUBTLE.2),
+                period,
+            );
+        });
+        (CONTENT_W - largeur - pt(14.0)).max(CONTENT_W * 0.35)
     }
 
     fn section_projects(&mut self, resume: &ResumePdf) {
@@ -828,15 +1030,17 @@ impl Plan<'_> {
     }
 
     fn project_item(&mut self, project: &ResumeProject) {
-        self.text(
-            CONTENT_X,
-            self.y + ASCENT * self.font_size(pt(12.2)),
-            FontFace::Sans(SansWeight::SemiBold),
-            pt(12.2),
-            rgb(INK.0, INK.1, INK.2),
+        self.paragraphe(
+            StyleParagraphe {
+                x: CONTENT_X,
+                face: FontFace::Sans(SansWeight::SemiBold),
+                size: pt(12.2),
+                couleur: rgb(INK.0, INK.1, INK.2),
+                interligne: pt(12.2) * 1.35,
+                largeur_max: CONTENT_W,
+            },
             &project.name,
         );
-        self.avance(pt(12.2) * 1.35);
 
         let mut meta_parts = Vec::new();
         if !project.meta.trim().is_empty() {
@@ -848,15 +1052,17 @@ impl Plan<'_> {
             }
         }
         if !meta_parts.is_empty() {
-            self.text(
-                CONTENT_X,
-                self.y + ASCENT * self.font_size(pt(11.2)),
-                FontFace::Sans(SansWeight::Regular),
-                pt(11.2),
-                rgb(MUTED.0, MUTED.1, MUTED.2),
+            self.paragraphe(
+                StyleParagraphe {
+                    x: CONTENT_X,
+                    face: FontFace::Sans(SansWeight::Regular),
+                    size: pt(11.2),
+                    couleur: rgb(MUTED.0, MUTED.1, MUTED.2),
+                    interligne: pt(11.2) * 1.4,
+                    largeur_max: CONTENT_W,
+                },
                 &meta_parts.join(" · "),
             );
-            self.avance(pt(11.2) * 1.4);
         }
 
         for bullet in &project.bullets {
@@ -879,39 +1085,48 @@ impl Plan<'_> {
             if index > 0 {
                 self.avance(pt(5.0));
             }
-            self.text(
-                CONTENT_X,
-                self.y + ASCENT * self.font_size(pt(11.0)),
-                FontFace::Sans(SansWeight::SemiBold),
-                pt(11.0),
-                rgb(GROUP_TITLE.0, GROUP_TITLE.1, GROUP_TITLE.2),
-                &group.name,
-            );
-            let group_w = self.largeur_text(
-                FontFace::Sans(SansWeight::SemiBold),
-                self.font_size(pt(11.0)),
-                &group.name,
-            );
+            let mut group_w = 0.0;
+            self.avec_tracking(TRACKING_GROUPE, |plan| {
+                plan.text(
+                    CONTENT_X,
+                    plan.y + ASCENT * plan.font_size(pt(11.0)),
+                    FontFace::Sans(SansWeight::SemiBold),
+                    pt(11.0),
+                    rgb(GROUP_TITLE.0, GROUP_TITLE.1, GROUP_TITLE.2),
+                    &group.name,
+                );
+                group_w = plan.largeur_text(
+                    FontFace::Sans(SansWeight::SemiBold),
+                    plan.font_size(pt(11.0)),
+                    &group.name,
+                );
+            });
             let chips_x = CONTENT_X + group_w + pt(14.0);
+            // Une rangée avance de la hauteur réelle d'une pastille, plus l'écart vertical
+            // du gabarit. L'avance était figée à `10.4 + 3.5` pt, sans rapport avec la
+            // hauteur dessinée : dès que la densité aérait les pastilles, chaque rangée
+            // recouvrait la précédente et les fonds se fondaient en un bloc gris.
+            let hauteur_rangee = self.hauteur_chip();
+            let pas_rangee = hauteur_rangee + self.spacing(CHIP_GAP_Y);
             let mut x = chips_x;
             let mut line_y = self.y;
             for item in group.items.iter().filter(|item| !item.trim().is_empty()) {
-                let largeur = self.largeur_text(
-                    FontFace::Sans(SansWeight::Regular),
-                    self.font_size(pt(10.4)),
-                    item,
-                ) + 2.0 * pt(8.0);
+                let largeur = self.largeur_chip(item);
                 if x + largeur > CONTENT_X + CONTENT_W && x > chips_x {
-                    line_y += pt(10.4) + pt(3.5);
+                    line_y += pas_rangee;
                     x = chips_x;
                 }
                 let saved_y = self.y;
                 self.y = line_y;
                 self.chip(x, item);
-                x += largeur + pt(5.0);
+                x += largeur + CHIP_GAP_X;
                 self.y = saved_y;
             }
-            self.y = line_y + pt(14.0);
+            self.y = line_y + hauteur_rangee;
+            self.bounds.max_y = self.bounds.max_y.max(self.y);
+            if self.y > PAGE_H - MARGIN_BOTTOM {
+                self.deborde(Debordement::Hauteur);
+            }
         }
     }
 
@@ -925,31 +1140,18 @@ impl Plan<'_> {
             if index > 0 {
                 self.avance(pt(6.0));
             }
-            self.text(
-                CONTENT_X,
-                self.y + ASCENT * self.font_size(pt(12.0)),
-                FontFace::Sans(SansWeight::SemiBold),
-                pt(12.0),
-                rgb(INK.0, INK.1, INK.2),
+            let largeur_diplome = self.periode_a_droite(&education.period, pt(9.5));
+            self.paragraphe(
+                StyleParagraphe {
+                    x: CONTENT_X,
+                    face: FontFace::Sans(SansWeight::SemiBold),
+                    size: pt(12.0),
+                    couleur: rgb(INK.0, INK.1, INK.2),
+                    interligne: pt(12.0) * 1.35,
+                    largeur_max: largeur_diplome,
+                },
                 &education.degree,
             );
-            if !education.period.trim().is_empty() {
-                let period_x = CONTENT_X + CONTENT_W
-                    - self.largeur_text(
-                        FontFace::Mono(MonoWeight::Regular),
-                        self.font_size(pt(9.5)),
-                        &education.period,
-                    );
-                self.text(
-                    period_x,
-                    self.y + ASCENT * self.font_size(pt(9.5)),
-                    FontFace::Mono(MonoWeight::Regular),
-                    pt(9.5),
-                    rgb(SUBTLE.0, SUBTLE.1, SUBTLE.2),
-                    &education.period,
-                );
-            }
-            self.avance(pt(12.0) * 1.35);
 
             let mut school_line = education.school.clone();
             if let Some(location) = education.location.as_deref() {
@@ -957,15 +1159,17 @@ impl Plan<'_> {
                     school_line = format!("{school_line} · {location}");
                 }
             }
-            self.text(
-                CONTENT_X,
-                self.y + ASCENT * self.font_size(pt(11.2)),
-                FontFace::Sans(SansWeight::Regular),
-                pt(11.2),
-                rgb(MUTED.0, MUTED.1, MUTED.2),
+            self.paragraphe(
+                StyleParagraphe {
+                    x: CONTENT_X,
+                    face: FontFace::Sans(SansWeight::Regular),
+                    size: pt(11.2),
+                    couleur: rgb(MUTED.0, MUTED.1, MUTED.2),
+                    interligne: pt(11.2) * 1.4,
+                    largeur_max: CONTENT_W,
+                },
                 &school_line,
             );
-            self.avance(pt(11.2) * 1.4);
 
             if let Some(description) = education.description.as_deref() {
                 if !description.trim().is_empty() {
@@ -1023,29 +1227,24 @@ impl Plan<'_> {
         }
         let y_start = self.begin_section("Langues");
         self.y = y_start;
-        let mut x = CONTENT_X;
-        let gap = pt(22.0);
         let size = pt(11.2);
-        for (index, language) in resume.languages.iter().enumerate() {
-            let label = format!("{} · {}", language.name, language.level);
-            if index > 0 {
-                x += gap;
-            }
-            self.text(
-                x,
-                self.y + ASCENT * self.font_size(size),
-                FontFace::Sans(SansWeight::Regular),
+        let labels: Vec<String> = resume
+            .languages
+            .iter()
+            .map(|language| format!("{} · {}", language.name, language.level))
+            .collect();
+        self.flux_horizontal(
+            &StyleFlux {
+                x: CONTENT_X,
+                largeur_max: CONTENT_W,
+                face: FontFace::Sans(SansWeight::Regular),
                 size,
-                rgb(BODY.0, BODY.1, BODY.2),
-                &label,
-            );
-            x += self.largeur_text(
-                FontFace::Sans(SansWeight::Regular),
-                self.font_size(size),
-                &label,
-            );
-        }
-        self.avance(size * 1.42);
+                couleur: rgb(BODY.0, BODY.1, BODY.2),
+                gap: pt(22.0),
+                interligne: size * 1.42,
+            },
+            &labels,
+        );
     }
 }
 
