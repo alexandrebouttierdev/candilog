@@ -31,12 +31,17 @@ fn lettre_est_enregistree_et_supprimee() {
             name: "Lettre Nova".into(),
             company: Some("Nova".into()),
             job_title: Some("Designer".into()),
+            recipient: Some("Service recrutement".into()),
+            recipient_address: Some("12 rue de la Monnaie, 35000 Rennes".into()),
+            job_reference: Some("FS-2026-114".into()),
             tone: "formal".into(),
             length: "medium".into(),
             content: "Madame, Monsieur…".into(),
         })
         .unwrap();
     assert_eq!(repo.list().unwrap(), vec![saved.clone()]);
+    assert_eq!(saved.recipient.as_deref(), Some("Service recrutement"));
+    assert_eq!(saved.job_reference.as_deref(), Some("FS-2026-114"));
     repo.delete(saved.id).unwrap();
     assert!(repo.list().unwrap().is_empty());
 }
@@ -75,6 +80,9 @@ fn lettres_pagination_filtre_avant_la_limite() {
             },
             company: None,
             job_title: None,
+            recipient: None,
+            recipient_address: None,
+            job_reference: None,
             tone: "formal".into(),
             length: "medium".into(),
             content: "Contenu".into(),
@@ -106,6 +114,9 @@ fn la_recherche_des_bibliotheques_ignore_les_accents() {
             name: "Lettre ÉCOLE".into(),
             company: None,
             job_title: None,
+            recipient: None,
+            recipient_address: None,
+            job_reference: None,
             tone: "formal".into(),
             length: "medium".into(),
             content: "Contenu".into(),

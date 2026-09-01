@@ -4,17 +4,17 @@ import type { AtsAnalysis, MatchScore, StructuredListing } from "./ai";
 /**
  * CoverLetter enregistrée dans la bibliothèque locale.
  */
-export type CoverLetter = { id: string, name: string, company: string | null, job_title: string | null, tone: string, length: string, content: string, created_at: string, };
+export type CoverLetter = { id: string, name: string, company: string | null, job_title: string | null, recipient: string | null, recipient_address: string | null, job_reference: string | null, tone: string, length: string, content: string, created_at: string, };
 
 /**
  * Content d'une lettre à exporter en PDF (enregistrée ou encore à l'écran).
  */
-export type CoverLetterExport = { name: string, company: string | null, job_title: string | null, content: string, };
+export type CoverLetterExport = { name: string, company: string | null, job_title: string | null, recipient: string | null, recipient_address: string | null, job_reference: string | null, content: string, };
 
 /**
  * Entrée d'enregistrement d'une lettre générée ou remaniée.
  */
-export type NewCoverLetter = { name: string, company: string | null, job_title: string | null, tone: string, length: string, content: string, };
+export type NewCoverLetter = { name: string, company: string | null, job_title: string | null, recipient: string | null, recipient_address: string | null, job_reference: string | null, tone: string, length: string, content: string, };
 
 /**
  * Entrée d'enregistrement d'un CV.

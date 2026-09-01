@@ -5,8 +5,8 @@ use super::*;
 #[test]
 fn export_pdf_refuse_un_token_unicode_trop_long() {
     let cover_letter = CoverLetterPdf {
-        name: "Alex Exemple".into(),
-        subject: "Objet : candidature".into(),
+        first_name: "Alex".into(),
+        last_name: "Exemple".into(),
         corps: format!(
             "{}{}",
             "https://exemple.fr/chemin/".repeat(500),

@@ -30,6 +30,7 @@ export function ProfileIdentityForm({
         <ProfileField label="Nom" registration={form.register("name")} error={message("name")} />
         <ProfileField label="E-mail" type="email" registration={form.register("email")} error={message("email")} />
         <ProfileField label="Téléphone" type="tel" registration={form.register("phone")} error={message("phone")} />
+        <div className="sm:col-span-2"><ProfileField label="Adresse" registration={form.register("address")} error={message("address")} placeholder="14 rue Saint-Melaine" /></div>
         <div className="sm:col-span-2"><ProfileField label="Ville" registration={form.register("city")} error={message("city")} /></div>
       </fieldset>
       <fieldset className="grid gap-4 border-t border-line pt-4">

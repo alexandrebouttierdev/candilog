@@ -19,6 +19,8 @@ pub struct Identity {
         deserialize_with = "option_string_lenient"
     )]
     pub phone: Option<String>,
+    #[serde(default, deserialize_with = "option_string_lenient")]
+    pub address: Option<String>,
     #[serde(default, alias = "ville", deserialize_with = "option_string_lenient")]
     pub city: Option<String>,
     /// Accroche courte, utilisée comme objectif ou titre de CV.

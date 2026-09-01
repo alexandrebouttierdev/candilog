@@ -24,6 +24,7 @@ export const identitySchema = z.object({
       message: "Adresse e-mail invalide",
     }),
   phone: optional,
+  address: optional,
   city: optional,
   title: optional,
   resume: optional,

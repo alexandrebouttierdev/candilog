@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { IconButton, Select } from "@/shared/ui";
 import { DocumentPanel } from "./DocumentUi";
-import { LetterPaper } from "./LetterPaper";
+import { LetterPaper, type LetterPaperField, type LetterPaperFields } from "./LetterPaper";
 import {
   markupFromDom,
   parseLetter,
@@ -30,15 +30,17 @@ const ALIGNEMENTS: { value: LetterAlign; icon: string; label: string }[] = [
 export function LetterEditor({
   value,
   readOnly,
-  jobTitle,
-  company,
+  fields,
   onChange,
+  onFieldsChange,
+  onOverflowChange,
 }: {
   value: string;
   readOnly: boolean;
-  jobTitle: string;
-  company: string;
+  fields: LetterPaperFields;
   onChange: (markup: string) => void;
+  onFieldsChange: (field: LetterPaperField, value: string) => void;
+  onOverflowChange: (overflow: boolean) => void;
 }) {
   const zone = useRef<HTMLDivElement | null>(null);
   const dernier = useRef<string>("");
@@ -162,7 +164,12 @@ export function LetterEditor({
   return (
     <DocumentPanel title="Document" icon="draft" action={barre} className="flex min-h-0 flex-col">
       <div className="flex min-h-0 flex-1 justify-center overflow-y-auto bg-page p-[26px]">
-        <LetterPaper jobTitle={jobTitle} company={company}>
+        <LetterPaper
+          fields={fields}
+          editable={!readOnly}
+          onChange={onFieldsChange}
+          onOverflowChange={onOverflowChange}
+        >
           <div
             ref={zone}
             role="textbox"

@@ -1,13 +1,13 @@
 # Données locales
 
-La base `candilog.sqlite` est résolue par `core::config::AppPaths`. Une release utilise le dossier historique `com.candilog.desktop` du répertoire de données de l'OS ; un binaire debug utilise obligatoirement `src-tauri/.candilog-dev/` (ancré sur `CARGO_MANIFEST_DIR`) afin de ne jamais ouvrir la base utilisateur pendant le développement. Le schéma complet vit dans un seul fichier embarqué, `init_schema.sql`, appliqué via `PRAGMA user_version` : tables, index et semences des référentiels. Aucune migration héritée n'est conservée — une base neuve obtient directement le modèle final.
+La base `candilog.sqlite` est résolue par `core::config::AppPaths`. Une release utilise le dossier historique `com.candilog.desktop` du répertoire de données de l'OS ; un binaire debug utilise obligatoirement `src-tauri/.candilog-dev/` (ancré sur `CARGO_MANIFEST_DIR`) afin de ne jamais ouvrir la base utilisateur pendant le développement. Le modèle v1 vit dans `init_schema.sql` ; les fichiers suivants (`002_…`) font évoluer cette lignée via `PRAGMA user_version`. Aucune migration héritée (générations antérieures à v1) n'est conservée.
 
 Les règles de relation restent : entreprise/candidature en `RESTRICT`, candidature/dépendances en `CASCADE`, contact optionnel en `SET NULL`. Les UUID et dates ISO 8601 sont générés en Rust. Les tests n'ouvrent jamais la base utilisateur.
 
 ## Référentiels métier
 
-Le schéma courant (`PRAGMA user_version = 1`, fichier unique `init_schema.sql`) porte
-quatre catalogues **distincts**, semés par le fichier lui-même en `INSERT OR IGNORE` :
+Le schéma courant (`PRAGMA user_version = 2`) porte
+quatre catalogues **distincts**, semés par `init_schema.sql` en `INSERT OR IGNORE` :
 
 | Table | Clé | Rôle |
 | --- | --- | --- |

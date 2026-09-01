@@ -1,13 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { letterDateLine, letterSignature, letterSubject } from "../letterLayout";
+import { letterDateLine, letterHeadline, letterSignature } from "../letterLayout";
 
 describe("composition d'une lettre", () => {
-  it("compose l'objet comme l'export PDF", () => {
-    expect(letterSubject("Développeur", "Astek")).toBe(
-      "Objet : candidature au poste de Développeur — Astek",
-    );
-    expect(letterSubject("Développeur", "")).toBe("Objet : candidature au poste de Développeur");
-    expect(letterSubject(null, "Astek")).toBe("Objet : candidature");
+  it("compose l'intitulé de candidature sans préfixe Objet", () => {
+    expect(letterHeadline("Développeur")).toBe("Candidature au poste de Développeur");
+    expect(letterHeadline("")).toBeNull();
+    expect(letterHeadline(null)).toBeNull();
   });
 
   it("date la lettre en français, avec la ville quand elle est connue", () => {

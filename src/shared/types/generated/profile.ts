@@ -18,7 +18,7 @@ export type Experience = { title: string, company: string, location: string | nu
 /**
  * Coordonnées et objectif professionnel.
  */
-export type Identity = { first_name: string, name: string, email: string, phone: string | null, city: string | null, 
+export type Identity = { first_name: string, name: string, email: string, phone: string | null, address: string | null, city: string | null, 
 /**
  * Accroche courte, utilisée comme objectif ou titre de CV.
  */

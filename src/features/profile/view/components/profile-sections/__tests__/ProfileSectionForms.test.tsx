@@ -12,6 +12,7 @@ const profile: Profile = {
     name: "Martin",
     email: "alex@example.test",
     phone: "06 00 00 00 00",
+    address: null,
     city: null,
     title: null,
     resume: null,

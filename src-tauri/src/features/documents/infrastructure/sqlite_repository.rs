@@ -140,17 +140,20 @@ impl SqliteCoverLetterRepository {
     }
 }
 const COVER_LETTER_COLUMNS: &str =
-    "id, name, company, job_title, tone, length, content, created_at";
+    "id, name, company, job_title, recipient, recipient_address, job_reference, tone, length, content, created_at";
 fn cover_letter_row(row: &rusqlite::Row) -> rusqlite::Result<CoverLetter> {
     Ok(CoverLetter {
         id: uuid_column(row, 0)?,
         name: row.get(1)?,
         company: row.get(2)?,
         job_title: row.get(3)?,
-        tone: row.get(4)?,
-        length: row.get(5)?,
-        content: row.get(6)?,
-        created_at: row.get(7)?,
+        recipient: row.get(4)?,
+        recipient_address: row.get(5)?,
+        job_reference: row.get(6)?,
+        tone: row.get(7)?,
+        length: row.get(8)?,
+        content: row.get(9)?,
+        created_at: row.get(10)?,
     })
 }
 
@@ -159,12 +162,32 @@ impl CoverLetterRepository for SqliteCoverLetterRepository {
         let conn = connection(&self.pool)?;
         let id = Uuid::new_v4();
         let created_at = now_iso();
-        conn.execute("INSERT INTO cover_letters (id, name, company, job_title, tone, length, content, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)", rusqlite::params![id.to_string(), input.name, input.company, input.job_title, input.tone, input.length, input.content, created_at]).map_err(|e| translate_error(e, "lettre de motivation"))?;
+        conn.execute(
+            "INSERT INTO cover_letters (id, name, company, job_title, recipient, recipient_address, job_reference, tone, length, content, created_at) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+            rusqlite::params![
+                id.to_string(),
+                input.name,
+                input.company,
+                input.job_title,
+                input.recipient,
+                input.recipient_address,
+                input.job_reference,
+                input.tone,
+                input.length,
+                input.content,
+                created_at
+            ],
+        )
+        .map_err(|e| translate_error(e, "lettre de motivation"))?;
         Ok(CoverLetter {
             id,
             name: input.name.clone(),
             company: input.company.clone(),
             job_title: input.job_title.clone(),
+            recipient: input.recipient.clone(),
+            recipient_address: input.recipient_address.clone(),
+            job_reference: input.job_reference.clone(),
             tone: input.tone.clone(),
             length: input.length.clone(),
             content: input.content.clone(),

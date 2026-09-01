@@ -62,3 +62,33 @@ fn second_enregistrement_remplace_la_ligne_unique() {
         .unwrap();
     assert_eq!(count, 1);
 }
+
+#[test]
+fn adresse_postale_est_persistee() {
+    let repo = repo();
+    let mut profile = Profile::default();
+    profile.identity.first_name = "Camille".into();
+    profile.identity.address = Some("14 rue Saint-Melaine".into());
+    repo.save(&profile).unwrap();
+
+    let (recharge, _) = repo.get().unwrap();
+    assert_eq!(
+        recharge.identity.address.as_deref(),
+        Some("14 rue Saint-Melaine")
+    );
+}
+
+#[test]
+fn json_sans_adresse_reste_lisible() {
+    let repo = repo();
+    connection(&repo.pool)
+        .unwrap()
+        .execute(
+            "INSERT INTO profile (id, data, updated_at) VALUES (1, ?1, '2026-08-01')",
+            [r#"{"personal":{"first_name":"Camille","last_name":"Rivet","email":"camille@example.fr"},"experiences":[],"skills":[],"education":[],"languages":[],"projects":[],"certifications":[]}"#],
+        )
+        .unwrap();
+
+    let (profile, _) = repo.get().unwrap();
+    assert_eq!(profile.identity.address, None);
+}

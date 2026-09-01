@@ -357,6 +357,7 @@ describe("confirmation d'ajout au profil", () => {
           name: "Exemple",
           email: "alex@exemple.fr",
           phone: null,
+          address: null,
           city: null,
           title: null,
           resume: null,

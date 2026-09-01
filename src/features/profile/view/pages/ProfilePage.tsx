@@ -133,6 +133,7 @@ export function ProfilePage() {
                   <div className="px-[18px] pt-1 pb-3">
                     <Row label="E-mail" value={vm.data.profile.identity.email} />
                     <Row label="Téléphone" value={vm.data.profile.identity.phone} />
+                    <Row label="Adresse" value={vm.data.profile.identity.address} />
                     <Row label="Ville" value={vm.data.profile.identity.city} />
                     <Row label="LinkedIn" value={vm.data.profile.identity.linkedin} />
                     <Row label="GitHub" value={vm.data.profile.identity.github} />

@@ -308,6 +308,16 @@ Fermeture : `useDismissable` (Escape + clic extérieur) — calendrier, FilterMe
 - Le panneau latéral porte le score ATS, le gain cumulé et les propositions (acceptation,
   refus, annulation) ; il ne remplace pas le papier comme surface d'édition.
 
+- L'aperçu A4 de la lettre (`LetterPaper`, 210 × 297 mm) reprend le template HTML fourni :
+  colonne d'identité 58 mm (`--letter-panel`) et corps à droite, jetons `--letter-*`,
+  typographie **IBM Plex Sans** / **IBM Plex Mono**. Le papier reste blanc dans les deux
+  thèmes. L'identité (nom, titre, adresse, téléphone, courriel) vient du **profil courant** ;
+  entreprise, poste, interlocuteur, adresse destinataire et référence d'offre s'éditent sur
+  la feuille. Les blocs vides sont omis en lecture. « Pièce jointe : curriculum vitæ » est
+  toujours affiché.
+- Quatre **paliers de densité** (`--letter-fs`, `--letter-sp`) compactent la feuille si le
+  texte déborde. Au-delà, un bandeau `letter-overflow-warning` l'indique et **Exporter** /
+  **Enregistrer** sont désactivés.
 - L'aperçu A4 de la lettre est **éditable sur place** : le texte affiché est celui qui sera
   enregistré et exporté.
 - Barre d'outils de la lettre : gras, souligné, taille (petite / normale / grande) et

@@ -45,6 +45,12 @@ pub struct CoverLetter {
     pub name: String,
     pub company: Option<String>,
     pub job_title: Option<String>,
+    #[serde(default)]
+    pub recipient: Option<String>,
+    #[serde(default)]
+    pub recipient_address: Option<String>,
+    #[serde(default)]
+    pub job_reference: Option<String>,
     pub tone: String,
     pub length: String,
     pub content: String,
@@ -59,6 +65,12 @@ pub struct NewCoverLetter {
     pub name: String,
     pub company: Option<String>,
     pub job_title: Option<String>,
+    #[serde(default)]
+    pub recipient: Option<String>,
+    #[serde(default)]
+    pub recipient_address: Option<String>,
+    #[serde(default)]
+    pub job_reference: Option<String>,
     pub tone: String,
     pub length: String,
     pub content: String,
@@ -72,5 +84,11 @@ pub struct CoverLetterExport {
     pub name: String,
     pub company: Option<String>,
     pub job_title: Option<String>,
+    #[serde(default)]
+    pub recipient: Option<String>,
+    #[serde(default)]
+    pub recipient_address: Option<String>,
+    #[serde(default)]
+    pub job_reference: Option<String>,
     pub content: String,
 }

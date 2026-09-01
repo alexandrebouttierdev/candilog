@@ -270,6 +270,7 @@ mod tests {
                 name: "Martin".into(),
                 email: "camille@example.fr".into(),
                 phone: None,
+                address: None,
                 city: None,
                 title: Some("Développeuse Rust".into()),
                 resume: Some("Systèmes et CLI".into()),

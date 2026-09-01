@@ -7,13 +7,14 @@ use super::*;
 #[test]
 fn export_pdf_rend_la_mise_en_forme() {
     let cover_letter = CoverLetterPdf {
-        name: "Alex Exemple".into(),
+        first_name: "Alex".into(),
+        last_name: "Exemple".into(),
         city: Some("Rennes".into()),
         email: "alex@exemple.fr".into(),
-        subject: "Objet : candidature".into(),
         corps: "<p align=\"center\" size=\"large\">Madame, <b>Monsieur</b>,</p>\
                 <p>Je reste <u>disponible</u> dès septembre.</p>"
             .into(),
+        ..CoverLetterPdf::default()
     };
 
     let octets = cover_letter.render_bytes().unwrap();
@@ -33,11 +34,12 @@ fn export_pdf_rend_la_mise_en_forme() {
 #[test]
 fn export_pdf_accepte_encore_le_texte_brut() {
     let cover_letter = CoverLetterPdf {
-        name: "Alex Exemple".into(),
+        first_name: "Alex".into(),
+        last_name: "Exemple".into(),
         city: None,
         email: "alex@exemple.fr".into(),
-        subject: "Objet : candidature".into(),
         corps: "Madame, Monsieur,\n\nJe vous adresse ma candidature.".into(),
+        ..CoverLetterPdf::default()
     };
 
     let octets = cover_letter.render_bytes().unwrap();

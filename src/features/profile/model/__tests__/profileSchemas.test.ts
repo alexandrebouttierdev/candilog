@@ -22,6 +22,7 @@ describe("schémas du profil", () => {
       email: "",
       phone: "",
       city: "",
+      address: "",
       title: "",
       resume: "",
       linkedin: "",
@@ -31,6 +32,7 @@ describe("schémas du profil", () => {
 
     expect(resultat.first_name).toBe("Camille");
     expect(resultat.phone).toBeNull();
+    expect(resultat.address).toBeNull();
     expect(resultat.website).toBeNull();
   });
 });

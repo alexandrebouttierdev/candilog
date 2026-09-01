@@ -13,6 +13,7 @@ const text = (value: string | null) => value ?? "";
 export const identityDefaults = (value: Identity) => ({
   ...value,
   phone: text(value.phone),
+  address: text(value.address),
   city: text(value.city),
   title: text(value.title),
   resume: text(value.resume),

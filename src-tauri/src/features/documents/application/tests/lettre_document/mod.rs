@@ -22,6 +22,9 @@ fn cover_letter() -> CoverLetterExport {
         name: "Lettre Nova".into(),
         company: Some("Nova".into()),
         job_title: Some("Développeur".into()),
+        recipient: Some("Service recrutement".into()),
+        recipient_address: Some("12 rue de la Monnaie, 35000 Rennes".into()),
+        job_reference: Some("FS-2026-114".into()),
         content: "Madame, Monsieur,".into(),
     }
 }

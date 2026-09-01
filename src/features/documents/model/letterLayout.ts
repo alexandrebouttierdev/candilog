@@ -34,15 +34,8 @@ export function letterDateLine(city: string | null, today: Date = new Date()): s
   return ville === "" ? `Le ${date}` : `${ville}, le ${date}`;
 }
 
-/** Objet de la lettre, selon ce qui est renseigné du poste et de l'entreprise. */
-export function letterSubject(job_title: string | null, company: string | null): string {
-  const poste = job_title ?? "";
-  const entreprise = company ?? "";
-  if (poste.trim() !== "" && entreprise.trim() !== "") {
-    return `Objet : candidature au poste de ${poste} — ${entreprise}`;
-  }
-  if (poste.trim() !== "") {
-    return `Objet : candidature au poste de ${poste}`;
-  }
-  return "Objet : candidature";
+/** Intitulé de candidature affiché sur la feuille ; absent si le poste n'est pas renseigné. */
+export function letterHeadline(job_title: string | null): string | null {
+  const poste = job_title?.trim() ?? "";
+  return poste === "" ? null : `Candidature au poste de ${poste}`;
 }

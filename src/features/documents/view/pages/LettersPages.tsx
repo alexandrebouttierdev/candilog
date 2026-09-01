@@ -11,7 +11,7 @@ import { AppError } from "@/shared/types/app-error";
 import { Button, ConfirmDialog, EmptyState, ErrorBanner, FormField, Icon, PageHeader, Pager, Select, TextArea } from "@/shared/ui";
 import { AiProgress, DocumentPanel, PreviewAction } from "../components/DocumentUi";
 import { LetterContent, LetterEditor } from "../components/LetterEditor";
-import { LetterPaper } from "../components/LetterPaper";
+import { LetterPaper, type LetterPaperField } from "../components/LetterPaper";
 import { PAGE_SIZE } from "@/shared/types/page";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { Champ, ChampOffre, COVER_LETTERS_KEY, HeaderBadge, Screen, coverLetterFromNavigation, date, detail, exportLetterPdf, labelTone, message } from "./documentPageSupport";
@@ -112,7 +112,7 @@ export function LettersLibraryPage() {
                 <div className="flex items-center gap-1.5">
                   <PreviewAction icon="edit" onClick={() => void navigate("/documents/write-cover-letter", { state: { cover_letter: selected_letter } })}>Modifier</PreviewAction>
                   <PreviewAction icon="content_copy" onClick={() => void copier()}>Copier</PreviewAction>
-                  <PreviewAction icon="download" onClick={() => void exportLetterPdf({ name: selected_letter.name, company: selected_letter.company, job_title: selected_letter.job_title, content: selected_letter.content }, notify)}>Exporter le PDF</PreviewAction>
+                  <PreviewAction icon="download" onClick={() => void exportLetterPdf({ name: selected_letter.name, company: selected_letter.company, job_title: selected_letter.job_title, recipient: selected_letter.recipient, recipient_address: selected_letter.recipient_address, job_reference: selected_letter.job_reference, content: selected_letter.content }, notify)}>Exporter le PDF</PreviewAction>
                   <PreviewAction tone="danger" icon="delete" onClick={() => setDeleteId(selected_letter.id)}>Supprimer</PreviewAction>
                 </div>
               ) : null}
@@ -131,7 +131,15 @@ export function LettersLibraryPage() {
 function LetterPreview({ letter }: { letter: CoverLetter }) {
   return (
     <div className="flex justify-center bg-page p-[26px]">
-      <LetterPaper jobTitle={letter.job_title} company={letter.company}>
+      <LetterPaper
+        fields={{
+          company: letter.company,
+          job_title: letter.job_title,
+          recipient: letter.recipient,
+          recipient_address: letter.recipient_address,
+          job_reference: letter.job_reference,
+        }}
+      >
         <LetterContent content={letter.content} />
       </LetterPaper>
     </div>
@@ -241,6 +249,9 @@ export function LetterWriterPage() {
   const cover_letter_initiale = coverLetterFromNavigation(location.state);
   const [company, setCompany] = useState(cover_letter_initiale?.company ?? "");
   const [job_title, setJobTitle] = useState(cover_letter_initiale?.job_title ?? "");
+  const [recipient, setRecipient] = useState(cover_letter_initiale?.recipient ?? "");
+  const [recipient_address, setRecipientAddress] = useState(cover_letter_initiale?.recipient_address ?? "");
+  const [job_reference, setJobReference] = useState(cover_letter_initiale?.job_reference ?? "");
   const [tone, setTone] = useState(cover_letter_initiale?.tone || "formal");
   const [length, setLength] = useState(cover_letter_initiale?.length || "medium");
   const [context, setContext] = useState("");
@@ -252,6 +263,7 @@ export function LetterWriterPage() {
   const [consigne, setConsigne] = useState("");
   const [briefOuvert, setBriefOuvert] = useState(false);
   const [abandonOuvert, setAbandonOuvert] = useState(false);
+  const [overflow, setOverflow] = useState(false);
   const progress = useAiProgress(operation);
   useCancelAiOnUnmount(operation);
   const timer = useAiTimer(operation !== null);
@@ -283,8 +295,17 @@ export function LetterWriterPage() {
       setOperation(null);
     }
   };
+  const letterExport = () => ({
+    name: `Lettre — ${job_title || company || "Candidature"}`,
+    company: company || null,
+    job_title: job_title || null,
+    recipient: recipient || null,
+    recipient_address: recipient_address || null,
+    job_reference: job_reference || null,
+    content: output,
+  });
   const save = useMutation({
-    mutationFn: () => documentsService.saveCoverLetter({ name: `Lettre — ${job_title || company || "Candidature"}`, company: company || null, job_title: job_title || null, tone, length, content: output }),
+    mutationFn: () => documentsService.saveCoverLetter({ ...letterExport(), tone, length }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: COVER_LETTERS_KEY });
       notify({ tone: "success", title: "Lettre enregistrée" });
@@ -303,11 +324,11 @@ export function LetterWriterPage() {
         subtitle="Rédigez, itérez et enregistrez"
         secondary={output ? (
           <>
-            <Button icon="download" onClick={() => void exportLetterPdf({ name: `Lettre — ${job_title || company || "Candidature"}`, company: company || null, job_title: job_title || null, content: output }, notify)}>Exporter le PDF</Button>
+            <Button icon="download" disabled={overflow} onClick={() => void exportLetterPdf(letterExport(), notify)}>Exporter le PDF</Button>
             <Button icon="close" onClick={() => setAbandonOuvert(true)}>Annuler</Button>
           </>
         ) : undefined}
-        primary={output ? <Button variant="primary" icon="save" disabled={save.isPending} onClick={() => save.mutate()}>Enregistrer</Button> : undefined}
+        primary={output ? <Button variant="primary" icon="save" disabled={save.isPending || overflow} onClick={() => save.mutate()}>Enregistrer</Button> : undefined}
       />
     }>
       <div className="grid min-h-0 flex-1 gap-4 overflow-hidden p-5 min-[1200px]:p-6 xl:grid-cols-[350px_minmax(480px,1fr)]">
@@ -350,9 +371,22 @@ export function LetterWriterPage() {
         <LetterEditor
           value={output}
           readOnly={operation !== null}
-          jobTitle={job_title}
-          company={company}
+          fields={{
+            company,
+            job_title,
+            recipient,
+            recipient_address,
+            job_reference,
+          }}
           onChange={setOutput}
+          onFieldsChange={(field: LetterPaperField, value: string) => {
+            if (field === "company") setCompany(value);
+            else if (field === "job_title") setJobTitle(value);
+            else if (field === "recipient") setRecipient(value);
+            else if (field === "recipient_address") setRecipientAddress(value);
+            else setJobReference(value);
+          }}
+          onOverflowChange={setOverflow}
         />
       </div>
       <ConfirmDialog
