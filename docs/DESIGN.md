@@ -315,6 +315,10 @@ Fermeture : `useDismissable` (Escape + clic extérieur) — calendrier, FilterMe
   entreprise, poste, interlocuteur, adresse destinataire et référence d'offre s'éditent sur
   la feuille. Les blocs vides sont omis en lecture. « Pièce jointe : curriculum vitæ » est
   toujours affiché.
+- Le PDF reprend les cotes du template en pixels CSS (`pt(px)`) et son `letter-spacing`,
+  faute de quoi l'aperçu et la page imprimée divergent. Tout bloc de la colonne d'identité
+  se replie dans les 58 mm ; un titre long y passe sur plusieurs lignes plutôt que de
+  déborder sur la lettre.
 - Quatre **paliers de densité** (`--letter-fs`, `--letter-sp`) compactent la feuille si le
   texte déborde. Au-delà, un bandeau `letter-overflow-warning` l'indique et **Exporter** /
   **Enregistrer** sont désactivés.

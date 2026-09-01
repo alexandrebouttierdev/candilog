@@ -62,6 +62,31 @@ const MM: f32 = 72.0 / 25.4;
 /// Le template A4 est coté en pixels CSS : un pixel vaut trois quarts de point.
 const PX: f32 = 0.75;
 const ASCENT: f32 = 0.8;
+/// `.letter-name` : resserré, et jamais coupé en plein mot.
+const TYPO_NOM: Typo = Typo {
+    tracking: -0.026,
+    coupe_les_mots: false,
+};
+/// `.letter-role` : capitales très espacées.
+const TYPO_ROLE: Typo = Typo {
+    tracking: 0.13,
+    coupe_les_mots: true,
+};
+/// `.letter-coord-label` : libellés en capitales espacées.
+const TYPO_LIBELLE: Typo = Typo {
+    tracking: 0.12,
+    coupe_les_mots: true,
+};
+/// `.letter-attachment` : mention de pièce jointe.
+const TYPO_PIECE: Typo = Typo {
+    tracking: 0.02,
+    coupe_les_mots: true,
+};
+/// `.letter-headline` : intitulé de candidature, légèrement resserré.
+const TYPO_INTITULE: Typo = Typo {
+    tracking: -0.012,
+    coupe_les_mots: false,
+};
 /// Réserve sous la ligne de base : une jambe de `p` ou de `g` descend encore sous le texte.
 const DESCENT: f32 = 0.25;
 const INK: (f32, f32, f32) = (20.0, 22.0, 27.0);
@@ -169,6 +194,7 @@ impl CoverLetterPdf {
             density,
             bounds: LayoutBounds::default(),
             overflow: false,
+            typo: Typo::default(),
         };
         plan.composer(self);
         let margins = Margins {
@@ -260,6 +286,24 @@ struct Mot {
     largeur: f32,
 }
 
+/// Propriétés du template qui ne se réduisent pas à une taille de police.
+#[derive(Clone, Copy)]
+struct Typo {
+    /// `letter-spacing`, exprimé en em comme dans la feuille de style.
+    tracking: f32,
+    /// `overflow-wrap: anywhere` : seuls quelques blocs coupent en plein mot.
+    coupe_les_mots: bool,
+}
+
+impl Default for Typo {
+    fn default() -> Self {
+        Self {
+            tracking: 0.0,
+            coupe_les_mots: true,
+        }
+    }
+}
+
 struct Plan<'a> {
     ops: Vec<Op>,
     fonts: &'a Fonts,
@@ -269,11 +313,25 @@ struct Plan<'a> {
     density: Density,
     bounds: LayoutBounds,
     overflow: bool,
+    typo: Typo,
 }
 
 impl Plan<'_> {
     fn pdf_y(&self, y_haut: f32) -> f32 {
         A4.height_pt - y_haut
+    }
+
+    /// Dessine un bloc avec le trait typographique demandé, puis restaure le précédent.
+    fn avec_typo(&mut self, typo: Typo, dessin: impl FnOnce(&mut Self)) {
+        let precedent = self.typo;
+        self.typo = typo;
+        dessin(self);
+        self.typo = precedent;
+    }
+
+    /// Espacement à ajouter entre deux glyphes, en points, pour une taille donnée.
+    fn tracking_pt(&self, size_actual: f32) -> f32 {
+        self.typo.tracking * size_actual
     }
 
     fn font_size(&self, size: f32) -> f32 {
@@ -314,38 +372,44 @@ impl Plan<'_> {
         let prenom = cover_letter.first_name.trim();
         let nom_famille = cover_letter.last_name.trim();
         if !prenom.is_empty() && !nom_famille.is_empty() {
-            self.bloc_text(
-                Weight::SemiBold,
-                pt(25.0),
-                rgb(INK.0, INK.1, INK.2),
-                pt(26.5),
-                prenom,
-            );
-            self.bloc_text(
-                Weight::SemiBold,
-                pt(25.0),
-                rgb(INK.0, INK.1, INK.2),
-                pt(26.5),
-                nom_famille,
-            );
+            self.avec_typo(TYPO_NOM, |plan| {
+                plan.bloc_text(
+                    Weight::SemiBold,
+                    pt(25.0),
+                    rgb(INK.0, INK.1, INK.2),
+                    pt(26.5),
+                    prenom,
+                );
+                plan.bloc_text(
+                    Weight::SemiBold,
+                    pt(25.0),
+                    rgb(INK.0, INK.1, INK.2),
+                    pt(26.5),
+                    nom_famille,
+                );
+            });
         } else {
-            self.bloc_text(
-                Weight::SemiBold,
-                pt(25.0),
-                rgb(INK.0, INK.1, INK.2),
-                pt(26.5),
-                nom,
-            );
+            self.avec_typo(TYPO_NOM, |plan| {
+                plan.bloc_text(
+                    Weight::SemiBold,
+                    pt(25.0),
+                    rgb(INK.0, INK.1, INK.2),
+                    pt(26.5),
+                    nom,
+                );
+            });
         }
         if let Some(title) = cover_letter.title.as_deref() {
             self.avance(pt(6.0));
-            self.bloc_mono(
-                true,
-                pt(9.6),
-                rgb(ACCENT.0, ACCENT.1, ACCENT.2),
-                pt(14.4),
-                &title.to_uppercase(),
-            );
+            self.avec_typo(TYPO_ROLE, |plan| {
+                plan.bloc_mono(
+                    true,
+                    pt(9.6),
+                    rgb(ACCENT.0, ACCENT.1, ACCENT.2),
+                    pt(14.4),
+                    &title.to_uppercase(),
+                );
+            });
         }
         self.avance(pt(22.0));
         self.coordonnee(
@@ -380,13 +444,15 @@ impl Plan<'_> {
         if y_piece > self.y {
             self.y = y_piece;
         }
-        self.bloc_mono(
-            false,
-            PIECE_SIZE,
-            rgb(SUBTLE.0, SUBTLE.1, SUBTLE.2),
-            PIECE_INTERLIGNE,
-            piece,
-        );
+        self.avec_typo(TYPO_PIECE, |plan| {
+            plan.bloc_mono(
+                false,
+                PIECE_SIZE,
+                rgb(SUBTLE.0, SUBTLE.1, SUBTLE.2),
+                PIECE_INTERLIGNE,
+                piece,
+            );
+        });
     }
 
     fn coordonnee(&mut self, label: &str, ligne: Option<&str>, extra: Option<&str>) {
@@ -395,13 +461,15 @@ impl Plan<'_> {
         if principale.is_none() && secondaire.is_none() {
             return;
         }
-        self.bloc_mono(
-            true,
-            pt(8.6),
-            rgb(FAINT.0, FAINT.1, FAINT.2),
-            pt(12.9),
-            &label.to_uppercase(),
-        );
+        self.avec_typo(TYPO_LIBELLE, |plan| {
+            plan.bloc_mono(
+                true,
+                pt(8.6),
+                rgb(FAINT.0, FAINT.1, FAINT.2),
+                pt(12.9),
+                &label.to_uppercase(),
+            );
+        });
         if let Some(value) = principale {
             self.bloc_text(
                 Weight::Regular,
@@ -465,13 +533,15 @@ impl Plan<'_> {
         );
         self.avance(pt(20.0));
         if let Some(poste) = cover_letter.job_title.as_deref() {
-            self.bloc_text(
-                Weight::SemiBold,
-                pt(14.6),
-                rgb(INK.0, INK.1, INK.2),
-                pt(19.7),
-                &format!("Candidature au poste de {poste}"),
-            );
+            self.avec_typo(TYPO_INTITULE, |plan| {
+                plan.bloc_text(
+                    Weight::SemiBold,
+                    pt(14.6),
+                    rgb(INK.0, INK.1, INK.2),
+                    pt(19.7),
+                    &format!("Candidature au poste de {poste}"),
+                );
+            });
         }
         if let Some(reference) = cover_letter.job_reference.as_deref() {
             self.bloc_mono(
@@ -537,7 +607,13 @@ impl Plan<'_> {
     fn bloc_mono(&mut self, medium: bool, size: f32, couleur: Color, interligne: f32, value: &str) {
         let actual_size = self.font_size(size);
         let actual_line_height = self.spacing(interligne).max(actual_size * 1.1);
-        for row in value.lines() {
+        // Le template rend ces blocs dans une colonne : sans repli, un titre long
+        // traversait la page et surimprimait la lettre.
+        let lignes: Vec<String> = value
+            .lines()
+            .flat_map(|row| self.replier_mono(medium, actual_size, row, self.col_w))
+            .collect();
+        for row in lignes {
             if self.y + actual_line_height > A4.height_pt - mm(16.0) {
                 self.overflow = true;
                 self.bounds.max_y = self.y + actual_line_height;
@@ -550,7 +626,7 @@ impl Plan<'_> {
                     medium,
                     size,
                     couleur.clone(),
-                    row,
+                    &row,
                 );
             }
             self.y += actual_line_height;
@@ -576,18 +652,13 @@ impl Plan<'_> {
         } else {
             (&self.fonts.mono_regular, &self.fonts.mono_regular_id)
         };
-        let echelle = size / f32::from(font.units_per_em);
-        let largeur: f32 = value
-            .chars()
-            .map(|caractere| {
-                font.lookup_glyph_index(caractere as u32)
-                    .and_then(|glyphe| font.get_glyph_width(glyphe))
-                    .map_or(0.0, |largeur| largeur as f32 * echelle)
-            })
-            .sum();
+        let largeur = self.largeur_glyphes(font, size, value);
         self.bounds.max_x = self.bounds.max_x.max(x + largeur);
         self.bounds.max_y = self.bounds.max_y.max(ligne_de_base_haut + size * DESCENT);
         self.ops.push(Op::StartTextSection);
+        self.ops.push(Op::SetCharacterSpacing {
+            multiplier: self.tracking_pt(size),
+        });
         self.ops.push(Op::SetFont {
             font: PdfFontHandle::External(id.clone()),
             size: Pt(size),
@@ -855,6 +926,9 @@ impl Plan<'_> {
             .max(x + self.largeur_text_actual(weight, size, value));
         self.bounds.max_y = self.bounds.max_y.max(ligne_de_base_haut + size * DESCENT);
         self.ops.push(Op::StartTextSection);
+        self.ops.push(Op::SetCharacterSpacing {
+            multiplier: self.tracking_pt(size),
+        });
         self.ops.push(Op::SetFont {
             font: PdfFontHandle::External(self.fonts.id(weight).clone()),
             size: Pt(size),
@@ -878,22 +952,39 @@ impl Plan<'_> {
 
     fn largeur_text_actual(&self, weight: Weight, size: f32, value: &str) -> f32 {
         let font = self.fonts.source(weight);
+        self.largeur_glyphes(font, size, value)
+    }
+
+    /// Largeur d'un texte déjà mis à l'échelle, espacement des lettres compris.
+    fn largeur_glyphes(&self, font: &ParsedFont, size: f32, value: &str) -> f32 {
         let echelle = size / f32::from(font.units_per_em);
-        value
+        let glyphes: f32 = value
             .chars()
             .map(|caractere| {
                 font.lookup_glyph_index(caractere as u32)
                     .and_then(|glyphe| font.get_glyph_width(glyphe))
                     .map_or(0.0, |largeur| largeur as f32 * echelle)
             })
-            .sum()
+            .sum();
+        // `Tc` s'applique après chaque glyphe, y compris le dernier, comme dans le PDF.
+        glyphes + self.tracking_pt(size) * value.chars().count() as f32
+    }
+
+    /// Largeur d'un texte en chasse fixe, à la taille finale.
+    fn largeur_mono_actual(&self, medium: bool, size: f32, value: &str) -> f32 {
+        let font = if medium {
+            &self.fonts.mono_medium
+        } else {
+            &self.fonts.mono_regular
+        };
+        self.largeur_glyphes(font, size, value)
     }
 
     fn decouper(&self, weight: Weight, size: f32, value: &str, largeur_max: f32) -> Vec<String> {
         let mut rows = Vec::new();
         let mut courante = String::new();
         for mot in value.split_whitespace() {
-            for fragment in self.decouper_token(weight, size, mot, largeur_max) {
+            for fragment in self.fragments_du_mot(weight, size, mot, largeur_max) {
                 let candidate = if courante.is_empty() {
                     fragment.clone()
                 } else {
@@ -913,6 +1004,84 @@ impl Plan<'_> {
             rows.push(courante);
         }
         rows
+    }
+
+    /// Replie un texte en chasse fixe dans une largeur, à la taille finale.
+    fn replier_mono(
+        &self,
+        medium: bool,
+        size_actual: f32,
+        value: &str,
+        largeur_max: f32,
+    ) -> Vec<String> {
+        if value.is_empty() || self.largeur_mono_actual(medium, size_actual, value) <= largeur_max {
+            return vec![value.to_owned()];
+        }
+        let mut rows = Vec::new();
+        let mut courante = String::new();
+        for mot in value.split_whitespace() {
+            for fragment in self.fragments_du_mot_mono(medium, size_actual, mot, largeur_max) {
+                let candidate = if courante.is_empty() {
+                    fragment.clone()
+                } else {
+                    format!("{courante} {fragment}")
+                };
+                if self.largeur_mono_actual(medium, size_actual, &candidate) <= largeur_max {
+                    courante = candidate;
+                } else {
+                    if !courante.is_empty() {
+                        rows.push(std::mem::take(&mut courante));
+                    }
+                    courante = fragment;
+                }
+            }
+        }
+        if !courante.is_empty() {
+            rows.push(courante);
+        }
+        rows
+    }
+
+    /// Coupe un mot en chasse fixe plus large que la colonne, graphème par graphème.
+    fn fragments_du_mot_mono(
+        &self,
+        medium: bool,
+        size_actual: f32,
+        token: &str,
+        largeur_max: f32,
+    ) -> Vec<String> {
+        if self.largeur_mono_actual(medium, size_actual, token) <= largeur_max {
+            return vec![token.to_owned()];
+        }
+        let mut fragments = Vec::new();
+        let mut current = String::new();
+        for grapheme in token.graphemes(true) {
+            let candidate = format!("{current}{grapheme}");
+            if !current.is_empty()
+                && self.largeur_mono_actual(medium, size_actual, &candidate) > largeur_max
+            {
+                fragments.push(std::mem::take(&mut current));
+            }
+            current.push_str(grapheme);
+        }
+        if !current.is_empty() {
+            fragments.push(current);
+        }
+        fragments
+    }
+
+    /// Fragments d'un mot trop long : un seul si le template interdit de le couper.
+    fn fragments_du_mot(
+        &self,
+        weight: Weight,
+        size: f32,
+        token: &str,
+        largeur_max: f32,
+    ) -> Vec<String> {
+        if !self.typo.coupe_les_mots {
+            return vec![token.to_owned()];
+        }
+        self.decouper_token(weight, size, token, largeur_max)
     }
 
     fn decouper_token(

@@ -456,6 +456,7 @@
     line-height: 1.5;
     letter-spacing: 0.13em;
     text-transform: uppercase;
+    overflow-wrap: anywhere;
     color: var(--letter-accent);
   }
 

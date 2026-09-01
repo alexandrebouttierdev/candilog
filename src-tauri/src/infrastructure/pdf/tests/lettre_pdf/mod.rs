@@ -2,6 +2,7 @@
 use super::*;
 use crate::infrastructure::pdf::A4;
 
+mod export_pdf_garde_l_identite_dans_sa_colonne;
 mod export_pdf_produit_un_document_lisible;
 mod export_pdf_refuse_un_token_unicode_trop_long;
 mod export_pdf_refuse_une_lettre_trop_longue;
