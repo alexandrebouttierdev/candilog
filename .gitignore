@@ -22,7 +22,7 @@ dist/
 .vscode/
 *.log
 .DS_Store
-
+.claude
 .playwright-cli/
 output/playwright/
 
