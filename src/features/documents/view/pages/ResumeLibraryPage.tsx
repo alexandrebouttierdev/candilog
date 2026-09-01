@@ -2,12 +2,14 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { documentsService, type ResumeVersion } from "../../services/documentsService";
+import { isResumeWorkspace } from "../../model/resumeWorkspace";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { Button, ConfirmDialog, EmptyState, ErrorBanner, Icon, PageHeader, Pager } from "@/shared/ui";
 import { A4Preview, PreviewAction } from "../components/DocumentUi";
+import { ResumePaper } from "../components/ResumePaper";
 import { PAGE_SIZE } from "@/shared/types/page";
 import { useDebounce } from "@/shared/hooks/useDebounce";
-import { AtsChip, HeaderBadge, RESUME_KEY, Screen, date, detail as detailErreur, exportPdf, isGeneration, message } from "./documentPageSupport";
+import { AtsChip, HeaderBadge, RESUME_KEY, Screen, date, detail as detailErreur, exportPdf, isLegacyGeneration, message } from "./documentPageSupport";
 
 export function ResumeLibraryPage() {
   const navigate = useNavigate();
@@ -56,13 +58,28 @@ export function ResumeLibraryPage() {
       await queryClient.invalidateQueries({ queryKey: RESUME_KEY });
       notify({ tone: "success", title: "Version dupliquée" });
     },
-    // Une version enregistrée avant le contrôle du contenu peut être refusée à la copie :
-    // sans ce gestionnaire, le clic restait sans effet visible.
     onError: (error) =>
       notify({ tone: "error", title: "Duplication impossible", detail: detailErreur(error) }),
   });
-  const generation = detail.data && isGeneration(detail.data.content) ? detail.data.content : null;
   const version = detail.data;
+  const workspace = version && isResumeWorkspace(version.content) ? version.content : null;
+  const generation = version && isLegacyGeneration(version.content) ? version.content : null;
+  const atsScore = workspace?.score.total ?? generation?.profile_score.total;
+
+  const exporterHistorique = async () => {
+    if (!generation) return;
+    try {
+      const prepared = await documentsService.prepareResume(generation);
+      await exportPdf(prepared.document, notify);
+    } catch (error) {
+      notify({
+        tone: "error",
+        title: "Export PDF impossible",
+        detail: detailErreur(error),
+      });
+    }
+  };
+
   return (
     <Screen
       padded={false}
@@ -120,8 +137,8 @@ export function ResumeLibraryPage() {
                         <span className="min-w-0 flex-1">
                           <span className="mb-[3px] flex items-center gap-2">
                             <span className="truncate text-item font-semibold">{resume.name}</span>
-                            {selected_id === resume.id && generation ? (
-                              <AtsChip score={generation.analysis.score} />
+                            {selected_id === resume.id && atsScore !== undefined ? (
+                              <AtsChip score={atsScore} />
                             ) : null}
                           </span>
                           <span className="block text-label text-ink-faint">{date(resume.created_at)}</span>
@@ -148,6 +165,33 @@ export function ResumeLibraryPage() {
               </div>
               {version ? (
                 <div className="flex items-center gap-1.5">
+                  {workspace ? (
+                    <>
+                      <PreviewAction
+                        icon="edit"
+                        onClick={() =>
+                          void navigate("/documents/generate-resume", {
+                            state: { workspace, name: version.name },
+                          })
+                        }
+                      >
+                        Modifier
+                      </PreviewAction>
+                      <PreviewAction
+                        icon="content_copy"
+                        disabled={dupliquer.isPending}
+                        onClick={() => dupliquer.mutate()}
+                      >
+                        Dupliquer
+                      </PreviewAction>
+                      <PreviewAction
+                        icon="download"
+                        onClick={() => void exportPdf(workspace.document, notify)}
+                      >
+                        Exporter PDF
+                      </PreviewAction>
+                    </>
+                  ) : null}
                   {generation ? (
                     <>
                       <PreviewAction
@@ -169,7 +213,7 @@ export function ResumeLibraryPage() {
                       </PreviewAction>
                       <PreviewAction
                         icon="download"
-                        onClick={() => void exportPdf(generation.resume, notify)}
+                        onClick={() => void exporterHistorique()}
                       >
                         Exporter PDF
                       </PreviewAction>
@@ -191,4 +235,22 @@ export function ResumeLibraryPage() {
   );
 }
 
-function ResumeSavedPreview({ version }: { version: ResumeVersion }) { const generation = isGeneration(version.content) ? version.content : null; return generation ? <A4Preview resume={generation.resume} /> : <A4Preview title={version.name}><div className="flex min-h-[590px] items-center justify-center text-center text-paper-muted">Cette ancienne version ne contient pas encore d’aperçu structuré compatible.</div></A4Preview>; }
+function ResumeSavedPreview({ version }: { version: ResumeVersion }) {
+  if (isResumeWorkspace(version.content)) {
+    return (
+      <div className="flex min-h-0 flex-1 justify-center overflow-auto bg-page p-[26px]">
+        <ResumePaper workspace={version.content} editable={false} onChange={() => {}} />
+      </div>
+    );
+  }
+  const generation = isLegacyGeneration(version.content) ? version.content : null;
+  return generation ? (
+    <A4Preview resume={generation.resume} />
+  ) : (
+    <A4Preview title={version.name}>
+      <div className="flex min-h-[590px] items-center justify-center text-center text-paper-muted">
+        Cette ancienne version ne contient pas encore d’aperçu structuré compatible.
+      </div>
+    </A4Preview>
+  );
+}

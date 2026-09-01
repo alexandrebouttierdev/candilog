@@ -23,18 +23,26 @@ pub struct Density {
     pub font_scale: f32,
 }
 
-pub const DENSITY_PROFILES: [Density; 3] = [
+pub const DENSITY_PROFILES: [Density; 5] = [
+    Density {
+        spacing_scale: 1.35,
+        font_scale: 1.04,
+    },
     Density {
         spacing_scale: 1.0,
         font_scale: 1.0,
     },
     Density {
-        spacing_scale: 0.88,
+        spacing_scale: 0.82,
         font_scale: 1.0,
     },
     Density {
-        spacing_scale: 0.82,
-        font_scale: 0.88,
+        spacing_scale: 0.72,
+        font_scale: 0.96,
+    },
+    Density {
+        spacing_scale: 0.62,
+        font_scale: 0.92,
     },
 ];
 

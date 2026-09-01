@@ -35,3 +35,13 @@ pub async fn profile_apply_import(
     let service = Arc::clone(&state.profile);
     blocking::execute(move || service.apply_import(&request)).await
 }
+
+/// Ajoute une compétence au profil, sans doublon, depuis une proposition de l'éditeur de CV.
+#[tauri::command(rename_all = "snake_case")]
+pub async fn profile_add_skill(
+    state: State<'_, AppState>,
+    name: String,
+) -> AppResult<ProfilePayload> {
+    let service = Arc::clone(&state.profile);
+    blocking::execute(move || service.add_skill(&name)).await
+}

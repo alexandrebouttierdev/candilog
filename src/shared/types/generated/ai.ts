@@ -2,9 +2,16 @@
 
 export type AiProgress = { generation_id: string, step: string, chunk: string | null, };
 
-export type AtsAnalysis = { score: number, recap: string, suggestions: Array<string>, recommendations: Array<AtsRecommendation>, };
+export type AtsAnalysis = { recap: string, recommendations: Array<AtsRecommendation>, };
 
-export type AtsRecommendation = { section: string, original_text: string, proposed_text: string, impact: number, };
+export type AtsRecommendation = { section: AtsRecommendationSection, item_index: number | null, original_text: string, proposed_text: string, };
+
+/**
+ * Section ciblée par une recommandation ATS. Le score et les suggestions libres du LLM ne
+ * sont plus exposés (`AtsAnalysis`) : seule une recommandation dont la cible est identifiable
+ * — et donc simulable puis applicable — reste présentée comme une action possible.
+ */
+export type AtsRecommendationSection = "profile" | "experience";
 
 export type CoverLetterRequest = { generation_id: string, company: string | null, job_title: string | null, tone: string | null, length: string | null, context: string | null, previous_cover_letter: string | null, instruction: string | null, };
 

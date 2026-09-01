@@ -1,50 +1,33 @@
-//! Tests du modèle de CV fusionné.
+//! Tests du modèle de CV autonome.
 
 use super::*;
-use crate::features::ai::domain::{GeneratedEducation, GeneratedExperience, GeneratedResume};
-use crate::features::profile::domain::{Experience, Identity, Language, Profile, Project};
+use crate::features::documents::domain::{
+    ResumeDocument, ResumeExperienceBlock, ResumeIdentity, ResumeSkillGroup,
+};
 
-fn profile() -> Profile {
-    Profile {
-        identity: Identity {
-            first_name: "Alex".into(),
-            name: "Exemple".into(),
-            title: Some("Administrateur systèmes".into()),
-            ..Identity::default()
+fn document() -> ResumeDocument {
+    ResumeDocument {
+        identity: ResumeIdentity {
+            full_name: "Alex Exemple".into(),
+            title: "Administrateur systèmes".into(),
+            email: "alex@example.test".into(),
+            ..ResumeIdentity::default()
         },
-        experiences: vec![Experience {
+        profile: "Résumé généré.".into(),
+        skill_groups: vec![ResumeSkillGroup {
+            id: "skills".into(),
+            name: "Techniques".into(),
+            items: vec!["Linux".into()],
+        }],
+        experiences: vec![ResumeExperienceBlock {
+            id: "exp-1".into(),
             title: "Développeur".into(),
             company: "Linaïa".into(),
             location: Some("Rennes".into()),
-            start_date: "2019-07".into(),
-            end_date: Some("2025-10".into()),
-            ..Experience::default()
+            period: "Juil. 2019 — Oct. 2025".into(),
+            bullets: vec!["Une description.".into()],
         }],
-        projects: vec![Project {
-            name: "Project".into(),
-            ..Project::default()
-        }],
-        languages: vec![Language {
-            name: "Français".into(),
-            level: "natif".into(),
-        }],
-        ..Profile::default()
-    }
-}
-
-fn generation() -> GeneratedResume {
-    GeneratedResume {
-        resume: "Résumé généré.".into(),
-        skills: vec!["Linux".into()],
-        experiences: vec![GeneratedExperience {
-            title: "Développeur".into(),
-            company: "Linaïa".into(),
-            description: "Une description.".into(),
-        }],
-        education: vec![GeneratedEducation {
-            degree: "TSSR".into(),
-            school: "ENI".into(),
-        }],
+        ..ResumeDocument::default()
     }
 }
 

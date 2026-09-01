@@ -85,6 +85,26 @@
   /* Sélection sur la feuille : la feuille reste blanche en thème sombre, sa sélection ne
      peut donc pas hériter de celle de l'application, qui y écrirait en encre claire. */
   --paper-selection: #cfe0ff;
+
+  /* Jetons du papier CV — dédiés à `ResumePaper`, distincts de la lettre : le template
+     fourni a sa propre encre, son propre accent et sa propre géométrie A4. La feuille reste
+     blanche et sombre dans les deux thèmes, comme le PDF qu'elle prévisualise. */
+  --resume-ink: #14161b;
+  --resume-body: #3a3f4c;
+  --resume-muted: #454a57;
+  --resume-subtle: #767c8b;
+  --resume-line: #e2e4ea;
+  --resume-accent: #3f4dcc;
+  --resume-accent-soft: #9aa3ec;
+  --resume-chip: #f3f4f9;
+  --resume-page-width: 210mm;
+  --resume-page-height: 297mm;
+  --resume-margin-top: 14mm;
+  --resume-margin-inline: 16mm;
+  --resume-margin-bottom: 15mm;
+  --resume-warning-bg: #fdf3ef;
+  --resume-warning-border: #e6b6a8;
+  --resume-warning-text: #8a3d22;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -501,6 +521,55 @@
     color: var(--paper-ink);
     box-shadow: var(--candilog-shadow-paper);
   }
+
+  /*
+   * Papier A4 du CV, calqué sur le template fourni : mêmes marges (16/14/15 mm), même
+   * accent, même échelle typographique pilotée par `--resume-fs`/`--resume-sp`. Ces deux
+   * variables démarrent à 1 et sont réévaluées par `ResumePaper` après la mesure du
+   * débordement — jamais par une classe Tailwind, qui ne peut pas être recalculée en JS.
+   */
+  .resume-paper {
+    --resume-fs: 1;
+    --resume-sp: 1;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    width: var(--resume-page-width);
+    height: var(--resume-page-height);
+    padding: var(--resume-margin-top) var(--resume-margin-inline) var(--resume-margin-bottom);
+    border: 1px solid var(--resume-line);
+    background: var(--paper-bg);
+    color: var(--resume-ink);
+    font-family: "IBM Plex Sans", var(--font-sans);
+  }
+
+  .resume-content {
+    display: flex;
+    min-height: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: calc(11px * var(--resume-sp));
+  }
+
+  /* Étiquettes de section, dates et coordonnées du CV : IBM Plex Mono, pas la police mono de
+     l'application — sinon le rendu écran divergerait du PDF, qui embarque ce même jeu. */
+  .resume-mono {
+    font-family: "IBM Plex Mono", var(--font-mono);
+  }
+
+  /* Hors de la surface imprimée : un avertissement collé au papier serait exporté avec lui
+     si une capture ou une future mise en page le rapprochait trop. */
+  .resume-overflow-warning {
+    box-sizing: border-box;
+    width: var(--resume-page-width);
+    margin: 0;
+    border: 1px solid var(--resume-warning-border);
+    border-radius: var(--radius-paper);
+    background: var(--resume-warning-bg);
+    padding: 7px 12px;
+    font-size: 11.5px;
+    color: var(--resume-warning-text);
+  }
 }
 
 /* Polices de l'export PDF, réutilisées telles quelles par l'aperçu : deux jeux de fichiers
@@ -531,6 +600,44 @@
   font-weight: 700;
   font-display: block;
   src: url("../src-tauri/assets/fonts/Geist-Bold.ttf") format("truetype");
+}
+
+/* Polices du template CV fourni, embarquées localement (SIL OFL 1.1, IBM/plex — voir
+   `src-tauri/assets/fonts/ibm-plex/LICENSE.txt`) : ni Google Fonts, ni Play CDN, comme à
+   l'export PDF. */
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-weight: 400;
+  font-display: block;
+  src: url("../src-tauri/assets/fonts/ibm-plex/IBMPlexSans-Regular.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-weight: 500;
+  font-display: block;
+  src: url("../src-tauri/assets/fonts/ibm-plex/IBMPlexSans-Medium.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-weight: 600;
+  font-display: block;
+  src: url("../src-tauri/assets/fonts/ibm-plex/IBMPlexSans-SemiBold.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-weight: 400;
+  font-display: block;
+  src: url("../src-tauri/assets/fonts/ibm-plex/IBMPlexMono-Regular.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-weight: 500;
+  font-display: block;
+  src: url("../src-tauri/assets/fonts/ibm-plex/IBMPlexMono-Medium.ttf") format("truetype");
 }
 
 @layer base {

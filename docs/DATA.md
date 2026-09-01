@@ -52,6 +52,26 @@ l'exclusion d'un `job_url` pour une candidature `SPONTANEE`. Les
 clés étrangères vers les référentiels sont réelles — `PRAGMA foreign_keys = ON` est posé
 par l'initialiseur de **chaque** connexion du pool.
 
+## Contenu d'un CV (`resume_versions.content`)
+
+La table `resume_versions` stocke le JSON du CV dans `content`. Deux formes coexistent :
+
+| Forme | Discriminant | Rôle |
+| --- | --- | --- |
+| Historique | pas de `schema_version` | Snapshot `ResumeGeneration` (génération IA seule) — encore lisible en bibliothèque |
+| Éditeur autonome | `schema_version = 1` | `ResumeWorkspace` complet : document, offre, analyse, score, propositions |
+
+Une version v1 est **autonome** : une fois enregistrée, elle ne dépend plus du profil courant
+ni d'une génération antérieure. Le document (`ResumeDocument`), l'offre et les décisions ATS
+voyagent ensemble dans le même blob.
+
+À l'écriture, un contenu v1 est désérialisé en `ResumeWorkspace` et son document passé par
+`validate_document` (`features/documents/application/resume_workspace.rs`) : un appel IPC
+forgé ne peut pas persister une forme incohérente. Les anciens `ResumeGeneration` restent
+acceptés tels quels pour la lecture et la duplication ; la conversion en workspace n'intervient
+qu'à la première édition ou export via `documents_resume_prepare`, sans réécriture silencieuse
+de la bibliothèque.
+
 ## Corps d'une lettre
 
 `cover_letters.content` reste une colonne texte, mais porte la mise en forme de l'éditeur

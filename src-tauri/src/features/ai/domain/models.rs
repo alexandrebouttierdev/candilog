@@ -39,14 +39,20 @@ fn list_lenient<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Vec<String
     })
 }
 
-fn score_lenient<'de, D: Deserializer<'de>>(deserializer: D) -> Result<u8, D::Error> {
+/// Retombe sur `Profile` pour toute valeur absente ou inconnue (ex. `"resume"` des anciennes
+/// réponses IA) : une section imprévue ne doit jamais faire échouer la désérialisation d'une
+/// analyse historique, seulement dégrader la recommandation vers la section sans exigence
+/// d'`item_index`.
+fn section_lenient<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> Result<AtsRecommendationSection, D::Error> {
     let value = serde_json::Value::deserialize(deserializer)?;
-    let score = match value {
-        serde_json::Value::Number(n) => n.as_u64().unwrap_or_default(),
-        serde_json::Value::String(s) => s.trim_end_matches('%').parse().unwrap_or_default(),
-        _ => 0,
-    };
-    Ok(score.min(100) as u8)
+    Ok(match value {
+        serde_json::Value::String(s) if s.eq_ignore_ascii_case("experience") => {
+            AtsRecommendationSection::Experience
+        }
+        _ => AtsRecommendationSection::Profile,
+    })
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -131,11 +137,28 @@ pub struct GeneratedResume {
     pub education: Vec<GeneratedEducation>,
 }
 
+/// Section ciblée par une recommandation ATS. Le score et les suggestions libres du LLM ne
+/// sont plus exposés (`AtsAnalysis`) : seule une recommandation dont la cible est identifiable
+/// — et donc simulable puis applicable — reste présentée comme une action possible.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "ai.ts")]
+pub enum AtsRecommendationSection {
+    #[default]
+    Profile,
+    Experience,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "ai.ts")]
 pub struct AtsRecommendation {
-    pub section: String,
+    #[serde(default, deserialize_with = "section_lenient")]
+    pub section: AtsRecommendationSection,
+    // Indice (0-based) de l'expérience du CV ciblée. Requis pour `Experience`, absent pour
+    // `Profile` : validé par `validate_ai_output`.
+    #[serde(default)]
+    pub item_index: Option<usize>,
     #[serde(
         default,
         alias = "texteOriginal",
@@ -150,20 +173,14 @@ pub struct AtsRecommendation {
         deserialize_with = "string_lenient"
     )]
     pub proposed_text: String,
-    #[serde(default, deserialize_with = "score_lenient")]
-    pub impact: u8,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "ai.ts")]
 pub struct AtsAnalysis {
-    #[serde(default, alias = "score_ats", deserialize_with = "score_lenient")]
-    pub score: u8,
     #[serde(default, alias = "summary", deserialize_with = "string_lenient")]
     pub recap: String,
-    #[serde(default, deserialize_with = "list_lenient")]
-    pub suggestions: Vec<String>,
     #[serde(default, alias = "recommandations")]
     pub recommendations: Vec<AtsRecommendation>,
 }
@@ -243,4 +260,45 @@ pub struct ProfileImportProgress {
     pub at: String,
     pub message: String,
     pub step: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Une analyse enregistrée avant la fermeture du contrat portait `score`, `suggestions`
+    /// et un `impact` par recommandation, et une section libre (`"resume"`) sans `item_index`.
+    /// Elle doit rester lisible pour l'historique (bibliothèque de CV, duplication) sans
+    /// jamais réexposer ce score LLM.
+    #[test]
+    fn une_analyse_historique_reste_lisible_sans_le_score_llm() {
+        let historique = r#"{
+            "score": 70,
+            "recap": "CV solide",
+            "suggestions": ["Ajouter Docker"],
+            "recommendations": [
+                {"section": "resume", "texte_original": "Ancien profil", "texte_propose": "Nouveau profil", "impact": 80}
+            ]
+        }"#;
+
+        let analysis: AtsAnalysis = serde_json::from_str(historique).unwrap();
+
+        assert_eq!(analysis.recap, "CV solide");
+        assert_eq!(analysis.recommendations.len(), 1);
+        assert_eq!(
+            analysis.recommendations[0].section,
+            AtsRecommendationSection::Profile
+        );
+        assert_eq!(analysis.recommendations[0].item_index, None);
+        assert_eq!(analysis.recommendations[0].original_text, "Ancien profil");
+    }
+
+    #[test]
+    fn une_section_experience_connue_est_reconnue() {
+        let recommendation: AtsRecommendation =
+            serde_json::from_str(r#"{"section": "experience", "item_index": 2}"#).unwrap();
+
+        assert_eq!(recommendation.section, AtsRecommendationSection::Experience);
+        assert_eq!(recommendation.item_index, Some(2));
+    }
 }

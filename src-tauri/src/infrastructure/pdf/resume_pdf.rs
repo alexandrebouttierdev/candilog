@@ -1,126 +1,169 @@
-//! Export PDF du CV au design Candilog, calqué sur `exemple_resume.html`.
+//! Export PDF du CV au design Candilog, calqué sur le template HTML fourni.
 //!
-//! Minutes 100 % autonome : les polices et les icônes sont embarquées dans le
-//! binaire, aucune dépendance système n'est requise côté utilisateur.
+//! Document 100 % autonome : polices IBM Plex embarquées, aucune dépendance système.
 
 use crate::core::errors::{AppError, AppResult};
 use crate::infrastructure::pdf::page::{
     ensure_inside, Density, LayoutBounds, Margins, A4, DENSITY_PROFILES, MIN_BODY_FONT_PT,
 };
 use printpdf::{
-    Color, FontId, Line, LinePoint, Mm, Op, PaintMode, ParsedFont, PdfDocument, PdfFontHandle,
-    PdfPage, PdfSaveOptions, Point, Polygon, PolygonRing, Pt, RawImage, Rgb, TextItem,
-    WindingOrder, XObjectId, XObjectTransform,
+    Color, FontId, LinePoint, Mm, Op, PaintMode, ParsedFont, PdfDocument, PdfFontHandle, PdfPage,
+    PdfSaveOptions, Point, Polygon, PolygonRing, Pt, Rgb, TextItem, WindingOrder,
 };
 use std::path::Path;
 use unicode_segmentation::UnicodeSegmentation;
 
-/// Graisse de texte, miroir des quatre instances statiques embarquées.
 #[derive(Clone, Copy)]
-enum Weight {
+enum SansWeight {
     Regular,
     Medium,
     SemiBold,
-    Bold,
 }
 
-/// Fonts embarquées (Geist statique) et leurs identifiants PDF.
+#[derive(Clone, Copy)]
+enum MonoWeight {
+    Regular,
+    Medium,
+}
+
+#[derive(Clone, Copy)]
+enum FontFace {
+    Sans(SansWeight),
+    Mono(MonoWeight),
+}
+
 struct Fonts {
-    regular: ParsedFont,
-    medium: ParsedFont,
-    semibold: ParsedFont,
-    bold: ParsedFont,
-    regular_id: FontId,
-    medium_id: FontId,
-    semibold_id: FontId,
-    bold_id: FontId,
+    sans_regular: ParsedFont,
+    sans_medium: ParsedFont,
+    sans_semibold: ParsedFont,
+    mono_regular: ParsedFont,
+    mono_medium: ParsedFont,
+    sans_regular_id: FontId,
+    sans_medium_id: FontId,
+    sans_semibold_id: FontId,
+    mono_regular_id: FontId,
+    mono_medium_id: FontId,
 }
 
 impl Fonts {
-    fn source(&self, weight: Weight) -> &ParsedFont {
-        match weight {
-            Weight::Regular => &self.regular,
-            Weight::Medium => &self.medium,
-            Weight::SemiBold => &self.semibold,
-            Weight::Bold => &self.bold,
+    fn source(&self, face: FontFace) -> &ParsedFont {
+        match face {
+            FontFace::Sans(SansWeight::Regular) => &self.sans_regular,
+            FontFace::Sans(SansWeight::Medium) => &self.sans_medium,
+            FontFace::Sans(SansWeight::SemiBold) => &self.sans_semibold,
+            FontFace::Mono(MonoWeight::Regular) => &self.mono_regular,
+            FontFace::Mono(MonoWeight::Medium) => &self.mono_medium,
         }
     }
 
-    fn id(&self, weight: Weight) -> &FontId {
-        match weight {
-            Weight::Regular => &self.regular_id,
-            Weight::Medium => &self.medium_id,
-            Weight::SemiBold => &self.semibold_id,
-            Weight::Bold => &self.bold_id,
+    fn id(&self, face: FontFace) -> &FontId {
+        match face {
+            FontFace::Sans(SansWeight::Regular) => &self.sans_regular_id,
+            FontFace::Sans(SansWeight::Medium) => &self.sans_medium_id,
+            FontFace::Sans(SansWeight::SemiBold) => &self.sans_semibold_id,
+            FontFace::Mono(MonoWeight::Regular) => &self.mono_regular_id,
+            FontFace::Mono(MonoWeight::Medium) => &self.mono_medium_id,
         }
     }
 }
 
-/// Icônes de contact embarquées (rasterisées depuis le template).
-struct Icones {
-    phone: XObjectId,
-    mail: XObjectId,
-    pin: XObjectId,
-    linkedin: XObjectId,
-    globe: XObjectId,
-    briefcase: XObjectId,
-}
-
-/// Une expérience professionnelle prête à afficher.
 #[derive(Debug, Clone, Default)]
 pub struct ResumeExperience {
     pub title: String,
     pub company: String,
-    /// Row de méta : lieu · période (peut être vide).
-    pub meta: String,
-    /// Réalisations, une puce par entrée.
+    pub location: Option<String>,
+    pub period: String,
     pub bullets: Vec<String>,
 }
 
-/// Un projet technique.
 #[derive(Debug, Clone, Default)]
 pub struct ResumeProject {
     pub name: String,
     pub meta: String,
+    pub url: Option<String>,
     pub bullets: Vec<String>,
 }
 
-/// Une formation.
 #[derive(Debug, Clone, Default)]
 pub struct ResumeEducation {
     pub degree: String,
     pub school: String,
-    pub date: String,
+    pub location: Option<String>,
+    pub period: String,
+    pub description: Option<String>,
 }
 
-/// Une langue parlée.
 #[derive(Debug, Clone, Default)]
 pub struct ResumeLanguage {
     pub name: String,
     pub level: String,
 }
 
-/// Modèle de données du CV à exporter.
+#[derive(Debug, Clone, Default)]
+pub struct ResumeCertification {
+    pub name: String,
+    pub issuer: Option<String>,
+    pub date: Option<String>,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct ResumeSkillGroup {
+    pub name: String,
+    pub items: Vec<String>,
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct ResumePdf {
     pub name: String,
     pub subtitle: String,
+    pub headline: Option<String>,
     pub phone: Option<String>,
     pub email: String,
     pub city: Option<String>,
     pub linkedin: Option<String>,
     pub website: Option<String>,
+    pub github: Option<String>,
+    pub extra: Vec<String>,
     pub profile: String,
-    pub skills: Vec<String>,
+    pub skill_groups: Vec<ResumeSkillGroup>,
     pub experiences: Vec<ResumeExperience>,
     pub projects: Vec<ResumeProject>,
     pub education: Vec<ResumeEducation>,
+    pub certifications: Vec<ResumeCertification>,
     pub languages: Vec<ResumeLanguage>,
 }
 
-// ---------------------------------------------------------------------------
-// Palette du template (spec `exemple_resume.html`).
-// ---------------------------------------------------------------------------
+const MM: f32 = 72.0 / 25.4;
+const PAGE_W: f32 = A4.width_pt;
+const PAGE_H: f32 = A4.height_pt;
+const MARGIN_LEFT: f32 = 16.0 * MM;
+const MARGIN_RIGHT: f32 = 16.0 * MM;
+const MARGIN_TOP: f32 = 14.0 * MM;
+const MARGIN_BOTTOM: f32 = 15.0 * MM;
+const LABEL_W: f32 = pt(104.0);
+const SECTION_GAP: f32 = pt(18.0);
+const CONTENT_X: f32 = MARGIN_LEFT + LABEL_W + SECTION_GAP;
+const CONTENT_W: f32 = PAGE_W - MARGIN_RIGHT - CONTENT_X;
+const HEADER_W: f32 = PAGE_W - MARGIN_LEFT - MARGIN_RIGHT;
+const PX: f32 = 0.75;
+const ASCENT: f32 = 0.8;
+
+const INK: (f32, f32, f32) = (20.0, 22.0, 27.0);
+const BODY: (f32, f32, f32) = (58.0, 63.0, 76.0);
+const MUTED: (f32, f32, f32) = (69.0, 74.0, 87.0);
+const SUBTLE: (f32, f32, f32) = (118.0, 124.0, 139.0);
+const ACCENT: (f32, f32, f32) = (63.0, 77.0, 204.0);
+const ACCENT_SOFT: (f32, f32, f32) = (154.0, 163.0, 236.0);
+const CHIP_BG: (f32, f32, f32) = (243.0, 244.0, 249.0);
+const CHIP_TEXT: (f32, f32, f32) = (52.0, 58.0, 71.0);
+const COMPANY: (f32, f32, f32) = (51.0, 56.0, 69.0);
+const HEADLINE: (f32, f32, f32) = (74.0, 80.0, 96.0);
+const GROUP_TITLE: (f32, f32, f32) = (35.0, 38.0, 47.0);
+const CONTACT: (f32, f32, f32) = (92.0, 98.0, 111.0);
+
+const fn pt(px: f32) -> f32 {
+    px * PX
+}
 
 fn rgb(r: f32, g: f32, b: f32) -> Color {
     Color::Rgb(Rgb {
@@ -131,37 +174,21 @@ fn rgb(r: f32, g: f32, b: f32) -> Color {
     })
 }
 
-const ACCENT: (f32, f32, f32) = (0.0, 102.0, 204.0);
-const TEXT: (f32, f32, f32) = (26.0, 26.0, 26.0);
-const SECONDAIRE: (f32, f32, f32) = (63.0, 63.0, 70.0);
-const MUTED: (f32, f32, f32) = (85.0, 85.0, 90.0);
-const BORDURE: (f32, f32, f32) = (226.0, 226.0, 229.0);
-const CHIP_BG: (f32, f32, f32) = (245.0, 245.0, 247.0);
-
-// ---------------------------------------------------------------------------
-// Métriques de page et de typographie (px convertis en points, 1 px = 0,75 pt).
-// ---------------------------------------------------------------------------
-
-const PAGE_W: f32 = A4.width_pt;
-const PAGE_H: f32 = A4.height_pt;
-const PAGE_MARGIN: f32 = 14.17; // @page { margin: 0,5 cm }
-const CONTENT_X: f32 = PAGE_MARGIN + 22.4 * PX; // padding horizontal 1,4 rem du template
-const CONTENT_W: f32 = PAGE_W - 2.0 * CONTENT_X;
-
-const PX: f32 = 0.75;
-const fn pt(px: f32) -> f32 {
-    px * PX
+fn page_margins() -> Margins {
+    Margins {
+        top: MARGIN_TOP,
+        right: MARGIN_RIGHT,
+        bottom: MARGIN_BOTTOM,
+        left: MARGIN_LEFT,
+    }
 }
-
-/// Ascendance typographique approximative, pour poser la ligne de base.
-const ASCENT: f32 = 0.8;
 
 impl ResumePdf {
     /// Exporte le CV dans un PDF A4 autonome.
     ///
     /// # Errors
-    /// Retourne une erreur si une police ou une icône embarquée ne peut pas
-    /// être décodée, ou si le document ne peut pas être enregistré.
+    /// Retourne une erreur si une police embarquée ne peut pas être décodée,
+    /// ou si le document ne peut pas être enregistré.
     pub fn render_pdf(&self, path: &Path) -> AppResult<()> {
         std::fs::write(path, self.render_bytes()?)
             .map_err(|error| AppError::Database(format!("Impossible d'exporter le PDF : {error}")))
@@ -178,66 +205,19 @@ impl ResumePdf {
             }
         }
         Err(AppError::Validation(
-            "Le CV ne tient pas sur une page A4. Raccourcissez le profil ou retirez des éléments."
-                .into(),
+            "Le CV ne tient pas sur une page A4. Raccourcissez son contenu avant l'export.".into(),
         ))
     }
 
     fn render_density(&self, density: Density) -> AppResult<Option<Vec<u8>>> {
         let mut avertissements = Vec::new();
-
-        let (regular, medium, semibold, bold) = load_fonts()?;
         let mut document = PdfDocument::new("CV Candilog");
-
-        let (regular_id, medium_id, semibold_id, bold_id) = (
-            document.add_font(&regular),
-            document.add_font(&medium),
-            document.add_font(&semibold),
-            document.add_font(&bold),
-        );
-        let fonts = Fonts {
-            regular,
-            medium,
-            semibold,
-            bold,
-            regular_id,
-            medium_id,
-            semibold_id,
-            bold_id,
-        };
-
-        let icones = Icones {
-            phone: add_icon(
-                &mut document,
-                include_bytes!("../../../assets/icons/cv/phone.png"),
-            )?,
-            mail: add_icon(
-                &mut document,
-                include_bytes!("../../../assets/icons/cv/mail.png"),
-            )?,
-            pin: add_icon(
-                &mut document,
-                include_bytes!("../../../assets/icons/cv/pin.png"),
-            )?,
-            linkedin: add_icon(
-                &mut document,
-                include_bytes!("../../../assets/icons/cv/linkedin.png"),
-            )?,
-            globe: add_icon(
-                &mut document,
-                include_bytes!("../../../assets/icons/cv/globe.png"),
-            )?,
-            briefcase: add_icon(
-                &mut document,
-                include_bytes!("../../../assets/icons/cv/briefcase.png"),
-            )?,
-        };
+        let fonts = load_fonts(&mut document)?;
 
         let mut plan = Plan {
             ops: Vec::new(),
             fonts: &fonts,
-            icones: &icones,
-            y: PAGE_MARGIN,
+            y: MARGIN_TOP,
             density,
             bounds: LayoutBounds::default(),
             overflow: false,
@@ -245,14 +225,14 @@ impl ResumePdf {
 
         plan.entete(self);
         plan.section_profile(self);
-        plan.section_skills(self);
         plan.section_experiences(self);
         plan.section_projects(self);
-        plan.section_education_languages(self);
+        plan.section_skills(self);
+        plan.section_education(self);
+        plan.section_certifications(self);
+        plan.section_languages(self);
 
-        if plan.overflow
-            || ensure_inside(plan.bounds, Margins::uniform(PAGE_MARGIN), "overflow").is_err()
-        {
+        if plan.overflow || ensure_inside(plan.bounds, page_margins(), "overflow").is_err() {
             return Ok(None);
         }
 
@@ -265,35 +245,52 @@ impl ResumePdf {
     }
 }
 
-fn load_fonts() -> AppResult<(ParsedFont, ParsedFont, ParsedFont, ParsedFont)> {
+fn load_fonts(document: &mut PdfDocument) -> AppResult<Fonts> {
     let decodage = |octets: &[u8]| -> AppResult<ParsedFont> {
         ParsedFont::from_bytes(octets, 0, &mut Vec::new())
             .ok_or_else(|| AppError::Serialization("Police CV illisible".into()))
     };
-    Ok((
-        decodage(include_bytes!("../../../assets/fonts/Geist-Regular.ttf"))?,
-        decodage(include_bytes!("../../../assets/fonts/Geist-Medium.ttf"))?,
-        decodage(include_bytes!("../../../assets/fonts/Geist-SemiBold.ttf"))?,
-        decodage(include_bytes!("../../../assets/fonts/Geist-Bold.ttf"))?,
-    ))
+    let sans_regular = decodage(include_bytes!(
+        "../../../assets/fonts/ibm-plex/IBMPlexSans-Regular.ttf"
+    ))?;
+    let sans_medium = decodage(include_bytes!(
+        "../../../assets/fonts/ibm-plex/IBMPlexSans-Medium.ttf"
+    ))?;
+    let sans_semibold = decodage(include_bytes!(
+        "../../../assets/fonts/ibm-plex/IBMPlexSans-SemiBold.ttf"
+    ))?;
+    let mono_regular = decodage(include_bytes!(
+        "../../../assets/fonts/ibm-plex/IBMPlexMono-Regular.ttf"
+    ))?;
+    let mono_medium = decodage(include_bytes!(
+        "../../../assets/fonts/ibm-plex/IBMPlexMono-Medium.ttf"
+    ))?;
+    Ok(Fonts {
+        sans_regular_id: document.add_font(&sans_regular),
+        sans_medium_id: document.add_font(&sans_medium),
+        sans_semibold_id: document.add_font(&sans_semibold),
+        mono_regular_id: document.add_font(&mono_regular),
+        mono_medium_id: document.add_font(&mono_medium),
+        sans_regular,
+        sans_medium,
+        sans_semibold,
+        mono_regular,
+        mono_medium,
+    })
 }
 
-fn add_icon(document: &mut PdfDocument, octets: &[u8]) -> AppResult<XObjectId> {
-    let image = RawImage::decode_from_bytes(octets, &mut Vec::new())
-        .map_err(|error| AppError::Serialization(format!("Icône CV illisible : {error}")))?;
-    Ok(document.add_image(&image))
+struct StyleParagraphe {
+    x: f32,
+    face: FontFace,
+    size: f32,
+    couleur: Color,
+    interligne: f32,
+    largeur_max: f32,
 }
 
-// ---------------------------------------------------------------------------
-// Tracé.
-// ---------------------------------------------------------------------------
-
-/// Tampon d'opérations PDF, avec une origine haut-gauche pour le positionnement.
 struct Plan<'a> {
     ops: Vec<Op>,
     fonts: &'a Fonts,
-    icones: &'a Icones,
-    /// Curseur vertical (haut de la prochaine ligne), en points depuis le haut.
     y: f32,
     density: Density,
     bounds: LayoutBounds,
@@ -313,7 +310,175 @@ impl Plan<'_> {
         PAGE_H - y_haut
     }
 
-    fn polygone_arrondi(
+    fn avance(&mut self, distance: f32) {
+        self.y += self.spacing(distance);
+        self.bounds.max_y = self.bounds.max_y.max(self.y);
+        if self.y > PAGE_H - MARGIN_BOTTOM {
+            self.overflow = true;
+        }
+    }
+
+    fn register(&mut self, max_x: f32, max_y: f32) {
+        self.bounds.max_x = self.bounds.max_x.max(max_x);
+        self.bounds.max_y = self.bounds.max_y.max(max_y);
+        if max_x > PAGE_W - MARGIN_RIGHT || max_y > PAGE_H - MARGIN_BOTTOM {
+            self.overflow = true;
+        }
+    }
+
+    fn text(
+        &mut self,
+        x: f32,
+        ligne_de_base_haut: f32,
+        face: FontFace,
+        size: f32,
+        couleur: Color,
+        value: &str,
+    ) {
+        if self.overflow || value.is_empty() {
+            return;
+        }
+        let size = self.font_size(size);
+        let max_x = x + self.largeur_text(face, size, value);
+        let max_y = ligne_de_base_haut + size * 0.25;
+        self.register(max_x, max_y);
+        if self.overflow {
+            return;
+        }
+        self.ops.push(Op::StartTextSection);
+        self.ops.push(Op::SetFont {
+            font: PdfFontHandle::External(self.fonts.id(face).clone()),
+            size: Pt(size),
+        });
+        self.ops.push(Op::SetFillColor { col: couleur });
+        self.ops.push(Op::SetTextCursor {
+            pos: Point {
+                x: Pt(x),
+                y: Pt(self.pdf_y(ligne_de_base_haut)),
+            },
+        });
+        self.ops.push(Op::ShowText {
+            items: vec![TextItem::Text(value.to_owned())],
+        });
+        self.ops.push(Op::EndTextSection);
+    }
+
+    fn largeur_text(&self, face: FontFace, size: f32, value: &str) -> f32 {
+        let font = self.fonts.source(face);
+        let echelle = size / f32::from(font.units_per_em);
+        value
+            .chars()
+            .map(|caractere| {
+                font.lookup_glyph_index(caractere as u32)
+                    .and_then(|glyphe| font.get_glyph_width(glyphe))
+                    .map_or(0.0, |largeur| largeur as f32 * echelle)
+            })
+            .sum()
+    }
+
+    fn decouper(&self, face: FontFace, size: f32, value: &str, largeur_max: f32) -> Vec<String> {
+        let mut rows = Vec::new();
+        let mut courante = String::new();
+        for mot in value.split_whitespace() {
+            for fragment in self.decouper_token(face, size, mot, largeur_max) {
+                let candidate = if courante.is_empty() {
+                    fragment.clone()
+                } else {
+                    format!("{courante} {fragment}")
+                };
+                if self.largeur_text(face, size, &candidate) <= largeur_max {
+                    courante = candidate;
+                } else {
+                    if !courante.is_empty() {
+                        rows.push(std::mem::take(&mut courante));
+                    }
+                    courante = fragment;
+                }
+            }
+        }
+        if !courante.is_empty() {
+            rows.push(courante);
+        }
+        rows
+    }
+
+    fn decouper_token(
+        &self,
+        face: FontFace,
+        size: f32,
+        token: &str,
+        largeur_max: f32,
+    ) -> Vec<String> {
+        if self.largeur_text(face, size, token) <= largeur_max {
+            return vec![token.to_owned()];
+        }
+        let mut fragments = Vec::new();
+        let mut current = String::new();
+        for grapheme in token.graphemes(true) {
+            let candidate = format!("{current}{grapheme}");
+            if !current.is_empty() && self.largeur_text(face, size, &candidate) > largeur_max {
+                fragments.push(std::mem::take(&mut current));
+            }
+            current.push_str(grapheme);
+        }
+        if !current.is_empty() {
+            fragments.push(current);
+        }
+        fragments
+    }
+
+    fn paragraphe(&mut self, style: StyleParagraphe, value: &str) -> f32 {
+        let mut y = self.y;
+        let actual_size = self.font_size(style.size);
+        let actual_line_height = self.spacing(style.interligne).max(actual_size * 1.1);
+        for row in self.decouper(style.face, style.size, value, style.largeur_max) {
+            if y + actual_line_height > PAGE_H - MARGIN_BOTTOM {
+                self.overflow = true;
+                break;
+            }
+            self.text(
+                style.x,
+                y + ASCENT * actual_size,
+                style.face,
+                style.size,
+                style.couleur.clone(),
+                &row,
+            );
+            y += actual_line_height;
+        }
+        let consommee = y - self.y;
+        self.y = y;
+        self.bounds.max_y = self.bounds.max_y.max(self.y);
+        consommee
+    }
+
+    fn chip(&mut self, x: f32, label: &str) -> f32 {
+        let padding_x = pt(8.0);
+        let padding_y = pt(2.5);
+        let size = pt(10.4);
+        let largeur =
+            self.largeur_text(FontFace::Sans(SansWeight::Regular), size, label) + 2.0 * padding_x;
+        let hauteur = self.font_size(size) + 2.0 * padding_y;
+        self.rect_arrondi(
+            x,
+            self.y,
+            largeur,
+            hauteur,
+            pt(2.0),
+            rgb(CHIP_BG.0, CHIP_BG.1, CHIP_BG.2),
+        );
+        self.text(
+            x + padding_x,
+            self.y + padding_y + ASCENT * self.font_size(size),
+            FontFace::Sans(SansWeight::Regular),
+            size,
+            rgb(CHIP_TEXT.0, CHIP_TEXT.1, CHIP_TEXT.2),
+            label,
+        );
+        largeur
+    }
+
+    fn rect_arrondi(
         &mut self,
         x: f32,
         y_haut: f32,
@@ -327,14 +492,8 @@ impl Plan<'_> {
         }
         let hauteur = self.spacing(hauteur);
         let rayon = rayon.min(largeur / 2.0).min(hauteur / 2.0);
-        let gauche = x;
-        let droite = x + largeur;
-        let haut = y_haut;
-        let bas = y_haut + hauteur;
-        self.bounds.max_x = self.bounds.max_x.max(droite);
-        self.bounds.max_y = self.bounds.max_y.max(bas);
-        if droite > PAGE_W - PAGE_MARGIN || bas > PAGE_H - PAGE_MARGIN {
-            self.overflow = true;
+        self.register(x + largeur, y_haut + hauteur);
+        if self.overflow {
             return;
         }
         let point = |px: f32, py: f32, bezier: bool| LinePoint {
@@ -344,6 +503,10 @@ impl Plan<'_> {
             },
             bezier,
         };
+        let gauche = x;
+        let droite = x + largeur;
+        let haut = y_haut;
+        let bas = y_haut + hauteur;
         let points = vec![
             point(gauche + rayon, haut, false),
             point(droite - rayon, haut, false),
@@ -369,544 +532,489 @@ impl Plan<'_> {
         });
     }
 
-    fn row_h(&mut self, x1: f32, x2: f32, y_haut: f32, couleur: Color, epaisseur: f32) {
-        if self.overflow {
-            return;
-        }
-        self.bounds.max_x = self.bounds.max_x.max(x2);
-        self.bounds.max_y = self.bounds.max_y.max(y_haut);
-        if x2 > PAGE_W - PAGE_MARGIN || y_haut > PAGE_H - PAGE_MARGIN {
-            self.overflow = true;
-            return;
-        }
-        self.ops.push(Op::SetOutlineColor { col: couleur });
-        self.ops.push(Op::SetOutlineThickness { pt: Pt(epaisseur) });
-        self.ops.push(Op::DrawLine {
-            line: Line {
-                points: vec![
-                    LinePoint {
-                        p: Point {
-                            x: Pt(x1),
-                            y: Pt(self.pdf_y(y_haut)),
-                        },
-                        bezier: false,
-                    },
-                    LinePoint {
-                        p: Point {
-                            x: Pt(x2),
-                            y: Pt(self.pdf_y(y_haut)),
-                        },
-                        bezier: false,
-                    },
-                ],
-                is_closed: false,
-            },
-        });
-    }
-
-    fn text(
-        &mut self,
-        x: f32,
-        ligne_de_base_haut: f32,
-        weight: Weight,
-        size: f32,
-        couleur: Color,
-        value: &str,
-    ) {
-        if self.overflow {
-            return;
-        }
-        let size = self.font_size(size);
-        let max_x = x + self.largeur_text_actual(weight, size, value);
-        let max_y = ligne_de_base_haut + size * 0.25;
-        self.bounds.max_x = self.bounds.max_x.max(max_x);
-        self.bounds.max_y = self.bounds.max_y.max(max_y);
-        if max_x > PAGE_W - PAGE_MARGIN || max_y > PAGE_H - PAGE_MARGIN {
-            self.overflow = true;
-            return;
-        }
-        self.ops.push(Op::StartTextSection);
-        self.ops.push(Op::SetFont {
-            font: PdfFontHandle::External(self.fonts.id(weight).clone()),
-            size: Pt(size),
-        });
-        self.ops.push(Op::SetFillColor { col: couleur });
-        self.ops.push(Op::SetTextCursor {
-            pos: Point {
-                x: Pt(x),
-                y: Pt(self.pdf_y(ligne_de_base_haut)),
-            },
-        });
-        self.ops.push(Op::ShowText {
-            items: vec![TextItem::Text(value.to_owned())],
-        });
-        self.ops.push(Op::EndTextSection);
-    }
-
-    fn icon(&mut self, x: f32, y_haut: f32, size: f32, id: &XObjectId) {
-        if self.overflow {
-            return;
-        }
-        let size = size * self.density.font_scale;
-        self.bounds.max_x = self.bounds.max_x.max(x + size);
-        self.bounds.max_y = self.bounds.max_y.max(y_haut + size);
-        if x + size > PAGE_W - PAGE_MARGIN || y_haut + size > PAGE_H - PAGE_MARGIN {
-            self.overflow = true;
-            return;
-        }
-        // Les PNG sont rasterisés en 48 px ; on place au facteur taille/48.
-        let echelle = size / 48.0;
-        self.ops.push(Op::UseXobject {
-            id: id.clone(),
-            transform: XObjectTransform {
-                translate_x: Some(Pt(x)),
-                translate_y: Some(Pt(self.pdf_y(y_haut + size))),
-                scale_x: Some(echelle),
-                scale_y: Some(echelle),
-                dpi: Some(72.0),
-                ..XObjectTransform::default()
-            },
-        });
-    }
-
-    fn largeur_text(&self, weight: Weight, size: f32, value: &str) -> f32 {
-        self.largeur_text_actual(weight, self.font_size(size), value)
-    }
-
-    fn largeur_text_actual(&self, weight: Weight, size: f32, value: &str) -> f32 {
-        let font = self.fonts.source(weight);
-        let echelle = size / f32::from(font.units_per_em);
-        value
-            .chars()
-            .map(|caractere| {
-                font.lookup_glyph_index(caractere as u32)
-                    .and_then(|glyphe| font.get_glyph_width(glyphe))
-                    .map_or(0.0, |largeur| largeur as f32 * echelle)
-            })
-            .sum()
-    }
-
-    fn decouper(&self, weight: Weight, size: f32, value: &str, largeur_max: f32) -> Vec<String> {
-        let mut rows = Vec::new();
-        let mut courante = String::new();
-        for mot in value.split_whitespace() {
-            for fragment in self.decouper_token(weight, size, mot, largeur_max) {
-                let candidate = if courante.is_empty() {
-                    fragment.clone()
-                } else {
-                    format!("{courante} {fragment}")
-                };
-                if self.largeur_text(weight, size, &candidate) <= largeur_max {
-                    courante = candidate;
-                } else {
-                    if !courante.is_empty() {
-                        rows.push(std::mem::take(&mut courante));
-                    }
-                    courante = fragment;
-                }
-            }
-        }
-        if !courante.is_empty() {
-            rows.push(courante);
-        }
-        rows
-    }
-
-    fn decouper_token(
-        &self,
-        weight: Weight,
-        size: f32,
-        token: &str,
-        largeur_max: f32,
-    ) -> Vec<String> {
-        if self.largeur_text(weight, size, token) <= largeur_max {
-            return vec![token.to_owned()];
-        }
-        let mut fragments = Vec::new();
-        let mut current = String::new();
-        for grapheme in token.graphemes(true) {
-            let candidate = format!("{current}{grapheme}");
-            if !current.is_empty() && self.largeur_text(weight, size, &candidate) > largeur_max {
-                fragments.push(std::mem::take(&mut current));
-            }
-            current.push_str(grapheme);
-        }
-        if !current.is_empty() {
-            fragments.push(current);
-        }
-        fragments
-    }
-
-    /// Trace un paragraphe et rend la hauteur consommée.
-    #[allow(clippy::too_many_arguments)]
-    fn paragraphe(
-        &mut self,
-        x: f32,
-        weight: Weight,
-        size: f32,
-        couleur: Color,
-        interligne: f32,
-        largeur_max: f32,
-        value: &str,
-    ) -> f32 {
-        let mut y = self.y;
-        let actual_size = self.font_size(size);
-        let actual_line_height = self.spacing(interligne).max(actual_size * 1.1);
-        for row in self.decouper(weight, size, value, largeur_max) {
-            if y + actual_line_height > PAGE_H - PAGE_MARGIN {
-                self.overflow = true;
-                self.bounds.max_y = y + actual_line_height;
-                break;
-            }
-            self.text(
-                x,
-                y + ASCENT * actual_size,
-                weight,
+    fn puce(&mut self, x: f32, value: &str) {
+        let size = pt(11.3);
+        let marque_y = self.y + ASCENT * self.font_size(size) - pt(1.0);
+        self.rect_arrondi(
+            x,
+            marque_y,
+            pt(3.0),
+            pt(3.0),
+            pt(1.0),
+            rgb(ACCENT_SOFT.0, ACCENT_SOFT.1, ACCENT_SOFT.2),
+        );
+        self.paragraphe(
+            StyleParagraphe {
+                x: x + pt(11.0),
+                face: FontFace::Sans(SansWeight::Regular),
                 size,
-                couleur.clone(),
-                &row,
-            );
-            y += actual_line_height;
-        }
-        let consommee = y - self.y;
-        self.y = y;
-        self.bounds.max_y = self.bounds.max_y.max(self.y);
-        consommee
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Sections.
-// ---------------------------------------------------------------------------
-
-impl Plan<'_> {
-    fn entete(&mut self, resume: &ResumePdf) {
-        let x = CONTENT_X;
-        let haut_padding = pt(13.6);
-        let bas_padding = pt(12.0);
-        self.y = PAGE_MARGIN + self.spacing(haut_padding);
-
-        self.text(
-            x,
-            self.y + ASCENT * pt(32.0),
-            Weight::Bold,
-            pt(32.0),
-            rgb(TEXT.0, TEXT.1, TEXT.2),
-            &resume.name,
+                couleur: rgb(BODY.0, BODY.1, BODY.2),
+                interligne: pt(11.3) * 1.45,
+                largeur_max: CONTENT_W - pt(11.0),
+            },
+            value,
         );
-        self.avance(pt(32.0) * 1.1);
-
-        self.text(
-            x,
-            self.y + ASCENT * pt(13.12),
-            Weight::SemiBold,
-            pt(13.12),
-            rgb(ACCENT.0, ACCENT.1, ACCENT.2),
-            &resume.subtitle,
-        );
-        self.avance(pt(13.12) * 1.4);
-
-        // Row de séparation du header.
-        let sep_y = self.y + self.spacing(pt(7.2));
-        self.row_h(
-            x,
-            x + CONTENT_W,
-            sep_y,
-            rgb(BORDURE.0, BORDURE.1, BORDURE.2),
-            1.0,
-        );
-        self.y = sep_y + self.spacing(pt(5.4));
-
-        // Coordonnées.
-        let mut contact_x = x;
-        let elements = coordonnees(resume, self.icones);
-        for (icon, text) in elements {
-            let largeur_element =
-                pt(12.0) + pt(4.2) + self.largeur_text(Weight::Medium, pt(10.88), &text) + pt(14.4);
-            if contact_x + largeur_element > x + CONTENT_W && contact_x > x {
-                contact_x = x;
-                self.avance(pt(10.88) + pt(3.6));
-            }
-            self.icon(contact_x, self.y, pt(12.0), &icon);
-            contact_x += pt(12.0) + pt(4.2);
-            self.text(
-                contact_x,
-                self.y + ASCENT * pt(10.88),
-                Weight::Medium,
-                pt(10.88),
-                rgb(SECONDAIRE.0, SECONDAIRE.1, SECONDAIRE.2),
-                &text,
-            );
-            contact_x += self.largeur_text(Weight::Medium, pt(10.88), &text) + pt(14.4);
-        }
-        self.avance(pt(10.88) + bas_padding);
     }
 
-    fn title_section(&mut self, x: f32, title: &str) {
+    fn section_label(&mut self, title: &str) -> f32 {
+        let y_label = self.y + self.spacing(pt(2.0));
         self.text(
-            x,
-            self.y + ASCENT * pt(9.92),
-            Weight::Bold,
-            pt(9.92),
+            MARGIN_LEFT,
+            y_label + ASCENT * self.font_size(pt(9.2)),
+            FontFace::Mono(MonoWeight::Medium),
+            pt(9.2),
             rgb(ACCENT.0, ACCENT.1, ACCENT.2),
             &title.to_uppercase(),
         );
-        self.avance(pt(9.92) + pt(4.48));
-        let largeur = self.largeur_text(Weight::Bold, pt(9.92), &title.to_uppercase());
-        self.row_h(
-            x,
-            x + largeur,
-            self.y,
-            rgb(ACCENT.0, ACCENT.1, ACCENT.2),
-            1.5,
+        y_label
+    }
+
+    fn begin_section(&mut self, title: &str) -> f32 {
+        self.avance(pt(13.0));
+        self.section_label(title)
+    }
+}
+
+impl Plan<'_> {
+    fn entete(&mut self, resume: &ResumePdf) {
+        self.y = MARGIN_TOP;
+
+        self.text(
+            MARGIN_LEFT,
+            self.y + ASCENT * self.font_size(pt(31.0)),
+            FontFace::Sans(SansWeight::SemiBold),
+            pt(31.0),
+            rgb(INK.0, INK.1, INK.2),
+            &resume.name,
         );
-        self.avance(pt(1.5) + pt(4.48));
+        self.avance(pt(31.0) * 1.02);
+
+        if !resume.subtitle.trim().is_empty() {
+            self.text(
+                MARGIN_LEFT,
+                self.y + ASCENT * self.font_size(pt(10.4)),
+                FontFace::Mono(MonoWeight::Medium),
+                pt(10.4),
+                rgb(ACCENT.0, ACCENT.1, ACCENT.2),
+                &resume.subtitle.to_uppercase(),
+            );
+            self.avance(pt(10.4) * 1.5);
+        }
+
+        if let Some(headline) = resume.headline.as_deref() {
+            if !headline.trim().is_empty() {
+                self.paragraphe(
+                    StyleParagraphe {
+                        x: MARGIN_LEFT,
+                        face: FontFace::Sans(SansWeight::Regular),
+                        size: pt(11.4),
+                        couleur: rgb(HEADLINE.0, HEADLINE.1, HEADLINE.2),
+                        interligne: pt(11.4) * 1.45,
+                        largeur_max: HEADER_W.min(pt(64.0) * 6.0),
+                    },
+                    headline,
+                );
+                self.avance(pt(2.0));
+            }
+        }
+
+        self.contact_row_1(resume);
+        self.contact_row_2(resume);
+        self.avance(pt(4.0));
+    }
+
+    fn contact_row_1(&mut self, resume: &ResumePdf) {
+        let mut parts = Vec::new();
+        if let Some(city) = resume.city.as_deref() {
+            if !city.trim().is_empty() {
+                parts.push(city.to_owned());
+            }
+        }
+        if let Some(phone) = resume.phone.as_deref() {
+            if !phone.trim().is_empty() {
+                parts.push(phone.to_owned());
+            }
+        }
+        if !resume.email.trim().is_empty() {
+            parts.push(resume.email.clone());
+        }
+        self.contact_line(&parts);
+    }
+
+    fn contact_row_2(&mut self, resume: &ResumePdf) {
+        let mut parts = Vec::new();
+        if let Some(site) = resume.website.as_deref() {
+            if !site.trim().is_empty() {
+                parts.push(site.to_owned());
+            }
+        }
+        if let Some(linkedin) = resume.linkedin.as_deref() {
+            if !linkedin.trim().is_empty() {
+                parts.push(linkedin.to_owned());
+            }
+        }
+        if let Some(github) = resume.github.as_deref() {
+            if !github.trim().is_empty() {
+                parts.push(github.to_owned());
+            }
+        }
+        parts.extend(
+            resume
+                .extra
+                .iter()
+                .filter(|value| !value.trim().is_empty())
+                .cloned(),
+        );
+        self.contact_line(&parts);
+    }
+
+    fn contact_line(&mut self, parts: &[String]) {
+        if parts.is_empty() {
+            return;
+        }
+        let size = pt(10.1);
+        let mut x = MARGIN_LEFT;
+        let gap = pt(18.0);
+        for (index, part) in parts.iter().enumerate() {
+            if index > 0 {
+                x += gap;
+            }
+            self.text(
+                x,
+                self.y + ASCENT * self.font_size(size),
+                FontFace::Mono(MonoWeight::Regular),
+                size,
+                rgb(CONTACT.0, CONTACT.1, CONTACT.2),
+                part,
+            );
+            x += self.largeur_text(
+                FontFace::Mono(MonoWeight::Regular),
+                self.font_size(size),
+                part,
+            );
+        }
+        self.avance(size * 1.45);
     }
 
     fn section_profile(&mut self, resume: &ResumePdf) {
-        self.avance(pt(4.0));
-        self.title_section(CONTENT_X, "Profile");
+        if resume.profile.trim().is_empty() {
+            return;
+        }
+        let y_start = self.begin_section("Profil");
+        self.y = y_start;
         self.paragraphe(
-            CONTENT_X,
-            Weight::Regular,
-            pt(12.16),
-            rgb(SECONDAIRE.0, SECONDAIRE.1, SECONDAIRE.2),
-            pt(12.16) * 1.45,
-            CONTENT_W,
+            StyleParagraphe {
+                x: CONTENT_X,
+                face: FontFace::Sans(SansWeight::Regular),
+                size: pt(11.6),
+                couleur: rgb(BODY.0, BODY.1, BODY.2),
+                interligne: pt(11.6) * 1.52,
+                largeur_max: CONTENT_W,
+            },
             &resume.profile,
         );
     }
 
-    fn section_skills(&mut self, resume: &ResumePdf) {
-        self.avance(pt(10.0));
-        self.title_section(CONTENT_X, "Compétences techniques");
-        let mut x = CONTENT_X;
-        let y_base = self.y;
-        for skill in &resume.skills {
-            let largeur = self.largeur_text(Weight::Medium, pt(10.56), skill) + 2.0 * pt(6.4);
-            if x + largeur > CONTENT_X + CONTENT_W {
-                x = CONTENT_X;
-                self.avance(pt(10.56) + 2.0 * pt(1.92) + pt(2.64));
-            }
-            self.polygone_arrondi(
-                x,
-                self.y,
-                largeur,
-                pt(10.56) + 2.0 * pt(1.92),
-                pt(4.0),
-                rgb(CHIP_BG.0, CHIP_BG.1, CHIP_BG.2),
-            );
-            self.text(
-                x + pt(6.4),
-                self.y + pt(1.92) + ASCENT * pt(10.56),
-                Weight::Medium,
-                pt(10.56),
-                rgb(TEXT.0, TEXT.1, TEXT.2),
-                skill,
-            );
-            x += largeur + pt(2.64);
-        }
-        if resume.skills.is_empty() {
-            self.y = y_base;
-        } else {
-            self.avance(pt(10.56) + 2.0 * pt(1.92) + pt(2.64));
-        }
-    }
-
     fn section_experiences(&mut self, resume: &ResumePdf) {
-        self.avance(pt(10.0));
-        self.title_section(CONTENT_X, "Expérience professionnelle");
-        for experience in &resume.experiences {
-            self.experience(experience);
-            self.avance(pt(6.0));
+        if resume.experiences.is_empty() {
+            return;
+        }
+        let y_start = self.begin_section("Expériences professionnelles");
+        self.y = y_start;
+        for (index, experience) in resume.experiences.iter().enumerate() {
+            if index > 0 {
+                self.avance(pt(9.0));
+            }
+            self.experience_item(experience);
         }
     }
 
-    fn experience(&mut self, experience: &ResumeExperience) {
-        let x = CONTENT_X;
+    fn experience_item(&mut self, experience: &ResumeExperience) {
+        let title_size = pt(12.6);
+        let period_size = pt(9.5);
         self.text(
-            x,
-            self.y + ASCENT * pt(13.12),
-            Weight::Bold,
-            pt(13.12),
-            rgb(TEXT.0, TEXT.1, TEXT.2),
+            CONTENT_X,
+            self.y + ASCENT * self.font_size(title_size),
+            FontFace::Sans(SansWeight::SemiBold),
+            title_size,
+            rgb(INK.0, INK.1, INK.2),
             &experience.title,
         );
-        self.avance(pt(13.12) * 1.35);
-
-        let mut meta = experience.company.clone();
-        if !experience.meta.is_empty() {
-            meta = format!("{} · {}", meta, experience.meta);
+        if !experience.period.trim().is_empty() {
+            let period_x = CONTENT_X + CONTENT_W
+                - self.largeur_text(
+                    FontFace::Mono(MonoWeight::Regular),
+                    self.font_size(period_size),
+                    &experience.period,
+                );
+            self.text(
+                period_x,
+                self.y + ASCENT * self.font_size(period_size),
+                FontFace::Mono(MonoWeight::Regular),
+                period_size,
+                rgb(SUBTLE.0, SUBTLE.1, SUBTLE.2),
+                &experience.period,
+            );
         }
-        let briefcase = self.icones.briefcase.clone();
-        self.icon(x, self.y, pt(11.0), &briefcase);
+        self.avance(title_size * 1.35);
+
+        let mut company_line = experience.company.clone();
+        if let Some(location) = experience.location.as_deref() {
+            if !location.trim().is_empty() {
+                company_line = format!("{company_line} · {location}");
+            }
+        }
         self.text(
-            x + pt(11.0) + pt(3.0),
-            self.y + ASCENT * pt(11.2),
-            Weight::Regular,
+            CONTENT_X,
+            self.y + ASCENT * self.font_size(pt(11.2)),
+            FontFace::Sans(SansWeight::Medium),
             pt(11.2),
-            rgb(SECONDAIRE.0, SECONDAIRE.1, SECONDAIRE.2),
-            &meta,
+            rgb(COMPANY.0, COMPANY.1, COMPANY.2),
+            &company_line,
         );
         self.avance(pt(11.2) * 1.4);
 
-        for puce in &experience.bullets {
-            self.puce(x, puce);
+        for bullet in &experience.bullets {
+            self.puce(CONTENT_X, bullet);
         }
-    }
-
-    fn puce(&mut self, x: f32, value: &str) {
-        let marque = self.y + ASCENT * pt(11.52);
-        self.text(
-            x,
-            marque,
-            Weight::Regular,
-            pt(11.52),
-            rgb(MUTED.0, MUTED.1, MUTED.2),
-            "·",
-        );
-        let decalage = self.largeur_text(Weight::Regular, pt(11.52), "·") + pt(3.0);
-        self.paragraphe(
-            x + decalage,
-            Weight::Regular,
-            pt(11.52),
-            rgb(SECONDAIRE.0, SECONDAIRE.1, SECONDAIRE.2),
-            pt(11.52) * 1.38,
-            CONTENT_W - decalage,
-            value,
-        );
     }
 
     fn section_projects(&mut self, resume: &ResumePdf) {
         if resume.projects.is_empty() {
             return;
         }
-        self.avance(pt(10.0));
-        self.title_section(CONTENT_X, "Projets techniques");
-        for project in &resume.projects {
-            let x = CONTENT_X;
-            self.text(
-                x,
-                self.y + ASCENT * pt(13.12),
-                Weight::Bold,
-                pt(13.12),
-                rgb(TEXT.0, TEXT.1, TEXT.2),
-                &project.name,
-            );
-            self.avance(pt(13.12) * 1.35);
-            if !project.meta.is_empty() {
-                self.text(
-                    x,
-                    self.y + ASCENT * pt(11.2),
-                    Weight::Regular,
-                    pt(11.2),
-                    rgb(SECONDAIRE.0, SECONDAIRE.1, SECONDAIRE.2),
-                    &project.meta,
-                );
-                self.avance(pt(11.2) * 1.4);
+        let y_start = self.begin_section("Projets");
+        self.y = y_start;
+        for (index, project) in resume.projects.iter().enumerate() {
+            if index > 0 {
+                self.avance(pt(8.0));
             }
-            for puce in &project.bullets {
-                self.puce(x, puce);
-            }
-            self.avance(pt(6.0));
+            self.project_item(project);
         }
     }
 
-    fn section_education_languages(&mut self, resume: &ResumePdf) {
-        self.avance(pt(10.0));
-        let x_gauche = CONTENT_X;
-        let x_droite = CONTENT_X + CONTENT_W / 2.0 + pt(11.2);
-        let y_start = self.y;
+    fn project_item(&mut self, project: &ResumeProject) {
+        self.text(
+            CONTENT_X,
+            self.y + ASCENT * self.font_size(pt(12.2)),
+            FontFace::Sans(SansWeight::SemiBold),
+            pt(12.2),
+            rgb(INK.0, INK.1, INK.2),
+            &project.name,
+        );
+        self.avance(pt(12.2) * 1.35);
 
-        self.title_section(x_gauche, "Education");
-        for education in &resume.education {
+        let mut meta_parts = Vec::new();
+        if !project.meta.trim().is_empty() {
+            meta_parts.push(project.meta.clone());
+        }
+        if let Some(url) = project.url.as_deref() {
+            if !url.trim().is_empty() {
+                meta_parts.push(url.to_owned());
+            }
+        }
+        if !meta_parts.is_empty() {
             self.text(
-                x_gauche,
-                self.y + ASCENT * pt(12.16),
-                Weight::Bold,
-                pt(12.16),
-                rgb(TEXT.0, TEXT.1, TEXT.2),
+                CONTENT_X,
+                self.y + ASCENT * self.font_size(pt(11.2)),
+                FontFace::Sans(SansWeight::Regular),
+                pt(11.2),
+                rgb(MUTED.0, MUTED.1, MUTED.2),
+                &meta_parts.join(" · "),
+            );
+            self.avance(pt(11.2) * 1.4);
+        }
+
+        for bullet in &project.bullets {
+            self.puce(CONTENT_X, bullet);
+        }
+    }
+
+    fn section_skills(&mut self, resume: &ResumePdf) {
+        let groups: Vec<_> = resume
+            .skill_groups
+            .iter()
+            .filter(|group| group.items.iter().any(|item| !item.trim().is_empty()))
+            .collect();
+        if groups.is_empty() {
+            return;
+        }
+        let y_start = self.begin_section("Compétences");
+        self.y = y_start;
+        for (index, group) in groups.iter().enumerate() {
+            if index > 0 {
+                self.avance(pt(5.0));
+            }
+            self.text(
+                CONTENT_X,
+                self.y + ASCENT * self.font_size(pt(11.0)),
+                FontFace::Sans(SansWeight::SemiBold),
+                pt(11.0),
+                rgb(GROUP_TITLE.0, GROUP_TITLE.1, GROUP_TITLE.2),
+                &group.name,
+            );
+            let group_w = self.largeur_text(
+                FontFace::Sans(SansWeight::SemiBold),
+                self.font_size(pt(11.0)),
+                &group.name,
+            );
+            let chips_x = CONTENT_X + group_w + pt(14.0);
+            let mut x = chips_x;
+            let mut line_y = self.y;
+            for item in group.items.iter().filter(|item| !item.trim().is_empty()) {
+                let largeur = self.largeur_text(
+                    FontFace::Sans(SansWeight::Regular),
+                    self.font_size(pt(10.4)),
+                    item,
+                ) + 2.0 * pt(8.0);
+                if x + largeur > CONTENT_X + CONTENT_W && x > chips_x {
+                    line_y += pt(10.4) + pt(3.5);
+                    x = chips_x;
+                }
+                let saved_y = self.y;
+                self.y = line_y;
+                self.chip(x, item);
+                x += largeur + pt(5.0);
+                self.y = saved_y;
+            }
+            self.y = line_y + pt(14.0);
+        }
+    }
+
+    fn section_education(&mut self, resume: &ResumePdf) {
+        if resume.education.is_empty() {
+            return;
+        }
+        let y_start = self.begin_section("Formation");
+        self.y = y_start;
+        for (index, education) in resume.education.iter().enumerate() {
+            if index > 0 {
+                self.avance(pt(6.0));
+            }
+            self.text(
+                CONTENT_X,
+                self.y + ASCENT * self.font_size(pt(12.0)),
+                FontFace::Sans(SansWeight::SemiBold),
+                pt(12.0),
+                rgb(INK.0, INK.1, INK.2),
                 &education.degree,
             );
-            self.avance(pt(12.16) * 1.4);
-            self.text(
-                x_gauche,
-                self.y + ASCENT * pt(10.88),
-                Weight::Regular,
-                pt(10.88),
-                rgb(SECONDAIRE.0, SECONDAIRE.1, SECONDAIRE.2),
-                &education.school,
-            );
-            self.avance(pt(10.88) * 1.4);
-            if !education.date.is_empty() {
+            if !education.period.trim().is_empty() {
+                let period_x = CONTENT_X + CONTENT_W
+                    - self.largeur_text(
+                        FontFace::Mono(MonoWeight::Regular),
+                        self.font_size(pt(9.5)),
+                        &education.period,
+                    );
                 self.text(
-                    x_gauche,
-                    self.y + ASCENT * pt(9.6),
-                    Weight::Regular,
-                    pt(9.6),
-                    rgb(MUTED.0, MUTED.1, MUTED.2),
-                    &education.date,
+                    period_x,
+                    self.y + ASCENT * self.font_size(pt(9.5)),
+                    FontFace::Mono(MonoWeight::Regular),
+                    pt(9.5),
+                    rgb(SUBTLE.0, SUBTLE.1, SUBTLE.2),
+                    &education.period,
                 );
-                self.avance(pt(9.6) * 1.4);
             }
-            self.avance(pt(4.0));
-        }
-        let end_education = self.y;
+            self.avance(pt(12.0) * 1.35);
 
-        self.y = y_start;
-        self.title_section(x_droite, "Disponibilité & langues");
-        for language in &resume.languages {
+            let mut school_line = education.school.clone();
+            if let Some(location) = education.location.as_deref() {
+                if !location.trim().is_empty() {
+                    school_line = format!("{school_line} · {location}");
+                }
+            }
             self.text(
-                x_droite,
-                self.y + ASCENT * pt(12.16),
-                Weight::Bold,
-                pt(12.16),
-                rgb(TEXT.0, TEXT.1, TEXT.2),
-                &format!("{} · {}", language.name, language.level),
+                CONTENT_X,
+                self.y + ASCENT * self.font_size(pt(11.2)),
+                FontFace::Sans(SansWeight::Regular),
+                pt(11.2),
+                rgb(MUTED.0, MUTED.1, MUTED.2),
+                &school_line,
             );
-            self.avance(pt(12.16) * 1.4);
-        }
-        let end_languages = self.y;
+            self.avance(pt(11.2) * 1.4);
 
-        self.y = end_education.max(end_languages);
+            if let Some(description) = education.description.as_deref() {
+                if !description.trim().is_empty() {
+                    self.paragraphe(
+                        StyleParagraphe {
+                            x: CONTENT_X,
+                            face: FontFace::Sans(SansWeight::Regular),
+                            size: pt(10.9),
+                            couleur: rgb(SUBTLE.0, SUBTLE.1, SUBTLE.2),
+                            interligne: pt(10.9) * 1.4,
+                            largeur_max: CONTENT_W,
+                        },
+                        description,
+                    );
+                }
+            }
+        }
     }
 
-    fn avance(&mut self, distance: f32) {
-        self.y += self.spacing(distance);
-        self.bounds.max_y = self.bounds.max_y.max(self.y);
-        if self.y > PAGE_H - PAGE_MARGIN {
-            self.overflow = true;
+    fn section_certifications(&mut self, resume: &ResumePdf) {
+        if resume.certifications.is_empty() {
+            return;
+        }
+        let y_start = self.begin_section("Certifications");
+        self.y = y_start;
+        for certification in &resume.certifications {
+            let mut line = certification.name.clone();
+            if let Some(issuer) = certification.issuer.as_deref() {
+                if !issuer.trim().is_empty() {
+                    line = format!("{line} · {issuer}");
+                }
+            }
+            if let Some(date) = certification.date.as_deref() {
+                if !date.trim().is_empty() {
+                    line = format!("{line} · {date}");
+                }
+            }
+            self.paragraphe(
+                StyleParagraphe {
+                    x: CONTENT_X,
+                    face: FontFace::Sans(SansWeight::Regular),
+                    size: pt(11.2),
+                    couleur: rgb(BODY.0, BODY.1, BODY.2),
+                    interligne: pt(11.2) * 1.42,
+                    largeur_max: CONTENT_W,
+                },
+                &line,
+            );
         }
     }
-}
 
-/// Construit la liste des coordonnées (icône, texte) du header.
-fn coordonnees(resume: &ResumePdf, icones: &Icones) -> Vec<(XObjectId, String)> {
-    let mut elements = Vec::new();
-    if let Some(phone) = &resume.phone {
-        if !phone.trim().is_empty() {
-            elements.push((icones.phone.clone(), phone.clone()));
+    fn section_languages(&mut self, resume: &ResumePdf) {
+        if resume.languages.is_empty() {
+            return;
         }
-    }
-    elements.push((icones.mail.clone(), resume.email.clone()));
-    if let Some(city) = &resume.city {
-        if !city.trim().is_empty() {
-            elements.push((icones.pin.clone(), city.clone()));
+        let y_start = self.begin_section("Langues");
+        self.y = y_start;
+        let mut x = CONTENT_X;
+        let gap = pt(22.0);
+        let size = pt(11.2);
+        for (index, language) in resume.languages.iter().enumerate() {
+            let label = format!("{} · {}", language.name, language.level);
+            if index > 0 {
+                x += gap;
+            }
+            self.text(
+                x,
+                self.y + ASCENT * self.font_size(size),
+                FontFace::Sans(SansWeight::Regular),
+                size,
+                rgb(BODY.0, BODY.1, BODY.2),
+                &label,
+            );
+            x += self.largeur_text(
+                FontFace::Sans(SansWeight::Regular),
+                self.font_size(size),
+                &label,
+            );
         }
+        self.avance(size * 1.42);
     }
-    if let Some(linkedin) = &resume.linkedin {
-        if !linkedin.trim().is_empty() {
-            elements.push((icones.linkedin.clone(), linkedin.clone()));
-        }
-    }
-    if let Some(site) = &resume.website {
-        if !site.trim().is_empty() {
-            elements.push((icones.globe.clone(), site.clone()));
-        }
-    }
-    elements
 }
 
 #[cfg(test)]
 #[path = "tests/cv_pdf/mod.rs"]
-mod tests;
+mod cv_pdf;

@@ -2,7 +2,8 @@
 
 use crate::core::errors::{AppError, AppResult};
 use crate::features::ai::domain::{
-    AtsAnalysis, CoverLetterRequest, GeneratedResume, StructuredListing,
+    AtsAnalysis, AtsRecommendation, AtsRecommendationSection, CoverLetterRequest, GeneratedResume,
+    StructuredListing,
 };
 use crate::features::profile::domain::Profile;
 use serde::Serialize;
@@ -211,23 +212,39 @@ impl ValidateAiOutput for AtsAnalysis {
     fn validate_ai_output(&self) -> AppResult<()> {
         validate_structured_size(self)?;
         ensure_output_string(&self.recap, "le récapitulatif ATS")?;
-        ensure_output_list(&self.suggestions, "les suggestions ATS")?;
         ensure_output_list(&self.recommendations, "les recommandations ATS")?;
-        validate_strings(
-            self.suggestions.iter().map(String::as_str),
-            "les suggestions ATS",
-        )?;
         for recommendation in &self.recommendations {
             validate_strings(
                 [
-                    recommendation.section.as_str(),
                     recommendation.original_text.as_str(),
                     recommendation.proposed_text.as_str(),
                 ],
                 "une recommandation ATS",
             )?;
+            ensure_recommendation_targetable(recommendation)?;
         }
         Ok(())
+    }
+}
+
+/// Une recommandation dont le texte est vide ou dont la cible est incohérente ne peut être ni
+/// simulée ni appliquée : elle ne doit jamais atteindre l'utilisateur comme une action.
+fn ensure_recommendation_targetable(recommendation: &AtsRecommendation) -> AppResult<()> {
+    if recommendation.original_text.trim().is_empty()
+        || recommendation.proposed_text.trim().is_empty()
+    {
+        return Err(AppError::Provider(
+            "Une recommandation ATS n'a pas de texte utilisable.".into(),
+        ));
+    }
+    match (recommendation.section, recommendation.item_index) {
+        (AtsRecommendationSection::Profile, Some(_)) => Err(AppError::Provider(
+            "Une recommandation de profil ne doit pas cibler un élément de liste.".into(),
+        )),
+        (AtsRecommendationSection::Experience, None) => Err(AppError::Provider(
+            "Une recommandation d'expérience doit cibler un élément de liste.".into(),
+        )),
+        _ => Ok(()),
     }
 }
 
@@ -321,7 +338,10 @@ fn valid_year_or_month(value: &str) -> bool {
 mod tests {
     use super::*;
     use crate::core::errors::AppError;
-    use crate::features::ai::domain::{CoverLetterRequest, GeneratedExperience, GeneratedResume};
+    use crate::features::ai::domain::{
+        AtsAnalysis, AtsRecommendation, AtsRecommendationSection, CoverLetterRequest,
+        GeneratedExperience, GeneratedResume,
+    };
     use crate::features::profile::domain::{Profile, Skill};
 
     #[test]
@@ -392,5 +412,71 @@ mod tests {
             validate_structured_size(&value),
             Err(AppError::Provider(_))
         ));
+    }
+
+    fn recommandation(
+        section: AtsRecommendationSection,
+        item_index: Option<usize>,
+    ) -> AtsRecommendation {
+        AtsRecommendation {
+            section,
+            item_index,
+            original_text: "Profil actuel".into(),
+            proposed_text: "Profil reformulé".into(),
+        }
+    }
+
+    #[test]
+    fn une_recommandation_de_profil_avec_un_indice_est_refusee() {
+        let analysis = AtsAnalysis {
+            recap: "Recap".into(),
+            recommendations: vec![recommandation(AtsRecommendationSection::Profile, Some(0))],
+        };
+
+        assert!(matches!(
+            analysis.validate_ai_output(),
+            Err(AppError::Provider(_))
+        ));
+    }
+
+    #[test]
+    fn une_recommandation_d_experience_sans_indice_est_refusee() {
+        let analysis = AtsAnalysis {
+            recap: "Recap".into(),
+            recommendations: vec![recommandation(AtsRecommendationSection::Experience, None)],
+        };
+
+        assert!(matches!(
+            analysis.validate_ai_output(),
+            Err(AppError::Provider(_))
+        ));
+    }
+
+    #[test]
+    fn une_recommandation_avec_un_texte_vide_est_refusee() {
+        let mut recommandation = recommandation(AtsRecommendationSection::Profile, None);
+        recommandation.proposed_text = "   ".into();
+        let analysis = AtsAnalysis {
+            recap: "Recap".into(),
+            recommendations: vec![recommandation],
+        };
+
+        assert!(matches!(
+            analysis.validate_ai_output(),
+            Err(AppError::Provider(_))
+        ));
+    }
+
+    #[test]
+    fn une_recommandation_d_experience_avec_indice_est_acceptee() {
+        let analysis = AtsAnalysis {
+            recap: "Recap".into(),
+            recommendations: vec![recommandation(
+                AtsRecommendationSection::Experience,
+                Some(0),
+            )],
+        };
+
+        assert!(analysis.validate_ai_output().is_ok());
     }
 }

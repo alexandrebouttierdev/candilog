@@ -16,7 +16,7 @@ use tokio_util::sync::CancellationToken;
 
 const JOB_OFFER_SYSTEM: &str = r#"Extrais une offre d'emploi en JSON. Recopie uniquement les informations présentes, sans traduire ni inventer. Réponds exactement avec les clés {"titre":"","competences":[],"savoirEtre":[],"experience":null,"motsCles":[]}. Réponds uniquement en JSON."#;
 const RESUME_SYSTEM: &str = r#"Adapte un CV à une offre en JSON. Reformule uniquement les faits du profil, sans ajouter compétence, entreprise, diplôme ou expérience. Conserve toutes les expériences et formations. Réponds avec {"resume":"","experiences":[{"intitule":"","entreprise":"","description":""}],"competences":[],"formations":[{"diplome":"","etablissement":""}]}. JSON uniquement."#;
-const ATS_SYSTEM: &str = r#"Compare le CV et l'offre fournis. Réponds en français, uniquement en JSON : {"score":0,"recap":"","suggestions":[],"recommandations":[{"section":"resume","texteOriginal":"","textePropose":"","impact":0}]}. N'invente aucun fait et borne score à 0-100."#;
+const ATS_SYSTEM: &str = r#"Compare le CV et l'offre fournis. Réponds en français, uniquement en JSON : {"recap":"","recommendations":[{"section":"profile","item_index":null,"original_text":"","proposed_text":""}]}. "section" vaut "profile" ou "experience". Pour "experience", "item_index" est l'indice (à partir de 0) de l'expérience du CV concernée ; laisse "item_index" à null pour "profile". "original_text" doit reprendre exactement un texte présent dans le CV fourni, "proposed_text" est la reformulation proposée. N'invente aucun fait absent du CV ou de l'offre."#;
 const COVER_LETTER_SYSTEM: &str = r#"Sélectionne les faits les plus pertinents pour une lettre de motivation. Réponds uniquement en JSON avec {"selected_fact_ids":[],"motivation_keywords":[]}. Utilise exclusivement des identifiants présents dans le catalogue. Les mots-clés doivent être recopiés exactement depuis le brief. N'écris aucune phrase de lettre et n'invente aucune information."#;
 const PARSE_RESUME_SYSTEM: &str = r#"Structure le texte brut d'un CV sans traduire, reformuler ni inventer. Réponds uniquement en JSON : {"resume":"","experiences":[{"intitule":"","entreprise":"","description":""}],"competences":[],"formations":[{"diplome":"","etablissement":""}]}"#;
 const PROFILE_SYSTEM: &str = r#"Extrais le profil du CV sans inventer. Recopie les valeurs et utilise null ou [] si absentes. Dates au format AAAA-MM ou AAAA. Réponds uniquement en JSON camelCase avec exactement cette structure : {"identite":{"prenom":"","nom":"","email":"","telephone":null,"ville":null,"titre":null,"resume":null,"linkedin":null,"github":null,"siteWeb":null},"experiences":[{"intitule":"","entreprise":"","lieu":null,"start_date":"","end_date":null,"posteActuel":false,"description":null}],"competences":[{"nom":""}],"formations":[{"diplome":"","etablissement":"","lieu":null,"start_date":null,"end_date":null,"description":null}],"langues":[{"nom":"","niveau":""}],"projets":[{"nom":"","description":null,"url":null,"technologies":null}],"certifications":[{"nom":"","organisme":null,"date":null,"url":null}]}"#;
@@ -145,13 +145,11 @@ impl AiService {
         ground_generated_resume(&profile, &mut resume);
         progres(notifier, &request.generation_id, "Analyse ATS", None);
         let context_ats = serde_json::json!({"cv":resume,"offre":job_offer}).to_string();
-        let mut analysis: AtsAnalysis = cancel(
+        let analysis: AtsAnalysis = cancel(
             token,
             generate_json(provider, &bloc_donnees("analyse", &context_ats), ATS_SYSTEM),
         )
         .await?;
-        // Le chiffre LLM n'est jamais exposé : l'UI et les DTO portent le score Rust.
-        analysis.score = score.total;
         progres(notifier, &request.generation_id, "Terminé", None);
         Ok(ResumeGeneration {
             resume,
@@ -273,7 +271,7 @@ impl AiService {
         ground_extracted_listing(&request.job_offer, &mut job_offer);
         let score = score_resume_imported(&resume, &job_offer);
         progres(&notifier, &id, "Recommandations ATS", None);
-        let mut analysis: AtsAnalysis = cancel(
+        let analysis: AtsAnalysis = cancel(
             &token,
             generate_json(
                 provider,
@@ -285,7 +283,6 @@ impl AiService {
             ),
         )
         .await?;
-        analysis.score = score.total;
         progres(&notifier, &id, "Terminé", None);
         Ok(ImportedResumeAnalysis {
             resume,

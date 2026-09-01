@@ -14,5 +14,6 @@ export type {
   ProfileImportProgress,
   AiProgress,
   AtsRecommendation,
+  AtsRecommendationSection,
   MatchScore,
 } from "@/shared/types/generated/ai";

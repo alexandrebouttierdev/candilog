@@ -37,6 +37,33 @@ Le `domain` n'importe ni Tauri ni rusqlite. Les vues n'appellent jamais `invoke`
 elles passent par `src/shared/services/ipc.ts`. Les providers IA sont derrière `LlmProvider`.
 La clé API reste dans le coffre natif via `keyring`.
 
+## CV ciblé — `ResumeWorkspace`
+
+Après une génération IA, l'éditeur de CV ne dépend plus du profil ni du snapshot
+`ResumeGeneration` : Rust compose un **`ResumeWorkspace`** (`schema_version = 1`) contenant
+le document complet (`ResumeDocument`), l'offre structurée, l'analyse ATS, le score local
+(`MatchScore`), le score initial et les propositions (`ResumeProposal`).
+
+| Commande IPC | Rôle |
+| --- | --- |
+| `documents_resume_prepare` | Fige profil + `ResumeGeneration` en workspace autonome |
+| `documents_resume_recalculate` | Revalide le document, recalcule score et propositions après édition manuelle |
+| `documents_resume_apply_proposal` | Applique une proposition puis recalcule |
+| `documents_resume_reject_proposal` | Refuse une proposition sans modifier le document, puis recalcule |
+| `documents_resume_export_pdf` | Exporte un `ResumeDocument` (plus un `ResumeGeneration`) |
+
+Toute validation, simulation de gain, construction des propositions et recalcul de score
+vivent dans `features/documents/application/resume_workspace.rs`. L'interface ne fait que
+transmettre le workspace courant et afficher le résultat.
+
+Une compétence manquante peut être ajoutée au profil depuis une proposition :
+`profile_add_skill` (`features/profile/presentation/commands.rs`) — sans doublon, après
+confirmation utilisateur (« CV uniquement » ou « Ajouter au profil »).
+
+Les anciens contenus `ResumeGeneration` restent lisibles en bibliothèque ; la conversion en
+workspace n'a lieu qu'à la première ouverture en édition ou à l'export (`prepare_workspace`),
+sans réécrire silencieusement la bibliothèque.
+
 ## Événements
 
 Les traitements longs remontent leur progression par événements Tauri, émis depuis la

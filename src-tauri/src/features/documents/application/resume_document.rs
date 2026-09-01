@@ -1,109 +1,96 @@
-//! Fusion du profil et du CV généré pour l'export PDF.
+//! Construction du modèle PDF à partir d'un document autonome.
 
-use crate::features::ai::domain::GeneratedResume;
-use crate::features::profile::domain::Profile;
+use crate::features::documents::domain::{
+    ResumeDocument, ResumeExperienceBlock, ResumeProjectBlock,
+};
 use crate::infrastructure::pdf::{
-    ResumeEducation, ResumeExperience, ResumeLanguage, ResumePdf, ResumeProject,
+    ResumeCertification, ResumeEducation, ResumeExperience, ResumeLanguage, ResumePdf,
+    ResumeProject, ResumeSkillGroup,
 };
 
-/// Construit le modèle de CV, en fusionnant le profil (identité, coordonnées,
-/// projets, langues, périodes) et le CV généré (contenu reformulé).
+/// Construit le modèle de CV directement depuis le document enregistré.
 #[must_use]
-pub fn build(profile: &Profile, generation: &GeneratedResume) -> ResumePdf {
-    let identity = &profile.identity;
-    let mut resume = ResumePdf {
-        name: format!("{} {}", identity.first_name, identity.name)
-            .trim()
-            .to_owned(),
-        subtitle: identity.title.clone().unwrap_or_default(),
+pub fn build(document: &ResumeDocument) -> ResumePdf {
+    let identity = &document.identity;
+    ResumePdf {
+        name: identity.full_name.clone(),
+        subtitle: identity.title.clone(),
+        headline: identity.headline.clone(),
         phone: identity.phone.clone(),
         email: identity.email.clone(),
         city: identity.city.clone(),
         linkedin: identity.linkedin.clone(),
         website: identity.website.clone(),
-        profile: generation.resume.clone(),
-        skills: generation.skills.clone(),
-        ..ResumePdf::default()
-    };
-
-    resume.experiences = generation
-        .experiences
-        .iter()
-        .map(|experience| {
-            let meta = profile
-                .experiences
-                .iter()
-                .find(|e| e.title.trim() == experience.title.trim())
-                .map(|e| {
-                    let mut parts = Vec::new();
-                    if let Some(location) = e.location.as_deref() {
-                        if !location.trim().is_empty() {
-                            parts.push(location.to_owned());
-                        }
-                    }
-                    let period = formater_period(Some(&e.start_date), e.end_date.as_deref());
-                    if !period.is_empty() {
-                        parts.push(period);
-                    }
-                    parts.join(" · ")
-                })
-                .unwrap_or_default();
-            ResumeExperience {
-                title: experience.title.clone(),
-                company: experience.company.clone(),
-                meta,
-                bullets: decouper_puces(&experience.description),
-            }
-        })
-        .collect();
-
-    resume.projects = profile
-        .projects
-        .iter()
-        .map(|project| ResumeProject {
-            name: project.name.clone(),
-            meta: project.technologies.clone().unwrap_or_default(),
-            bullets: project
-                .description
-                .as_deref()
-                .map(decouper_puces)
-                .unwrap_or_default(),
-        })
-        .collect();
-
-    resume.education = generation
-        .education
-        .iter()
-        .map(|education| {
-            let date = profile
-                .education
-                .iter()
-                .find(|e| e.degree.trim() == education.degree.trim())
-                .map(|e| formater_period(e.start_date.as_deref(), e.end_date.as_deref()))
-                .unwrap_or_default();
-            ResumeEducation {
+        github: identity.github.clone(),
+        extra: identity.extra.clone(),
+        profile: document.profile.clone(),
+        skill_groups: document
+            .skill_groups
+            .iter()
+            .map(|group| ResumeSkillGroup {
+                name: group.name.clone(),
+                items: group.items.clone(),
+            })
+            .collect(),
+        experiences: document
+            .experiences
+            .iter()
+            .map(experience_from_block)
+            .collect(),
+        projects: document.projects.iter().map(project_from_block).collect(),
+        education: document
+            .education
+            .iter()
+            .map(|education| ResumeEducation {
                 degree: education.degree.clone(),
                 school: education.school.clone(),
-                date,
-            }
-        })
-        .collect();
+                location: education.location.clone(),
+                period: education.period.clone(),
+                description: education.description.clone(),
+            })
+            .collect(),
+        certifications: document
+            .certifications
+            .iter()
+            .map(|certification| ResumeCertification {
+                name: certification.name.clone(),
+                issuer: certification.issuer.clone(),
+                date: certification.date.clone(),
+            })
+            .collect(),
+        languages: document
+            .languages
+            .iter()
+            .map(|language| ResumeLanguage {
+                name: language.name.clone(),
+                level: language.level.clone(),
+            })
+            .collect(),
+    }
+}
 
-    resume.languages = profile
-        .languages
-        .iter()
-        .map(|language| ResumeLanguage {
-            name: language.name.clone(),
-            level: language.level.clone(),
-        })
-        .collect();
+fn experience_from_block(experience: &ResumeExperienceBlock) -> ResumeExperience {
+    ResumeExperience {
+        title: experience.title.clone(),
+        company: experience.company.clone(),
+        location: experience.location.clone(),
+        period: experience.period.clone(),
+        bullets: experience.bullets.clone(),
+    }
+}
 
-    resume
+fn project_from_block(project: &ResumeProjectBlock) -> ResumeProject {
+    ResumeProject {
+        name: project.name.clone(),
+        meta: project.meta.clone().unwrap_or_default(),
+        url: project.url.clone(),
+        bullets: project.bullets.clone(),
+    }
 }
 
 /// Découpe une description en puces : une ligne non vide = une puce, les
 /// marqueurs courants (`·`, `-`, `•`) étant retirés en tête de ligne.
-fn decouper_puces(description: &str) -> Vec<String> {
+pub(super) fn split_bullets(description: &str) -> Vec<String> {
     description
         .lines()
         .map(|row| {
@@ -116,35 +103,19 @@ fn decouper_puces(description: &str) -> Vec<String> {
         .collect()
 }
 
-/// Formate une période « début – fin » en français.
-fn formater_period(start: Option<&str>, end: Option<&str>) -> String {
-    match (start, end) {
-        (Some(start), Some(end)) => {
-            format!(
-                "{} – {}",
-                formater_date_month(start),
-                formater_date_month(end)
-            )
-        }
-        (Some(start), None) => formater_date_month(start),
-        (None, Some(end)) => formater_date_month(end),
-        (None, None) => String::new(),
-    }
-}
-
 /// Formate une date `AAAA-MM` en « Month. AAAA », ou `AAAA` telle quelle.
-fn formater_date_month(value: &str) -> String {
+pub(super) fn format_month_date(value: &str) -> String {
     let Some((year, month)) = value.split_once('-') else {
         return value.to_owned();
     };
     let (Ok(year), Ok(month)) = (year.parse::<u32>(), month.parse::<u32>()) else {
         return value.to_owned();
     };
-    format!("{} {year}", month_abrege(month))
+    format!("{} {year}", abbreviated_month(month))
 }
 
 /// Abréviation française d'un mois, de 1 à 12.
-const fn month_abrege(number: u32) -> &'static str {
+const fn abbreviated_month(number: u32) -> &'static str {
     match number {
         1 => "Janv.",
         2 => "Févr.",
@@ -164,4 +135,4 @@ const fn month_abrege(number: u32) -> &'static str {
 
 #[cfg(test)]
 #[path = "tests/cv_document/mod.rs"]
-mod tests;
+mod cv_document;

@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import type { GeneratedResume, AiProgress } from "@/features/ai/model/types";
 import { cn } from "@/shared/lib/cn";
 import { formatElapsed } from "@/shared/lib/duration";
-import { Icon } from "@/shared/ui";
+import { Icon, IconButton, StatusPill } from "@/shared/ui";
 import { PaperPreview } from "./PaperPreview";
 
 /**
@@ -151,6 +151,41 @@ export function ScoreBadge({ value, label = "Score ATS" }: { value: number; labe
         <p className="text-meta text-ink-faint">sur 100</p>
       </div>
     </div>
+  );
+}
+
+/**
+ * Annuler/rétablir de la barre Document : deux `IconButton` groupées, comme dans les autres
+ * barres d'outils du guide plutôt qu'un `Button` texte qui alourdirait l'en-tête.
+ */
+export function UndoRedoControls({
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
+}: {
+  canUndo: boolean;
+  canRedo: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <IconButton icon="undo" label="Annuler la dernière modification" disabled={!canUndo} onClick={onUndo} />
+      <IconButton icon="redo" label="Rétablir la modification" disabled={!canRedo} onClick={onRedo} />
+    </div>
+  );
+}
+
+/**
+ * État tenant sur une page A4 : vert quand c'est le cas, ambre sinon — jamais seulement une
+ * couleur, l'énoncé porte toujours l'information (règle du guide, cf. `StatusPill`).
+ */
+export function OverflowStatus({ overflow }: { overflow: boolean }) {
+  return overflow ? (
+    <StatusPill tone="warning" icon="warning">Contenu trop long</StatusPill>
+  ) : (
+    <StatusPill tone="success" icon="check_circle">Une page A4</StatusPill>
   );
 }
 

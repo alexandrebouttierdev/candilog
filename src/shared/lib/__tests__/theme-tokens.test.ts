@@ -12,6 +12,8 @@ const documentSources = [
   "components/DocumentUi.tsx",
   "components/PaperPreview.tsx",
   "pages/DocumentsPages.tsx",
+  "components/ResumePaper.tsx",
+  "components/ResumeEditableText.tsx",
 ].map((path) => readFileSync(resolve(sourceRoot, path), "utf8"));
 
 function themeNames(kind: "color" | "text"): string[] {
@@ -58,5 +60,18 @@ describe("jetons Tailwind", () => {
       expect(source).not.toMatch(/rgb\(/i);
       expect(source).not.toMatch(/rounded-\[/);
     }
+  });
+
+  it("expose la géométrie A4 et les polices IBM Plex du CV", () => {
+    // Géométrie et encres du papier CV : dédiées, car le CV n'est pas la lettre — accent
+    // et marges diffèrent du moteur PDF de la lettre.
+    expect(styles).toContain("--resume-ink:");
+    expect(styles).toContain("--resume-accent:");
+    expect(styles).toContain("--resume-page-width:");
+    expect(styles).toContain("--resume-page-height:");
+    // Polices embarquées localement (pas de Google Fonts) : deux familles, chacune dans au
+    // moins une règle `@font-face`.
+    expect(styles).toMatch(/@font-face\s*{[^}]*font-family:\s*"IBM Plex Sans"/);
+    expect(styles).toMatch(/@font-face\s*{[^}]*font-family:\s*"IBM Plex Mono"/);
   });
 });

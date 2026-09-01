@@ -6,10 +6,13 @@ use crate::core::errors::{AppError, AppResult};
 use crate::core::files::{atomic_write, select_save_target};
 use crate::core::pagination::Page;
 use crate::core::utils::blocking;
-use crate::features::ai::domain::GeneratedResume;
-use crate::features::documents::application::{build, build_cover_letter};
+use crate::features::ai::domain::ResumeGeneration;
+use crate::features::documents::application::{
+    apply_proposal, build, build_cover_letter, prepare_workspace, recalculate, reject_proposal,
+};
 use crate::features::documents::domain::{
-    CoverLetter, CoverLetterExport, NewCoverLetter, NewResume, ResumeSummary, ResumeVersion,
+    CoverLetter, CoverLetterExport, NewCoverLetter, NewResume, ResumeDocument, ResumeSummary,
+    ResumeVersion, ResumeWorkspace,
 };
 use std::sync::Arc;
 use tauri::{AppHandle, State};
@@ -58,24 +61,59 @@ pub async fn documents_resume_delete(state: State<'_, AppState>, id: Uuid) -> Ap
     blocking::execute(move || service.resume_delete(id)).await
 }
 
-/// Exporte un CV généré au chemin choisi dans le sélecteur natif.
-///
-/// Le profil (identité, périodes, projets, langues) est fusionné au contenu
-/// reformulé : l'aperçu HTML et le PDF reposent sur les mêmes données.
+/// Fige le profil et une génération IA dans un document de travail autonome, propositions
+/// d'amélioration comprises.
+#[tauri::command(rename_all = "snake_case")]
+pub async fn documents_resume_prepare(
+    state: State<'_, AppState>,
+    generation: ResumeGeneration,
+) -> AppResult<ResumeWorkspace> {
+    let profile = Arc::clone(&state.profile);
+    blocking::execute(move || {
+        let payload = profile.load()?;
+        prepare_workspace(&payload.profile, generation)
+    })
+    .await
+}
+
+/// Revalide le document puis recalcule score et propositions après une édition manuelle.
+#[tauri::command(rename_all = "snake_case")]
+pub async fn documents_resume_recalculate(
+    workspace: ResumeWorkspace,
+) -> AppResult<ResumeWorkspace> {
+    blocking::execute(move || recalculate(workspace)).await
+}
+
+/// Applique une proposition puis recalcule le poste de travail.
+#[tauri::command(rename_all = "snake_case")]
+pub async fn documents_resume_apply_proposal(
+    workspace: ResumeWorkspace,
+    proposal_id: String,
+) -> AppResult<ResumeWorkspace> {
+    blocking::execute(move || apply_proposal(workspace, &proposal_id)).await
+}
+
+/// Refuse une proposition sans modifier le document, puis recalcule le poste de travail.
+#[tauri::command(rename_all = "snake_case")]
+pub async fn documents_resume_reject_proposal(
+    workspace: ResumeWorkspace,
+    proposal_id: String,
+) -> AppResult<ResumeWorkspace> {
+    blocking::execute(move || reject_proposal(workspace, &proposal_id)).await
+}
+
+/// Exporte un document CV autonome au chemin choisi dans le sélecteur natif.
 #[tauri::command(rename_all = "snake_case")]
 pub async fn documents_resume_export_pdf(
     app: AppHandle,
-    state: State<'_, AppState>,
-    resume: GeneratedResume,
+    document: ResumeDocument,
 ) -> AppResult<bool> {
     let Some(cible) = select_save_target(&app, "Exporter le CV", "cv.pdf", "Document PDF", "pdf")?
     else {
         return Ok(false);
     };
-    let profile = Arc::clone(&state.profile);
     blocking::execute(move || {
-        let payload = profile.load()?;
-        let bytes = build(&payload.profile, &resume).render_bytes()?;
+        let bytes = build(&document).render_bytes()?;
         atomic_write(&cible, "pdf", |temporaire| {
             std::fs::write(temporaire, &bytes).map_err(|error| {
                 tracing::error!(%error, "export PDF impossible");

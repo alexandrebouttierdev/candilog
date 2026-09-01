@@ -1,6 +1,15 @@
 import { ipc } from "@/shared/services/ipc";
-import type { ResumeSummary, ResumeVersion, CoverLetterExport, CoverLetter, NewResume, NewCoverLetter } from "@/shared/types/generated/documents";
-import type { GeneratedResume } from "@/shared/types/generated/ai";
+import type {
+  ResumeSummary,
+  ResumeVersion,
+  CoverLetterExport,
+  CoverLetter,
+  NewResume,
+  NewCoverLetter,
+  ResumeWorkspace,
+  ResumeDocument,
+} from "@/shared/types/generated/documents";
+import type { ResumeGeneration } from "@/shared/types/generated/ai";
 import type { Page } from "@/shared/types/page";
 
 export type * from "@/shared/types/generated/documents";
@@ -14,8 +23,16 @@ export const documentsService = {
   getResume: (id: string) => ipc<ResumeVersion>("documents_resume_get", { id }),
   saveResume: (input: NewResume) => ipc<ResumeVersion>("documents_resume_save", { input }),
   deleteResume: (id: string) => ipc<void>("documents_resume_delete", { id }),
-  exportPdf: (resume: GeneratedResume) =>
-    ipc<boolean>("documents_resume_export_pdf", { resume }),
+  prepareResume: (generation: ResumeGeneration) =>
+    ipc<ResumeWorkspace>("documents_resume_prepare", { generation }),
+  recalculateResume: (workspace: ResumeWorkspace) =>
+    ipc<ResumeWorkspace>("documents_resume_recalculate", { workspace }),
+  applyResumeProposal: (workspace: ResumeWorkspace, proposal_id: string) =>
+    ipc<ResumeWorkspace>("documents_resume_apply_proposal", { workspace, proposal_id }),
+  rejectResumeProposal: (workspace: ResumeWorkspace, proposal_id: string) =>
+    ipc<ResumeWorkspace>("documents_resume_reject_proposal", { workspace, proposal_id }),
+  exportPdf: (document: ResumeDocument) =>
+    ipc<boolean>("documents_resume_export_pdf", { document }),
   exportCoverLetterPdf: (cover_letter: CoverLetterExport) =>
     ipc<boolean>("documents_cover_letter_export_pdf", { cover_letter }),
   listCoverLetters: () => ipc<CoverLetter[]>("documents_cover_letters_list"),

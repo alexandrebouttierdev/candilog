@@ -5,11 +5,20 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { documentsService } from "../../../services/documentsService";
+import { workspaceFixture } from "../../../model/resumeWorkspace";
+import type { ResumeWorkspace } from "@/shared/types/generated/documents";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { ResumeLibraryPage } from "../ResumeLibraryPage";
+import { ResumeGeneratorPage } from "../ResumeGeneratorPage";
 import { LetterWriterPage } from "../LettersPages";
 import { AppError } from "@/shared/types/app-error";
 import { aiService } from "@/features/ai/services/aiService";
+
+const navigateMock = vi.hoisted(() => vi.fn());
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual<typeof import("react-router-dom")>("react-router-dom");
+  return { ...actual, useNavigate: () => navigateMock };
+});
 
 function wrapper({ children }: { children: ReactNode }) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -18,6 +27,7 @@ function wrapper({ children }: { children: ReactNode }) {
 
 beforeEach(() => {
   vi.restoreAllMocks();
+  navigateMock.mockReset();
   useUiStore.setState({ toasts: [] });
 });
 
@@ -64,7 +74,7 @@ describe("échecs d'enregistrement", () => {
       name: "CV Produit",
       content: {
         resume: { resume: "", experiences: [], skills: [], education: [] },
-        analysis: { score: 70, recap: "", suggestions: [], recommendations: [] },
+        analysis: { recap: "", recommendations: [] },
         job_offer: { title: "Dev", skills: [], soft_skills: [], experience: null, keywords: [] },
         profile_score: {
           total: 70,
@@ -253,5 +263,125 @@ describe("itérations sur la lettre", () => {
 
     expect(screen.getByLabelText("Contexte ou offre")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Revenir aux itérations" })).toBeInTheDocument();
+  });
+});
+
+describe("bibliothèque CV workspace", () => {
+  function listerWorkspace(workspace: ResumeWorkspace) {
+    vi.spyOn(documentsService, "listResumePage").mockResolvedValue({
+      items: [{ id: "cv-ws", name: "CV Workspace", created_at: "2026-08-30T00:00:00Z" }],
+      total: 1,
+      page: 1,
+      page_size: 8,
+      total_pages: 1,
+    });
+    vi.spyOn(documentsService, "getResume").mockResolvedValue({
+      id: "cv-ws",
+      name: "CV Workspace",
+      content: workspace,
+      created_at: "2026-08-30T00:00:00Z",
+    });
+  }
+
+  it("affiche ResumePaper, ouvre le workspace avec Modifier et exporte le document", async () => {
+    const workspace = workspaceFixture({ profile: "Profil visible en bibliothèque." });
+    listerWorkspace(workspace);
+    const exportPdf = vi.spyOn(documentsService, "exportPdf").mockResolvedValue(true);
+
+    render(<ResumeLibraryPage />, { wrapper });
+    expect(await screen.findByText("Profil visible en bibliothèque.")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /Modifier/ }));
+    expect(navigateMock).toHaveBeenCalledWith("/documents/generate-resume", {
+      state: { workspace, name: "CV Workspace" },
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: /Exporter PDF/ }));
+    await waitFor(() =>
+      expect(exportPdf).toHaveBeenCalledWith(workspace.document),
+    );
+  });
+
+  it("prépare une génération historique seulement à l'export", async () => {
+    const generation = {
+      resume: { resume: "Résumé historique.", experiences: [], skills: [], education: [] },
+      analysis: { recap: "", recommendations: [] },
+      job_offer: { title: "Dev", skills: [], soft_skills: [], experience: null, keywords: [] },
+      profile_score: { total: 72, skills: null, experience: null, ats: null, present: [], missing: [] },
+    };
+    const prepared = workspaceFixture({ profile: "Document préparé à l'export." });
+    vi.spyOn(documentsService, "listResumePage").mockResolvedValue({
+      items: [{ id: "cv-old", name: "CV Historique", created_at: "2026-08-30T00:00:00Z" }],
+      total: 1,
+      page: 1,
+      page_size: 8,
+      total_pages: 1,
+    });
+    vi.spyOn(documentsService, "getResume").mockResolvedValue({
+      id: "cv-old",
+      name: "CV Historique",
+      content: generation,
+      created_at: "2026-08-30T00:00:00Z",
+    });
+    const prepareResume = vi.spyOn(documentsService, "prepareResume").mockResolvedValue(prepared);
+    const exportPdf = vi.spyOn(documentsService, "exportPdf").mockResolvedValue(true);
+    const saveResume = vi.spyOn(documentsService, "saveResume");
+
+    render(<ResumeLibraryPage />, { wrapper });
+    expect(await screen.findByText("Résumé historique.")).toBeInTheDocument();
+    expect(prepareResume).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole("button", { name: /Exporter PDF/ }));
+    await waitFor(() => expect(prepareResume).toHaveBeenCalledWith(generation));
+    await waitFor(() =>
+      expect(exportPdf).toHaveBeenCalledWith(prepared.document),
+    );
+    expect(saveResume).not.toHaveBeenCalled();
+  });
+});
+
+describe("décisions ATS et confirmation profil dans le générateur de CV", () => {
+  function missingSkillWorkspace(): ResumeWorkspace {
+    const workspace = workspaceFixture();
+    return {
+      ...workspace,
+      proposals: [
+        {
+          id: "missing-skill-docker",
+          kind: "missing_skill",
+          target: { type: "skill_group", group_id: "group-1" },
+          label: "Docker",
+          original_text: null,
+          proposed_text: "Docker",
+          gain: 5,
+          status: "pending",
+          applicable: true,
+        },
+      ],
+    };
+  }
+
+  it("demande séparément si la compétence rejoint le profil", async () => {
+    vi.spyOn(aiService, "generateResume").mockResolvedValue({
+      resume: { resume: "", experiences: [], skills: [], education: [] },
+      analysis: { recap: "", recommendations: [] },
+      job_offer: { title: "Développeur", skills: [], soft_skills: [], experience: null, keywords: [] },
+      profile_score: { total: 60, skills: null, experience: null, ats: null, present: [], missing: [] },
+    });
+    const workspace = missingSkillWorkspace();
+    vi.spyOn(documentsService, "prepareResume").mockResolvedValue(workspace);
+    vi.spyOn(documentsService, "applyResumeProposal").mockResolvedValue({
+      ...workspace,
+      proposals: [{ ...workspace.proposals[0]!, status: "accepted" }],
+    });
+
+    render(<ResumeGeneratorPage />, { wrapper });
+    await userEvent.type(screen.getByLabelText(/Texte de l’offre/), "Une offre");
+    await userEvent.click(screen.getByRole("button", { name: /Générer le CV ciblé/ }));
+
+    await userEvent.click(await screen.findByRole("button", { name: "Accepter Docker" }));
+
+    expect(await screen.findByRole("button", { name: "CV uniquement" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ajouter au profil" })).toBeInTheDocument();
   });
 });

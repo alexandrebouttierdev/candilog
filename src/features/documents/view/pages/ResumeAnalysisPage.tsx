@@ -7,7 +7,7 @@ import { formatDuration } from "@/shared/lib/duration";
 import { AppError } from "@/shared/types/app-error";
 import { Button, EmptyState, ErrorBanner, Icon, PageHeader } from "@/shared/ui";
 import { A4Preview, AiProgress, DocumentPanel, ScoreBadge } from "../components/DocumentUi";
-import { ChampOffre, HeaderBadge, Screen, TexteNonVerifie, message } from "./documentPageSupport";
+import { ChampOffre, HeaderBadge, labelSection, Screen, TexteNonVerifie, message } from "./documentPageSupport";
 
 export function ResumeAnalysisPage() {
   const [job_offer, setJobOffer] = useState("");
@@ -80,7 +80,24 @@ export function ResumeAnalysisPage() {
                 </div>
               </DocumentPanel>
               <DocumentPanel title="Recommandations" icon="tips_and_updates">
-                <ul className="divide-y divide-line">{result.analysis.suggestions.map((s, i) => <li key={i} className="flex gap-3 px-4 py-3 text-body text-ink-muted"><span className="tabular text-accent">{i + 1}</span>{s}</li>)}</ul>
+                {result.analysis.recommendations.length ? (
+                  <ul className="divide-y divide-line">
+                    {result.analysis.recommendations.map((recommendation, i) => (
+                      <li key={i} className="flex flex-col gap-1.5 px-4 py-3">
+                        <span className="text-label font-medium text-accent">
+                          {labelSection(recommendation.section)}
+                        </span>
+                        <p className="text-body text-ink-muted">{recommendation.proposed_text}</p>
+                        <span className="flex items-center gap-1.5 text-meta text-ink-faint">
+                          <Icon name="info" size={14} />
+                          À appliquer dans l’éditeur de CV
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <EmptyState icon="tips_and_updates" title="Aucune recommandation" description="Le modèle n’a proposé aucune reformulation pour cette analyse." />
+                )}
               </DocumentPanel>
               <DocumentPanel title="Aperçu du CV lu" icon="visibility"><A4Preview resume={result.resume} /></DocumentPanel>
             </>

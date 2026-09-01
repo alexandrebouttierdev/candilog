@@ -45,6 +45,28 @@ la prose : le corps reste assemblé par Candilog.
 Le score ATS affiché est toujours le calcul déterministe Rust (`profile_score` /
 `score_resume_imported`, `domain/scoring.rs`), jamais le chiffre renvoyé par le modèle.
 
+## Recommandations ATS de l'éditeur de CV
+
+Chaque recommandation du modèle (`AtsRecommendation`) cible une section **fermée** :
+
+| Section | Cible |
+| --- | --- |
+| `profile` | texte du profil (`item_index` absent) |
+| `experience` | description d'une expérience (`item_index` = indice 0-based) |
+
+`validate_ai_output` rejette une recommandation mal ciblée (profil avec indice, expérience
+sans indice, indice hors limites). Le champ `impact` n'existe plus : le modèle ne déclare
+aucun gain de score.
+
+Dans l'éditeur, chaque recommandation applicable devient une `ResumeProposal`. Son **gain**
+(`proposal.gain`) est simulé localement par `simulate_gain` sur une copie du document
+(`build_proposals`, `recalculate`) — jamais repris du LLM. Une proposition non applicable
+(compétence déjà présente, texte modifié depuis la génération) reste visible avec son statut
+mais sans action possible.
+
+Les compétences manquantes de l'offre (`MatchScore.missing`) produisent des propositions
+`missing_skill` distinctes des reformulations textuelles.
+
 ## Progression et annulation
 
 Les traitements sont asynchrones côté Rust. La progression remonte par événements Tauri :

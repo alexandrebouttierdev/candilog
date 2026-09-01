@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import type { ResumeGeneration, GeneratedResume } from "@/features/ai/model/types";
-import type { CoverLetter, CoverLetterExport } from "../../services/documentsService";
+import type { AtsRecommendationSection, ResumeGeneration } from "@/features/ai/model/types";
+import type { CoverLetter, CoverLetterExport, ResumeDocument, ResumeWorkspace } from "../../services/documentsService";
 import { documentsService } from "../../services/documentsService";
 import type { ToastMessage } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
@@ -152,17 +152,37 @@ export function message(error: unknown): string { return error instanceof AppErr
 /** Détail d'un toast d'erreur : le message backend quand il y en a un, rien sinon. */
 export function detail(error: unknown): string | undefined { return error instanceof AppError ? error.message : undefined; }
 export function date(value: string): string { const d = new Date(value); return Number.isNaN(d.getTime()) ? value : new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "short", year: "numeric" }).format(d); }
-export function isGeneration(value: unknown): value is ResumeGeneration { return typeof value === "object" && value !== null && "resume" in value && "analysis" in value; }
-export function generationFromNavigation(state: unknown): { result: ResumeGeneration | null; name: string } {
-  if (typeof state !== "object" || state === null || !("generation" in state)) {
-    return { result: null, name: "" };
+/** Une ancienne version enregistrée sans `schema_version` : encore lisible, pas encore un workspace. */
+export function isLegacyGeneration(value: unknown): value is ResumeGeneration { return typeof value === "object" && value !== null && "resume" in value && "analysis" in value; }
+
+/**
+ * Document CV transmis par la navigation : soit un workspace déjà prêt (réouverture d'une
+ * version versionnée), soit une génération historique qui devra être préparée avant édition.
+ * `result`/`name` gardent leur forme d'origine pour ne pas rompre les écrans qui ne
+ * consomment encore que la génération ; `workspace` s'y ajoute pour ceux qui savent l'éviter.
+ */
+export function generationFromNavigation(state: unknown): {
+  result: ResumeGeneration | null;
+  workspace: ResumeWorkspace | null;
+  name: string;
+} {
+  if (typeof state !== "object" || state === null) return { result: null, workspace: null, name: "" };
+  const payload = state as { generation?: ResumeGeneration; workspace?: ResumeWorkspace; name?: string };
+  if (payload.workspace) {
+    return {
+      result: null,
+      workspace: payload.workspace,
+      name: payload.name ?? `CV — ${payload.workspace.job_offer.title || "Version ciblée"}`,
+    };
   }
-  const payload = state as { generation?: ResumeGeneration; name?: string };
-  if (!payload.generation) return { result: null, name: "" };
-  return {
-    result: payload.generation,
-    name: payload.name ?? `CV — ${payload.generation.job_offer.title || "Version ciblée"}`,
-  };
+  if (payload.generation) {
+    return {
+      result: payload.generation,
+      workspace: null,
+      name: payload.name ?? `CV — ${payload.generation.job_offer.title || "Version ciblée"}`,
+    };
+  }
+  return { result: null, workspace: null, name: "" };
 }
 export function coverLetterFromNavigation(state: unknown): CoverLetter | null {
   if (typeof state !== "object" || state === null || !("cover_letter" in state)) return null;
@@ -174,13 +194,16 @@ export function labelTone(tone: string): string {
   if (tone === "creative") return "Créatif";
   return "Formel";
 }
+export function labelSection(section: AtsRecommendationSection): string {
+  return section === "experience" ? "Expérience" : "Profil";
+}
 
 export async function exportPdf(
-  resume: GeneratedResume,
+  document: ResumeDocument,
   notify: (toast: Omit<ToastMessage, "id">) => void,
 ) {
   try {
-    const exported = await documentsService.exportPdf(resume);
+    const exported = await documentsService.exportPdf(document);
     if (!exported) return;
     notify({ tone: "success", title: "CV exporté" });
   } catch (error) {

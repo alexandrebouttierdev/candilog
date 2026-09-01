@@ -125,6 +125,15 @@ describe("contrat IPC", () => {
     expect(fantomes).toEqual([]);
   });
 
+  it("déclare les commandes de l'éditeur de CV et de l'ajout de compétence", () => {
+    const commandNames = commandesRust();
+    expect(commandNames).toContain("documents_resume_prepare");
+    expect(commandNames).toContain("documents_resume_recalculate");
+    expect(commandNames).toContain("documents_resume_apply_proposal");
+    expect(commandNames).toContain("documents_resume_reject_proposal");
+    expect(commandNames).toContain("profile_add_skill");
+  });
+
   it("impose snake_case aux arguments IPC, comme les DTO serde", () => {
     // Tauri convertit `page_size` en `pageSize` par défaut : le frontend envoie
     // `page_size` et la commande échoue avec « missing required key pageSize ».

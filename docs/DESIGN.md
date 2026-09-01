@@ -291,6 +291,23 @@ Fermeture : `useDismissable` (Escape + clic extérieur) — calendrier, FilterMe
 
 ### Documents générés
 
+#### CV ciblé (éditeur)
+
+- L'aperçu est une **feuille A4 unique** (`ResumePaper`, 210 × 297 mm) rendue en HTML avec
+  les jetons `--resume-*` de `styles.css` : encre, accent, filets, marges (14 / 16 / 15 mm)
+  et géométrie `--resume-page-*`. Le papier reste **blanc** (`--paper-bg`) en thème clair
+  **et** sombre — il prévisualise le PDF imprimé, pas la surface de l'application.
+- Typographie **IBM Plex Sans** (corps) et **IBM Plex Mono** (étiquettes, dates, coordonnées),
+  polices locales embarquées (`src-tauri/assets/fonts/ibm-plex/`), identiques à l'export PDF.
+- Cinq **paliers de densité** (`--resume-fs`, `--resume-sp`) : `ResumePaper` compacte
+  d'abord les espacements, puis la taille de corps jusqu'au seuil lisible minimal. Si le
+  contenu dépasse encore la hauteur imprimable, un bandeau `resume-overflow-warning` l'indique
+  et le bouton **Exporter** est désactivé — aucun texte n'est tronqué silencieusement.
+- L'édition est **directe sur le papier** (`ResumeEditableText`) : le texte affiché est celui
+  qui sera enregistré et exporté. Le collage ne conserve que le texte brut.
+- Le panneau latéral porte le score ATS, le gain cumulé et les propositions (acceptation,
+  refus, annulation) ; il ne remplace pas le papier comme surface d'édition.
+
 - L'aperçu A4 de la lettre est **éditable sur place** : le texte affiché est celui qui sera
   enregistré et exporté.
 - Barre d'outils de la lettre : gras, souligné, taille (petite / normale / grande) et
@@ -305,7 +322,9 @@ Fermeture : `useDismissable` (Escape + clic extérieur) — calendrier, FilterMe
 
 ## Documents PDF
 
-- CV : exactement une page A4 (210 × 297 mm).
+- CV : exactement une page A4 (210 × 297 mm), texte sélectionnable, polices IBM Plex
+  embarquées. Le moteur Rust (`infrastructure/pdf/resume_pdf.rs`) reproduit la même logique
+  de densité que l'aperçu : espacements puis typographie jusqu'au seuil lisible.
 - Lettre de motivation : exactement une page A4 (210 × 297 mm).
 - Le rendu réduit d'abord les espacements, puis la typographie jusqu'au seuil lisible défini par le moteur.
 - Si le contenu ne tient toujours pas, l'export est refusé avec un message demandant de le raccourcir. Aucun texte n'est tronqué, superposé ou placé hors page silencieusement.

@@ -138,6 +138,42 @@ fn une_entree_legacy_incomplete_ne_gonfle_pas_le_score() {
         .contains(&"vos compétences".into()));
 }
 
+fn service_avec_competences(noms: Vec<&str>) -> ProfileService<Memoire> {
+    let profile = Profile {
+        skills: noms
+            .into_iter()
+            .map(|name| Skill { name: name.into() })
+            .collect(),
+        ..Profile::default()
+    };
+    ProfileService::new(Memoire {
+        profile: Mutex::new(Some(profile)),
+    })
+}
+
+#[test]
+fn ajoute_une_competence_sans_doublon_normalise() {
+    let service = service_avec_competences(vec!["Café"]);
+    service.add_skill(" cafe ").unwrap();
+    assert_eq!(service.load().unwrap().profile.skills.len(), 1);
+}
+
+#[test]
+fn ajoute_une_nouvelle_competence_distincte() {
+    let service = service_avec_competences(vec!["Rust"]);
+    service.add_skill("TypeScript").unwrap();
+    let skills = service.load().unwrap().profile.skills;
+    assert_eq!(skills.len(), 2);
+    assert_eq!(skills[1].name, "TypeScript");
+}
+
+#[test]
+fn refuse_une_competence_vide() {
+    let service = service_avec_competences(vec![]);
+    let error = service.add_skill("   ").unwrap_err();
+    assert!(matches!(error, AppError::Validation(_)));
+}
+
 fn empty_request() -> ImportProfileRequest {
     ImportProfileRequest {
         identity: vec![],

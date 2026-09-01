@@ -2,9 +2,10 @@
 
 use crate::core::errors::{AppError, AppResult};
 use crate::core::pagination::Page;
+use crate::features::documents::application::validate_document;
 use crate::features::documents::domain::{
     sanitize_letter, CoverLetter, CoverLetterRepository, NewCoverLetter, NewResume,
-    ResumeRepository, ResumeSummary, ResumeVersion,
+    ResumeRepository, ResumeSummary, ResumeVersion, ResumeWorkspace, RESUME_WORKSPACE_VERSION,
 };
 use uuid::Uuid;
 
@@ -140,6 +141,11 @@ impl<C: ResumeRepository, L: CoverLetterRepository> DocumentsService<C, L> {
 }
 
 /// Refuse un contenu de CV qui n'est pas un objet JSON borné.
+///
+/// Un contenu historique, sans `schema_version`, reste accepté tel quel pour la lecture et
+/// la duplication : seule la version 1 (l'éditeur de CV autonome) est désérialisée en
+/// [`ResumeWorkspace`] et son document revalidé, faute de quoi une forme incohérente pourrait
+/// entrer en base par un appel IPC forgé.
 fn valider_contenu(content: &serde_json::Value) -> AppResult<()> {
     if !content.is_object() {
         return Err(AppError::Validation(
@@ -152,6 +158,15 @@ fn valider_contenu(content: &serde_json::Value) -> AppResult<()> {
         return Err(AppError::Validation(
             "Le contenu du CV dépasse la taille maximale autorisée".into(),
         ));
+    }
+    if content.get("schema_version") == Some(&serde_json::json!(RESUME_WORKSPACE_VERSION)) {
+        let workspace: ResumeWorkspace = serde_json::from_value(content.clone()).map_err(|_| {
+            AppError::Validation(
+                "Le contenu du CV est invalide : générez-le à nouveau avant de l'enregistrer"
+                    .into(),
+            )
+        })?;
+        validate_document(&workspace.document)?;
     }
     Ok(())
 }
@@ -217,6 +232,22 @@ mod tests {
                 "contenu {contenu} accepté"
             );
         }
+    }
+
+    /// Un contenu forgé en v1 (`schema_version: 1`) est désérialisé en `ResumeWorkspace` et
+    /// son document validé : un `document` vide n'a ni identité ni profil, la validation doit
+    /// donc refuser l'écriture plutôt que de laisser entrer une forme incohérente en base.
+    #[test]
+    fn refuse_un_cv_v1_dont_le_document_est_invalide() {
+        let service = service();
+        let err = service
+            .resume_save(&NewResume {
+                name: "CV Produit".into(),
+                content: serde_json::json!({ "schema_version": 1, "document": {} }),
+            })
+            .unwrap_err();
+        assert!(matches!(err, AppError::Validation(_)));
+        assert!(service.resume_list().unwrap().is_empty());
     }
 
     #[test]

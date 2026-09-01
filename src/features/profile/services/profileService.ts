@@ -14,4 +14,5 @@ export const profileService = {
   save: (profile: Profile) => ipc<ProfilePayload>("profile_save", { profile }),
   applyImport: (request: ImportProfileRequest) =>
     ipc<ImportProfileResult>("profile_apply_import", { request }),
+  addSkill: (name: string) => ipc<ProfilePayload>("profile_add_skill", { name }),
 };

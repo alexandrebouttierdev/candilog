@@ -1,10 +1,11 @@
 //! Validation et complétion du profil professionnel.
 
 use crate::core::errors::{AppError, AppResult};
+use crate::core::utils::text::search_key;
 use crate::core::utils::validation::validate_optional_http_url;
 use crate::features::profile::domain::{
     apply_decisions, build_preview, Identity, ImportProfilePreview, ImportProfileRequest,
-    ImportProfileResult, Profile, ProfilePayload, ProfileRepository,
+    ImportProfileResult, Profile, ProfilePayload, ProfileRepository, Skill,
 };
 
 /// Service métier du profil, générique sur son dépôt.
@@ -44,6 +45,28 @@ impl<R: ProfileRepository> ProfileService<R> {
         valider(&merged)?;
         self.repo.save(&merged)?;
         Ok(result)
+    }
+
+    /// Ajoute une compétence au profil, sans doublon selon une comparaison normalisée
+    /// (casse, accents, espaces) : l'éditeur de CV propose d'ajouter une compétence attendue
+    /// par l'offre, et rejouer l'action ne doit jamais créer d'entrée en double.
+    ///
+    /// # Errors
+    /// `AppError::Validation` si le nom, une fois retiré de ses espaces, est vide.
+    pub fn add_skill(&self, name: &str) -> AppResult<ProfilePayload> {
+        let name = name.trim();
+        if name.is_empty() {
+            return Err(AppError::Validation("La compétence est requise".into()));
+        }
+        let (mut profile, _) = self.repo.get()?;
+        if !profile
+            .skills
+            .iter()
+            .any(|skill| search_key(&skill.name) == search_key(name))
+        {
+            profile.skills.push(Skill { name: name.into() });
+        }
+        self.save(&profile)
     }
 }
 
