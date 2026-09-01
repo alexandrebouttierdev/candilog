@@ -37,5 +37,32 @@ export function letterDateLine(city: string | null, today: Date = new Date()): s
 /** Intitulé de candidature affiché sur la feuille ; absent si le poste n'est pas renseigné. */
 export function letterHeadline(job_title: string | null): string | null {
   const poste = job_title?.trim() ?? "";
-  return poste === "" ? null : `Candidature au poste de ${poste}`;
+  return poste === "" ? null : `Candidature au poste ${elider("de", poste)}`;
+}
+
+/**
+ * Colle une préposition à un mot en respectant l'élision : « de Astek » → « d'Astek ».
+ *
+ * Jumeau de `core::utils::text::elider`. Sans elle, la feuille annonçait « Candidature au
+ * poste de Administrateur », faute que personne ne commettrait dans une vraie candidature.
+ * Le `h` est traité comme muet : distinguer le `h` aspiré demanderait un lexique.
+ */
+export function elider(preposition: string, suivant: string): string {
+  const valeur = suivant.trim();
+  const premiere = valeur.normalize("NFD").replace(/[\u0300-\u036f]/g, "")[0]?.toLowerCase();
+  if (premiere !== undefined && "aeiouyh".includes(premiere)) {
+    return `${preposition.replace(/[ea]$/, "")}\u2019${valeur}`;
+  }
+  return `${preposition} ${valeur}`;
+}
+
+/**
+ * Retire l'amorce de l'intitulé saisi sur la feuille, élidée ou non.
+ *
+ * La zone éditable rend `letterHeadline` : ce qui en ressort porte l'amorce, et l'enregistrer
+ * telle quelle ferait « Candidature au poste de Candidature au poste d\u2019Administrateur ».
+ */
+export function letterJobTitleFromHeadline(value: string): string {
+  const amorce = /^Candidature au poste (?:de |d[\u2019'])/;
+  return value.replace(amorce, "");
 }

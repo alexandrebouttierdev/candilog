@@ -3,7 +3,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { profileService } from "@/features/profile/services/profileService";
 import { PROFILE_KEY } from "@/features/profile/viewmodel/useProfileViewModel";
 import type { Identity } from "@/shared/types/generated/profile";
-import { letterDateLine, letterHeadline, letterSignature } from "../../model/letterLayout";
+import {
+  letterDateLine,
+  letterHeadline,
+  letterJobTitleFromHeadline,
+  letterSignature,
+} from "../../model/letterLayout";
 import { ResumeEditableText } from "./ResumeEditableText";
 
 const DENSITY_STEPS: { fs: number; sp: number }[] = [
@@ -246,10 +251,7 @@ export function LetterPaper({
                 value={headline ?? fields.job_title ?? ""}
                 editable={editable}
                 className="letter-headline"
-                onChange={(value) => {
-                  const prefixe = "Candidature au poste de ";
-                  changer("job_title")(value.startsWith(prefixe) ? value.slice(prefixe.length) : value);
-                }}
+                onChange={(value) => changer("job_title")(letterJobTitleFromHeadline(value))}
               />
             ) : null}
             {afficher(fields.job_reference) ? (

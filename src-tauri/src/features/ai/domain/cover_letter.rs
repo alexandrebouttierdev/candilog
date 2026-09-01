@@ -3,6 +3,7 @@
 use super::normalization::contains_search_term;
 use super::{search_key, CoverLetterRequest, ValidateAiOutput, MAX_ITEMS, MAX_ITEM_CHARS};
 use crate::core::errors::{AppError, AppResult};
+use crate::core::utils::text::elider;
 use crate::features::profile::domain::Profile;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -236,13 +237,15 @@ pub fn render_grounded_letter(
         .filter(|value| !value.trim().is_empty())
         .unwrap_or("ce poste");
     let mut paragraphs = vec![format!(
-        "Madame, Monsieur,\n\nJe vous adresse ma candidature au poste de {job} au sein de {company}."
+        "Madame, Monsieur,\n\nJe vous adresse ma candidature au poste {} au sein {}.",
+        elider("de", job),
+        elider("de", company)
     )];
     paragraphs.extend(selected.into_iter().map(|fact| fact_sentence(fact, tone)));
     if !keywords.is_empty() {
         paragraphs.push(format!(
-            "Votre besoin autour de {} motive particulièrement ma candidature.",
-            join_french(&keywords)
+            "Votre besoin autour {} motive particulièrement ma candidature.",
+            elider("de", &join_french(&keywords))
         ));
     }
     paragraphs.push(match tone {
@@ -254,24 +257,41 @@ pub fn render_grounded_letter(
 }
 
 fn fact_sentence(fact: &GroundedFact, tone: &str) -> String {
+    let text = phrase(&fact.text);
     match (fact.kind, tone) {
-        (GroundedFactKind::Summary, _) => format!("Mon projet professionnel : {}.", fact.text),
+        (GroundedFactKind::Summary, _) => format!("Mon projet professionnel : {text}"),
         (GroundedFactKind::Experience, "casual" | "creative") => {
-            format!("Mon parcours comprend notamment {}.", fact.text)
+            format!("Mon parcours comprend notamment {text}")
         }
         (GroundedFactKind::Experience, _) => {
-            format!("Mon expérience comprend notamment {}.", fact.text)
+            format!("Mon expérience comprend notamment {text}")
         }
-        (GroundedFactKind::Skill, _) => format!("Je peux notamment mobiliser {}.", fact.text),
-        (GroundedFactKind::Education, _) => format!("Ma formation inclut {}.", fact.text),
-        (GroundedFactKind::Project, _) => format!("J'ai également mené le projet {}.", fact.text),
+        (GroundedFactKind::Skill, _) => format!("Je peux notamment mobiliser {text}"),
+        (GroundedFactKind::Education, _) => format!("Ma formation inclut {text}"),
+        (GroundedFactKind::Project, _) => format!("J'ai également mené le projet {text}"),
         (GroundedFactKind::Certification, _) => {
-            format!(
-                "Mon parcours comprend aussi la certification {}.",
-                fact.text
-            )
+            format!("Mon parcours comprend aussi la certification {text}")
         }
     }
+}
+
+/// Ramène un fait du catalogue à une fin de phrase lisible.
+///
+/// Un fait reprend le texte du profil tel quel : une description d'expérience y arrive avec
+/// ses retours à la ligne et sa ponctuation. Insérée telle quelle, elle coupait la phrase de
+/// la lettre en plein milieu et lui ajoutait un second point (« … courantes.. »).
+fn phrase(text: &str) -> String {
+    let mut rendu = text
+        .lines()
+        .map(str::trim)
+        .filter(|ligne| !ligne.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ");
+    while rendu.ends_with([';', ',', '.', ' ']) {
+        rendu.pop();
+    }
+    rendu.push('.');
+    rendu
 }
 
 fn join_french(values: &[&str]) -> String {
@@ -351,7 +371,49 @@ mod tests {
         let text = render_grounded_letter(&catalog(), &plan, &request()).unwrap();
 
         assert!(!text.contains("Kubernetes"));
-        assert!(text.contains("Votre besoin autour de APIs"));
+        assert!(text.contains("Votre besoin autour d\u{2019}APIs"));
+    }
+
+    /// « au poste de Administrateur », « au sein de Astek » : la lettre composait ses
+    /// phrases autour de valeurs saisies sans jamais élider la préposition.
+    #[test]
+    fn la_lettre_elide_la_preposition_devant_une_voyelle() {
+        let mut request = request();
+        request.company = Some("Astek".into());
+        request.job_title = Some("Administrateur syst\u{e8}me".into());
+        let plan = CoverLetterPlan::default();
+
+        let text = render_grounded_letter(&catalog(), &plan, &request).unwrap();
+
+        assert!(
+            text.contains("au poste d\u{2019}Administrateur syst\u{e8}me au sein d\u{2019}Astek."),
+            "{text}"
+        );
+    }
+
+    /// Un fait reprend le texte du profil : ses retours \u{e0} la ligne coupaient la phrase en
+    /// plein milieu, et sa ponctuation finale ajoutait un second point.
+    #[test]
+    fn un_fait_multiligne_devient_une_phrase_unique() {
+        let catalog = vec![GroundedFact {
+            id: "experience:0".into(),
+            kind: GroundedFactKind::Experience,
+            text: "Technicienne chez Nova : Support N1.\nD\u{e9}ploiement de postes.".into(),
+        }];
+        let plan = CoverLetterPlan {
+            selected_fact_ids: vec!["experience:0".into()],
+            motivation_keywords: vec![],
+        };
+
+        let text = render_grounded_letter(&catalog, &plan, &request()).unwrap();
+
+        assert!(!text.contains(".."), "point doubl\u{e9} : {text}");
+        let phrase = text
+            .split("\n\n")
+            .find(|bloc| bloc.starts_with("Mon exp\u{e9}rience"))
+            .unwrap();
+        assert!(!phrase.contains('\n'), "phrase coup\u{e9}e : {phrase}");
+        assert!(phrase.ends_with("D\u{e9}ploiement de postes."), "{phrase}");
     }
 
     #[test]
