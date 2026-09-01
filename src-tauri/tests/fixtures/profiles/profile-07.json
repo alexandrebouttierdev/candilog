@@ -1,0 +1,141 @@
+{
+  "identity": {
+    "first_name": "Damien",
+    "name": "Rouvière",
+    "email": "damien.rouviere@example.fr",
+    "phone": "06 05 77 31 62",
+    "address": "9 place de la Comédie",
+    "city": "Montpellier",
+    "title": "Administrateur systèmes et réseaux",
+    "resume": "Douze ans d'exploitation d'infrastructures systèmes et réseaux, en PME industrielle puis en ESN. J'administre des socles Windows et Linux virtualisés, des réseaux multi-sites sécurisés et des chaînes de sauvegarde, et j'accompagne les projets d'infrastructure de l'étude au maintien en condition opérationnelle.",
+    "linkedin": "linkedin.com/in/damien-rouviere-exemple",
+    "github": "github.com/damien-rouviere-exemple",
+    "website": "damien-rouviere.example.fr"
+  },
+  "experiences": [
+    {
+      "title": "Administrateur systèmes et réseaux",
+      "company": "Méditerranée Infrastructures Numériques",
+      "location": "Montpellier",
+      "start_date": "2021-01",
+      "end_date": null,
+      "current": true,
+      "description": "Administration d'un socle de quatre-vingts machines virtuelles sur VMware vSphere 7, réparties sur deux salles.\nMaintien en condition opérationnelle des contrôleurs de domaine Active Directory et des stratégies de groupe pour douze clients.\nExploitation des sauvegardes Veeam Backup & Replication et campagnes de restauration documentées deux fois par an.\nAdministration des pare-feux Fortinet FortiGate : politiques de filtrage, tunnels IPsec site-à-site, journalisation centralisée.\nAutomatisation des tâches récurrentes en PowerShell et en Python : inventaires, contrôles de conformité, rapports d'exploitation.\nParticipation aux comités techniques clients et rédaction des guides d'installation génériques du service."
+    },
+    {
+      "title": "Technicien systèmes et réseaux confirmé",
+      "company": "Cave Coopérative du Pic Saint-Loup",
+      "location": "Saint-Mathieu-de-Tréviers",
+      "start_date": "2017-04",
+      "end_date": "2020-12",
+      "current": false,
+      "description": "Refonte complète du réseau du site : segmentation en VLAN, remplacement des commutateurs, plan d'adressage documenté.\nMigration de l'infrastructure vers un cluster Hyper-V à deux nœuds avec réplication.\nMise en place de la supervision Centreon et des alertes d'exploitation.\nAdministration quotidienne des serveurs Windows Server 2012 R2 puis 2016 et des serveurs Debian applicatifs."
+    },
+    {
+      "title": "Technicien d'exploitation",
+      "company": "Groupe Hôtelier des Cévennes",
+      "location": "Nîmes",
+      "start_date": "2015-02",
+      "end_date": "2017-03",
+      "current": false,
+      "description": "Exploitation des systèmes de sept établissements et support de niveau 2.\nDéploiement du Wi-Fi client sur l'ensemble des sites.\nSuivi des sauvegardes et des contrats de maintenance."
+    },
+    {
+      "title": "Technicien support informatique",
+      "company": "Société Languedocienne de Transports",
+      "location": "Montpellier",
+      "start_date": "2013-09",
+      "end_date": "2015-01",
+      "current": false,
+      "description": "Support de niveau 1 et 2 pour 250 utilisateurs.\nGestion du parc et des commandes de matériel."
+    },
+    {
+      "title": "Technicien de maintenance (alternance)",
+      "company": "Assistance Micro Héraultaise",
+      "location": "Montpellier",
+      "start_date": "2011-09",
+      "end_date": "2013-08",
+      "current": false,
+      "description": "Diagnostic matériel et réinstallation de systèmes.\nInterventions chez les clients professionnels."
+    }
+  ],
+  "skills": [
+    { "name": "Windows Server 2012 R2 à 2022" },
+    { "name": "Active Directory" },
+    { "name": "GPO" },
+    { "name": "Microsoft 365" },
+    { "name": "VMware vSphere" },
+    { "name": "Hyper-V" },
+    { "name": "Veeam Backup & Replication" },
+    { "name": "Debian" },
+    { "name": "Rocky Linux" },
+    { "name": "PowerShell" },
+    { "name": "Python" },
+    { "name": "Bash" },
+    { "name": "TCP/IP" },
+    { "name": "VLAN 802.1Q" },
+    { "name": "Routage OSPF" },
+    { "name": "Fortinet FortiGate" },
+    { "name": "VPN IPsec" },
+    { "name": "Wi-Fi professionnel" },
+    { "name": "Supervision Centreon" },
+    { "name": "Zabbix" },
+    { "name": "SNMP" },
+    { "name": "Gestion des correctifs" },
+    { "name": "Durcissement système" },
+    { "name": "Rédaction de procédures" },
+    { "name": "Gestion de projet d'infrastructure" }
+  ],
+  "education": [
+    {
+      "degree": "Licence professionnelle Administration et sécurité des réseaux",
+      "school": "Université de Montpellier",
+      "location": "Montpellier",
+      "start_date": "2013-09",
+      "end_date": "2014-06",
+      "description": "Parcours en alternance, spécialité sécurité des infrastructures."
+    },
+    {
+      "degree": "BTS Services informatiques aux organisations option SISR",
+      "school": "Lycée Jean-Mermoz",
+      "location": "Montpellier",
+      "start_date": "2011-09",
+      "end_date": "2013-06",
+      "description": "Formation en alternance."
+    },
+    {
+      "degree": "Baccalauréat scientifique, spécialité sciences de l'ingénieur",
+      "school": "Lycée Joffre",
+      "location": "Montpellier",
+      "start_date": "2008-09",
+      "end_date": "2011-06",
+      "description": null
+    }
+  ],
+  "languages": [
+    { "name": "Français", "level": "Langue maternelle" },
+    { "name": "Anglais", "level": "B2" },
+    { "name": "Espagnol", "level": "B1" },
+    { "name": "Occitan", "level": "Notions" }
+  ],
+  "projects": [
+    {
+      "name": "Socle d'installation générique",
+      "description": "Rédaction et maintenance d'un guide d'installation standardisé des serveurs du service.\nMise à disposition de scripts de post-installation PowerShell et Bash.",
+      "url": null,
+      "technologies": "Windows Server, Debian, PowerShell, Bash"
+    },
+    {
+      "name": "Plan de reprise d'activité multi-sites",
+      "description": "Conception et test annuel du plan de reprise d'un client industriel sur deux salles.\nDocumentation des procédures de bascule et des délais de reprise.",
+      "url": null,
+      "technologies": "VMware vSphere, Veeam, FortiGate"
+    }
+  ],
+  "certifications": [
+    { "name": "Microsoft Certified: Windows Server Hybrid Administrator Associate", "issuer": "Microsoft", "date": "2023-02", "url": null },
+    { "name": "VMware Certified Professional — Data Center Virtualization", "issuer": "VMware", "date": "2021-11", "url": null },
+    { "name": "Fortinet NSE 4 Network Security Professional", "issuer": "Fortinet", "date": "2022-06", "url": null },
+    { "name": "ITIL 4 Foundation", "issuer": "PeopleCert", "date": "2020-03", "url": null }
+  ]
+}

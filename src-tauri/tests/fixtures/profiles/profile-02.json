@@ -1,0 +1,78 @@
+{
+  "identity": {
+    "first_name": "Sabrina",
+    "name": "Delcourt",
+    "email": "sabrina.delcourt@example.fr",
+    "phone": "07 88 41 22 09",
+    "address": "12 avenue Jean-Jaurès",
+    "city": "Lille",
+    "title": "Technicienne systèmes et réseaux en reconversion",
+    "resume": "Après onze ans en logistique industrielle, dont six comme responsable d'équipe, j'ai suivi une formation TSSR en 2025 pour me reconvertir dans l'informatique d'infrastructure. Je cherche un poste où mon sens de l'organisation et ma pratique des procédures servent l'exploitation quotidienne d'un parc.",
+    "linkedin": null,
+    "github": null,
+    "website": null
+  },
+  "experiences": [
+    {
+      "title": "Technicienne systèmes et réseaux (stage de fin de formation)",
+      "company": "Nordis Services Numériques",
+      "location": "Villeneuve-d'Ascq",
+      "start_date": "2025-09",
+      "end_date": "2025-12",
+      "current": false,
+      "description": "Installation et configuration de postes Windows pour les clients TPE du prestataire.\nParticipation à la migration d'un serveur de fichiers vers Windows Server 2022.\nRédaction des fiches d'intervention et des comptes rendus clients."
+    },
+    {
+      "title": "Responsable d'équipe logistique",
+      "company": "Entrepôts Cadran Nord",
+      "location": "Seclin",
+      "start_date": "2018-03",
+      "end_date": "2025-01",
+      "current": false,
+      "description": "Encadrement d'une équipe de neuf préparateurs de commandes en trois-huit.\nSuivi des indicateurs de productivité et animation des points quotidiens.\nRéférente du logiciel de gestion d'entrepôt : formation des nouveaux arrivants et remontée des anomalies à l'éditeur.\nRédaction et mise à jour des procédures d'exploitation du site."
+    },
+    {
+      "title": "Préparatrice de commandes",
+      "company": "Entrepôts Cadran Nord",
+      "location": "Seclin",
+      "start_date": "2014-06",
+      "end_date": "2018-02",
+      "current": false,
+      "description": "Préparation de commandes et contrôle qualité au départ.\nUtilisation quotidienne des terminaux radiofréquence."
+    }
+  ],
+  "skills": [
+    { "name": "Windows 10/11" },
+    { "name": "Windows Server 2022" },
+    { "name": "Active Directory" },
+    { "name": "Sauvegarde et restauration" },
+    { "name": "TCP/IP" },
+    { "name": "Support utilisateur" },
+    { "name": "Rédaction de procédures" },
+    { "name": "Gestion d'équipe" }
+  ],
+  "education": [
+    {
+      "degree": "Titre professionnel Technicien Supérieur Systèmes et Réseaux (TSSR)",
+      "school": "AFPA Roubaix",
+      "location": "Roubaix",
+      "start_date": "2025-02",
+      "end_date": "2025-12",
+      "description": "Formation certifiante de niveau 5 : administration Windows Server, Linux, réseaux et virtualisation."
+    },
+    {
+      "degree": "Baccalauréat professionnel Logistique",
+      "school": "Lycée professionnel Beaupré",
+      "location": "Haubourdin",
+      "start_date": "2011-09",
+      "end_date": "2014-06",
+      "description": null
+    }
+  ],
+  "languages": [
+    { "name": "Français", "level": "Langue maternelle" },
+    { "name": "Anglais", "level": "A2" }
+  ],
+  "projects": [],
+  "certifications": []
+}

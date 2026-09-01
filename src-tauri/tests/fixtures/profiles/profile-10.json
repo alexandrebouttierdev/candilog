@@ -1,0 +1,167 @@
+{
+  "identity": {
+    "first_name": "Jean-Baptiste",
+    "name": "Delacroix-Vandenberghe",
+    "email": "jean-baptiste.delacroix-vandenberghe@example.fr",
+    "phone": "06 24 88 13 97",
+    "address": "132 avenue du Maréchal-de-Lattre-de-Tassigny",
+    "city": "Villeneuve-d'Ascq",
+    "title": "Administrateur systèmes, réseaux et sécurité des infrastructures",
+    "resume": "Quinze ans d'exploitation et de conception d'infrastructures systèmes et réseaux, en industrie, en santé puis en société de services. Je pilote des socles virtualisés multi-sites, des réseaux segmentés et sécurisés, des chaînes de sauvegarde éprouvées, et je normalise les installations par des guides génériques et des scripts réutilisables.",
+    "linkedin": "linkedin.com/in/jean-baptiste-delacroix-vandenberghe-exemple",
+    "github": "github.com/jb-delacroix-vandenberghe-exemple",
+    "website": "jb-delacroix-vandenberghe.example.fr"
+  },
+  "experiences": [
+    {
+      "title": "Administrateur systèmes, réseaux et sécurité des infrastructures",
+      "company": "Société Septentrionale d'Ingénierie et d'Infrastructures Numériques",
+      "location": "Villeneuve-d'Ascq",
+      "start_date": "2022-03",
+      "end_date": null,
+      "current": true,
+      "description": "Conception et exploitation d'un socle de cent vingt machines virtuelles sur VMware vSphere 7 et 8, réparties sur trois salles techniques.\nDéfinition des bonnes pratiques de déploiement de serveurs et rédaction du guide d'installation générique appliqué par l'ensemble de l'équipe infrastructure.\nMaintien en condition opérationnelle des forêts Active Directory de neuf clients : GPO, sites et services, réplication, comptes de service.\nExploitation des pare-feux Fortinet FortiGate en cluster actif-passif : politiques de filtrage, inspection SSL, tunnels IPsec site-à-site et VPN nomades.\nContrôle des procédures de sécurité : revue trimestrielle des habilitations, gestion des correctifs, journalisation centralisée et rétention.\nAutomatisation en Python et PowerShell des inventaires, des contrôles de conformité et des tests d'acceptation des environnements livrés.\nVeille technologique sur les normes de sécurité réseau et restitution mensuelle à l'équipe."
+    },
+    {
+      "title": "Ingénieur d'exploitation systèmes et réseaux",
+      "company": "Groupement Hospitalier de Territoire des Flandres Intérieures",
+      "location": "Hazebrouck",
+      "start_date": "2018-01",
+      "end_date": "2022-02",
+      "current": false,
+      "description": "Exploitation du socle virtualisé de quatre établissements et garantie de la mise à disposition des environnements applicatifs métier.\nMigration de l'annuaire Active Directory et consolidation de deux domaines en une forêt unique.\nRefonte de la chaîne de sauvegarde Veeam avec externalisation et tests de restauration mensuels documentés.\nSegmentation du réseau hospitalier en VLAN par usage — médical, administratif, biomédical, invités — et durcissement des accès.\nParticipation aux audits de sécurité et mise en œuvre des plans d'action correctifs."
+    },
+    {
+      "title": "Administrateur systèmes",
+      "company": "Manufacture Textile de la Vallée de la Lys",
+      "location": "Comines",
+      "start_date": "2014-09",
+      "end_date": "2017-12",
+      "current": false,
+      "description": "Administration des serveurs Windows Server 2008 R2 puis 2012 R2 et des serveurs Debian applicatifs.\nMise en place du cluster Hyper-V et de la réplication vers le site de secours.\nDéploiement de la supervision Nagios puis Centreon sur l'ensemble du parc serveur et réseau.\nAstreinte hebdomadaire sur l'outil de production."
+    },
+    {
+      "title": "Technicien systèmes et réseaux",
+      "company": "Coopérative Agricole des Weppes et de la Deûle",
+      "location": "La Bassée",
+      "start_date": "2012-06",
+      "end_date": "2014-08",
+      "current": false,
+      "description": "Exploitation du domaine, du serveur de fichiers et de la messagerie interne.\nRefonte du câblage et du brassage des trois sites de la coopérative.\nSupport de niveau 2 pour soixante utilisateurs."
+    },
+    {
+      "title": "Technicien support et déploiement",
+      "company": "Nord Bureautique et Systèmes d'Information",
+      "location": "Lille",
+      "start_date": "2010-09",
+      "end_date": "2012-05",
+      "current": false,
+      "description": "Déploiement de postes et migration de messageries chez les clients PME.\nSupport de niveau 1 et 2 et rédaction des comptes rendus d'intervention."
+    },
+    {
+      "title": "Technicien de maintenance informatique (alternance)",
+      "company": "Ateliers Réunis de Maintenance Informatique du Nord",
+      "location": "Roubaix",
+      "start_date": "2008-09",
+      "end_date": "2010-08",
+      "current": false,
+      "description": "Diagnostic et réparation de matériel professionnel.\nPréparation de postes en série avant livraison."
+    }
+  ],
+  "skills": [
+    { "name": "Windows Server 2008 R2 à 2022" },
+    { "name": "Active Directory" },
+    { "name": "GPO" },
+    { "name": "ADFS" },
+    { "name": "Microsoft 365" },
+    { "name": "Intune" },
+    { "name": "VMware vSphere 7/8" },
+    { "name": "VMware vCenter" },
+    { "name": "Hyper-V" },
+    { "name": "Veeam Backup & Replication" },
+    { "name": "Debian" },
+    { "name": "Rocky Linux" },
+    { "name": "Ubuntu Server" },
+    { "name": "PowerShell" },
+    { "name": "Python" },
+    { "name": "Bash" },
+    { "name": "Ansible" },
+    { "name": "TCP/IP" },
+    { "name": "VLAN 802.1Q" },
+    { "name": "Routage OSPF et BGP" },
+    { "name": "Cisco IOS" },
+    { "name": "Fortinet FortiGate" },
+    { "name": "VPN IPsec et SSL" },
+    { "name": "Wi-Fi professionnel" },
+    { "name": "Supervision Centreon" },
+    { "name": "Nagios" },
+    { "name": "Zabbix" },
+    { "name": "SNMP" },
+    { "name": "Journalisation centralisée" },
+    { "name": "Gestion des correctifs" },
+    { "name": "Durcissement système" },
+    { "name": "Plan de reprise d'activité" },
+    { "name": "Rédaction de CCTP" },
+    { "name": "Tests d'acceptation" }
+  ],
+  "education": [
+    {
+      "degree": "Diplôme d'ingénieur en informatique et réseaux, spécialité infrastructures",
+      "school": "École Nationale Supérieure d'Ingénieurs des Hauts-de-France",
+      "location": "Valenciennes",
+      "start_date": "2015-09",
+      "end_date": "2018-06",
+      "description": "Formation continue en alternance avec l'employeur, mémoire sur la consolidation d'annuaires."
+    },
+    {
+      "degree": "Licence professionnelle Administration et sécurité des réseaux",
+      "school": "Université de Lille — IUT A",
+      "location": "Villeneuve-d'Ascq",
+      "start_date": "2010-09",
+      "end_date": "2011-06",
+      "description": null
+    },
+    {
+      "degree": "BTS Informatique et réseaux pour l'industrie et les services techniques",
+      "school": "Lycée polyvalent Jean-Perrin",
+      "location": "Lambersart",
+      "start_date": "2008-09",
+      "end_date": "2010-06",
+      "description": "En alternance."
+    }
+  ],
+  "languages": [
+    { "name": "Français", "level": "Langue maternelle" },
+    { "name": "Anglais", "level": "C1 — contexte professionnel" },
+    { "name": "Néerlandais", "level": "B1" },
+    { "name": "Allemand", "level": "A2" }
+  ],
+  "projects": [
+    {
+      "name": "Guide d'installation générique des serveurs",
+      "description": "Rédaction d'un référentiel d'installation standardisé Windows et Linux appliqué à toutes les livraisons du service.\nScripts de post-installation et de contrôle de conformité en PowerShell et en Bash.\nRevue annuelle du référentiel avec l'équipe sécurité.",
+      "url": null,
+      "technologies": "Windows Server, Debian, PowerShell, Bash, Ansible"
+    },
+    {
+      "name": "Plan de reprise d'activité sur trois salles",
+      "description": "Conception du plan de reprise d'un client industriel, avec bascule testée deux fois par an.\nDéfinition des délais de reprise par application et documentation des procédures de bascule.",
+      "url": null,
+      "technologies": "VMware vSphere, Veeam, FortiGate, Centreon"
+    },
+    {
+      "name": "Banc de tests d'acceptation d'infrastructure",
+      "description": "Automatisation en Python des tests d'acceptation des environnements livrés : connectivité, résolution, droits, sauvegarde.\nProduction d'un rapport signé remis au client à chaque livraison.",
+      "url": null,
+      "technologies": "Python, PowerShell, VMware vSphere"
+    }
+  ],
+  "certifications": [
+    { "name": "Microsoft Certified: Windows Server Hybrid Administrator Associate", "issuer": "Microsoft", "date": "2023-05", "url": null },
+    { "name": "VMware Certified Professional — Data Center Virtualization 2023", "issuer": "VMware", "date": "2023-01", "url": null },
+    { "name": "Fortinet NSE 5 Network Security Analyst", "issuer": "Fortinet", "date": "2022-09", "url": null },
+    { "name": "Cisco Certified Network Associate (CCNA)", "issuer": "Cisco", "date": "2019-04", "url": null },
+    { "name": "ITIL 4 Foundation", "issuer": "PeopleCert", "date": "2018-10", "url": null },
+    { "name": "ANSSI — MOOC SecNumacadémie", "issuer": "ANSSI", "date": "2021-02", "url": null }
+  ]
+}

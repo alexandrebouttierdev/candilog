@@ -1,0 +1,87 @@
+{
+  "identity": {
+    "first_name": "Yohann",
+    "name": "Pasquier",
+    "email": "yohann.pasquier@example.fr",
+    "phone": "06 71 05 82 40",
+    "address": "3 impasse des Tilleuls",
+    "city": "Rennes",
+    "title": "Technicien réseaux et télécoms",
+    "resume": "Six ans d'exploitation de réseaux d'entreprise multi-sites : commutation, routage, sécurité périmétrique et Wi-Fi professionnel. J'interviens du câblage à la supervision et je documente systématiquement les architectures que j'exploite.",
+    "linkedin": "linkedin.com/in/yohann-pasquier-exemple",
+    "github": null,
+    "website": null
+  },
+  "experiences": [
+    {
+      "title": "Technicien réseaux",
+      "company": "Armorique Réseaux & Télécom",
+      "location": "Rennes",
+      "start_date": "2022-02",
+      "end_date": null,
+      "current": true,
+      "description": "Exploitation d'un réseau de quatorze sites raccordés en MPLS et en fibre dédiée.\nConfiguration des commutateurs Cisco Catalyst : VLAN, trunks 802.1Q, spanning-tree, port-security.\nAdministration des routeurs Cisco ISR et des règles de routage statique et OSPF.\nGestion des pare-feux Fortinet FortiGate : politiques de filtrage, NAT, tunnels VPN IPsec site-à-site.\nDéploiement et supervision d'un parc de bornes Wi-Fi professionnelles avec contrôleur centralisé.\nSupervision du réseau sous Zabbix : sondes SNMP, seuils d'alerte, tableaux de bord."
+    },
+    {
+      "title": "Technicien d'exploitation réseau",
+      "company": "Cabinet Kervran Ingénierie",
+      "location": "Saint-Brieuc",
+      "start_date": "2020-01",
+      "end_date": "2022-01",
+      "current": false,
+      "description": "Administration des services DHCP et DNS internes.\nSegmentation du réseau du siège en VLAN par métier.\nRecette des liens opérateurs et suivi des incidents avec les fournisseurs.\nMise à jour du plan d'adressage IP et de la documentation réseau."
+    },
+    {
+      "title": "Technicien installation",
+      "company": "Ouest Câblage Structuré",
+      "location": "Rennes",
+      "start_date": "2019-03",
+      "end_date": "2019-12",
+      "current": false,
+      "description": "Tirage et certification de liens cuivre catégorie 6A.\nBrassage et repérage de baies de distribution."
+    }
+  ],
+  "skills": [
+    { "name": "TCP/IP" },
+    { "name": "DHCP" },
+    { "name": "DNS" },
+    { "name": "VLAN 802.1Q" },
+    { "name": "Commutation Cisco Catalyst" },
+    { "name": "Routage statique et OSPF" },
+    { "name": "Cisco IOS" },
+    { "name": "Fortinet FortiGate" },
+    { "name": "VPN IPsec" },
+    { "name": "Wi-Fi professionnel" },
+    { "name": "Supervision Zabbix" },
+    { "name": "SNMP" },
+    { "name": "Wireshark" },
+    { "name": "Câblage cuivre et fibre" }
+  ],
+  "education": [
+    {
+      "degree": "Licence professionnelle Réseaux et télécommunications",
+      "school": "IUT de Lannion",
+      "location": "Lannion",
+      "start_date": "2018-09",
+      "end_date": "2019-06",
+      "description": null
+    },
+    {
+      "degree": "BTS Systèmes numériques option Informatique et réseaux",
+      "school": "Lycée Chaptal",
+      "location": "Saint-Brieuc",
+      "start_date": "2016-09",
+      "end_date": "2018-06",
+      "description": null
+    }
+  ],
+  "languages": [
+    { "name": "Français", "level": "Langue maternelle" },
+    { "name": "Anglais", "level": "B2 — documentation technique" }
+  ],
+  "projects": [],
+  "certifications": [
+    { "name": "Cisco Certified Network Associate (CCNA)", "issuer": "Cisco", "date": "2021-06", "url": null },
+    { "name": "Fortinet NSE 4 Network Security Professional", "issuer": "Fortinet", "date": "2023-03", "url": null }
+  ]
+}

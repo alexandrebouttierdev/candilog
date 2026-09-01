@@ -1,0 +1,44 @@
+{
+  "identity": {
+    "first_name": "Nina",
+    "name": "Oswald",
+    "email": "nina.oswald@example.fr",
+    "phone": null,
+    "address": null,
+    "city": "Metz",
+    "title": "Technicienne systèmes et réseaux",
+    "resume": null,
+    "linkedin": null,
+    "github": null,
+    "website": null
+  },
+  "experiences": [
+    {
+      "title": "Technicienne systèmes et réseaux",
+      "company": "Sidérurgie de la Moselle",
+      "location": "Metz",
+      "start_date": "2024-03",
+      "end_date": null,
+      "current": true,
+      "description": "Exploitation du domaine Active Directory et du serveur de fichiers.\nSupport aux utilisateurs du site industriel."
+    }
+  ],
+  "skills": [
+    { "name": "Windows Server" },
+    { "name": "Active Directory" },
+    { "name": "TCP/IP" }
+  ],
+  "education": [
+    {
+      "degree": "BTS SIO option SISR",
+      "school": "Lycée Louis-Vincent",
+      "location": "Metz",
+      "start_date": "2022-09",
+      "end_date": "2024-06",
+      "description": null
+    }
+  ],
+  "languages": [],
+  "projects": [],
+  "certifications": []
+}

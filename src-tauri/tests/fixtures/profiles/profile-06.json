@@ -1,0 +1,82 @@
+{
+  "identity": {
+    "first_name": "Kevin",
+    "name": "Marchetti",
+    "email": "kevin.marchetti@example.fr",
+    "phone": "07 62 19 44 05",
+    "address": "17 rue de la Poterie",
+    "city": "Orléans",
+    "title": "Technicien support et gestion de parc",
+    "resume": "Cinq ans de support de proximité et de gestion de parc dans des structures de 200 à 600 postes. J'assure le niveau 1 et 2, je pilote les déploiements et je tiens l'inventaire à jour de bout en bout.",
+    "linkedin": null,
+    "github": null,
+    "website": null
+  },
+  "experiences": [
+    {
+      "title": "Technicien support N1/N2 et gestion de parc",
+      "company": "Centre Hospitalier des Deux-Rives",
+      "location": "Orléans",
+      "start_date": "2022-05",
+      "end_date": null,
+      "current": true,
+      "description": "Support de proximité pour 600 utilisateurs sur deux sites.\nGestion du parc sous GLPI : inventaire, cycle de vie, sorties de matériel, contrats de garantie.\nMastérisation et déploiement de postes Windows via MDT et WSUS.\nGestion des comptes utilisateurs et des boîtes partagées dans Active Directory et Microsoft 365.\nSuivi du respect des délais de traitement des tickets et reporting mensuel au responsable informatique."
+    },
+    {
+      "title": "Technicien helpdesk",
+      "company": "Loiret Bureautique Services",
+      "location": "Saran",
+      "start_date": "2020-09",
+      "end_date": "2022-04",
+      "current": false,
+      "description": "Prise en charge des tickets de niveau 1 pour une trentaine de clients PME.\nPréparation des postes avant livraison et installation sur site.\nDépannage des imprimantes réseau et des accès Wi-Fi."
+    },
+    {
+      "title": "Technicien de maintenance informatique",
+      "company": "Atelier Numérique du Centre",
+      "location": "Orléans",
+      "start_date": "2019-10",
+      "end_date": "2020-08",
+      "current": false,
+      "description": "Diagnostic et réparation de matériel informatique grand public et professionnel.\nRécupération de données et réinstallation de systèmes."
+    }
+  ],
+  "skills": [
+    { "name": "Windows 10/11" },
+    { "name": "Support N1/N2" },
+    { "name": "GLPI" },
+    { "name": "Gestion de parc" },
+    { "name": "MDT" },
+    { "name": "WSUS" },
+    { "name": "Active Directory" },
+    { "name": "Microsoft 365" },
+    { "name": "Impression réseau" },
+    { "name": "Préparation et masterisation de postes" },
+    { "name": "Inventaire" },
+    { "name": "TCP/IP" }
+  ],
+  "education": [
+    {
+      "degree": "Titre professionnel Technicien d'assistance en informatique",
+      "school": "GRETA du Loiret",
+      "location": "Orléans",
+      "start_date": "2019-01",
+      "end_date": "2019-09",
+      "description": null
+    },
+    {
+      "degree": "Baccalauréat professionnel Systèmes numériques option RISC",
+      "school": "Lycée Gaudier-Brzeska",
+      "location": "Saint-Jean-de-Braye",
+      "start_date": "2016-09",
+      "end_date": "2019-06",
+      "description": null
+    }
+  ],
+  "languages": [
+    { "name": "Français", "level": "Langue maternelle" },
+    { "name": "Anglais", "level": "A2" }
+  ],
+  "projects": [],
+  "certifications": []
+}

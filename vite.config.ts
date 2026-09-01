@@ -24,5 +24,9 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./src/shared/lib/test-setup.ts"],
     globals: true,
+    // Les tests de l'application vivent tous sous `src/`. Le motif par défaut balaie la
+    // racine et ramassait `e2e/`, piloté par Playwright avec son propre lanceur et un vrai
+    // navigateur — que Vitest ne sait pas exécuter.
+    include: ["src/**/*.{test,spec}.{ts,tsx}"],
   },
 });

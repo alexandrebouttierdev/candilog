@@ -1,0 +1,130 @@
+{
+  "identity": {
+    "first_name": "Éloïse",
+    "name": "Nguyên-Beauchêne",
+    "email": "eloise.nguyen-beauchene@example.fr",
+    "phone": "06 09 84 27 51",
+    "address": "6 quai de l'Hôtel-Dieu",
+    "city": "Châlons-en-Champagne",
+    "title": "Technicienne systèmes & réseaux — cœur d'infrastructure",
+    "resume": "Cinq ans d'exploitation d'infrastructures systèmes et réseaux en collectivité territoriale. J'interviens sur l'« infrastructure cœur » — annuaire, virtualisation, sauvegardes — et j'accompagne les agents au quotidien. Rigueur et traçabilité passent, ex æquo, avant la performance brute.",
+    "linkedin": "linkedin.com/in/eloise-nguyen-beauchene-exemple",
+    "github": null,
+    "website": null
+  },
+  "experiences": [
+    {
+      "title": "Technicienne systèmes & réseaux — pôle « Infrastructures & Sécurité »",
+      "company": "Communauté d'Agglomération de Châlons-en-Champagne — Direction des Systèmes d'Information",
+      "location": "Châlons-en-Champagne",
+      "start_date": "2022-01",
+      "end_date": null,
+      "current": true,
+      "description": "Exploitation de l'annuaire Active Directory de l'agglomération : ≈ 900 comptes, GPO, délégations.\nAdministration des hyperviseurs VMware vSphere et des sauvegardes Veeam (budget annuel ≈ 45 000 €).\nGestion du parc d'imprimantes multifonctions et des files d'impression sécurisées.\nRédaction des procédures d'exploitation — « guide de l'astreinte », fiches d'incident — et formation des agents.\nSuivi des marchés publics d'infrastructure avec le service Achats : rédaction du volet technique des CCTP."
+    },
+    {
+      "title": "Technicienne d'exploitation systèmes",
+      "company": "Établissement Public de Coopération Culturelle « Le Manège »",
+      "location": "Reims",
+      "start_date": "2020-09",
+      "end_date": "2021-12",
+      "current": false,
+      "description": "Maintien en condition opérationnelle des serveurs Windows Server 2016 et Debian de l'établissement.\nSauvegardes quotidiennes, tests de restauration et suivi de l'espace disque.\nAssistance aux équipes artistiques et techniques — matériel scénique en réseau (Art-Net, sACN)."
+    },
+    {
+      "title": "Apprentie technicienne informatique",
+      "company": "Coopérative Vinicole d'Aÿ-Champagne",
+      "location": "Aÿ-Champagne",
+      "start_date": "2018-09",
+      "end_date": "2020-08",
+      "current": false,
+      "description": "Support de proximité et préparation des postes.\nParticipation au recâblage du bâtiment administratif (cat. 6A) et au repérage des baies."
+    }
+  ],
+  "skills": [
+    {
+      "name": "Windows Server 2016/2019"
+    },
+    {
+      "name": "Active Directory"
+    },
+    {
+      "name": "GPO"
+    },
+    {
+      "name": "VMware vSphere"
+    },
+    {
+      "name": "Veeam Backup & Replication"
+    },
+    {
+      "name": "Debian"
+    },
+    {
+      "name": "TCP/IP"
+    },
+    {
+      "name": "VLAN & 802.1Q"
+    },
+    {
+      "name": "DHCP / DNS"
+    },
+    {
+      "name": "Sauvegarde & restauration"
+    },
+    {
+      "name": "Rédaction de procédures"
+    },
+    {
+      "name": "Marchés publics (CCTP)"
+    }
+  ],
+  "education": [
+    {
+      "degree": "Licence professionnelle « Métiers des réseaux informatiques et télécommunications »",
+      "school": "Institut Universitaire de Technologie de Reims-Châlons-Charleville",
+      "location": "Châlons-en-Champagne",
+      "start_date": "2020-09",
+      "end_date": "2021-06",
+      "description": "Parcours « Administration & sécurité des réseaux », mention bien."
+    },
+    {
+      "degree": "BTS Services informatiques aux organisations, option SISR",
+      "school": "Lycée polyvalent Frédéric-Ozanam",
+      "location": "Châlons-en-Champagne",
+      "start_date": "2018-09",
+      "end_date": "2020-06",
+      "description": "En apprentissage — cœur de métier : infrastructure, réseau, sécurité."
+    }
+  ],
+  "languages": [
+    {
+      "name": "Français",
+      "level": "Langue maternelle"
+    },
+    {
+      "name": "Anglais",
+      "level": "B2 — lu, écrit, parlé"
+    },
+    {
+      "name": "Vietnamien",
+      "level": "Notions familiales"
+    }
+  ],
+  "projects": [
+    {
+      "name": "Refonte du plan d'adressage & des VLAN de l'agglomération",
+      "description": "Recensement des sous-réseaux existants, définition d'un plan cible et bascule progressive.\nDocumentation « à jour à chaque changement » — c'était la condition posée par la direction.",
+      "url": null,
+      "technologies": "TCP/IP, VLAN, DHCP, DNS"
+    }
+  ],
+  "certifications": [
+    {
+      "name": "ANSSI — MOOC SecNumacadémie (attestation de suivi)",
+      "issuer": "ANSSI",
+      "date": "2023-04",
+      "url": null
+    }
+  ]
+}

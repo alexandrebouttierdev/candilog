@@ -117,6 +117,14 @@ Changement de dépendance Rust :
 cargo deny --manifest-path src-tauri/Cargo.toml check
 ```
 
+Documents générés (CV et lettres), après toute modification d'un gabarit, du moteur PDF ou
+de la composition — la chaîne complète est décrite dans `docs/DEVELOPMENT.md` :
+
+```bash
+CANDILOG_E2E=1 cargo test --manifest-path src-tauri/Cargo.toml --locked --test e2e_documents
+npm run e2e
+```
+
 Site (`website/`) : `npm run lint`, `npm run typecheck`, `npm run build` depuis `website/`.
 
 Signaler explicitement toute vérification non exécutée et pourquoi.

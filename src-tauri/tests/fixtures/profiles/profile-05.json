@@ -1,0 +1,86 @@
+{
+  "identity": {
+    "first_name": "Claire",
+    "name": "Fontenay",
+    "email": "claire.fontenay@example.fr",
+    "phone": "06 33 74 51 18",
+    "address": "45 boulevard Gambetta",
+    "city": "Lyon",
+    "title": "Administratrice systèmes Windows et Linux",
+    "resume": "Huit ans d'administration système en environnement mixte Windows et Linux. Je conçois et maintiens des socles virtualisés, j'automatise l'exploitation en PowerShell et en Bash, et je garantis la reprise d'activité par des sauvegardes testées.",
+    "linkedin": "linkedin.com/in/claire-fontenay-exemple",
+    "github": null,
+    "website": null
+  },
+  "experiences": [
+    {
+      "title": "Administratrice systèmes",
+      "company": "Rhodanienne de Services Informatiques",
+      "location": "Lyon",
+      "start_date": "2021-09",
+      "end_date": null,
+      "current": true,
+      "description": "Administration d'un socle de soixante machines virtuelles réparties sur VMware vSphere et Hyper-V.\nGestion complète d'Active Directory : forêt à deux domaines, GPO, sites et services, réplication.\nAutomatisation de l'exploitation en PowerShell : provisionnement de comptes, rapports d'inventaire, contrôles de conformité.\nAdministration de serveurs Debian et Rocky Linux : services web, bases PostgreSQL, durcissement SSH.\nExploitation des sauvegardes Veeam et campagnes de restauration semestrielles documentées."
+    },
+    {
+      "title": "Ingénieure d'exploitation systèmes",
+      "company": "Manufacture Lyonnaise de Précision",
+      "location": "Villeurbanne",
+      "start_date": "2018-06",
+      "end_date": "2021-08",
+      "current": false,
+      "description": "Migration de l'infrastructure physique vers un cluster VMware vSphere à trois nœuds.\nMise en place d'un plan de sauvegarde à trois niveaux et de sa procédure de restauration.\nÉcriture de scripts Bash pour l'ordonnancement des traitements de nuit.\nSuivi des correctifs de sécurité sur l'ensemble du parc serveur."
+    },
+    {
+      "title": "Technicienne systèmes",
+      "company": "Clinique du Val d'Ozon",
+      "location": "Saint-Symphorien-d'Ozon",
+      "start_date": "2017-02",
+      "end_date": "2018-05",
+      "current": false,
+      "description": "Exploitation de deux contrôleurs de domaine et d'un serveur de fichiers.\nGestion des comptes et des habilitations du personnel soignant."
+    }
+  ],
+  "skills": [
+    { "name": "Windows Server 2016/2019/2022" },
+    { "name": "Active Directory" },
+    { "name": "GPO" },
+    { "name": "PowerShell" },
+    { "name": "Debian" },
+    { "name": "Rocky Linux" },
+    { "name": "Bash" },
+    { "name": "VMware vSphere" },
+    { "name": "Hyper-V" },
+    { "name": "Veeam Backup & Replication" },
+    { "name": "PostgreSQL" },
+    { "name": "SSH et durcissement" },
+    { "name": "Supervision Centreon" },
+    { "name": "Gestion des correctifs" }
+  ],
+  "education": [
+    {
+      "degree": "Master Administration et sécurité des systèmes d'information",
+      "school": "Université Claude-Bernard Lyon 1",
+      "location": "Lyon",
+      "start_date": "2015-09",
+      "end_date": "2017-06",
+      "description": null
+    },
+    {
+      "degree": "DUT Informatique",
+      "school": "IUT Lyon 1",
+      "location": "Villeurbanne",
+      "start_date": "2013-09",
+      "end_date": "2015-06",
+      "description": null
+    }
+  ],
+  "languages": [
+    { "name": "Français", "level": "Langue maternelle" },
+    { "name": "Anglais", "level": "C1" }
+  ],
+  "projects": [],
+  "certifications": [
+    { "name": "VMware Certified Professional — Data Center Virtualization", "issuer": "VMware", "date": "2022-09", "url": null }
+  ]
+}

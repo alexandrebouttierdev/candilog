@@ -1,0 +1,4 @@
+{
+  "cv_pdf": "refus_longueur",
+  "pourquoi": "Le CV de Candilog tient sur une page A4 : cinq paliers de densité, puis un refus explicite. Ce profil — six expériences, vingt-trois réalisations, trois projets, trente-quatre compétences, six certifications — dépasse réellement la page, et l'aperçu HTML l'annonce déjà par son avertissement de débordement. Le comportement attendu n'est donc pas un PDF, mais un refus qui dit pourquoi. Le contrôle vaut aussi dans l'autre sens : si l'export venait à accepter ce profil, il aurait tronqué ou empilé du contenu."
+}

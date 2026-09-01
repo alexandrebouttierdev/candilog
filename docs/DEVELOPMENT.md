@@ -99,6 +99,54 @@ cargo deny --manifest-path src-tauri/Cargo.toml check
 Il n'existe ni `npm run format`, ni `npm run typecheck` à la racine : `cargo fmt` couvre
 le formatage Rust, `npm run build` couvre le typage TypeScript.
 
+## Scénario de bout en bout des documents
+
+`src-tauri/tests/e2e_documents.rs` traverse toute la chaîne de génération — `AiService`,
+`prepare_workspace`, `ResumePdf`, `CoverLetterPdf` — pour les profils fictifs de
+`src-tauri/tests/fixtures/profiles/`, et dépose ses artefacts dans `test-output/`
+(profil source, génération, poste de travail, PDF). Il est **ignoré** tant que
+`CANDILOG_E2E` est absent : aucune suite standard ne déclenche d'appel payant.
+
+```bash
+# Rejeu : la génération enregistrée est relue, seuls la composition et l'export sont rejoués.
+CANDILOG_E2E=1 cargo test --manifest-path src-tauri/Cargo.toml --locked --test e2e_documents
+
+# Appel réel au fournisseur IA configuré, puis enregistrement pour les rejeux suivants.
+CANDILOG_E2E=1 CANDILOG_E2E_LIVE=1 CANDILOG_E2E_OFFER=/chemin/offre.txt   cargo test --manifest-path src-tauri/Cargo.toml --locked --test e2e_documents
+```
+
+| Variable | Rôle | Défaut |
+| --- | --- | --- |
+| `CANDILOG_E2E` | active le scénario | absent → ignoré |
+| `CANDILOG_E2E_LIVE` | appelle réellement le fournisseur IA | absent → rejeu |
+| `CANDILOG_E2E_OFFER` | fichier de l'offre | requis en live |
+| `CANDILOG_E2E_SETTINGS_DB` | base dont les réglages IA sont copiés | base de développement |
+| `CANDILOG_E2E_OUT` | dossier des artefacts | `test-output/` |
+| `CANDILOG_E2E_ONLY` | profils à traiter (`01,07`) | tous |
+
+Un profil dont le contenu dépasse réellement la page A4 a pour résultat correct un **refus**
+d'export : il porte alors un `profile-NN.expected.json` à côté de sa fixture. Le scénario
+échoue aussi bien si l'export refuse à tort que s'il accepte ce qu'il aurait dû refuser.
+
+## Contrôle visuel des feuilles A4
+
+Playwright monte les **vrais** composants `ResumePaper` et `LetterPaper` (banc de rendu
+`e2e/harness/`, servi par le serveur Vite de l'application) sur les artefacts du scénario
+ci-dessus, puis mesure la géométrie réelle : débordements, sorties de colonne, collisions,
+polices, valeurs parasites, erreurs de console. Les PDF exportés sont ouverts avec Poppler
+(`pdfinfo`, `pdftotext`, `pdftoppm`) : pages, marges, chevauchements, glyphes perdus, rendu
+en image. Le banc ne fait pas partie du bundle — `vite build` n'a qu'une entrée,
+`index.html`.
+
+```bash
+npx playwright install chromium   # une fois
+npm run e2e                       # lance le serveur Vite au besoin
+npm run e2e:typecheck
+```
+
+Prérequis : `poppler-utils` (`pdfinfo`, `pdftotext`, `pdftoppm`). Les artefacts et les
+rapports sont écrits dans `test-output/`, ignoré par Git.
+
 ## Structure du dépôt
 
 ```text

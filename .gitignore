@@ -35,3 +35,6 @@ docs/AUDIT_REPORT.md
 docs/AUDIT.md
 docs/audits/
 
+
+# Artefacts du scénario de bout en bout (docs/DEVELOPMENT.md)
+/test-output/

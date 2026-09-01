@@ -1,0 +1,69 @@
+{
+  "identity": {
+    "first_name": "Lucas",
+    "name": "Vermeil",
+    "email": "lucas.vermeil@example.fr",
+    "phone": "06 12 34 56 78",
+    "address": "8 rue des Peupliers",
+    "city": "Nantes",
+    "title": "Technicien systèmes et réseaux junior",
+    "resume": "Diplômé d'un BTS SIO option SISR en 2025, je cherche un premier poste durable en administration systèmes et réseaux. Mon stage et mon alternance m'ont donné les bases du support utilisateur, de l'administration Windows Server et du réseau d'entreprise.",
+    "linkedin": null,
+    "github": null,
+    "website": null
+  },
+  "experiences": [
+    {
+      "title": "Technicien support informatique (alternance)",
+      "company": "Groupe Lorival Distribution",
+      "location": "Nantes",
+      "start_date": "2023-09",
+      "end_date": "2025-06",
+      "current": false,
+      "description": "Support de niveau 1 pour 180 utilisateurs répartis sur trois sites.\nPréparation et déploiement de postes Windows 10 et Windows 11.\nCréation et désactivation des comptes Active Directory à l'arrivée et au départ des salariés.\nSuivi des tickets sous GLPI et rédaction des procédures de dépannage courantes."
+    },
+    {
+      "title": "Stagiaire informatique",
+      "company": "Mairie de Sainte-Luce-sur-Loire",
+      "location": "Sainte-Luce-sur-Loire",
+      "start_date": "2023-01",
+      "end_date": "2023-02",
+      "current": false,
+      "description": "Inventaire du parc informatique de la collectivité.\nRemplacement de postes et migration des profils utilisateurs.\nAide au recâblage d'une salle de réunion."
+    }
+  ],
+  "skills": [
+    { "name": "Windows 10/11" },
+    { "name": "Windows Server 2019" },
+    { "name": "Active Directory" },
+    { "name": "TCP/IP" },
+    { "name": "DHCP" },
+    { "name": "DNS" },
+    { "name": "GLPI" },
+    { "name": "Support utilisateur" }
+  ],
+  "education": [
+    {
+      "degree": "BTS SIO option SISR",
+      "school": "Lycée La Colinière",
+      "location": "Nantes",
+      "start_date": "2023-09",
+      "end_date": "2025-06",
+      "description": "Solutions d'infrastructure, systèmes et réseaux. Obtenu avec mention assez bien."
+    },
+    {
+      "degree": "Baccalauréat général, spécialités mathématiques et NSI",
+      "school": "Lycée Nelson-Mandela",
+      "location": "Nantes",
+      "start_date": "2020-09",
+      "end_date": "2023-06",
+      "description": null
+    }
+  ],
+  "languages": [
+    { "name": "Français", "level": "Langue maternelle" },
+    { "name": "Anglais", "level": "B1 — technique lu et écrit" }
+  ],
+  "projects": [],
+  "certifications": []
+}
