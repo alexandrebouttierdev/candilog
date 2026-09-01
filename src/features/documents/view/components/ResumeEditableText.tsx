@@ -20,6 +20,7 @@ export function ResumeEditableText({
   tag = "div",
   className,
   onChange,
+  onCommit,
 }: {
   value: string;
   label: string;
@@ -28,6 +29,8 @@ export function ResumeEditableText({
   tag?: ResumeEditableTag;
   className?: string;
   onChange: (value: string) => void;
+  /** Appelé à la sortie du champ, pour ce qui ne doit pas se déclencher à chaque frappe. */
+  onCommit?: ((value: string) => void) | undefined;
 }) {
   const zone = useRef<HTMLElement | null>(null);
   // Dernière valeur connue de la zone : si elle correspond déjà à `value`, la modification
@@ -72,7 +75,11 @@ export function ResumeEditableText({
       className={`${className ?? ""} outline-none`.trim()}
       style={style}
       onInput={synchroniser}
-      onBlur={synchroniser}
+      onBlur={() => {
+        synchroniser();
+        const noeud = zone.current;
+        if (noeud) onCommit?.(noeud.textContent ?? "");
+      }}
       onKeyDown={(event: KeyboardEvent) => {
         // Un champ mono-ligne (titre, intitulé, période…) n'a pas de second paragraphe où
         // aller : Entrée y déclenche la validation plutôt qu'un retour à la ligne.

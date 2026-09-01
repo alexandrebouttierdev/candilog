@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { profileService } from "@/features/profile/services/profileService";
 import type { ProfilePayload } from "@/shared/types/generated/profile";
@@ -118,5 +118,37 @@ describe("feuille de la lettre", () => {
 
     expect(await screen.findAllByText("Candilog")).toHaveLength(2);
     expect(screen.getByText(/curriculum vitæ/)).toBeInTheDocument();
+  });
+
+  it("enregistre l'identité modifiée sur la feuille dans le profil", async () => {
+    vi.spyOn(profileService, "load").mockResolvedValue(payload());
+    const save = vi.spyOn(profileService, "save").mockResolvedValue(payload());
+
+    render(
+      <LetterPaper
+        editable
+        fields={{
+          company: null,
+          job_title: null,
+          recipient: null,
+          recipient_address: null,
+          job_reference: null,
+        }}
+        onChange={() => {}}
+      >
+        <div>Corps</div>
+      </LetterPaper>,
+      { wrapper },
+    );
+
+    const champ = await screen.findByRole("textbox", { name: "Téléphone" });
+    // La zone est un `contentEditable` : on écrit dedans, puis on en sort.
+    champ.textContent = "01 02 03 04 05";
+    fireEvent.input(champ);
+    fireEvent.blur(champ);
+
+    // Rien n'est écrit à la frappe : seule la sortie du champ enregistre.
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+    expect(save.mock.calls[0]?.[0].identity.phone).toBe("01 02 03 04 05");
   });
 });

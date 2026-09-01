@@ -30,6 +30,9 @@ export function ResumeGeneratorPage() {
   // Change à chaque nouvelle génération pour remonter l'éditeur (nouvel historique, nouveau
   // brouillon) plutôt que de réutiliser l'état local d'une session d'édition précédente.
   const [generationIndex, setGenerationIndex] = useState(0);
+  // Une fois le CV généré, l'offre s'efface pour laisser la place à l'aperçu ; ce
+  // témoin la ramène à la demande, comme le brief de la lettre.
+  const [briefOuvert, setBriefOuvert] = useState(false);
   const progress = useAiProgress(operation);
   useCancelAiOnUnmount(operation);
   const timer = useAiTimer(operation !== null);
@@ -67,6 +70,7 @@ export function ResumeGeneratorPage() {
       timer.stop();
       setWorkspace(prepared);
       setGenerationIndex((index) => index + 1);
+      setBriefOuvert(false);
       setName(`CV — ${prepared.job_offer.title || "Version ciblée"}`);
     } catch (e) {
       if (!(e instanceof AppError && e.code === "CANCELLED")) setError(message(e));
@@ -76,8 +80,8 @@ export function ResumeGeneratorPage() {
   };
 
   const briefPanel = (
-    <DocumentPanel title="Offre ciblée" icon="target">
-      <div className="space-y-4 p-4">
+    <DocumentPanel title="Offre ciblée" icon="target" className="flex min-h-0 flex-col">
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
         <ChampOffre
           label="Texte de l’offre"
           required
@@ -91,7 +95,12 @@ export function ResumeGeneratorPage() {
         {operation ? (
           <><AiProgress progress={progress} elapsedMs={timer.elapsedMs} /><Button variant="danger" icon="stop" className="w-full" onClick={() => void aiService.cancel(operation)}>Annuler</Button></>
         ) : (
-          <Button variant="primary" icon="auto_awesome" className="w-full" onClick={() => void run()}>Générer le CV ciblé</Button>
+          <div className="flex flex-col gap-2">
+            <Button variant="primary" icon="auto_awesome" className="w-full" onClick={() => void run()}>{workspace ? "Générer un nouveau CV" : "Générer le CV ciblé"}</Button>
+            {workspace ? (
+              <Button variant="ghost" icon="article" className="w-full" onClick={() => setBriefOuvert(false)}>Revenir au CV</Button>
+            ) : null}
+          </div>
         )}
       </div>
     </DocumentPanel>
@@ -104,7 +113,8 @@ export function ResumeGeneratorPage() {
         initial={workspace}
         name={name}
         onNameChange={setName}
-        briefPanel={briefPanel}
+        briefPanel={briefOuvert ? briefPanel : null}
+        onReopenBrief={() => setBriefOuvert(true)}
         durationBadge={operation === null && timer.durationMs !== null ? <HeaderBadge icon="schedule">Généré en {formatDuration(timer.durationMs)}</HeaderBadge> : undefined}
       />
     );
@@ -147,12 +157,14 @@ function ResumeEditorScreen({
   name,
   onNameChange,
   briefPanel,
+  onReopenBrief,
   durationBadge,
 }: {
   initial: ResumeWorkspace;
   name: string;
   onNameChange: (value: string) => void;
-  briefPanel: ReactNode;
+  briefPanel: ReactNode | null;
+  onReopenBrief: () => void;
   durationBadge?: ReactNode;
 }) {
   const notify = useUiStore((s) => s.notify);
@@ -182,6 +194,7 @@ function ResumeEditorScreen({
         badge={<>{durationBadge}<OverflowStatus overflow={overflow} /></>}
         secondary={
           <>
+            {briefPanel ? null : <Button icon="target" onClick={onReopenBrief}>Modifier l’offre</Button>}
             <UndoRedoControls canUndo={editor.canUndo} canRedo={editor.canRedo} onUndo={editor.undo} onRedo={editor.redo} />
             <Button icon="save" disabled={!name.trim() || save.isPending} onClick={() => save.mutate()}>Enregistrer</Button>
           </>
@@ -197,15 +210,15 @@ function ResumeEditorScreen({
           </Button>
         }
       />
-    }>
-      <div className="grid min-h-[660px] gap-4 xl:grid-cols-[350px_minmax(460px,1fr)_320px]">
+    } padded={false}>
+      <div className={`grid min-h-0 flex-1 gap-4 overflow-hidden p-5 min-[1200px]:p-6 ${briefPanel ? "xl:grid-cols-[350px_minmax(460px,1fr)_320px]" : "xl:grid-cols-[minmax(460px,1fr)_320px]"}`}>
         {briefPanel}
-        <DocumentPanel title="Aperçu HTML · A4" icon="article">
-          <div className="flex min-h-0 flex-1 justify-center overflow-auto bg-page p-[26px]">
+        <DocumentPanel title="Aperçu HTML · A4" icon="article" className="flex min-h-0 flex-col">
+          <div className="flex min-h-0 flex-1 flex-col items-center gap-3 overflow-auto bg-page p-[26px]">
             <ResumePaper workspace={editor.workspace} editable onChange={editor.updateField} onOverflowChange={setOverflow} />
           </div>
         </DocumentPanel>
-        <DocumentPanel title="Analyse ATS" icon="query_stats">
+        <DocumentPanel title="Analyse ATS" icon="query_stats" className="flex min-h-0 flex-col overflow-y-auto">
           <ResumeAtsPanel
             workspace={editor.workspace}
             busy={editor.isRecalculating}

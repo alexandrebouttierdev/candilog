@@ -422,6 +422,7 @@
     --letter-sp: 1;
     display: grid;
     grid-template-columns: 58mm 1fr;
+    flex-shrink: 0;
     width: var(--letter-page-width);
     height: var(--letter-page-height);
     overflow: hidden;
@@ -624,6 +625,7 @@
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
+    flex-shrink: 0;
     width: var(--resume-page-width);
     height: var(--resume-page-height);
     padding: var(--resume-margin-top) var(--resume-margin-inline) var(--resume-margin-bottom);

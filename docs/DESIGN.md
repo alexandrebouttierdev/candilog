@@ -307,14 +307,19 @@ Fermeture : `useDismissable` (Escape + clic extérieur) — calendrier, FilterMe
   qui sera enregistré et exporté. Le collage ne conserve que le texte brut.
 - Le panneau latéral porte le score ATS, le gain cumulé et les propositions (acceptation,
   refus, annulation) ; il ne remplace pas le papier comme surface d'édition.
+- Une fois le CV généré, le panneau **Offre ciblée** s'efface : à trois colonnes l'aperçu
+  était trop étroit pour une page A4. **Modifier l'offre** le ramène, **Revenir au CV** le
+  referme. Les panneaux défilent, et le papier ne se comprime jamais sous sa largeur A4.
 
 - L'aperçu A4 de la lettre (`LetterPaper`, 210 × 297 mm) reprend le template HTML fourni :
   colonne d'identité 58 mm (`--letter-panel`) et corps à droite, jetons `--letter-*`,
   typographie **IBM Plex Sans** / **IBM Plex Mono**. Le papier reste blanc dans les deux
-  thèmes. L'identité (nom, titre, adresse, téléphone, courriel) vient du **profil courant** ;
-  entreprise, poste, interlocuteur, adresse destinataire et référence d'offre s'éditent sur
-  la feuille. Les blocs vides sont omis en lecture. « Pièce jointe : curriculum vitæ » est
-  toujours affiché.
+  thèmes. L'identité (nom, titre, adresse, ville, téléphone, courriel) vient du **profil
+  courant** et s'édite directement sur la feuille : la sortie du champ enregistre le profil,
+  jamais la frappe. Elle reste en lecture tant que le profil n'est pas chargé, sinon la
+  saisie serait perdue. Entreprise, poste, interlocuteur, adresse destinataire et référence
+  d'offre s'éditent aussi sur la feuille, mais sont enregistrés avec la lettre. Les blocs
+  vides sont omis en lecture. « Pièce jointe : curriculum vitæ » est toujours affiché.
 - Le PDF reprend les cotes du template en pixels CSS (`pt(px)`) et son `letter-spacing`,
   faute de quoi l'aperçu et la page imprimée divergent. Tout bloc de la colonne d'identité
   se replie dans les 58 mm ; un titre long y passe sur plusieurs lignes plutôt que de

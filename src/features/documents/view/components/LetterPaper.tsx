@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { profileService } from "@/features/profile/services/profileService";
 import { PROFILE_KEY } from "@/features/profile/viewmodel/useProfileViewModel";
+import type { Identity } from "@/shared/types/generated/profile";
 import { letterDateLine, letterHeadline, letterSignature } from "../../model/letterLayout";
 import { ResumeEditableText } from "./ResumeEditableText";
 
@@ -18,6 +19,11 @@ export type LetterPaperField =
   | "recipient"
   | "recipient_address"
   | "job_reference";
+
+/** Champs d'identité obligatoires : les vider donne une chaîne vide, jamais `null`. */
+type IdentityRequired = "first_name" | "name" | "email";
+/** Champs d'identité facultatifs : vides, ils disparaissent de la feuille. */
+type IdentityOptional = "title" | "address" | "city" | "phone";
 
 export type LetterPaperFields = {
   company: string | null;
@@ -48,7 +54,22 @@ export function LetterPaper({
   onOverflowChange?: (overflow: boolean) => void;
 }) {
   const profile = useQuery({ queryKey: PROFILE_KEY, queryFn: profileService.load });
-  const identity = profile.data?.profile.identity;
+  const queryClient = useQueryClient();
+  const enregistre = useMutation({
+    mutationFn: (identity: Identity) => {
+      const courant = profile.data?.profile;
+      if (!courant) throw new Error("Profil indisponible");
+      return profileService.save({ ...courant, identity });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: PROFILE_KEY }),
+  });
+  // Brouillon local : la zone éditable prévient à chaque frappe, mais le profil n'est
+  // écrit qu'à la sortie du champ. Le brouillon suit le profil tant qu'on n'y touche pas.
+  const [brouillon, setBrouillon] = useState<Identity | null>(null);
+  // La sortie du champ suit immédiatement la frappe : l'état n'est pas encore réappliqué
+  // quand elle survient, d'où cette référence qui, elle, porte toujours la dernière saisie.
+  const brouillonRef = useRef<Identity | null>(null);
+  const identity = brouillon ?? profile.data?.profile.identity;
   const firstName = identity?.first_name?.trim() ?? "";
   const lastName = identity?.name?.trim() ?? "";
   const nom = letterSignature(firstName, lastName);
@@ -57,6 +78,23 @@ export function LetterPaper({
   const city = identity?.city?.trim() || null;
   const phone = identity?.phone?.trim() || null;
   const email = identity?.email?.trim() || null;
+
+  const poser = (suivant: Identity) => {
+    brouillonRef.current = suivant;
+    setBrouillon(suivant);
+  };
+  const identiteEditable = editable && identity !== undefined;
+
+  const modifier = (champ: IdentityRequired, valeur: string) => {
+    if (identity) poser({ ...identity, [champ]: valeur });
+  };
+  const modifierFacultatif = (champ: IdentityOptional, valeur: string) => {
+    if (identity) poser({ ...identity, [champ]: valeur.trim() === "" ? null : valeur });
+  };
+  const valider = () => {
+    const saisie = brouillonRef.current;
+    if (saisie) enregistre.mutate(saisie);
+  };
   const paperRef = useRef<HTMLElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const [overflow, setOverflow] = useState(false);
@@ -103,19 +141,61 @@ export function LetterPaper({
           <div className="flex flex-col gap-[calc(6px*var(--letter-sp))]">
             {firstName && lastName ? (
               <h1 className="letter-name">
-                {firstName}
+                <ResumeEditableText
+                  tag="span"
+                  label="Prénom"
+                  value={firstName}
+                  editable={identiteEditable}
+                  onChange={(value) => modifier("first_name", value)}
+                  onCommit={valider}
+                />
                 <br />
-                {lastName}
+                <ResumeEditableText
+                  tag="span"
+                  label="Nom"
+                  value={lastName}
+                  editable={identiteEditable}
+                  onChange={(value) => modifier("name", value)}
+                  onCommit={valider}
+                />
               </h1>
             ) : (
               <h1 className="letter-name">{nom}</h1>
             )}
-            {title ? <p className="letter-role">{title}</p> : null}
+            {identiteEditable || title ? (
+              <ResumeEditableText
+                tag="p"
+                className="letter-role"
+                label="Titre du profil"
+                value={title ?? ""}
+                editable={identiteEditable}
+                onChange={(value) => modifierFacultatif("title", value)}
+                onCommit={valider}
+              />
+            ) : null}
           </div>
           <div className="mt-[calc(22px*var(--letter-sp))] flex flex-col gap-[calc(9px*var(--letter-sp))]">
-            <Coordonnee label="Adresse" lignes={[address, city]} />
-            <Coordonnee label="Téléphone" lignes={[phone]} />
-            <Coordonnee label="Courriel" lignes={[email]} />
+            <Coordonnee
+              label="Adresse"
+              editable={identiteEditable}
+              onCommit={valider}
+              lignes={[
+                { valeur: address, libelle: "Adresse postale", onChange: (v) => modifierFacultatif("address", v) },
+                { valeur: city, libelle: "Ville", onChange: (v) => modifierFacultatif("city", v) },
+              ]}
+            />
+            <Coordonnee
+              label="Téléphone"
+              editable={identiteEditable}
+              onCommit={valider}
+              lignes={[{ valeur: phone, libelle: "Téléphone", onChange: (v) => modifierFacultatif("phone", v) }]}
+            />
+            <Coordonnee
+              label="Courriel"
+              editable={identiteEditable}
+              onCommit={valider}
+              lignes={[{ valeur: email, libelle: "Courriel", onChange: (v) => modifier("email", v) }]}
+            />
           </div>
           <p className="letter-attachment">
             Pièce jointe :<br />
@@ -200,16 +280,46 @@ export function LetterPaper({
   );
 }
 
-function Coordonnee({ label, lignes }: { label: string; lignes: Array<string | null | undefined> }) {
-  const visibles = lignes.map((ligne) => ligne?.trim() ?? "").filter((ligne) => ligne !== "");
+/** Une ligne de coordonnée : sa valeur courante et ce qu'elle modifie dans le profil. */
+type LigneCoordonnee = {
+  valeur: string | null;
+  libelle: string;
+  onChange: (value: string) => void;
+};
+
+/**
+ * Bloc de coordonnée de la colonne d'identité.
+ *
+ * En lecture, les lignes vides disparaissent, comme dans le template. En édition elles
+ * restent visibles : sans cela, une coordonnée absente serait impossible à renseigner.
+ */
+function Coordonnee({
+  label,
+  lignes,
+  editable,
+  onCommit,
+}: {
+  label: string;
+  lignes: LigneCoordonnee[];
+  editable: boolean;
+  onCommit: () => void;
+}) {
+  const visibles = editable ? lignes : lignes.filter((ligne) => (ligne.valeur ?? "").trim() !== "");
   if (visibles.length === 0) return null;
   return (
     <div className="flex flex-col gap-px">
       <span className="letter-coord-label">{label}</span>
       {visibles.map((ligne) => (
-        <span key={`${label}-${ligne}`} className="letter-coord-value">
-          {ligne}
-        </span>
+        <ResumeEditableText
+          key={`${label}-${ligne.libelle}`}
+          tag="span"
+          className="letter-coord-value"
+          label={ligne.libelle}
+          value={ligne.valeur ?? ""}
+          editable={editable}
+          onChange={ligne.onChange}
+          onCommit={onCommit}
+        />
       ))}
     </div>
   );

@@ -387,4 +387,28 @@ describe("décisions ATS et confirmation profil dans le générateur de CV", () 
     expect(await screen.findByRole("button", { name: "CV uniquement" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Ajouter au profil" })).toBeInTheDocument();
   });
+
+  it("efface l'offre une fois le CV généré, et sait y revenir", async () => {
+    vi.spyOn(aiService, "generateResume").mockResolvedValue({
+      resume: { resume: "", experiences: [], skills: [], education: [] },
+      analysis: { recap: "", recommendations: [] },
+      job_offer: { title: "Développeur", skills: [], soft_skills: [], experience: null, keywords: [] },
+      profile_score: { total: 60, skills: null, experience: null, ats: null, present: [], missing: [] },
+    });
+    vi.spyOn(documentsService, "prepareResume").mockResolvedValue(missingSkillWorkspace());
+
+    render(<ResumeGeneratorPage />, { wrapper });
+    await userEvent.type(screen.getByLabelText(/Texte de l’offre/), "Une offre");
+    await userEvent.click(screen.getByRole("button", { name: /Générer le CV ciblé/ }));
+
+    // L'offre laisse la place à l'aperçu : sans cela le papier A4 restait comprimé.
+    const revenir = await screen.findByRole("button", { name: /Modifier l’offre/ });
+    expect(screen.queryByLabelText(/Texte de l’offre/)).not.toBeInTheDocument();
+
+    await userEvent.click(revenir);
+    expect(screen.getByLabelText(/Texte de l’offre/)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /Revenir au CV/ }));
+    expect(screen.queryByLabelText(/Texte de l’offre/)).not.toBeInTheDocument();
+  });
 });
