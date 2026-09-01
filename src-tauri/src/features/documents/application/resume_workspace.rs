@@ -52,30 +52,45 @@ pub fn prepare_workspace(
             extra: Vec::new(),
         },
         profile: resume.resume,
-        experiences: resume
-            .experiences
-            .into_iter()
-            .map(|experience| {
-                let source = profile.experiences.iter().find(|source| {
-                    source.title.trim() == experience.title.trim()
-                        && source.company.trim() == experience.company.trim()
-                });
-                ResumeExperienceBlock {
-                    id: Uuid::new_v4().to_string(),
-                    title: experience.title,
-                    company: experience.company,
-                    location: source.and_then(|value| trimmed_option(value.location.as_deref())),
-                    period: source.map_or_else(String::new, |value| {
-                        format_workspace_period(
-                            Some(&value.start_date),
-                            value.end_date.as_deref(),
-                            value.current,
-                        )
-                    }),
-                    bullets: split_bullets(&experience.description),
-                }
-            })
-            .collect(),
+        // La consigne de génération est de conserver toutes les expériences et toutes les
+        // formations : le modèle choisit l'ordre et la mise en avant, pas ce qui disparaît.
+        // Le recadrage sur les faits (`ground_generated_resume`) écarte pourtant toute
+        // entrée que le modèle n'a pas recopiée à l'identique — reformuler « BTS SIO » en
+        // « BTS Services informatiques aux organisations » suffisait à faire disparaître le
+        // diplôme du CV, en silence. Ce qui manque est donc rétabli depuis le profil.
+        experiences: completer_depuis_le_profil(
+            resume.experiences,
+            &profile.experiences,
+            |generee| (search_key(&generee.title), search_key(&generee.company)),
+            |source| (search_key(&source.title), search_key(&source.company)),
+            |source| GeneratedExperience {
+                title: source.title.clone(),
+                company: source.company.clone(),
+                description: source.description.clone().unwrap_or_default(),
+            },
+        )
+        .into_iter()
+        .map(|experience| {
+            let source = profile.experiences.iter().find(|source| {
+                source.title.trim() == experience.title.trim()
+                    && source.company.trim() == experience.company.trim()
+            });
+            ResumeExperienceBlock {
+                id: Uuid::new_v4().to_string(),
+                title: experience.title,
+                company: experience.company,
+                location: source.and_then(|value| trimmed_option(value.location.as_deref())),
+                period: source.map_or_else(String::new, |value| {
+                    format_workspace_period(
+                        Some(&value.start_date),
+                        value.end_date.as_deref(),
+                        value.current,
+                    )
+                }),
+                bullets: split_bullets(&experience.description),
+            }
+        })
+        .collect(),
         projects: profile
             .projects
             .iter()
@@ -115,31 +130,38 @@ pub fn prepare_workspace(
                 }]
             }
         },
-        education: resume
-            .education
-            .into_iter()
-            .map(|education| {
-                let source = profile.education.iter().find(|source| {
-                    source.degree.trim() == education.degree.trim()
-                        && source.school.trim() == education.school.trim()
-                });
-                ResumeEducationBlock {
-                    id: Uuid::new_v4().to_string(),
-                    degree: education.degree,
-                    school: education.school,
-                    location: source.and_then(|value| trimmed_option(value.location.as_deref())),
-                    period: source.map_or_else(String::new, |value| {
-                        format_workspace_period(
-                            value.start_date.as_deref(),
-                            value.end_date.as_deref(),
-                            false,
-                        )
-                    }),
-                    description: source
-                        .and_then(|value| trimmed_option(value.description.as_deref())),
-                }
-            })
-            .collect(),
+        education: completer_depuis_le_profil(
+            resume.education,
+            &profile.education,
+            |generee| (search_key(&generee.degree), search_key(&generee.school)),
+            |source| (search_key(&source.degree), search_key(&source.school)),
+            |source| GeneratedEducation {
+                degree: source.degree.clone(),
+                school: source.school.clone(),
+            },
+        )
+        .into_iter()
+        .map(|education| {
+            let source = profile.education.iter().find(|source| {
+                source.degree.trim() == education.degree.trim()
+                    && source.school.trim() == education.school.trim()
+            });
+            ResumeEducationBlock {
+                id: Uuid::new_v4().to_string(),
+                degree: education.degree,
+                school: education.school,
+                location: source.and_then(|value| trimmed_option(value.location.as_deref())),
+                period: source.map_or_else(String::new, |value| {
+                    format_workspace_period(
+                        value.start_date.as_deref(),
+                        value.end_date.as_deref(),
+                        false,
+                    )
+                }),
+                description: source.and_then(|value| trimmed_option(value.description.as_deref())),
+            }
+        })
+        .collect(),
         certifications: profile
             .certifications
             .iter()
@@ -178,6 +200,30 @@ pub fn prepare_workspace(
     };
     workspace.proposals = build_proposals(&workspace);
     Ok(workspace)
+}
+
+/// Complète une liste générée par les entrées du profil qu'elle a laissées de côté.
+///
+/// L'ordre du modèle est conservé — c'est sa part de l'adaptation à l'offre —, et ce qu'il a
+/// omis vient ensuite, dans l'ordre du profil. La validation de sortie ne borne qu'un
+/// maximum : une liste vide, ou amputée par le recadrage sur les faits, passait sans erreur
+/// et le CV s'exportait sans une expérience ou un diplôme réels.
+fn completer_depuis_le_profil<G, S, K: Eq + std::hash::Hash>(
+    generes: Vec<G>,
+    source: &[S],
+    cle_generee: impl Fn(&G) -> K,
+    cle_source: impl Fn(&S) -> K,
+    depuis: impl Fn(&S) -> G,
+) -> Vec<G> {
+    let deja: std::collections::HashSet<K> = generes.iter().map(&cle_generee).collect();
+    let mut complete = generes;
+    complete.extend(
+        source
+            .iter()
+            .filter(|entree| !deja.contains(&cle_source(entree)))
+            .map(depuis),
+    );
+    complete
 }
 
 /// Valide toutes les données éditables avant leur utilisation par l'export ou le score.
