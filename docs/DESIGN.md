@@ -343,7 +343,11 @@ Fermeture : `useDismissable` (Escape + clic extérieur) — calendrier, FilterMe
 
 - CV : exactement une page A4 (210 × 297 mm), texte sélectionnable, polices IBM Plex
   embarquées. Le moteur Rust (`infrastructure/pdf/resume_pdf.rs`) reproduit la même logique
-  de densité que l'aperçu : espacements puis typographie jusqu'au seuil lisible.
+  de densité que l'aperçu : espacements puis typographie jusqu'au seuil lisible. Le libellé
+  de section se replie dans sa colonne (`LABEL_W`) plutôt que de déborder sur le contenu.
+- Les deux moteurs remplacent par une espace tout caractère absent des polices embarquées —
+  un retour à la ligne saisi dans un champ mono-ligne, par exemple — qui sortait sinon en
+  rectangle vide alors que l'aperçu HTML le rendait correctement.
 - Lettre de motivation : exactement une page A4 (210 × 297 mm).
 - Le rendu réduit d'abord les espacements, puis la typographie jusqu'au seuil lisible défini par le moteur.
 - Si le contenu ne tient toujours pas, l'export est refusé avec un message demandant de le raccourcir. Aucun texte n'est tronqué, superposé ou placé hors page silencieusement.

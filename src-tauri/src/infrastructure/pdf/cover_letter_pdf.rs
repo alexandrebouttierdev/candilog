@@ -652,6 +652,7 @@ impl Plan<'_> {
         } else {
             (&self.fonts.mono_regular, &self.fonts.mono_regular_id)
         };
+        let value = &Self::assainir(font, value);
         let largeur = self.largeur_glyphes(font, size, value);
         self.bounds.max_x = self.bounds.max_x.max(x + largeur);
         self.bounds.max_y = self.bounds.max_y.max(ligne_de_base_haut + size * DESCENT);
@@ -920,6 +921,7 @@ impl Plan<'_> {
             return;
         }
         let size = self.font_size(size);
+        let value = &Self::assainir(self.fonts.source(weight), value);
         self.bounds.max_x = self
             .bounds
             .max_x
@@ -953,6 +955,23 @@ impl Plan<'_> {
     fn largeur_text_actual(&self, weight: Weight, size: f32, value: &str) -> f32 {
         let font = self.fonts.source(weight);
         self.largeur_glyphes(font, size, value)
+    }
+
+    /// Remplace par une espace tout caractère absent de la police.
+    ///
+    /// Un retour à la ligne saisi dans un champ mono-ligne, ou un signe hors de la
+    /// couverture des IBM Plex, sortait sinon en rectangle vide dans le PDF.
+    fn assainir(font: &ParsedFont, value: &str) -> String {
+        value
+            .chars()
+            .map(|caractere| {
+                if font.lookup_glyph_index(caractere as u32).is_some() {
+                    caractere
+                } else {
+                    ' '
+                }
+            })
+            .collect()
     }
 
     /// Largeur d'un texte déjà mis à l'échelle, espacement des lettres compris.

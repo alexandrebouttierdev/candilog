@@ -2,6 +2,7 @@
 use super::*;
 use crate::infrastructure::pdf::A4;
 
+mod export_pdf_garde_les_libelles_dans_leur_colonne;
 mod export_pdf_produit_un_document_lisible;
 mod export_pdf_refuse_un_cv_trop_long;
 mod export_pdf_refuse_un_token_unicode_trop_long;

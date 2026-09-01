@@ -338,8 +338,9 @@ impl Plan<'_> {
         if self.overflow || value.is_empty() {
             return;
         }
+        let value = &self.assainir(face, value);
         let size = self.font_size(size);
-        let max_x = x + self.largeur_text(face, size, value);
+        let max_x = x + self.largeur_text_actual(face, size, value);
         let max_y = ligne_de_base_haut + size * 0.25;
         self.register(max_x, max_y);
         if self.overflow {
@@ -364,6 +365,10 @@ impl Plan<'_> {
     }
 
     fn largeur_text(&self, face: FontFace, size: f32, value: &str) -> f32 {
+        self.largeur_text_actual(face, size, &self.assainir(face, value))
+    }
+
+    fn largeur_text_actual(&self, face: FontFace, size: f32, value: &str) -> f32 {
         let font = self.fonts.source(face);
         let echelle = size / f32::from(font.units_per_em);
         value
@@ -374,6 +379,25 @@ impl Plan<'_> {
                     .map_or(0.0, |largeur| largeur as f32 * echelle)
             })
             .sum()
+    }
+
+    /// Remplace par une espace tout caractère absent de la police.
+    ///
+    /// Un texte collé depuis le web amène des espaces insécables étroites et autres
+    /// signes que les IBM Plex embarquées ne portent pas : sans cela ils sortaient en
+    /// rectangle vide dans le PDF, alors que l'aperçu HTML retombait sur une autre police.
+    fn assainir(&self, face: FontFace, value: &str) -> String {
+        let font = self.fonts.source(face);
+        value
+            .chars()
+            .map(|caractere| {
+                if font.lookup_glyph_index(caractere as u32).is_some() {
+                    caractere
+                } else {
+                    ' '
+                }
+            })
+            .collect()
     }
 
     fn decouper(&self, face: FontFace, size: f32, value: &str, largeur_max: f32) -> Vec<String> {
@@ -558,14 +582,24 @@ impl Plan<'_> {
 
     fn section_label(&mut self, title: &str) -> f32 {
         let y_label = self.y + self.spacing(pt(2.0));
-        self.text(
-            MARGIN_LEFT,
-            y_label + ASCENT * self.font_size(pt(9.2)),
-            FontFace::Mono(MonoWeight::Medium),
-            pt(9.2),
-            rgb(ACCENT.0, ACCENT.1, ACCENT.2),
-            &title.to_uppercase(),
-        );
+        let face = FontFace::Mono(MonoWeight::Medium);
+        let size = pt(9.2);
+        let actual_size = self.font_size(size);
+        let interligne = self.spacing(pt(9.2 * 1.4)).max(actual_size * 1.1);
+        // Le libellé vit dans une colonne de `LABEL_W` : sans repli, un intitulé long
+        // débordait sur le contenu placé à sa droite et le surimprimait.
+        let mut y = y_label;
+        for row in self.decouper(face, size, &title.to_uppercase(), LABEL_W) {
+            self.text(
+                MARGIN_LEFT,
+                y + ASCENT * actual_size,
+                face,
+                size,
+                rgb(ACCENT.0, ACCENT.1, ACCENT.2),
+                &row,
+            );
+            y += interligne;
+        }
         y_label
     }
 
