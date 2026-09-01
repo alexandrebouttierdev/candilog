@@ -14,17 +14,17 @@ const WEIGHT_EXPERIENCE: u16 = 40;
 const WEIGHT_ATS: u16 = 20;
 #[must_use]
 pub fn profile_score(profile: &Profile, job_offer: &StructuredListing) -> MatchScore {
-    let names: HashSet<String> = profile
+    let names: Vec<&str> = profile
         .skills
         .iter()
-        .map(|skill| search_key(&skill.name))
-        .filter(|name| !name.is_empty())
+        .map(|skill| skill.name.as_str())
+        .filter(|name| !search_key(name).is_empty())
         .collect();
     let offer_skills = deduplicate_labels(&job_offer.skills);
     let (present, missing): (Vec<_>, Vec<_>) = offer_skills
         .iter()
         .cloned()
-        .partition(|skill| names.contains(&search_key(skill)));
+        .partition(|skill| skill_couverte(&names, skill));
     let skills = percentage(present.len(), offer_skills.len());
     let text = search_key(&format!(
         "{} {} {}",
@@ -77,22 +77,37 @@ pub fn profile_score(profile: &Profile, job_offer: &StructuredListing) -> MatchS
     }
 }
 
+/// Une compétence de l'offre est couverte dès qu'une compétence du candidat la contient
+/// comme mot entier.
+///
+/// L'égalité stricte des clés normalisées demandait au candidat d'avoir écrit exactement le
+/// libellé de l'offre : « VMware vSphere » ne couvrait pas « VMware », « Windows Server
+/// 2019 » ne couvrait pas « Windows ». Le score des profils réels s'effondrait, et l'éditeur
+/// proposait d'« ajouter » une compétence déjà présente sous son nom complet. La frontière
+/// de mot est celle de [`contains_search_term`] : « Java » ne couvre toujours pas
+/// « JavaScript ».
+fn skill_couverte(candidat: &[&str], attendue: &str) -> bool {
+    candidat
+        .iter()
+        .any(|nom| contains_search_term(nom, attendue))
+}
+
 #[must_use]
 pub fn score_resume_imported(
     resume: &GeneratedResume,
     job_offer: &StructuredListing,
 ) -> MatchScore {
-    let names: HashSet<String> = resume
+    let names: Vec<&str> = resume
         .skills
         .iter()
-        .map(|skill| search_key(skill))
-        .filter(|name| !name.is_empty())
+        .map(String::as_str)
+        .filter(|name| !search_key(name).is_empty())
         .collect();
     let offer_skills = deduplicate_labels(&job_offer.skills);
     let (present, missing): (Vec<_>, Vec<_>) = offer_skills
         .iter()
         .cloned()
-        .partition(|skill| names.contains(&search_key(skill)));
+        .partition(|skill| skill_couverte(&names, skill));
     let skills = percentage(present.len(), offer_skills.len());
     let text = resume_text(resume);
     let keywords = deduplicate_labels(&job_offer.keywords);
@@ -332,6 +347,48 @@ mod tests {
         assert_eq!(score.missing, vec!["React"]);
         assert_eq!(score.skills, Some(50));
         assert!(score.total > 0);
+    }
+
+    /// Un profil réel n'écrit jamais « VMware » tout court : il écrit « VMware vSphere ».
+    /// L'égalité stricte des clés rendait ces compétences invisibles au score — huit profils
+    /// sur dix du scénario de bout en bout affichaient zéro compétence couverte — et
+    /// l'éditeur proposait alors d'ajouter une compétence déjà présente.
+    #[test]
+    fn une_competence_de_l_offre_est_couverte_par_un_libelle_plus_precis() {
+        let mut profile = profile_rust();
+        profile.skills = vec![
+            Skill {
+                name: "VMware vSphere 7/8".into(),
+            },
+            Skill {
+                name: "Windows Server 2016/2019/2022".into(),
+            },
+            Skill {
+                name: "Veeam Backup & Replication".into(),
+            },
+        ];
+
+        let score = profile_score(
+            &profile,
+            &offre(vec!["VMware", "Windows", "VEEAM"], vec![], None),
+        );
+
+        assert_eq!(score.missing, Vec::<String>::new());
+        assert_eq!(score.skills, Some(100));
+    }
+
+    /// La frontière de mot reste celle de la recherche : un préfixe commun ne suffit pas.
+    #[test]
+    fn un_fragment_de_mot_ne_couvre_pas_une_competence() {
+        let mut profile = profile_rust();
+        profile.skills = vec![Skill {
+            name: "JavaScript".into(),
+        }];
+
+        let score = profile_score(&profile, &offre(vec!["Java"], vec![], None));
+
+        assert_eq!(score.present, Vec::<String>::new());
+        assert_eq!(score.missing, vec!["Java"]);
     }
 
     #[test]

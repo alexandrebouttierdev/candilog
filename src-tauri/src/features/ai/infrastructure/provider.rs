@@ -9,6 +9,33 @@ use std::sync::Arc;
 
 const MAX_RESPONSE: usize = 5 * 1024 * 1024;
 
+/// Tentatives d'un appel au fournisseur, reprise comprise.
+///
+/// Une génération de CV enchaîne trois appels et dure une à deux minutes : un incident
+/// réseau passager sur le dernier annulait tout le travail et laissait payés les deux
+/// appels déjà aboutis. Trois tentatives couvrent la coupure passagère sans transformer une
+/// panne durable en attente interminable.
+const TENTATIVES: u32 = 3;
+
+/// Attente avant la reprise numéro `numero` (1 pour la première) : 1 s, puis 2 s.
+fn attente(numero: u32) -> std::time::Duration {
+    std::time::Duration::from_millis(500u64 << numero.min(4))
+}
+
+/// Un échec transitoire mérite une reprise ; une erreur de configuration, jamais.
+///
+/// Côté transport, seuls le délai dépassé et la connexion impossible sont repris : ce sont
+/// les deux cas que l'application sait déjà nommer, et les seuls dont on puisse dire que
+/// l'appel n'a rien produit. Côté serveur, `429` et les `5xx` sont transitoires par
+/// définition. Une clé refusée, un modèle inconnu ou une requête malformée renvoient un
+/// `4xx` : les retenter coûterait sans rien changer.
+fn est_transitoire(error: &reqwest::Error) -> bool {
+    error.status().map_or_else(
+        || error.is_timeout() || error.is_connect(),
+        |status| status == reqwest::StatusCode::TOO_MANY_REQUESTS || status.is_server_error(),
+    )
+}
+
 #[async_trait]
 pub trait LlmGenerator: Send + Sync {
     async fn generate(&self, prompt: &str, system: &str, json: bool) -> AppResult<String>;
@@ -92,15 +119,57 @@ impl LlmGenerator for ProviderHttp {
 }
 
 impl ProviderHttp {
+    /// Envoie une requête et reprend les échecs transitoires.
+    ///
+    /// La requête est reconstruite à chaque tentative : un corps déjà consommé ne se renvoie
+    /// pas. L'attente entre deux essais laisse passer une coupure courte et une limite de
+    /// débit sans marteler le fournisseur.
+    ///
+    /// La reprise vit ici et non dans l'orchestration : c'est l'adaptateur qui connaît le
+    /// transport, et tous les appels — analyse d'offre, génération, lettre, import de profil,
+    /// liste des modèles — en bénéficient de la même façon.
+    ///
+    /// L'annulation reste immédiate : `AiService` abandonne le futur qui porte cette boucle,
+    /// attente comprise.
+    async fn envoyer(
+        &self,
+        construire: impl Fn() -> reqwest::RequestBuilder,
+    ) -> AppResult<reqwest::Response> {
+        let mut tentative = 0;
+        loop {
+            let resultat = construire()
+                .send()
+                .await
+                .and_then(reqwest::Response::error_for_status);
+            let error = match resultat {
+                Ok(response) => return Ok(response),
+                Err(error) => error,
+            };
+            tentative += 1;
+            if tentative >= TENTATIVES || !est_transitoire(&error) {
+                return Err(AppError::from(error));
+            }
+            // L'URL et la clé ne sont jamais journalisées : seul le motif l'est.
+            tracing::warn!(
+                tentative,
+                is_timeout = error.is_timeout(),
+                is_connect = error.is_connect(),
+                status = ?error.status().map(|value| value.as_u16()),
+                "appel au fournisseur IA repris"
+            );
+            tokio::time::sleep(attente(tentative)).await;
+        }
+    }
+
     async fn ollama(&self, prompt: &str, system: &str, json: bool) -> AppResult<String> {
         let body = serde_json::json!({"model":self.config.model,"messages":[{"role":"system","content":system},{"role":"user","content":prompt}],"stream":false,"format":if json { serde_json::json!("json") } else { serde_json::Value::Null },"options":{"temperature":self.config.temperature}});
         let response = self
-            .client
-            .post(format!("{}/api/chat", self.endpoint))
-            .json(&body)
-            .send()
-            .await?
-            .error_for_status()?;
+            .envoyer(|| {
+                self.client
+                    .post(format!("{}/api/chat", self.endpoint))
+                    .json(&body)
+            })
+            .await?;
         let value: serde_json::Value = json_limite(response).await?;
         text(&value, "/message/content")
     }
@@ -111,13 +180,13 @@ impl ProviderHttp {
             body["response_format"] = serde_json::json!({"type":"json_object"});
         }
         let response = self
-            .client
-            .post(format!("{}/v1/chat/completions", self.endpoint))
-            .bearer_auth(self.config.api_key.as_deref().unwrap_or_default())
-            .json(&body)
-            .send()
-            .await?
-            .error_for_status()?;
+            .envoyer(|| {
+                self.client
+                    .post(format!("{}/v1/chat/completions", self.endpoint))
+                    .bearer_auth(self.config.api_key.as_deref().unwrap_or_default())
+                    .json(&body)
+            })
+            .await?;
         let value: serde_json::Value = json_limite(response).await?;
         text(&value, "/choices/0/message/content")
     }
@@ -125,17 +194,17 @@ impl ProviderHttp {
     async fn claude(&self, prompt: &str, system: &str) -> AppResult<String> {
         let body = serde_json::json!({"model":self.config.model,"max_tokens":4096,"system":system,"messages":[{"role":"user","content":prompt}],"temperature":self.config.temperature});
         let response = self
-            .client
-            .post(format!("{}/v1/messages", self.endpoint))
-            .header(
-                "x-api-key",
-                self.config.api_key.as_deref().unwrap_or_default(),
-            )
-            .header("anthropic-version", "2023-06-01")
-            .json(&body)
-            .send()
-            .await?
-            .error_for_status()?;
+            .envoyer(|| {
+                self.client
+                    .post(format!("{}/v1/messages", self.endpoint))
+                    .header(
+                        "x-api-key",
+                        self.config.api_key.as_deref().unwrap_or_default(),
+                    )
+                    .header("anthropic-version", "2023-06-01")
+                    .json(&body)
+            })
+            .await?;
         let value: serde_json::Value = json_limite(response).await?;
         text(&value, "/content/0/text")
     }
@@ -143,30 +212,27 @@ impl ProviderHttp {
     async fn gemini(&self, prompt: &str, system: &str, json: bool) -> AppResult<String> {
         let body = serde_json::json!({"contents":[{"parts":[{"text":prompt}]}],"systemInstruction":{"parts":[{"text":system}]},"generationConfig":{"temperature":self.config.temperature,"responseMimeType":if json {"application/json"} else {"text/plain"}}});
         let response = self
-            .client
-            .post(format!(
-                "{}/v1beta/models/{}:generateContent",
-                self.endpoint, self.config.model
-            ))
-            .header(
-                "x-goog-api-key",
-                self.config.api_key.as_deref().unwrap_or_default(),
-            )
-            .json(&body)
-            .send()
-            .await?
-            .error_for_status()?;
+            .envoyer(|| {
+                self.client
+                    .post(format!(
+                        "{}/v1beta/models/{}:generateContent",
+                        self.endpoint, self.config.model
+                    ))
+                    .header(
+                        "x-goog-api-key",
+                        self.config.api_key.as_deref().unwrap_or_default(),
+                    )
+                    .json(&body)
+            })
+            .await?;
         let value: serde_json::Value = json_limite(response).await?;
         text(&value, "/candidates/0/content/parts/0/text")
     }
 
     async fn models_ollama(&self) -> AppResult<Vec<String>> {
         let response = self
-            .client
-            .get(format!("{}/api/tags", self.endpoint))
-            .send()
-            .await?
-            .error_for_status()?;
+            .envoyer(|| self.client.get(format!("{}/api/tags", self.endpoint)))
+            .await?;
         let value: serde_json::Value = json_limite(response).await?;
         Ok(value
             .pointer("/models")
@@ -179,12 +245,12 @@ impl ProviderHttp {
 
     async fn models_openai(&self) -> AppResult<Vec<String>> {
         let response = self
-            .client
-            .get(format!("{}/v1/models", self.endpoint))
-            .bearer_auth(self.config.api_key.as_deref().unwrap_or_default())
-            .send()
-            .await?
-            .error_for_status()?;
+            .envoyer(|| {
+                self.client
+                    .get(format!("{}/v1/models", self.endpoint))
+                    .bearer_auth(self.config.api_key.as_deref().unwrap_or_default())
+            })
+            .await?;
         let value: serde_json::Value = json_limite(response).await?;
         Ok(value
             .pointer("/data")
@@ -197,16 +263,16 @@ impl ProviderHttp {
 
     async fn models_claude(&self) -> AppResult<Vec<String>> {
         let response = self
-            .client
-            .get(format!("{}/v1/models", self.endpoint))
-            .header(
-                "x-api-key",
-                self.config.api_key.as_deref().unwrap_or_default(),
-            )
-            .header("anthropic-version", "2023-06-01")
-            .send()
-            .await?
-            .error_for_status()?;
+            .envoyer(|| {
+                self.client
+                    .get(format!("{}/v1/models", self.endpoint))
+                    .header(
+                        "x-api-key",
+                        self.config.api_key.as_deref().unwrap_or_default(),
+                    )
+                    .header("anthropic-version", "2023-06-01")
+            })
+            .await?;
         let value: serde_json::Value = json_limite(response).await?;
         Ok(value
             .pointer("/data")
@@ -219,15 +285,15 @@ impl ProviderHttp {
 
     async fn models_gemini(&self) -> AppResult<Vec<String>> {
         let response = self
-            .client
-            .get(format!("{}/v1beta/models", self.endpoint))
-            .header(
-                "x-goog-api-key",
-                self.config.api_key.as_deref().unwrap_or_default(),
-            )
-            .send()
-            .await?
-            .error_for_status()?;
+            .envoyer(|| {
+                self.client
+                    .get(format!("{}/v1beta/models", self.endpoint))
+                    .header(
+                        "x-goog-api-key",
+                        self.config.api_key.as_deref().unwrap_or_default(),
+                    )
+            })
+            .await?;
         let value: serde_json::Value = json_limite(response).await?;
         Ok(value
             .pointer("/models")
@@ -266,4 +332,145 @@ async fn json_limite<T: DeserializeOwned>(mut response: reqwest::Response) -> Ap
         body.extend_from_slice(&chunk);
     }
     serde_json::from_slice(&body).map_err(AppError::from)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::features::ai::domain::AnalysisMode;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    /// Serveur HTTP minimal : il renvoie les statuts demandés dans l'ordre, puis `200`, et
+    /// compte les requêtes reçues. Assez pour observer une reprise sans ajouter de
+    /// dépendance de test au projet.
+    async fn serveur(statuts: Vec<u16>) -> (String, Arc<AtomicUsize>) {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let recues = Arc::new(AtomicUsize::new(0));
+        let compteur = Arc::clone(&recues);
+        tokio::spawn(async move {
+            loop {
+                let Ok((mut flux, _)) = listener.accept().await else {
+                    return;
+                };
+                let index = compteur.fetch_add(1, Ordering::SeqCst);
+                lire_requete(&mut flux).await;
+                let statut = statuts.get(index).copied().unwrap_or(200);
+                let corps = r#"{"message":{"content":"{}"},"models":[]}"#;
+                let reponse = format!(
+                    "HTTP/1.1 {statut} S\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{corps}",
+                    corps.len()
+                );
+                let _ = flux.write_all(reponse.as_bytes()).await;
+                let _ = flux.shutdown().await;
+            }
+        });
+        (format!("http://127.0.0.1:{port}"), recues)
+    }
+
+    /// Draine la requête avant de répondre : un corps laissé en attente casse la connexion
+    /// côté client et masquerait le statut qu'on veut observer.
+    async fn lire_requete(flux: &mut tokio::net::TcpStream) {
+        let mut tampon = Vec::new();
+        let mut morceau = [0u8; 1024];
+        loop {
+            let Ok(lu) = flux.read(&mut morceau).await else {
+                return;
+            };
+            if lu == 0 {
+                return;
+            }
+            tampon.extend_from_slice(&morceau[..lu]);
+            let texte = String::from_utf8_lossy(&tampon).into_owned();
+            let Some(fin) = texte.find("\r\n\r\n") else {
+                continue;
+            };
+            let taille: usize = texte
+                .lines()
+                .find_map(|ligne| {
+                    let (nom, valeur) = ligne.split_once(':')?;
+                    nom.eq_ignore_ascii_case("content-length")
+                        .then(|| valeur.trim().parse().ok())?
+                })
+                .unwrap_or(0);
+            if tampon.len() >= fin + 4 + taille {
+                return;
+            }
+        }
+    }
+
+    async fn provider(endpoint: &str) -> Arc<dyn LlmGenerator> {
+        build_provider(&LlmConfig {
+            provider: ProviderKind::Ollama,
+            api_key: None,
+            endpoint: Some(endpoint.to_owned()),
+            model: "modele-de-test".into(),
+            temperature: 0.0,
+            mode: AnalysisMode::default(),
+        })
+        .await
+        .unwrap()
+    }
+
+    /// Une génération de CV enchaîne trois appels : un `503` passager sur le dernier
+    /// annulait toute la génération et laissait payés les deux appels déjà aboutis.
+    #[tokio::test]
+    async fn un_echec_serveur_passager_est_repris() {
+        let (endpoint, recues) = serveur(vec![503]).await;
+
+        let texte = provider(&endpoint)
+            .await
+            .generate("prompt", "system", true)
+            .await
+            .unwrap();
+
+        assert_eq!(texte, "{}");
+        assert_eq!(
+            recues.load(Ordering::SeqCst),
+            2,
+            "la requête n'a pas été reprise"
+        );
+    }
+
+    /// Une limite de débit se lève d'elle-même : elle mérite d'attendre, pas d'échouer.
+    #[tokio::test]
+    async fn une_limite_de_debit_est_reprise() {
+        let (endpoint, recues) = serveur(vec![429]).await;
+
+        assert!(provider(&endpoint)
+            .await
+            .generate("prompt", "system", true)
+            .await
+            .is_ok());
+        assert_eq!(recues.load(Ordering::SeqCst), 2);
+    }
+
+    /// Une clé refusée ou un modèle inconnu ne s'arrangeront pas : les retenter ne ferait
+    /// que retarder le message que l'utilisateur doit lire.
+    #[tokio::test]
+    async fn une_erreur_de_configuration_n_est_pas_reprise() {
+        let (endpoint, recues) = serveur(vec![401, 401, 401]).await;
+
+        assert!(provider(&endpoint)
+            .await
+            .generate("prompt", "system", true)
+            .await
+            .is_err());
+        assert_eq!(recues.load(Ordering::SeqCst), 1, "un 4xx a été repris");
+    }
+
+    /// Une panne durable s'arrête : la reprise est bornée, elle ne boucle pas.
+    #[tokio::test]
+    async fn une_panne_durable_s_arrete_apres_le_nombre_de_tentatives() {
+        let (endpoint, recues) = serveur(vec![503, 503, 503, 503, 503]).await;
+
+        assert!(provider(&endpoint)
+            .await
+            .generate("prompt", "system", true)
+            .await
+            .is_err());
+        assert_eq!(recues.load(Ordering::SeqCst), TENTATIVES as usize);
+    }
 }

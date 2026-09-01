@@ -175,13 +175,40 @@ pub struct AtsRecommendation {
     pub proposed_text: String,
 }
 
+/// Écarte les recommandations inexploitables au lieu de faire échouer toute l'analyse.
+///
+/// Une recommandation sans texte, ou dont la cible est incohérente, ne peut être ni simulée
+/// ni appliquée : elle n'a aucune valeur pour l'utilisateur. La refuser faisait pourtant
+/// échouer la génération entière — trois appels et une minute et demie perdus pour une
+/// suggestion facultative. Même raison que pour les mots-clés de la lettre : une bavure du
+/// modèle sur un élément optionnel ne justifie pas de jeter le document.
+fn recommendations_lenient<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Vec<AtsRecommendation>, D::Error> {
+    Ok(Vec::<AtsRecommendation>::deserialize(deserializer)?
+        .into_iter()
+        .filter(|recommendation| {
+            !recommendation.original_text.trim().is_empty()
+                && !recommendation.proposed_text.trim().is_empty()
+                && match recommendation.section {
+                    AtsRecommendationSection::Profile => recommendation.item_index.is_none(),
+                    AtsRecommendationSection::Experience => recommendation.item_index.is_some(),
+                }
+        })
+        .collect())
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "ai.ts")]
 pub struct AtsAnalysis {
     #[serde(default, alias = "summary", deserialize_with = "string_lenient")]
     pub recap: String,
-    #[serde(default, alias = "recommandations")]
+    #[serde(
+        default,
+        alias = "recommandations",
+        deserialize_with = "recommendations_lenient"
+    )]
     pub recommendations: Vec<AtsRecommendation>,
 }
 
@@ -291,6 +318,28 @@ mod tests {
         );
         assert_eq!(analysis.recommendations[0].item_index, None);
         assert_eq!(analysis.recommendations[0].original_text, "Ancien profil");
+    }
+
+    /// Une suggestion vide ou mal ciblée coûtait toute la génération : trois appels et une
+    /// minute et demie perdus pour un champ facultatif que l'écran n'aurait pas affiché.
+    #[test]
+    fn une_recommandation_inexploitable_est_ecartee_sans_perdre_l_analyse() {
+        let brut = r#"{
+            "recap": "CV solide",
+            "recommendations": [
+                {"section": "profile", "original_text": "", "proposed_text": "Nouveau"},
+                {"section": "profile", "original_text": "Ancien", "proposed_text": "   "},
+                {"section": "experience", "original_text": "A", "proposed_text": "B"},
+                {"section": "profile", "item_index": 2, "original_text": "A", "proposed_text": "B"},
+                {"section": "profile", "original_text": "Ancien", "proposed_text": "Nouveau"}
+            ]
+        }"#;
+
+        let analysis: AtsAnalysis = serde_json::from_str(brut).unwrap();
+
+        assert_eq!(analysis.recap, "CV solide");
+        assert_eq!(analysis.recommendations.len(), 1);
+        assert_eq!(analysis.recommendations[0].original_text, "Ancien");
     }
 
     #[test]

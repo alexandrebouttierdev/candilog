@@ -13,6 +13,20 @@ le coffre du système (`core::secrets`), jamais dans SQLite ni dans les journaux
 HTTPS obligatoire hors Ollama, adresses privées refusées pour un point de terminaison
 distant, réponse plafonnée à 5 Mio, PDF source plafonné à 10 Mio.
 
+Chaque appel HTTP est **repris jusqu'à trois fois** sur un échec transitoire — délai
+dépassé, connexion impossible, `429`, `5xx` — avec une attente de 1 s puis 2 s. Une
+génération de CV enchaîne trois appels et dure une à deux minutes : sans reprise, un
+incident réseau passager sur le dernier annulait tout le travail et laissait payés les deux
+appels déjà aboutis. Une erreur de configuration (`4xx` : clé refusée, modèle inconnu)
+n'est **jamais** reprise — la retenter ne ferait que retarder le message que l'utilisateur
+doit lire. La reprise vit dans l'adaptateur de transport (`infrastructure/provider.rs`),
+donc tous les appels en bénéficient, et l'annulation reste immédiate : `ai_cancel` abandonne
+le futur qui porte la boucle, attente comprise.
+
+Elle ne remplace pas la reprise de `generate_json`, qui vise un tout autre défaut : une
+réponse HTTP valide dont le corps n'est pas le JSON attendu. Les deux se cumulent —
+transport d'abord, forme de la réponse ensuite.
+
 ## Sorties du modèle
 
 `AiService` porte le parsing d'offre et de CV, la génération, l'ATS, le grounding et les
@@ -37,6 +51,12 @@ sélection d'identifiants du catalogue de faits et des mots-clés du brief
 du brief est simplement écarté, parce qu'une paraphrase du modèle ne justifie pas de faire
 échouer toute la rédaction — la lettre reste dans tous les cas limitée aux faits vérifiés.
 
+La composition de la lettre est du français, pas du gabarit : la préposition est **élidée**
+devant une voyelle (`core::utils::text::elider`, jumeau de `letterLayout.ts`) — « au poste
+d'Administrateur », jamais « au poste de Administrateur » —, et un fait repris du profil est
+ramené à une fin de phrase unique, ses retours à la ligne aplatis et sa ponctuation finale
+dédoublonnée.
+
 Les itérations de l'écran passent par le champ `instruction` du brief : les consignes
 successives sont cumulées et renvoyées ensemble, faute de quoi « plus court » puis « plus
 formel » ne vaudraient jamais en même temps. Elles orientent la **sélection de faits**, pas
@@ -44,6 +64,14 @@ la prose : le corps reste assemblé par Candilog.
 
 Le score ATS affiché est toujours le calcul déterministe Rust (`profile_score` /
 `score_resume_imported`, `domain/scoring.rs`), jamais le chiffre renvoyé par le modèle.
+
+Une compétence de l'offre est **couverte dès qu'une compétence du candidat la contient comme
+mot entier** : « VMware vSphere 7/8 » couvre « VMware », « Windows Server 2016/2019/2022 »
+couvre « Windows ». L'égalité stricte des clés normalisées exigeait le libellé exact de
+l'offre : un profil réel, qui nomme ses technologies précisément, affichait zéro compétence
+couverte, et l'éditeur lui proposait d'ajouter une compétence déjà présente sous son nom
+complet. La frontière de mot reste celle de `contains_search_term` — « Java » ne couvre
+toujours pas « JavaScript ».
 
 ## Recommandations ATS de l'éditeur de CV
 
@@ -71,6 +99,15 @@ Si la génération ne renvoie **aucune** compétence — la validation de sortie
 maximum, une liste vide passe donc sans erreur — `prepare_workspace` reprend celles du
 profil. Sans ce repli, le CV partait amputé de toute sa section Compétences en silence, et
 le score ATS s'effondrait.
+
+Les **expériences et les formations** ne sont pas une sélection : la consigne de génération
+est de toutes les conserver, le modèle n'en choisit que l'ordre et la mise en avant. Le
+recadrage sur les faits écarte pourtant toute entrée que le modèle n'a pas recopiée à
+l'identique — reformuler « BTS SIO » en « BTS Services informatiques aux organisations »
+suffisait à faire disparaître le diplôme du CV. `prepare_workspace` **complète** donc la
+liste générée par les entrées du profil qu'elle a laissées de côté, à la suite et dans
+l'ordre du profil. Les compétences, elles, restent une sélection : c'est leur rôle
+vis-à-vis de l'offre, et les manquantes reviennent comme propositions ATS.
 
 ## Progression et annulation
 
