@@ -91,14 +91,29 @@ pub fn prepare_workspace(
                     .unwrap_or_default(),
             })
             .collect(),
-        skill_groups: if resume.skills.is_empty() {
-            Vec::new()
-        } else {
-            vec![ResumeSkillGroup {
-                id: Uuid::new_v4().to_string(),
-                name: "Compétences".into(),
-                items: resume.skills,
-            }]
+        skill_groups: {
+            // La validation de sortie ne borne qu'un maximum : un modèle qui ne renvoie
+            // aucune compétence passe sans erreur. Reprendre alors celles du profil, sinon
+            // le CV part amputé de toute une section sans que rien ne le signale.
+            let items = if resume.skills.is_empty() {
+                profile
+                    .skills
+                    .iter()
+                    .map(|skill| skill.name.trim().to_owned())
+                    .filter(|name| !name.is_empty())
+                    .collect()
+            } else {
+                resume.skills
+            };
+            if items.is_empty() {
+                Vec::new()
+            } else {
+                vec![ResumeSkillGroup {
+                    id: Uuid::new_v4().to_string(),
+                    name: "Compétences".into(),
+                    items,
+                }]
+            }
         },
         education: resume
             .education

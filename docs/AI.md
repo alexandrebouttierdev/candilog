@@ -67,6 +67,11 @@ mais sans action possible.
 Les compétences manquantes de l'offre (`MatchScore.missing`) produisent des propositions
 `missing_skill` distinctes des reformulations textuelles.
 
+Si la génération ne renvoie **aucune** compétence — la validation de sortie ne borne qu'un
+maximum, une liste vide passe donc sans erreur — `prepare_workspace` reprend celles du
+profil. Sans ce repli, le CV partait amputé de toute sa section Compétences en silence, et
+le score ATS s'effondrait.
+
 ## Progression et annulation
 
 Les traitements sont asynchrones côté Rust. La progression remonte par événements Tauri :

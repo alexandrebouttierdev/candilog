@@ -149,4 +149,5 @@ mod applique_une_suggestion_textuelle;
 mod calcule_le_gain_d_une_competence;
 mod compose_un_document_autonome;
 mod refuse_une_suggestion_perimee;
+mod reprend_les_competences_du_profil;
 mod valide_les_bornes_du_document;
