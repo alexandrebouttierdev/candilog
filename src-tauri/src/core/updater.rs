@@ -220,20 +220,29 @@ async fn check_url(
     }
     let response = response.error_for_status()?;
     let text = response.text().await?;
-    Ok(parse_response(&text, current))
+    parse_response(&text, current)
 }
 
 /// Décode la réponse de l'API GitHub et la compare à la version locale, hors réseau.
-#[must_use]
-pub fn parse_response(json: &str, current: &Version) -> Option<UpdateInfo> {
-    let release: ReleaseApi = serde_json::from_str(json).ok()?;
+///
+/// # Errors
+/// Retourne `Provider` si la réponse ne respecte pas le contrat attendu ou si son tag
+/// n'est pas une version sémantique valide.
+pub fn parse_response(json: &str, current: &Version) -> AppResult<Option<UpdateInfo>> {
+    let release: ReleaseApi = serde_json::from_str(json).map_err(|error| {
+        tracing::warn!(%error, "réponse de mise à jour illisible");
+        AppError::Provider("La réponse du service de mise à jour est illisible.".into())
+    })?;
     let tag = release
         .tag_name
         .strip_prefix('v')
         .unwrap_or(&release.tag_name);
-    let remote = Version::parse(tag).ok()?;
+    let remote = Version::parse(tag).map_err(|error| {
+        tracing::warn!(tag, %error, "version de mise à jour invalide");
+        AppError::Provider("La version publiée par le service de mise à jour est invalide.".into())
+    })?;
     if remote <= *current {
-        return None;
+        return Ok(None);
     }
     let assets: Vec<AssetInfo> = release
         .assets
@@ -243,13 +252,13 @@ pub fn parse_response(json: &str, current: &Version) -> Option<UpdateInfo> {
             url: asset.browser_download_url,
         })
         .collect();
-    Some(UpdateInfo {
+    Ok(Some(UpdateInfo {
         version: remote,
         notes: release.body,
         page_url: release.html_url,
         asset: asset_pour_plateforme(&assets),
         assets,
-    })
+    }))
 }
 
 #[must_use]
@@ -535,6 +544,7 @@ mod tests {
     #[test]
     fn une_reponse_github_complete_est_decodee() {
         let info = parse_response(RESPONSE_EXEMPLE, &Version::new(0, 2, 0))
+            .expect("la réponse valide ne doit pas produire d'erreur")
             .expect("la réponse complète doit être décodée");
         assert_eq!(info.version, Version::new(0, 3, 0));
         assert_eq!(info.notes, "Nouvelle version avec corrections.");
@@ -547,15 +557,34 @@ mod tests {
     #[test]
     fn une_version_egale_ou_inferieure_est_ignoree() {
         let response = r#"{"tag_name":"v0.2.0","html_url":"https://example.test","assets":[]}"#;
-        assert_eq!(parse_response(response, &Version::new(0, 2, 0)), None);
-        assert_eq!(parse_response(response, &Version::new(0, 3, 0)), None);
+        assert_eq!(
+            parse_response(response, &Version::new(0, 2, 0)).unwrap(),
+            None
+        );
+        assert_eq!(
+            parse_response(response, &Version::new(0, 3, 0)).unwrap(),
+            None
+        );
     }
 
     #[test]
     fn un_json_incomplet_ou_invalide_est_refuse() {
-        let actuelle = Version::new(0, 2, 0);
-        assert_eq!(parse_response("pas du json", &actuelle), None);
-        assert_eq!(parse_response("{}", &actuelle), None);
+        let current = Version::new(0, 2, 0);
+        assert!(matches!(
+            parse_response("pas du json", &current),
+            Err(AppError::Provider(_))
+        ));
+        assert!(matches!(
+            parse_response("{}", &current),
+            Err(AppError::Provider(_))
+        ));
+        assert!(matches!(
+            parse_response(
+                r#"{"tag_name":"version-invalide","html_url":"https://example.test","assets":[]}"#,
+                &current
+            ),
+            Err(AppError::Provider(_))
+        ));
     }
 
     #[test]

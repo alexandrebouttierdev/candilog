@@ -252,4 +252,31 @@ describe("ViewModel des candidatures", () => {
 
     expect(result.current.selected_id).toBeNull();
   });
+
+  it("exporte le filtre reçu et annonce le nombre de candidatures", async () => {
+    vi.spyOn(applicationService, "listPage").mockResolvedValue(page([cand("Développeur")]));
+    const exportCsv = vi.spyOn(applicationService, "exportCsv").mockResolvedValue(2);
+    const { result } = renderHook(() => useApplicationsViewModel(), { wrapper });
+    await waitFor(() => expect(result.current.items).toHaveLength(1));
+
+    await act(async () => { await result.current.exportCsv(result.current.filter); });
+
+    expect(exportCsv).toHaveBeenCalledWith(result.current.filter);
+    expect(useUiStore.getState().toasts.at(-1)).toMatchObject({
+      tone: "success",
+      title: "Export terminé",
+      detail: "2 candidatures exportées.",
+    });
+  });
+
+  it("n'annonce rien quand l'export est annulé", async () => {
+    vi.spyOn(applicationService, "listPage").mockResolvedValue(page([cand("Développeur")]));
+    vi.spyOn(applicationService, "exportCsv").mockResolvedValue(null);
+    const { result } = renderHook(() => useApplicationsViewModel(), { wrapper });
+    await waitFor(() => expect(result.current.items).toHaveLength(1));
+
+    await act(async () => { await result.current.exportCsv(result.current.filter); });
+
+    expect(useUiStore.getState().toasts).toHaveLength(0);
+  });
 });

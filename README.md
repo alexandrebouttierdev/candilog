@@ -131,8 +131,9 @@ npm run dev
 
 ## Validations
 
-Aucune CI ne vérifie la qualité — le seul workflow publie les releases. Ces commandes sont
-à lancer localement.
+Le workflow de release rejoue ces contrôles avant tout build multi-plateforme et bloque la
+publication au premier échec. Ils restent à lancer localement avant de terminer une tâche :
+attendre un push sur `master` pour découvrir un défaut rendrait la release inutilement rouge.
 
 ```bash
 npm run lint

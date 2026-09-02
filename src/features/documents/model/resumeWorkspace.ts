@@ -71,6 +71,20 @@ function emptyToNull(value: string): string | null {
   return value.trim() === "" ? null : value;
 }
 
+/** Limite les liens persistés dans un CV aux URL HTTP(S) absolues. */
+export function safeResumeUrl(value: string | null): string | null {
+  if (value === null || value.trim() === "") return null;
+  try {
+    const parsed = new URL(value);
+    if ((parsed.protocol !== "http:" && parsed.protocol !== "https:") || parsed.hostname === "") {
+      return null;
+    }
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
 function updateAt<T>(array: T[], index: number, updater: (item: T) => T | null): T[] | null {
   const item = array[index];
   if (item === undefined) return null;

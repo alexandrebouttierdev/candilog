@@ -34,6 +34,12 @@ Un push sur `master` (jamais sur `dev`) déclenche le build multi-plateforme et 
 GitHub Release **publique** lorsque le tag `v<version>` n'existe pas encore. Un
 `workflow_dispatch` permet aussi un lancement manuel.
 
+Le job `quality` exécute d'abord lint, tests et build frontend, puis formatage, Clippy,
+tests Rust et `cargo-deny`. Les jobs de build dépendent explicitement de ce contrôle et ne
+peuvent donc produire aucun paquet s'il échoue. Toutes les actions tierces sont référencées
+par leur SHA complet ; les droits d'écriture sur le dépôt et l'OIDC sont réservés au seul
+job `publish`.
+
 ## Plateformes et assets
 
 | Plateforme | Runner CI | Paquets |
@@ -136,9 +142,10 @@ dernière version publiée.
 
 ## Procédure de release
 
-0. Lancer les validations de `docs/CODE_RULES.md` §20 **plus** `npm run tauri build` :
-   aucune CI ne les rejoue, et le workflow de release construit sans les exécuter. Un
-   `git status --short` doit être vide après `cargo test` (types ts-rs à jour).
+0. Lancer les validations de `docs/CODE_RULES.md` §20 **plus** `npm run tauri build`.
+   Le workflow les rejoue avant les builds, mais ce filet de publication ne remplace pas la
+   vérification locale. Un `git status --short` doit être vide après `cargo test` (types
+   ts-rs à jour).
 1. Monter `version` dans `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json` et `package.json`
    (et `Cargo.lock` via `cargo build --manifest-path src-tauri/Cargo.toml`), et ouvrir la
    section correspondante de `CHANGELOG.md`.

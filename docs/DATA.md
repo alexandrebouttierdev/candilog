@@ -77,7 +77,9 @@ voyagent ensemble dans le même blob.
 
 À l'écriture, un contenu v1 est désérialisé en `ResumeWorkspace` et son document passé par
 `validate_document` (`features/documents/application/resume_workspace.rs`) : un appel IPC
-forgé ne peut pas persister une forme incohérente. Les anciens `ResumeGeneration` restent
+forgé ne peut pas persister une forme incohérente. Les liens d'identité et de projet doivent
+être des URL HTTP(S) absolues ; l'aperçu applique la même restriction avant de créer un lien,
+y compris pour un ancien contenu déjà stocké. Les anciens `ResumeGeneration` restent
 acceptés tels quels pour la lecture et la duplication ; la conversion en workspace n'intervient
 qu'à la première édition ou export via `documents_resume_prepare`, sans réécriture silencieuse
 de la bibliothèque.
@@ -120,8 +122,17 @@ les ACL héritées du profil utilisateur.
 ## Sauvegardes
 
 Les sauvegardes doivent utiliser l'API backup SQLite. Le fichier produit est restreint à
-`600` avant d'être rempli : il porte les mêmes données que la base, et la copie de secours
-prise avant une restauration survit à l'échec de celle-ci. Une restauration doit valider l'en-tête, ouvrir la base, exécuter `PRAGMA integrity_check`, vérifier les versions puis remplacer la base avec possibilité de retour arrière.
+`600` avant d'être rempli : il porte les mêmes données que la base. Une restauration ne
+travaille jamais directement sur la base active : elle copie d'abord la sauvegarde dans un
+fichier candidat unique, y applique les migrations, contrôle l'intégrité SQLite et les clés
+étrangères, puis compare chaque table et index requis au schéma canonique courant. Un simple
+`PRAGMA user_version` correct et des tables homonymes ne suffisent donc pas.
+
+La base active n'est remplacée qu'après cette validation complète. Une copie de secours au
+nom unique est conservée jusqu'au contrôle post-restauration ; elle est supprimée après un
+succès complet et préservée avec son chemin dans le message d'erreur si un retour arrière a
+été nécessaire ou a échoué. Les fichiers candidats et leurs journaux SQLite sont nettoyés
+automatiquement.
 
 ## Compatibilité des bases
 

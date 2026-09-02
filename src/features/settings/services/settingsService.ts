@@ -1,4 +1,5 @@
 import { ipc } from "@/shared/services/ipc";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import type {
   About,
   LlmForm,
@@ -26,5 +27,6 @@ export const settingsService = {
   // Sans argument : l'asset est résolu et son empreinte vérifiée côté Rust. Le frontend ne
   // désigne pas ce qui sera téléchargé puis ouvert par le lanceur système.
   downloadUpdate: () => ipc<string>("settings_download_update"),
+  openReleasePage: (url: string) => openUrl(url),
   about: () => ipc<About>("settings_about"),
 };

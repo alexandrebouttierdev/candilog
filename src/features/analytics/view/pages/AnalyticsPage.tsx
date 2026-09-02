@@ -1,7 +1,6 @@
 import { useState } from "react";
 import type { ToFollowUp, Period } from "@/shared/types/generated/analytics";
 import { useAnalyticsViewModel } from "../../viewmodel/useAnalyticsViewModel";
-import { analyticsService } from "../../services/analyticsService";
 import {
   ActivityChart,
   AnalyticsSkeleton,
@@ -12,7 +11,6 @@ import {
 import { ContextBarAccessory, ContextNote } from "@/app/layout/ContextBar";
 import { FollowUpFormModal } from "@/features/followups/view/components/FollowUpFormModal";
 import { AppError } from "@/shared/types/app-error";
-import { useUiStore } from "@/shared/lib/ui-store";
 import {
   Button,
   Card,
@@ -34,26 +32,7 @@ const PERIODES: readonly { value: Period; label: string }[] = [
 /** Statistiques de candidature, période et export réellement interactifs. */
 export function AnalyticsPage() {
   const vm = useAnalyticsViewModel();
-  const notify = useUiStore((state) => state.notify);
   const [to_follow_up, setToFollowUp] = useState<ToFollowUp | null>(null);
-  const [exportEnCours, setExportEnCours] = useState(false);
-
-  const exporter = async () => {
-    setExportEnCours(true);
-    try {
-      const exported = await analyticsService.exportCsv(vm.period);
-      if (!exported) return;
-      notify({ tone: "success", title: "Analyses exportées" });
-    } catch (error) {
-      notify({
-        tone: "error",
-        title: "Export impossible",
-        detail: error instanceof AppError ? error.message : undefined,
-      });
-    } finally {
-      setExportEnCours(false);
-    }
-  };
 
   return (
     <div className="flex h-full flex-col">
@@ -82,8 +61,8 @@ export function AnalyticsPage() {
           <Button
             variant="primary"
             icon="download"
-            disabled={exportEnCours}
-            onClick={() => void exporter()}
+            disabled={vm.isExporting}
+            onClick={() => void vm.exportCsv()}
           >
             Export
           </Button>

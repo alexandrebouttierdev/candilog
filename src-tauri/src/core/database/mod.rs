@@ -4,5 +4,6 @@ pub mod connection;
 pub mod helpers;
 
 pub use connection::{
-    open_pool, run_local_migrations, validate_database_file, SqlitePool, LATEST_SCHEMA_VERSION,
+    open_pool, run_local_migrations, validate_current_schema, validate_database_file, SqlitePool,
+    LATEST_SCHEMA_VERSION,
 };

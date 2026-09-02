@@ -143,6 +143,19 @@ export function useApplicationsViewModel() {
     onError: signalerEchec("Suppression impossible"),
   });
 
+  const exportCsv = useMutation({
+    mutationFn: (exportFilter: ApplicationFilter) => applicationService.exportCsv(exportFilter),
+    onSuccess: (rows) => {
+      if (rows === null) return;
+      notify({
+        tone: "success",
+        title: "Export terminé",
+        detail: `${rows} candidature${rows > 1 ? "s" : ""} exportée${rows > 1 ? "s" : ""}.`,
+      });
+    },
+    onError: signalerEchec("Export impossible"),
+  });
+
   const rechercher = useCallback((value: string) => {
     setSearch(value);
     setPage(1);
@@ -217,6 +230,7 @@ export function useApplicationsViewModel() {
     error: list.error,
     isSaving: creation.isPending || modification.isPending,
     isDeleting: suppression.isPending || suppressionMultiple.isPending,
+    isExporting: exportCsv.isPending,
 
     setView,
     setPage,
@@ -236,5 +250,6 @@ export function useApplicationsViewModel() {
     changeStatus: changementStatus.mutateAsync,
     delete: suppression.mutateAsync,
     deleteMany: suppressionMultiple.mutateAsync,
+    exportCsv: exportCsv.mutateAsync,
   };
 }

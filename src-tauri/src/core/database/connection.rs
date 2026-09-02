@@ -7,6 +7,7 @@
 use crate::core::errors::{AppError, AppResult};
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
+use std::collections::BTreeMap;
 use std::path::Path;
 
 /// Pool de connexions `SQLite` partagé par l'application.
@@ -155,6 +156,100 @@ pub fn run_local_migrations(pool: &SqlitePool) -> AppResult<()> {
     resultat?;
     reactivation?;
     Ok(())
+}
+
+/// Vérifie qu'une base migrée expose l'intégralité du schéma Candilog courant.
+///
+/// Les objets supplémentaires d'une ancienne version sont tolérés, mais chaque table et
+/// chaque index du schéma canonique doit exister avec la même définition. Cette validation
+/// empêche notamment une base qui annonce le bon `user_version` de contourner les migrations
+/// avec des tables homonymes mais incomplètes.
+///
+/// # Errors
+/// Retourne une erreur de validation si la version, l'intégrité ou le schéma diffèrent.
+pub fn validate_current_schema(pool: &SqlitePool) -> AppResult<()> {
+    let connection = pool.get().map_err(|e| AppError::Database(e.to_string()))?;
+    let version: i64 = connection.query_row("PRAGMA user_version", [], |row| row.get(0))?;
+    if version != LATEST_SCHEMA_VERSION {
+        return Err(AppError::Validation(format!(
+            "La sauvegarde utilise le schéma {version} au lieu du schéma courant {LATEST_SCHEMA_VERSION}."
+        )));
+    }
+
+    let integrity: String = connection.query_row("PRAGMA integrity_check", [], |row| row.get(0))?;
+    if integrity != "ok" {
+        return Err(AppError::Validation(format!(
+            "La sauvegarde SQLite est corrompue : {integrity}"
+        )));
+    }
+
+    let foreign_key_violations: i64 =
+        connection.query_row("SELECT count(*) FROM pragma_foreign_key_check", [], |row| {
+            row.get(0)
+        })?;
+    if foreign_key_violations > 0 {
+        return Err(AppError::Validation(format!(
+            "La sauvegarde contient {foreign_key_violations} référence(s) invalide(s)."
+        )));
+    }
+
+    let actual_schema = schema_objects(&connection)?;
+    drop(connection);
+    let expected_schema = canonical_schema()?;
+    for (identity, expected_sql) in expected_schema {
+        let Some(actual_sql) = actual_schema.get(&identity) else {
+            return Err(AppError::Validation(format!(
+                "La sauvegarde ne contient pas l'objet de schéma Candilog {} {}.",
+                identity.0, identity.1
+            )));
+        };
+        if actual_sql != &expected_sql {
+            return Err(AppError::Validation(format!(
+                "La définition de l'objet Candilog {} {} est invalide.",
+                identity.0, identity.1
+            )));
+        }
+    }
+    Ok(())
+}
+
+fn canonical_schema() -> AppResult<BTreeMap<(String, String), String>> {
+    let reference_pool = open_pool(None)?;
+    run_local_migrations(&reference_pool)?;
+    let reference = reference_pool
+        .get()
+        .map_err(|error| AppError::Database(error.to_string()))?;
+    schema_objects(&reference)
+}
+
+fn schema_objects(
+    connection: &rusqlite::Connection,
+) -> AppResult<BTreeMap<(String, String), String>> {
+    let mut statement = connection.prepare(
+        "SELECT type, name, sql
+         FROM sqlite_master
+         WHERE type IN ('table', 'index')
+           AND name NOT LIKE 'sqlite_%'
+           AND sql IS NOT NULL
+         ORDER BY type, name",
+    )?;
+    let rows = statement.query_map([], |row| {
+        Ok((
+            row.get::<_, String>(0)?,
+            row.get::<_, String>(1)?,
+            row.get::<_, String>(2)?,
+        ))
+    })?;
+    let mut objects = BTreeMap::new();
+    for row in rows {
+        let (object_type, name, sql) = row?;
+        objects.insert((object_type, name), normalize_schema_sql(&sql));
+    }
+    Ok(objects)
+}
+
+fn normalize_schema_sql(sql: &str) -> String {
+    sql.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
 /// Corps de `run_local_migrations`, exécuté clés étrangères désactivées.

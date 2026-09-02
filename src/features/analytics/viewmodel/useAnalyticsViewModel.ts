@@ -34,6 +34,19 @@ export function useAnalyticsViewModel() {
       });
     },
   });
+  const exportCsv = useMutation({
+    mutationFn: () => analyticsService.exportCsv(period),
+    onSuccess: (exported) => {
+      if (exported) notify({ tone: "success", title: "Analyses exportées" });
+    },
+    onError: (error: unknown) => {
+      notify({
+        tone: "error",
+        title: "Export impossible",
+        detail: error instanceof AppError ? error.message : undefined,
+      });
+    },
+  });
 
   const changePeriod = useCallback((value: Period) => setPeriod(value), []);
 
@@ -42,9 +55,11 @@ export function useAnalyticsViewModel() {
     data: query.data,
     isLoading: query.isPending,
     isSaving: createFollowUp.isPending,
+    isExporting: exportCsv.isPending,
     error: query.error,
     changePeriod,
     recharger: () => void query.refetch(),
     createFollowUp: createFollowUp.mutateAsync,
+    exportCsv: exportCsv.mutateAsync,
   };
 }

@@ -9,7 +9,7 @@ import type {
   ResumeSkillGroup,
   ResumeWorkspace,
 } from "@/shared/types/generated/documents";
-import type { ResumeField } from "../../model/resumeWorkspace";
+import { safeResumeUrl, type ResumeField } from "../../model/resumeWorkspace";
 import { ResumeEditableText } from "./ResumeEditableText";
 
 type ResumeFieldChange = (field: ResumeField, value: string) => void;
@@ -233,13 +233,11 @@ function ResumeHeader({
                     onChange={(value) => onChange({ type: "identity", field: entree.field }, value)}
                   />
                 ) : (
-                  <a
+                  <SafeResumeLink
                     key={entree.field}
-                    href={entree.value ?? undefined}
+                    value={entree.value ?? ""}
                     className="border-b border-[var(--resume-accent-soft)] text-[var(--resume-accent)] no-underline"
-                  >
-                    {entree.value}
-                  </a>
+                  />
                 ),
               )}
             {identity.extra.map((ligne, index) => (
@@ -390,9 +388,10 @@ function ProjectsSection({
                     onChange={(value) => onChange({ type: "project", index, field: "url" }, value)}
                   />
                 ) : (
-                  <a href={project.url} className={`${META} border-b border-[var(--resume-accent-soft)] text-[var(--resume-accent)] no-underline`}>
-                    {project.url}
-                  </a>
+                  <SafeResumeLink
+                    value={project.url}
+                    className={`${META} border-b border-[var(--resume-accent-soft)] text-[var(--resume-accent)] no-underline`}
+                  />
                 )
               ) : null}
             </div>
@@ -418,6 +417,16 @@ function ProjectsSection({
         ))}
       </div>
     </section>
+  );
+}
+
+function SafeResumeLink({ value, className }: { value: string; className: string }) {
+  const href = safeResumeUrl(value);
+  if (href === null) return <span className={className}>{value}</span>;
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer" className={className}>
+      {value}
+    </a>
   );
 }
 

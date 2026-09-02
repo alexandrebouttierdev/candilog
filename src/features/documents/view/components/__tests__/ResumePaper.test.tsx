@@ -62,4 +62,42 @@ describe("ResumePaper", () => {
     fireEvent.paste(bullet, { clipboardData: { getData: () => "Nouvelle réalisation" } });
     expect(onChange).toHaveBeenCalledWith({ type: "experience_bullet", index: 0, item: 0 }, "Nouvelle réalisation");
   });
+
+  it("rend une URL sûre dans un nouvel onglet isolé", () => {
+    const workspace = workspaceFixture({
+      identity: {
+        ...workspaceFixture().document.identity,
+        website: "https://example.test/profil",
+      },
+    });
+    render(<ResumePaper workspace={workspace} editable={false} onChange={vi.fn()} />);
+
+    const link = screen.getByRole("link", { name: "https://example.test/profil" });
+    expect(link).toHaveAttribute("href", "https://example.test/profil");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
+  it("laisse une URL dangereuse visible sans la rendre cliquable", () => {
+    const workspace = workspaceFixture({
+      identity: {
+        ...workspaceFixture().document.identity,
+        website: "javascript:alert(1)",
+      },
+      projects: [
+        {
+          id: "project-dangerous",
+          name: "Projet historique",
+          meta: null,
+          url: "data:text/html,attaque",
+          bullets: [],
+        },
+      ],
+    });
+    render(<ResumePaper workspace={workspace} editable={false} onChange={vi.fn()} />);
+
+    expect(screen.getByText("javascript:alert(1)")).toBeInTheDocument();
+    expect(screen.getByText("data:text/html,attaque")).toBeInTheDocument();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  });
 });

@@ -1,7 +1,9 @@
 //! Backup et validation des bases SQLite Candilog.
 
 use crate::core::config::restreindre_fichier;
-use crate::core::database::{run_local_migrations, validate_database_file, SqlitePool};
+use crate::core::database::{
+    open_pool, run_local_migrations, validate_current_schema, validate_database_file, SqlitePool,
+};
 use crate::core::errors::{AppError, AppResult};
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -93,39 +95,62 @@ pub fn validate(path: &Path) -> AppResult<()> {
 /// la base active a été remise dans son état antérieur.
 pub fn import(pool: &SqlitePool, db_path: &Path, source_path: &Path) -> AppResult<()> {
     validate(source_path)?;
-    let secours = path_de_secours(db_path);
-    export(pool, &secours)?;
+    let candidate = prepare_candidate(db_path, source_path)?;
+    let mut rollback = TemporaryDatabase::new(unique_database_path(db_path, "candilog-secours"));
+    export(pool, rollback.path())?;
     tracing::info!("copie de secours prise avant restauration");
 
-    let Err(echec) = remplacer(pool, source_path) else {
+    let replacement = replace(pool, candidate.path()).and_then(|()| validate_current_schema(pool));
+    let Err(failure) = replacement else {
         tracing::info!("backup restauré");
-        if secours.exists() {
-            if let Err(error) = std::fs::remove_file(&secours) {
-                tracing::warn!(path = %secours.display(), %error, "copie de secours non supprimée");
-            }
-        }
         return Ok(());
     };
-    tracing::error!(error = %echec, "restauration échouée, retour arrière");
+    tracing::error!(error = %failure, "restauration échouée, retour arrière");
 
-    match remplacer(pool, &secours) {
-        Ok(()) => Err(AppError::Validation(
+    let rollback_result =
+        replace(pool, rollback.path()).and_then(|()| validate_current_schema(pool));
+    rollback.preserve();
+    match rollback_result {
+        Ok(()) => Err(AppError::Validation(format!(
             "Le backup n'a pas pu être restauré. La base d'origine a été restaurée : vos \
-             données sont intactes."
-                .into(),
-        )),
-        Err(perte) => {
-            tracing::error!(error = %perte, "retour arrière échoué");
+             données sont intactes. Une copie de secours est conservée dans {}.",
+            rollback.path().display()
+        ))),
+        Err(loss) => {
+            tracing::error!(error = %loss, "retour arrière échoué");
             Err(AppError::Database(format!(
                 "Le backup n'a pas pu être restauré et la base d'origine n'a pas pu être \
                  remise en place. Une copie intacte de vos données est conservée dans {}.",
-                secours.display()
+                rollback.path().display()
             )))
         }
     }
 }
 
-fn remplacer(pool: &SqlitePool, source_path: &Path) -> AppResult<()> {
+fn prepare_candidate(db_path: &Path, source_path: &Path) -> AppResult<TemporaryDatabase> {
+    let candidate = TemporaryDatabase::new(unique_database_path(db_path, "candilog-restauration"));
+    copy_database(source_path, candidate.path())?;
+    let candidate_pool = open_pool(Some(candidate.path()))?;
+    run_local_migrations(&candidate_pool)?;
+    validate_current_schema(&candidate_pool)?;
+    drop(candidate_pool);
+    Ok(candidate)
+}
+
+fn copy_database(source_path: &Path, destination_path: &Path) -> AppResult<()> {
+    let source = rusqlite::Connection::open_with_flags(
+        source_path,
+        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
+    )?;
+    let mut target = rusqlite::Connection::open(destination_path)?;
+    restreindre_fichier(destination_path);
+    let backup = rusqlite::backup::Backup::new(&source, &mut target)?;
+    backup
+        .run_to_completion(5, std::time::Duration::from_millis(100), None)
+        .map_err(AppError::from)
+}
+
+fn replace(pool: &SqlitePool, source_path: &Path) -> AppResult<()> {
     {
         let source = rusqlite::Connection::open_with_flags(
             source_path,
@@ -142,12 +167,60 @@ fn remplacer(pool: &SqlitePool, source_path: &Path) -> AppResult<()> {
     run_local_migrations(pool)
 }
 
-fn path_de_secours(db_path: &Path) -> PathBuf {
-    if db_path.as_os_str().is_empty() {
-        std::env::temp_dir().join(format!("candilog-secours-{}.sqlite", uuid::Uuid::new_v4()))
-    } else {
-        db_path.with_extension("sqlite.bak")
+fn unique_database_path(db_path: &Path, prefix: &str) -> PathBuf {
+    let directory = db_path
+        .parent()
+        .filter(|path| !path.as_os_str().is_empty())
+        .map(Path::to_path_buf)
+        .unwrap_or_else(std::env::temp_dir);
+    directory.join(format!("{prefix}-{}.sqlite", uuid::Uuid::new_v4()))
+}
+
+struct TemporaryDatabase {
+    path: PathBuf,
+    delete_on_drop: bool,
+}
+
+impl TemporaryDatabase {
+    fn new(path: PathBuf) -> Self {
+        Self {
+            path,
+            delete_on_drop: true,
+        }
     }
+
+    fn path(&self) -> &Path {
+        &self.path
+    }
+
+    fn preserve(&mut self) {
+        self.delete_on_drop = false;
+    }
+}
+
+impl Drop for TemporaryDatabase {
+    fn drop(&mut self) {
+        if !self.delete_on_drop {
+            return;
+        }
+        for path in [
+            self.path.clone(),
+            sidecar_path(&self.path, "-wal"),
+            sidecar_path(&self.path, "-shm"),
+        ] {
+            if let Err(error) = std::fs::remove_file(&path) {
+                if error.kind() != std::io::ErrorKind::NotFound {
+                    tracing::warn!(path = %path.display(), %error, "fichier temporaire non supprimé");
+                }
+            }
+        }
+    }
+}
+
+fn sidecar_path(path: &Path, suffix: &str) -> PathBuf {
+    let mut value = path.as_os_str().to_os_string();
+    value.push(suffix);
+    PathBuf::from(value)
 }
 
 /// Vide les données utilisateur en conservant le schéma, les migrations et les quatre
@@ -184,7 +257,7 @@ pub fn reset_data(pool: &SqlitePool) -> AppResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::database::{open_pool, run_local_migrations};
+    use crate::core::database::{open_pool, run_local_migrations, LATEST_SCHEMA_VERSION};
 
     #[test]
     fn validation_refuse_un_fichier_texte() {
@@ -338,5 +411,150 @@ mod tests {
             )
             .unwrap();
         assert_eq!(job_title, "Dev");
+    }
+
+    #[test]
+    fn import_refuse_un_schema_courant_incomplet_sans_toucher_la_base_active() {
+        let directory = tempfile::tempdir().unwrap();
+        let db_path = directory.path().join("candilog.sqlite");
+        let source_path = directory.path().join("schema-incomplet.sqlite");
+
+        let active_pool = open_pool(Some(&db_path)).unwrap();
+        run_local_migrations(&active_pool).unwrap();
+        {
+            let active_connection = active_pool.get().unwrap();
+            active_connection
+                .execute(
+                    "INSERT INTO companies (id, name, created_at, updated_at)
+                     VALUES ('sentinelle', 'Entreprise intacte', '2026-01-01', '2026-01-01')",
+                    [],
+                )
+                .unwrap();
+        }
+
+        {
+            let source_connection = rusqlite::Connection::open(&source_path).unwrap();
+            source_connection
+                .execute_batch(
+                    "CREATE TABLE applications (id TEXT PRIMARY KEY);
+                     CREATE TABLE companies (id TEXT PRIMARY KEY);
+                     CREATE TABLE contacts (id TEXT PRIMARY KEY);
+                     CREATE TABLE settings (id INTEGER PRIMARY KEY);
+                     CREATE TABLE profile (id INTEGER PRIMARY KEY);
+                     CREATE TABLE sectors (id TEXT PRIMARY KEY);
+                     CREATE TABLE professional_domains (id TEXT PRIMARY KEY);
+                     CREATE TABLE company_types (id TEXT PRIMARY KEY);
+                     CREATE TABLE contract_types (id TEXT PRIMARY KEY);
+                     CREATE TABLE status_history (id TEXT PRIMARY KEY);
+                     CREATE TABLE follow_ups (id TEXT PRIMARY KEY);
+                     CREATE TABLE interviews (id TEXT PRIMARY KEY);
+                     CREATE TABLE resume_versions (id TEXT PRIMARY KEY);
+                     CREATE TABLE cover_letters (id TEXT PRIMARY KEY);
+                     PRAGMA user_version = 2;",
+                )
+                .unwrap();
+        }
+
+        let error = import(&active_pool, &db_path, &source_path).unwrap_err();
+
+        assert!(
+            matches!(error, AppError::Validation(_) | AppError::Database(_)),
+            "un schéma incomplet doit être refusé : {error}"
+        );
+        let active_connection = active_pool.get().unwrap();
+        let company_name: String = active_connection
+            .query_row(
+                "SELECT name FROM companies WHERE id = 'sentinelle'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(company_name, "Entreprise intacte");
+    }
+
+    #[test]
+    fn import_restaure_une_sauvegarde_valide() {
+        let directory = tempfile::tempdir().unwrap();
+        let db_path = directory.path().join("candilog.sqlite");
+        let source_path = directory.path().join("sauvegarde.sqlite");
+        let source_pool = open_pool(None).unwrap();
+        run_local_migrations(&source_pool).unwrap();
+        source_pool
+            .get()
+            .unwrap()
+            .execute(
+                "INSERT INTO companies (id, name, created_at, updated_at)
+                 VALUES ('source', 'Entreprise sauvegardée', '2026-01-01', '2026-01-01')",
+                [],
+            )
+            .unwrap();
+        export(&source_pool, &source_path).unwrap();
+
+        let active_pool = open_pool(Some(&db_path)).unwrap();
+        run_local_migrations(&active_pool).unwrap();
+        active_pool
+            .get()
+            .unwrap()
+            .execute(
+                "INSERT INTO companies (id, name, created_at, updated_at)
+                 VALUES ('active', 'Entreprise remplacée', '2026-01-01', '2026-01-01')",
+                [],
+            )
+            .unwrap();
+
+        import(&active_pool, &db_path, &source_path).unwrap();
+
+        let active_connection = active_pool.get().unwrap();
+        let company_name: String = active_connection
+            .query_row(
+                "SELECT name FROM companies WHERE id = 'source'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(company_name, "Entreprise sauvegardée");
+        let replaced: i64 = active_connection
+            .query_row(
+                "SELECT count(*) FROM companies WHERE id = 'active'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(replaced, 0);
+    }
+
+    #[test]
+    fn import_migre_la_copie_candidate_avant_le_remplacement() {
+        let directory = tempfile::tempdir().unwrap();
+        let db_path = directory.path().join("candilog.sqlite");
+        let source_path = directory.path().join("sauvegarde-v1.sqlite");
+        {
+            let source_connection = rusqlite::Connection::open(&source_path).unwrap();
+            source_connection
+                .execute_batch(include_str!("../../migrations/init_schema.sql"))
+                .unwrap();
+            source_connection
+                .pragma_update(None, "user_version", 1)
+                .unwrap();
+        }
+        let active_pool = open_pool(Some(&db_path)).unwrap();
+        run_local_migrations(&active_pool).unwrap();
+
+        import(&active_pool, &db_path, &source_path).unwrap();
+
+        let active_connection = active_pool.get().unwrap();
+        let version: i64 = active_connection
+            .query_row("PRAGMA user_version", [], |row| row.get(0))
+            .unwrap();
+        let added_columns: i64 = active_connection
+            .query_row(
+                "SELECT count(*) FROM pragma_table_info('cover_letters')
+                 WHERE name IN ('recipient', 'recipient_address', 'job_reference')",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(version, LATEST_SCHEMA_VERSION);
+        assert_eq!(added_columns, 3);
     }
 }

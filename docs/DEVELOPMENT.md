@@ -102,8 +102,9 @@ la sous-police s'afficherait en toutes lettres à l'écran.
 
 ## Valider
 
-Aucune CI ne vérifie la qualité : le seul workflow du dépôt publie les releases. Ces
-commandes sont donc à lancer localement.
+Le job `quality` du workflow de release rejoue ces commandes et conditionne tous les builds.
+Elles restent obligatoires localement avant de terminer une tâche : le workflow protège une
+publication, il ne sert pas de boucle de développement.
 
 ```bash
 npm run lint
@@ -115,8 +116,9 @@ cargo clippy --manifest-path src-tauri/Cargo.toml --locked --all-targets -- -D w
 cargo test --manifest-path src-tauri/Cargo.toml --locked --all-targets
 ```
 
-Avant une publication, ajouter le build de release réel — c'est la seule commande qui
-exerce le bundler, et le workflow ne fait rien d'autre :
+Avant une publication, ajouter le build de release réel — c'est la seule commande locale qui
+exerce le bundler. Le workflow l'exécute ensuite sur chaque plateforme uniquement si son job
+`quality` est vert :
 
 ```bash
 npm run tauri build

@@ -3,7 +3,7 @@
 use super::*;
 use crate::core::errors::AppError;
 use crate::features::ai::domain::{MAX_ITEMS, MAX_ITEM_CHARS};
-use crate::features::documents::domain::ResumeExperienceBlock;
+use crate::features::documents::domain::{ResumeExperienceBlock, ResumeProjectBlock};
 
 #[test]
 fn refuse_un_nom_vide() {
@@ -66,4 +66,43 @@ fn refuse_une_puce_trop_longue() {
         validate_document(&document),
         Err(AppError::Validation(message)) if message == "Une puce du CV dépasse la taille maximale autorisée."
     ));
+}
+
+#[test]
+fn refuse_les_url_non_http_du_document() {
+    let mut document = minimal_document();
+    document.identity.website = Some("javascript:alert(1)".into());
+    assert!(matches!(
+        validate_document(&document),
+        Err(AppError::Validation(message)) if message == "Le site web du CV doit utiliser HTTP ou HTTPS"
+    ));
+
+    document.identity.website = Some("https://alex.example.test".into());
+    document.projects.push(ResumeProjectBlock {
+        id: "project".into(),
+        name: "Projet".into(),
+        meta: None,
+        url: Some("data:text/html,attaque".into()),
+        bullets: Vec::new(),
+    });
+    assert!(matches!(
+        validate_document(&document),
+        Err(AppError::Validation(message)) if message == "Le lien d'un projet du CV doit utiliser HTTP ou HTTPS"
+    ));
+}
+
+#[test]
+fn accepte_les_url_http_et_https_du_document() {
+    let mut document = minimal_document();
+    document.identity.website = Some("https://alex.example.test".into());
+    document.identity.linkedin = Some("http://linkedin.example.test/alex".into());
+    document.projects.push(ResumeProjectBlock {
+        id: "project".into(),
+        name: "Projet".into(),
+        meta: None,
+        url: Some("https://project.example.test".into()),
+        bullets: Vec::new(),
+    });
+
+    validate_document(&document).unwrap();
 }

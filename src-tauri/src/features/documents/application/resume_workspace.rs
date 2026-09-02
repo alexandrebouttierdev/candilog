@@ -3,6 +3,7 @@
 use super::resume_document::{format_month_date, split_bullets};
 use crate::core::errors::{AppError, AppResult};
 use crate::core::utils::text::search_key;
+use crate::core::utils::validation::validate_optional_http_url;
 use crate::features::ai::domain::{
     score_resume_imported, AtsRecommendation, AtsRecommendationSection, GeneratedEducation,
     GeneratedExperience, GeneratedResume, ResumeGeneration, MAX_ITEMS, MAX_ITEM_CHARS,
@@ -46,9 +47,9 @@ pub fn prepare_workspace(
             city: trimmed_option(identity.city.as_deref()),
             phone: trimmed_option(identity.phone.as_deref()),
             email: identity.email.trim().into(),
-            website: trimmed_option(identity.website.as_deref()),
-            linkedin: trimmed_option(identity.linkedin.as_deref()),
-            github: trimmed_option(identity.github.as_deref()),
+            website: normalize_http_url(identity.website.as_deref()),
+            linkedin: normalize_http_url(identity.linkedin.as_deref()),
+            github: normalize_http_url(identity.github.as_deref()),
             extra: Vec::new(),
         },
         profile: resume.resume,
@@ -98,7 +99,7 @@ pub fn prepare_workspace(
                 id: Uuid::new_v4().to_string(),
                 name: project.name.clone(),
                 meta: trimmed_option(project.technologies.as_deref()),
-                url: trimmed_option(project.url.as_deref()),
+                url: normalize_http_url(project.url.as_deref()),
                 bullets: project
                     .description
                     .as_deref()
@@ -256,6 +257,15 @@ pub fn validate_document(document: &ResumeDocument) -> AppResult<()> {
     ] {
         validate_optional_text(value, label)?;
     }
+    validate_optional_http_url(document.identity.website.as_deref(), "Le site web du CV")?;
+    validate_optional_http_url(
+        document.identity.linkedin.as_deref(),
+        "Le profil LinkedIn du CV",
+    )?;
+    validate_optional_http_url(
+        document.identity.github.as_deref(),
+        "Le profil GitHub du CV",
+    )?;
     validate_list(document.identity.extra.len(), "L'identité du CV")?;
     validate_strings(
         &document.identity.extra,
@@ -293,6 +303,7 @@ pub fn validate_document(document: &ResumeDocument) -> AppResult<()> {
         ])?;
         validate_optional_text(project.meta.as_deref(), "Les détails d'un projet du CV")?;
         validate_optional_text(project.url.as_deref(), "Le lien d'un projet du CV")?;
+        validate_optional_http_url(project.url.as_deref(), "Le lien d'un projet du CV")?;
         validate_list(project.bullets.len(), "Un projet du CV")?;
         validate_strings(&project.bullets, "Une puce du CV")?;
     }
@@ -656,6 +667,33 @@ fn trimmed_option(value: Option<&str>) -> Option<String> {
         .map(str::trim)
         .filter(|value| !value.is_empty())
         .map(str::to_owned)
+}
+
+/// Rend sûrs et compatibles les liens de profils historiques enregistrés sans schéma.
+///
+/// Les valeurs déjà HTTP(S) sont conservées. Un domaine nu reçoit `https://`; une valeur
+/// portant un autre schéma reste inchangée afin que `validate_document` la refuse ensuite
+/// explicitement plutôt que de la transformer silencieusement.
+fn normalize_http_url(value: Option<&str>) -> Option<String> {
+    let value = value.map(str::trim).filter(|value| !value.is_empty())?;
+    if url::Url::parse(value).is_ok() {
+        return Some(value.to_owned());
+    }
+    let domain = value.split('/').next().unwrap_or_default();
+    if value.starts_with('/')
+        || value.contains(':')
+        || value.chars().any(char::is_whitespace)
+        || !domain.contains('.')
+        || domain.starts_with('.')
+        || domain.ends_with('.')
+    {
+        return Some(value.to_owned());
+    }
+    let candidate = format!("https://{value}");
+    match url::Url::parse(&candidate) {
+        Ok(parsed) if parsed.host_str().is_some() => Some(parsed.to_string()),
+        _ => Some(value.to_owned()),
+    }
 }
 
 fn validate_required_fields(fields: &[(&String, &str)]) -> AppResult<()> {

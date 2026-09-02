@@ -7,6 +7,7 @@ import type { ResumeWorkspace } from "@/shared/types/generated/documents";
 import { profileService } from "@/features/profile/services/profileService";
 import { PROFILE_KEY } from "@/features/profile/viewmodel/useProfileViewModel";
 import { AppError } from "@/shared/types/app-error";
+import { runResumeRecalculation } from "./resumeRecalculation";
 
 /** Pile d'annulation/rétablissement bornée : au-delà, les plus anciens états sont perdus. */
 const HISTORY_LIMIT = 50;
@@ -43,12 +44,16 @@ export function useResumeEditor(initial: ResumeWorkspace) {
   const [pendingProfileSkill, setPendingProfileSkill] = useState<PendingProfileSkill | null>(null);
 
   const recalcTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mounted = useRef(true);
   // Incrémenté à chaque changement local (édition, annulation, décision ATS) : une réponse
   // de recalcul dont la révision ne correspond plus à la dernière n'est plus d'actualité.
   const revision = useRef(0);
 
   useEffect(() => {
+    mounted.current = true;
     return () => {
+      mounted.current = false;
+      revision.current += 1;
       if (recalcTimer.current) clearTimeout(recalcTimer.current);
     };
   }, []);
@@ -63,23 +68,19 @@ export function useResumeEditor(initial: ResumeWorkspace) {
     revision.current += 1;
     const requested = revision.current;
     recalcTimer.current = setTimeout(() => {
-      void runRecalculation(base, requested);
+      setIsRecalculating(true);
+      void runResumeRecalculation({
+        workspace: base,
+        recalculate: documentsService.recalculateResume,
+        isCurrent: () => mounted.current && revision.current === requested,
+        onSuccess: (updated) => {
+          setWorkspace(updated);
+          setError(null);
+        },
+        onError: (caught) => setError(errorMessage(caught)),
+        onSettled: () => setIsRecalculating(false),
+      });
     }, RECALC_DEBOUNCE_MS);
-  }
-
-  async function runRecalculation(base: ResumeWorkspace, requested: number): Promise<void> {
-    setIsRecalculating(true);
-    try {
-      const updated = await documentsService.recalculateResume(base);
-      if (revision.current !== requested) return;
-      setWorkspace(updated);
-      setError(null);
-    } catch (caught) {
-      if (revision.current !== requested) return;
-      setError(errorMessage(caught));
-    } finally {
-      if (revision.current === requested) setIsRecalculating(false);
-    }
   }
 
   /** Édition locale immédiate : le document change avant tout aller-retour IPC. */
@@ -148,6 +149,7 @@ export function useResumeEditor(initial: ResumeWorkspace) {
     setIsRecalculating(true);
     try {
       const updated = await documentsService.applyResumeProposal(before, proposal_id);
+      if (!mounted.current) return;
       setUndoStack((stack) => [...stack, before].slice(-HISTORY_LIMIT));
       setRedoStack([]);
       setWorkspace(updated);
@@ -161,9 +163,9 @@ export function useResumeEditor(initial: ResumeWorkspace) {
         });
       }
     } catch (caught) {
-      setError(errorMessage(caught));
+      if (mounted.current) setError(errorMessage(caught));
     } finally {
-      setIsRecalculating(false);
+      if (mounted.current) setIsRecalculating(false);
     }
   }
 
@@ -173,14 +175,15 @@ export function useResumeEditor(initial: ResumeWorkspace) {
     setIsRecalculating(true);
     try {
       const updated = await documentsService.rejectResumeProposal(before, proposal_id);
+      if (!mounted.current) return;
       setUndoStack((stack) => [...stack, before].slice(-HISTORY_LIMIT));
       setRedoStack([]);
       setWorkspace(updated);
       setError(null);
     } catch (caught) {
-      setError(errorMessage(caught));
+      if (mounted.current) setError(errorMessage(caught));
     } finally {
-      setIsRecalculating(false);
+      if (mounted.current) setIsRecalculating(false);
     }
   }
 
@@ -199,14 +202,15 @@ export function useResumeEditor(initial: ResumeWorkspace) {
     setIsRecalculating(true);
     try {
       const updated = await documentsService.recalculateResume(reverted);
+      if (!mounted.current) return;
       setUndoStack((stack) => [...stack, before].slice(-HISTORY_LIMIT));
       setRedoStack([]);
       setWorkspace(updated);
       setError(null);
     } catch (caught) {
-      setError(errorMessage(caught));
+      if (mounted.current) setError(errorMessage(caught));
     } finally {
-      setIsRecalculating(false);
+      if (mounted.current) setIsRecalculating(false);
     }
   }
 
@@ -221,10 +225,11 @@ export function useResumeEditor(initial: ResumeWorkspace) {
     try {
       const payload = await profileService.addSkill(pendingProfileSkill.skill);
       queryClient.setQueryData(PROFILE_KEY, payload);
+      if (!mounted.current) return;
       setPendingProfileSkill(null);
       setError(null);
     } catch (caught) {
-      setError(errorMessage(caught));
+      if (mounted.current) setError(errorMessage(caught));
     }
   }
 

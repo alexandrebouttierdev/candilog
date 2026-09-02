@@ -1,8 +1,7 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useApplicationsViewModel } from "../../viewmodel/useApplicationsViewModel";
-import type { Application, ApplicationStatus } from "../../services/applicationService";
-import { applicationService } from "../../services/applicationService";
+import type { Application, ApplicationStatus } from "@/shared/types/generated/applications";
 import { status_meta } from "../../model/statuses";
 import { applicationTypeLabel, weeklyDurationLabel } from "@/features/referentials";
 import { versDateAffichee } from "@/shared/lib/dates";
@@ -26,7 +25,6 @@ import {
 import type { Column } from "@/shared/ui";
 import type { ApplicationSort } from "@/shared/types/generated/applications";
 import { AppError } from "@/shared/types/app-error";
-import { useUiStore } from "@/shared/lib/ui-store";
 import { PAGE_SIZE } from "@/shared/types/page";
 import { FILTER_VIDE } from "../../model/schemas/application-filter.schema";
 
@@ -37,7 +35,6 @@ const DENSITES = [PAGE_SIZE, 25, 50] as const;
 export function ApplicationsPage() {
   const vm = useApplicationsViewModel();
   const [searchParams, setSearchParams] = useSearchParams();
-  const notify = useUiStore((state) => state.notify);
   const [form, setForm] = useState<{
     ouvert: boolean;
     cible: Application | null;
@@ -48,7 +45,6 @@ export function ApplicationsPage() {
     statut: null,
   });
   const [aDelete, setADelete] = useState<string[] | null>(null);
-  const [exportEnCours, setExportEnCours] = useState(false);
   const [cochees, setCochees] = useState<Set<string>>(() => new Set());
 
   // Le bouton principal du Dashboard ouvre réellement la création, sans dupliquer le
@@ -68,30 +64,13 @@ export function ApplicationsPage() {
    */
   const exporter = async () => {
     const ids = [...cochees];
-    setExportEnCours(true);
-    try {
-      // Les identifiants cochés suffisent : les combiner au filtre courant exclurait
-      // une ligne sélectionnée puis masquée par une recherche ou un statut.
-      const filter =
-        ids.length > 0
-          ? { ...FILTER_VIDE, sort: vm.sort, descending: vm.descending, search: "", ids }
-          : vm.filter;
-      const rows = await applicationService.exportCsv(filter);
-      if (rows === null) return;
-      notify({
-        tone: "success",
-        title: "Export terminé",
-        detail: `${rows} candidature${rows > 1 ? "s" : ""} exportée${rows > 1 ? "s" : ""}.`,
-      });
-    } catch (error) {
-      notify({
-        tone: "error",
-        title: "Export impossible",
-        detail: error instanceof AppError ? error.message : undefined,
-      });
-    } finally {
-      setExportEnCours(false);
-    }
+    // Les identifiants cochés suffisent : les combiner au filtre courant exclurait
+    // une ligne sélectionnée puis masquée par une recherche ou un statut.
+    const filter =
+      ids.length > 0
+        ? { ...FILTER_VIDE, sort: vm.sort, descending: vm.descending, search: "", ids }
+        : vm.filter;
+    await vm.exportCsv(filter);
   };
 
   const basculerCoche = (id: string) => {
@@ -252,7 +231,7 @@ export function ApplicationsPage() {
                 </Button>
               </>
             ) : null}
-            <Button icon="download" disabled={exportEnCours} onClick={() => void exporter()}>
+            <Button icon="download" disabled={vm.isExporting} onClick={() => void exporter()}>
               Exporter
             </Button>
             <Button

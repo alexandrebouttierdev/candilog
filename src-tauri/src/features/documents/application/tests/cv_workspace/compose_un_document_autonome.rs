@@ -50,3 +50,37 @@ fn reconstruit_un_cv_genere_depuis_le_document() {
     );
     assert_eq!(generated.education[0].degree, "TSSR");
 }
+
+#[test]
+fn normalise_les_liens_historiques_sans_schema() {
+    let mut source = profile();
+    source.identity.linkedin = Some("linkedin.com/in/alex".into());
+    source.identity.website = Some("alex.example.test".into());
+    source.projects[0].url = Some("project.example.test/demo".into());
+
+    let workspace = prepare_workspace(&source, generation()).unwrap();
+
+    assert_eq!(
+        workspace.document.identity.linkedin.as_deref(),
+        Some("https://linkedin.com/in/alex")
+    );
+    assert_eq!(
+        workspace.document.identity.website.as_deref(),
+        Some("https://alex.example.test/")
+    );
+    assert_eq!(
+        workspace.document.projects[0].url.as_deref(),
+        Some("https://project.example.test/demo")
+    );
+}
+
+#[test]
+fn ne_normalise_pas_un_chemin_relatif_en_domaine() {
+    let mut source = profile();
+    source.identity.website = Some("/profil".into());
+
+    assert!(matches!(
+        prepare_workspace(&source, generation()),
+        Err(AppError::Validation(message)) if message == "Le site web du CV doit être une URL valide"
+    ));
+}

@@ -510,9 +510,10 @@ Audit d'éventuelles nouvelles crates :
 cargo deny --manifest-path src-tauri/Cargo.toml check
 ```
 
-Aucune CI ne rejoue ces vérifications : le seul workflow du dépôt
-(`.github/workflows/release.yml`) construit et publie les binaires. Ce qui n'est pas
-lancé ici ne l'est nulle part.
+Le job `quality` du workflow de release (`.github/workflows/release.yml`) rejoue ces
+vérifications avant d'autoriser les builds multi-plateformes. Ce filet de publication ne
+remplace pas le contrôle local : une tâche ne se termine pas en déléguant sa validation au
+prochain push sur `master`.
 
 ---
 

@@ -1,83 +1,23 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMemo, useState, type ReactNode } from "react";
 import { useLocation } from "react-router-dom";
-import { documentsService } from "../../services/documentsService";
-import { aiService, generation_id } from "@/features/ai/services/aiService";
-import { useAiProgress, useCancelAiOnUnmount } from "@/features/ai/viewmodel/useAiProgress";
-import { useAiTimer } from "@/features/ai/viewmodel/useAiTimer";
 import { formatDuration } from "@/shared/lib/duration";
 import { useUiStore } from "@/shared/lib/ui-store";
-import { AppError } from "@/shared/types/app-error";
 import type { ResumeWorkspace } from "@/shared/types/generated/documents";
 import { Button, EmptyState, ErrorBanner, FormField, PageHeader, TextInput } from "@/shared/ui";
 import { useResumeEditor } from "../../viewmodel/useResumeEditor";
+import { useResumeGeneratorViewModel } from "../../viewmodel/useResumeGeneratorViewModel";
 import { A4Preview, AiProgress, DocumentPanel, OverflowStatus, UndoRedoControls } from "../components/DocumentUi";
 import { ProfileSkillChoiceDialog } from "../components/ProfileSkillChoiceDialog";
 import { ResumeAtsPanel } from "../components/ResumeAtsPanel";
 import { ResumePaper } from "../components/ResumePaper";
-import { ChampOffre, HeaderBadge, RESUME_KEY, Screen, detail, exportPdf, generationFromNavigation, message } from "./documentPageSupport";
+import { ChampOffre, HeaderBadge, Screen, exportPdf, generationFromNavigation } from "./documentPageSupport";
 
 export function ResumeGeneratorPage() {
   const location = useLocation();
   // Mémoïsé : `generationFromNavigation` recrée un objet à chaque appel, et une dépendance
   // d'effet sur cette référence instable relancerait la préparation en boucle.
   const initiale = useMemo(() => generationFromNavigation(location.state), [location.state]);
-  const [job_offer, setJobOffer] = useState("");
-  const [operation, setOperation] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [name, setName] = useState(initiale.name);
-  const [workspace, setWorkspace] = useState<ResumeWorkspace | null>(initiale.workspace);
-  // Change à chaque nouvelle génération pour remonter l'éditeur (nouvel historique, nouveau
-  // brouillon) plutôt que de réutiliser l'état local d'une session d'édition précédente.
-  const [generationIndex, setGenerationIndex] = useState(0);
-  // Une fois le CV généré, l'offre s'efface pour laisser la place à l'aperçu ; ce
-  // témoin la ramène à la demande, comme le brief de la lettre.
-  const [briefOuvert, setBriefOuvert] = useState(false);
-  const progress = useAiProgress(operation);
-  useCancelAiOnUnmount(operation);
-  const timer = useAiTimer(operation !== null);
-
-  // Une réouverture depuis la bibliothèque transmet encore une ancienne génération plutôt
-  // qu'un workspace : elle est préparée une fois ici, avec le même traitement d'échec
-  // qu'une génération impossible.
-  useEffect(() => {
-    if (workspace !== null || initiale.result === null) return;
-    let annule = false;
-    void documentsService
-      .prepareResume(initiale.result)
-      .then((prepared) => {
-        if (annule) return;
-        setWorkspace(prepared);
-        setGenerationIndex((index) => index + 1);
-      })
-      .catch((e) => {
-        if (!annule) setError(message(e));
-      });
-    return () => {
-      annule = true;
-    };
-  }, [initiale.result, workspace]);
-
-  const run = async () => {
-    if (!job_offer.trim()) { setError("Collez le texte de l’offre à cibler."); return; }
-    const id = generation_id();
-    setOperation(id);
-    setError(null);
-    timer.start();
-    try {
-      const generation = await aiService.generateResume({ generation_id: id, job_offer });
-      const prepared = await documentsService.prepareResume(generation);
-      timer.stop();
-      setWorkspace(prepared);
-      setGenerationIndex((index) => index + 1);
-      setBriefOuvert(false);
-      setName(`CV — ${prepared.job_offer.title || "Version ciblée"}`);
-    } catch (e) {
-      if (!(e instanceof AppError && e.code === "CANCELLED")) setError(message(e));
-    } finally {
-      setOperation(null);
-    }
-  };
+  const vm = useResumeGeneratorViewModel(initiale);
 
   const briefPanel = (
     <DocumentPanel title="Offre ciblée" icon="target" className="flex min-h-0 flex-col">
@@ -87,18 +27,18 @@ export function ResumeGeneratorPage() {
           required
           help="Le texte est envoyé uniquement au fournisseur configuré."
           rows={18}
-          value={job_offer}
+          value={vm.jobOffer}
           placeholder="Collez ici l’intitulé, les missions et les compétences recherchées…"
-          onChange={setJobOffer}
+          onChange={vm.setJobOffer}
         />
-        {error ? <ErrorBanner title="Génération impossible" message={error} /> : null}
-        {operation ? (
-          <><AiProgress progress={progress} elapsedMs={timer.elapsedMs} /><Button variant="danger" icon="stop" className="w-full" onClick={() => void aiService.cancel(operation)}>Annuler</Button></>
+        {vm.error ? <ErrorBanner title="Génération impossible" message={vm.error} /> : null}
+        {vm.operation ? (
+          <><AiProgress progress={vm.progress} elapsedMs={vm.elapsedMs} /><Button variant="danger" icon="stop" className="w-full" onClick={() => void vm.cancel()}>Annuler</Button></>
         ) : (
           <div className="flex flex-col gap-2">
-            <Button variant="primary" icon="auto_awesome" className="w-full" onClick={() => void run()}>{workspace ? "Générer un nouveau CV" : "Générer le CV ciblé"}</Button>
-            {workspace ? (
-              <Button variant="ghost" icon="article" className="w-full" onClick={() => setBriefOuvert(false)}>Revenir au CV</Button>
+            <Button variant="primary" icon="auto_awesome" className="w-full" onClick={() => void vm.generate()}>{vm.workspace ? "Générer un nouveau CV" : "Générer le CV ciblé"}</Button>
+            {vm.workspace ? (
+              <Button variant="ghost" icon="article" className="w-full" onClick={vm.closeBrief}>Revenir au CV</Button>
             ) : null}
           </div>
         )}
@@ -106,16 +46,18 @@ export function ResumeGeneratorPage() {
     </DocumentPanel>
   );
 
-  if (workspace) {
+  if (vm.workspace) {
     return (
       <ResumeEditorScreen
-        key={generationIndex}
-        initial={workspace}
-        name={name}
-        onNameChange={setName}
-        briefPanel={briefOuvert ? briefPanel : null}
-        onReopenBrief={() => setBriefOuvert(true)}
-        durationBadge={operation === null && timer.durationMs !== null ? <HeaderBadge icon="schedule">Généré en {formatDuration(timer.durationMs)}</HeaderBadge> : undefined}
+        key={vm.generationIndex}
+        initial={vm.workspace}
+        name={vm.name}
+        onNameChange={vm.setName}
+        onSave={vm.saveResume}
+        isSaving={vm.isSaving}
+        briefPanel={vm.briefOpen ? briefPanel : null}
+        onReopenBrief={vm.openBrief}
+        durationBadge={vm.operation === null && vm.durationMs !== null ? <HeaderBadge icon="schedule">Généré en {formatDuration(vm.durationMs)}</HeaderBadge> : undefined}
       />
     );
   }
@@ -126,7 +68,7 @@ export function ResumeGeneratorPage() {
         icon="auto_awesome"
         title="Générer un CV"
         subtitle="Analysez une offre, générez un CV ciblé, exportez en PDF"
-        badge={operation === null && timer.durationMs !== null ? <HeaderBadge icon="schedule">Généré en {formatDuration(timer.durationMs)}</HeaderBadge> : undefined}
+        badge={vm.operation === null && vm.durationMs !== null ? <HeaderBadge icon="schedule">Généré en {formatDuration(vm.durationMs)}</HeaderBadge> : undefined}
       />
     }>
       <div className="grid min-h-[660px] gap-4 xl:grid-cols-[350px_minmax(460px,1fr)_320px]">
@@ -156,6 +98,8 @@ function ResumeEditorScreen({
   initial,
   name,
   onNameChange,
+  onSave,
+  isSaving,
   briefPanel,
   onReopenBrief,
   durationBadge,
@@ -163,27 +107,15 @@ function ResumeEditorScreen({
   initial: ResumeWorkspace;
   name: string;
   onNameChange: (value: string) => void;
+  onSave: (workspace: ResumeWorkspace) => Promise<unknown>;
+  isSaving: boolean;
   briefPanel: ReactNode | null;
   onReopenBrief: () => void;
   durationBadge?: ReactNode;
 }) {
   const notify = useUiStore((s) => s.notify);
-  const queryClient = useQueryClient();
   const editor = useResumeEditor(initial);
   const [overflow, setOverflow] = useState(false);
-
-  const save = useMutation({
-    mutationFn: () => documentsService.saveResume({ name, content: editor.workspace }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: RESUME_KEY });
-      notify({ tone: "success", title: "CV ajouté à la bibliothèque" });
-    },
-    // Sans ce gestionnaire, un refus du service Rust laissait l'écran inchangé : le CV édité
-    // n'était pas enregistré et rien ne le disait. L'éditeur et son historique restent
-    // affichés tels quels, rien n'est perdu par cet échec.
-    onError: (error) =>
-      notify({ tone: "error", title: "Enregistrement impossible", detail: detail(error) }),
-  });
 
   return (
     <Screen header={
@@ -196,7 +128,7 @@ function ResumeEditorScreen({
           <>
             {briefPanel ? null : <Button icon="target" onClick={onReopenBrief}>Modifier l’offre</Button>}
             <UndoRedoControls canUndo={editor.canUndo} canRedo={editor.canRedo} onUndo={editor.undo} onRedo={editor.redo} />
-            <Button icon="save" disabled={!name.trim() || save.isPending} onClick={() => save.mutate()}>Enregistrer</Button>
+            <Button icon="save" disabled={!name.trim() || isSaving} onClick={() => void onSave(editor.workspace)}>Enregistrer</Button>
           </>
         }
         primary={

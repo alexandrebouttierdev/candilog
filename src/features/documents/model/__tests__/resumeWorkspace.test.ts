@@ -9,6 +9,7 @@ import {
   removeProjectBullet,
   removeSection,
   removeSkill,
+  safeResumeUrl,
   updateResumeField,
   workspaceFixture,
 } from "../resumeWorkspace";
@@ -22,6 +23,18 @@ describe("garde de reconnaissance du workspace", () => {
   it("refuse une autre version de schéma", () => {
     const workspace = workspaceFixture();
     expect(isResumeWorkspace({ ...workspace, schema_version: 2 })).toBe(false);
+  });
+});
+
+describe("validation des URL affichées", () => {
+  it("accepte uniquement les URL HTTP et HTTPS absolues", () => {
+    expect(safeResumeUrl("https://example.test/path")).toBe("https://example.test/path");
+    expect(safeResumeUrl("http://example.test")).toBe("http://example.test/");
+    expect(safeResumeUrl("javascript:alert(1)")).toBeNull();
+    expect(safeResumeUrl("data:text/html,attaque")).toBeNull();
+    expect(safeResumeUrl("/chemin-relatif")).toBeNull();
+    expect(safeResumeUrl("pas une url")).toBeNull();
+    expect(safeResumeUrl(null)).toBeNull();
   });
 });
 
