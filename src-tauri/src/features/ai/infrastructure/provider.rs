@@ -36,6 +36,31 @@ fn est_transitoire(error: &reqwest::Error) -> bool {
     )
 }
 
+/// Encode un nom de modèle destiné à un **segment de chemin** d'URL.
+///
+/// Le nom vient des réglages : interpolé tel quel, un `?`, un `#` ou un `..` déplaçait la
+/// requête ailleurs sur l'hôte du fournisseur. L'hôte reste épinglé par `Client::resolve`,
+/// il n'y avait donc pas de fuite ; l'appel partait simplement au mauvais endroit, avec un
+/// message d'erreur incompréhensible.
+fn segment_url(valeur: &str) -> String {
+    valeur
+        .chars()
+        .map(|caractere| match caractere {
+            'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' | '.' | '~' | ':' | '@' => {
+                caractere.to_string()
+            }
+            autre => {
+                let mut tampon = [0_u8; 4];
+                autre
+                    .encode_utf8(&mut tampon)
+                    .bytes()
+                    .map(|octet| format!("%{octet:02X}"))
+                    .collect()
+            }
+        })
+        .collect()
+}
+
 #[async_trait]
 pub trait LlmGenerator: Send + Sync {
     async fn generate(&self, prompt: &str, system: &str, json: bool) -> AppResult<String>;
@@ -55,7 +80,7 @@ pub async fn build_provider(config: &LlmConfig) -> AppResult<Arc<dyn LlmGenerato
         .connect_timeout(std::time::Duration::from_secs(8))
         .timeout(std::time::Duration::from_secs(60 * 30))
         .redirect(reqwest::redirect::Policy::none())
-        .user_agent("Candilog/0.3");
+        .user_agent(concat!("Candilog/", env!("CARGO_PKG_VERSION")));
     if !matches!(config.provider, ProviderKind::Ollama) {
         if url.scheme() != "https" {
             return Err(AppError::Validation(
@@ -119,6 +144,25 @@ impl LlmGenerator for ProviderHttp {
 }
 
 impl ProviderHttp {
+    /// Traduit un échec de transport en erreur destinée à l'utilisateur.
+    ///
+    /// Ollama tourne sur la machine de l'utilisateur : « Vérifiez votre réseau », le
+    /// message générique des erreurs HTTP, envoyait chercher une panne inexistante. Sur une
+    /// installation neuve, Ollama est le fournisseur par défaut et n'est le plus souvent
+    /// pas encore installé — c'est le premier message d'erreur que voit un nouvel
+    /// utilisateur, et il doit nommer la vraie cause.
+    fn traduire(&self, error: reqwest::Error) -> AppError {
+        if matches!(self.config.provider, ProviderKind::Ollama)
+            && (error.is_connect() || error.is_timeout())
+        {
+            return AppError::Provider(format!(
+                "Ollama ne répond pas sur {}. Démarrez-le, ou choisissez un autre fournisseur dans Réglages → Intelligence artificielle.",
+                self.endpoint
+            ));
+        }
+        AppError::from(error)
+    }
+
     /// Envoie une requête et reprend les échecs transitoires.
     ///
     /// La requête est reconstruite à chaque tentative : un corps déjà consommé ne se renvoie
@@ -147,7 +191,7 @@ impl ProviderHttp {
             };
             tentative += 1;
             if tentative >= TENTATIVES || !est_transitoire(&error) {
-                return Err(AppError::from(error));
+                return Err(self.traduire(error));
             }
             // L'URL et la clé ne sont jamais journalisées : seul le motif l'est.
             tracing::warn!(
@@ -216,7 +260,8 @@ impl ProviderHttp {
                 self.client
                     .post(format!(
                         "{}/v1beta/models/{}:generateContent",
-                        self.endpoint, self.config.model
+                        self.endpoint,
+                        segment_url(&self.config.model)
                     ))
                     .header(
                         "x-goog-api-key",
@@ -472,5 +517,33 @@ mod tests {
             .await
             .is_err());
         assert_eq!(recues.load(Ordering::SeqCst), TENTATIVES as usize);
+    }
+
+    /// Ollama tourne en local : un message parlant de réseau envoie chercher une panne qui
+    /// n'existe pas. C'est le fournisseur par défaut, donc le premier écueil d'une
+    /// installation neuve où Ollama n'est pas encore installé.
+    #[tokio::test]
+    async fn ollama_injoignable_nomme_ollama_et_pas_le_reseau() {
+        // Port fermé : la connexion échoue immédiatement, sans attendre de délai.
+        let endpoint = "http://127.0.0.1:1".to_owned();
+        let erreur = provider(&endpoint)
+            .await
+            .generate("prompt", "system", true)
+            .await
+            .expect_err("la connexion doit échouer");
+
+        let AppError::Provider(message) = erreur else {
+            panic!("une panne d'Ollama doit être une erreur de fournisseur, pas HTTP");
+        };
+        assert!(message.contains("Ollama"), "message obtenu : {message}");
+        assert!(message.contains("Réglages"), "message obtenu : {message}");
+    }
+
+    /// Le nom du modèle vient des réglages et atterrit dans le chemin de l'URL Gemini.
+    #[test]
+    fn un_nom_de_modele_ne_peut_pas_deplacer_la_requete() {
+        assert_eq!(segment_url("gemini-2.5-flash"), "gemini-2.5-flash");
+        assert_eq!(segment_url("../../v1/autre"), "..%2F..%2Fv1%2Fautre");
+        assert_eq!(segment_url("modele?cle=1#x"), "modele%3Fcle%3D1%23x");
     }
 }

@@ -258,13 +258,65 @@ fn weighted_total(values: &[(Option<u8>, u16)]) -> u8 {
     );
     (sum + weight / 2).checked_div(weight).unwrap_or_default() as u8
 }
+/// Nombre d'années d'expérience exigé, lu dans le texte libre d'une offre.
+///
+/// Le premier entier du texte n'est pas le bon : « Bac+3, 5 ans d'expérience » donnait 3,
+/// et le score d'expérience — 40 % du total profil — s'en trouvait doublé. On retient donc
+/// le nombre qui **précède** une mention d'année, et le plus petit lorsqu'une fourchette
+/// est annoncée : « 2 à 5 ans » demande deux ans pour candidater, pas cinq.
+///
+/// Sans mention d'année, on retombe sur le premier entier : une offre qui écrit « 3+ »
+/// reste comprise, et l'ancien comportement couvre le reste.
 fn first_entier(value: &str) -> usize {
-    value
-        .split(|c: char| !c.is_ascii_digit())
-        .find(|v| !v.is_empty())
-        .and_then(|v| v.parse().ok())
+    let normalise = crate::core::utils::text::search_key(value);
+    let mots: Vec<&str> = normalise.split_whitespace().collect();
+    let exigences: Vec<usize> = mots
+        .iter()
+        .enumerate()
+        .filter(|(_, mot)| matches!(nettoyer(mot), "an" | "ans" | "annee" | "annees"))
+        .filter_map(|(index, _)| minimum_avant(&mots[..index]))
+        .collect();
+    if let Some(minimum) = exigences.into_iter().min() {
+        return minimum;
+    }
+    mots.iter()
+        .find_map(|mot| entier_de(mot))
         .unwrap_or_default()
 }
+
+/// Plus petit nombre du groupe qui précède immédiatement une mention d'année.
+///
+/// La remontée s'arrête au premier mot qui n'est ni un nombre entier ni un connecteur :
+/// « Bac+3, 5 ans » ne doit pas rendre 3, alors que « 2 à 5 ans » doit rendre 2.
+fn minimum_avant(mots: &[&str]) -> Option<usize> {
+    let mut trouves = Vec::new();
+    for mot in mots.iter().rev() {
+        let mot = nettoyer(mot);
+        if let Ok(nombre) = mot.parse::<usize>() {
+            trouves.push(nombre);
+            continue;
+        }
+        // `search_key` a déjà ramené « à » à « a ».
+        if matches!(mot, "a" | "et" | "ou" | "-") {
+            continue;
+        }
+        break;
+    }
+    trouves.into_iter().min()
+}
+
+/// Retire la ponctuation qui colle à un mot (« 5, » → « 5 »).
+fn nettoyer(mot: &str) -> &str {
+    mot.trim_matches(|c: char| !c.is_alphanumeric())
+}
+
+/// Premier entier contenu dans un mot, `None` si le mot n'en porte aucun.
+fn entier_de(mot: &str) -> Option<usize> {
+    mot.split(|c: char| !c.is_ascii_digit())
+        .find(|morceau| !morceau.is_empty())
+        .and_then(|morceau| morceau.parse().ok())
+}
+
 fn year(value: &str) -> Option<i32> {
     value
         .as_bytes()
@@ -674,5 +726,39 @@ mod tests {
         assert_eq!(score.skills, Some(100));
         assert_eq!(score.present, vec!["Café"]);
         assert!(score.missing.is_empty());
+    }
+
+    /// Le premier entier du texte n'est pas l'exigence d'expérience : un profil de trois
+    /// ans passait pour couvrir intégralement une offre qui en demandait cinq.
+    #[test]
+    fn l_exigence_est_lue_a_cote_du_mot_annee() {
+        assert_eq!(first_entier("3 ans"), 3);
+        assert_eq!(first_entier("Bac+3, 5 ans d'expérience"), 5);
+        assert_eq!(
+            first_entier("2 à 5 ans"),
+            2,
+            "une fourchette vaut par son minimum"
+        );
+        assert_eq!(first_entier("expérience de 4 années"), 4);
+        assert_eq!(
+            first_entier("Bac+5"),
+            5,
+            "sans mention d'année, le premier entier"
+        );
+        assert_eq!(first_entier("expérience souhaitée"), 0);
+    }
+
+    /// Deux profils identiques face à une offre qui annonce un diplôme avant l'expérience
+    /// ne doivent pas être notés comme si l'exigence était le niveau d'études.
+    #[test]
+    fn un_diplome_annonce_avant_l_experience_ne_fausse_pas_le_score() {
+        let profile = profile_rust();
+        let stricte = profile_score(&profile, &offre(vec![], vec![], Some("Bac+3, 12 ans")));
+        let souple = profile_score(&profile, &offre(vec![], vec![], Some("Bac+3, 2 ans")));
+
+        assert!(
+            stricte.experience < souple.experience,
+            "12 ans exigés doivent noter plus sévèrement que 2 ans ({stricte:?} / {souple:?})"
+        );
     }
 }

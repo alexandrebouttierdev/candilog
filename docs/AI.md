@@ -19,7 +19,12 @@ génération de CV enchaîne trois appels et dure une à deux minutes : sans rep
 incident réseau passager sur le dernier annulait tout le travail et laissait payés les deux
 appels déjà aboutis. Une erreur de configuration (`4xx` : clé refusée, modèle inconnu)
 n'est **jamais** reprise — la retenter ne ferait que retarder le message que l'utilisateur
-doit lire. La reprise vit dans l'adaptateur de transport (`infrastructure/provider.rs`),
+doit lire.
+
+Ollama tourne sur la machine : une connexion impossible y renvoie un message qui le nomme
+et renvoie aux réglages, pas le « Vérifiez votre réseau » des erreurs HTTP. C'est le
+fournisseur par défaut, donc le premier écueil d'une installation neuve où Ollama n'est pas
+encore installé. La reprise vit dans l'adaptateur de transport (`infrastructure/provider.rs`),
 donc tous les appels en bénéficient, et l'annulation reste immédiate : `ai_cancel` abandonne
 le futur qui porte la boucle, attente comprise.
 
@@ -64,6 +69,10 @@ la prose : le corps reste assemblé par Candilog.
 
 Le score ATS affiché est toujours le calcul déterministe Rust (`profile_score` /
 `score_resume_imported`, `domain/scoring.rs`), jamais le chiffre renvoyé par le modèle.
+
+L'exigence d'expérience est lue **à côté d'une mention d'année**, et non comme le premier
+entier du texte : « Bac+3, 5 ans d'expérience » demande cinq ans, pas trois. Une fourchette
+vaut par son minimum — « 2 à 5 ans » n'écarte pas un profil de deux ans.
 
 Une compétence de l'offre est **couverte dès qu'une compétence du candidat la contient comme
 mot entier** : « VMware vSphere 7/8 » couvre « VMware », « Windows Server 2016/2019/2022 »
