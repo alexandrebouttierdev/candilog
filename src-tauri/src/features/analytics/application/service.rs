@@ -1,6 +1,7 @@
 //! Composition des agrégats du tableau de bord et de l'écran Analytics.
 
 use crate::core::errors::{AppError, AppResult};
+use crate::core::utils::csv_export::avec_bom;
 use crate::features::analytics::domain::{Analytics, AnalyticsRepository, Dashboard, Period, Step};
 use chrono::NaiveDate;
 
@@ -69,6 +70,11 @@ impl<R: AnalyticsRepository> AnalyticsService<R> {
 
     /// Produit un export CSV lisible dans un tableur pour la période choisie.
     ///
+    /// Marque d'ordre d'octets comprise : sans elle, Excel décode le fichier en ANSI et les
+    /// libellés accentués (« Taux de réponse », « Réponses ») s'affichent abîmés. Les
+    /// valeurs, elles, sont des nombres et des libellés fixes : aucune ne vient de la
+    /// saisie utilisateur, la neutralisation des formules n'a donc pas lieu d'être ici.
+    ///
     /// # Errors
     /// Propage l'erreur de chargement ou une erreur de sérialisation CSV.
     pub fn export_csv(&self, period: Period, today: NaiveDate) -> AppResult<Vec<u8>> {
@@ -108,9 +114,12 @@ impl<R: AnalyticsRepository> AnalyticsService<R> {
                 .write_record([week.start, week.count.to_string()])
                 .map_err(|error| AppError::Serialization(error.to_string()))?;
         }
-        writer
+        let octets = writer
             .into_inner()
-            .map_err(|error| AppError::Serialization(error.to_string()))
+            .map_err(|error| AppError::Serialization(error.to_string()))?;
+        let texte = String::from_utf8(octets)
+            .map_err(|error| AppError::Serialization(error.to_string()))?;
+        Ok(avec_bom(&texte).into_bytes())
     }
 }
 

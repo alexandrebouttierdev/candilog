@@ -43,6 +43,7 @@ fn cand(job_title: &str, notes: Option<&str>) -> Application {
 /// Nombre de colonnes de l'export, en-tête comprise.
 const COLONNES: usize = 15;
 
+mod le_csv_s_ouvre_correctement_dans_un_tableur;
 mod test_entete_precede_les_lignes;
 mod test_le_separateur_est_le_point_virgule;
 mod test_les_champs_absents_deviennent_vides;

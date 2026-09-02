@@ -5,7 +5,9 @@ use super::*;
 #[test]
 fn test_entete_precede_les_lignes() {
     let csv = vers_csv(&[cand("Développeur Frontend", None)]).unwrap();
-    let mut rows = csv.lines();
+    // La marque d'ordre d'octets ouvre le fichier pour Excel ; l'en-tête la suit
+    // immédiatement (`core::utils::csv_export`).
+    let mut rows = csv.trim_start_matches('\u{feff}').lines();
 
     assert_eq!(
         rows.next(),
