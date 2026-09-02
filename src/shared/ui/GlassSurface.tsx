@@ -1,7 +1,7 @@
 import type { HTMLAttributes } from "react";
 import { cn } from "@/shared/lib/cn";
 
-type GlassVariant = "rail" | "subnav" | "topbar" | "inspector" | "popover" | "menu" | "palette" | "modal";
+type GlassVariant = "rail" | "subnav" | "topbar" | "inspector" | "popover" | "menu" | "modal";
 
 const VARIANTS: Record<GlassVariant, string> = {
   rail: "glass-rail border-r border-glass-rail",
@@ -10,7 +10,6 @@ const VARIANTS: Record<GlassVariant, string> = {
   inspector: "glass-inspector border-l border-glass-inspector",
   popover: "glass-popover border border-overlay",
   menu: "glass-menu border border-overlay",
-  palette: "glass-palette border border-overlay-strong",
   modal: "glass-modal border border-overlay",
 };
 

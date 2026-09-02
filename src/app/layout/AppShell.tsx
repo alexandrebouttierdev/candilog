@@ -5,7 +5,6 @@ import { TopBar } from "./TopBar";
 import { SubNav } from "./SubNav";
 import { ContextBarProvider } from "./ContextBar";
 import { Sections, sectionForPath } from "@/app/router/routes";
-import { CommandPalette, useCommandPalette } from "@/shared/ui/CommandPalette";
 
 function PageFallback() {
   return (
@@ -21,7 +20,6 @@ export function AppShell() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const section = sectionForPath(pathname);
-  const palette = useCommandPalette();
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -49,7 +47,7 @@ export function AppShell() {
       <ContextBarProvider>
         {(slotRef) => (
           <div className="relative z-0 flex min-w-0 flex-1 flex-col overflow-hidden">
-            <TopBar slotRef={slotRef} onOpenPalette={() => palette.setOpen(true)} />
+            <TopBar slotRef={slotRef} />
             <div className="flex min-h-0 flex-1 overflow-hidden">
               <SubNav section={section} />
               <main
@@ -65,7 +63,6 @@ export function AppShell() {
           </div>
         )}
       </ContextBarProvider>
-      {palette.open ? <CommandPalette onClose={palette.close} /> : null}
     </div>
   );
 }

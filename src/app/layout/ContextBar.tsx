@@ -34,10 +34,7 @@ export function ContextBarAccessory({ children }: { children: ReactNode }) {
 /**
  * Champ de recherche de la barre contextuelle.
  *
- * Géométrie des maquettes : 30 px de haut, fond page dans une barre en surface, raccourci
- * affiché en pastille monospace. Le raccourci est décoratif tant qu'aucune palette de
- * commandes n'existe : il est masqué aux lecteurs d'écran plutôt qu'annoncé comme une
- * action inexistante.
+ * Géométrie des maquettes : 30 px de haut, fond page dans une barre en surface.
  */
 export function ContextSearch({
   value,
@@ -65,12 +62,6 @@ export function ContextSearch({
         aria-label={placeholder}
         className="min-w-0 flex-1 bg-transparent text-note text-ink outline-none placeholder:text-ink-faint"
       />
-      <span
-        aria-hidden="true"
-        className="flex-none rounded-tag border border-line px-[5px] py-px font-mono text-micro text-ink-faint"
-      >
-        ⌘K
-      </span>
     </div>
   );
 }

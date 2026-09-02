@@ -163,7 +163,7 @@ Noms d’icônes des sections : `src/app/router/routes.ts`. Logo produit : `src/
 
 ```
 ┌──────┬──────────────────────────────────────────────┐
-│ Rail │ Topbar (titre de section + ⌘K)               │
+│ Rail │ Topbar (titre de section)                    │
 │ 68px │──────────────────────────────────────────────│
 │      │ SubNav 186px │  main  (#contenu)             │
 │      │ (si >1 route)│                               │
@@ -174,7 +174,6 @@ Noms d’icônes des sections : `src/app/router/routes.ts`. Logo produit : `src/
 - `NavRail` : 7 sections, `⌘1`…`⌘7`, tooltip = `long_label`, item actif en teinte accent.
 - `SubNav` : eyebrow = `short_label` uppercase ; item 30 px ; actif `bg-accent-tint-12 text-accent-text-soft`.
 - `TopBar` : titre de section. Accessoire **à droite** via `ContextBarAccessory` (note, ou recherche **seulement** si l’écran n’a pas de FilterBar).
-- Palette de commandes : `CommandPalette`, déclencheur « Rechercher ou exécuter… ⌘K ».
 
 Le workspace (`main`) est un **outil plein cadre** : header d’écran + contenu, sans padding de page type site web (sauf Réglages, voir §10).
 
@@ -193,7 +192,9 @@ contenu (Kanban/table ou MasterList + fiche)
 ```
 
 - `SearchInput variant="toolbar"` : placeholder **« Rechercher… »**.
-- `FilterMenu` + `FilterGroup` + `FilterOption` (pastilles, `aria-pressed`).
+- `FilterMenu` + `FilterGroup` + `FilterOption` (pastilles, `aria-pressed`) : largeur
+  automatique selon la densité ; au-delà de 6 options, chaque groupe affiche
+  « Voir plus » / « Voir moins ».
 - Un critère = un `ActiveFilterChip` « Champ · Valeur ».
 - `filtersActifs` **exclut** la recherche libre (pastille du bouton Filtres).
 - La recherche et les filtres sont des **paramètres de requête backend**, jamais un `.filter()` sur la page affichée.
@@ -275,7 +276,7 @@ Toujours importer depuis `@/shared/ui` (sauf `SettingsUi`, propre aux réglages)
 | Date / heure | `DateInput` / `TimeInput` (saisie **ou** picker, format FR) |
 | Pagination | `Pager` / `ColumnPager` |
 | KPI compact (Analyses) | `StatCard` — pas en bandeau de chaque écran |
-| Surface glass overlay | classes `glass-popover`, `glass-modal`, `glass-palette` |
+| Surface glass overlay | classes `glass-popover`, `glass-modal` |
 
 `Card` existe pour des blocs denses déjà dans le design ; ne pas s’en servir pour recréer un dashboard de widgets.
 
@@ -283,7 +284,7 @@ Toujours importer depuis `@/shared/ui` (sauf `SettingsUi`, propre aux réglages)
 
 ## 11. Glass et overlays
 
-La coque est vitreuse (`backdrop-filter` 16–20 px). Les **overlays** (popover Filtres 230 px, menus, palette, modale) utilisent `glass-popover` / `glass-menu` / `glass-modal` / `glass-palette` et `shadow-overlay` / `shadow-menu`.
+La coque est vitreuse (`backdrop-filter` 16–20 px). Les **overlays** (popover Filtres adaptatif de 230 à 640 px selon son contenu, menus, modale) utilisent `glass-popover` / `glass-menu` / `glass-modal` et `shadow-overlay` / `shadow-menu`.
 
 Sans `backdrop-filter`, fallback `glass-fallback` / `surface-elevated` (déjà dans `styles.css`).
 

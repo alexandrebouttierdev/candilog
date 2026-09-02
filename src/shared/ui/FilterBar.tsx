@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Children, useEffect, useRef, useState, type ReactNode } from "react";
 import { Icon } from "./Icon";
 import { cn } from "@/shared/lib/cn";
 import { useDismissable } from "@/shared/hooks/useDismissable";
@@ -52,7 +52,7 @@ export function FilterTrigger({
   );
 }
 
-/** Popover 230 px accroché sous le déclencheur. */
+/** Popover accroché sous le déclencheur, compact ou élargi selon la densité du contenu. */
 export function FilterMenu({
   count,
   children,
@@ -81,7 +81,7 @@ export function FilterMenu({
         <div
           role="dialog"
           aria-label="Filtres"
-          className="glass-popover absolute top-[calc(100%+6px)] left-0 z-40 w-[230px] rounded-overlay border border-overlay p-3 shadow-overlay"
+          className="glass-popover absolute top-[calc(100%+6px)] left-0 z-40 max-h-[min(70vh,640px)] w-max min-w-[230px] max-w-[calc(100vw-2rem)] overflow-y-auto overscroll-contain rounded-overlay border border-overlay p-3 shadow-overlay sm:max-w-[640px]"
         >
           {children}
         </div>
@@ -90,11 +90,29 @@ export function FilterMenu({
   );
 }
 
+const FILTER_GROUP_OPTION_LIMIT = 6;
+
 export function FilterGroup({ label, children }: { label: string; children: ReactNode }) {
+  const [expanded, setExpanded] = useState(false);
+  const options = Children.toArray(children);
+  const hasMore = options.length > FILTER_GROUP_OPTION_LIMIT;
+  const visibleOptions = expanded ? options : options.slice(0, FILTER_GROUP_OPTION_LIMIT);
+
   return (
     <div className="mb-3 last:mb-0">
       <p className="mb-1.5 text-eyebrow uppercase text-ink-label">{label}</p>
-      <div className="flex flex-wrap gap-1.5">{children}</div>
+      <div className="flex flex-wrap gap-1.5">{visibleOptions}</div>
+      {hasMore ? (
+        <button
+          type="button"
+          aria-expanded={expanded}
+          aria-label={`${expanded ? "Voir moins" : "Voir plus"} pour ${label}`}
+          onClick={() => setExpanded((value) => !value)}
+          className="mt-1.5 inline-flex h-6 items-center text-label font-semibold text-accent-text-soft hover:text-accent"
+        >
+          {expanded ? "Voir moins" : "Voir plus"}
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -115,7 +133,7 @@ export function FilterOption({
       aria-pressed={selected}
       onClick={onSelect}
       className={cn(
-        "inline-flex h-[25px] items-center rounded-chip border px-[9px] text-label font-medium",
+        "inline-flex h-[25px] items-center whitespace-nowrap rounded-chip border px-[9px] text-label font-medium",
         "transition-colors duration-hover",
         selected
           ? "border-accent-border bg-accent-tint-12 text-accent-text-soft"

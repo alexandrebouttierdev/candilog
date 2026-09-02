@@ -1,16 +1,9 @@
 import { useLocation } from "react-router-dom";
 import { sectionForPath } from "@/app/router/routes";
-import { CommandPaletteTrigger } from "@/shared/ui/CommandPalette";
 import { Icon } from "@/shared/ui/Icon";
 
-/** Topbar 46 px : recherche à gauche, titre centré, actions à droite. */
-export function TopBar({
-  slotRef,
-  onOpenPalette,
-}: {
-  slotRef: (node: HTMLElement | null) => void;
-  onOpenPalette: () => void;
-}) {
+/** Topbar 46 px : titre centré, actions contextuelles à droite. */
+export function TopBar({ slotRef }: { slotRef: (node: HTMLElement | null) => void }) {
   const { pathname } = useLocation();
   const section = sectionForPath(pathname);
   const route =
@@ -23,9 +16,6 @@ export function TopBar({
       <div className="col-start-2 row-start-1 flex min-w-0 max-w-[min(36vw,16rem)] items-center justify-center gap-2">
         <Icon name={route.icon} size={17} className="flex-none text-ink-disabled" />
         <h1 className="truncate text-section text-ink">{route.label}</h1>
-      </div>
-      <div className="col-start-1 row-start-1 min-w-0 justify-self-start">
-        <CommandPaletteTrigger onClick={onOpenPalette} />
       </div>
       <div
         ref={slotRef}

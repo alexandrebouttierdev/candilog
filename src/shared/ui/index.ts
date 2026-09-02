@@ -2,7 +2,6 @@ export { Button, IconButton } from "./Button";
 export type { ButtonVariant } from "./Button";
 export { ApplicationPicker } from "./ApplicationPicker";
 export { Card, CardHeader, CardLink, CardMeta, CardTitle } from "./Card";
-export { CommandPalette, CommandPaletteTrigger, useCommandPalette } from "./CommandPalette";
 export { ConfirmDialog } from "./ConfirmDialog";
 export { CellIdentity, DataTable } from "./DataTable";
 export type { Column, SortState, TableSelection } from "./DataTable";
