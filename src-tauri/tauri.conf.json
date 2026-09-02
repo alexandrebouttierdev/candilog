@@ -27,8 +27,19 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
-    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/icon.icns", "icons/icon.ico"],
+    "targets": [
+      "deb",
+      "rpm",
+      "nsis",
+      "app",
+      "dmg"
+    ],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
     "category": "Utility",
     "shortDescription": "Suivi de candidatures et assistance IA locale",
     "longDescription": "Candilog suit vos candidatures, entreprises, contacts, entretiens et relances, et génère CV et lettres de motivation avec une IA locale ou distante."
