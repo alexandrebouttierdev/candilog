@@ -7,9 +7,18 @@ all-features = true
 
 [advisories]
 version = 2
-# Revue prévue le 2026-11-30. Ces avis `unmaintained` n'ont aucune mise à jour sûre :
-# GTK3 est imposé par le runtime Tauri Linux stable et `rust-unic` par `urlpattern` dans
-# `tauri-utils`. Les vulnérabilités corrigibles ne doivent jamais être ajoutées ici.
+# Ces avis `unmaintained` n'ont aucune mise à jour sûre : GTK3 est imposé par le runtime
+# Tauri Linux stable et `rust-unic` par `urlpattern` dans `tauri-utils`. Les vulnérabilités
+# corrigibles ne doivent jamais être ajoutées ici.
+#
+# **Revue prévue le 2026-11-30.** Passé cette date, ne pas se contenter d'un `cargo deny`
+# vert : il le restera. Rejouer la liste sans elle —
+#
+#     cargo deny --manifest-path src-tauri/Cargo.toml check advisories \
+#       --config <(sed 's/^ignore = \[/ignore = []\n_ = [/' deny.toml)
+#
+# — puis retirer d'ici tout avis que l'arbre ne remonte plus, et traiter ceux qui ont gagné
+# une version corrigée. La procédure et la décision vivent dans `docs/RELEASES.md`.
 ignore = [
     { id = "RUSTSEC-2024-0413", reason = "GTK3 transitif via Tauri Linux; aucune mise à jour sûre" },
     { id = "RUSTSEC-2024-0416", reason = "GTK3 transitif via Tauri Linux; aucune mise à jour sûre" },
@@ -42,16 +51,16 @@ allow = [
     "Zlib",
     "MPL-2.0",
     "Unicode-3.0",
-    "Unicode-DFS-2016",
     "CC0-1.0",
     "BSL-1.0",
     "Unlicense",
-    "OFL-1.1",
-    "OpenSSL",
-    "NCSA",
     # Jeu de racines de certification Mozilla embarqué par `webpki-roots`.
     "CDLA-Permissive-2.0",
 ]
+# N'autoriser que des licences réellement rencontrées : `cargo deny` signale les autres par
+# `license-not-encountered`, et une entrée périmée fait croire à un contrôle qui n'a pas
+# lieu. Les polices OFL de l'application sont des **assets**, jamais vus par cargo-deny :
+# elles sont attribuées dans `THIRD_PARTY_NOTICES.md`.
 confidence-threshold = 0.9
 
 [bans]
