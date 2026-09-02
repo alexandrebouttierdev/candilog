@@ -1,12 +1,25 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Permissions de la fenêtre principale. Principe appliqué : n'autoriser que ce dont l'interface a réellement besoin (docs/CODE_RULES.md §10). Aucune permission filesystem large : les lectures et écritures de fichiers passent par des commandes Rust contrôlées.",
+  "description": "Permissions de la fenêtre principale. Principe appliqué : n'autoriser que ce dont l'interface a réellement besoin (docs/CODE_RULES.md §10). Aucune permission filesystem large : les lectures et écritures de fichiers passent par des commandes Rust contrôlées. L'ouverture d'URL est restreinte aux deux origines que l'interface vise réellement — la CSP interdit déjà `javascript:`, mais rien n'obligeait la portée à s'arrêter là.",
   "windows": [
     "main"
   ],
   "permissions": [
     "core:default",
-    "opener:allow-open-url"
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [
+        {
+          "url": "https://github.com/alexandrebouttierdev/candilog/*"
+        },
+        {
+          "url": "https://www.alexandrebouttier.fr/*"
+        },
+        {
+          "url": "https://www.alexandrebouttier.fr"
+        }
+      ]
+    }
   ]
 }
