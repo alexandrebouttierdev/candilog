@@ -1,7 +1,26 @@
 //! Résolution multiplateforme des chemins de données Candilog.
 
 use crate::core::errors::{AppError, AppResult};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+
+/// Identifiant unique de Candilog : celui du paquet (`src-tauri/tauri.conf.json`), du
+/// dossier de données et de l'entrée de trousseau (`core::secrets`).
+///
+/// Un identifiant unique, et non trois : la désinstallation, la sauvegarde et le nettoyage
+/// manuel se raisonnent sinon sur trois emplacements que rien ne relie visiblement au
+/// paquet installé.
+pub const APP_IDENTIFIER: &str = "fr.candilog.desktop";
+
+/// Dossier de données des versions antérieures à l'unification de l'identifiant.
+///
+/// Aucune version publique n'a jamais utilisé ce nom — il ne subsiste que sur les machines
+/// de développement. La reprise existe malgré tout : perdre la base d'un poste de travail
+/// parce qu'un dossier a changé de nom serait une régression, et le coût est de trois
+/// renommages au premier démarrage.
+const LEGACY_DATA_DIR: &str = "com.candilog.desktop";
+
+/// Nom du fichier de base, commun aux deux emplacements.
+const DATABASE_FILE: &str = "candilog.sqlite";
 
 /// Paths persistants utilisés par Candilog.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -20,31 +39,63 @@ impl AppPaths {
     /// # Errors
     /// Retourne une erreur si le système ne fournit pas de dossier de données ou si sa création échoue.
     pub fn discover() -> AppResult<Self> {
-        // Un binaire de développement ne doit jamais ouvrir la base utilisateur historique.
-        // Il écrit sous le projet ; les releases gardent le dossier historique.
-        //
-        // Le dossier est ancré sur le manifeste Cargo et non sur le répertoire courant :
-        // `cargo run` depuis `src-tauri/` et `npm run tauri dev` depuis la racine n'ont pas
-        // le même `cwd`, et ouvriraient donc deux bases de développement distinctes — un
-        // écran vide après avoir saisi des données ne s'explique alors par rien de visible.
-        let data_dir = if let Some(override_dir) = std::env::var_os("CANDILOG_DATA_DIR") {
-            PathBuf::from(override_dir)
-        } else if cfg!(debug_assertions) {
-            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(".candilog-dev")
-        } else {
-            dirs::data_dir()
-                .ok_or_else(|| {
-                    AppError::Validation("Le dossier de données du système est introuvable.".into())
-                })?
-                .join("com.candilog.desktop")
-        };
+        Self::discover_dans(&Self::resoudre_dossier()?)
+    }
+
+    /// Dossier de données à utiliser, avant toute création.
+    ///
+    /// Un binaire de développement ne doit jamais ouvrir la base utilisateur : il écrit sous
+    /// le projet, ancré sur le manifeste Cargo et non sur le répertoire courant — `cargo run`
+    /// depuis `src-tauri/` et `npm run tauri dev` depuis la racine n'ont pas le même `cwd`,
+    /// et ouvriraient sinon deux bases de développement distinctes, un écran vide après
+    /// saisie que rien de visible n'expliquerait.
+    fn resoudre_dossier() -> AppResult<PathBuf> {
+        if let Some(override_dir) = std::env::var_os("CANDILOG_DATA_DIR") {
+            return Ok(PathBuf::from(override_dir));
+        }
+        if cfg!(debug_assertions) {
+            return Ok(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(".candilog-dev"));
+        }
+        let racine = dirs::data_dir().ok_or_else(|| {
+            AppError::Validation(
+                "Le dossier de données du système est introuvable. Candilog ne sait pas où \
+                 enregistrer vos candidatures."
+                    .into(),
+            )
+        })?;
+        let dossier = racine.join(APP_IDENTIFIER);
+        reprendre_base_heritee(&racine.join(LEGACY_DATA_DIR), &dossier);
+        Ok(dossier)
+    }
+
+    /// Crée et sécurise l'arborescence de données sous `data_dir`.
+    ///
+    /// # Errors
+    /// Retourne `Validation` si le dossier ne peut pas être créé — disque plein, droits
+    /// insuffisants, chemin occupé par un fichier.
+    pub fn discover_dans(data_dir: &std::path::Path) -> AppResult<Self> {
+        let data_dir = data_dir.to_path_buf();
         let exports_dir = data_dir.join("exports");
+        // `Validation` et non `Database` : à ce stade aucune base n'a été ouverte. La
+        // variante `Database` affichait « Le fichier de données de Candilog est illisible ou
+        // endommagé » à quelqu'un dont le disque est plein ou le dossier en lecture seule —
+        // un diagnostic faux, qui envoie chercher une corruption inexistante.
+        //
+        // Le chemin figure dans le message : c'est celui de l'utilisateur, pas un chemin
+        // interne, et sans lui la phrase n'indique rien à corriger.
         std::fs::create_dir_all(&exports_dir).map_err(|error| {
-            AppError::Database(format!("Impossible de créer le dossier Candilog : {error}"))
+            // L'erreur système est en anglais et parle en numéros (« os error 13 ») : elle
+            // part au journal, où elle sert au diagnostic, et non à l'écran (§1, §13).
+            tracing::error!(dossier = %data_dir.display(), %error, "dossier de données non créé");
+            AppError::Validation(format!(
+                "Candilog n'a pas pu créer son dossier de données ({}). Vérifiez que vous avez \
+                 les droits d'écriture sur cet emplacement et qu'il reste de l'espace disque.",
+                data_dir.display()
+            ))
         })?;
         Self::restreindre_acces(&data_dir);
         Ok(Self {
-            database: data_dir.join("candilog.sqlite"),
+            database: data_dir.join(DATABASE_FILE),
             data_dir,
             exports_dir,
         })
@@ -79,14 +130,18 @@ impl AppPaths {
         // moins protégé, et l'incident est journalisé.
         // Les journaux WAL portent les mêmes données que la base : les laisser en 644
         // annulerait la protection du fichier principal.
-        for (path, mode) in [
+        let mut cibles = vec![
             (data_dir.to_path_buf(), 0o700),
             (data_dir.join("exports"), 0o700),
-            (data_dir.join("candilog.sqlite"), 0o600),
+            (data_dir.join(DATABASE_FILE), 0o600),
             (data_dir.join("candilog.sqlite-wal"), 0o600),
             (data_dir.join("candilog.sqlite-shm"), 0o600),
             (data_dir.join("candilog.log"), 0o600),
-        ] {
+        ];
+        // Les journaux tournés portent les mêmes lignes que le courant : les laisser au
+        // `umask` de session annulerait la protection de celui-ci dès la deuxième session.
+        cibles.extend((1..8).map(|rang| (data_dir.join(format!("candilog.log.{rang}")), 0o600)));
+        for (path, mode) in cibles {
             if !path.exists() {
                 continue;
             }
@@ -127,9 +182,41 @@ impl AppPaths {
     #[must_use]
     pub fn in_directory(data_dir: PathBuf) -> Self {
         Self {
-            database: data_dir.join("candilog.sqlite"),
+            database: data_dir.join(DATABASE_FILE),
             exports_dir: data_dir.join("exports"),
             data_dir,
+        }
+    }
+}
+
+/// Déplace la base d'un ancien dossier de données vers le nouveau, une seule fois.
+///
+/// La reprise ne s'exécute que si la destination n'a **pas** encore de base : une base
+/// existante appartient à l'installation courante et n'a jamais à être écrasée. Chaque
+/// fichier est déplacé par renommage — les deux dossiers partagent leur parent, l'opération
+/// est donc atomique et ne duplique rien. Un échec est journalisé sans interrompre le
+/// démarrage : l'application ouvrira alors une base neuve, et l'ancienne reste intacte,
+/// récupérable à la main.
+fn reprendre_base_heritee(ancien: &Path, nouveau: &Path) {
+    let source = ancien.join(DATABASE_FILE);
+    let cible = nouveau.join(DATABASE_FILE);
+    if cible.exists() || !source.exists() {
+        return;
+    }
+    if let Err(error) = std::fs::create_dir_all(nouveau) {
+        tracing::warn!(%error, "dossier de données non créé, reprise abandonnée");
+        return;
+    }
+    // Les journaux WAL et SHM accompagnent la base : les laisser derrière ferait perdre
+    // les transactions non encore intégrées au fichier principal.
+    for nom in [DATABASE_FILE, "candilog.sqlite-wal", "candilog.sqlite-shm"] {
+        let depuis = ancien.join(nom);
+        if !depuis.exists() {
+            continue;
+        }
+        match std::fs::rename(&depuis, nouveau.join(nom)) {
+            Ok(()) => tracing::info!(fichier = nom, "donnée héritée reprise"),
+            Err(error) => tracing::warn!(fichier = nom, %error, "reprise impossible"),
         }
     }
 }

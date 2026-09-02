@@ -2,3 +2,5 @@
 use super::*;
 
 mod chemins_isoles_conservent_le_nom_historique_de_la_base;
+mod diagnostic_de_demarrage;
+mod reprise_de_la_base_heritee;

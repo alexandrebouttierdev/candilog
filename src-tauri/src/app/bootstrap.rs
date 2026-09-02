@@ -25,10 +25,7 @@ pub fn run() {
         Ok(state) => state,
         Err(error) => {
             tracing::error!(%error, "état applicatif non initialisable");
-            eprintln!(
-                "Candilog n'a pas pu ouvrir ses données : {}",
-                error.user_message()
-            );
+            signaler_demarrage_impossible(&error.user_message());
             std::process::exit(1);
         }
     };
@@ -117,4 +114,24 @@ pub fn run() {
         tracing::error!(%error, "démarrage de la fenêtre impossible");
         std::process::exit(1);
     }
+}
+
+/// Annonce à l'utilisateur que l'application ne peut pas démarrer.
+///
+/// Lancée depuis un menu d'applications — le cas normal après installation d'un paquet —,
+/// Candilog n'a pas de terminal : un message sur la sortie standard n'était vu par
+/// personne, et un dossier de données inaccessible ou une base d'une génération abandonnée
+/// se manifestaient par une fenêtre qui ne s'ouvre pas, sans un mot d'explication.
+///
+/// Le dialogue passe par `rfd` et non par `tauri-plugin-dialog` : à ce stade il n'y a ni
+/// runtime Tauri, ni `AppHandle`. Le message reste écrit sur la sortie standard pour le
+/// lancement en console, et l'échec du dialogue lui-même n'empêche pas l'arrêt.
+fn signaler_demarrage_impossible(message: &str) {
+    eprintln!("Candilog n'a pas pu ouvrir ses données : {message}");
+    rfd::MessageDialog::new()
+        .set_level(rfd::MessageLevel::Error)
+        .set_title("Candilog n'a pas pu démarrer")
+        .set_description(message)
+        .set_buttons(rfd::MessageButtons::Ok)
+        .show();
 }

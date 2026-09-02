@@ -23,6 +23,10 @@ tauri-plugin-dialog = "2.7"
 # Lecture du presse-papiers : `navigator.clipboard.readText` n'est pas exposé par la
 # webview WebKitGTK, le collage d'une offre doit donc passer par une commande Rust.
 tauri-plugin-clipboard-manager = "2.3"
+# Message natif affiché **avant** que le runtime Tauri n'existe : sans base ouvrable il n'y
+# a ni fenêtre ni `AppHandle`, donc pas de `tauri-plugin-dialog`. Ce crate est déjà lié au
+# binaire — c'est celui que le plugin de dialogue utilise —, avec les mêmes fonctionnalités.
+rfd = { version = "0.16", default-features = false, features = ["common-controls-v6", "gtk3"] }
 
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "fs", "io-util"] }
 tokio-util = "0.7"

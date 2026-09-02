@@ -1,6 +1,6 @@
 # Données locales
 
-La base `candilog.sqlite` est résolue par `core::config::AppPaths`. Une release utilise le dossier historique `com.candilog.desktop` du répertoire de données de l'OS ; un binaire debug utilise obligatoirement `src-tauri/.candilog-dev/` (ancré sur `CARGO_MANIFEST_DIR`) afin de ne jamais ouvrir la base utilisateur pendant le développement. Le modèle v1 vit dans `init_schema.sql` ; les fichiers suivants (`002_…`) font évoluer cette lignée via `PRAGMA user_version`. Aucune migration héritée (générations antérieures à v1) n'est conservée.
+La base `candilog.sqlite` est résolue par `core::config::AppPaths`. Une release utilise le dossier `fr.candilog.desktop` du répertoire de données de l'OS — `APP_IDENTIFIER`, qui est aussi l'identifiant du paquet (`src-tauri/tauri.conf.json`) et le service de trousseau (`core::secrets`). Un identifiant unique et non trois : la désinstallation, la sauvegarde et le nettoyage manuel se raisonnaient sinon sur trois emplacements que rien ne reliait visiblement au paquet installé, et un test verrouille désormais leur égalité. Une base restée dans l'ancien dossier `com.candilog.desktop` est **déplacée** au premier démarrage, journaux WAL et SHM compris, et jamais si le nouveau dossier a déjà une base. Un binaire debug utilise obligatoirement `src-tauri/.candilog-dev/` (ancré sur `CARGO_MANIFEST_DIR`) afin de ne jamais ouvrir la base utilisateur pendant le développement. Le modèle v1 vit dans `init_schema.sql` ; les fichiers suivants (`002_…`) font évoluer cette lignée via `PRAGMA user_version`. Aucune migration héritée (générations antérieures à v1) n'est conservée.
 
 Les règles de relation restent : entreprise/candidature en `RESTRICT`, candidature/dépendances en `CASCADE`, contact optionnel en `SET NULL`. Les UUID et dates ISO 8601 sont générés en Rust. Les tests n'ouvrent jamais la base utilisateur.
 
@@ -42,6 +42,16 @@ une candidature qui hérite de sa ville échapperait au filtre correspondant.
 
 `company_size` appartient à l'entreprise seule : aucune surcharge n'existe côté
 candidature, et le filtre par taille passe par la jointure sur `companies`.
+
+## Tables retirées
+
+`ai_cache`, `llm_calls` et `ats_scores` ne font plus partie du schéma : rien ne les
+alimentait ni ne les lisait. Leur en-tête annonçait une « télémétrie locale » que Candilog
+n'a jamais eue, ce qu'un dépôt public ne pouvait pas laisser croire. Une base de
+développement antérieure les conserve, orphelines et sans usage ; un test vérifie qu'une
+base neuve ne les recrée pas.
+
+`app_kv` reste : elle porte l'archive des réglages illisibles (`parametres_corrompus`).
 
 ## Contraintes portées par le schéma
 
@@ -98,7 +108,9 @@ le cherchant par son nom exact.
 La base contient l'intégralité des données personnelles : profil, CV générés, coordonnées
 des contacts, notes d'entretien. Sur Unix, `AppPaths` force donc `700` sur le dossier de
 données et son sous-dossier `exports`, et `600` sur `candilog.sqlite`, ses journaux WAL et
-SHM ainsi que `candilog.log` — le `umask` de session donnerait sinon `755` / `644`. Les
+SHM ainsi que `candilog.log` **et ses fichiers tournés** (`candilog.log.1` …) — le `umask`
+de session donnerait sinon `755` / `644`, et un journal tourné porte les mêmes lignes que
+le courant. Les
 permissions sont réappliquées après l'ouverture de la base, le fichier n'existant pas
 encore au premier démarrage. Un échec est journalisé sans empêcher le démarrage.
 
