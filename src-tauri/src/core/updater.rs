@@ -444,18 +444,20 @@ pub async fn download_installeur(
         .open(&path)
         .await
         .map_err(|error| {
-            AppError::Database(format!("Création de l'installeur impossible : {error}"))
+            AppError::Validation(format!(
+                "L'installeur n'a pas pu être créé dans le dossier Téléchargements : {error}"
+            ))
         })?;
     if let Err(error) = file.write_all(&paquet).await {
         drop(file);
         let _ = tokio::fs::remove_file(&path).await;
-        return Err(AppError::Database(format!(
-            "Écriture de l'installeur impossible : {error}"
+        return Err(AppError::Validation(format!(
+            "L'installeur n'a pas pu être écrit dans le dossier Téléchargements : {error}"
         )));
     }
     file.sync_all().await.map_err(|error| {
-        AppError::Database(format!(
-            "Synchronisation de l'installeur impossible : {error}"
+        AppError::Validation(format!(
+            "L'installeur n'a pas pu être enregistré sur le disque : {error}"
         ))
     })?;
     on_progress(100);
@@ -463,29 +465,21 @@ pub async fn download_installeur(
     Ok(path)
 }
 
-fn ouvrir_avec_lanceur(cible: &str) -> AppResult<()> {
-    #[cfg(target_os = "linux")]
-    let (programme, arguments): (&str, Vec<&str>) = ("xdg-open", vec![cible]);
-    #[cfg(target_os = "macos")]
-    let (programme, arguments): (&str, Vec<&str>) = ("open", vec![cible]);
-    #[cfg(target_os = "windows")]
-    let (programme, arguments): (&str, Vec<&str>) = ("cmd", vec!["/C", "start", "", cible]);
-
-    std::process::Command::new(programme)
-        .args(arguments)
-        .spawn()
-        .map(|_| ())
-        .map_err(|error| {
-            AppError::Validation(format!("Lancement de l'installeur impossible : {error}"))
-        })
-}
-
 /// Ouvre un fichier téléchargé avec le lanceur par défaut du système.
+///
+/// Passe par `tauri-plugin-opener`, déjà utilisé par l'application, plutôt que par une
+/// commande construite à la main. Sur Windows, `cmd /C start` réinterprète `&`, `^` et `%`
+/// après l'échappement d'arguments de Rust : un chemin aussi banal que
+/// `C:\Users\A&B\Downloads\candilog.exe` — une esperluette est légale dans un nom de
+/// compte — coupait la commande au milieu. Le plugin cite l'argument, et l'ouverture ne
+/// dépend plus de la ponctuation du chemin (`docs/CODE_RULES.md` §14).
 ///
 /// # Errors
 /// Retourne une erreur si le lanceur système refuse de démarrer.
 pub fn ouvrir_file(path: &Path) -> AppResult<()> {
-    ouvrir_avec_lanceur(&path.to_string_lossy())
+    tauri_plugin_opener::open_path(path, None::<&str>).map_err(|error| {
+        AppError::Validation(format!("Lancement de l'installeur impossible : {error}"))
+    })
 }
 
 /// Ouvre la page web d'une release dans le navigateur par défaut.
@@ -493,7 +487,8 @@ pub fn ouvrir_file(path: &Path) -> AppResult<()> {
 /// # Errors
 /// Retourne une erreur si le lanceur système refuse de démarrer.
 pub fn ouvrir_page(url: &str) -> AppResult<()> {
-    ouvrir_avec_lanceur(url)
+    tauri_plugin_opener::open_url(url, None::<&str>)
+        .map_err(|error| AppError::Validation(format!("Ouverture de la page impossible : {error}")))
 }
 
 /// Version locale, lue depuis le manifeste Cargo.
@@ -678,7 +673,20 @@ e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  candilog-ubunt
     /// paquet enregistré sous une autre extension serait ouvert par une autre application.
     #[test]
     fn un_nom_sans_extension_d_installateur_est_refuse() {
-        let extension = extension_installeur().expect("plateforme reconnue en test");
+        // `extension_installeur()` lit `/etc/os-release` : elle ne renvoie rien sur une
+        // distribution hors Debian et Red Hat. Un `expect` y aurait fait échouer la suite
+        // de tests d'un contributeur sur Arch, openSUSE ou NixOS, pour un défaut qui
+        // n'existe pas.
+        let Some(extension) = extension_installeur() else {
+            assert!(
+                matches!(
+                    assert_nom_installeur("candilog.deb"),
+                    Err(AppError::Validation(_))
+                ),
+                "sans installateur publié pour ce système, aucun nom n'est acceptable"
+            );
+            return;
+        };
         assert!(assert_nom_installeur(&format!("candilog.{extension}")).is_ok());
         assert!(matches!(
             assert_nom_installeur("candilog.sh"),
@@ -700,5 +708,106 @@ e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  candilog-ubunt
         ];
         let choisi = asset_pour_extension(&assets, "deb").expect("deb attendu");
         assert_eq!(choisi.name, "candilog-ubuntu-0.3.0.deb");
+    }
+
+    /// Noms d'assets produits par `.github/workflows/release.yml`, étape « Préparer les
+    /// assets renommés » : `copy_pair` écrit `candilog-${slug}-${VERSION}.${ext}` et son
+    /// jumeau `-latest`, pour les couples (`ubuntu`, `deb`), (`fedora`, `rpm`),
+    /// (`windows`, `exe`) et (`macos`, `dmg`).
+    fn assets_du_workflow(version: &str) -> Vec<AssetInfo> {
+        let mut assets = vec![AssetInfo {
+            name: CHECKSUMS_ASSET.to_owned(),
+            url: format!(
+                "https://github.com/{RELEASES_REPO}/releases/download/v{version}/SHA256SUMS"
+            ),
+        }];
+        for (slug, extension) in [
+            ("ubuntu", "deb"),
+            ("fedora", "rpm"),
+            ("windows", "exe"),
+            ("macos", "dmg"),
+        ] {
+            for suffixe in [version, "latest"] {
+                let name = format!("candilog-{slug}-{suffixe}.{extension}");
+                assets.push(AssetInfo {
+                    url: format!(
+                        "https://github.com/{RELEASES_REPO}/releases/download/v{version}/{name}"
+                    ),
+                    name,
+                });
+            }
+        }
+        assets
+    }
+
+    /// Contrat de nommage entre le workflow de release et l'application.
+    ///
+    /// Les autres cas de ce module écrivent leurs noms d'assets à la main : renommer un
+    /// asset dans le workflow ne cassait donc aucun test, et le défaut n'aurait été visible
+    /// qu'au premier utilisateur cherchant une mise à jour — qui n'aurait rien trouvé.
+    #[test]
+    fn les_assets_du_workflow_sont_ceux_que_l_application_attend() {
+        let assets = assets_du_workflow("1.2.3");
+        for (extension, attendu) in [
+            ("deb", "candilog-ubuntu-1.2.3.deb"),
+            ("rpm", "candilog-fedora-1.2.3.rpm"),
+            ("exe", "candilog-windows-1.2.3.exe"),
+            ("dmg", "candilog-macos-1.2.3.dmg"),
+        ] {
+            let choisi = asset_pour_extension(&assets, extension)
+                .unwrap_or_else(|| panic!("aucun asset .{extension} reconnu"));
+            assert_eq!(choisi.name, attendu);
+            assert!(
+                url_installeur_autorisee(&choisi.url),
+                "l'URL publiée par le workflow doit passer l'allowlist"
+            );
+        }
+        assert!(
+            assets.iter().any(|asset| asset.name == CHECKSUMS_ASSET),
+            "sans SHA256SUMS l'application refuse d'ouvrir l'installateur"
+        );
+    }
+
+    /// Le site pointe sur les noms `-latest` : ils doivent rester reconnus, sinon une
+    /// release sans copie versionnée laisserait l'application sans installateur.
+    #[test]
+    fn le_jumeau_latest_reste_reconnu_seul() {
+        let assets: Vec<AssetInfo> = assets_du_workflow("1.2.3")
+            .into_iter()
+            .filter(|asset| asset.name.contains("-latest.") || asset.name == CHECKSUMS_ASSET)
+            .collect();
+        let choisi = asset_pour_extension(&assets, "deb").expect("deb attendu");
+        assert_eq!(choisi.name, "candilog-ubuntu-latest.deb");
+    }
+
+    /// Le plafond doit être appliqué au fil du flux, et pas seulement à l'annonce du
+    /// serveur : un serveur hostile peut mentir sur `Content-Length`, ou ne pas l'envoyer.
+    #[test]
+    fn le_plafond_arrete_un_flux_qui_depasse_sans_content_length() {
+        let mut recu: u64 = 0;
+        let morceau = 64 * 1024 * 1024_u64;
+        let mut refuse = false;
+        for _ in 0..8 {
+            recu = recu.saturating_add(morceau);
+            if check_size_paquet(recu).is_err() {
+                refuse = true;
+                break;
+            }
+        }
+        assert!(refuse, "le cumul des morceaux doit finir par être refusé");
+        assert!(
+            recu <= MAX_UPDATE_BYTES + morceau,
+            "le refus doit intervenir dès le dépassement, pas après le téléchargement entier"
+        );
+    }
+
+    /// Une release sans `SHA256SUMS`, ou dont le fichier n'a pas de ligne pour l'asset,
+    /// ne permet aucune vérification : l'installateur ne doit alors pas être ouvert.
+    #[test]
+    fn une_empreinte_absente_ne_peut_pas_etre_lue() {
+        let sommes = "aa".repeat(32) + "  candilog-ubuntu-1.2.3.deb\n";
+        assert!(empreinte_attendue(&sommes, "candilog-windows-1.2.3.exe").is_none());
+        assert!(empreinte_attendue("", "candilog-ubuntu-1.2.3.deb").is_none());
+        assert!(empreinte_attendue(&sommes, "candilog-ubuntu-1.2.3.deb").is_some());
     }
 }
