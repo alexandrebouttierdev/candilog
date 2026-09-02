@@ -42,12 +42,21 @@ jobs:
           tag="v${version}"
           echo "version=${version}" >> "$GITHUB_OUTPUT"
           echo "tag=${tag}" >> "$GITHUB_OUTPUT"
-          if gh release view "$tag" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+          # `gh release view` sort en 1 aussi bien pour un tag absent que pour une panne
+          # d'API, un jeton sans droit ou une limite de débit. Confondre les deux lançait
+          # trois builds complets pour finir sur un `gh release create` en échec, avec un
+          # rouge qui n'indiquait pas la vraie cause. On sépare donc les deux cas sur le
+          # message d'erreur, seul signal que `gh` expose ici.
+          if sortie="$(gh release view "$tag" --repo "${{ github.repository }}" 2>&1)"; then
             echo "should_release=false" >> "$GITHUB_OUTPUT"
             echo "Release ${tag} déjà publiée — skip."
-          else
+          elif printf '%s' "$sortie" | grep -qi "release not found"; then
             echo "should_release=true" >> "$GITHUB_OUTPUT"
             echo "Nouvelle release ${tag}."
+          else
+            echo "Impossible d'interroger les releases de ${{ github.repository }} :" >&2
+            printf '%s\n' "$sortie" >&2
+            exit 1
           fi
 
   build:
@@ -171,6 +180,12 @@ jobs:
     needs: [prepare, build]
     if: needs.prepare.outputs.should_release == 'true'
     runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+      # Signature de provenance : `id-token` fournit le jeton OIDC que Sigstore échange
+      # contre un certificat éphémère, `attestations` publie l'attestation sur le dépôt.
+      id-token: write
+      attestations: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -189,6 +204,18 @@ jobs:
           cd release-assets
           sha256sum -- * > SHA256SUMS
           cat SHA256SUMS
+
+      # Signature de provenance Sigstore. Elle ne remplace pas un certificat d'éditeur —
+      # SmartScreen et Gatekeeper l'ignorent — mais elle est la seule preuve cryptographique
+      # gratuite que ces fichiers précis sortent de ce dépôt, de ce commit et de ce
+      # workflow. `SHA256SUMS` atteste l'intégrité du transfert ; ceci atteste l'origine.
+      #
+      # Vérification côté utilisateur :
+      #   gh attestation verify <fichier> --repo alexandrebouttierdev/candilog
+      - name: Attester la provenance des binaires
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: "release-assets/*"
 
       - name: Créer la release GitHub
         env:
@@ -211,5 +238,23 @@ jobs:
 
           Des copies versionnées (\`candilog-*-${VERSION}.*\`) sont aussi jointes.
 
-          Les empreintes SHA-256 de tous les fichiers sont publiées dans \`SHA256SUMS\` ; Candilog les vérifie avant d'ouvrir un installateur." \
+          ### Vérifier votre téléchargement
+
+          Les empreintes SHA-256 de tous les fichiers sont publiées dans \`SHA256SUMS\`, et Candilog les vérifie avant d'ouvrir un installateur téléchargé depuis l'application. Pour contrôler vous-même un fichier téléchargé à la main, placez-le à côté de \`SHA256SUMS\` puis :
+
+          \`\`\`
+          sha256sum -c SHA256SUMS --ignore-missing
+          \`\`\`
+
+          Chaque binaire porte aussi une **attestation de provenance** Sigstore, qui prouve qu'il a été construit par ce dépôt, depuis ce commit, par ce workflow :
+
+          \`\`\`
+          gh attestation verify candilog-windows-latest.exe --repo ${{ github.repository }}
+          \`\`\`
+
+          ### Éditeur non vérifié par le système
+
+          Ces binaires ne portent **pas de signature de code** au sens de Windows et macOS : cela demande un certificat commercial, qui n'est pas encore acquis. Windows affichera donc un avertissement SmartScreen (« Éditeur inconnu ») et macOS un refus de Gatekeeper — passer par *Informations complémentaires → Exécuter quand même*, ou par un clic droit → *Ouvrir*. Sur Linux, aucun avertissement particulier.
+
+          L'empreinte SHA-256 atteste que le fichier est arrivé intact, l'attestation de provenance qu'il vient bien d'ici. Ni l'une ni l'autre ne fait disparaître ces avertissements. La procédure complète est décrite dans le README." \
             release-assets/*
