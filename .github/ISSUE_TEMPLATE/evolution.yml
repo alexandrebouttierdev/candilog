@@ -1,0 +1,26 @@
+name: Évolution
+description: Proposer une fonctionnalité ou une amélioration.
+labels: ["évolution"]
+body:
+  - type: textarea
+    id: besoin
+    attributes:
+      label: Le besoin
+      description: Quel problème concret cherchez-vous à résoudre ? Décrivez la situation, pas la solution.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposition
+    attributes:
+      label: Ce que vous imaginez
+    validations:
+      required: false
+
+  - type: textarea
+    id: contournement
+    attributes:
+      label: Comment faites-vous aujourd'hui
+      description: Y compris « hors de Candilog » — c'est ce qui dit le mieux ce qui manque.
+    validations:
+      required: false

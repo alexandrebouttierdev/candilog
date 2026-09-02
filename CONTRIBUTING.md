@@ -11,10 +11,16 @@ Les contributions à Candilog sont les bienvenues. Avant de proposer une modific
 - Mettez à jour la documentation concernée dans la même contribution lorsque le comportement, la configuration ou une commande change.
 - Exécutez les validations applicables documentées dans le [`README.md`](./README.md) : aucune CI ne les rejoue.
 - Rédigez les messages de commit en français, avec un préfixe Conventional Commits (`feat:`, `fix:`, `refactor:`, `test:`, `docs:`).
-- Décrivez dans la Pull Request le besoin traité, la solution retenue et les contrôles exécutés.
+- Décrivez dans la Pull Request le besoin traité, la solution retenue et les contrôles exécutés : le [modèle de Pull Request](./.github/PULL_REQUEST_TEMPLATE.md) en donne la liste, et demande de dire explicitement ce qui **n'a pas** été lancé.
 
 Si vous travaillez avec un agent IA, [`AGENTS.md`](./AGENTS.md) rassemble les règles
 absolues du dépôt et les commandes de validation.
+
+## Signaler une anomalie ou une vulnérabilité
+
+Les anomalies et les propositions passent par les [modèles d'issue](https://github.com/alexandrebouttierdev/candilog/issues/new/choose).
+
+Une **faille de sécurité** ne se signale jamais par une issue publique : suivez [`SECURITY.md`](./SECURITY.md), qui décrit le canal privé, le périmètre et les délais visés.
 
 ## Licence des contributions
 

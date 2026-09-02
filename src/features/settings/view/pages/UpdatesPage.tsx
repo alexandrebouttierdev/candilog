@@ -120,9 +120,15 @@ export function UpdatesPage() {
           <ActionCard
             icon="verified"
             title="Installation maîtrisée"
-            description="L’installeur adapté à votre système est téléchargé puis lancé avec le programme d’installation par défaut."
+            description="L’installeur adapté à votre système est téléchargé, son empreinte SHA-256 comparée à celle publiée avec la release, et il n’est enregistré qu’ensuite."
           >
             <p className="text-meta text-ink-muted">Aucune installation silencieuse</p>
+            <p className="mt-1 text-meta text-ink-faint">
+              L’empreinte atteste que le fichier est arrivé intact, et l’attestation de
+              provenance publiée avec la release qu’il vient bien du dépôt officiel. Ni
+              l’une ni l’autre n’est une signature de code : votre système peut afficher un
+              avertissement « éditeur inconnu » à l’installation.
+            </p>
           </ActionCard>
         </div>
         {progress !== null ? (

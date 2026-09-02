@@ -28,6 +28,8 @@ Ne lire que ce qui sert à la tâche en cours.
 | Installer, lancer, régénérer les types | `docs/DEVELOPMENT.md` |
 | Publication d'une version | `docs/RELEASES.md` |
 | Proposer une contribution | `CONTRIBUTING.md` |
+| Attribution d'un composant tiers redistribué | `THIRD_PARTY_NOTICES.md` |
+| Signalement d'une vulnérabilité | `SECURITY.md` |
 | Travailler dans `website/` | `website/README.md` et `website/DESIGN.md` |
 
 Règles propres à un périmètre : `src/AGENTS.md` (frontend), `src-tauri/AGENTS.md`

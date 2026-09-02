@@ -520,6 +520,9 @@ lancé ici ne l'est nulle part.
 | `docs/AI.md` | providers, prompts, cache, annulation IA |
 | `docs/DEVELOPMENT.md` | prérequis, exécution, régénération des types, validations |
 | `docs/RELEASES.md` | publication des binaires et politique `cargo-deny` |
+| `THIRD_PARTY_NOTICES.md` | attribution des composants tiers redistribués avec les binaires |
+| `SECURITY.md` | signalement d'une vulnérabilité, périmètre et délais |
+| `CHANGELOG.md` | journal des versions publiées |
 | `AGENTS.md` | point d'entrée des agents IA (renvoie vers ce tableau) |
 
 `DESIGN.md` prime sur l'apparence. `ARCHITECTURE.md` prime sur le placement des couches.

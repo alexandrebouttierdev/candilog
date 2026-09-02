@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Signaler une vulnérabilité
+    url: https://github.com/alexandrebouttierdev/candilog/security/advisories/new
+    about: Les failles de sécurité passent par un avis privé, jamais par une issue publique (voir SECURITY.md).
