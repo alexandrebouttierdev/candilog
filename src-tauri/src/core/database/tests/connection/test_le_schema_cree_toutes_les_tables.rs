@@ -22,8 +22,6 @@ fn test_le_schema_cree_toutes_les_tables() {
         "contract_types",
         "settings",
         "profile",
-        "llm_calls",
-        "ats_scores",
         "app_kv",
     ] {
         let n: i64 = conn
@@ -38,14 +36,20 @@ fn test_le_schema_cree_toutes_les_tables() {
 
     // `ai_cache` a été retirée : rien ne l'alimentait, et l'écran des réglages proposait de
     // la vider en annonçant un effet qui ne se produisait jamais (docs/AI.md).
-    let cache: i64 = conn
-        .query_row(
-            "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='ai_cache'",
-            [],
-            |r| r.get(0),
-        )
-        .unwrap();
-    assert_eq!(cache, 0, "ai_cache aurait dû disparaître du schéma");
+    //
+    // `llm_calls` et `ats_scores` la suivent pour la même raison : aucune écriture, aucune
+    // lecture, et un en-tête « télémétrie » qui décrivait dans un dépôt public un
+    // comportement que Candilog n'a jamais eu.
+    for morte in ["ai_cache", "llm_calls", "ats_scores"] {
+        let restante: i64 = conn
+            .query_row(
+                "SELECT count(*) FROM sqlite_master WHERE type='table' AND name=?1",
+                [morte],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(restante, 0, "{morte} aurait dû disparaître du schéma");
+    }
 }
 
 /// Les colonnes du nouveau modèle sont présentes, et les anciennes ont bien disparu : une

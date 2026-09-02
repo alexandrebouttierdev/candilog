@@ -9,12 +9,8 @@ fn test_migrations_base_heritee_ne_rejoue_pas_les_versions_deja_appliquees() {
         let conn = pool.get().unwrap();
         // Base déjà au schéma courant : `init_schema` ne doit pas être rejoué.
         conn.execute_batch(
-            "CREATE TABLE llm_calls (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    operation TEXT NOT NULL, provider TEXT NOT NULL, model TEXT NOT NULL,
-                    latency_ms INTEGER NOT NULL, success INTEGER NOT NULL, created_at TEXT NOT NULL);
-                 INSERT INTO llm_calls (operation, provider, model, latency_ms, success, created_at)
-                    VALUES ('score_offre', 'ollama', 'm', 1, 1, '2026-01-01T00:00:00Z');",
+            "CREATE TABLE app_kv (kv_key TEXT PRIMARY KEY, kv_value TEXT NOT NULL);
+                 INSERT INTO app_kv (kv_key, kv_value) VALUES ('temoin', 'intact');",
         )
         .unwrap();
         conn.pragma_update(None, "user_version", LATEST_SCHEMA_VERSION)
@@ -22,14 +18,17 @@ fn test_migrations_base_heritee_ne_rejoue_pas_les_versions_deja_appliquees() {
     }
     run_local_migrations(&pool).unwrap();
     let conn = pool.get().unwrap();
-    let restantes: i64 = conn
+    let temoin: String = conn
         .query_row(
-            "SELECT count(*) FROM llm_calls WHERE operation='score_offre'",
+            "SELECT kv_value FROM app_kv WHERE kv_key = 'temoin'",
             [],
             |r| r.get(0),
         )
         .unwrap();
-    assert_eq!(restantes, 1, "une migration déjà appliquée a été rejouée");
+    assert_eq!(
+        temoin, "intact",
+        "une migration déjà appliquée a été rejouée"
+    );
     let version: i64 = conn
         .query_row("PRAGMA user_version", [], |r| r.get(0))
         .unwrap();

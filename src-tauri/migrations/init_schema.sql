@@ -12,24 +12,11 @@
 -- seuls les référentiels sont semés ici, avec des identifiants stables entre
 -- installations.
 
--- ── Télémétrie locale et cache ──────────────────────────────────────────
-
-CREATE TABLE IF NOT EXISTS llm_calls (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    operation  TEXT NOT NULL,
-    provider   TEXT NOT NULL,
-    model      TEXT NOT NULL,
-    latency_ms INTEGER NOT NULL,
-    success    INTEGER NOT NULL,
-    created_at TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS ats_scores (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    score      INTEGER NOT NULL,
-    origin     TEXT NOT NULL,
-    created_at TEXT NOT NULL
-);
+-- ── Réglages internes ───────────────────────────────────────────────────
+--
+-- `llm_calls` et `ats_scores` ont été retirées avec `ai_cache` : rien ne les alimentait ni
+-- ne les lisait, et leur en-tête « télémétrie » décrivait un comportement que Candilog n'a
+-- jamais eu. Une base de développement antérieure les conserve, orphelines.
 
 CREATE TABLE IF NOT EXISTS app_kv (
     kv_key   TEXT PRIMARY KEY,

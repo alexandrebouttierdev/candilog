@@ -11,7 +11,7 @@ fn test_migrations_base_neuve_applique_toutes_les_versions() {
         .query_row("PRAGMA user_version", [], |r| r.get(0))
         .unwrap();
     assert_eq!(version, LATEST_SCHEMA_VERSION);
-    for table in ["llm_calls", "ats_scores", "app_kv"] {
+    for table in ["app_kv", "settings", "profile"] {
         let n: i64 = conn
             .query_row(
                 "SELECT count(*) FROM sqlite_master WHERE type='table' AND name=?1",
