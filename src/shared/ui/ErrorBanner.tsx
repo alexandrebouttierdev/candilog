@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Icon } from "./Icon";
 import { Button } from "./Button";
 import { cn } from "@/shared/lib/cn";
+import type { IconName } from "./icon-names";
 
 /**
  * Bandeau d'erreur non bloquant.
@@ -43,7 +44,7 @@ export function Banner({
   className,
 }: {
   tone: "danger" | "success" | "accent";
-  icon: string;
+  icon: IconName;
   title: string;
   message?: ReactNode;
   children?: ReactNode;

@@ -1,9 +1,15 @@
+import type { IconName } from "./icon-names";
+
 /**
  * Icône Material Symbols Rounded, jeu retenu par le design system (`docs/DESIGN.md` §6).
  *
- * La police est embarquée localement (`shared/ui/material-symbols.css`) : la politique de
- * sécurité de contenu de la fenêtre Tauri interdit les requêtes vers des hôtes externes,
- * et une application de bureau doit rester utilisable hors ligne.
+ * La police est embarquée localement (`shared/ui/material-symbols.css`), réduite aux seules
+ * icônes de `icon-names.ts` : la politique de sécurité de contenu de la fenêtre Tauri
+ * interdit les requêtes vers des hôtes externes, et une application de bureau doit rester
+ * utilisable hors ligne.
+ *
+ * `name` est typé sur cette liste et non sur `string` : une icône absente de la sous-police
+ * serait rendue en toutes lettres à l'écran, sans que rien ne le signale au développeur.
  */
 export function Icon({
   name,
@@ -11,7 +17,7 @@ export function Icon({
   className = "",
   filled = false,
 }: {
-  name: string;
+  name: IconName;
   size?: number;
   className?: string;
   filled?: boolean;

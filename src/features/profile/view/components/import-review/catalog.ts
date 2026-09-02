@@ -1,5 +1,6 @@
 import type { ImportProfilePreview } from "@/shared/types/generated/profile";
 import type { ImportSection } from "../../../model/import-review.schema";
+import type { IconName } from "@/shared/ui/icon-names";
 
 export const SECTION_LABELS: Record<ImportSection, string> = {
   identity: "Informations personnelles",
@@ -21,7 +22,7 @@ export const SECTION_ARIA: Record<ImportSection, string> = {
   certifications: "les certifications",
 };
 
-export const SECTION_ICONS: Record<ImportSection, string> = {
+export const SECTION_ICONS: Record<ImportSection, IconName> = {
   identity: "badge",
   experiences: "work_history",
   skills: "psychology",

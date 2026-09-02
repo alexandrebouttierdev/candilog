@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Icon } from "./Icon";
 import { cn } from "@/shared/lib/cn";
+import type { IconName } from "./icon-names";
 
 /**
  * Bandeau d'identité d'une fiche : pastille, nom, badge, actions, puis statistiques.
@@ -69,7 +70,7 @@ export function RecordStat({
   label,
   children,
 }: {
-  icon: string;
+  icon: IconName;
   iconClassName?: string;
   label: string;
   children: ReactNode;
@@ -97,7 +98,7 @@ export function RecordAction({
   onClick,
   disabled,
 }: {
-  icon: string;
+  icon: IconName;
   children: ReactNode;
   onClick: () => void;
   disabled?: boolean;

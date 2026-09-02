@@ -17,6 +17,7 @@ export { SearchInput, Select, TextArea, TextInput } from "./Field";
 export { FormField, controlClasses } from "./FormField";
 export { GlassSurface } from "./GlassSurface";
 export { Icon } from "./Icon";
+export { ICON_NAMES, type IconName } from "./icon-names";
 export {
   Inspector,
   InspectorEmpty,

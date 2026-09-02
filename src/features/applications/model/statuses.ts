@@ -1,5 +1,6 @@
 import type { ApplicationStatus } from "@/shared/types/generated/applications";
 import type { Tone } from "@/shared/ui";
+import type { IconName } from "@/shared/ui/icon-names";
 
 export type { ApplicationStatus };
 
@@ -8,7 +9,7 @@ export interface StatusMeta {
   readonly value: ApplicationStatus;
   readonly label: string;
   readonly tone: Tone;
-  readonly icon: string;
+  readonly icon: IconName;
 }
 
 /**

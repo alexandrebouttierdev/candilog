@@ -3,12 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { Sections } from "@/app/router/routes";
 import { cn } from "@/shared/lib/cn";
 import { Icon } from "./Icon";
+import type { IconName } from "./icon-names";
 
 interface CommandItem {
   id: string;
   label: string;
   hint?: string;
-  icon: string;
+  icon: IconName;
   group: string;
   action: () => void;
 }

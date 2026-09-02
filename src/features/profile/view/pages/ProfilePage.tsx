@@ -7,6 +7,7 @@ import { Button, Card, CardHeader, EmptyState, ErrorBanner, Icon, PageHeader } f
 import { useProfileViewModel } from "../../viewmodel/useProfileViewModel";
 import { ProfileSectionModal, type ProfileSection } from "../components/ProfileSectionModal";
 import { ProfileImportModal } from "../components/ProfileImportModal";
+import type { IconName } from "@/shared/ui/icon-names";
 import {
   CompletionBar,
   ProfileIdentity,
@@ -222,7 +223,7 @@ function SimpleList({ items, empty, action, onEdit }: { items: { title: string; 
   return <ul className="divide-y divide-line">{items.map((item, index) => <li key={`${item.title}-${index}`} className="px-4 py-3"><div className="flex items-baseline justify-between gap-3"><p className="font-medium text-ink">{item.title}</p>{item.meta ? <span className="text-meta text-ink-faint">{item.meta}</span> : null}</div>{item.body ? <p className="mt-1 text-body text-ink-muted">{item.body}</p> : null}</li>)}</ul>;
 }
 
-function Vide({ icon, title, description, action, onEdit }: { icon: string; title: string; description: string; action: string; onEdit: () => void }) {
+function Vide({ icon, title, description, action, onEdit }: { icon: IconName; title: string; description: string; action: string; onEdit: () => void }) {
   return <EmptyState icon={icon} title={title} description={description} action={<Button variant="secondary" icon="add" onClick={onEdit}>{action}</Button>} />;
 }
 

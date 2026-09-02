@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Icon } from "@/shared/ui";
+import type { IconName } from "@/shared/ui/icon-names";
 
 /** Content défilant des écrans Réglages : 22 px / 28 px, comme les maquettes. */
 export function SettingsBody({ children }: { children: ReactNode }) {
@@ -20,7 +21,7 @@ export function SettingsCard({
   className,
   children,
 }: {
-  icon: string;
+  icon: IconName;
   title: string;
   hint?: string;
   className?: string;
@@ -71,7 +72,7 @@ export function ActionCard({
   description,
   children,
 }: {
-  icon: string;
+  icon: IconName;
   title: string;
   description: string;
   children: ReactNode;

@@ -5,6 +5,8 @@
  * onglets contextuels. La coque est décrite dans `docs/DESIGN.md` §8.
  */
 
+import type { IconName } from "@/shared/ui/icon-names";
+
 export type SectionKey =
   | "accueil"
   | "suivi"
@@ -20,7 +22,7 @@ export interface RouteDef {
   /** Libellé de l'onglet contextuel. */
   readonly label: string;
   /** Name d'icône Material Symbols (cf. `docs/DESIGN.md` §6). */
-  readonly icon: string;
+  readonly icon: IconName;
 }
 
 export interface SectionDef {
@@ -29,7 +31,7 @@ export interface SectionDef {
   readonly short_label: string;
   /** Libellé complet, donné en infobulle. */
   readonly long_label: string;
-  readonly icon: string;
+  readonly icon: IconName;
   /** Onglets contextuels ; le premier est l'écran par défaut de la section. */
   readonly routes: readonly RouteDef[];
 }

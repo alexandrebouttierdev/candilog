@@ -4,6 +4,7 @@ import { cn } from "@/shared/lib/cn";
 import { formatElapsed } from "@/shared/lib/duration";
 import { Icon, IconButton, StatusPill } from "@/shared/ui";
 import { PaperPreview } from "./PaperPreview";
+import type { IconName } from "@/shared/ui/icon-names";
 
 /**
  * Carte de document : filet, rayon 12 px, en-tête 13 px/600 à 14 px / 18 px.
@@ -18,7 +19,7 @@ export function DocumentPanel({
   className,
 }: {
   title: string;
-  icon: string;
+  icon: IconName;
   action?: ReactNode;
   children: ReactNode;
   className?: string;
@@ -199,7 +200,7 @@ export function PreviewAction({
   disabled,
   tone,
 }: {
-  icon: string;
+  icon: IconName;
   children: ReactNode;
   onClick: () => void;
   disabled?: boolean;

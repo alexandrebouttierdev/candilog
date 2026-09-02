@@ -7,6 +7,7 @@ import { AppError } from "@/shared/types/app-error";
 import { ContextBarAccessory, ContextSearch } from "@/app/layout/ContextBar";
 import { Button, FormField, Icon, TextArea, TextInput } from "@/shared/ui";
 import { useUiStore } from "@/shared/lib/ui-store";
+import type { IconName } from "@/shared/ui/icon-names";
 
 export const RESUME_KEY = ["documents", "cv"] as const;
 export const COVER_LETTERS_KEY = ["documents", "lettres"] as const;
@@ -42,7 +43,7 @@ export function Screen({
   );
 }
 
-export function HeaderBadge({ children, icon = "auto_awesome" }: { children: ReactNode; icon?: string }) {
+export function HeaderBadge({ children, icon = "auto_awesome" }: { children: ReactNode; icon?: IconName }) {
   return (
     <span className="inline-flex items-center gap-[5px] rounded-pill bg-accent-tint px-2.5 py-[5px] text-label font-mid text-accent">
       <Icon name={icon} size={15} />

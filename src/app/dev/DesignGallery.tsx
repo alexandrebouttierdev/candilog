@@ -20,6 +20,7 @@ import {
 import type { Column, Tone } from "@/shared/ui";
 import { useUiStore } from "@/shared/lib/ui-store";
 import type { ThemePref } from "@/shared/lib/ui-store";
+import type { IconName } from "@/shared/ui/icon-names";
 
 /**
  * Planche de vérification du design system.
@@ -34,7 +35,7 @@ interface DemoRow {
   job_title: string;
   company: string;
   contract: string;
-  status: { label: string; tone: Tone; icon: string };
+  status: { label: string; tone: Tone; icon: IconName };
   date: string;
 }
 

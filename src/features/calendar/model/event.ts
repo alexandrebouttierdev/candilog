@@ -4,6 +4,7 @@ import { interviewIcon } from "@/features/interviews/model/types";
 import { followUpIcon } from "@/features/followups/model/types";
 import { timeFromTimestamp, dayOf } from "@/shared/lib/dates";
 import type { Tone } from "@/shared/ui";
+import type { IconName } from "@/shared/ui/icon-names";
 
 /**
  * Événement du calendrier, entretien ou relance ramenés à une forme commune.
@@ -20,7 +21,7 @@ export interface CalendarEvent {
   readonly time: string | null;
   readonly label: string;
   readonly detail: string | null;
-  readonly icon: string;
+  readonly icon: IconName;
   readonly tone: Tone;
 }
 

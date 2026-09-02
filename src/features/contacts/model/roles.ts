@@ -1,9 +1,12 @@
 /** Rôles proposés par les maquettes ; le champ reste libre en base. */
+
+import type { IconName } from "@/shared/ui/icon-names";
+
 export const Roles = ["Recruteur", "Manager", "Référent", "Ancien collègue", "Autre"] as const;
 
 /** Icône et teinte d'un rôle, dans la liste maître comme sur la fiche. */
 export interface RoleMeta {
-  readonly icon: string;
+  readonly icon: IconName;
   readonly tone: "neutral" | "accent" | "success";
 }
 

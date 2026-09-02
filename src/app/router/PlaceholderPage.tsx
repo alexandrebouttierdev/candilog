@@ -1,4 +1,5 @@
 import { PageHeader, EmptyState } from "@/shared/ui";
+import type { IconName } from "@/shared/ui/icon-names";
 
 /**
  * Écran de repli pour une route déclarée sans page dédiée.
@@ -12,7 +13,7 @@ export function PlaceholderPage({
   title,
   section,
 }: {
-  icon: string;
+  icon: IconName;
   title: string;
   section: string;
 }) {

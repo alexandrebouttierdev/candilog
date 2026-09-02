@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Icon } from "./Icon";
 import { cn } from "@/shared/lib/cn";
+import type { IconName } from "./icon-names";
 
 /**
  * List maître d'un écran maître-détail : en-tête compté, éléments, pied paginé.
@@ -114,7 +115,7 @@ export function MasterListTag({
   tone = "neutral",
   children,
 }: {
-  icon: string;
+  icon: IconName;
   tone?: "neutral" | "accent" | "success";
   children: ReactNode;
 }) {

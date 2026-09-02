@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Icon } from "./Icon";
 import { cn } from "@/shared/lib/cn";
+import type { IconName } from "./icon-names";
 
 /**
  * État vide d'un écran ou d'une carte.
@@ -21,7 +22,7 @@ export function EmptyState({
   bordered = false,
   className,
 }: {
-  icon?: string;
+  icon?: IconName;
   title: string;
   description?: string | undefined;
   action?: ReactNode;

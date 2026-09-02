@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { IconButton, Select } from "@/shared/ui";
 import { DocumentPanel } from "./DocumentUi";
 import { LetterPaper, type LetterPaperField, type LetterPaperFields } from "./LetterPaper";
+import type { IconName } from "@/shared/ui/icon-names";
 import {
   markupFromDom,
   parseLetter,
@@ -10,7 +11,7 @@ import {
   type LetterSize,
 } from "../../model/letterMarkup";
 
-const ALIGNEMENTS: { value: LetterAlign; icon: string; label: string }[] = [
+const ALIGNEMENTS: { value: LetterAlign; icon: IconName; label: string }[] = [
   { value: "left", icon: "format_align_left", label: "Aligner à gauche" },
   { value: "center", icon: "format_align_center", label: "Centrer" },
   { value: "right", icon: "format_align_right", label: "Aligner à droite" },

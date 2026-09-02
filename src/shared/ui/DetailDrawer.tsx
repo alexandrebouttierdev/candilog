@@ -3,6 +3,7 @@ import { Icon } from "./Icon";
 import { IconButton } from "./Button";
 import { useDismissable } from "@/shared/hooks/useDismissable";
 import { cn } from "@/shared/lib/cn";
+import type { IconName } from "./icon-names";
 
 /**
  * Panneau latéral de fiche.
@@ -27,7 +28,7 @@ export function DetailDrawer({
   open: boolean;
   /** Pastille d'initiales de l'en-tête ; à défaut, `icon` est utilisée. */
   initials?: string;
-  icon?: string;
+  icon?: IconName;
   title: string;
   subtitle?: string | undefined;
   /** Actions contextuelles du pied. */
@@ -77,7 +78,7 @@ export function DrawerSection({
   className,
   children,
 }: {
-  icon: string;
+  icon: IconName;
   title: string;
   className?: string;
   children: ReactNode;

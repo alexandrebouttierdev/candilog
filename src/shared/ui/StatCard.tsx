@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Icon } from "./Icon";
 import { cn } from "@/shared/lib/cn";
 import type { Tone } from "./StatusPill";
+import type { IconName } from "./icon-names";
 
 /** Teinte de fond de la pastille d'icône, par tonalité. */
 const TILE: Record<Tone, string> = {
@@ -38,14 +39,14 @@ export function StatCard({
   deltaTone = "neutral",
   className,
 }: {
-  icon: string;
+  icon: IconName;
   /** Tonalité de la pastille d'icône. */
   tone?: Tone;
   label: string;
   value: string;
   /** Variation par rapport à la période précédente, déjà formatée (« +12 % »). */
   delta?: ReactNode;
-  deltaIcon?: string;
+  deltaIcon?: IconName;
   deltaTone?: Tone;
   className?: string;
 }) {

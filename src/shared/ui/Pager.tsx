@@ -1,5 +1,6 @@
 import { Icon } from "./Icon";
 import { cn } from "@/shared/lib/cn";
+import type { IconName } from "./icon-names";
 
 /** Bounds d'une page, calculées une fois pour l'affichage et pour les tests. */
 export function page_bounds(page: number, page_size: number, total: number) {
@@ -134,7 +135,7 @@ function PagerArrow({
   accent = false,
   onClick,
 }: {
-  icon: string;
+  icon: IconName;
   label: string;
   disabled: boolean;
   /** La flèche « suivant » est en accent lorsqu'elle est active, comme dans les maquettes. */
@@ -204,7 +205,7 @@ function ColumnArrow({
   accent = false,
   onClick,
 }: {
-  icon: string;
+  icon: IconName;
   label: string;
   disabled: boolean;
   accent?: boolean;

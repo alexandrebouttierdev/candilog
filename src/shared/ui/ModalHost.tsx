@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { Icon } from "./Icon";
 import { Button, IconButton } from "./Button";
 import { useDismissable } from "@/shared/hooks/useDismissable";
+import type { IconName } from "./icon-names";
 
 /**
  * Modale du guide : en-tête, corps défilant, pied fixe.
@@ -37,14 +38,14 @@ export function ModalHost({
   children,
 }: {
   open: boolean;
-  icon: string;
+  icon: IconName;
   title: string;
   subtitle?: string | undefined;
   footer_note?: string | undefined;
-  footerIcon?: string;
+  footerIcon?: IconName;
   footerTone?: "neutral" | "danger";
   submitLabel?: string;
-  submitIcon?: string;
+  submitIcon?: IconName;
   submitDisabled?: boolean;
   busy?: boolean;
   cancelLabel?: string;
@@ -157,7 +158,7 @@ export function ModalSection({
   title,
   children,
 }: {
-  icon: string;
+  icon: IconName;
   title: string;
   children: ReactNode;
 }) {

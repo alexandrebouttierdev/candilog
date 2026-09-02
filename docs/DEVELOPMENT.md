@@ -75,6 +75,31 @@ non sous `src-tauri/`, pour que la génération fonctionne aussi bien depuis la 
 depuis `src-tauri/` (ce que fait la CLI Tauri). Un DTO Rust modifié sans régénération fait
 échouer `npm run build`.
 
+Lancer la commande **sans filtre** : `cargo test … <motif>` n'exécute que les tests
+d'export retenus par le motif, et laisse les autres fichiers de `generated/` amputés. Un
+`git status --short` après coup doit être vide.
+
+## Ajouter une icône
+
+Les icônes viennent d'une **sous-police** Material Symbols Rounded versionnée
+(`src/shared/ui/material-symbols-rounded.woff2`, ~130 Kio) : la police complète pèse
+5,2 Mio pour ~4 300 icônes, dont l'interface en emploie une centaine. Une icône absente de
+la sous-police s'afficherait en toutes lettres à l'écran.
+
+1. Inscrire le nom dans `src/shared/ui/icon-names.ts`, en ordre alphabétique. C'est aussi
+   le type `IconName` du composant `Icon` : `tsc` refuse toute icône hors de cette liste,
+   le défaut ne peut donc pas atteindre l'écran.
+2. Régénérer la sous-police :
+
+   ```bash
+   python3 scripts/subset-icons.py
+   ```
+
+   Prérequis : `pip install "fonttools[woff]"` et `npm install` — la police complète est
+   lue depuis `node_modules/material-symbols/`, déclarée en dépendance de développement
+   pour cette seule raison. Le script échoue si un nom n'existe pas dans Material Symbols.
+3. Committer le `.woff2` régénéré avec la liste.
+
 ## Valider
 
 Aucune CI ne vérifie la qualité : le seul workflow du dépôt publie les releases. Ces
@@ -89,6 +114,16 @@ cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check
 cargo clippy --manifest-path src-tauri/Cargo.toml --locked --all-targets -- -D warnings
 cargo test --manifest-path src-tauri/Cargo.toml --locked --all-targets
 ```
+
+Avant une publication, ajouter le build de release réel — c'est la seule commande qui
+exerce le bundler, et le workflow ne fait rien d'autre :
+
+```bash
+npm run tauri build
+```
+
+Il doit sortir en 0 et produire exactement les cibles de `bundle.targets`
+(`docs/RELEASES.md`).
 
 Après un changement de dépendance Rust :
 
@@ -155,10 +190,13 @@ src-tauri/      application native Rust + Tauri
 website/        site candilog.fr (Next.js, projet autonome)
 docs/           documentation de référence
 vendor/         crate `pdf-extract` patchée (voir [patch.crates-io] de Cargo.toml)
+scripts/        outillage ponctuel (sous-police des icônes)
 ```
 
-`docs/superpowers/` conserve des plans de travail datés ; ce ne sont pas des documents de
-référence.
+`docs/superpowers/` conserve des plans de travail datés. Ce ne sont pas des documents de
+référence, et ils **ne sont pas suivis par Git** : ce sont des notes de conception, parfois
+sur des fonctionnalités non annoncées, que la publication du dépôt n'a pas à diffuser. Même
+raison pour `AUDIT_APP_PROMPT.md`.
 
 ## Site candilog.fr
 

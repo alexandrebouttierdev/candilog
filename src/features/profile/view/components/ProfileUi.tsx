@@ -2,6 +2,7 @@ import type { KeyboardEvent, ReactNode } from "react";
 import type { Identity } from "@/shared/types/generated/profile";
 import { cn } from "@/shared/lib/cn";
 import { Icon, Skeleton } from "@/shared/ui";
+import type { IconName } from "@/shared/ui/icon-names";
 
 export type ProfileTab =
   | "experiences"
@@ -11,7 +12,7 @@ export type ProfileTab =
   | "certifications"
   | "languages";
 
-const TAB_LABELS: Record<ProfileTab, { label: string; icon: string }> = {
+const TAB_LABELS: Record<ProfileTab, { label: string; icon: IconName }> = {
   experiences: { label: "Expériences", icon: "work_history" },
   skills: { label: "Compétences", icon: "psychology" },
   education: { label: "Formations", icon: "school" },
@@ -102,7 +103,7 @@ export function SectionCard({
   onEdit,
   children,
 }: {
-  icon: string;
+  icon: IconName;
   title: string;
   actionLabel?: string;
   onEdit: () => void;
@@ -139,7 +140,7 @@ export function ProfileIdentity({ identity }: { identity: Identity }) {
     identity.email ? { icon: "mail", label: identity.email } : null,
     identity.phone ? { icon: "call", label: identity.phone } : null,
     identity.city ? { icon: "location_on", label: identity.city } : null,
-  ].filter((chip): chip is { icon: string; label: string } => chip !== null);
+  ].filter((chip): chip is { icon: IconName; label: string } => chip !== null);
 
   return (
     <div className="flex min-w-[260px] flex-1 items-start gap-4">

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Icon } from "./Icon";
+import type { IconName } from "./icon-names";
 
 /** Toolbar d'écran : titre 13,5 px, actions compactes, pas de pastille SaaS. */
 export function PageHeader({
@@ -11,7 +12,7 @@ export function PageHeader({
   secondary,
   primary,
 }: {
-  icon: string;
+  icon: IconName;
   title: string;
   subtitle?: string | undefined;
   badge?: ReactNode;
@@ -49,7 +50,7 @@ export function SegmentedControl<TValue extends string>({
   dense = false,
 }: {
   value: TValue;
-  options: readonly { readonly value: TValue; readonly label: string; readonly icon?: string }[];
+  options: readonly { readonly value: TValue; readonly label: string; readonly icon?: IconName }[];
   onChange: (value: TValue) => void;
   label: string;
   dense?: boolean;

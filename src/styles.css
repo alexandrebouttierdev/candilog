@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "material-symbols/rounded.css";
+@import "./shared/ui/material-symbols.css";
 
 /* Jetons Candilog — dark-first, surfaces glass, accent indigo centralisé. */
 
@@ -665,36 +665,6 @@
     font-size: 11.5px;
     color: var(--resume-warning-text);
   }
-}
-
-/* Polices de l'export PDF, réutilisées telles quelles par l'aperçu : deux jeux de fichiers
-   donneraient deux rendus, et l'aperçu cesserait d'être fidèle à la page imprimée. */
-@font-face {
-  font-family: "Geist Papier";
-  font-weight: 400;
-  font-display: block;
-  src: url("../src-tauri/assets/fonts/Geist-Regular.ttf") format("truetype");
-}
-
-@font-face {
-  font-family: "Geist Papier";
-  font-weight: 500;
-  font-display: block;
-  src: url("../src-tauri/assets/fonts/Geist-Medium.ttf") format("truetype");
-}
-
-@font-face {
-  font-family: "Geist Papier";
-  font-weight: 600;
-  font-display: block;
-  src: url("../src-tauri/assets/fonts/Geist-SemiBold.ttf") format("truetype");
-}
-
-@font-face {
-  font-family: "Geist Papier";
-  font-weight: 700;
-  font-display: block;
-  src: url("../src-tauri/assets/fonts/Geist-Bold.ttf") format("truetype");
 }
 
 /* Polices du template CV fourni, embarquées localement (SIL OFL 1.1, IBM/plex — voir

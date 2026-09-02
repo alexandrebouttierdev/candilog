@@ -7,6 +7,7 @@ import { ProfileIdentityForm } from "./profile-sections/ProfileIdentityForm";
 import { ProfileLanguagesForm } from "./profile-sections/ProfileLanguagesForm";
 import { ProfileProjectsForm } from "./profile-sections/ProfileProjectsForm";
 import { ProfileSkillsForm } from "./profile-sections/ProfileSkillsForm";
+import type { IconName } from "@/shared/ui/icon-names";
 
 export type ProfileSection =
   | "identity"
@@ -17,7 +18,7 @@ export type ProfileSection =
   | "projects"
   | "certifications";
 
-const META: Record<ProfileSection, { icon: string; title: string; subtitle: string }> = {
+const META: Record<ProfileSection, { icon: IconName; title: string; subtitle: string }> = {
   identity: { icon: "person", title: "Identité et objectif", subtitle: "Présentez votre projet professionnel" },
   experiences: { icon: "work_history", title: "Expériences", subtitle: "Décrivez les étapes utiles de votre parcours" },
   skills: { icon: "psychology", title: "Compétences", subtitle: "Ajoutez vos savoir-faire principaux" },

@@ -1,5 +1,6 @@
 import { cn } from "@/shared/lib/cn";
 import { Icon } from "./Icon";
+import type { IconName } from "./icon-names";
 
 /**
  * Tonalité sémantique d'un statut.
@@ -32,7 +33,7 @@ export function StatusPill({
   className,
 }: {
   tone?: Tone;
-  icon?: string;
+  icon?: IconName;
   compact?: boolean;
   children: React.ReactNode;
   className?: string;

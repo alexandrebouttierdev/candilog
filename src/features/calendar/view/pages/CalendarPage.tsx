@@ -28,6 +28,7 @@ import {
 } from "@/shared/ui";
 import { AppError } from "@/shared/types/app-error";
 import { cn } from "@/shared/lib/cn";
+import type { IconName } from "@/shared/ui/icon-names";
 
 type CalendarView = "mois" | "semaine" | "jour";
 
@@ -272,7 +273,7 @@ function MonthNav({
   onClick,
   joined = false,
 }: {
-  direction: string;
+  direction: IconName;
   label: string;
   onClick: () => void;
   joined?: boolean;

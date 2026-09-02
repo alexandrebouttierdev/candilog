@@ -1,6 +1,7 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { cn } from "@/shared/lib/cn";
 import { Icon } from "./Icon";
+import type { IconName } from "./icon-names";
 
 export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 
@@ -21,7 +22,7 @@ const SIZES = {
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: keyof typeof SIZES;
-  icon?: string;
+  icon?: IconName;
   children?: ReactNode;
 }
 
@@ -65,7 +66,7 @@ export function IconButton({
   type = "button",
   ...props
 }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> & {
-  icon: string;
+  icon: IconName;
   label: string;
   size?: number;
 }) {

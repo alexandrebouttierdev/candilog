@@ -1,4 +1,5 @@
 import type { InterviewType } from "@/shared/types/generated/interviews";
+import type { IconName } from "@/shared/ui/icon-names";
 
 export type { InterviewType };
 
@@ -18,7 +19,7 @@ export const TYPES_INTERVIEW: readonly InterviewType[] = [
 ] as const;
 
 /** Icône associée à un format d'entretien. */
-export function interviewIcon(type: InterviewType): string {
+export function interviewIcon(type: InterviewType): IconName {
   switch (type) {
     case "Visio":
       return "videocam";

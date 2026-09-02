@@ -1,0 +1,38 @@
+/* Material Symbols Rounded, réduite aux icônes de `icon-names.ts`.
+ *
+ * La police complète publiée par le paquet `material-symbols` pèse 5,2 Mio pour ~4 300
+ * icônes ; l'interface en emploie une centaine. La sous-police versionnée à côté de ce
+ * fichier fait 123 Kio et conserve les quatre axes variables (`FILL`, `wght`, `GRAD`,
+ * `opsz`) dont `Icon` a besoin. Elle se régénère avec `scripts/subset-icons.py`
+ * (`docs/DEVELOPMENT.md`).
+ *
+ * La police est embarquée localement, jamais chargée depuis Google Fonts : la politique de
+ * sécurité de contenu de la fenêtre Tauri interdit les hôtes externes, et une application
+ * de bureau doit rester utilisable hors ligne. */
+@font-face {
+  font-family: "Material Symbols Rounded";
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: block;
+  src: url("./material-symbols-rounded.woff2") format("woff2");
+}
+
+.material-symbols-rounded {
+  font-family: "Material Symbols Rounded";
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  /* `rlig` et non `liga` : Material Symbols publie ses ligatures dans la fonctionnalité
+   * des ligatures requises, la seule que la sous-police conserve. */
+  font-feature-settings: "rlig";
+}

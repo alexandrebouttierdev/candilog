@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Icon } from "./Icon";
 import { cn } from "@/shared/lib/cn";
+import type { IconName } from "./icon-names";
 
 /**
  * Surface de contenu des maquettes : filet 1 px, rayon 12 px, ombre de niveau 1.
@@ -46,7 +47,7 @@ export function CardTitle({
   compact = false,
   className,
 }: {
-  icon?: string;
+  icon?: IconName;
   /** Teinte de l'icône lorsqu'elle porte un sens (ambre pour les relances). */
   iconClassName?: string;
   children: ReactNode;
@@ -85,7 +86,7 @@ export function CardHeader({
   meta,
   compact = false,
 }: {
-  icon?: string;
+  icon?: IconName;
   iconClassName?: string;
   children: ReactNode;
   meta?: ReactNode;

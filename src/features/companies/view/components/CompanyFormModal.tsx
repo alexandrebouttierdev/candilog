@@ -9,6 +9,7 @@ import {
 import type { Company, NewCompany } from "../../services/companyService";
 import { CompanySizes, useReferentials } from "@/features/referentials";
 import { FormField, ModalHost, Select, TextArea, TextInput } from "@/shared/ui";
+import type { IconName } from "@/shared/ui/icon-names";
 
 /** Valeurs d'un formulaire vierge. */
 const VIDE: CompanyFormInput = {
@@ -191,7 +192,7 @@ function Section({
   children,
 }: {
   title: string;
-  icon: string;
+  icon: IconName;
   children: React.ReactNode;
 }) {
   return (
