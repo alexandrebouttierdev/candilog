@@ -30,10 +30,16 @@ output/playwright/
 AUDIT_APP_REPORT.md
 AUDIT_TECHNIQUE.md
 
-# Rapports d'audit locaux (générés par AUDIT_APP_PROMPT.md)
+# Procédure d'audit et rapports locaux — documents de travail, pas de documentation
+# publique : ils décrivent la méthode et l'état interne, pas le produit.
+AUDIT_APP_PROMPT.md
 docs/AUDIT_REPORT.md
 docs/AUDIT.md
 docs/audits/
+
+# Conception et plans en cours (superpowers) : travail préparatoire, y compris sur des
+# fonctionnalités non annoncées. Les fichiers restent sur le disque, hors du dépôt public.
+docs/superpowers/
 
 
 # Artefacts du scénario de bout en bout (docs/DEVELOPMENT.md)
