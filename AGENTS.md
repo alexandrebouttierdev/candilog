@@ -64,7 +64,10 @@ Vue React → ViewModel (hook) → service frontend → ipc() → commande Tauri
    corrige la cause.
 5. **Le `domain` Rust n'importe ni Tauri ni rusqlite.**
 6. **Toute entrée IPC est revalidée en Rust** : Zod n'est pas une frontière de sécurité.
-7. **Aucune commande Git destructive** (`git reset --hard`, `git clean -fd`, `git
+7. **Aucune ligne d'attribution d'outil dans un commit ou une PR** : ni `Co-authored-by:`
+   nommant un assistant, ni lien de session, ni « Generated with ». Un hook `commit-msg`
+   versionné les retire de toute façon (`docs/CODE_RULES.md` §18).
+8. **Aucune commande Git destructive** (`git reset --hard`, `git clean -fd`, `git
    checkout --` sur du travail non commité, `push --force`). Ne jamais commiter ni pousser
    sans demande explicite.
 

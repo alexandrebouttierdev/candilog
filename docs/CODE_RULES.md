@@ -457,6 +457,13 @@ test: ajoute les tests du calcul ATS
 
 Ne pas committer sauf demande explicite.
 
+**Aucune ligne d'attribution d'outil** dans un message de commit ni dans une description de
+Pull Request : ni `Co-authored-by:` nommant un assistant, ni lien de session, ni mention
+« Generated with ». Les commits sont signés par la personne qui en répond ; l'outil qui a
+tenu le clavier ne fait pas partie du contrat. Un `commit-msg` versionné
+(`.githooks/commit-msg`, activé par `git config core.hooksPath .githooks`) retire ces lignes
+même quand la consigne est ignorée.
+
 Commentaires en français, expliquant le **pourquoi**. Pas de paraphrase du code.
 
 ```ts

@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Retire les lignes d'attribution ajoutées par les assistants de code.
+#
+# Claude Code, Cursor et Codex signent volontiers leurs commits d'un
+# `Co-authored-by:` ou d'un lien de session. GitHub les affiche ensuite comme
+# co-auteurs sur chaque commit. Les instructions du dépôt le demandent déjà
+# (docs/CODE_RULES.md §18), mais une instruction se contourne : ce hook, lui,
+# s'exécute quel que soit l'outil qui a rédigé le message.
+#
+# Activation, une fois par clone :
+#     git config core.hooksPath .githooks
+#
+# Le hook ne touche jamais au contenu du message, seulement aux lignes
+# d'attribution et aux lignes vides qu'elles laissent derrière elles.
+set -euo pipefail
+
+message="$1"
+[ -f "$message" ] || exit 0
+
+nettoye="$(mktemp)"
+trap 'rm -f "$nettoye"' EXIT
+
+# `Co-authored-by:` nommant un outil — un co-auteur humain est conservé.
+# `Claude-Session:`, `Generated with`, et les variantes des autres assistants.
+grep -viE '^[[:space:]]*Co-authored-by:[[:space:]]*(Claude|Cursor|Codex|Copilot|Devin|Aider|Windsurf|Cody|Gemini|OpenAI|Anthropic)\b' "$message" \
+  | grep -viE '^[[:space:]]*(Claude-Session|Co-authored-by:[[:space:]]*[^<]*<(noreply@anthropic\.com|cursoragent@cursor\.com|.*@users\.noreply\.github\.com>?[[:space:]]*$))' \
+  | grep -viE '^[[:space:]]*🤖?[[:space:]]*Generated with \[?(Claude Code|Cursor|Codex)' \
+  > "$nettoye" || true
+
+# Replie les lignes vides successives laissées par les suppressions et retire
+# celles de la fin, sans toucher aux paragraphes du corps.
+awk 'BEGIN{vides=0}
+     /^[[:space:]]*$/ {vides++; next}
+     {while (vides > 0 && NR > 1) {if (vides <= 2) print ""; vides--}; vides=0; print}
+     END{}' "$nettoye" > "$message"
+
+exit 0

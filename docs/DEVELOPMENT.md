@@ -196,7 +196,22 @@ scripts/        outillage ponctuel (sous-police des icônes)
 `docs/superpowers/` conserve des plans de travail datés. Ce ne sont pas des documents de
 référence, et ils **ne sont pas suivis par Git** : ce sont des notes de conception, parfois
 sur des fonctionnalités non annoncées, que la publication du dépôt n'a pas à diffuser. Même
-raison pour `AUDIT_APP_PROMPT.md`.
+raison pour `AUDIT_APP_PROMPT.md` et pour `.claude/`, dont la configuration d'agent est
+propre à chaque poste.
+
+## Hooks Git
+
+`.githooks/` contient un `commit-msg` qui retire les lignes d'attribution ajoutées par les
+assistants de code (`Co-authored-by:` nommant un outil, lien de session, « Generated
+with »). Les instructions du dépôt l'exigent déjà (`docs/CODE_RULES.md` §18) ; le hook le
+garantit quel que soit l'outil. Il ne touche à rien d'autre dans le message, et laisse
+passer un co-auteur humain.
+
+À activer une fois par clone — Git n'installe aucun hook automatiquement :
+
+```bash
+git config core.hooksPath .githooks
+```
 
 ## Site candilog.fr
 
