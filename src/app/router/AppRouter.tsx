@@ -1,4 +1,4 @@
-import { lazy } from "react";
+import { createElement, lazy, Suspense } from "react";
 import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
 import type { RouteObject } from "react-router-dom";
 import { AppShell } from "@/app/layout/AppShell";
@@ -71,9 +71,29 @@ const UpdatesPage = lazy(() =>
 const AboutPage = lazy(() =>
   import("@/features/settings/view/pages/AboutPage").then((m) => ({ default: m.AboutPage })),
 );
-const DesignGallery = lazy(() =>
-  import("@/app/dev/DesignGallery").then((m) => ({ default: m.DesignGallery })),
-);
+/**
+ * Atelier du design system, réservé au développement.
+ *
+ * `import.meta.env.DEV` est une constante à la compilation : le build de production
+ * élimine la branche, et avec elle l'import dynamique — la galerie ne se retrouve donc pas
+ * dans le paquet distribué, où un écran d'atelier n'a rien à faire.
+ */
+const designRoutes: RouteObject[] = import.meta.env.DEV
+  ? [
+      {
+        path: "_design",
+        element: (
+          <Suspense fallback={null}>
+            {createElement(
+              lazy(() =>
+                import("@/app/dev/DesignGallery").then((m) => ({ default: m.DesignGallery })),
+              ),
+            )}
+          </Suspense>
+        ),
+      },
+    ]
+  : [];
 
 /**
  * Écrans réellement migrés, indexés par chemin.
@@ -120,7 +140,7 @@ const router = createBrowserRouter([
     element: <AppShell />,
     children: [
       ...screenRoutes,
-      { path: "_design", element: <DesignGallery /> },
+      ...designRoutes,
       { path: "*", element: <Navigate to="/" replace /> },
     ],
   },
