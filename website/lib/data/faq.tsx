@@ -10,7 +10,7 @@ export const FAQ: readonly EntreeFaq[] = [
   {
     question: "Qu'est-ce que Candilog ?",
     reponse:
-      "Candilog est une application desktop conçue pour organiser votre recherche d'emploi. Elle centralise vos offres, candidatures, entreprises, entretiens et documents afin de garder une vue claire sur l'ensemble de vos démarches.",
+      "Candilog est une application desktop conçue pour organiser votre recherche d'emploi. Elle centralise vos candidatures, entreprises, contacts, entretiens, relances et documents afin de garder une vue claire sur l'ensemble de vos démarches.",
   },
   {
     question: "Candilog est-il gratuit ?",
@@ -28,7 +28,7 @@ export const FAQ: readonly EntreeFaq[] = [
   {
     question: "Que puis-je faire avec Candilog ?",
     reponse:
-      "Vous pouvez suivre vos candidatures, enregistrer des offres, organiser vos entretiens et relances, gérer votre profil professionnel, travailler sur vos CV et lettres de motivation et utiliser des outils d'analyse pour mieux adapter vos candidatures.",
+      "Vous pouvez suivre vos candidatures en Kanban ou en liste, tenir un répertoire d'entreprises et de contacts, organiser vos entretiens et relances dans un calendrier, gérer votre profil professionnel, générer des CV et des lettres ciblés, les exporter en PDF et suivre vos statistiques.",
   },
   {
     question: "À quoi sert l'analyse ATS ?",

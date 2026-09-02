@@ -1,89 +1,33 @@
 import Image from "next/image";
 
-import { EtiquetteMono } from "@/components/ui/EtiquetteMono";
 import { Icon } from "@/components/ui/Icon";
 import { cn } from "@/lib/cn";
-import { STATUT, type CleStatut } from "@/lib/data/suivi";
+import { COLONNES_BOARD, LIBELLE_STATUT, PUCE_STATUT } from "@/lib/data/suivi";
 
 /* Maquette de la fenêtre de l'application (§7.2). Purement décorative : aucun
    contrôle n'est un vrai bouton, rien n'est focusable, et l'ensemble est masqué
-   aux lecteurs d'écran — le hero à gauche porte déjà tout le contenu utile. */
+   aux lecteurs d'écran — le hero à gauche porte déjà tout le contenu utile.
 
+   La composition suit `AppShell` : rail de 68px, topbar de 46px à titre centré,
+   sous-navigation de 186px, workspace, inspecteur de 380px. Candilog ne dessine pas
+   sa propre barre de titre (`tauri.conf.json` garde les décorations natives) : cette
+   maquette n'en invente donc aucune, ni pastilles macOS ni boutons Windows. */
+
+/** Les sept sections de `Sections` (src/app/router/routes.tsx), dans l'ordre du rail. */
 const RAIL = [
-  "send",
-  "domain",
-  "group",
-  "description",
-  "calendar_month",
-  "bar_chart",
+  { icone: "today", libelle: "Aujourd'hui" },
+  { icone: "work", libelle: "Candidatures et calendrier" },
+  { icone: "hub", libelle: "Entreprises et réseau" },
+  { icone: "description", libelle: "CV et lettres de motivation" },
+  { icone: "monitoring", libelle: "Statistiques" },
+  { icone: "account_circle", libelle: "Profil professionnel" },
+  { icone: "tune", libelle: "Intelligence artificielle et maintenance" },
 ];
 
-const COLONNES = "grid-cols-[1.5fr_1fr_0.9fr_0.7fr]";
-
-type Ligne = {
-  initiales: string;
-  poste: string;
-  entreprise: string;
-  statut: CleStatut;
-  date: string;
-  active?: boolean;
-  attenuee?: boolean;
-};
-
-const LIGNES: Ligne[] = [
-  {
-    initiales: "AN",
-    poste: "Designer produit",
-    entreprise: "Atelier Nord",
-    statut: "entretien",
-    date: "02 août",
-    active: true,
-  },
-  {
-    initiales: "GV",
-    poste: "Chargé de projet",
-    entreprise: "Groupe Vallée",
-    statut: "relance",
-    date: "28 juil.",
-  },
-  {
-    initiales: "MR",
-    poste: "Assistant de direction",
-    entreprise: "Maison Rivet",
-    statut: "envoyee",
-    date: "26 juil.",
-  },
-  {
-    initiales: "CB",
-    poste: "Coordinateur logistique",
-    entreprise: "Cobalt Bureau",
-    statut: "offre",
-    date: "21 juil.",
-  },
-  {
-    initiales: "LP",
-    poste: "Gestionnaire de paie",
-    entreprise: "Laurier & Pons",
-    statut: "refus",
-    date: "14 juil.",
-    attenuee: true,
-  },
-];
-
-const LIBELLE: Record<CleStatut, string> = {
-  envoyee: "Envoyée",
-  relance: "Relance",
-  entretien: "Entretien",
-  offre: "Offre reçue",
-  refus: "Refus",
-};
-
-const FICHE = [
-  { libelle: "Statut", valeur: "Entretien", accentuee: true },
-  { libelle: "Entretien", valeur: "05 août · 14:30", mono: true },
-  { libelle: "Relance", valeur: "08 août", mono: true },
-  { libelle: "CV", valeur: "CV — Atelier Nord" },
-  { libelle: "Contact", valeur: "Claire Nguyen" },
+/** Onglets de la section « Suivi », rendus par `SubNav` dès qu'elle a plus d'une route. */
+const SOUS_NAV = [
+  { icone: "work", libelle: "Candidatures", actif: true },
+  { icone: "calendar_month", libelle: "Calendrier", actif: false },
 ];
 
 export function HeroAppWindow() {
@@ -94,197 +38,200 @@ export function HeroAppWindow() {
          droit : elle sort du cadre plutôt que de s'y arrêter. */
       className="overflow-hidden rounded-l-panel border border-r-0 border-control bg-surface mr-[calc(-1*clamp(0px,(100vw-1180px)*0.35,110px))]"
     >
-      {/* ── Barre de titre ──────────────────────────────────────────────── */}
-      <div className="flex h-[46px] items-center gap-3 overflow-hidden border-b border-line-soft bg-surface-alt px-[14px]">
-        <div className="flex gap-[6px]">
-          {[0, 1, 2].map((point) => (
-            <span key={point} className="size-[10px] rounded-full bg-line" />
-          ))}
-        </div>
-        <span className="ml-[6px] text-[14.5px] font-semibold text-ink">
-          Candidatures
-        </span>
-        <div className="ml-auto flex h-[26px] shrink-0 items-center gap-2 whitespace-nowrap rounded-control border border-line bg-surface px-[9px] text-[11.5px] text-ink-faint">
-          <Icon name="search" size={14} />
-          Rechercher ou exécuter…
-          <span className="rounded-[4px] border border-line px-1 py-px font-mono text-[10.5px] text-ink-tertiary">
-            ⌘K
-          </span>
-        </div>
-      </div>
+      {/* La fenêtre garde les proportions réelles de l'application et se **coupe**
+          au bord droit du cadre : une maquette décorative n'expose pas de barre de
+          défilement. La vraie fenêtre fait 1440px par défaut, 1024 au minimum
+          (`tauri.conf.json`) — bien plus que la place disponible ici. */}
+      <div className="flex min-h-[520px] overflow-hidden">
+        {/* ── Rail de navigation (68px) ──────────────────────────────────── */}
+        <div className="flex w-[68px] flex-[0_0_68px] flex-col items-center border-r border-line-soft bg-surface-alt pt-3 pb-[10px]">
+          <Image
+            src="/logo-candilog.svg"
+            alt=""
+            width={36}
+            height={36}
+            className="mb-3 block size-9"
+          />
+          <span aria-hidden="true" className="mb-[10px] h-px w-6 bg-line" />
 
-      {/* min-w-[540px] sur la zone de contenu : sous ~830px la fenêtre défile
-          horizontalement plutôt que de s'écraser (§6). */}
-      <div className="flex min-h-[472px] overflow-x-auto">
-        {/* ── Rail latéral ──────────────────────────────────────────────── */}
-        <div className="flex w-[68px] flex-[0_0_68px] flex-col items-center gap-1 border-r border-line-soft bg-surface-alt py-3">
-          <div className="mb-[10px] grid size-[34px] place-items-center rounded-[9px] border border-line bg-surface">
-            <Image
-              src="/logo-candilog.svg"
-              alt=""
-              width={23}
-              height={23}
-              className="block"
-            />
-          </div>
-          {RAIL.map((icone, index) => (
-            <div
-              key={icone}
-              className={cn(
-                "grid h-[34px] w-[38px] place-items-center rounded-control",
-                index === 0 ? "bg-tint-12 text-accent-text" : "text-ink-faint",
-              )}
-            >
-              <Icon name={icone} size={20} />
-            </div>
-          ))}
-        </div>
-
-        <div className="flex min-w-[540px] flex-1 flex-col">
-          <div className="px-[18px] pb-3 pt-4">
-            <p className="text-[13.5px] font-semibold text-ink">Candidatures</p>
-            <p className="mt-1 text-[12px] text-ink-tertiary">
-              Suivez chaque échange, de l&apos;envoi à la réponse.
-            </p>
-          </div>
-
-          {/* ── Barre d'outils ──────────────────────────────────────────── */}
-          <div className="flex flex-wrap items-center gap-2 border-b border-line-soft px-[18px] pb-3">
-            <div className="flex h-[30px] w-[210px] items-center gap-[7px] rounded-control border border-control bg-surface px-[9px] text-[12px] text-ink-faint">
-              <Icon name="search" size={15} />
-              Rechercher…
-            </div>
-            <div className="flex h-[30px] items-center gap-[7px] rounded-control border border-control bg-surface px-[10px] text-[12.5px] font-semibold text-ink">
-              <span className="text-ink-tertiary">
-                <Icon name="tune" size={15} />
-              </span>
-              Filtres
-              <span className="grid h-[15px] min-w-[15px] place-items-center rounded-[5px] bg-tint-12 px-1 text-[10.5px] text-accent-text">
-                1
-              </span>
-            </div>
-            <div className="inline-flex h-6 items-center gap-[6px] rounded-[7px] border border-tint-border bg-tint-08 px-2 text-[11.5px] font-semibold text-accent-text">
-              Statut · Entretien
-              <Icon name="close" size={13} />
-            </div>
-            <span className="ml-auto text-[12px] text-ink-tertiary">
-              12 candidatures
-            </span>
-            <div className="inline-flex h-[30px] shrink-0 items-center gap-[6px] whitespace-nowrap rounded-control border border-accent-strong bg-accent px-[11px] text-[12.5px] font-semibold text-on-accent">
-              <Icon name="add" size={15} />
-              Nouvelle
-            </div>
-          </div>
-
-          <div className="flex min-w-0 flex-1">
-            {/* ── Table ─────────────────────────────────────────────────── */}
-            <div className="min-w-0 flex-1">
+          <div className="flex flex-1 flex-col gap-1">
+            {RAIL.map((section, index) => (
               <div
+                key={section.icone}
                 className={cn(
-                  "grid gap-3 border-b border-line-soft bg-surface-alt px-[18px] py-[9px] font-mono text-[10.5px] font-semibold uppercase tracking-[0.07em] text-ink-faint",
-                  COLONNES,
+                  "grid h-9 w-[42px] place-items-center rounded-tile",
+                  index === 1
+                    ? "border border-tint-border bg-tint-10 text-accent-text"
+                    : "text-ink-faint",
                 )}
               >
-                <span>Poste</span>
-                <span>Entreprise</span>
-                <span>Statut</span>
-                <span className="text-right">Envoyée</span>
+                <Icon name={section.icone} size={20} />
               </div>
+            ))}
+          </div>
 
-              {LIGNES.map((ligne) => (
-                <div
-                  key={ligne.initiales}
-                  className={cn(
-                    "grid items-center gap-3 border-b border-line-soft px-[18px] py-[11px]",
-                    COLONNES,
-                    ligne.active && "bg-tint-06",
-                    ligne.attenuee && "opacity-70",
-                  )}
-                >
-                  <div className="flex min-w-0 items-center gap-[9px]">
-                    <span
-                      className={cn(
-                        "grid size-[22px] shrink-0 place-items-center rounded-[7px] text-[10.5px] font-semibold",
-                        ligne.active
-                          ? "bg-tint-12 text-accent-text"
-                          : "bg-page text-ink-muted",
-                      )}
-                    >
-                      {ligne.initiales}
-                    </span>
-                    <span className="truncate text-[13px] font-semibold text-ink">
-                      {ligne.poste}
-                    </span>
-                  </div>
-                  <span className="text-[12.5px] text-ink-muted">
-                    {ligne.entreprise}
-                  </span>
-                  <span>
-                    <span
-                      className={cn(
-                        "inline-flex h-[19px] shrink-0 items-center whitespace-nowrap rounded-pill border px-[7px] text-[11px] font-semibold",
-                        STATUT[ligne.statut],
-                      )}
-                    >
-                      {LIBELLE[ligne.statut]}
-                    </span>
-                  </span>
-                  <span className="text-right text-[12px] tabular-nums text-ink-tertiary">
-                    {ligne.date}
-                  </span>
-                </div>
-              ))}
+          {/* Dernier élément du rail : la bascule de thème, pas un réglage caché. */}
+          <div className="mt-1 grid h-9 w-[42px] place-items-center rounded-tile text-ink-faint">
+            <Icon name="dark_mode" size={20} />
+          </div>
+        </div>
 
-              <div className="flex items-center gap-[10px] border-b border-line-soft bg-surface-alt px-[18px] py-[9px]">
-                <span className="text-[11.5px] text-ink-faint">1–5 sur 12</span>
-                <div className="ml-auto flex gap-1">
-                  <span className="grid size-6 place-items-center rounded-[7px] border border-line bg-surface text-ink-faint">
-                    <Icon name="chevron_left" size={14} />
-                  </span>
-                  <span className="grid size-6 place-items-center rounded-[7px] border border-line bg-surface text-ink-muted">
-                    <Icon name="chevron_right" size={14} />
-                  </span>
-                </div>
+        <div className="flex min-w-[760px] flex-1 flex-col">
+          {/* ── Topbar (46px) : recherche à gauche, titre centré ───────────── */}
+          <div className="grid h-[46px] flex-none grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-b border-line-soft bg-surface-alt pr-3 pl-[14px]">
+            <div className="col-start-1 row-start-1 justify-self-start">
+              <div className="flex h-[29px] w-[220px] items-center gap-2 rounded-control border border-line bg-surface px-[10px] text-[11.5px] text-ink-faint">
+                <Icon name="search" size={16} />
+                <span className="min-w-0 flex-1 truncate text-left">
+                  Rechercher ou exécuter…
+                </span>
+                <span className="rounded-[4px] border border-line px-1 py-px font-mono text-[10.5px] text-ink-tertiary">
+                  ⌘K
+                </span>
               </div>
             </div>
 
-            {/* ── Inspecteur ────────────────────────────────────────────── */}
-            <div className="w-[246px] flex-[0_0_246px] border-l border-line-soft bg-surface-alt p-[14px]">
-              <EtiquetteMono className="mb-[10px]">Fiche</EtiquetteMono>
-              <p className="text-[14.5px] font-semibold leading-[1.25] text-ink">
-                Designer produit
-              </p>
-              <p className="mt-[2px] text-[12px] text-ink-tertiary">
-                Atelier Nord · Lyon
-              </p>
+            <div className="col-start-2 row-start-1 flex items-center justify-center gap-2">
+              <Icon name="work" size={17} className="text-ink-faint" />
+              <span className="text-[13.5px] font-semibold text-ink">Candidatures</span>
+            </div>
+          </div>
 
-              <div className="mt-[14px] border-t border-line-soft">
-                {FICHE.map((ligne) => (
+          <div className="flex min-h-0 flex-1">
+            {/* ── Sous-navigation (186px) ────────────────────────────────── */}
+            <div className="flex w-[186px] flex-[0_0_186px] flex-col border-r border-line-soft bg-surface-alt py-3">
+              <p className="mb-2 px-[18px] font-mono text-[10px] font-semibold uppercase tracking-[0.07em] text-ink-faint">
+                Suivi
+              </p>
+              <div className="flex flex-col gap-px px-[10px]">
+                {SOUS_NAV.map((onglet) => (
                   <div
-                    key={ligne.libelle}
-                    className="flex justify-between gap-[10px] border-b border-line-soft py-2"
+                    key={onglet.libelle}
+                    className={cn(
+                      "flex h-[30px] items-center gap-2 rounded-control px-2 text-[12.5px]",
+                      onglet.actif
+                        ? "bg-tint-12 font-semibold text-accent-text"
+                        : "text-ink-tertiary",
+                    )}
                   >
-                    <span className="text-[12px] text-ink-tertiary">
-                      {ligne.libelle}
-                    </span>
-                    <span
-                      className={cn(
-                        "text-[12px] font-semibold",
-                        ligne.accentuee ? "text-accent-text" : "text-ink",
-                        ligne.mono && "tabular-nums",
-                      )}
-                    >
-                      {ligne.valeur}
-                    </span>
+                    <Icon
+                      name={onglet.icone}
+                      size={16}
+                      className={onglet.actif ? "text-accent-text" : "text-ink-faint"}
+                    />
+                    <span className="min-w-0 truncate">{onglet.libelle}</span>
                   </div>
                 ))}
               </div>
+            </div>
 
-              <EtiquetteMono className="mb-2 mt-[14px]">Notes</EtiquetteMono>
-              <p className="text-[12px] leading-[1.55] text-ink-muted">
-                Demander le détail de l&apos;équipe design et le rythme de
-                télétravail.
-              </p>
+            <div className="flex min-w-0 flex-1 flex-col">
+              {/* ── Barre de filtres ────────────────────────────────────── */}
+              <div className="flex min-h-[50px] flex-none flex-wrap items-center gap-2 border-b border-line-soft px-3 py-[10px]">
+                <div className="flex h-[30px] w-[190px] items-center gap-[7px] rounded-control border border-control bg-surface px-[9px] text-[12px] text-ink-faint">
+                  <Icon name="search" size={15} />
+                  Rechercher…
+                </div>
+                <div className="inline-flex h-[30px] items-center gap-[6px] rounded-control border border-control bg-surface px-[11px] text-[12.5px] font-semibold text-ink">
+                  <Icon name="filter_list" size={16} />
+                  Filtres
+                  <Icon name="expand_more" size={15} className="text-ink-faint" />
+                </div>
+                <span className="flex-1" />
+                <span className="text-[12px] font-semibold tabular-nums text-ink">
+                  14 candidatures
+                </span>
+
+                {/* Actions : bascule de vue, export, création — celles de la page. */}
+                <div className="flex gap-[2px] rounded-[9px] border border-control bg-surface p-[2px]">
+                  <span className="inline-flex h-[24px] items-center gap-[5px] rounded-[7px] bg-tint-12 px-[9px] text-[12px] font-semibold text-accent-text">
+                    <Icon name="view_kanban" size={14} />
+                    Kanban
+                  </span>
+                  <span className="inline-flex h-[24px] items-center gap-[5px] rounded-[7px] px-[9px] text-[12px] text-ink-muted">
+                    <Icon name="view_list" size={14} />
+                    Liste
+                  </span>
+                </div>
+                <div className="inline-flex h-[30px] shrink-0 items-center gap-[6px] whitespace-nowrap rounded-control border border-control bg-surface px-[11px] text-[12.5px] font-semibold text-ink">
+                  <Icon name="download" size={15} />
+                  Exporter
+                </div>
+                <div className="inline-flex h-[30px] shrink-0 items-center gap-[6px] whitespace-nowrap rounded-control border border-accent-strong bg-accent px-[11px] text-[12.5px] font-semibold text-on-accent">
+                  <Icon name="add" size={15} />
+                  Nouvelle
+                </div>
+              </div>
+
+              {/* ── Kanban : aucune ligne sélectionnée, donc pas d'inspecteur ── */}
+              <div className="flex min-w-0 flex-1 gap-[14px] overflow-hidden p-[14px]">
+                {COLONNES_BOARD.map((colonne) => (
+                  <section
+                    key={colonne.statut}
+                    className="flex w-[240px] flex-none flex-col rounded-card border border-line bg-surface-alt"
+                  >
+                    <header className="flex flex-none items-center gap-2 border-b border-line px-[14px] py-3">
+                      <span
+                        className={cn(
+                          "size-[7px] flex-none rounded-full",
+                          PUCE_STATUT[colonne.statut],
+                        )}
+                      />
+                      <h3 className="min-w-0 truncate text-[12.5px] font-semibold text-ink">
+                        {LIBELLE_STATUT[colonne.statut]}
+                      </h3>
+                      <span className="flex-none rounded-[6px] border border-control bg-surface px-[6px] py-px text-[11px] font-semibold tabular-nums text-ink">
+                        {colonne.cartes.length}
+                      </span>
+                      <span className="flex-1" />
+                      <span className="grid size-[26px] place-items-center rounded-control text-ink-faint">
+                        <Icon name="add" size={16} />
+                      </span>
+                    </header>
+
+                    <div className="flex flex-1 flex-col gap-2 p-[10px]">
+                      {colonne.cartes.slice(0, 3).map((carte) => (
+                        <div
+                          key={`${carte.entreprise}-${carte.poste}`}
+                          className="min-w-0 rounded-tile border border-line bg-surface px-3 py-[10px]"
+                        >
+                          <div className="mb-[9px] flex items-start gap-[9px]">
+                            <span className="grid size-[26px] flex-none place-items-center rounded-control bg-page text-[10.5px] font-semibold text-ink-muted">
+                              {carte.initiales}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-[12.5px] font-semibold leading-[1.35] text-ink">
+                                {carte.poste}
+                              </p>
+                              <p className="mt-[2px] truncate text-[11.5px] text-ink-faint">
+                                {carte.entreprise}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-[6px]">
+                            <span className="inline-flex h-[18px] items-center rounded-[6px] border border-line bg-surface-alt px-[6px] text-[10.5px] text-ink-muted">
+                              {carte.contrat}
+                            </span>
+                            <span className="truncate text-[10.5px] text-ink-faint">
+                              {carte.ville}
+                            </span>
+                            <span className="flex-1" />
+                            <span
+                              className={cn(
+                                "inline-flex flex-none items-center gap-1 text-[10.5px] tabular-nums",
+                                carte.jours >= 15 ? "text-warning" : "text-ink-faint",
+                              )}
+                            >
+                              <Icon name={carte.jours >= 15 ? "schedule" : "event"} size={13} />
+                              {carte.jours} j
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                ))}
+              </div>
             </div>
           </div>
         </div>

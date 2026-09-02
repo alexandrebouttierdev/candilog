@@ -132,12 +132,12 @@ horizontal. **Les `overflow-x` ci-dessous sont structurels, pas décoratifs.**
 | Bloc | Comportement |
 | --- | --- |
 | En-tête | Deux à trois lignes sous ~700px, une seule ligne de 56px dès la tablette. Nav en `overflow-x-auto` + `no-scrollbar`. |
-| Fenêtre du hero | `min-w-[540px]` sur la zone de contenu → défile sous ~830px. Déborde à droite au-delà de 1180px via `mr-[calc(-1*clamp(0px,(100vw-1180px)*0.35,110px))]`. |
+| Fenêtre du hero | `min-w-[760px]` sur la zone de contenu, `overflow-hidden` sur la fenêtre : elle se **coupe** au bord droit au lieu d'exposer une barre de défilement dans une maquette décorative. Déborde à droite au-delà de 1180px via `mr-[calc(-1*clamp(0px,(100vw-1180px)*0.35,110px))]`. |
 | Frise des 5 étapes | `grid-flow-col` + `overflow-x-auto`, colonnes de 158px minimum. |
-| Board de suivi | Idem, 5 colonnes de 190px minimum. |
-| Vue liste | `overflow-x-auto` + `min-w-[720px]` : ses colonnes `1.4fr 1fr .8fr .8fr .7fr` deviennent illisibles en dessous. |
+| Kanban de suivi | `repeat(auto-fit,minmax(min(240px,100%),1fr))`, 4 colonnes — la géométrie de `KanbanBoard`. |
+| Vue liste | `overflow-x-auto` + `min-w-[940px]` : ses **huit** colonnes `2.2fr 1.3fr .9fr .7fr 1fr .8fr 1.1fr .8fr` — celles de `ApplicationsPage` — deviennent illisibles en dessous. |
 | Grille des 4 faits | `repeat(2, minmax(0,1fr))` **fixe**. Ne pas repasser en `auto-fit` : les filets se désalignent. |
-| Pastilles IA | `flex-wrap`, décalages 26/4/32/8/34px conservés tant qu'elles tiennent sur une ligne. |
+| Pastilles IA | `flex-wrap`, **sept** pastilles. Décalages alternés 26/4 : à sept, la ligne se replie selon la largeur et une vague irrégulière ferait des marches au point de repli. |
 
 > ⚠️ Le hero porte `overflow-x-clip`, et c'est **`clip`, pas `hidden`**. Sans clip, le
 > débordement volontaire de la fenêtre crée une barre horizontale sur toute la page. Et
@@ -148,17 +148,26 @@ horizontal. **Les `overflow-x` ci-dessous sont structurels, pas décoratifs.**
 
 ## 7. Animations
 
-Trois blocs, **tous** conditionnés à `prefers-reduced-motion: reduce`. Aucune n'est une
-animation CSS infinie : elles s'arrêtent et se nettoient au démontage.
+Quatre blocs. Les trois pilotés par JavaScript sont **tous** conditionnés à
+`prefers-reduced-motion: reduce`, et aucun n'est une animation CSS infinie : ils s'arrêtent
+et se nettoient au démontage.
 
 | Où | Comportement |
 | --- | --- |
 | `useScrollReveal` | Montée de 16px + fondu, 80 ms entre enfants, seuil 0.08. Appliqué via `<Reveal>` sur le conteneur de chaque section. |
-| `useAtsReveal` | Score ATS de 0 à **72**, +3 toutes les **26 ms**, à l'entrée dans le viewport (`IntersectionObserver`, seuil **0.35**), une seule fois. Les barres (64 % / 78 % / 42 %) reçoivent leur cible d'un coup, c'est la transition CSS de **900 ms** qui les anime. |
-| `TrackingBoard` | La carte « Designer produit » change de statut toutes les **2 600 ms** : Envoyée → Relance → Entretien, avec `translateY(-2px)` sur Entretien. |
+| `useAtsReveal` | Score ATS de 0 à **84**, +3 toutes les **26 ms**, à l'entrée dans le viewport (`IntersectionObserver`, seuil **0.35**), une seule fois. Le gain cumulé (**+13**) est posé d'emblée : l'application l'affiche, elle ne l'anime pas. |
+| `animate-caret` | Caret du champ « Texte de l'offre » (écran 01 du parcours) : `steps(1)`, 1,1 s, infini. Seule animation purement CSS du site, sur un élément `aria-hidden` de 1px. |
+| `TrackingBoard` | La carte « Designer produit » **change de colonne** toutes les **2 600 ms** : En attente → Relancée → Entretien, avec `animate-depose` (320 ms) à l'arrivée et le compteur d'en-tête qui suit. Dans l'application une carte ne porte pas son statut — c'est la colonne qui le porte, et on en change en glissant la carte : l'animation reproduit ce geste, elle ne repeint pas une pastille inexistante. |
 
 Le rendu serveur sort **sans** les classes `.reveal` : sans JavaScript, tout reste
 visible.
+
+> ⚠️ `.reveal-in` **libère** le `will-change` posé par `.reveal`, et ce n'est pas une
+> optimisation. Sous Chromium, `will-change: opacity | transform` fait de l'élément une
+> *backdrop root* : tant que le drapeau tient, le `backdrop-filter` de ses descendants n'a
+> plus rien à flouter. Le menu de téléchargement — seul verre dépoli posé à l'intérieur
+> d'un `.reveal` — laissait alors lire le texte du hero au travers de sa première bande.
+> Ne pas remettre `will-change` sur `.reveal-in`.
 
 ---
 
@@ -210,7 +219,59 @@ Mentions obligatoires à conserver telles quelles :
 
 ---
 
-## 10. Écarts assumés par rapport au prototype
+## 10. Fidélité des aperçus
+
+Les maquettes d'écran du site — fenêtre du hero, cinq écrans du parcours, Kanban et liste
+de la section Suivi, trois panneaux de la bande ATS — ne sont pas des illustrations
+libres. **Elles ne montrent que ce que l'application fait.** Un site qui met en scène une
+fonctionnalité absente est une promesse cassée au premier lancement.
+
+### La règle
+
+`src/` fait foi. Avant de modifier un aperçu, lire le composant réel qu'il représente et
+en reprendre la structure, les libellés, les colonnes et les états.
+
+| Aperçu | Source de vérité dans `src/` |
+| --- | --- |
+| Fenêtre du hero | `app/layout/{AppShell,NavRail,TopBar,SubNav}.tsx`, `features/applications/view/pages/ApplicationsPage.tsx` |
+| Statuts (`lib/data/suivi.ts`) | `features/applications/model/statuses.ts` |
+| Kanban et cartes | `features/applications/view/components/{KanbanBoard,ApplicationCard}.tsx` |
+| Vue liste | les colonnes de `ApplicationsPage.tsx` |
+| Écrans 01 et 02 du parcours | `features/documents/view/pages/ResumeGeneratorPage.tsx`, `view/components/ResumeAtsPanel.tsx` |
+| Écran 03 | `features/documents/view/pages/ResumeLibraryPage.tsx` |
+| Écran 04 | `features/applications/view/components/ApplicationFormModal.tsx` |
+| Écran 05 | `features/calendar/view/pages/CalendarPage.tsx`, `view/components/GridMonth.tsx` |
+| Bande ATS | `features/documents/view/components/{ResumeAtsPanel,DocumentUi}.tsx` |
+| Fournisseurs IA | `features/settings/model/providers.ts` |
+
+### Ce que l'application ne fait pas
+
+À ne pas remettre en scène, quelle que soit la qualité graphique du résultat :
+
+- **Pas de section « Offres »**, pas d'import d'annonce par URL, pas d'extraction
+  automatique du poste et de l'entreprise. Une offre entre par son **texte collé**, dans
+  « Générer un CV » ou « Analyser ».
+- **Pas de cinquième statut.** Il y en a quatre : En attente, Relancée, Entretien,
+  Refusée. Aucun statut « offre reçue ».
+- **Pas de pièces jointes** sur une candidature : les CV et lettres vivent dans la
+  bibliothèque de documents.
+- **Pas de jauge de lisibilité, pas de verdict global.** L'analyse ATS rend un score sur
+  100, un gain cumulé et des propositions à décider une par une.
+- **Pas de barre de titre dessinée** : `tauri.conf.json` garde les décorations natives,
+  donc ni pastilles macOS ni boutons Windows dans la maquette.
+
+### Le jeu de données
+
+Un seul persona sur tout le site : **Camille Berthier**, designer produit à Lyon, avec
+Atelier Nord, Studio Halage, Cobalt Bureau, Groupe Vallée, Sablé Industries, Éditions
+Sillon, Nord Réseaux, Maison Rivet, Laurier & Pons et Verrières & Cie. Les dates suivent
+le format de l'application (**JJ-MM-AAAA**), les entretiens et relances tombent des jours
+ouvrés, et les compteurs sont cohérents entre les sections : **14 candidatures**,
+réparties 5 / 3 / 3 / 3.
+
+---
+
+## 11. Écarts assumés par rapport au prototype
 
 Le prototype ayant disparu du dépôt, voici ce qui a été fait différemment et pourquoi.
 Sans cette liste, ces choix ressemblent à des erreurs.
@@ -222,8 +283,8 @@ Sans cette liste, ces choix ressemblent à des erreurs.
 | Vrai logo OpenAI au lieu du cercle CSS | Le prototype n'avait pas d'URL CDN valide ; le SVG existe dans l'app desktop. |
 | Les boutons « GitHub » sortent vers le dépôt au lieu de l'ancre `#opensource` | Un bouton qui annonce GitHub et fait défiler la page est une promesse cassée. |
 | « Voir sur GitHub » (section Code source) en `text-page` au lieu de `--on-accent` | Le prototype donnait du blanc sur `--ink`, soit **blanc sur blanc en thème sombre** (1,1:1). |
-| « Adapter à l'offre » (bande ATS) en `--on-accent` au lieu de `--band-ink-strong` | Le prototype donnait du texte sombre sur indigo, seul bouton accent du site dans ce cas. |
-| Pastille « Envoyée » en `--page` | Le README de handoff et son `EXAMPLE_StatusBadge` disaient `--surface-alt` ; le prototype dit `--page`, et il fait foi. Le statut neutre se creuse dans la carte en sombre — c'est voulu. |
+| Boutons « Enregistrer » / « Exporter en PDF » (bande ATS) au lieu d'« Adapter à l'offre » | L'éditeur de CV n'a pas de bouton « Adapter à l'offre » : il enregistre la version et l'exporte en PDF. Le bouton accent garde `--on-accent`, comme tous les autres. |
+| Pastille « En attente » en `--page` | Le prototype peignait le statut neutre en `--page` plutôt qu'en `--surface-alt` ; on le garde. Le statut neutre se creuse dans la carte en sombre — c'est voulu. |
 | `ThemeToggle` en `useSyncExternalStore` | Le thème est un attribut posé hors de React ; le recopier dans un `useState` depuis un `useEffect` viole `react-hooks/set-state-in-effect`. |
 | Pas de route `/api/download/[platform]` | Export statique : aucune route serveur n'est possible. |
 | Sur-titre du hero (« Application desktop · Windows · macOS · Linux ») supprimé | Demande de l'auteur. |

@@ -30,38 +30,6 @@ export function EcranDeuxVolets({
   );
 }
 
-/** Puce de compétence — accentuée quand l'offre l'a mise en avant. */
-export function Chip({ children, accentuee = false }: { children: ReactNode; accentuee?: boolean }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex h-6 items-center rounded-[7px] border px-[9px] text-[11.5px]",
-        accentuee
-          ? "border-tint-border bg-tint-08 font-semibold text-accent-text"
-          : "border-line bg-surface-alt text-ink-muted",
-      )}
-    >
-      {children}
-    </span>
-  );
-}
-
-/** Pastille de statut des cartes « à traiter cette semaine ». */
-export function Pastille({ children, ton }: { children: ReactNode; ton: "accent" | "warning" }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex h-[19px] shrink-0 items-center whitespace-nowrap rounded-pill border px-[7px] text-[11px] font-semibold",
-        ton === "accent"
-          ? "border-tint-border bg-tint-10 text-accent-text"
-          : "border-warning-border bg-warning-tint text-warning-text",
-      )}
-    >
-      {children}
-    </span>
-  );
-}
-
 /** Surlignage indigo des trois ajouts de l'aperçu de CV (écran 03). */
 export function Surlignage({ children }: { children: ReactNode }) {
   return (
@@ -69,35 +37,45 @@ export function Surlignage({ children }: { children: ReactNode }) {
   );
 }
 
-/** Faux champ de formulaire (écran 04) — décoratif, jamais un vrai input. */
+/** Faux champ de formulaire (écran 04) — décoratif, jamais un vrai input.
+ *
+ *  `aide` rend la ligne d'assistance de `FormField` : dans la modale de candidature, c'est
+ *  elle qui annonce la valeur héritée de l'entreprise. `attenue` marque une valeur héritée
+ *  plutôt que saisie. */
 export function Champ({
   libelle,
   obligatoire = false,
   focus = false,
   mono = false,
+  attenue = false,
+  aide,
   children,
 }: {
   libelle: string;
   obligatoire?: boolean;
   focus?: boolean;
   mono?: boolean;
+  attenue?: boolean;
+  aide?: string;
   children: ReactNode;
 }) {
   return (
-    <div>
+    <div className="min-w-0">
       <p className="mb-[5px] text-[11.5px] text-ink-muted">
         {libelle}
         {obligatoire ? <span className="text-danger"> *</span> : null}
       </p>
       <div
         className={cn(
-          "flex h-[30px] items-center gap-[7px] rounded-[9px] border px-[9px] text-[12.5px] text-ink",
+          "flex h-[30px] items-center gap-[7px] rounded-[9px] border px-[9px] text-[12.5px]",
           focus ? "border-accent outline outline-1 outline-tint-border-strong" : "border-control",
+          attenue ? "text-ink-tertiary" : "text-ink",
           mono && "font-mono",
         )}
       >
         {children}
       </div>
+      {aide ? <p className="mt-[4px] text-[10.5px] text-ink-tertiary">{aide}</p> : null}
     </div>
   );
 }

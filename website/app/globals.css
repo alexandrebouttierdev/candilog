@@ -160,12 +160,20 @@
   section[id] { scroll-margin-top: 84px; }
 }
 
-/* ── 4. La seule keyframe du design (caret du champ URL) ─────────────────── */
+/* ── 4. Keyframes du design ──────────────────────────────────────────────── */
 @theme {
   --animate-caret: candi-caret 1.1s steps(1) infinite;
   @keyframes candi-caret {
     0%, 45% { opacity: 1; }
     55%, 100% { opacity: 0; }
+  }
+
+  /* Dépôt d'une carte dans une colonne du Kanban : l'arrivée d'un glisser-déposer,
+     pas une pastille qui change de couleur. Bornée, jouée une fois par déplacement. */
+  --animate-depose: candi-depose 320ms var(--ease-out-soft) both;
+  @keyframes candi-depose {
+    from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+    to   { opacity: 1; transform: none; }
   }
 }
 
@@ -179,6 +187,14 @@
   .reveal-in {
     opacity: 1;
     transform: translateY(0);
+    /* Le `will-change` de `.reveal` est **libéré** dès la révélation, et ce n'est pas
+       une optimisation : sous Chromium, `will-change: opacity | transform` fait de
+       l'élément une *backdrop root*. Tant qu'il tient, le `backdrop-filter` de ses
+       descendants n'a plus rien à flouter — le menu de téléchargement, seul verre
+       dépoli posé dans un `.reveal`, laissait alors lire le texte du hero au travers.
+       Le fondu reste fluide sans le drapeau : opacité et transform sont déjà
+       composités. */
+    will-change: auto;
     transition:
       opacity 640ms var(--ease-reveal),
       transform 720ms var(--ease-reveal);

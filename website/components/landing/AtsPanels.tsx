@@ -3,38 +3,45 @@
 import { Icon } from "@/components/ui/Icon";
 import { Reveal } from "@/components/ui/Reveal";
 import { cn } from "@/lib/cn";
-import { useAtsReveal } from "@/lib/hooks/useAtsReveal";
+import { GAIN_CUMULE, useAtsReveal } from "@/lib/hooks/useAtsReveal";
 
 /* Toute la section vit sur les tokens --band-* : la bande a un contraste voulu,
    différent de celui de la page, dans les deux thèmes (§12).
 
-   Exception assumée : le bouton « Adapter à l'offre ». Le prototype le peint
-   `bg-accent` + `color: var(--band-ink-strong)`, soit du texte sombre sur indigo en
-   thème clair — le seul bouton accent du site dans ce cas, à ~4,5:1. Arbitré avec
-   l'auteur : il utilise `--on-accent` comme tous les autres. */
+   Le panneau d'analyse reproduit `ResumeAtsPanel` : un score sur 100, le gain
+   accumulé depuis la génération, puis une proposition par carte. L'application ne
+   produit ni jauge de lisibilité, ni verdict global — une mesure qu'elle ne calcule
+   pas n'a rien à faire ici. */
 
-const BARRES = [
-  {
-    libelle: "Compétences couvertes",
-    valeur: "9 / 14",
-    ton: "accent" as const,
-  },
-  {
-    libelle: "Vocabulaire de l'annonce",
-    valeur: "Bon",
-    ton: "accent" as const,
-  },
-  {
-    libelle: "Lisibilité du document",
-    valeur: "À vérifier",
-    ton: "warning" as const,
-  },
-];
+/** Les quatre états d'une proposition dans `ResumeAtsPanel`. */
+const ETATS = {
+  decider: { classes: "border-band-line-accent text-band-accent", libelle: "À décider", icone: "query_stats" },
+  ajoutee: { classes: "border-success-border text-success", libelle: "Ajoutée au CV", icone: "check" },
+  ignoree: { classes: "border-band-line text-band-ink-faint", libelle: "Ignorée", icone: "close" },
+  inapplicable: { classes: "border-band-line text-band-ink-faint", libelle: "Non applicable", icone: "block" },
+} as const;
 
-const POINTS = [
-  { ok: false, texte: "« Accessibilité » n'apparaît pas dans le CV" },
-  { ok: false, texte: "Deux colonnes : risque de mauvaise lecture" },
-  { ok: true, texte: "Intitulé de poste aligné sur l'annonce" },
+const PROPOSITIONS = [
+  {
+    etat: "decider" as const,
+    titre: "Ajouter « Recherche quantitative » aux compétences",
+    detail: "Score projeté 89",
+  },
+  {
+    etat: "ajoutee" as const,
+    titre: "Mentionner les entretiens utilisateurs de la refonte",
+    detail: "+6 points",
+  },
+  {
+    etat: "ignoree" as const,
+    titre: "Ajouter « Design ops » aux compétences",
+    detail: "Décision annulable",
+  },
+  {
+    etat: "inapplicable" as const,
+    titre: "Reformuler l'accroche du profil",
+    detail: "Ne s'applique plus au CV actuel",
+  },
 ];
 
 function EntetePanneau({
@@ -73,7 +80,7 @@ function Souligne({ children }: { children: React.ReactNode }) {
 }
 
 export function AtsPanels() {
-  const { ref, score, barres, anime } = useAtsReveal<HTMLDivElement>();
+  const { ref, score } = useAtsReveal<HTMLDivElement>();
 
   return (
     <section
@@ -108,7 +115,7 @@ export function AtsPanels() {
               <Souligne>système de composants</Souligne>. Une attention réelle à
               l&apos;<Souligne>accessibilité</Souligne> est attendue.
               <p className="mt-[14px] border-t border-band-line pt-3 font-mono text-[10px] uppercase tracking-[0.07em] text-band-ink-faint">
-                14 éléments repérés
+                12 éléments repérés
               </p>
             </div>
           </div>
@@ -118,7 +125,7 @@ export function AtsPanels() {
             <EntetePanneau
               icone="description"
               titre="CV — Atelier Nord"
-              meta="v3"
+              meta="02-08-2026"
             />
             <div className="px-4 py-[14px]">
               <div className="rounded-tile border border-band-line bg-band-elevated p-[14px]">
@@ -158,11 +165,12 @@ export function AtsPanels() {
 
               <div className="mt-[10px] flex flex-wrap gap-[6px]">
                 <span className="inline-flex h-[26px] shrink-0 items-center gap-[6px] whitespace-nowrap rounded-control border border-band-accent bg-accent px-[10px] text-[12px] font-semibold text-on-accent">
-                  <Icon name="auto_fix_high" size={14} />
-                  Adapter à l&apos;offre
+                  <Icon name="save" size={14} />
+                  Enregistrer
                 </span>
-                <span className="inline-flex h-[26px] items-center rounded-control border border-band-control bg-band-elevated px-[10px] text-[12px] font-semibold text-band-ink-body">
-                  Exporter
+                <span className="inline-flex h-[26px] shrink-0 items-center gap-[6px] whitespace-nowrap rounded-control border border-band-control bg-band-elevated px-[10px] text-[12px] font-semibold text-band-ink-body">
+                  <Icon name="picture_as_pdf" size={14} />
+                  Exporter en PDF
                 </span>
               </div>
             </div>
@@ -173,7 +181,7 @@ export function AtsPanels() {
             <EntetePanneau
               icone="query_stats"
               titre="Analyse ATS"
-              meta="02 août · 14:02"
+              meta="02-08-2026"
               iconeAccentuee
             />
             <div className="p-4">
@@ -181,61 +189,51 @@ export function AtsPanels() {
                 <span className="text-[36px] font-semibold tabular-nums tracking-[-0.03em] text-band-ink-strong">
                   {score}
                 </span>
-                <span className="text-[13px] text-band-ink-faint">
-                  / 100 de correspondance
+                <span className="text-[13px] text-band-ink-faint">/ 100</span>
+                <span className="ml-auto text-[12.5px] font-semibold text-success">
+                  +{GAIN_CUMULE} points
                 </span>
               </div>
-
-              <div className="mt-[14px] flex flex-col gap-[11px]">
-                {BARRES.map((barre, index) => (
-                  <div key={barre.libelle}>
-                    <div className="mb-[5px] flex justify-between text-[11.5px] text-band-ink-muted">
-                      <span>{barre.libelle}</span>
-                      <span className="tabular-nums">{barre.valeur}</span>
-                    </div>
-                    <div className="h-[5px] overflow-hidden rounded-[3px] bg-band-line">
-                      <div
-                        className={cn(
-                          "h-full rounded-[3px]",
-                          barre.ton === "accent"
-                            ? "bg-band-accent"
-                            : "bg-warning",
-                          anime &&
-                            "transition-[width] duration-[900ms] ease-out-soft",
-                        )}
-                        style={{ width: `${String(barres[index] ?? 0)}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <p className="mt-[3px] text-[11.5px] text-band-ink-faint">
+                Score ATS, et gain depuis la génération
+              </p>
 
               <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.07em] text-band-ink-faint">
-                Points à reprendre
+                Propositions
               </p>
-              <div className="mt-[9px] flex flex-col border-t border-band-line">
-                {POINTS.map((point) => (
-                  <div
-                    key={point.texte}
-                    className="flex gap-[9px] border-b border-band-line py-[9px]"
-                  >
-                    <span
-                      className={point.ok ? "text-success" : "text-warning"}
+              <div className="mt-[9px] flex flex-col gap-2">
+                {PROPOSITIONS.map((proposition) => {
+                  const etat = ETATS[proposition.etat];
+                  return (
+                    <div
+                      key={proposition.titre}
+                      className="rounded-tile border border-band-line bg-band-elevated p-[11px]"
                     >
-                      <Icon
-                        name={point.ok ? "check_circle" : "error"}
-                        size={15}
-                      />
-                    </span>
-                    <span className="text-[12px] text-band-ink-body">
-                      {point.texte}
-                    </span>
-                  </div>
-                ))}
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="min-w-0 flex-1 text-[11.5px] font-semibold text-band-ink-body">
+                          {proposition.titre}
+                        </p>
+                        <span
+                          className={cn(
+                            "inline-flex h-[19px] shrink-0 items-center gap-[4px] whitespace-nowrap rounded-pill border px-[6px] text-[10.5px] font-semibold",
+                            etat.classes,
+                          )}
+                        >
+                          <Icon name={etat.icone} size={11} />
+                          {etat.libelle}
+                        </span>
+                      </div>
+                      <p className="mt-[5px] text-[11px] text-band-ink-faint">
+                        {proposition.detail}
+                      </p>
+                    </div>
+                  );
+                })}
               </div>
 
               <p className="mt-[14px] text-[11px] leading-[1.6] text-band-ink-faint">
-                Une analyse est une indication, pas une garantie de sélection.
+                Aucune proposition ne s&apos;applique sans votre accord, et chaque
+                décision s&apos;annule.
               </p>
             </div>
           </div>

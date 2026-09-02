@@ -16,6 +16,10 @@ const ATOUTS = [
     detail: "Aucune facturation par Candilog",
   },
   { titre: "Ou 100 % local", detail: "Modèle Ollama, hors ligne" },
+  {
+    titre: "Ou votre propre serveur",
+    detail: "Tout point d'accès compatible OpenAI",
+  },
 ];
 
 function Pastille({ fournisseur }: { fournisseur: FournisseurIa }) {
@@ -52,11 +56,11 @@ export function AiProviders() {
             L&apos;assistance IA, avec le moteur que vous choisissez.
           </h2>
           <p className="mt-4 max-w-[470px] text-pretty text-[14px] leading-[1.7] text-ink-muted">
-            L&apos;analyse d&apos;une offre, l&apos;extraction des informations
-            et l&apos;adaptation d&apos;un document passent par le fournisseur
-            que vous connectez avec votre propre clé. Vous pouvez aussi faire
-            tourner un modèle en local avec Ollama : dans ce cas, rien ne quitte
-            votre ordinateur.
+            Générer un CV ciblé, analyser un CV face à une offre, rédiger une
+            lettre ou importer votre profil depuis un PDF : ces quatre opérations
+            passent par le fournisseur que vous connectez avec votre propre clé.
+            Vous pouvez aussi faire tourner un modèle en local avec Ollama : dans
+            ce cas, rien ne quitte votre ordinateur.
           </p>
 
           <div className="mt-[26px] flex flex-wrap gap-5 border-t border-line pt-[18px]">
@@ -75,7 +79,7 @@ export function AiProviders() {
 
         <div className="min-w-0">
           {/* flex-wrap : les décalages verticaux de la vague tiennent tant que les
-              cinq pastilles sont sur une ligne (§6). */}
+              sept pastilles sont sur une ligne (§6) ; au-delà elles se replient. */}
           <ul className="flex flex-wrap items-start justify-center gap-[14px] py-[26px]">
             {FOURNISSEURS_IA.map((fournisseur) => (
               <li

@@ -6,14 +6,14 @@ import { EcranAnalyse } from "@/components/landing/JourneyScreens/EcranAnalyse";
 import { EcranCalendrier } from "@/components/landing/JourneyScreens/EcranCalendrier";
 import { EcranCandidature } from "@/components/landing/JourneyScreens/EcranCandidature";
 import { EcranDocuments } from "@/components/landing/JourneyScreens/EcranDocuments";
-import { EcranImportOffre } from "@/components/landing/JourneyScreens/EcranImportOffre";
+import { EcranOffreCiblee } from "@/components/landing/JourneyScreens/EcranOffreCiblee";
 import { Icon } from "@/components/ui/Icon";
 import { Reveal } from "@/components/ui/Reveal";
 import { cn } from "@/lib/cn";
 import { ETAPES } from "@/lib/data/parcours";
 
 const ECRANS = [
-  EcranImportOffre,
+  EcranOffreCiblee,
   EcranAnalyse,
   EcranDocuments,
   EcranCandidature,

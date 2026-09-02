@@ -9,15 +9,21 @@ import {
   ATOUTS_SUIVI,
   BOUCLE_STATUT,
   CANDIDATURES,
+  CARTE_ANIMEE,
   COLONNES_BOARD,
+  ICONE_STATUT,
   LIBELLE_STATUT,
   PERIODE_BOUCLE_MS,
+  PUCE_STATUT,
   STATUT,
   type CarteBoard,
   type CleStatut,
 } from "@/lib/data/suivi";
 
-const COLONNES_LISTE = "grid-cols-[1.4fr_1fr_0.8fr_0.8fr_0.7fr]";
+/* Huit colonnes, comme `ApplicationsPage` : poste, entreprise, ville, contrat, durée,
+   type, statut, date d'envoi. La table défile horizontalement sous 940px plutôt que
+   d'écraser ses colonnes. */
+const COLONNES_LISTE = "grid-cols-[2.2fr_1.3fr_0.9fr_0.7fr_1fr_0.8fr_1.1fr_0.8fr]";
 
 function Badge({
   statut,
@@ -29,85 +35,85 @@ function Badge({
   return (
     <span
       className={cn(
-        "inline-flex h-[19px] shrink-0 items-center whitespace-nowrap rounded-pill border px-[7px] text-[11px] font-semibold",
+        "inline-flex h-[19px] shrink-0 items-center gap-[4px] whitespace-nowrap rounded-pill border px-[7px] text-[11px] font-semibold",
         STATUT[statut],
         className,
       )}
     >
+      <Icon name={ICONE_STATUT[statut]} size={12} />
       {LIBELLE_STATUT[statut]}
     </span>
   );
 }
 
+/** Carte du Kanban — même composition que `ApplicationCard` : pastille d'initiales,
+ *  intitulé, entreprise, puis contrat, ville et ancienneté en jours. */
 function CarteCandidature({
   carte,
-  statutAnime,
-  decalage,
+  deplacee = false,
 }: {
   carte: CarteBoard;
-  statutAnime: CleStatut;
-  decalage: number;
+  /** La carte que la boucle vient de déposer dans cette colonne. */
+  deplacee?: boolean;
 }) {
   return (
     <div
       className={cn(
-        "rounded-tile border bg-surface px-[11px] py-[10px]",
-        carte.animee ? "border-tint-border-strong" : "border-line",
-        carte.attenuee && "opacity-60",
-        carte.animee && "transition-transform duration-[320ms] ease-out-soft",
+        "min-w-0 rounded-tile border bg-surface px-3 py-[10px]",
+        deplacee
+          ? "border-accent-strong animate-depose"
+          : "border-line",
       )}
-      style={
-        carte.animee
-          ? { transform: `translateY(${String(decalage)}px)` }
-          : undefined
-      }
     >
-      <p className="text-[12.5px] font-semibold text-ink">{carte.poste}</p>
-      <p className="mt-[2px] text-[11.5px] text-ink-tertiary">
-        {carte.entreprise}
-      </p>
+      <div className="mb-[9px] flex items-start gap-[9px]">
+        <span className="grid size-[26px] flex-none place-items-center rounded-control bg-page text-[10.5px] font-semibold text-ink-muted">
+          {carte.initiales}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[12.5px] font-semibold leading-[1.35] text-ink">
+            {carte.poste}
+          </p>
+          <p className="mt-[2px] truncate text-[11.5px] text-ink-faint">
+            {carte.entreprise}
+          </p>
+        </div>
+      </div>
 
-      {carte.animee ? (
-        <div className="mt-2 flex items-center gap-[6px]">
-          <Badge
-            statut={statutAnime}
-            className="transition-colors duration-[260ms]"
-          />
-          <span className="ml-auto text-[11px] tabular-nums text-ink-tertiary">
-            {carte.detail}
-          </span>
-        </div>
-      ) : carte.detail ? (
-        <div className="mt-2 flex items-center gap-[6px]">
-          {carte.icone ? (
-            <span className="text-ink-faint">
-              <Icon name={carte.icone} size={13} />
-            </span>
-          ) : null}
-          <span className="text-[11px] tabular-nums text-ink-tertiary">
-            {carte.detail}
-          </span>
-        </div>
-      ) : null}
+      <div className="flex flex-wrap items-center gap-[6px]">
+        <span className="inline-flex h-[18px] items-center rounded-[6px] border border-line bg-surface-alt px-[6px] text-[10.5px] text-ink-muted">
+          {carte.contrat}
+        </span>
+        <span className="truncate text-[10.5px] text-ink-faint">{carte.ville}</span>
+        <span className="flex-1" />
+        <span
+          className={cn(
+            "inline-flex flex-none items-center gap-1 text-[10.5px] tabular-nums",
+            carte.jours >= 15 ? "text-warning" : "text-ink-faint",
+          )}
+        >
+          <Icon name={carte.jours >= 15 ? "schedule" : "event"} size={13} />
+          {carte.jours} j
+        </span>
+      </div>
     </div>
   );
 }
 
 /**
- * Suivi (§7.6) : bascule board / liste et boucle d'animation de statut.
+ * Suivi (§7.6) : bascule Kanban / Liste et boucle d'animation de statut.
  *
  * La boucle est un `setInterval` borné qui s'arrête au démontage — pas une
  * animation CSS infinie — et elle ne démarre pas du tout sous
  * `prefers-reduced-motion` (§12).
  */
 export function TrackingBoard({
-  vueInitiale = "board",
+  vueInitiale = "kanban",
   animationStatut = true,
 }: {
-  vueInitiale?: "board" | "liste";
+  vueInitiale?: "kanban" | "liste";
   animationStatut?: boolean;
 }) {
-  const [vue, setVue] = useState<"board" | "liste">(vueInitiale);
+  const [vue, setVue] = useState<"kanban" | "liste">(vueInitiale);
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
@@ -124,11 +130,10 @@ export function TrackingBoard({
 
   const etat = BOUCLE_STATUT[index] ?? BOUCLE_STATUT[0];
   if (!etat) return null;
-  const decalage = etat.statut === "entretien" ? -2 : 0;
 
-  const bascule = (cible: "board" | "liste") =>
+  const bascule = (cible: "kanban" | "liste") =>
     cn(
-      "inline-flex h-[26px] cursor-pointer items-center rounded-[7px] px-3 text-[12.5px] font-semibold transition-colors duration-[160ms]",
+      "inline-flex h-[26px] cursor-pointer items-center gap-[5px] rounded-[7px] px-[10px] text-[12.5px] font-semibold transition-colors duration-[160ms]",
       vue === cible
         ? "bg-tint-12 text-accent-text"
         : "bg-transparent text-ink-muted",
@@ -160,11 +165,12 @@ export function TrackingBoard({
             >
               <button
                 type="button"
-                onClick={() => setVue("board")}
-                aria-pressed={vue === "board"}
-                className={bascule("board")}
+                onClick={() => setVue("kanban")}
+                aria-pressed={vue === "kanban"}
+                className={bascule("kanban")}
               >
-                Board
+                <Icon name="view_kanban" size={14} />
+                Kanban
               </button>
               <button
                 type="button"
@@ -172,6 +178,7 @@ export function TrackingBoard({
                 aria-pressed={vue === "liste"}
                 className={bascule("liste")}
               >
+                <Icon name="view_list" size={14} />
                 Liste
               </button>
             </div>
@@ -187,54 +194,67 @@ export function TrackingBoard({
                 Candidatures
               </span>
               <span className="text-[11.5px] text-ink-faint">
-                12 candidatures · 5 statuts
+                14 candidatures · 4 statuts
               </span>
               <span className="ml-auto font-mono text-[10.5px] text-ink-faint">
                 {etat.note}
               </span>
             </div>
 
-            {vue === "board" ? (
-              /* grid-auto-flow column + overflow-x auto, colonnes de 190px (§6). */
-              <div className="grid min-h-[400px] auto-cols-[minmax(190px,1fr)] grid-flow-col overflow-x-auto">
-                {COLONNES_BOARD.map((colonne) => (
-                  <div
+            {vue === "kanban" ? (
+              /* Quatre colonnes auto-ajustées d'au moins 240px, sur `surface-alt` et
+                 encadrées — la géométrie de `KanbanBoard` (§7.6). */
+              <div className="grid min-h-[400px] grid-cols-[repeat(auto-fit,minmax(min(240px,100%),1fr))] gap-[14px] bg-page p-[14px]">
+                {COLONNES_BOARD.map((colonne) => {
+                  const accueilleCarte = etat.statut === colonne.statut;
+                  const total = colonne.cartes.length + (accueilleCarte ? 1 : 0);
+
+                  return (
+                  <section
                     key={colonne.statut}
-                    className="min-w-0 border-r border-line-soft"
+                    className="flex min-w-0 flex-col rounded-card border border-line bg-surface-alt"
                   >
-                    <div className="flex items-center gap-[7px] border-b border-line-soft px-3 py-[10px]">
+                    <header className="flex flex-none items-center gap-2 border-b border-line px-[14px] py-3">
                       <span
                         aria-hidden="true"
-                        className={cn("size-[7px] rounded-[2px]", colonne.puce)}
+                        className={cn(
+                          "size-[7px] flex-none rounded-full",
+                          PUCE_STATUT[colonne.statut],
+                        )}
                       />
-                      <span className="text-[12px] font-semibold text-ink">
+                      <h3 className="min-w-0 truncate text-[12.5px] font-semibold text-ink">
                         {LIBELLE_STATUT[colonne.statut]}
+                      </h3>
+                      <span className="flex-none rounded-[6px] border border-control bg-surface px-[6px] py-px text-[11px] font-semibold tabular-nums text-ink">
+                        {total}
                       </span>
-                      <span className="ml-auto text-[11px] tabular-nums text-ink-faint">
-                        {colonne.total}
+                      <span className="flex-1" />
+                      <span className="grid size-[26px] place-items-center rounded-control text-ink-faint">
+                        <Icon name="add" size={16} />
                       </span>
-                    </div>
-                    <div
-                      className={cn(
-                        "flex min-h-[340px] flex-col gap-2 p-[10px]",
-                        colonne.fondCreuse && "bg-surface-sunken",
-                      )}
-                    >
+                    </header>
+
+                    <div className="flex flex-1 flex-col gap-2 p-[10px]">
+                      {/* La carte animée n'apparaît que dans la colonne du statut
+                          courant : c'est le geste de glisser-déposer de l'application,
+                          pas une pastille qui change de couleur. */}
+                      {accueilleCarte ? (
+                        <CarteCandidature carte={CARTE_ANIMEE} deplacee />
+                      ) : null}
                       {colonne.cartes.map((carte) => (
                         <CarteCandidature
-                          key={carte.poste}
+                          key={`${carte.entreprise}-${carte.poste}`}
                           carte={carte}
-                          statutAnime={etat.statut}
-                          decalage={decalage}
                         />
                       ))}
                     </div>
-                  </div>
-                ))}
+                  </section>
+                  );
+                })}
               </div>
             ) : (
               <div className="min-h-[400px] overflow-x-auto">
-                <div className="min-w-[720px]">
+                <div className="min-w-[940px]">
                   <div
                     className={cn(
                       "grid gap-3 border-b border-line-soft bg-surface-alt px-4 py-[9px] font-mono text-[10.5px] font-semibold uppercase tracking-[0.07em] text-ink-faint",
@@ -243,36 +263,53 @@ export function TrackingBoard({
                   >
                     <span>Poste</span>
                     <span>Entreprise</span>
+                    <span>Ville</span>
+                    <span>Contrat</span>
+                    <span>Durée</span>
+                    <span>Type</span>
                     <span>Statut</span>
-                    <span>Prochaine étape</span>
                     <span className="text-right">Envoyée</span>
                   </div>
                   {CANDIDATURES.map((ligne) => (
                     <div
-                      key={ligne.poste}
+                      key={`${ligne.entreprise}-${ligne.poste}`}
                       className={cn(
                         "grid items-center gap-3 border-b border-line-soft px-4 py-[11px] transition-colors duration-[120ms] hover:bg-surface-alt",
                         COLONNES_LISTE,
                       )}
                     >
                       <div className="flex min-w-0 items-center gap-[9px]">
-                        <span className="grid size-[22px] shrink-0 place-items-center rounded-[7px] bg-page text-[10.5px] font-semibold text-ink-muted">
+                        <span className="grid size-[26px] shrink-0 place-items-center rounded-control bg-page text-[10.5px] font-semibold text-ink-muted">
                           {ligne.initiales}
                         </span>
-                        <span className="truncate text-[13px] font-semibold text-ink">
-                          {ligne.poste}
+                        <span className="min-w-0">
+                          <span className="block truncate text-[13px] font-semibold text-ink">
+                            {ligne.poste}
+                          </span>
+                          <span className="block truncate text-[11px] text-ink-faint">
+                            {ligne.domaine}
+                          </span>
                         </span>
                       </div>
                       <span className="truncate text-[12.5px] text-ink-muted">
                         {ligne.entreprise}
                       </span>
+                      <span className="truncate text-[11.5px] text-ink-faint">
+                        {ligne.ville}
+                      </span>
+                      <span className="text-[11.5px] text-ink-faint">
+                        {ligne.contrat}
+                      </span>
+                      <span className="truncate text-[11.5px] text-ink-faint">
+                        {ligne.duree}
+                      </span>
+                      <span className="truncate text-[11.5px] text-ink-faint">
+                        {ligne.type}
+                      </span>
                       <span>
                         <Badge statut={ligne.statut} />
                       </span>
-                      <span className="text-[12px] tabular-nums text-ink-muted">
-                        {ligne.etape}
-                      </span>
-                      <span className="text-right text-[12px] tabular-nums text-ink-tertiary">
+                      <span className="text-right text-[11.5px] tabular-nums text-ink-faint">
                         {ligne.date}
                       </span>
                     </div>

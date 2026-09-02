@@ -9,63 +9,119 @@ export type Etape = {
   readonly panneau: { readonly icone: string; readonly titre: string; readonly fil: string };
 };
 
+/** Le parcours réel de Candilog, écran par écran.
+ *
+ *  Chaque étape correspond à une route qui existe : `Sections` (src/app/router/routes.tsx)
+ *  ne connaît ni section « Offres », ni import d'annonce par URL, ni extraction automatique
+ *  du poste et de l'entreprise. Une offre entre dans Candilog par son **texte collé**, dans
+ *  « Générer un CV » ou « Analyser ». */
 export const ETAPES: readonly Etape[] = [
   {
-    icone: "travel_explore",
-    titre: "Je trouve une offre",
-    sousTitre: "Je l'enregistre entière",
-    detailTitre: "L'offre entre dans Candilog, pas dans un onglet",
+    icone: "content_paste",
+    titre: "Je colle l'offre",
+    sousTitre: "Son texte, rien d'autre",
+    detailTitre: "L'annonce entre par son texte",
     detailTexte:
-      "Collez le lien ou le texte d'une annonce. Candilog en extrait le poste, l'entreprise, le lieu et les éléments attendus, puis garde l'offre complète, même si elle disparaît du site.",
-    panneau: { icone: "content_paste", titre: "Importer une offre", fil: "Offres · Nouvelle" },
+      "Collez l'intitulé, les missions et les compétences attendues dans « Générer un CV ». Le texte part au seul fournisseur que vous avez configuré — et à personne d'autre.",
+    panneau: {
+      icone: "auto_awesome",
+      titre: "Générer un CV",
+      fil: "Documents · Générer un CV",
+    },
   },
   {
     icone: "query_stats",
-    titre: "Je l'analyse",
-    sousTitre: "Attentes, mots-clés, écarts",
-    detailTitre: "Ce que l'annonce demande vraiment",
+    titre: "J'arbitre les écarts",
+    sousTitre: "Une proposition à la fois",
+    detailTitre: "Rien ne s'applique sans vous",
     detailTexte:
-      "L'analyse met en avant les compétences citées, celles que votre profil couvre déjà et celles à formuler autrement. À vous de décider quoi retenir.",
-    panneau: { icone: "query_stats", titre: "Analyse de l'offre", fil: "Offres · Atelier Nord" },
+      "Candilog compare le CV à l'annonce, chiffre l'écart et propose des reformulations précises. Chaque proposition s'accepte ou s'ignore séparément, et le score suit vos décisions.",
+    panneau: {
+      icone: "auto_awesome",
+      titre: "Générer un CV",
+      fil: "Documents · Générer un CV",
+    },
   },
   {
-    icone: "edit_document",
-    titre: "J'adapte mon CV",
-    sousTitre: "Une version par offre",
-    detailTitre: "Un CV par offre, sans repartir de zéro",
+    icone: "description",
+    titre: "Je garde la version",
+    sousTitre: "Une par offre",
+    detailTitre: "Chaque CV reste rattaché à son offre",
     detailTexte:
-      "Partez de votre profil enregistré, adaptez les sections utiles pour cette annonce et gardez la version attachée à la candidature.",
-    panneau: { icone: "description", titre: "Documents", fil: "Documents · CV" },
+      "La bibliothèque garde chaque version avec son score et sa date. Vous savez toujours quel CV vous avez envoyé, et pour quelle annonce.",
+    panneau: { icone: "description", titre: "Mes CV", fil: "Documents · Mes CV" },
   },
   {
-    icone: "send",
+    icone: "work",
     titre: "Je candidate",
-    sousTitre: "Poste, contact, documents",
-    detailTitre: "La candidature se remplit presque seule",
+    sousTitre: "Poste, entreprise, suivi",
+    detailTitre: "Ce qui se répète est hérité",
     detailTexte:
-      "Le poste, l'entreprise et les documents viennent de l'offre déjà enregistrée. Vous ajoutez la date d'envoi et le contact, c'est tout.",
-    panneau: { icone: "send", titre: "Candidatures", fil: "Candidatures · Nouvelle" },
+      "La ville, l'adresse et le type d'entreprise viennent de la fiche entreprise ; vous ne les ressaisissez que si cette candidature en diffère.",
+    panneau: {
+      icone: "work",
+      titre: "Nouvelle candidature",
+      fil: "Candidatures · Nouvelle",
+    },
   },
   {
-    icone: "event_repeat",
+    icone: "calendar_month",
     titre: "Je garde la main",
     sousTitre: "Relances et entretiens",
     detailTitre: "Rien ne tombe entre deux semaines",
     detailTexte:
-      "Chaque candidature porte sa date de relance et ses entretiens. Le calendrier reprend l'ensemble, sans que vous ayez à y penser.",
-    panneau: { icone: "calendar_month", titre: "Calendrier", fil: "Calendrier · Août 2026" },
+      "Chaque candidature porte ses relances et ses entretiens. Le calendrier les reprend tous, sans que vous ayez à y penser.",
+    panneau: { icone: "calendar_month", titre: "Calendrier", fil: "Calendrier · Septembre 2026" },
   },
 ];
 
-/** Jours marqués du calendrier d'août 2026 (écran 05). Le mois commence un samedi,
- *  d'où les 5 cellules vides en tête de grille. */
-export const CASES_VIDES_AOUT = 5;
+/** Jours abrégés de la grille mensuelle, ceux de `DAYS` (src/features/calendar/model/month.ts). */
+export const JOURS_CALENDRIER = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"] as const;
 
-export const MARQUES_CALENDRIER: Readonly<
-  Record<number, { readonly libelle: string; readonly classes: string }>
-> = {
-  5: { libelle: "Entretien 14:30", classes: "bg-tint-12 text-accent-text" },
-  8: { libelle: "Relance", classes: "bg-warning-tint text-warning-text" },
-  12: { libelle: "Entretien 10:00", classes: "bg-tint-12 text-accent-text" },
-  20: { libelle: "Réponse", classes: "bg-success-tint text-success-text" },
+/** La grille du calendrier fait toujours six semaines de sept jours : une hauteur variable
+ *  ferait sauter la mise en page d'un mois à l'autre. Septembre 2026 commence un mardi,
+ *  d'où la case d'août en tête et le débord sur octobre en fin de grille. */
+export const CASES_AVANT_SEPTEMBRE = 1;
+export const JOURS_SEPTEMBRE = 30;
+export const CASES_GRILLE = 42;
+
+export type EvenementCalendrier = {
+  readonly icone: string;
+  readonly heure?: string;
+  readonly libelle: string;
+  /** Pastille d'événement : `PASTILLE` dans `GridMonth`, par tonalité. */
+  readonly classes: string;
 };
+
+export const EVENEMENTS_CALENDRIER: Readonly<Record<number, readonly EvenementCalendrier[]>> = {
+  4: [{ icone: "send", libelle: "Éditions Sillon", classes: "bg-warning-tint text-warning" }],
+  8: [
+    {
+      icone: "event_available",
+      heure: "14:30",
+      libelle: "Atelier Nord",
+      classes: "bg-success-tint text-success",
+    },
+  ],
+  10: [{ icone: "send", libelle: "Groupe Vallée", classes: "bg-warning-tint text-warning" }],
+  14: [{ icone: "send", libelle: "Sablé Industries", classes: "bg-warning-tint text-warning" }],
+  15: [
+    {
+      icone: "event_available",
+      heure: "10:00",
+      libelle: "Studio Halage",
+      classes: "bg-success-tint text-success",
+    },
+  ],
+  21: [
+    {
+      icone: "event_available",
+      heure: "11:00",
+      libelle: "Cobalt Bureau",
+      classes: "bg-success-tint text-success",
+    },
+  ],
+};
+
+/** Le jour marqué « aujourd'hui » dans la grille : pastille pleine en accent. */
+export const JOUR_COURANT = 2;

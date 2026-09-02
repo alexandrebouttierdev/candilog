@@ -2,27 +2,24 @@
 
 import { useEffect, useRef, useState } from "react";
 
-const CIBLE = { score: 72, barres: [64, 78, 42] as const };
+/** Le score du CV « Atelier Nord » après arbitrage des propositions, et le gain
+ *  accumulé depuis la génération — les deux seules mesures que `ResumeAtsPanel`
+ *  affiche. L'application ne calcule ni jauge de lisibilité, ni verdict global. */
+const CIBLE = 84;
+export const GAIN_CUMULE = 13;
 const PAS = 3;
 const PERIODE_MS = 26;
 
-type Valeurs = { score: number; barres: readonly [number, number, number]; anime: boolean };
-
-const DEPART: Valeurs = { score: 0, barres: [0, 0, 0], anime: true };
-
 /**
  * Compte le score ATS à l'entrée dans le viewport (§7.5) : +3 toutes les 26 ms
- * jusqu'à 72, une seule fois, seuil d'intersection 0.35. Les barres reçoivent leur
- * valeur cible dès le déclenchement — c'est la transition CSS de 900 ms qui les
- * anime, pas ce compteur.
+ * jusqu'à 84, une seule fois, seuil d'intersection 0.35.
  *
- * Sous `prefers-reduced-motion`, les valeurs sont posées d'un coup à l'entrée dans
- * le viewport et `anime` repasse à faux pour que l'appelant retire la transition :
- * ni compteur qui tourne, ni barre qui glisse (§12).
+ * Sous `prefers-reduced-motion`, la valeur est posée d'un coup à l'entrée dans le
+ * viewport : pas de compteur qui tourne (§12).
  */
 export function useAtsReveal<T extends HTMLElement>() {
   const ref = useRef<T>(null);
-  const [valeurs, setValeurs] = useState<Valeurs>(DEPART);
+  const [score, setScore] = useState(0);
 
   useEffect(() => {
     const hote = ref.current;
@@ -37,19 +34,18 @@ export function useAtsReveal<T extends HTMLElement>() {
           io.disconnect();
 
           if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-            setValeurs({ score: CIBLE.score, barres: CIBLE.barres, anime: false });
+            setScore(CIBLE);
             return;
           }
 
-          setValeurs({ score: 0, barres: CIBLE.barres, anime: true });
           let n = 0;
           compteur = setInterval(() => {
             n += PAS;
-            if (n >= CIBLE.score) {
-              n = CIBLE.score;
+            if (n >= CIBLE) {
+              n = CIBLE;
               clearInterval(compteur);
             }
-            setValeurs({ score: n, barres: CIBLE.barres, anime: true });
+            setScore(n);
           }, PERIODE_MS);
         }
       },
@@ -63,5 +59,5 @@ export function useAtsReveal<T extends HTMLElement>() {
     };
   }, []);
 
-  return { ref, ...valeurs };
+  return { ref, score };
 }

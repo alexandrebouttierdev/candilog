@@ -40,9 +40,9 @@ export function Positioning() {
       <Reveal className="mx-auto grid max-w-[1240px] grid-cols-[repeat(auto-fit,minmax(min(340px,100%),1fr))] items-start gap-[clamp(28px,5vw,72px)] px-[clamp(16px,4vw,40px)] py-[clamp(48px,6vw,84px)]">
         <p className="max-w-[560px] text-pretty text-[clamp(17px,1.5vw,20px)] leading-[1.65] text-ink">
           Candilog regroupe ce qu&apos;une recherche d&apos;emploi demande au
-          quotidien : les offres qui vous intéressent, les candidatures
-          envoyées, les réponses à relancer, les entretiens à préparer et les
-          documents que vous adaptez pour chaque poste.
+          quotidien : les candidatures envoyées, les réponses à relancer, les
+          entreprises et les personnes rencontrées, les entretiens à préparer et
+          les documents que vous adaptez pour chaque poste.
         </p>
 
         {/* Deux colonnes fixes : en auto-fit les filets se désalignent (§6). */}
