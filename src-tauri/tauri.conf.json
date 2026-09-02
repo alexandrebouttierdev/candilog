@@ -42,6 +42,12 @@
     ],
     "category": "Utility",
     "shortDescription": "Suivi de candidatures et assistance IA locale",
-    "longDescription": "Candilog suit vos candidatures, entreprises, contacts, entretiens et relances, et génère CV et lettres de motivation avec une IA locale ou distante."
+    "longDescription": "Candilog suit vos candidatures, entreprises, contacts, entretiens et relances, et génère CV et lettres de motivation avec une IA locale ou distante.",
+    "resources": {
+      "../LICENSE": "LICENSE",
+      "../NOTICE": "NOTICE",
+      "../THIRD_PARTY_NOTICES.md": "THIRD_PARTY_NOTICES.md"
+    },
+    "licenseFile": "../LICENSE"
   }
 }

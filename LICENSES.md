@@ -20,4 +20,6 @@ Les métadonnées des dépendances JavaScript sont consignées dans `package-loc
 cargo deny --manifest-path src-tauri/Cargo.toml check licenses sources
 ```
 
-Le dépôt ne contient pas actuellement de mécanisme générant une notice consolidée de toutes les licences tierces. Les fichiers de licence fournis directement avec une dépendance restent applicables et ne doivent pas être modifiés.
+Les composants **redistribués avec les binaires** — polices embarquées, crate recopiée dans `vendor/` — sont attribués nommément dans [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md), qui est joint à chaque paquet aux côtés de `LICENSE` et `NOTICE` (`src-tauri/tauri.conf.json`, section `bundle.resources`).
+
+Les bibliothèques simplement **liées** ne sont pas recopiées ici : leur inventaire exact vit dans `src-tauri/Cargo.lock` et `package-lock.json`, et `THIRD_PARTY_NOTICES.md` donne la commande qui en extrait la liste nominative. Le dépôt ne génère pas de notice consolidée automatiquement. Les fichiers de licence fournis directement avec une dépendance restent applicables et ne doivent pas être modifiés.
