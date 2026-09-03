@@ -22,6 +22,24 @@ describe("coque applicative", () => {
     expect(screen.getByRole("main")).toHaveAttribute("id", "contenu");
   });
 
+  it("ne navigue plus au clavier avec Ctrl/Cmd + chiffre", () => {
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <Routes>
+          <Route element={<AppShell />}>
+            <Route index element={<p>Accueil</p>} />
+            <Route path="tracking/applications" element={<p>Candidatures</p>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    fireEvent.keyDown(document, { key: "2", ctrlKey: true });
+
+    expect(screen.getByText("Accueil")).toBeInTheDocument();
+    expect(screen.queryByText("Candidatures")).not.toBeInTheDocument();
+  });
+
   it("n'ouvre plus de palette globale avec Ctrl/Cmd+K", () => {
     render(
       <MemoryRouter>
@@ -48,6 +66,9 @@ describe("rail de navigation", () => {
     );
     expect(screen.getByRole("navigation", { name: "Navigation principale" })).toHaveClass("z-20");
     expect(screen.getByRole("link", { name: "Aujourd'hui" })).toBeInTheDocument();
+    // Plus aucune pastille de raccourci : la navigation se fait à la souris ou au clavier
+    // par tabulation, pas par une combinaison à mémoriser.
+    expect(screen.queryByText("⌘1")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Passer en thème sombre" })).toBeInTheDocument();
     const logo = screen.getByRole("img", { name: "Candilog" });
     expect(logo).toHaveAttribute("width", "36");

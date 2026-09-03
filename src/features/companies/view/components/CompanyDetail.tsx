@@ -3,6 +3,7 @@ import type { Application } from "@/features/applications/services/applicationSe
 import { status_meta } from "@/features/applications/model/statuses";
 import { companySizeLabel } from "@/features/referentials";
 import { versDateLongue } from "@/shared/lib/dates";
+import { openExternal } from "@/shared/services/external-link";
 import {
   Card,
   CardHeader,
@@ -63,10 +64,7 @@ export function CompanyDetail({
         actions={
           <>
             {company.website ? (
-              <RecordAction
-                icon="open_in_new"
-                onClick={() => window.open(company.website ?? "", "_blank", "noopener")}
-              >
+              <RecordAction icon="open_in_new" onClick={() => void openExternal(company.website ?? "")}>
                 Site web
               </RecordAction>
             ) : null}
@@ -196,16 +194,15 @@ function Row({
       <span className="min-w-0 flex-1 truncate text-right text-body font-medium text-ink">
         {value ? (
           url ? (
-            // `rel` et `target` explicites : l'application est servie depuis un contexte
-            // local, un lien externe sans `noreferrer` exposerait son origine.
-            <a
-              href={value}
-              target="_blank"
-              rel="noreferrer noopener"
+            // Un `<a target="_blank">` ne fait rien dans la WebView : `openExternal` passe
+            // par la commande Rust qui valide le lien avant de déléguer au navigateur.
+            <button
+              type="button"
+              onClick={() => void openExternal(value)}
               className="text-accent underline-offset-2 hover:underline"
             >
               {value}
-            </a>
+            </button>
           ) : (
             value
           )

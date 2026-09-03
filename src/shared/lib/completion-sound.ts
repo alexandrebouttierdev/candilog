@@ -32,6 +32,12 @@ export function setCompletionSoundEnabled(enabled: boolean): void {
  * Aucun fichier audio n'est embarqué : le son est produit par l'API Web Audio, ce qui évite
  * un asset de plus dans le binaire et reste inaudible pour les tests, où `AudioContext`
  * n'existe pas.
+ *
+ * L'appel arrive toujours après un `await` (la génération vient de se résoudre), donc hors
+ * du geste utilisateur qui a déclenché le traitement. La politique de lecture automatique du
+ * moteur crée alors le contexte à l'état `suspended` : sans le `resume()` explicite ci-dessous,
+ * les oscillateurs sont bien programmés mais aucun son n'est audible, le silence n'étant
+ * signalé par aucune erreur.
  */
 export function playCompletionSound(): void {
   if (!completionSoundEnabled()) return;
@@ -39,6 +45,11 @@ export function playCompletionSound(): void {
   if (!Constructeur) return;
   try {
     const context = new Constructeur();
+    if (context.state === "suspended") {
+      context.resume().catch(() => {
+        // Reprise refusée par le moteur : le silence reste préférable à une exception.
+      });
+    }
     note(context, 880, context.currentTime);
     note(context, 1174.66, context.currentTime + 0.11);
     window.setTimeout(() => void context.close(), 700);

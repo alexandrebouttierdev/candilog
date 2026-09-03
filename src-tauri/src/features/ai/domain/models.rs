@@ -276,6 +276,9 @@ pub struct AiProgress {
     pub generation_id: String,
     pub step: String,
     pub chunk: Option<String>,
+    /// Total de jetons consommés depuis le début de cette génération, si le fournisseur les
+    /// rapporte. `None` avant le premier appel terminé.
+    pub tokens_used: Option<u32>,
 }
 
 /// Progression d'analyse de CV : étape connue et ligne de journal, sans pourcentage.
@@ -287,6 +290,9 @@ pub struct ProfileImportProgress {
     pub at: String,
     pub message: String,
     pub step: Option<String>,
+    /// Total de jetons consommés depuis le début de cet import, si le fournisseur les
+    /// rapporte. `None` avant le premier appel terminé.
+    pub tokens_used: Option<u32>,
 }
 
 #[cfg(test)]

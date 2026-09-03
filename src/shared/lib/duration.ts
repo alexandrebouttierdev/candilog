@@ -22,3 +22,13 @@ export function formatDuration(ms: number): string {
   const rounded = Number.isInteger(seconds) ? seconds.toFixed(0) : seconds.toFixed(1);
   return `${rounded.replace(".", ",")} s`;
 }
+
+/**
+ * Nombre de jetons, séparateur de milliers français.
+ *
+ * Affiché à côté du temps écoulé dans `AiProgress` : les deux mesures répondent à la même
+ * question pendant un traitement IA — combien ça coûte, en temps et en jetons.
+ */
+export function formatTokens(count: number): string {
+  return new Intl.NumberFormat("fr-FR").format(count);
+}

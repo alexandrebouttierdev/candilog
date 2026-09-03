@@ -97,6 +97,7 @@ pub fn run() {
             settings::settings_check_update,
             settings::settings_download_update,
             settings::settings_about,
+            settings::open_external_url,
             profile::profile_load,
             profile::profile_save,
             profile::profile_apply_import,

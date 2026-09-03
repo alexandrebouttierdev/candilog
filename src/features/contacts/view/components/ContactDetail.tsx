@@ -1,6 +1,7 @@
 import type { Contact } from "../../services/contactService";
 import { roleMeta } from "../../model/roles";
 import { Card, CardHeader, RecordAction, RecordHeader, StatusPill, initials } from "@/shared/ui";
+import { openExternal } from "@/shared/services/external-link";
 
 /**
  * Fiche détaillée d'un contact du réseau.
@@ -50,10 +51,7 @@ export function ContactDetail({
               </RecordAction>
             ) : null}
             {contact.linkedin ? (
-              <RecordAction
-                icon="link"
-                onClick={() => window.open(contact.linkedin ?? "", "_blank", "noopener")}
-              >
+              <RecordAction icon="link" onClick={() => void openExternal(contact.linkedin ?? "")}>
                 LinkedIn
               </RecordAction>
             ) : null}
@@ -118,18 +116,26 @@ function Row({
   value: string | null;
   href?: string | null;
 }) {
+  // `mailto:` et `tel:` restent des liens natifs : le système les ouvre directement, sans
+  // passer par la capability `opener` restreinte aux deux origines de `docs/CODE_RULES.md`
+  // §10. Seul un lien web a besoin de `openExternal`.
+  const web = href?.startsWith("http") ? href : null;
+
   return (
     <div className="flex items-center justify-between gap-3.5 border-b border-line py-[9px] last:border-b-0">
       <span className="flex-none text-note text-ink-faint">{label}</span>
       <span className="min-w-0 flex-1 truncate text-right text-body font-medium text-ink">
         {value ? (
-          href ? (
-            <a
-              href={href}
-              target="_blank"
-              rel="noreferrer noopener"
+          web ? (
+            <button
+              type="button"
+              onClick={() => void openExternal(web)}
               className="text-accent underline-offset-2 hover:underline"
             >
+              {value}
+            </button>
+          ) : href ? (
+            <a href={href} className="text-accent underline-offset-2 hover:underline">
               {value}
             </a>
           ) : (

@@ -1,4 +1,4 @@
-import { formatElapsed } from "@/shared/lib/duration";
+import { formatElapsed, formatTokens } from "@/shared/lib/duration";
 import type { ImportJournalEntry } from "../../viewmodel/useProfileImportProgress";
 import { ImportJournal } from "./ImportJournal";
 
@@ -7,10 +7,12 @@ export function ImportAnalysisPanel({
   step,
   elapsedMs,
   entries,
+  tokens_used,
 }: {
   step: string | null;
   elapsedMs: number;
   entries: ImportJournalEntry[];
+  tokens_used?: number | null;
 }) {
   return (
     <div className="space-y-4 pt-3">
@@ -21,7 +23,10 @@ export function ImportAnalysisPanel({
         </div>
       </div>
       {step ? <p className="text-body text-ink-muted">{step}</p> : null}
-      <p className="tabular text-meta text-ink-faint">Temps écoulé : {formatElapsed(elapsedMs)}</p>
+      <p className="tabular text-meta text-ink-faint">
+        Temps écoulé : {formatElapsed(elapsedMs)}
+        {tokens_used ? ` · ${formatTokens(tokens_used)} jetons` : null}
+      </p>
       <ImportJournal entries={entries} />
     </div>
   );

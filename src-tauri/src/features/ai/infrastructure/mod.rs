@@ -6,4 +6,4 @@ mod provider;
 
 pub use config_repository::load_config;
 pub use pdf::extract_pdf;
-pub use provider::{build_provider, LlmGenerator};
+pub use provider::{build_provider, GenerationOutput, LlmGenerator};

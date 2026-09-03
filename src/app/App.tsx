@@ -4,9 +4,19 @@ import { AppRouter } from "./router/AppRouter";
 import { Toaster } from "@/shared/ui";
 import { applyTheme, useUiStore } from "@/shared/lib/ui-store";
 import { settingsService } from "@/features/settings/services/settingsService";
+import { OnboardingTour } from "@/features/onboarding/view/components/OnboardingTour";
+import { markOnboardingCompleted, onboardingCompleted } from "@/features/onboarding/model/onboarding-storage";
 
 export function App() {
   const theme = useUiStore((state) => state.theme);
+  // L'affichage du tour vit dans le store : les Réglages doivent pouvoir le rouvrir après
+  // une réinitialisation des données, depuis un autre écran.
+  const onboarding = useUiStore((state) => state.onboarding);
+  const setOnboarding = useUiStore((state) => state.setOnboarding);
+
+  useEffect(() => {
+    if (!onboardingCompleted()) setOnboarding(true);
+  }, [setOnboarding]);
 
   useEffect(() => {
     void settingsService
@@ -30,6 +40,14 @@ export function App() {
     <AppProviders>
       <AppRouter />
       <Toaster />
+      {onboarding ? (
+        <OnboardingTour
+          onFinish={() => {
+            markOnboardingCompleted();
+            setOnboarding(false);
+          }}
+        />
+      ) : null}
     </AppProviders>
   );
 }

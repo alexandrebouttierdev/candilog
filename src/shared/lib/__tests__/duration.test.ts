@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDuration, formatElapsed } from "../duration";
+import { formatDuration, formatElapsed, formatTokens } from "../duration";
 
 describe("formatElapsed", () => {
   it("affiche mm:ss sous une heure", () => {
@@ -24,5 +24,16 @@ describe("formatDuration", () => {
   it("passe en minutes au-delà d'une minute", () => {
     expect(formatDuration(70_000)).toBe("1 min 10 s");
     expect(formatDuration(120_000)).toBe("2 min");
+  });
+});
+
+describe("formatTokens", () => {
+  it("sépare les milliers à la française", () => {
+    expect(formatTokens(1_024)).toBe("1\u202f024");
+    expect(formatTokens(12_480)).toBe("12\u202f480");
+  });
+
+  it("laisse un petit nombre sans séparateur", () => {
+    expect(formatTokens(640)).toBe("640");
   });
 });

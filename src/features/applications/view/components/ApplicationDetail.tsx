@@ -6,6 +6,7 @@ import {
   weeklyDurationLabel,
 } from "@/features/referentials";
 import { daysFrom, versDateAffichee } from "@/shared/lib/dates";
+import { openExternal } from "@/shared/services/external-link";
 import {
   Button,
   Icon,
@@ -102,14 +103,13 @@ export function ApplicationDetail({
       <InspectorRow label="Ancienneté">{daysFrom(application.sent_date)} jours</InspectorRow>
       <InspectorRow label="Offre" tone={application.job_url ? "accent" : "muted"}>
         {application.job_url ? (
-          <a
-            href={application.job_url}
-            target="_blank"
-            rel="noreferrer noopener"
+          <button
+            type="button"
+            onClick={() => void openExternal(application.job_url ?? "")}
             className="underline-offset-2 hover:underline"
           >
             Ouvrir l'offre
-          </a>
+          </button>
         ) : (
           "Aucun lien"
         )}

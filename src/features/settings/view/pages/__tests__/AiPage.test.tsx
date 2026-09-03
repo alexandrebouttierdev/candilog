@@ -8,6 +8,9 @@ import { AiPage } from "../AiPage";
 import { settingsService } from "../../../services/settingsService";
 import type { LlmForm, Settings } from "@/shared/types/generated/settings";
 import { AppError } from "@/shared/types/app-error";
+import { openExternal } from "@/shared/services/external-link";
+
+vi.mock("@/shared/services/external-link", () => ({ openExternal: vi.fn() }));
 
 function reglages(llm: Partial<LlmForm> = {}): Settings {
   return {
@@ -42,6 +45,18 @@ beforeEach(() => {
 });
 
 describe("écran Intelligence artificielle", () => {
+  it("propose l'aide canirun.ai pour Ollama, sans clé API à saisir", async () => {
+    vi.spyOn(settingsService, "load").mockResolvedValue(reglages({ provider: "ollama", model: "llama3.2:3b" }));
+
+    render(<AiPage />, { wrapper });
+
+    expect(await screen.findByText("Modèle local : aucune clé, aucune connexion")).toBeInTheDocument();
+    expect(screen.queryByLabelText(/^Clé API/)).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "canirun.ai" }));
+    expect(openExternal).toHaveBeenCalledWith("https://www.canirun.ai/");
+  });
+
   it("annonce l'état du fournisseur sans attendre un test", async () => {
     render(<AiPage />, { wrapper });
 

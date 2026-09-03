@@ -6,6 +6,7 @@ import {
   Button,
   ErrorBanner,
   FormField,
+  Icon,
   PageHeader,
   SegmentedControl,
   Select,
@@ -13,6 +14,7 @@ import {
   StatusPill,
   TextInput,
 } from "@/shared/ui";
+import { openExternal } from "@/shared/services/external-link";
 import { settingsService } from "../../services/settingsService";
 import { useSettingsViewModel } from "../../viewmodel/useSettingsViewModel";
 import { applyTheme, useUiStore } from "@/shared/lib/ui-store";
@@ -269,7 +271,26 @@ export function AiPage() {
                         </div>
                       )}
                     </FormField>
-                  ) : null}
+                  ) : (
+                    // Ollama tourne en local, sans clé : la case vide qu'aurait laissée
+                    // « Clé API » devient une aide concrète, pas un silence.
+                    <div className="max-w-[380px] rounded-field border border-line bg-fill px-3 py-2.5">
+                      <p className="flex items-center gap-1.5 text-label font-mid text-ink">
+                        <Icon name="info" size={14} className="flex-none text-ink-faint" />
+                        Modèle local : aucune clé, aucune connexion
+                      </p>
+                      <p className="mt-1 text-meta leading-relaxed text-ink-muted">
+                        Besoin d'aide pour choisir un modèle compatible avec votre machine ?{" "}
+                        <button
+                          type="button"
+                          onClick={() => void openExternal("https://www.canirun.ai/")}
+                          className="text-accent underline-offset-2 hover:underline"
+                        >
+                          canirun.ai
+                        </button>
+                      </p>
+                    </div>
+                  )}
                 </div>
               </SettingsCard>
 

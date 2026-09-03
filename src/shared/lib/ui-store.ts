@@ -13,9 +13,18 @@ export interface ToastMessage {
 interface UiState {
   theme: ThemePref;
   toasts: ToastMessage[];
+  /**
+   * Le tour d'accueil est-il affiché ?
+   *
+   * Ici plutôt que dans `App` : les Réglages doivent pouvoir le rouvrir après une remise à
+   * zéro. Le store ignore volontairement *où* l'état « déjà vu » est rangé — c'est la
+   * feature `onboarding` qui le lit et l'écrit, `shared` ne dépend pas d'elle.
+   */
+  onboarding: boolean;
   setTheme: (theme: ThemePref) => void;
   notify: (toast: Omit<ToastMessage, "id">) => void;
   dismissToast: (id: string) => void;
+  setOnboarding: (open: boolean) => void;
 }
 
 /**
@@ -32,8 +41,11 @@ interface UiState {
 export const useUiStore = create<UiState>((set) => ({
   theme: "system",
   toasts: [],
+  onboarding: false,
 
   setTheme: (theme) => set({ theme }),
+
+  setOnboarding: (onboarding) => set({ onboarding }),
 
   notify: (toast) =>
     set((state) => ({

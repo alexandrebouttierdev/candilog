@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 import { settingsService } from "../services/settingsService";
+import { resetOnboarding } from "@/features/onboarding/model/onboarding-storage";
 
 function errorDetail(error: unknown): string | undefined {
   return error instanceof AppError ? error.message : undefined;
@@ -12,6 +13,7 @@ function errorDetail(error: unknown): string | undefined {
 export function useBackupsViewModel() {
   const queryClient = useQueryClient();
   const notify = useUiStore((state) => state.notify);
+  const setOnboarding = useUiStore((state) => state.setOnboarding);
   const [resetOpen, setResetOpen] = useState(false);
   const [restoreOpen, setRestoreOpen] = useState(false);
 
@@ -54,6 +56,12 @@ export function useBackupsViewModel() {
         });
       } else {
         notify({ tone: "success", title: "Données et clé API réinitialisées" });
+      }
+      // Une base vidée, c'est une application neuve : la présentation se rejoue comme au
+      // premier lancement. Seulement si les données sont réellement parties.
+      if (outcome.data_cleared) {
+        resetOnboarding();
+        setOnboarding(true);
       }
       setResetOpen(false);
     },

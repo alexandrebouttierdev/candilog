@@ -19,12 +19,28 @@ describe("DocumentUi", () => {
   it("expose l'étape et le temps écoulé, sans pourcentage inventé", () => {
     render(
       <AiProgress
-        progress={{ generation_id: "op-1", step: "Analyse ATS", chunk: null }}
+        progress={{ generation_id: "op-1", step: "Analyse ATS", chunk: null, tokens_used: null }}
         elapsedMs={72_000}
       />,
     );
     expect(screen.getByRole("status")).toHaveTextContent("Analyse ATS");
     expect(screen.getByRole("status")).toHaveTextContent("01:12");
     expect(screen.getByRole("status")).not.toHaveTextContent("%");
+    expect(screen.getByRole("status")).not.toHaveTextContent("jetons");
+  });
+
+  it("affiche le total de jetons consommés à côté du temps écoulé", () => {
+    render(
+      <AiProgress
+        progress={{
+          generation_id: "op-1",
+          step: "Analyse ATS",
+          chunk: null,
+          tokens_used: 12_480,
+        }}
+        elapsedMs={72_000}
+      />,
+    );
+    expect(screen.getByRole("status")).toHaveTextContent("12 480 jetons");
   });
 });

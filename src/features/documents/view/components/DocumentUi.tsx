@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import type { GeneratedResume, AiProgress } from "@/features/ai/model/types";
 import { cn } from "@/shared/lib/cn";
-import { formatElapsed } from "@/shared/lib/duration";
+import { formatElapsed, formatTokens } from "@/shared/lib/duration";
 import { Icon, IconButton, StatusPill } from "@/shared/ui";
 import { PaperPreview } from "./PaperPreview";
 import type { IconName } from "@/shared/ui/icon-names";
@@ -123,6 +123,11 @@ export function AiProgress({
       <div className="flex items-center gap-2">
         <Icon name="progress_activity" size={17} className="animate-spin text-accent" />
         <p className="flex-1 text-label font-medium text-ink">{progress?.step ?? "Préparation…"}</p>
+        {progress?.tokens_used ? (
+          <span className="tabular text-meta text-accent">
+            {formatTokens(progress.tokens_used)} jetons
+          </span>
+        ) : null}
         <span className="tabular text-meta text-accent">{formatElapsed(elapsedMs)}</span>
       </div>
       <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface">

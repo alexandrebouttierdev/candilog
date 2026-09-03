@@ -35,7 +35,7 @@ export function NavRail() {
       />
       <span aria-hidden className="mb-2.5 h-px w-6 bg-line" />
       <div className="flex min-h-0 flex-1 flex-col gap-1 self-stretch overflow-visible px-[13px]">
-        {Sections.map((section, index) => {
+        {Sections.map((section) => {
           const isActive = section.key === active.key;
           return (
             <div key={section.key} className="group relative flex justify-center">
@@ -57,7 +57,6 @@ export function NavRail() {
               </NavLink>
               <span className="pointer-events-none absolute top-1/2 left-[54px] z-[60] flex -translate-y-1/2 items-center gap-2.5 rounded-button border border-overlay bg-[var(--candilog-glass-menu)] px-2.5 py-1.5 whitespace-nowrap opacity-0 shadow-menu backdrop-blur-[14px] group-hover:opacity-100">
                 <span className="text-note whitespace-nowrap text-ink">{section.long_label}</span>
-                <span className="kbd">⌘{index + 1}</span>
               </span>
             </div>
           );

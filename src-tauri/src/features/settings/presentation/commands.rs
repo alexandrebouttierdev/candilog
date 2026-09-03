@@ -133,3 +133,14 @@ pub async fn settings_download_update(
 pub async fn settings_about(state: State<'_, AppState>) -> AppResult<About> {
     Ok(state.settings.about())
 }
+
+/// Ouvre un lien externe dans le navigateur du système.
+///
+/// Seule commande non préfixée par sa feature : elle sert les offres d'emploi, les sites
+/// d'entreprise et les profils LinkedIn autant que les réglages. Elle vit ici parce que ce
+/// module porte déjà les concerns système de l'application (export, restauration, mises à
+/// jour), et la validation reste dans `core::browser`.
+#[tauri::command(rename_all = "snake_case")]
+pub async fn open_external_url(url: String) -> AppResult<()> {
+    blocking::execute(move || crate::core::browser::ouvrir_url(&url)).await
+}

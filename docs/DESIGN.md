@@ -37,7 +37,7 @@ Ne pas :
 - ressembler à un dashboard web (grosses cards, KPI en héros, dégradés, blobs) ;
 - poser des hexadécimaux ou des `rgb()` dans un composant — uniquement les classes Tailwind du thème (`bg-surface`, `text-ink`, `border-line`, `text-accent`, …) ;
 - changer l’accent (indigo `#4f5fe8` / `#6b7cff` en sombre) ni introduire un second accent (orange, vert néon, terracotta) ;
-- utiliser une police d’affichage (serif, Inter, Geist, etc.) : **system-ui** partout, **JetBrains Mono** seulement pour `kbd`, identifiants, chemins ;
+- utiliser une police d’affichage (serif, Inter, Geist, etc.) : **system-ui** partout, **JetBrains Mono** seulement pour les identifiants, chemins et valeurs chiffrées ;
 - multiplier les ombres : `shadow-1` et `shadow-accent` sont `none` ; l’ombre n’existe que sur overlays (modale, menu, palette) ;
 - agrandir les rayons (pas de `rounded-2xl` / `rounded-3xl` décoratifs) ;
 - recréer un bouton, un champ, une pastille, une barre de filtres ou une modale « pour cet écran » ;
@@ -112,7 +112,7 @@ Vert = avancement · ambre = à traiter · rouge = échec · accent = mis en ava
 | `text-meta` | 11 px | — | Erreur sous champ, note |
 | `text-eyebrow` | 10,5 px | 600, tracking 0.07em, uppercase | Labels de groupe (Filtres, sous-nav) |
 
-Nombres : classe `tabular`. Raccourcis : classe `kbd` (JetBrains Mono 10,5 px).
+Nombres : classe `tabular`. Aucun raccourci clavier de navigation : la coque n’en expose pas, et rien ne les annonce.
 
 ---
 
@@ -314,6 +314,23 @@ La coque est vitreuse (`backdrop-filter` 16–20 px). Les **overlays** (popover 
 Sans `backdrop-filter`, fallback `glass-fallback` / `surface-elevated` (déjà dans `styles.css`).
 
 Fermeture : `useDismissable` (Escape + clic extérieur) — calendrier, FilterMenu, inspecteur, modale.
+
+### Tour d'accueil
+
+`features/onboarding` : `OnboardingTour`, affiché une fois au premier lancement
+(`localStorage`, comme la préférence de son — pas la base, ce n'est pas une donnée de
+recherche d'emploi). Volontairement **non-fermable** avant la dernière étape : ni Escape,
+ni clic extérieur, ni croix — un composant autonome plutôt qu'un `ModalHost` détourné, qui
+impose ces deux raccourcis à toute modale. Une étape par section du rail, plus une
+ouverture et une clôture ; l'aperçu (`OnboardingPreview`) est une miniature de l'écran
+présenté, avec ses libellés réels — « En attente », « Taux de réponse », les logos des
+fournisseurs — dessinée avec les jetons du thème plutôt qu'une capture d'écran : lisible en
+clair comme en sombre, sans double jeu d'images à maintenir, et une maquette abstraite se
+lirait comme un squelette de chargement.
+
+Deux façons de le revoir : le bouton « Revoir la présentation » de Réglages → À propos, qui
+ne touche à aucune donnée, et Réinitialiser les données (Réglages → Sauvegardes), qui remet
+le tour à l'état « jamais vu » — une base vidée, c'est une application neuve.
 
 ---
 

@@ -5,6 +5,7 @@ import {
   type FournisseurOption,
 } from "../../model/providers";
 import type { ProviderKind } from "@/shared/types/generated/settings";
+import { Tag } from "@/shared/ui";
 import logoOllama from "@/assets/providers/ollama.svg";
 import logoClaude from "@/assets/providers/claude.svg";
 import logoOpenai from "@/assets/providers/openai.svg";
@@ -93,6 +94,17 @@ export function ProviderGrid({
             >
               {fournisseur.label}
             </span>
+            {fournisseur.id === "ollama" ? (
+              // Seul fournisseur qui tourne sur la machine de l'utilisateur, sans clé ni
+              // connexion : la distinction se voit sur la tuile, pas seulement dans un
+              // texte d'aide qu'on ne lit qu'une fois sélectionné.
+              //
+              // Aucune surcharge de `className` : `cn` ne fait pas de `tailwind-merge`, un
+              // `bg-accent` ajouté ici cohabiterait avec le `bg-neutral-tint` du composant
+              // et c'est l'ordre du CSS qui trancherait — en clair, le texte devenait blanc
+              // sur fond pâle, donc illisible.
+              <Tag>Local</Tag>
+            ) : null}
           </button>
         );
       })}

@@ -3,8 +3,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useProfileImportProgress } from "../useProfileImportProgress";
 
 const unlisten = vi.fn();
-let handler: ((event: { payload: { generation_id: string; at: string; message: string; step: string | null } }) => void) | null =
-  null;
+let handler:
+  | ((event: {
+      payload: {
+        generation_id: string;
+        at: string;
+        message: string;
+        step: string | null;
+        tokens_used?: number | null;
+      };
+    }) => void)
+  | null = null;
 
 vi.mock("@tauri-apps/api/event", () => ({
   listen: vi.fn((_name: string, next: typeof handler) => {
@@ -47,6 +56,41 @@ describe("useProfileImportProgress", () => {
     expect(result.current.step).toBe("Lecture du fichier…");
     expect(result.current.entries).toHaveLength(1);
     expect(result.current.entries[0]?.message).toBe("Lecture du fichier");
+  });
+
+  it("retient le total de jetons annoncé, sans l'effacer entre deux étapes", async () => {
+    const { result } = renderHook(() => useProfileImportProgress("gen-1"));
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      handler?.({
+        payload: {
+          generation_id: "gen-1",
+          at: "2026-08-29T14:32:01.000Z",
+          message: "Structuration du CV",
+          step: "Analyse du CV…",
+          tokens_used: 640,
+        },
+      });
+    });
+    expect(result.current.tokens_used).toBe(640);
+
+    // Une étape sans `tokens_used` (message seul, sans nouvel appel terminé) ne doit pas
+    // faire retomber le total affiché à zéro.
+    act(() => {
+      handler?.({
+        payload: {
+          generation_id: "gen-1",
+          at: "2026-08-29T14:32:02.000Z",
+          message: "1 expérience détectée",
+          step: null,
+          tokens_used: null,
+        },
+      });
+    });
+    expect(result.current.tokens_used).toBe(640);
   });
 
   it("retire le listener au démontage", async () => {

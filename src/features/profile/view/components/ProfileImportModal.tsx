@@ -202,6 +202,7 @@ export function ProfileImportModal({
             step={progress.step}
             elapsedMs={elapsedMs}
             entries={progress.entries}
+            tokens_used={progress.tokens_used}
           />
         ) : null}
         {view === "error" ? (

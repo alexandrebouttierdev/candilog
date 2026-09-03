@@ -6,6 +6,7 @@ import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 import { settingsService } from "../../services/settingsService";
 import { useBackupsViewModel } from "../useBackupsViewModel";
+import { onboardingCompleted, markOnboardingCompleted } from "@/features/onboarding/model/onboarding-storage";
 
 function setup() {
   const client = new QueryClient({
@@ -19,7 +20,8 @@ function setup() {
 
 beforeEach(() => {
   vi.restoreAllMocks();
-  useUiStore.setState({ toasts: [] });
+  useUiStore.setState({ toasts: [], onboarding: false });
+  window.localStorage.clear();
 });
 
 describe("ViewModel des sauvegardes", () => {
@@ -86,5 +88,29 @@ describe("ViewModel des sauvegardes", () => {
     expect(invalidate).toHaveBeenCalledOnce();
     expect(result.current.resetOpen).toBe(false);
     expect(useUiStore.getState().toasts.at(-1)?.title).toBe("Données et clé API réinitialisées");
+  });
+
+  it("rejoue la présentation après une réinitialisation complète", async () => {
+    // Remettre les données à zéro, c'est retrouver une application neuve : le tour
+    // d'accueil doit se rouvrir, comme au tout premier lancement.
+    markOnboardingCompleted();
+    vi.spyOn(settingsService, "reset").mockResolvedValue({ data_cleared: true, secret_cleared: true });
+    const { result } = setup();
+
+    await act(async () => { await result.current.resetData(); });
+
+    expect(onboardingCompleted()).toBe(false);
+    expect(useUiStore.getState().onboarding).toBe(true);
+  });
+
+  it("ne rejoue pas la présentation si les données n'ont pas été effacées", async () => {
+    markOnboardingCompleted();
+    vi.spyOn(settingsService, "reset").mockResolvedValue({ data_cleared: false, secret_cleared: false });
+    const { result } = setup();
+
+    await act(async () => { await result.current.resetData(); });
+
+    expect(onboardingCompleted()).toBe(true);
+    expect(useUiStore.getState().onboarding).toBe(false);
   });
 });

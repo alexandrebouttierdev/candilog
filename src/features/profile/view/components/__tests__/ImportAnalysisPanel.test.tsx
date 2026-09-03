@@ -18,4 +18,17 @@ describe("ImportAnalysisPanel", () => {
     expect(screen.queryByText(/%/)).not.toBeInTheDocument();
     expect(screen.queryByText("42 %")).not.toBeInTheDocument();
   });
+
+  it("ajoute le total de jetons au temps écoulé quand il est connu", () => {
+    render(
+      <ImportAnalysisPanel
+        step="Analyse du CV…"
+        elapsedMs={12_000}
+        entries={[]}
+        tokens_used={1_024}
+      />,
+    );
+
+    expect(screen.getByText("Temps écoulé : 00:12 · 1 024 jetons")).toBeInTheDocument();
+  });
 });

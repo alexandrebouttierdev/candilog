@@ -1,10 +1,10 @@
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { Suspense, useEffect } from "react";
+import { Outlet, useLocation } from "react-router-dom";
+import { Suspense } from "react";
 import { NavRail } from "./NavRail";
 import { TopBar } from "./TopBar";
 import { SubNav } from "./SubNav";
 import { ContextBarProvider } from "./ContextBar";
-import { Sections, sectionForPath } from "@/app/router/routes";
+import { sectionForPath } from "@/app/router/routes";
 
 function PageFallback() {
   return (
@@ -18,22 +18,7 @@ function PageFallback() {
 /** Coque : rail, topbar, sous-navigation, workspace. */
 export function AppShell() {
   const { pathname } = useLocation();
-  const navigate = useNavigate();
   const section = sectionForPath(pathname);
-
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (!(event.metaKey || event.ctrlKey) || event.shiftKey || event.altKey) return;
-      const index = Number(event.key);
-      if (index < 1 || index > Sections.length) return;
-      const target = Sections[index - 1];
-      if (!target) return;
-      event.preventDefault();
-      void navigate(target.routes[0]!.path);
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [navigate]);
 
   return (
     <div className="flex h-screen min-h-0 overflow-hidden bg-page text-ink">

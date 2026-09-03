@@ -26,4 +26,16 @@ describe("grille des fournisseurs", () => {
     await userEvent.click(screen.getByRole("radio", { name: /Claude/ }));
     expect(onChange).toHaveBeenCalledWith("claude");
   });
+
+  it("distingue Ollama des autres fournisseurs par une mention « Local »", () => {
+    render(<ProviderGrid value="ollama" onChange={() => undefined} />);
+
+    expect(
+      within(screen.getByRole("radio", { name: "Ollama" })).getByText("Local"),
+    ).toBeInTheDocument();
+    for (const fournisseur of FOURNISSEURS.filter((item) => item.id !== "ollama")) {
+      const radio = screen.getByRole("radio", { name: fournisseur.label });
+      expect(within(radio).queryByText("Local")).not.toBeInTheDocument();
+    }
+  });
 });

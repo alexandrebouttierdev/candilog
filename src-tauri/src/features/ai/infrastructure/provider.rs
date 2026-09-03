@@ -61,9 +61,22 @@ fn segment_url(valeur: &str) -> String {
         .collect()
 }
 
+/// Texte produit par un appel, et le nombre de jetons qu'il a consommés si le fournisseur
+/// le rapporte.
+///
+/// `tokens` vaut `0` pour un fournisseur qui ne renvoie aucune métrique d'usage (certains
+/// points de terminaison personnalisés, notamment) : c'est une absence de donnée, pas une
+/// génération gratuite, mais rien ne permet de la distinguer d'un vrai zéro.
+#[derive(Debug)]
+pub struct GenerationOutput {
+    pub text: String,
+    pub tokens: u32,
+}
+
 #[async_trait]
 pub trait LlmGenerator: Send + Sync {
-    async fn generate(&self, prompt: &str, system: &str, json: bool) -> AppResult<String>;
+    async fn generate(&self, prompt: &str, system: &str, json: bool)
+        -> AppResult<GenerationOutput>;
     async fn test(&self) -> AppResult<()>;
     async fn list_models(&self) -> AppResult<Vec<String>>;
 }
@@ -114,7 +127,12 @@ struct ProviderHttp {
 
 #[async_trait]
 impl LlmGenerator for ProviderHttp {
-    async fn generate(&self, prompt: &str, system: &str, json: bool) -> AppResult<String> {
+    async fn generate(
+        &self,
+        prompt: &str,
+        system: &str,
+        json: bool,
+    ) -> AppResult<GenerationOutput> {
         match self.config.provider {
             ProviderKind::Ollama => self.ollama(prompt, system, json).await,
             ProviderKind::Claude => self.claude(prompt, system).await,
@@ -205,7 +223,7 @@ impl ProviderHttp {
         }
     }
 
-    async fn ollama(&self, prompt: &str, system: &str, json: bool) -> AppResult<String> {
+    async fn ollama(&self, prompt: &str, system: &str, json: bool) -> AppResult<GenerationOutput> {
         let body = serde_json::json!({"model":self.config.model,"messages":[{"role":"system","content":system},{"role":"user","content":prompt}],"stream":false,"format":if json { serde_json::json!("json") } else { serde_json::Value::Null },"options":{"temperature":self.config.temperature}});
         let response = self
             .envoyer(|| {
@@ -215,10 +233,14 @@ impl ProviderHttp {
             })
             .await?;
         let value: serde_json::Value = json_limite(response).await?;
-        text(&value, "/message/content")
+        let text = text(&value, "/message/content")?;
+        Ok(GenerationOutput {
+            text,
+            tokens: total_tokens(&value),
+        })
     }
 
-    async fn openai(&self, prompt: &str, system: &str, json: bool) -> AppResult<String> {
+    async fn openai(&self, prompt: &str, system: &str, json: bool) -> AppResult<GenerationOutput> {
         let mut body = serde_json::json!({"model":self.config.model,"messages":[{"role":"system","content":system},{"role":"user","content":prompt}],"temperature":self.config.temperature});
         if json {
             body["response_format"] = serde_json::json!({"type":"json_object"});
@@ -232,10 +254,14 @@ impl ProviderHttp {
             })
             .await?;
         let value: serde_json::Value = json_limite(response).await?;
-        text(&value, "/choices/0/message/content")
+        let text = text(&value, "/choices/0/message/content")?;
+        Ok(GenerationOutput {
+            text,
+            tokens: total_tokens(&value),
+        })
     }
 
-    async fn claude(&self, prompt: &str, system: &str) -> AppResult<String> {
+    async fn claude(&self, prompt: &str, system: &str) -> AppResult<GenerationOutput> {
         let body = serde_json::json!({"model":self.config.model,"max_tokens":4096,"system":system,"messages":[{"role":"user","content":prompt}],"temperature":self.config.temperature});
         let response = self
             .envoyer(|| {
@@ -250,10 +276,14 @@ impl ProviderHttp {
             })
             .await?;
         let value: serde_json::Value = json_limite(response).await?;
-        text(&value, "/content/0/text")
+        let text = text(&value, "/content/0/text")?;
+        Ok(GenerationOutput {
+            text,
+            tokens: total_tokens(&value),
+        })
     }
 
-    async fn gemini(&self, prompt: &str, system: &str, json: bool) -> AppResult<String> {
+    async fn gemini(&self, prompt: &str, system: &str, json: bool) -> AppResult<GenerationOutput> {
         let body = serde_json::json!({"contents":[{"parts":[{"text":prompt}]}],"systemInstruction":{"parts":[{"text":system}]},"generationConfig":{"temperature":self.config.temperature,"responseMimeType":if json {"application/json"} else {"text/plain"}}});
         let response = self
             .envoyer(|| {
@@ -271,7 +301,11 @@ impl ProviderHttp {
             })
             .await?;
         let value: serde_json::Value = json_limite(response).await?;
-        text(&value, "/candidates/0/content/parts/0/text")
+        let text = text(&value, "/candidates/0/content/parts/0/text")?;
+        Ok(GenerationOutput {
+            text,
+            tokens: total_tokens(&value),
+        })
     }
 
     async fn models_ollama(&self) -> AppResult<Vec<String>> {
@@ -360,6 +394,31 @@ fn text(value: &serde_json::Value, pointer: &str) -> AppResult<String> {
         .map(str::to_owned)
         .filter(|v| !v.trim().is_empty())
         .ok_or_else(|| AppError::Provider("Le fournisseur IA a renvoyé une réponse vide".into()))
+}
+
+/// Jetons consommés par un appel, si le fournisseur les rapporte.
+///
+/// Chaque fournisseur place ce total à un endroit différent — OpenAI et compatibles sous
+/// `usage.total_tokens`, Claude sous deux compteurs séparés sans total, Gemini sous
+/// `usageMetadata`, Ollama à la racine — et un point de terminaison personnalisé peut
+/// n'en rapporter aucun. Best-effort volontaire : l'absence de métrique ne doit jamais faire
+/// échouer une génération par ailleurs réussie, elle se traduit juste par `0`.
+fn total_tokens(value: &serde_json::Value) -> u32 {
+    let u64_at = |pointer: &str| value.pointer(pointer).and_then(serde_json::Value::as_u64);
+
+    if let Some(total) = u64_at("/usage/total_tokens") {
+        return total as u32;
+    }
+    if let Some(total) = u64_at("/usageMetadata/totalTokenCount") {
+        return total as u32;
+    }
+    let claude =
+        u64_at("/usage/input_tokens").unwrap_or(0) + u64_at("/usage/output_tokens").unwrap_or(0);
+    if claude > 0 {
+        return claude as u32;
+    }
+    let ollama = u64_at("/prompt_eval_count").unwrap_or(0) + u64_at("/eval_count").unwrap_or(0);
+    ollama as u32
 }
 
 async fn json_limite<T: DeserializeOwned>(mut response: reqwest::Response) -> AppResult<T> {
@@ -465,13 +524,13 @@ mod tests {
     async fn un_echec_serveur_passager_est_repris() {
         let (endpoint, recues) = serveur(vec![503]).await;
 
-        let texte = provider(&endpoint)
+        let sortie = provider(&endpoint)
             .await
             .generate("prompt", "system", true)
             .await
             .unwrap();
 
-        assert_eq!(texte, "{}");
+        assert_eq!(sortie.text, "{}");
         assert_eq!(
             recues.load(Ordering::SeqCst),
             2,
@@ -545,5 +604,35 @@ mod tests {
         assert_eq!(segment_url("gemini-2.5-flash"), "gemini-2.5-flash");
         assert_eq!(segment_url("../../v1/autre"), "..%2F..%2Fv1%2Fautre");
         assert_eq!(segment_url("modele?cle=1#x"), "modele%3Fcle%3D1%23x");
+    }
+
+    #[test]
+    fn total_tokens_lit_le_format_openai_et_compatibles() {
+        let reponse = serde_json::json!({"usage":{"prompt_tokens":120,"completion_tokens":45,"total_tokens":165}});
+        assert_eq!(total_tokens(&reponse), 165);
+    }
+
+    #[test]
+    fn total_tokens_additionne_les_deux_compteurs_claude() {
+        let reponse = serde_json::json!({"usage":{"input_tokens":300,"output_tokens":80}});
+        assert_eq!(total_tokens(&reponse), 380);
+    }
+
+    #[test]
+    fn total_tokens_lit_le_format_gemini() {
+        let reponse = serde_json::json!({"usageMetadata":{"promptTokenCount":50,"candidatesTokenCount":20,"totalTokenCount":70}});
+        assert_eq!(total_tokens(&reponse), 70);
+    }
+
+    #[test]
+    fn total_tokens_additionne_les_deux_compteurs_ollama() {
+        let reponse = serde_json::json!({"prompt_eval_count":40,"eval_count":15});
+        assert_eq!(total_tokens(&reponse), 55);
+    }
+
+    #[test]
+    fn total_tokens_vaut_zero_sans_metrique_rapportee() {
+        let reponse = serde_json::json!({"choices":[{"message":{"content":"Bonjour"}}]});
+        assert_eq!(total_tokens(&reponse), 0);
     }
 }
