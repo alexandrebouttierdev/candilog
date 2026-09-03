@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import type { Application, ApplicationStatus } from "../../services/applicationService";
-import type { PipelineBreakdown } from "../../services/applicationService";
 import { Statuses } from "../../model/statuses";
 import { ApplicationCard } from "./ApplicationCard";
 import type { ApercuGlisse } from "./ApplicationCard";
-import { IconButton } from "@/shared/ui";
+import { ColumnPager, IconButton } from "@/shared/ui";
 import { cn } from "@/shared/lib/cn";
 import type { Tone } from "@/shared/ui";
+import type { Page } from "@/shared/types/page";
 
 /**
  * Couleur de la pastille d'en-tête de colonne, par tonalité.
@@ -35,23 +35,23 @@ const POINT: Record<Tone, string> = {
  * chargée. Une colonne annoncerait sinon « 3 » en contenant tout le pipeline.
  */
 export function KanbanBoard({
-  applications,
-  breakdown,
+  columns,
   selected_id,
   checkedIds,
   onSelect,
   onToggleSelect,
   onStatusChange,
   onCreate,
+  onPageChange,
 }: {
-  applications: readonly Application[];
-  breakdown: PipelineBreakdown;
+  columns: Record<ApplicationStatus, Page<Application>>;
   selected_id: string | null;
   checkedIds: ReadonlySet<string>;
   onSelect: (id: string) => void;
   onToggleSelect: (id: string) => void;
   onStatusChange: (id: string, status: ApplicationStatus) => void;
   onCreate: (status: ApplicationStatus) => void;
+  onPageChange: (status: ApplicationStatus, page: number) => void;
 }) {
   const [glissee, setGlissee] = useState<Application | null>(null);
   const [apercu, setApercu] = useState<ApercuGlisse | null>(null);
@@ -69,18 +69,13 @@ export function KanbanBoard({
     return () => document.removeEventListener("dragover", suivre);
   }, [enGlisse]);
 
-  const compteurs: Record<ApplicationStatus, number> = {
-    EN_ATTENTE: breakdown.pending,
-    RELANCEE: breakdown.followed_up,
-    ENTRETIEN: breakdown.interview,
-    REFUS: breakdown.rejected,
-  };
+  const applications = Statuses.flatMap((status) => columns[status.value].items);
 
   return (
     <div className="min-h-0 flex-1 overflow-auto px-7 pt-[18px] pb-[26px]">
       <div className="grid min-h-full gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr))]">
         {Statuses.map((status) => {
-          const column = applications.filter((item) => item.status === status.value);
+          const column = columns[status.value];
           const survolee = cible === status.value && glissee?.status !== status.value;
 
           return (
@@ -124,7 +119,7 @@ export function KanbanBoard({
                   {status.label}
                 </h3>
                 <span className="tabular flex-none rounded-chip border border-control bg-fill px-1.5 py-0.5 text-note font-semibold text-ink">
-                  {compteurs[status.value]}
+                  {column.total}
                 </span>
                 <span className="flex-1" />
                 <IconButton
@@ -137,14 +132,14 @@ export function KanbanBoard({
               </header>
 
               <div className="flex flex-1 flex-col gap-2 p-2.5">
-                {column.length === 0 ? (
+                {column.items.length === 0 ? (
                   <p className="rounded-tile border-[1.5px] border-dashed border-line px-3 py-[22px] text-center text-label leading-normal text-ink-faint">
                     Aucune candidature
                     <br />
                     Glissez une carte ici
                   </p>
                 ) : (
-                  column.map((application) => (
+                  column.items.map((application) => (
                     <ApplicationCard
                       key={application.id}
                       application={application}
@@ -168,12 +163,14 @@ export function KanbanBoard({
                 )}
               </div>
 
-              {/* Le pied n'apparaît que si la page chargée ne couvre pas la colonne : sans
-                  lui, le compteur d'en-tête contredirait le nombre de cartes visibles. */}
-              {compteurs[status.value] > column.length ? (
-                <p className="tabular flex-none border-t border-line px-3 py-2 text-center text-meta text-ink-faint">
-                  {column.length} sur {compteurs[status.value]} affichEs
-                </p>
+              {column.total > column.page_size ? (
+                <ColumnPager
+                  page={column.page}
+                  page_size={column.page_size}
+                  total={column.total}
+                  label={status.label}
+                  onPageChange={(page) => onPageChange(status.value, page)}
+                />
               ) : null}
             </section>
           );

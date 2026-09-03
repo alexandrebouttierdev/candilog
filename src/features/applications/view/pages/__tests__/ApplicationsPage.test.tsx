@@ -61,12 +61,19 @@ beforeEach(() => {
     interview: 0,
     rejected: 0,
   });
-  vi.spyOn(applicationService, "listPage").mockResolvedValue({
-    items: [cand("Développeur"), cand("Designer")],
-    total: 2,
-    page: 1,
-    page_size: 32,
-    total_pages: 1,
+  vi.spyOn(applicationService, "listPage").mockImplementation(({ page, page_size, filter }) => {
+    const all = [cand("Développeur"), cand("Designer")];
+    const items =
+      filter.status.length === 0
+        ? all
+        : all.filter((application) => filter.status.includes(application.status));
+    return Promise.resolve({
+      items,
+      total: items.length,
+      page,
+      page_size,
+      total_pages: 1,
+    });
   });
   vi.spyOn(companyService, "listPage").mockResolvedValue({
     items: [],

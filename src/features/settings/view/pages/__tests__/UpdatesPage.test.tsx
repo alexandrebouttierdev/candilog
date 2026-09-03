@@ -88,7 +88,29 @@ describe("écran Mise à jour", () => {
 
     await waitFor(() => expect(telecharger).toHaveBeenCalledTimes(1));
     expect(await screen.findByText(/Téléchargement en cours/)).toBeInTheDocument();
+    expect(screen.getByText("Téléchargement…")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Mettre à jour" })).toBeDisabled();
+  });
+
+  it("confirme que l'installeur a été ouvert après le téléchargement", async () => {
+    vi.spyOn(settingsService, "checkUpdate").mockResolvedValue({
+      version: "1.3.0",
+      notes: "",
+      page_url: "https://github.com/alexandrebouttierdev/candilog/releases/tag/v1.3.0",
+      asset: { name: "candilog.AppImage", url: "https://example.test/candilog.AppImage" },
+    });
+    vi.spyOn(settingsService, "downloadUpdate").mockResolvedValue(
+      "/home/alex/Téléchargements/candilog.AppImage",
+    );
+
+    render(<UpdatesPage />, { wrapper });
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Rechercher une mise à jour" }),
+    );
+    await userEvent.click(await screen.findByRole("button", { name: "Mettre à jour" }));
+
+    expect((await screen.findAllByText("Installeur ouvert")).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Terminez l’installation dans la fenêtre système/)).toBeInTheDocument();
   });
 
   it("affiche l'échec de la vérification sans masquer la version installée", async () => {

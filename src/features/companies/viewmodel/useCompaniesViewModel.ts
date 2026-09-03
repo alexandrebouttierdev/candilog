@@ -3,12 +3,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { companyService } from "../services/companyService";
 import type { Company, CompanyFilter, NewCompany } from "../services/companyService";
 import { applicationService } from "@/features/applications/services/applicationService";
+import type { ApplicationFilter } from "@/features/applications/services/applicationService";
+import { FILTER_VIDE } from "@/features/applications/model/schemas/application-filter.schema";
 import { COMPANIES_PAGE_SIZE, PAGE_SIZE } from "@/shared/types/page";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 import { useDebounce } from "@/shared/hooks/useDebounce";
-import type { ApplicationFilter } from "@/features/applications/services/applicationService";
-import { FILTER_VIDE } from "@/features/applications/model/schemas/application-filter.schema";
 import type { CompanySize } from "@/shared/types/generated/companies";
 
 /** Root des clés de cache de la feature, pour invalider d'un seul appel. */

@@ -22,7 +22,9 @@ impl<R: AnalyticsRepository> AnalyticsService<R> {
     /// # Errors
     /// Propage l'erreur d'un des agrégats du dépôt.
     pub fn dashboard(&self, today: NaiveDate) -> AppResult<Dashboard> {
-        let from = (today - chrono::Duration::days(30))
+        // La borne SQL est inclusive : aujourd'hui + les 29 jours précédents forment bien
+        // une fenêtre de trente dates calendaires.
+        let from = (today - chrono::Duration::days(29))
             .format("%Y-%m-%d")
             .to_string();
         let day = today.format("%Y-%m-%d").to_string();

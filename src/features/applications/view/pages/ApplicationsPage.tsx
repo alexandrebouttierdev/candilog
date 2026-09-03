@@ -308,14 +308,14 @@ export function ApplicationsPage() {
             </div>
           ) : vm.view === "kanban" ? (
             <KanbanBoard
-              applications={vm.items}
-              breakdown={vm.breakdown}
+              columns={vm.kanbanColumns}
               selected_id={vm.selected_id}
               checkedIds={cochees}
               onSelect={vm.selectionner}
               onToggleSelect={basculerCoche}
               onStatusChange={(id, status) => void vm.changeStatus({ id, status })}
               onCreate={(statut) => setForm({ ouvert: true, cible: null, statut })}
+              onPageChange={vm.setKanbanPage}
             />
           ) : (
             <div className="min-h-0 flex-1 overflow-auto px-4 pt-3 pb-5">

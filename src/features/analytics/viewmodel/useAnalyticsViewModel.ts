@@ -1,9 +1,7 @@
 import { useCallback, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { analyticsService } from "../services/analyticsService";
-import type { NewFollowUp } from "@/features/followups/services/followUpService";
-import { followUpService } from "@/features/followups/services/followUpService";
-import { FOLLOW_UPS_KEY } from "@/features/calendar/viewmodel/useCalendarViewModel";
+import { FOLLOW_UPS_KEY, followUpService, type NewFollowUp } from "@/features/followups";
 import type { Period } from "@/shared/types/generated/analytics";
 import { ANALYTICS_KEY } from "./useDashboardViewModel";
 import { useUiStore } from "@/shared/lib/ui-store";

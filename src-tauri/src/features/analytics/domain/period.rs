@@ -27,13 +27,15 @@ impl Period {
     /// ses analyses à 1 h du matin attend la fenêtre de sa journée, pas de celle d'UTC.
     #[must_use]
     pub fn from(self, today: chrono::NaiveDate) -> Option<String> {
-        let days = match self {
-            Self::TrenteDays => 30,
-            Self::QuatreVingtDixDays => 90,
+        let previous_days = match self {
+            // La borne est inclusive dans SQLite : aujourd'hui compte donc comme le
+            // premier jour de la fenêtre.
+            Self::TrenteDays => 29,
+            Self::QuatreVingtDixDays => 89,
             Self::Tout => return None,
         };
         Some(
-            (today - chrono::Duration::days(days))
+            (today - chrono::Duration::days(previous_days))
                 .format("%Y-%m-%d")
                 .to_string(),
         )
@@ -72,6 +74,26 @@ mod tests {
         assert_eq!(
             serde_json::from_str::<Period>("\"trente_days\"").unwrap(),
             Period::TrenteDays
+        );
+    }
+
+    #[test]
+    fn trente_jours_inclut_aujourd_hui_et_vingt_neuf_jours_precedents() {
+        let today = chrono::NaiveDate::from_ymd_opt(2026, 9, 3).unwrap();
+
+        assert_eq!(
+            Period::TrenteDays.from(today).as_deref(),
+            Some("2026-08-05")
+        );
+    }
+
+    #[test]
+    fn quatre_vingt_dix_jours_inclut_exactement_quatre_vingt_dix_dates() {
+        let today = chrono::NaiveDate::from_ymd_opt(2026, 9, 3).unwrap();
+
+        assert_eq!(
+            Period::QuatreVingtDixDays.from(today).as_deref(),
+            Some("2026-06-06")
         );
     }
 }

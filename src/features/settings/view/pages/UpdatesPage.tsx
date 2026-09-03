@@ -44,7 +44,7 @@ export function UpdatesPage() {
           ) : null}
 
           <div className="flex flex-none flex-col items-end gap-2.5 pt-0.5">
-            <Etat update={vm.update} busy={enCours} />
+            <Etat update={vm.update} busy={vm.busy} installerOpened={vm.installerOpened} />
             {vm.update ? (
               <Button
                 variant="primary"
@@ -62,9 +62,14 @@ export function UpdatesPage() {
           </div>
         </section>
 
-        <Message update={vm.update} busy={vm.busy} error={vm.error} />
+        <Message
+          update={vm.update}
+          busy={vm.busy}
+          error={vm.error}
+          installerOpened={vm.installerOpened}
+        />
 
-        {vm.progress !== null ? (
+        {vm.progress !== null && !vm.installerOpened ? (
           <section aria-label="Téléchargement">
             <div
               role="progressbar"
@@ -99,8 +104,18 @@ export function UpdatesPage() {
 }
 
 /** Pastille d'état : vérification, à jour, mise à jour disponible, ou rien encore. */
-function Etat({ update, busy }: { update: UpdateInfo | null | undefined; busy: boolean }) {
-  if (busy) return <StatusPill tone="neutral">Vérification…</StatusPill>;
+function Etat({
+  update,
+  busy,
+  installerOpened,
+}: {
+  update: UpdateInfo | null | undefined;
+  busy: "check" | "download" | null;
+  installerOpened: boolean;
+}) {
+  if (busy === "check") return <StatusPill tone="neutral">Vérification…</StatusPill>;
+  if (busy === "download") return <StatusPill tone="neutral">Téléchargement…</StatusPill>;
+  if (installerOpened) return <StatusPill tone="success">Installeur ouvert</StatusPill>;
   if (update) {
     return (
       <StatusPill tone="success" icon="new_releases">
@@ -117,10 +132,12 @@ function Message({
   update,
   busy,
   error,
+  installerOpened,
 }: {
   update: UpdateInfo | null | undefined;
   busy: "check" | "download" | null;
   error: string | null;
+  installerOpened: boolean;
 }) {
   if (error !== null) {
     return (
@@ -136,6 +153,17 @@ function Message({
         Téléchargement en cours. L’installeur sera enregistré dans vos téléchargements ; son
         installation reste à votre main.
       </p>
+    );
+  }
+  if (installerOpened) {
+    return (
+      <div>
+        <p className="text-item font-semibold text-ink">Installeur ouvert</p>
+        <p className="mt-1 text-note leading-relaxed text-ink-muted">
+          Terminez l’installation dans la fenêtre système, puis redémarrez Candilog si elle le
+          demande.
+        </p>
+      </div>
     );
   }
   if (update) {

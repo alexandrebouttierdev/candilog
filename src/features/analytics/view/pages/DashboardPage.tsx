@@ -87,8 +87,7 @@ function TodayWorkspace({ data }: { data: Dashboard }) {
       <TodayStats
         applications={data.metrics.applications}
         responses={data.metrics.responses}
-        interviews={data.performance.upcoming_interviews}
-        overdue={data.performance.overdue_follow_ups}
+        interviews={data.metrics.interviews}
       />
 
       <div className="grid min-h-0 gap-x-8 gap-y-6 min-[1280px]:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">

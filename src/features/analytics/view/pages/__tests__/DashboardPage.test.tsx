@@ -75,8 +75,11 @@ describe("écran Aujourd'hui", () => {
     });
     expect(screen.getByText("10")).toBeInTheDocument();
     expect(screen.getByText("Prochainement")).toBeInTheDocument();
-    expect(screen.getByText("30 derniers jours")).toBeInTheDocument();
-    expect(screen.getByText("À relancer")).toBeInTheDocument();
+    const stats = screen.getByText("30 derniers jours").parentElement;
+    expect(stats).toBeTruthy();
+    expect(stats).toHaveTextContent("Entretiens2");
+    expect(stats).not.toHaveTextContent("À relancer");
+    expect(screen.getByText("Relancer les candidatures en retard")).toBeInTheDocument();
     expect(screen.getAllByText("Nova Digital").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Atlas Studio").length).toBeGreaterThan(0);
     expect(screen.queryByText("Rien de prévu")).not.toBeInTheDocument();

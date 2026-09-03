@@ -5,7 +5,7 @@ import { CHART_INK } from "./chartTheme";
 import { ChartTooltip } from "./ChartTooltip";
 
 /** Teintes des quatre statuts, dans l'ordre où le backend renvoie les étapes. */
-const TEINTES = [CHART_INK.neutral, CHART_INK.warning, CHART_INK.success, CHART_INK.danger];
+const COLORS = [CHART_INK.neutral, CHART_INK.warning, CHART_INK.success, CHART_INK.danger];
 
 /**
  * Répartition du pipeline : une bande empilée à 100 %, puis sa légende chiffrée.
@@ -19,7 +19,7 @@ const TEINTES = [CHART_INK.neutral, CHART_INK.warning, CHART_INK.success, CHART_
  * l'information.
  */
 export function PipelineChart({ steps }: { steps: readonly Step[] }) {
-  const total = steps.reduce((somme, step) => somme + step.count, 0);
+  const total = steps.reduce((sum, step) => sum + step.count, 0);
 
   if (total === 0) {
     return (
@@ -32,7 +32,7 @@ export function PipelineChart({ steps }: { steps: readonly Step[] }) {
   }
 
   // Une seule catégorie porte toutes les étapes : c'est ce qui les empile sur une bande.
-  const empilee = [
+  const stackedData = [
     Object.fromEntries(steps.map((step) => [step.label, step.count])) as Record<string, number>,
   ];
 
@@ -41,7 +41,7 @@ export function PipelineChart({ steps }: { steps: readonly Step[] }) {
       <div style={{ height: 14 }} role="img" aria-label="Répartition des candidatures par statut">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
-            data={empilee}
+            data={stackedData}
             layout="vertical"
             margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
             accessibilityLayer
@@ -56,10 +56,11 @@ export function PipelineChart({ steps }: { steps: readonly Step[] }) {
                 isAnimationActive={false}
                 radius={2}
               >
-                <Cell fill={TEINTES[index] ?? CHART_INK.neutral} stroke={CHART_INK.gap} strokeWidth={2} />
+                <Cell fill={COLORS[index] ?? CHART_INK.neutral} stroke={CHART_INK.gap} strokeWidth={2} />
               </Bar>
             ))}
             <Tooltip
+              shared={false}
               cursor={false}
               content={({ active, payload }) => {
                 const part = active ? payload?.[0] : undefined;
@@ -81,7 +82,7 @@ export function PipelineChart({ steps }: { steps: readonly Step[] }) {
           <li key={step.label} className="flex items-center gap-[7px]">
             <span
               aria-hidden
-              style={{ backgroundColor: TEINTES[index] ?? CHART_INK.neutral }}
+              style={{ backgroundColor: COLORS[index] ?? CHART_INK.neutral }}
               className="size-1.5 rounded-full"
             />
             <span className="text-note text-ink-muted">{step.label}</span>

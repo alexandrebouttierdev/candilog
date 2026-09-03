@@ -6,7 +6,7 @@ import type {
   UpcomingItem,
 } from "@/shared/types/generated/analytics";
 import type { Application } from "@/shared/types/generated/applications";
-import { status_meta } from "@/features/applications/model/statuses";
+import { status_meta } from "@/features/applications";
 import { dayOf, timeFromTimestamp } from "@/shared/lib/dates";
 import { cn } from "@/shared/lib/cn";
 import { ActivityChart, PipelineChart } from "./charts";
@@ -95,18 +95,15 @@ export function TodayStats({
   applications,
   responses,
   interviews,
-  overdue,
 }: {
   applications: number;
   responses: number;
   interviews: number;
-  overdue: number;
 }) {
   const items = [
     { label: "Candidatures", value: applications },
     { label: "Réponses", value: responses },
     { label: "Entretiens", value: interviews },
-    ...(overdue > 0 ? [{ label: "À relancer", value: overdue, warn: true }] : []),
   ];
 
   return (
@@ -118,20 +115,8 @@ export function TodayStats({
             key={item.label}
             className={cn("flex min-w-[7.5rem] flex-col pr-7", index > 0 && "border-l border-field pl-7")}
           >
-            <dt
-              className={cn(
-                "order-2 mt-1.5 text-eyebrow uppercase",
-                item.warn ? "text-warning" : "text-ink-label",
-              )}
-            >
-              {item.label}
-            </dt>
-            <dd
-              className={cn(
-                "order-1 font-mono tabular text-heading tracking-tight",
-                item.warn ? "text-warning" : "text-ink",
-              )}
-            >
+            <dt className="order-2 mt-1.5 text-eyebrow uppercase text-ink-label">{item.label}</dt>
+            <dd className="order-1 font-mono tabular text-heading tracking-tight text-ink">
               {item.value}
             </dd>
           </div>

@@ -62,6 +62,19 @@ describe("écran Intelligence artificielle", () => {
     ).toBeInTheDocument();
   });
 
+  it("remplace le squelette par une erreur quand le chargement initial échoue", async () => {
+    vi.spyOn(settingsService, "load").mockRejectedValue(
+      new AppError({ code: "DATABASE_ERROR", message: "Réglages inaccessibles." }),
+    );
+
+    render(<AiPage />, { wrapper });
+
+    expect(await screen.findByText("Réglages inaccessibles.")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("status", { name: "Chargement des réglages" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("signale un fournisseur incomplet et ce qu'il manque", async () => {
     vi.spyOn(settingsService, "load").mockResolvedValue(
       reglages({ api_key_configured: false }),

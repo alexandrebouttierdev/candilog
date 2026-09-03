@@ -2,8 +2,12 @@ import { useCallback, useMemo, useState } from "react";
 import { useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
 import { interviewService } from "@/features/interviews/services/interviewService";
 import type { Interview, NewInterview } from "@/features/interviews/services/interviewService";
-import { followUpService } from "@/features/followups/services/followUpService";
-import type { NewFollowUp, FollowUp } from "@/features/followups/services/followUpService";
+import {
+  FOLLOW_UPS_KEY,
+  followUpService,
+  type FollowUp,
+  type NewFollowUp,
+} from "@/features/followups";
 import { APPLICATIONS_KEY } from "@/features/applications";
 import {
   gridBounds,
@@ -22,7 +26,6 @@ import { AppError } from "@/shared/types/app-error";
 
 /** Racines de cache des deux entités affichées. */
 export const INTERVIEWS_KEY = ["entretiens"] as const;
-export const FOLLOW_UPS_KEY = ["relances"] as const;
 
 /**
  * Orchestration de l'écran Tracking → Calendar.

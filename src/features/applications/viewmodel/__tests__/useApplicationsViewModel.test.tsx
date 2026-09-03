@@ -90,23 +90,63 @@ describe("ViewModel des candidatures", () => {
     expect(result.current.items).toHaveLength(1);
   });
 
-  it("demande une page plus large en Kanban qu'en Liste", async () => {
-    // Le Kanban montre quatre colonnes d'un coup : une page de huit lignes en laisserait
-    // trois vides quel que soit le contenu réel du pipeline.
+  it("demande une page backend indépendante pour chaque colonne du Kanban", async () => {
+    // Une page globale répartie ensuite côté React tronque certaines colonnes et oblige à
+    // charger tout le pipeline. Chaque statut doit donc être paginé directement par SQLite.
     const listPage = vi
       .spyOn(applicationService, "listPage")
       .mockResolvedValue(page([cand("Développeur")]));
 
+    renderHook(() => useApplicationsViewModel(), { wrapper });
+
+    await waitFor(() => expect(listPage).toHaveBeenCalledTimes(4));
+    expect(listPage.mock.calls.map(([params]) => params.filter.status)).toEqual([
+      ["EN_ATTENTE"],
+      ["RELANCEE"],
+      ["ENTRETIEN"],
+      ["REFUS"],
+    ]);
+    expect(listPage.mock.calls.every(([params]) => params.page_size === 8)).toBe(true);
+  });
+
+  it("change la page d'une seule colonne du Kanban", async () => {
+    const listPage = vi.spyOn(applicationService, "listPage").mockImplementation((params) =>
+      Promise.resolve({
+        items: [],
+        total: params.filter.status[0] === "REFUS" ? 12 : 0,
+        page: params.page,
+        page_size: params.page_size,
+        total_pages: params.filter.status[0] === "REFUS" ? 2 : 1,
+      }),
+    );
     const { result } = renderHook(() => useApplicationsViewModel(), { wrapper });
-    await waitFor(() => expect(listPage).toHaveBeenCalled());
-    const taillekanban = listPage.mock.calls[0]![0].page_size;
+    await waitFor(() => expect(listPage).toHaveBeenCalledTimes(4));
+    listPage.mockClear();
 
-    act(() => result.current.setView("liste"));
+    act(() => result.current.setKanbanPage("REFUS", 2));
 
-    await waitFor(() => {
-      const derniere = listPage.mock.calls.at(-1)![0].page_size;
-      expect(derniere).toBeLessThan(taillekanban);
+    await waitFor(() =>
+      expect(
+        listPage.mock.calls.some(
+          ([params]) =>
+            params.page === 2 &&
+            params.page_size === 8 &&
+            params.filter.status.length === 1 &&
+            params.filter.status[0] === "REFUS",
+        ),
+      ).toBe(true),
+    );
+    expect(result.current.kanbanPages).toEqual({
+      EN_ATTENTE: 1,
+      RELANCEE: 1,
+      ENTRETIEN: 1,
+      REFUS: 2,
     });
+    expect(
+      listPage.mock.calls.some(
+        ([params]) => params.page === 2 && params.filter.status[0] !== "REFUS",
+      ),
+    ).toBe(false);
   });
 
   it("transmet la recherche au backend et revient en première page", async () => {

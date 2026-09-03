@@ -8,7 +8,7 @@ import {
 } from "../components/AnalyticsUi";
 import { ActivityChart, FunnelChart } from "../components/charts";
 import { ContextBarAccessory, ContextNote } from "@/app/layout/ContextBar";
-import { FollowUpFormModal } from "@/features/followups/view/components/FollowUpFormModal";
+import { FollowUpFormModal } from "@/features/followups";
 import { AppError } from "@/shared/types/app-error";
 import {
   Button,

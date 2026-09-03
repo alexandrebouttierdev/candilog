@@ -11,9 +11,12 @@ describe("grille des fournisseurs", () => {
     expect(screen.getAllByRole("radio")).toHaveLength(FOURNISSEURS.length);
     expect(screen.getByRole("radio", { name: /Ollama/ })).toHaveAttribute("aria-checked", "true");
     expect(screen.getByRole("radio", { name: "OpenAI" })).toHaveAttribute("aria-checked", "false");
+    // Le logo est décoratif : la tuile porte déjà le nom en clair et en `aria-label`, un
+    // `alt` le ferait annoncer une troisième fois.
     for (const fournisseur of FOURNISSEURS) {
       const radio = screen.getByRole("radio", { name: fournisseur.label });
-      expect(within(radio).getByRole("img", { name: fournisseur.label })).toBeInTheDocument();
+      expect(within(radio).getByText(fournisseur.label)).toBeInTheDocument();
+      expect(within(radio).queryByRole("img")).not.toBeInTheDocument();
     }
   });
 

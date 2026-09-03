@@ -68,13 +68,13 @@ export function ActivityChart({
             <Tooltip
               cursor={{ fill: CHART_INK.empty }}
               content={({ active, payload }) => {
-                const semaine = active
+                const weekData = active
                   ? (payload?.[0]?.payload as ActivityWeek | undefined)
                   : undefined;
-                if (!semaine) return null;
+                if (!weekData) return null;
                 return (
-                  <ChartTooltip title={`Semaine du ${formatDate(semaine.start, "long")}`}>
-                    {`${semaine.count} candidature${semaine.count > 1 ? "s" : ""}`}
+                  <ChartTooltip title={`Semaine du ${formatDate(weekData.start, "long")}`}>
+                    {`${weekData.count} candidature${weekData.count > 1 ? "s" : ""}`}
                   </ChartTooltip>
                 );
               }}

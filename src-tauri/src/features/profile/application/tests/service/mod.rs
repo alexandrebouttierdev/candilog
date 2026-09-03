@@ -322,6 +322,32 @@ fn remplacer_la_photo_supprime_l_ancien_fichier() {
     assert!(photos.path().join(&seconde).is_file());
 }
 
+struct EchecSauvegarde;
+
+impl ProfileRepository for EchecSauvegarde {
+    fn get(&self) -> AppResult<(Profile, Option<String>)> {
+        Ok((Profile::default(), None))
+    }
+
+    fn save(&self, _profile: &Profile) -> AppResult<(Profile, String)> {
+        Err(AppError::Database("écriture refusée".into()))
+    }
+}
+
+#[test]
+fn un_echec_de_sauvegarde_ne_laisse_pas_de_nouvelle_photo_orpheline() {
+    let dossier = tempfile::tempdir().unwrap();
+    let source = dossier.path().join("portrait.png");
+    std::fs::write(&source, png_de_test()).unwrap();
+    let photos = tempfile::tempdir().unwrap();
+    let service = ProfileService::new(EchecSauvegarde, photos.path().to_path_buf());
+
+    let error = service.set_photo(&source).unwrap_err();
+
+    assert!(matches!(error, AppError::Database(_)));
+    assert_eq!(std::fs::read_dir(photos.path()).unwrap().count(), 0);
+}
+
 #[test]
 fn supprimer_la_photo_efface_la_reference_et_le_fichier() {
     let dossier = tempfile::tempdir().unwrap();

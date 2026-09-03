@@ -70,12 +70,18 @@ impl<R: ProfileRepository> ProfileService<R> {
         })?;
 
         let png = normaliser(&bytes)?;
+        let (mut profile, _) = self.repo.get()?;
         let nom = nouveau_nom_fichier();
         self.ecrire_photo(&nom, &png)?;
 
-        let (mut profile, _) = self.repo.get()?;
-        let precedente = profile.photo.replace(nom);
-        let (profile, updated_at) = self.repo.save(&profile)?;
+        let precedente = profile.photo.replace(nom.clone());
+        let (profile, updated_at) = match self.repo.save(&profile) {
+            Ok(saved) => saved,
+            Err(error) => {
+                self.supprimer_fichier(&nom);
+                return Err(error);
+            }
+        };
         if let Some(ancienne) = precedente {
             self.supprimer_fichier(&ancienne);
         }

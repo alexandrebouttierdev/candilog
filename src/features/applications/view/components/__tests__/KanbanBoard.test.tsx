@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { KanbanBoard } from "../KanbanBoard";
 import type { Application } from "../../../services/applicationService";
+import type { ApplicationStatus } from "../../../services/applicationService";
+import type { Page } from "@/shared/types/page";
 
 function dataTransfer(): DataTransfer {
   const store: Record<string, string> = {};
@@ -49,6 +51,29 @@ function cand(job_title: string, status: Application["status"]): Application {
   };
 }
 
+function columns(
+  applications: readonly Application[],
+  totals: Partial<Record<ApplicationStatus, number>> = {},
+): Record<ApplicationStatus, Page<Application>> {
+  const column = (status: ApplicationStatus): Page<Application> => {
+    const items = applications.filter((application) => application.status === status);
+    const total = totals[status] ?? items.length;
+    return {
+      items,
+      total,
+      page: 1,
+      page_size: 8,
+      total_pages: Math.max(1, Math.ceil(total / 8)),
+    };
+  };
+  return {
+    EN_ATTENTE: column("EN_ATTENTE"),
+    RELANCEE: column("RELANCEE"),
+    ENTRETIEN: column("ENTRETIEN"),
+    REFUS: column("REFUS"),
+  };
+}
+
 describe("KanbanBoard", () => {
   it("dépose la carte même si le navigateur envoie dragend avant drop", () => {
     // WebKit (Tauri Linux) vide l'état React au dragend, avant le drop : le statut
@@ -56,14 +81,14 @@ describe("KanbanBoard", () => {
     const onStatusChange = vi.fn();
     render(
       <KanbanBoard
-        applications={[cand("Développeur", "EN_ATTENTE")]}
-        breakdown={{ pending: 1, followed_up: 0, interview: 0, rejected: 0 }}
+        columns={columns([cand("Développeur", "EN_ATTENTE")])}
         selected_id={null}
         checkedIds={new Set()}
         onSelect={vi.fn()}
         onToggleSelect={vi.fn()}
         onStatusChange={onStatusChange}
         onCreate={vi.fn()}
+        onPageChange={vi.fn()}
       />,
     );
 
@@ -86,14 +111,14 @@ describe("KanbanBoard", () => {
     // sous le curseur à taille réelle — la carte paraît alors énorme.
     render(
       <KanbanBoard
-        applications={[cand("Développeur", "EN_ATTENTE")]}
-        breakdown={{ pending: 1, followed_up: 0, interview: 0, rejected: 0 }}
+        columns={columns([cand("Développeur", "EN_ATTENTE")])}
         selected_id={null}
         checkedIds={new Set()}
         onSelect={vi.fn()}
         onToggleSelect={vi.fn()}
         onStatusChange={vi.fn()}
         onCreate={vi.fn()}
+        onPageChange={vi.fn()}
       />,
     );
 
@@ -110,14 +135,14 @@ describe("KanbanBoard", () => {
     const onCreate = vi.fn();
     render(
       <KanbanBoard
-        applications={[cand("Développeur", "EN_ATTENTE")]}
-        breakdown={{ pending: 1, followed_up: 0, interview: 0, rejected: 0 }}
+        columns={columns([cand("Développeur", "EN_ATTENTE")])}
         selected_id={null}
         checkedIds={new Set()}
         onSelect={vi.fn()}
         onToggleSelect={vi.fn()}
         onStatusChange={vi.fn()}
         onCreate={onCreate}
+        onPageChange={vi.fn()}
       />,
     );
 
@@ -126,5 +151,30 @@ describe("KanbanBoard", () => {
     );
 
     expect(onCreate).toHaveBeenCalledWith("ENTRETIEN");
+  });
+
+  it("affiche une pagination dans une colonne qui contient plus d'une page", () => {
+    const onPageChange = vi.fn();
+    render(
+      <KanbanBoard
+        columns={columns([cand("Développeur", "EN_ATTENTE")], { EN_ATTENTE: 9 })}
+        selected_id={null}
+        checkedIds={new Set()}
+        onSelect={vi.fn()}
+        onToggleSelect={vi.fn()}
+        onStatusChange={vi.fn()}
+        onCreate={vi.fn()}
+        onPageChange={onPageChange}
+      />,
+    );
+
+    const attente = screen.getByRole("heading", { name: "En attente" }).closest("section");
+    expect(attente).toBeTruthy();
+    expect(attente).toHaveTextContent("1–8 sur 9");
+    expect(attente).toContainElement(
+      screen.getByRole("button", { name: "Page suivante de En attente" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Page suivante de En attente" }));
+    expect(onPageChange).toHaveBeenCalledWith("EN_ATTENTE", 2);
   });
 });

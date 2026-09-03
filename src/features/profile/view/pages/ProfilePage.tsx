@@ -21,7 +21,6 @@ import {
   CompletionBar,
   ProfileIdentity,
   ProfilePanel,
-  ProfilePhotoCard,
   ProfileResetCard,
   ProfileSkeleton,
   ProfileTabs,
@@ -69,7 +68,13 @@ export function ProfilePage() {
           <div>
             <div className="border-b border-line bg-surface px-7 pt-[22px]">
               <div className="flex flex-wrap items-start gap-4">
-                <ProfileIdentity identity={vm.data.profile.identity} photo={photo} />
+                <ProfileIdentity
+                  identity={vm.data.profile.identity}
+                  photo={photo}
+                  busy={vm.isPhotoBusy}
+                  onPick={() => void vm.setPhoto()}
+                  onRemove={() => void vm.removePhoto()}
+                />
                 <CompletionBar
                   value={vm.data.completion}
                   hint={
@@ -167,13 +172,6 @@ export function ProfilePage() {
                     Analyser un CV
                   </Button>
                 </div>
-
-                <ProfilePhotoCard
-                  photo={photo}
-                  busy={vm.isPhotoBusy}
-                  onPick={() => void vm.setPhoto()}
-                  onRemove={() => void vm.removePhoto()}
-                />
 
                 <ProfileResetCard busy={vm.isResetting} onReset={() => setResetOuvert(true)} />
               </div>

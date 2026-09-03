@@ -167,11 +167,13 @@ export function ColumnPager({
   page,
   page_size,
   total,
+  label,
   onPageChange,
 }: {
   page: number;
   page_size: number;
   total: number;
+  label: string;
   onPageChange: (page: number) => void;
 }) {
   const { from, to, hasPrev, hasNext } = page_bounds(page, page_size, total);
@@ -180,7 +182,7 @@ export function ColumnPager({
     <div className="flex items-center justify-between gap-2 border-t border-line px-3 py-2">
       <ColumnArrow
         icon="chevron_left"
-        label="Page précédente"
+        label={`Page précédente de ${label}`}
         disabled={!hasPrev}
         onClick={() => onPageChange(page - 1)}
       />
@@ -189,7 +191,7 @@ export function ColumnPager({
       </span>
       <ColumnArrow
         icon="chevron_right"
-        label="Page suivante"
+        label={`Page suivante de ${label}`}
         disabled={!hasNext}
         accent
         onClick={() => onPageChange(page + 1)}

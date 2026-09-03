@@ -14,7 +14,7 @@ import { AXIS_TICK, CHART_INK } from "./chartTheme";
 import { ChartTooltip } from "./ChartTooltip";
 
 /** Hauteur d'une étape, filet compris : quatre étapes tiennent dans la carte des maquettes. */
-const HAUTEUR_ETAPE = 42;
+const STEP_HEIGHT = 42;
 
 /**
  * Conversion étape par étape : envoyées, réponses, entretiens, refus.
@@ -41,7 +41,7 @@ export function FunnelChart({ steps }: { steps: readonly Step[] }) {
   return (
     <>
       <div
-        style={{ height: data.length * HAUTEUR_ETAPE }}
+        style={{ height: data.length * STEP_HEIGHT }}
         role="img"
         aria-label="Conversion des candidatures, étape par étape"
       >
@@ -65,11 +65,11 @@ export function FunnelChart({ steps }: { steps: readonly Step[] }) {
             <Tooltip
               cursor={{ fill: CHART_INK.empty }}
               content={({ active, payload }) => {
-                const etape = active ? (payload?.[0]?.payload as Step | undefined) : undefined;
-                if (!etape) return null;
+                const stepData = active ? (payload?.[0]?.payload as Step | undefined) : undefined;
+                if (!stepData) return null;
                 return (
-                  <ChartTooltip title={etape.label}>
-                    {`${etape.count} candidature${etape.count > 1 ? "s" : ""} · ${etape.percentage} %`}
+                  <ChartTooltip title={stepData.label}>
+                    {`${stepData.count} candidature${stepData.count > 1 ? "s" : ""} · ${stepData.percentage} %`}
                   </ChartTooltip>
                 );
               }}

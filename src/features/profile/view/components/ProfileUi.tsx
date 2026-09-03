@@ -1,7 +1,7 @@
 import type { KeyboardEvent, ReactNode } from "react";
 import type { Identity } from "@/shared/types/generated/profile";
 import { cn } from "@/shared/lib/cn";
-import { Button, Card, CardHeader, Icon, Skeleton } from "@/shared/ui";
+import { Button, Icon, IconButton, Skeleton } from "@/shared/ui";
 import type { IconName } from "@/shared/ui/icon-names";
 
 export type ProfileTab =
@@ -130,13 +130,26 @@ export function SectionCard({
   );
 }
 
+/**
+ * Identité du bandeau, pastille comprise.
+ *
+ * La photo se change là où elle s'affiche : deux commandes de 24 px sous la pastille, au
+ * lieu d'une carte séparée en bas de la colonne de droite. La suppression n'apparaît que
+ * s'il y a quelque chose à supprimer.
+ */
 export function ProfileIdentity({
   identity,
   photo,
+  busy,
+  onPick,
+  onRemove,
 }: {
   identity: Identity;
   /** Photo en `data:` URL, ou `null` : la pastille retombe alors sur les initiales. */
-  photo?: string | null;
+  photo: string | null;
+  busy: boolean;
+  onPick: () => void;
+  onRemove: () => void;
 }) {
   const name = [identity.first_name, identity.name].filter(Boolean).join(" ") || "Profil à compléter";
   const initials = [identity.first_name, identity.name]
@@ -151,19 +164,37 @@ export function ProfileIdentity({
 
   return (
     <div className="flex min-w-[260px] flex-1 items-start gap-4">
-      {photo ? (
-        // Décorative : le nom qu'elle accompagne est juste à côté, et la carte « Photo »
-        // porte déjà l'aperçu nommé.
-        <img
-          src={photo}
-          alt=""
-          className="size-14 flex-none rounded-full border border-line object-cover"
-        />
-      ) : (
-        <span className="flex size-14 flex-none items-center justify-center rounded-full bg-accent-tint text-lg font-strong text-accent">
-          {initials}
-        </span>
-      )}
+      <div className="flex flex-none flex-col items-center gap-1.5">
+        {photo ? (
+          <img
+            src={photo}
+            alt="Photo de profil"
+            className="size-16 rounded-full border border-line object-cover"
+          />
+        ) : (
+          <span className="flex size-16 items-center justify-center rounded-full bg-accent-tint text-lg font-strong text-accent">
+            {initials}
+          </span>
+        )}
+        {/* Deux contrôles de 30 px : côte à côte, ils tiennent exactement la largeur de la
+            pastille et gardent le gabarit standard du design system. */}
+        <div className="flex gap-1">
+          <IconButton
+            icon={photo ? "swap_horiz" : "add_a_photo"}
+            label={photo ? "Remplacer la photo" : "Ajouter une photo"}
+            disabled={busy}
+            onClick={onPick}
+          />
+          {photo ? (
+            <IconButton
+              icon="delete"
+              label="Supprimer la photo"
+              disabled={busy}
+              onClick={onRemove}
+            />
+          ) : null}
+        </div>
+      </div>
       <div className="min-w-0">
         <h2 className="text-title text-ink">{name}</h2>
         <p className="mt-1 text-body font-mid text-accent">
@@ -222,7 +253,7 @@ export function ProfileSkeleton() {
     <div>
       <div className="border-b border-line bg-surface px-7 pt-[22px] pb-0">
         <div className="flex items-start gap-4">
-          <Skeleton className="size-14 rounded-full" />
+          <Skeleton className="size-16 rounded-full" />
           <div className="flex-1 space-y-2">
             <Skeleton className="h-5 w-52" />
             <Skeleton className="h-3 w-72" />
@@ -232,70 +263,6 @@ export function ProfileSkeleton() {
         <Skeleton className="mt-[18px] h-10 w-full" />
       </div>
     </div>
-  );
-}
-
-/**
- * Photo du profil : aperçu, remplacement, suppression.
- *
- * Facultative de bout en bout — le profil et les CV fonctionnent sans elle. Le cadre garde
- * le rapport de l'image (`object-contain`) : c'est celui que reprend l'export PDF.
- */
-export function ProfilePhotoCard({
-  photo,
-  busy,
-  onPick,
-  onRemove,
-}: {
-  photo: string | null;
-  busy: boolean;
-  onPick: () => void;
-  onRemove: () => void;
-}) {
-  return (
-    <Card clipped>
-      <CardHeader compact icon="photo_camera">
-        Photo
-      </CardHeader>
-      <div className="px-[18px] pt-1 pb-4">
-        {photo ? (
-          <div className="flex items-start gap-3.5">
-            <img
-              src={photo}
-              alt="Photo de profil"
-              className="h-[92px] w-[78px] flex-none rounded-tile border border-line bg-surface-elevated object-contain"
-            />
-            <div className="flex min-w-0 flex-col gap-2">
-              <p className="text-label leading-[1.55] text-ink-muted">
-                Elle apparaît en haut à droite de vos CV, à son rapport d’origine.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <Button icon="swap_horiz" disabled={busy} onClick={onPick}>
-                  Remplacer la photo
-                </Button>
-                <Button variant="ghost" icon="delete" disabled={busy} onClick={onRemove}>
-                  Supprimer la photo
-                </Button>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-start gap-3.5">
-            <span className="flex h-[92px] w-[78px] flex-none items-center justify-center rounded-tile border border-dashed border-line bg-surface-elevated text-ink-faint">
-              <Icon name="photo_camera" size={22} />
-            </span>
-            <div className="flex min-w-0 flex-col gap-2">
-              <p className="text-label leading-[1.55] text-ink-muted">
-                Facultative. Sans photo, les CV se composent normalement, sans espace réservé.
-              </p>
-              <Button icon="add_a_photo" disabled={busy} onClick={onPick}>
-                Ajouter une photo
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
-    </Card>
   );
 }
 

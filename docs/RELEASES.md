@@ -131,8 +131,8 @@ certificat OV n'annule pas SmartScreen tout de suite : la réputation se constru
 téléchargements.
 
 Dans les deux cas, mettre à jour dans la même tâche le tableau ci-dessus, la section
-« Avertissement éditeur inconnu » du `README`, les notes de release du workflow et la carte
-« Installation maîtrisée » de l'écran des mises à jour.
+« Avertissement éditeur inconnu » du `README`, les notes de release du workflow et le texte
+d'accompagnement de l'écran des mises à jour.
 
 ## Côté site
 

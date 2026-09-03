@@ -215,7 +215,8 @@ Références : `ApplicationFilters`, `CompanyFilters`, `ContactFilters`.
 
 - `FilterBar` identique.
 - Liste : `DataTable` + `CellIdentity` + `StatusPill` + `Pager`.
-- Kanban : colonnes denses, sélection multiple → actions dans la FilterBar (pas une barre flottante SaaS).
+- Kanban : colonnes denses, chacune paginée indépendamment côté SQLite par `ColumnPager` ;
+  sélection multiple → actions dans la FilterBar (pas une barre flottante SaaS).
 - Fiche : `Inspector` (380 px, redimensionnable 320–460, glass), rangées `InspectorRow`.
 
 ### Graphiques (Aujourd’hui, Analyses)
@@ -237,7 +238,7 @@ Références : `ApplicationFilters`, `CompanyFilters`, `ContactFilters`.
 - `ActionCard` : **une action** (export, rechercher une MAJ) — pas une grille de bénéfices produit.
 - `SettingsHero` : écrans de **maintenance** (version, sauvegarde), pas un slogan.
 - À propos : identité (logo + nom + version) + faits (`InspectorRow`) + auteur. **Pas** de hero, **pas** de pile technique.
-- IA : bandeau fournisseur (logo, nom, modèle, état, test), puis `Fournisseur`, `Configuration`, `Génération`, `Apparence`. L’état vient de `model/etatIa.ts` et existe **avant** tout test manuel ; la clé API n’est jamais rendue en clair.
+- IA : colonne bornée à 1000 px, blocs sur `bg-surface` — bandeau fournisseur (logo, nom, modèle, état, test), puis les `SettingsCard` `Fournisseur`, `Configuration`, `Génération`, `Apparence`. Champs plafonnés à 380 px : un « Endpoint » de 600 px de large ne se lit pas mieux. L’état vient de `model/etatIa.ts` et existe **avant** tout test manuel ; la clé API n’est jamais rendue en clair.
 - Mises à jour : version installée, version disponible, état, action. Rien sur le mécanisme de téléchargement — cela n’aide pas à décider.
 
 ### Formulaires

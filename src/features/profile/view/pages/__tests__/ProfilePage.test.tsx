@@ -71,6 +71,18 @@ describe("écran Profil — photo", () => {
     expect(screen.getByText("Camille Rivet")).toBeInTheDocument();
   });
 
+  it("place les actions de photo dans l'en-tête, avant les onglets", async () => {
+    // La photo se change là où on la voit : sur la pastille d'identité, et non dans une
+    // carte perdue en bas de la colonne de droite.
+    render(<ProfilePage />, { wrapper });
+
+    const ajouter = await screen.findByRole("button", { name: "Ajouter une photo" });
+    const onglets = screen.getByRole("tablist", { name: "Sections du profil" });
+
+    expect(ajouter.compareDocumentPosition(onglets) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByText("Photo", { exact: true })).not.toBeInTheDocument();
+  });
+
   it("affiche la photo enregistrée et permet de la remplacer", async () => {
     vi.spyOn(profileService, "load").mockResolvedValue(payload("photo-1.png"));
     vi.spyOn(profileService, "photo").mockResolvedValue(PHOTO);

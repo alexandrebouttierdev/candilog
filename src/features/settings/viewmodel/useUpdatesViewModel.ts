@@ -32,6 +32,7 @@ function officialReleasePage(url: string): string {
 export function useUpdatesViewModel() {
   const [update, setUpdate] = useState<UpdateInfo | null | undefined>(undefined);
   const [progress, setProgress] = useState<number | null>(null);
+  const [installerOpened, setInstallerOpened] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const about = useQuery({ queryKey: A_ABOUT_KEY, queryFn: settingsService.about });
 
@@ -56,7 +57,11 @@ export function useUpdatesViewModel() {
 
   const checkMutation = useMutation({
     mutationFn: settingsService.checkUpdate,
-    onMutate: () => setError(null),
+    onMutate: () => {
+      setError(null);
+      setProgress(null);
+      setInstallerOpened(false);
+    },
     onSuccess: setUpdate,
     onError: (caught: unknown) => setError(errorMessage(caught, "Vérification impossible.")),
   });
@@ -65,6 +70,11 @@ export function useUpdatesViewModel() {
     onMutate: () => {
       setError(null);
       setProgress(0);
+      setInstallerOpened(false);
+    },
+    onSuccess: () => {
+      setProgress(100);
+      setInstallerOpened(true);
     },
     onError: (caught: unknown) => setError(errorMessage(caught, "Téléchargement impossible.")),
   });
@@ -99,6 +109,7 @@ export function useUpdatesViewModel() {
     update,
     busy,
     progress,
+    installerOpened,
     error,
     check,
     download,
