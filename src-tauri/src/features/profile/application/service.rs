@@ -4,19 +4,24 @@ use crate::core::errors::{AppError, AppResult};
 use crate::core::utils::text::search_key;
 use crate::core::utils::validation::validate_optional_http_url;
 use crate::features::profile::domain::{
-    apply_decisions, build_preview, Identity, ImportProfilePreview, ImportProfileRequest,
-    ImportProfileResult, Profile, ProfilePayload, ProfileRepository, Skill,
+    apply_decisions, build_preview, normaliser, nouveau_nom_fichier, Identity,
+    ImportProfilePreview, ImportProfileRequest, ImportProfileResult, Profile, ProfilePayload,
+    ProfileRepository, Skill, MAX_SOURCE_BYTES,
 };
+use base64::Engine;
+use std::path::{Path, PathBuf};
 
 /// Service métier du profil, générique sur son dépôt.
 pub struct ProfileService<R: ProfileRepository> {
     repo: R,
+    /// Dossier des photos, sous le dossier de données de l'utilisateur.
+    photos_dir: PathBuf,
 }
 
 impl<R: ProfileRepository> ProfileService<R> {
     #[must_use]
-    pub const fn new(repo: R) -> Self {
-        Self { repo }
+    pub const fn new(repo: R, photos_dir: PathBuf) -> Self {
+        Self { repo, photos_dir }
     }
 
     /// Payload le profil avec les informations de complétion nécessaires à l'écran.
@@ -26,10 +31,147 @@ impl<R: ProfileRepository> ProfileService<R> {
     }
 
     /// Valide et remplace le profil complet.
+    ///
+    /// La photo est **reprise du profil enregistré** et non du payload reçu : les formulaires
+    /// de l'écran Profile n'en portent pas, et l'enregistrement d'une section ne doit pas
+    /// effacer une image que personne n'a demandé de retirer.
     pub fn save(&self, profile: &Profile) -> AppResult<ProfilePayload> {
         valider(profile)?;
-        let (profile, updated_at) = self.repo.save(profile)?;
+        let (actuel, _) = self.repo.get()?;
+        let mut profile = profile.clone();
+        profile.photo = actuel.photo;
+        let (profile, updated_at) = self.repo.save(&profile)?;
         Ok(enrichir(profile, Some(updated_at)))
+    }
+
+    /// Remplace la photo du profil par le fichier choisi, après validation et normalisation.
+    ///
+    /// L'ancienne image est supprimée une fois la nouvelle écrite : un échec en cours de
+    /// route laisse donc le profil sur sa photo précédente, jamais sans photo.
+    ///
+    /// # Errors
+    /// `AppError::Validation` si le fichier est illisible, trop volumineux ou d'un format
+    /// refusé ; `AppError::Database` si l'écriture dans le dossier de données échoue.
+    pub fn set_photo(&self, source: &Path) -> AppResult<ProfilePayload> {
+        let metadata = std::fs::metadata(source).map_err(|error| {
+            tracing::warn!(%error, "photo de profil inaccessible");
+            AppError::Validation("Le fichier sélectionné est introuvable.".into())
+        })?;
+        // Contrôle avant lecture : inutile de charger en mémoire un fichier qu'on refusera.
+        if metadata.len() > MAX_SOURCE_BYTES as u64 {
+            return Err(AppError::Validation(format!(
+                "L'image ne doit pas dépasser {} Mo.",
+                MAX_SOURCE_BYTES / (1024 * 1024)
+            )));
+        }
+        let bytes = std::fs::read(source).map_err(|error| {
+            tracing::warn!(%error, "photo de profil illisible");
+            AppError::Validation("Le fichier sélectionné n'a pas pu être lu.".into())
+        })?;
+
+        let png = normaliser(&bytes)?;
+        let nom = nouveau_nom_fichier();
+        self.ecrire_photo(&nom, &png)?;
+
+        let (mut profile, _) = self.repo.get()?;
+        let precedente = profile.photo.replace(nom);
+        let (profile, updated_at) = self.repo.save(&profile)?;
+        if let Some(ancienne) = precedente {
+            self.supprimer_fichier(&ancienne);
+        }
+        Ok(enrichir(profile, Some(updated_at)))
+    }
+
+    /// Retire la photo du profil et supprime son fichier.
+    ///
+    /// # Errors
+    /// `AppError::Database` si le profil ne peut pas être relu ou réenregistré.
+    pub fn remove_photo(&self) -> AppResult<ProfilePayload> {
+        let (mut profile, _) = self.repo.get()?;
+        let precedente = profile.photo.take();
+        let (profile, updated_at) = self.repo.save(&profile)?;
+        if let Some(ancienne) = precedente {
+            self.supprimer_fichier(&ancienne);
+        }
+        Ok(enrichir(profile, Some(updated_at)))
+    }
+
+    /// Photo du profil encodée en `data:` URL, ou `None` si le profil n'en a pas.
+    ///
+    /// La webview n'a pas accès au dossier de données : l'image lui parvient par l'IPC comme
+    /// toute autre donnée, sans ouvrir de protocole de fichiers.
+    ///
+    /// # Errors
+    /// `AppError::Database` si le profil ne peut pas être lu.
+    pub fn photo_data_url(&self) -> AppResult<Option<String>> {
+        let Some(chemin) = self.photo_path()? else {
+            return Ok(None);
+        };
+        match std::fs::read(&chemin) {
+            Ok(bytes) => Ok(Some(format!(
+                "data:image/png;base64,{}",
+                base64::engine::general_purpose::STANDARD.encode(bytes)
+            ))),
+            // Fichier disparu — sauvegarde restaurée, ménage manuel : le profil s'affiche
+            // sans photo plutôt que d'échouer entièrement.
+            Err(error) => {
+                tracing::warn!(%error, "photo de profil absente du dossier de données");
+                Ok(None)
+            }
+        }
+    }
+
+    /// Path absolu de la photo, pour le moteur PDF.
+    ///
+    /// # Errors
+    /// `AppError::Database` si le profil ne peut pas être lu.
+    pub fn photo_path(&self) -> AppResult<Option<PathBuf>> {
+        let (profile, _) = self.repo.get()?;
+        Ok(profile.photo.as_deref().and_then(|nom| {
+            let chemin = self.photos_dir.join(nom);
+            chemin.is_file().then_some(chemin)
+        }))
+    }
+
+    /// Réinitialise **le seul profil** : identité, sections et photo.
+    ///
+    /// Rien d'autre n'est touché. Candidatures, entreprises, contacts, entretiens, relances,
+    /// documents, réglages et configuration IA vivent dans d'autres tables, qu'aucune requête
+    /// d'ici n'atteint.
+    ///
+    /// # Errors
+    /// `AppError::Database` si la ligne du profil ne peut pas être réécrite.
+    pub fn reset(&self) -> AppResult<ProfilePayload> {
+        let (actuel, _) = self.repo.get()?;
+        let (profile, updated_at) = self.repo.save(&Profile::default())?;
+        if let Some(ancienne) = actuel.photo {
+            self.supprimer_fichier(&ancienne);
+        }
+        Ok(enrichir(profile, Some(updated_at)))
+    }
+
+    fn ecrire_photo(&self, nom: &str, png: &[u8]) -> AppResult<()> {
+        std::fs::create_dir_all(&self.photos_dir).map_err(|error| {
+            tracing::error!(%error, "dossier des photos non créé");
+            AppError::Database("Le dossier des photos n'a pas pu être créé.".into())
+        })?;
+        let chemin = self.photos_dir.join(nom);
+        std::fs::write(&chemin, png).map_err(|error| {
+            tracing::error!(%error, "photo de profil non enregistrée");
+            AppError::Database("La photo n'a pas pu être enregistrée.".into())
+        })?;
+        crate::core::config::restreindre_fichier(&chemin);
+        Ok(())
+    }
+
+    /// Supprime un fichier photo devenu inutile, sans faire échouer l'opération appelante.
+    fn supprimer_fichier(&self, nom: &str) {
+        let chemin = self.photos_dir.join(nom);
+        match std::fs::remove_file(&chemin) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => tracing::warn!(%error, "ancienne photo de profil non supprimée"),
+        }
     }
 
     /// Compare un CV extrait au profil actuel sans rien écrire.
@@ -232,3 +374,7 @@ fn email_valide(email: &str) -> bool {
 #[cfg(test)]
 #[path = "tests/service/mod.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "tests/reset/mod.rs"]
+mod tests_reset;

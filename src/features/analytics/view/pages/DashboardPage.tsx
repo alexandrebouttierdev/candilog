@@ -6,6 +6,7 @@ import {
   RecentRows,
   TodayActivity,
   TodayEmpty,
+  TodayPipeline,
   TodaySkeleton,
   TodayStats,
   TodoRows,
@@ -72,7 +73,13 @@ function TodayWorkspace({ data }: { data: Dashboard }) {
   const { next, rest } = splitUpcoming(data.upcoming_items);
 
   if (isTodayEmpty(data)) {
-    return <TodayEmpty onCreate={() => void navigate("/tracking/applications?nouvelle=1")} />;
+    return (
+      <TodayEmpty
+        onCreate={() => void navigate("/tracking/applications?nouvelle=1")}
+        onOpenApplications={() => void navigate("/tracking/applications")}
+        onOpenCalendar={() => void navigate("/tracking/calendar")}
+      />
+    );
   }
 
   return (
@@ -88,7 +95,7 @@ function TodayWorkspace({ data }: { data: Dashboard }) {
         <section className="min-w-0">
           <InspectorSectionLabel>Prochainement</InspectorSectionLabel>
           {next === null ? (
-            <UpcomingEmpty />
+            <UpcomingEmpty onOpenCalendar={() => void navigate("/tracking/calendar")} />
           ) : (
             <>
               <NextEvent
@@ -127,9 +134,12 @@ function TodayWorkspace({ data }: { data: Dashboard }) {
           </div>
           <RecentRows
             applications={data.recent}
-            onOpen={(id) => void navigate(`/tracking/applications?fiche=${id}`)}
+            onOpen={(id) =>
+              void navigate(`/tracking/applications?fiche=${encodeURIComponent(id)}`)
+            }
           />
           <TodayActivity activity={data.activity} />
+          <TodayPipeline pipeline={data.pipeline} />
         </section>
       </div>
     </div>

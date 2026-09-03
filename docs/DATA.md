@@ -105,11 +105,31 @@ pool par l'initialiseur, à côté de `PRAGMA foreign_keys` ; son implémentatio
 `core::utils::text`. Normaliser d'un seul côté rendait « ÉCOLE » introuvable, y compris en
 le cherchant par son nom exact.
 
+## Photo de profil
+
+La photo n'est pas stockée en base : `profile.data` ne porte que le **nom** du fichier, et
+l'image vit dans `photos/`, sous le dossier de données. Une colonne JSON relue à chaque
+ouverture d'écran n'a pas à transporter plusieurs centaines de kilo-octets d'image.
+
+À l'import, `profile::domain::photo` refuse tout ce qui n'est ni JPEG, ni PNG, ni WebP, tout
+fichier de plus de 8 Mio, puis réencode l'image en PNG borné à 512 px de côté, **rapport
+d'origine conservé**. Le fichier reçoit un nom neuf à chaque enregistrement : réécrire le
+même nom laisserait la webview afficher l'image précédente, qu'elle garde en cache.
+
+Le champ n'est jamais modifié par `profile_save` — le service reprend systématiquement la
+valeur enregistrée. Seules `profile_set_photo`, `profile_remove_photo` et `profile_reset` la
+changent, et chacune supprime le fichier devenu inutile. La webview n'accède pas au dossier
+de données : `profile_photo` lui renvoie une `data:` URL.
+
+`profile_reset` vide la ligne `profile` et cette photo, **et rien d'autre** : candidatures,
+entreprises, contacts, entretiens, relances, documents et réglages vivent dans d'autres
+tables, qu'aucune requête de cette commande n'atteint.
+
 ## Permissions du dossier de données
 
 La base contient l'intégralité des données personnelles : profil, CV générés, coordonnées
 des contacts, notes d'entretien. Sur Unix, `AppPaths` force donc `700` sur le dossier de
-données et son sous-dossier `exports`, et `600` sur `candilog.sqlite`, ses journaux WAL et
+données et ses sous-dossiers `exports` et `photos`, et `600` sur `candilog.sqlite`, ses journaux WAL et
 SHM ainsi que `candilog.log` **et ses fichiers tournés** (`candilog.log.1` …) — le `umask`
 de session donnerait sinon `755` / `644`, et un journal tourné porte les mêmes lignes que
 le courant. Les

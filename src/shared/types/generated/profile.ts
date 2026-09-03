@@ -74,7 +74,15 @@ export type Language = { name: string, level: string, };
 /**
  * Profile complet persisté dans la ligne singleton `profil`.
  */
-export type Profile = { identity: Identity, experiences: Array<Experience>, skills: Array<Skill>, education: Array<Education>, languages: Array<Language>, projects: Array<Project>, certifications: Array<Certification>, };
+export type Profile = { identity: Identity, 
+/**
+ * Name du fichier de la photo dans le dossier de données, jamais un chemin absolu.
+ *
+ * Hors du formulaire : `profile_save` ne peut pas y toucher, seules les commandes
+ * dédiées la posent ou la retirent. Un écran qui n'affiche pas la photo ne risque donc
+ * pas de l'effacer en enregistrant le reste du profil.
+ */
+photo: string | null, experiences: Array<Experience>, skills: Array<Skill>, education: Array<Education>, languages: Array<Language>, projects: Array<Project>, certifications: Array<Certification>, };
 
 /**
  * Payload utile de l'écran Profile.

@@ -44,11 +44,19 @@ export function ResumePaper({
   editable,
   onChange,
   onOverflowChange,
+  photo = null,
 }: {
   workspace: ResumeWorkspace;
   editable: boolean;
   onChange: ResumeFieldChange;
   onOverflowChange?: (overflow: boolean) => void;
+  /**
+   * Photo du profil en `data:` URL, facultative.
+   *
+   * Absente, l'en-tête reprend toute la largeur du papier et aucun cadre n'est réservé —
+   * exactement comme dans `resume_pdf.rs`.
+   */
+  photo?: string | null;
 }) {
   const { document } = workspace;
   const paperRef = useRef<HTMLElement | null>(null);
@@ -94,7 +102,12 @@ export function ResumePaper({
       ) : null}
       <article ref={paperRef} aria-label="CV" className="resume-paper">
         <div ref={contentRef} className="resume-content">
-          <ResumeHeader identity={document.identity} editable={editable} onChange={onChange} />
+          <ResumeHeader
+            identity={document.identity}
+            editable={editable}
+            onChange={onChange}
+            photo={photo}
+          />
           <main className="flex flex-col gap-[calc(13px*var(--resume-sp))]">
             <ProfileSection profile={document.profile} editable={editable} onChange={onChange} />
             <ExperiencesSection experiences={document.experiences} editable={editable} onChange={onChange} />
@@ -149,10 +162,12 @@ function ResumeHeader({
   identity,
   editable,
   onChange,
+  photo,
 }: {
   identity: ResumeIdentity;
   editable: boolean;
   onChange: ResumeFieldChange;
+  photo: string | null;
 }) {
   const contacts: { label: string; field: Extract<ResumeField, { type: "identity" }>["field"]; value: string | null }[] = [
     { label: "Ville", field: "city", value: identity.city },
@@ -164,7 +179,10 @@ function ResumeHeader({
     { label: "GitHub", field: "github", value: identity.github },
   ];
 
-  return (
+  // Le cadre reprend celui du PDF (26 × 30 mm) et l'image y est inscrite : le rapport
+  // d'origine est conservé, jamais recadré ni étiré. Sans photo, aucun cadre n'existe et
+  // le texte occupe toute la largeur.
+  const entete = (
     <header className="flex flex-col gap-[calc(10px*var(--resume-sp))]">
       <div className="flex flex-col gap-[calc(3px*var(--resume-sp))]">
         <ResumeEditableText
@@ -247,6 +265,19 @@ function ResumeHeader({
         ) : null}
       </div>
     </header>
+  );
+
+  if (photo === null) return entete;
+
+  return (
+    <div className="flex items-start gap-[6mm]">
+      <div className="min-w-0 flex-1">{entete}</div>
+      <img
+        src={photo}
+        alt="Photo de profil"
+        className="max-h-[30mm] max-w-[26mm] flex-none object-contain"
+      />
+    </div>
   );
 }
 

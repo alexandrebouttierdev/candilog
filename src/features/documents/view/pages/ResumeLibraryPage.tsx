@@ -7,6 +7,7 @@ import { useUiStore } from "@/shared/lib/ui-store";
 import { Button, ConfirmDialog, EmptyState, ErrorBanner, Icon, PageHeader, Pager } from "@/shared/ui";
 import { A4Preview, PreviewAction } from "../components/DocumentUi";
 import { ResumePaper } from "../components/ResumePaper";
+import { useProfilePhoto } from "@/features/profile";
 import { PAGE_SIZE } from "@/shared/types/page";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { AtsChip, HeaderBadge, RESUME_KEY, Screen, date, detail as detailErreur, exportPdf, isLegacyGeneration, message } from "./documentPageSupport";
@@ -236,10 +237,14 @@ export function ResumeLibraryPage() {
 }
 
 function ResumeSavedPreview({ version }: { version: ResumeVersion }) {
+  // La photo suit le profil courant, comme à l'export PDF : une version enregistrée avant
+  // son ajout l'affiche donc, et une version rouverte après sa suppression ne l'affiche plus.
+  const photo = useProfilePhoto().data ?? null;
+
   if (isResumeWorkspace(version.content)) {
     return (
       <div className="flex min-h-0 flex-1 justify-center overflow-auto bg-page p-[26px]">
-        <ResumePaper workspace={version.content} editable={false} onChange={() => {}} />
+        <ResumePaper workspace={version.content} editable={false} onChange={() => {}} photo={photo} />
       </div>
     );
   }

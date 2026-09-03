@@ -30,7 +30,7 @@ fn document() -> ResumeDocument {
 /// le contenu placé à sa droite.
 #[test]
 fn le_libelle_de_section_se_replie_dans_sa_colonne() {
-    let octets = build(&document()).render_bytes().unwrap();
+    let octets = build(&document(), None).render_bytes().unwrap();
     let pdf = lopdf::Document::load_mem(&octets).unwrap();
     let texte = pdf.extract_text(&[1]).unwrap().to_uppercase();
 
@@ -44,7 +44,7 @@ fn le_libelle_de_section_se_replie_dans_sa_colonne() {
 /// Un caractère sans glyphe sortait en rectangle vide au lieu d'une espace.
 #[test]
 fn un_caractere_sans_glyphe_ne_sort_pas_en_rectangle() {
-    let octets = build(&document()).render_bytes().unwrap();
+    let octets = build(&document(), None).render_bytes().unwrap();
     let pdf = lopdf::Document::load_mem(&octets).unwrap();
     let texte = pdf.extract_text(&[1]).unwrap();
 

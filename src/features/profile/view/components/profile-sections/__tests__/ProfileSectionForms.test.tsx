@@ -7,6 +7,7 @@ import { ProfileExperiencesForm } from "../ProfileExperiencesForm";
 import { ProfileProjectsForm } from "../ProfileProjectsForm";
 
 const profile: Profile = {
+  photo: null,
   identity: {
     first_name: "Alex",
     name: "Martin",

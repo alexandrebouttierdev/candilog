@@ -269,7 +269,7 @@ async fn chaine_de_generation_de_documents() {
             Ok(workspace) => {
                 ecrire_json(&cas.dossier.join("workspace.json"), &workspace);
                 let debut = Instant::now();
-                let rendu = build(&workspace.document).render_bytes();
+                let rendu = build(&workspace.document, None).render_bytes();
                 compte.cv_pdf_ms = debut.elapsed().as_millis();
                 // Un profil peut avoir pour résultat correct un refus : le CV de Candilog
                 // tient sur une page, et un parcours qui la dépasse doit être annoncé, pas

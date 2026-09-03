@@ -46,6 +46,7 @@ function from(company: Company): CompanyFormInput {
 export function CompanyFormModal({
   open,
   company,
+  defaultName = "",
   busy,
   onClose,
   onSubmit,
@@ -53,6 +54,8 @@ export function CompanyFormModal({
   open: boolean;
   /** `null` en création. */
   company: Company | null;
+  /** Nom prérempli en création, repris de la recherche restée sans résultat. */
+  defaultName?: string;
   busy: boolean;
   onClose: () => void;
   onSubmit: (values: NewCompany) => Promise<unknown>;
@@ -67,11 +70,18 @@ export function CompanyFormModal({
   // La modale n'est démontée qu'à la fermeture : sans réinitialisation à l'ouverture, elle
   // rouvrirait sur les valeurs de l'entité précédemment éditée.
   useEffect(() => {
-    if (open) form.reset(company ? from(company) : VIDE);
-  }, [open, company, form]);
+    if (open) form.reset(company ? from(company) : { ...VIDE, name: defaultName });
+  }, [open, company, defaultName, form]);
 
+  // L'échec d'enregistrement est déjà annoncé par la mutation appelante. Il est intercepté
+  // ici pour que la modale reste ouverte sur la saisie en cours, et pour ne pas laisser
+  // filer un rejet non traité.
   const save = form.handleSubmit(async (values) => {
-    await onSubmit(values);
+    try {
+      await onSubmit(values);
+    } catch {
+      return;
+    }
     onClose();
   });
 

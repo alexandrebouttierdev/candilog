@@ -28,6 +28,7 @@ import {
   versProvider,
   type FournisseurOption,
 } from "../../model/providers";
+import { etatIa, type EtatIa, type TestConnexion } from "../../model/etatIa";
 import { ProviderGrid, defFournisseur, logoFournisseur } from "../components/ProviderGrid";
 import { SettingsBody } from "../components/SettingsUi";
 import { cn } from "@/shared/lib/cn";
@@ -57,7 +58,7 @@ export function AiPage() {
   const [draft, setDraft] = useState<Settings | null>(null);
   const [apiKeyDraft, setApiKeyDraft] = useState("");
   const [models, setModels] = useState<string[]>([]);
-  const [test, setTest] = useState<"idle" | "pending" | "ok" | "error">("idle");
+  const [test, setTest] = useState<TestConnexion>("idle");
   // Préférence locale, appliquée immédiatement : elle ne passe pas par le brouillon des
   // réglages puisqu'elle n'est pas enregistrée en base.
   const [son, setSon] = useState<"on" | "off">(() =>
@@ -169,44 +170,24 @@ export function AiPage() {
         </div>
       ) : (
         <SettingsBody>
-          <div className="flex items-start gap-4 py-1">
-            <span className="flex size-11 flex-none items-center justify-center rounded-control bg-fill">
-              <img
-                src={logo.src}
-                alt=""
-                width={26}
-                height={26}
-                className={cn("size-[26px]", logo.mono && "dark:invert")}
-              />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-eyebrow uppercase text-ink-label">Fournisseur</p>
-              <p className="mt-1 text-title text-ink">{fournisseur.label}</p>
-              <p className="mt-1 truncate text-note text-ink-faint">
-                {fournisseur.hint}
-                {llm.model ? ` · ${llm.model}` : ""}
-              </p>
-            </div>
-            <div className="flex flex-none flex-col items-end gap-1.5 pt-0.5">
-              {test === "ok" ? <StatusPill tone="success">Connecté</StatusPill> : null}
-              {test === "error" ? <StatusPill tone="danger">Hors ligne</StatusPill> : null}
-              {test === "pending" ? <StatusPill tone="neutral">Test…</StatusPill> : null}
-              <Button variant="ghost" icon="wifi" disabled={test === "pending"} onClick={() => void runTest()}>
-                Tester
-              </Button>
-            </div>
-          </div>
-          {testMessage && test === "error" ? (
-            <p className="text-note text-danger" role="status">
-              {testMessage}
-            </p>
-          ) : null}
+          <AiHero
+            logo={logo}
+            label={fournisseur.label}
+            model={llm.model}
+            etat={etatIa(llm, test)}
+            testMessage={test === "error" ? testMessage : null}
+            busy={test === "pending"}
+            onTest={() => void runTest()}
+          />
 
-          <ProviderGrid value={llm.provider} onChange={choisirFournisseur} />
+          <section className="min-w-0">
+            <InspectorSectionLabel>Fournisseur</InspectorSectionLabel>
+            <ProviderGrid value={llm.provider} onChange={choisirFournisseur} />
+          </section>
 
           <div className="grid gap-x-10 gap-y-6 min-[980px]:grid-cols-2">
             <section className="min-w-0">
-              <InspectorSectionLabel>Connexion</InspectorSectionLabel>
+              <InspectorSectionLabel>Configuration</InspectorSectionLabel>
               <div className="flex flex-col gap-3.5">
                 <div className="grid gap-2 min-[520px]:grid-cols-[minmax(0,1fr)_auto] min-[520px]:items-end">
                   <FormField label="Modèle" required>
@@ -310,7 +291,12 @@ export function AiPage() {
                   />
                 </div>
 
-                <InspectorSectionLabel>Apparence</InspectorSectionLabel>
+              </div>
+            </section>
+
+            <section className="min-w-0 min-[980px]:col-span-2">
+              <InspectorSectionLabel>Apparence</InspectorSectionLabel>
+              <div className="flex flex-wrap gap-x-10 gap-y-4">
                 <div>
                   <p className="mb-1.5 text-note text-ink-subtle">Thème</p>
                   <SegmentedControl
@@ -342,5 +328,69 @@ export function AiPage() {
         </SettingsBody>
       )}
     </div>
+  );
+}
+
+/**
+ * En-tête de l'écran : fournisseur actif, modèle, état, action de test.
+ *
+ * Un seul bloc, sans carte ni bordure : l'information la plus utile — « est-ce que ça
+ * marche ? » — doit se lire d'un coup d'œil, pas se déduire de trois panneaux imbriqués.
+ */
+function AiHero({
+  logo,
+  label,
+  model,
+  etat,
+  testMessage,
+  busy,
+  onTest,
+}: {
+  logo: { src: string; mono: boolean };
+  label: string;
+  model: string;
+  etat: EtatIa;
+  /** Message du dernier échec, affiché sous l'état ; `null` sinon. */
+  testMessage: string | null;
+  busy: boolean;
+  onTest: () => void;
+}) {
+  return (
+    <section className="flex flex-wrap items-start gap-4 border-b border-line-soft pb-5">
+      <span className="flex size-12 flex-none items-center justify-center rounded-control bg-fill">
+        <img
+          src={logo.src}
+          alt=""
+          width={28}
+          height={28}
+          className={cn("size-7", logo.mono && "dark:invert")}
+        />
+      </span>
+      <div className="min-w-[220px] flex-1">
+        {/* Pas d'intitulé « Fournisseur » ici : la section juste en dessous porte déjà ce
+            libellé, et le répéter ajoutait un niveau de titre pour rien. */}
+        <p className="text-title text-ink">{label}</p>
+        <p className="mt-1 truncate font-mono tabular text-note text-ink-faint">
+          {model || "Aucun modèle"}
+        </p>
+      </div>
+      <div className="flex flex-none flex-col items-end gap-2 pt-0.5">
+        <StatusPill tone={etat.tone}>{etat.label}</StatusPill>
+        <Button icon="wifi" disabled={busy} onClick={onTest}>
+          Tester la connexion
+        </Button>
+      </div>
+      {testMessage ?? etat.hint ? (
+        <p
+          role="status"
+          className={cn(
+            "w-full text-note leading-relaxed",
+            testMessage ? "text-danger" : "text-ink-faint",
+          )}
+        >
+          {testMessage ?? etat.hint}
+        </p>
+      ) : null}
+    </section>
   );
 }

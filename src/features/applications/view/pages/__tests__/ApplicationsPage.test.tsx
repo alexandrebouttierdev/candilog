@@ -132,3 +132,80 @@ describe("écran Candidatures — création depuis le Kanban", () => {
     await waitFor(() => expect(screen.getByLabelText("Statut")).toHaveValue("ENTRETIEN"));
   });
 });
+
+/** Rendu de la page sur une URL donnée, pour les tests de lien profond. */
+function wrapperSur(url: string) {
+  return function WrapperSur({ children }: { children: ReactNode }) {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    return (
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={[url]}>{children}</MemoryRouter>
+      </QueryClientProvider>
+    );
+  };
+}
+
+describe("écran Candidatures — panneau de détail", () => {
+  it("n'affiche aucun panneau tant qu'aucune candidature n'est sélectionnée", async () => {
+    render(<ApplicationsPage />, { wrapper });
+    await waitFor(() => expect(screen.getByText("Développeur")).toBeInTheDocument());
+    await userEvent.click(screen.getByRole("button", { name: "Liste" }));
+
+    expect(screen.queryByText("Aucune sélection")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Fermer l'inspecteur" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("charge la fiche par son identifiant au clic sur une ligne, puis la referme", async () => {
+    const get = vi.spyOn(applicationService, "get").mockResolvedValue(cand("Développeur"));
+    render(<ApplicationsPage />, { wrapper });
+    await waitFor(() => expect(screen.getByText("Développeur")).toBeInTheDocument());
+    await userEvent.click(screen.getByRole("button", { name: "Liste" }));
+
+    await userEvent.click(screen.getByText("Développeur"));
+
+    expect(
+      await screen.findByRole("complementary", { name: "Développeur" }),
+    ).toBeInTheDocument();
+    expect(get).toHaveBeenCalledWith("Développeur");
+
+    await userEvent.click(screen.getByRole("button", { name: "Fermer l'inspecteur" }));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("complementary", { name: "Développeur" }),
+      ).not.toBeInTheDocument(),
+    );
+  });
+
+  it("ouvre la fiche demandée par l'URL même si elle est absente de la page courante", async () => {
+    const get = vi.spyOn(applicationService, "get").mockResolvedValue(cand("Data Analyst"));
+    render(<ApplicationsPage />, { wrapper: wrapperSur("/candidatures?fiche=Data%20Analyst") });
+
+    expect(
+      await screen.findByRole("complementary", { name: "Data Analyst" }),
+    ).toBeInTheDocument();
+    expect(get).toHaveBeenCalledWith("Data Analyst");
+  });
+
+  it("referme le panneau quand la candidature affichée est supprimée", async () => {
+    vi.spyOn(applicationService, "get").mockResolvedValue(cand("Développeur"));
+    vi.spyOn(applicationService, "delete").mockResolvedValue(undefined);
+    render(<ApplicationsPage />, { wrapper: wrapperSur("/candidatures?fiche=Développeur") });
+
+    const panneau = await screen.findByRole("complementary", { name: "Développeur" });
+    await userEvent.click(within(panneau).getByRole("button", { name: "Supprimer" }));
+
+    const dialog = screen.getByRole("alertdialog", { name: "Supprimer cette candidature ?" });
+    await userEvent.click(within(dialog).getByRole("button", { name: "Supprimer" }));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("complementary", { name: "Développeur" }),
+      ).not.toBeInTheDocument(),
+    );
+  });
+});

@@ -2,7 +2,7 @@
 
 mod cover_letter_pdf;
 mod page;
-mod resume_pdf;
+pub(crate) mod resume_pdf;
 
 pub use cover_letter_pdf::CoverLetterPdf;
 pub use page::{Density, LayoutBounds, Margins, PageSpec, A4, DENSITY_PROFILES};

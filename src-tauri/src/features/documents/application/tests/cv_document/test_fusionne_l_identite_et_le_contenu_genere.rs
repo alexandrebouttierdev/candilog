@@ -4,7 +4,7 @@ use super::*;
 
 #[test]
 fn fusionne_l_identite_et_le_contenu_genere() {
-    let resume = build(&document());
+    let resume = build(&document(), None);
     assert_eq!(resume.name, "Alex Exemple");
     assert_eq!(resume.subtitle, "Administrateur systèmes");
     assert_eq!(resume.profile, "Résumé généré.");

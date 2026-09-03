@@ -31,7 +31,9 @@ Vue React → ViewModel (hook) → service frontend → invoke
 
 Les accès au système restent natifs : dialogues de fichier (`core/files.rs`) et lecture du
 presse-papiers (`core/clipboard.rs`, commande `documents_read_clipboard`). La webview
-n'expose ni l'un ni l'autre, et aucune permission large n'est ouverte côté capacités.
+n'expose ni l'un ni l'autre, et aucune permission large n'est ouverte côté capacités. Elle
+n'a pas non plus accès au dossier de données : la photo de profil, écrite dans
+`AppPaths::photos_dir`, lui parvient en `data:` URL par `profile_photo` (`docs/DATA.md`).
 
 Le `domain` n'importe ni Tauri ni rusqlite. Les vues n'appellent jamais `invoke` directement :
 elles passent par `src/shared/services/ipc.ts`. Les providers IA sont derrière `LlmProvider`.

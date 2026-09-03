@@ -3,8 +3,17 @@ import { useNavigate } from "react-router-dom";
 import { AppError } from "@/shared/types/app-error";
 import type { Profile } from "@/shared/types/generated/profile";
 import { ContextBarAccessory, ContextNote } from "@/app/layout/ContextBar";
-import { Button, Card, CardHeader, EmptyState, ErrorBanner, Icon, PageHeader } from "@/shared/ui";
-import { useProfileViewModel } from "../../viewmodel/useProfileViewModel";
+import {
+  Button,
+  Card,
+  CardHeader,
+  ConfirmDialog,
+  EmptyState,
+  ErrorBanner,
+  Icon,
+  PageHeader,
+} from "@/shared/ui";
+import { useProfilePhoto, useProfileViewModel } from "../../viewmodel/useProfileViewModel";
 import { ProfileSectionModal, type ProfileSection } from "../components/ProfileSectionModal";
 import { ProfileImportModal } from "../components/ProfileImportModal";
 import type { IconName } from "@/shared/ui/icon-names";
@@ -12,6 +21,8 @@ import {
   CompletionBar,
   ProfileIdentity,
   ProfilePanel,
+  ProfilePhotoCard,
+  ProfileResetCard,
   ProfileSkeleton,
   ProfileTabs,
   SectionCard,
@@ -21,10 +32,12 @@ import {
 /** Profile professionnel, objectif et parcours exploités par le générateur de CV. */
 export function ProfilePage() {
   const vm = useProfileViewModel();
+  const photo = useProfilePhoto().data ?? null;
   const navigate = useNavigate();
   const [tab, setTab] = useState<ProfileTab>("experiences");
   const [section, setSection] = useState<ProfileSection | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [resetOuvert, setResetOuvert] = useState(false);
 
   return (
     <div className="flex h-full flex-col">
@@ -56,7 +69,7 @@ export function ProfilePage() {
           <div>
             <div className="border-b border-line bg-surface px-7 pt-[22px]">
               <div className="flex flex-wrap items-start gap-4">
-                <ProfileIdentity identity={vm.data.profile.identity} />
+                <ProfileIdentity identity={vm.data.profile.identity} photo={photo} />
                 <CompletionBar
                   value={vm.data.completion}
                   hint={
@@ -154,6 +167,15 @@ export function ProfilePage() {
                     Analyser un CV
                   </Button>
                 </div>
+
+                <ProfilePhotoCard
+                  photo={photo}
+                  busy={vm.isPhotoBusy}
+                  onPick={() => void vm.setPhoto()}
+                  onRemove={() => void vm.removePhoto()}
+                />
+
+                <ProfileResetCard busy={vm.isResetting} onReset={() => setResetOuvert(true)} />
               </div>
             </div>
           </div>
@@ -161,6 +183,20 @@ export function ProfilePage() {
       </div>
 
       {vm.data && section ? <ProfileSectionModal key={section} section={section} profile={vm.data.profile} busy={vm.isSaving} onClose={() => setSection(null)} onSubmit={vm.save} /> : null}
+      <ConfirmDialog
+        open={resetOuvert}
+        title="Réinitialiser le profil ?"
+        description="Toutes les informations de votre profil seront supprimées, photo comprise."
+        note="Vos candidatures, entreprises, contacts, entretiens et autres données ne sont pas modifiés."
+        confirmLabel="Réinitialiser"
+        busy={vm.isResetting}
+        onCancel={() => setResetOuvert(false)}
+        onConfirm={() => {
+          setResetOuvert(false);
+          void vm.reset();
+        }}
+      />
+
       {vm.data && importOpen ? (
         <ProfileImportModal
           open

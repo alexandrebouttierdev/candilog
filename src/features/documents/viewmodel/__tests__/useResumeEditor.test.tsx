@@ -352,6 +352,7 @@ describe("confirmation d'ajout au profil", () => {
     vi.spyOn(documentsService, "applyResumeProposal").mockResolvedValue(updated);
     const addSkill = vi.spyOn(profileService, "addSkill").mockResolvedValue({
       profile: {
+        photo: null,
         identity: {
           first_name: "Alex",
           name: "Exemple",

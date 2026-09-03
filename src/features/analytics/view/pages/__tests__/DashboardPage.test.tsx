@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import type { ReactNode } from "react";
 import { DashboardPage } from "../DashboardPage";
 import { analyticsService } from "../../../services/analyticsService";
 import type { Dashboard } from "@/shared/types/generated/analytics";
+import { AppError } from "@/shared/types/app-error";
 
 const DASHBOARD_IPC = {
   metrics: {
@@ -80,6 +82,68 @@ describe("écran Aujourd'hui", () => {
     expect(screen.queryByText("Rien de prévu")).not.toBeInTheDocument();
   });
 
+  it("affiche un squelette pendant le chargement", () => {
+    vi.spyOn(analyticsService, "dashboard").mockReturnValue(new Promise(() => undefined));
+
+    render(<DashboardPage />, { wrapper });
+
+    expect(screen.getByRole("status", { name: "Chargement de l'écran" })).toBeInTheDocument();
+  });
+
+  it("propose de réessayer quand le chargement échoue", async () => {
+    const charger = vi
+      .spyOn(analyticsService, "dashboard")
+      .mockRejectedValue(new AppError({ code: "DATABASE_ERROR", message: "Base illisible." }));
+
+    render(<DashboardPage />, { wrapper });
+
+    expect(await screen.findByText("Base illisible.")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Réessayer" }));
+
+    await waitFor(() => expect(charger).toHaveBeenCalledTimes(2));
+  });
+
+  it("montre la répartition du pipeline dès qu'il contient une candidature", async () => {
+    vi.spyOn(analyticsService, "dashboard").mockResolvedValue({
+      ...DASHBOARD_IPC,
+      pipeline: [
+        { label: "En attente", count: 5, percentage: 50 },
+        { label: "Relancées", count: 2, percentage: 20 },
+        { label: "Entretien", count: 2, percentage: 20 },
+        { label: "Refusées", count: 1, percentage: 10 },
+      ],
+    });
+
+    render(<DashboardPage />, { wrapper });
+
+    await waitFor(() => expect(screen.getByText("Pipeline")).toBeInTheDocument());
+    expect(
+      screen.getByRole("img", { name: "Répartition des candidatures par statut" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("En attente")).toBeInTheDocument();
+  });
+
+  it("reste équilibré quand rien n'est prévu mais que des candidatures existent", async () => {
+    vi.spyOn(analyticsService, "dashboard").mockResolvedValue({
+      ...DASHBOARD_IPC,
+      performance: {
+        ...DASHBOARD_IPC.performance,
+        upcoming_interviews: 0,
+        overdue_follow_ups: 0,
+      },
+      upcoming_items: [],
+      pipeline: [{ label: "En attente", count: 3, percentage: 100 }],
+    });
+
+    render(<DashboardPage />, { wrapper });
+
+    // Ni écran vide global, ni simple phrase grise : un vrai état vide de section.
+    await waitFor(() => expect(screen.getByText("Rien de prévu aujourd’hui")).toBeInTheDocument());
+    expect(screen.getByText("Vous êtes à jour.")).toBeInTheDocument();
+    expect(screen.getByText("Prochainement")).toBeInTheDocument();
+    expect(screen.getByText("Pipeline")).toBeInTheDocument();
+  });
+
   it("propose un état vide quand le bureau n'a aucune donnée", async () => {
     vi.spyOn(analyticsService, "dashboard").mockResolvedValue({
       ...DASHBOARD_IPC,
@@ -97,9 +161,16 @@ describe("écran Aujourd'hui", () => {
     render(<DashboardPage />, { wrapper });
 
     await waitFor(() => {
-      expect(screen.getByText("Rien de prévu")).toBeInTheDocument();
+      expect(screen.getByText("Rien de prévu pour aujourd’hui")).toBeInTheDocument();
     });
-    expect(screen.getByRole("button", { name: "Nouvelle candidature" })).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Vous êtes à jour. Ajoutez une candidature pour lancer le suivi, ou revenez sur celles déjà envoyées.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ajouter une candidature" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Voir les candidatures" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Voir les prochains entretiens" })).toBeInTheDocument();
     expect(screen.queryByText("Prochainement")).not.toBeInTheDocument();
   });
 });

@@ -58,7 +58,8 @@ Vue React → ViewModel (hook) → service frontend → ipc() → commande Tauri
    avec `cargo test --manifest-path src-tauri/Cargo.toml`.
 2. **Ne jamais appeler `invoke` hors de `src/shared/services/ipc.ts`** — ESLint l'interdit.
 3. **Ne pas substituer la pile** : rusqlite (pas sqlx), design system maison (pas
-   shadcn/Radix), Zustand pour l'UI seulement, TanStack Query pour les données serveur.
+   shadcn/Radix), Zustand pour l'UI seulement, TanStack Query pour les données serveur,
+   Recharts pour les graphiques (une seule bibliothèque, cf. `docs/DESIGN.md`).
 4. **Ne jamais masquer une erreur** : pas de `any`, `@ts-ignore`, `eslint-disable`,
    `#[allow(...)]` ni `unwrap` applicatif pour faire passer lint, typecheck ou CI. On
    corrige la cause.

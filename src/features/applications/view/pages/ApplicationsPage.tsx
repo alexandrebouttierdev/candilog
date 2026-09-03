@@ -16,7 +16,6 @@ import {
   DataTable,
   EmptyState,
   ErrorBanner,
-  InspectorEmpty,
   Pager,
   SegmentedControl,
   SkeletonRows,
@@ -53,7 +52,16 @@ export function ApplicationsPage() {
   const fermerForm = () => {
     setForm({ ouvert: false, cible: null, statut: null });
     if (searchParams.get("nouvelle") === "1") {
-      setSearchParams({}, { replace: true });
+      // Seul `nouvelle` est consommé : effacer toute la query effacerait aussi la fiche
+      // ouverte dans le panneau de détail.
+      setSearchParams(
+        (actuel) => {
+          const suivant = new URLSearchParams(actuel);
+          suivant.delete("nouvelle");
+          return suivant;
+        },
+        { replace: true },
+      );
     }
   };
 
@@ -350,10 +358,6 @@ export function ApplicationsPage() {
             onDelete={() => setADelete([fiche.id])}
             onStatusChange={(status) => void vm.changeStatus({ id: fiche.id, status })}
           />
-        ) : vm.view === "liste" && vm.total > 0 ? (
-          <aside className="glass-inspector flex w-[380px] flex-none flex-col border-l border-glass-inspector">
-            <InspectorEmpty />
-          </aside>
         ) : null}
       </div>
 

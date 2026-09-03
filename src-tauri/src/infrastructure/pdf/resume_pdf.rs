@@ -9,7 +9,8 @@ use crate::infrastructure::pdf::page::{
 };
 use printpdf::{
     Color, FontId, LinePoint, Mm, Op, PaintMode, ParsedFont, PdfDocument, PdfFontHandle, PdfPage,
-    PdfSaveOptions, Point, Polygon, PolygonRing, Pt, Rgb, TextItem, WindingOrder,
+    PdfSaveOptions, Point, Polygon, PolygonRing, Pt, RawImage, Rgb, TextItem, WindingOrder,
+    XObjectTransform,
 };
 use std::path::Path;
 use unicode_segmentation::UnicodeSegmentation;
@@ -132,6 +133,11 @@ pub struct ResumePdf {
     pub education: Vec<ResumeEducation>,
     pub certifications: Vec<ResumeCertification>,
     pub languages: Vec<ResumeLanguage>,
+    /// Photo du profil en PNG, absente si le profil n'en a pas.
+    ///
+    /// Facultative de bout en bout : sans elle, l'en-tête reprend toute la largeur de la
+    /// page et aucun espace n'est réservé.
+    pub photo: Option<Vec<u8>>,
 }
 
 const MM: f32 = 72.0 / 25.4;
@@ -148,6 +154,15 @@ const SECTION_GAP: f32 = pt(18.0);
 const CONTENT_X: f32 = MARGIN_LEFT + LABEL_W + SECTION_GAP;
 const CONTENT_W: f32 = PAGE_W - MARGIN_RIGHT - CONTENT_X;
 const HEADER_W: f32 = PAGE_W - MARGIN_LEFT - MARGIN_RIGHT;
+/// Cadre maximal de la photo, en haut à droite de l'en-tête.
+///
+/// L'image y est **inscrite**, jamais étirée ni recadrée : elle est réduite jusqu'à tenir
+/// dans le cadre, son rapport largeur / hauteur intact. Une photo plus étroite que le cadre
+/// occupe donc moins de place, et l'en-tête récupère la largeur laissée libre.
+const PHOTO_BOX_W: f32 = 26.0 * MM;
+const PHOTO_BOX_H: f32 = 30.0 * MM;
+/// Gouttière entre la photo et le texte de l'en-tête.
+const PHOTO_GAP: f32 = 6.0 * MM;
 const PX: f32 = 0.75;
 const ASCENT: f32 = 0.8;
 /// Pastilles de compétence : taille de police et rembourrage du gabarit HTML.
@@ -252,7 +267,18 @@ impl ResumePdf {
             overflow: false,
             debordement: None,
             tracking: 0.0,
+            header_w: HEADER_W,
         };
+
+        // La photo est posée avant tout texte : elle décide de la largeur restante pour
+        // l'en-tête. Sans photo, cette largeur reste celle de la page entière.
+        if let Some(bytes) = self.photo.as_deref() {
+            if let Some((image, largeur_px, hauteur_px)) = decoder_photo(bytes) {
+                let identifiant = document.add_image(&image);
+                let (largeur, hauteur) = photo_dessinee(largeur_px, hauteur_px);
+                plan.photo(&identifiant, largeur, hauteur, largeur_px);
+            }
+        }
 
         plan.entete(self);
         plan.section_profile(self);
@@ -271,6 +297,36 @@ impl ResumePdf {
         Ok(Ok(document
             .with_pages(vec![page])
             .save(&PdfSaveOptions::default(), &mut avertissements)))
+    }
+}
+
+/// Décode la photo du profil et rend ses dimensions en pixels.
+///
+/// Un échec de décodage n'interrompt pas l'export : le CV part sans photo plutôt que de
+/// refuser un document dont tout le reste est valide.
+fn decoder_photo(bytes: &[u8]) -> Option<(RawImage, u32, u32)> {
+    let mut avertissements = Vec::new();
+    match RawImage::decode_from_bytes(bytes, &mut avertissements) {
+        Ok(image) => {
+            let largeur = u32::try_from(image.width).ok()?;
+            let hauteur = u32::try_from(image.height).ok()?;
+            (largeur > 0 && hauteur > 0).then_some((image, largeur, hauteur))
+        }
+        Err(error) => {
+            tracing::warn!(%error, "photo de profil non décodée, CV exporté sans photo");
+            None
+        }
+    }
+}
+
+/// Taille de dessin de la photo : inscrite dans son cadre, rapport d'origine conservé.
+fn photo_dessinee(largeur_px: u32, hauteur_px: u32) -> (f32, f32) {
+    let ratio = largeur_px as f32 / hauteur_px as f32;
+    let hauteur_si_pleine_largeur = PHOTO_BOX_W / ratio;
+    if hauteur_si_pleine_largeur <= PHOTO_BOX_H {
+        (PHOTO_BOX_W, hauteur_si_pleine_largeur)
+    } else {
+        (PHOTO_BOX_H * ratio, PHOTO_BOX_H)
     }
 }
 
@@ -346,6 +402,8 @@ struct Plan<'a> {
     debordement: Option<Debordement>,
     /// Interlettrage courant, en cadratins, appliqué au dessin comme à la mesure.
     tracking: f32,
+    /// Largeur disponible pour le texte de l'en-tête, réduite quand une photo l'occupe.
+    header_w: f32,
 }
 
 impl Plan<'_> {
@@ -792,8 +850,36 @@ impl Plan<'_> {
 }
 
 impl Plan<'_> {
+    /// Pose la photo en haut à droite et réduit d'autant la largeur de l'en-tête.
+    ///
+    /// `dpi` est calculé pour que la taille naturelle de l'image corresponde exactement à
+    /// la taille voulue : printpdf ramène sinon toute image à 300 ppp, indépendamment du
+    /// cadre demandé.
+    fn photo(
+        &mut self,
+        identifiant: &printpdf::XObjectId,
+        largeur: f32,
+        hauteur: f32,
+        largeur_px: u32,
+    ) {
+        let x = PAGE_W - MARGIN_RIGHT - largeur;
+        let y_bas = self.pdf_y(MARGIN_TOP + hauteur);
+        self.ops.push(Op::UseXobject {
+            id: identifiant.clone(),
+            transform: XObjectTransform {
+                translate_x: Some(Pt(x)),
+                translate_y: Some(Pt(y_bas)),
+                dpi: Some(largeur_px as f32 * 72.0 / largeur),
+                ..XObjectTransform::default()
+            },
+        });
+        self.header_w = HEADER_W - largeur - PHOTO_GAP;
+    }
+
     fn entete(&mut self, resume: &ResumePdf) {
         self.y = MARGIN_TOP;
+        // Copie locale : les blocs de repli empruntent `self` mutablement.
+        let header_w = self.header_w;
 
         // Nom et titre sont repliés sur la largeur de la feuille, comme dans l'aperçu : un
         // nom composé ou un intitulé long tenait sur une seule ligne et sortait de la page.
@@ -805,7 +891,7 @@ impl Plan<'_> {
                     size: pt(31.0),
                     couleur: rgb(INK.0, INK.1, INK.2),
                     interligne: pt(31.0) * 1.02,
-                    largeur_max: HEADER_W,
+                    largeur_max: header_w,
                 },
                 &resume.name,
             );
@@ -820,7 +906,7 @@ impl Plan<'_> {
                         size: pt(10.4),
                         couleur: rgb(ACCENT.0, ACCENT.1, ACCENT.2),
                         interligne: pt(10.4) * 1.5,
-                        largeur_max: HEADER_W,
+                        largeur_max: header_w,
                     },
                     &resume.subtitle.to_uppercase(),
                 );
@@ -836,7 +922,7 @@ impl Plan<'_> {
                         size: pt(11.4),
                         couleur: rgb(HEADLINE.0, HEADLINE.1, HEADLINE.2),
                         interligne: pt(11.4) * 1.45,
-                        largeur_max: HEADER_W.min(pt(64.0) * 6.0),
+                        largeur_max: header_w.min(pt(64.0) * 6.0),
                     },
                     headline,
                 );
@@ -899,7 +985,7 @@ impl Plan<'_> {
         self.flux_horizontal(
             &StyleFlux {
                 x: MARGIN_LEFT,
-                largeur_max: HEADER_W,
+                largeur_max: self.header_w,
                 face: FontFace::Mono(MonoWeight::Regular),
                 size,
                 couleur: rgb(CONTACT.0, CONTACT.1, CONTACT.2),

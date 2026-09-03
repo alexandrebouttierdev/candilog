@@ -31,6 +31,8 @@ export function EntityPicker({
   describedBy,
   id,
   onChange,
+  onCreate,
+  createLabel,
   fetchPage,
   queryKey,
 }: {
@@ -46,16 +48,28 @@ export function EntityPicker({
   describedBy?: string | undefined;
   id?: string;
   onChange: (id: string | null) => void;
+  /**
+   * Ouvre la création de l'entité recherchée, avec le texte saisi.
+   *
+   * Sans cela, ne pas trouver une entité oblige à quitter le formulaire en cours pour aller
+   * la créer ailleurs, puis à tout ressaisir.
+   */
+  onCreate?: (search: string) => void;
+  /** Verbe de l'action de création, complété par le texte recherché. */
+  createLabel?: string;
   /** Payload une page de résultats pour une recherche donnée. */
   fetchPage: (params: { page: number; page_size: number; search: string }) => Promise<Page<EntityOption>>;
   /** Root de la clé de cache, propre à l'entité recherchée. */
   queryKey: readonly unknown[];
 }) {
   const [ouvert, setOuvert] = useState(false);
-  const [saisie, setSaisie] = useState("");
+  // `null` tant que l'utilisateur n'a rien tapé : le champ affiche alors la sélection
+  // courante. Sans cette distinction, ouvrir un formulaire prérempli effaçait à l'écran la
+  // valeur déjà choisie, puisque le simple focus vidait la saisie.
+  const [saisie, setSaisie] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [selectedOption, setSelectedOption] = useState<EntityOption | null>(null);
-  const recherche = useDebounce(saisie);
+  const recherche = useDebounce(saisie ?? "");
   const conteneur = useRef<HTMLDivElement>(null);
   const listId = useId();
 
@@ -70,13 +84,22 @@ export function EntityPicker({
   useEffect(() => {
     if (!ouvert) return;
     const surClic = (event: MouseEvent) => {
-      if (!conteneur.current?.contains(event.target as Node)) setOuvert(false);
+      if (conteneur.current?.contains(event.target as Node)) return;
+      setOuvert(false);
+      setSaisie(null);
     };
     document.addEventListener("mousedown", surClic);
     return () => document.removeEventListener("mousedown", surClic);
   }, [ouvert]);
 
   const items = resultats.data?.items ?? [];
+  /** Libellé de la sélection, éventuellement connu du seul appelant. */
+  const libelleSelection =
+    (selectedOption?.id === value ? selectedOption.label : selectedLabel) ?? "";
+  // Le texte proposé à la création est la saisie immédiate, pas la valeur retardée : le
+  // bouton doit nommer ce que l'utilisateur voit dans le champ.
+  const aCreer = (saisie ?? "").trim();
+  const creationProposee = onCreate !== undefined && aCreer.length > 0;
 
   return (
     <div ref={conteneur} className="relative">
@@ -95,15 +118,13 @@ export function EntityPicker({
           aria-autocomplete="list"
           aria-invalid={invalid}
           aria-describedby={describedBy}
-          value={
-            ouvert
-              ? saisie
-              : (selectedOption?.id === value ? selectedOption.label : selectedLabel) ?? ""
-          }
+          value={saisie ?? libelleSelection}
           placeholder={placeholder}
-          onFocus={() => {
+          onFocus={(event) => {
             setOuvert(true);
-            setSaisie("");
+            // La sélection reste lisible ; le texte est présélectionné pour que la première
+            // frappe la remplace entièrement, comme dans un champ de recherche natif.
+            event.currentTarget.select();
           }}
           onChange={(event) => {
             setSaisie(event.target.value);
@@ -135,6 +156,10 @@ export function EntityPicker({
         >
           {resultats.isPending ? (
             <p className="px-3 py-3 text-meta text-ink-faint">Recherche…</p>
+          ) : resultats.isError ? (
+            // Un échec de la commande n'est pas une absence de résultat : annoncer « Aucun
+            // résultat » inviterait à créer un doublon d'une entité déjà enregistrée.
+            <p className="px-3 py-3 text-meta text-danger">La recherche a échoué.</p>
           ) : items.length === 0 ? (
             <p className="px-3 py-3 text-meta text-ink-faint">
               {emptyHelp ?? "Aucun résultat."}
@@ -151,6 +176,7 @@ export function EntityPicker({
                       setSelectedOption(option);
                       onChange(option.id);
                       setOuvert(false);
+                      setSaisie(null);
                     }}
                     className={cn(
                       "flex w-full items-center gap-2 px-3 py-2 text-left transition-colors duration-150",
@@ -173,6 +199,21 @@ export function EntityPicker({
               ))}
             </ul>
           )}
+
+          {creationProposee && !resultats.isError ? (
+            <button
+              type="button"
+              onClick={() => {
+                setOuvert(false);
+                setSaisie(null);
+                onCreate(aCreer);
+              }}
+              className="flex w-full items-center gap-2 border-t border-line px-3 py-2 text-left text-body text-accent-text transition-colors duration-150 hover:bg-accent-tint"
+            >
+              <Icon name="add" size={15} className="flex-none" />
+              <span className="min-w-0 flex-1 truncate">{`${createLabel ?? "Créer"} « ${aCreer} »`}</span>
+            </button>
+          ) : null}
 
           {(resultats.data?.total ?? 0) > page_size ? (
             <Pager

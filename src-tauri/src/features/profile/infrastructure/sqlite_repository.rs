@@ -64,6 +64,8 @@ impl ProfileRepository for SqliteProfileRepository {
 #[serde(default)]
 struct StoredProfile {
     personal: StoredIdentity,
+    /// Name du fichier photo, ajouté par Candilog Desktop. Absent des bases héritées.
+    photo: Option<String>,
     experiences: Vec<ExperienceStored>,
     skills: Vec<SkillStored>,
     education: Vec<EducationStored>,
@@ -146,6 +148,7 @@ impl From<StoredProfile> for Profile {
     fn from(value: StoredProfile) -> Self {
         Self {
             identity: value.personal.into(),
+            photo: value.photo,
             experiences: value.experiences.into_iter().map(Into::into).collect(),
             skills: value.skills.into_iter().map(Into::into).collect(),
             education: value.education.into_iter().map(Into::into).collect(),
@@ -160,6 +163,7 @@ impl From<&Profile> for StoredProfile {
     fn from(value: &Profile) -> Self {
         Self {
             personal: (&value.identity).into(),
+            photo: value.photo.clone(),
             experiences: value.experiences.iter().map(Into::into).collect(),
             skills: value.skills.iter().map(Into::into).collect(),
             education: value.education.iter().map(Into::into).collect(),

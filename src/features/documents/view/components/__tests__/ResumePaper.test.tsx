@@ -101,3 +101,32 @@ describe("ResumePaper", () => {
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 });
+
+describe("ResumePaper — photo du profil", () => {
+  const PHOTO =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+
+  it("compose le CV sans réserver d'espace quand aucune photo n'existe", () => {
+    render(
+      <ResumePaper workspace={workspaceFixture()} editable={false} onChange={vi.fn()} photo={null} />,
+    );
+
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+  });
+
+  it("place la photo dans l'en-tête sans la déformer quand elle existe", () => {
+    render(
+      <ResumePaper
+        workspace={workspaceFixture()}
+        editable={false}
+        onChange={vi.fn()}
+        photo={PHOTO}
+      />,
+    );
+
+    const image = screen.getByRole("img", { name: "Photo de profil" });
+    expect(image).toHaveAttribute("src", PHOTO);
+    // `contain` : l'image est inscrite dans son cadre, jamais étirée pour le remplir.
+    expect(image.className).toContain("object-contain");
+  });
+});

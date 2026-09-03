@@ -14,6 +14,7 @@ function wrapper({ children }: { children: ReactNode }) {
 function payload(): ProfilePayload {
   return {
     profile: {
+      photo: null,
       identity: {
         first_name: "Alex",
         name: "Exemple",

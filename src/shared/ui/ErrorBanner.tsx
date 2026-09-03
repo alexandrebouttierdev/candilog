@@ -27,7 +27,7 @@ export function ErrorBanner({
     <Banner tone="danger" icon="error" title={title} message={message}>
       {onRetry ? (
         <Button variant="secondary" icon="refresh" onClick={onRetry}>
-          REssayer
+          Réessayer
         </Button>
       ) : null}
     </Banner>

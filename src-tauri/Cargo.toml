@@ -70,6 +70,14 @@ sha2 = "0.10"
 jsonrepair-rs = "0.2.1"
 pdf-extract = "0.12.0"
 printpdf = { version = "0.12.5", default-features = false, features = ["png"] }
+# Décodage de la photo de profil. Déjà présent dans l'arbre de dépendances — `printpdf`
+# l'utilise —, le déclarer n'ajoute donc aucune crate. Les formats sont restreints à ceux
+# que Candilog accepte : rien ne justifie de lier les décodeurs TIFF, DDS ou HDR.
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
+# Encodage de la photo en `data:` URL pour la webview, qui n'a pas accès au disque. Déjà
+# transitif lui aussi ; l'écrire à la main serait exactement le genre de code à ne pas
+# réimplémenter.
+base64 = "0.22"
 ts-rs = { version = "12", features = ["serde-compat", "uuid-impl", "chrono-impl", "no-serde-warnings"] }
 
 [dev-dependencies]

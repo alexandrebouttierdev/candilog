@@ -107,7 +107,7 @@ impl AppState {
         // Le fichier de base n'existe pas encore au moment où les chemins sont résolus :
         // ses permissions ne peuvent être restreintes qu'une fois la base ouverte.
         paths.securiser();
-        Self::sur_pool(pool, paths.database)
+        Self::sur_pool(pool, paths.database, paths.photos_dir)
     }
 
     /// Construit l'état sur une base **en mémoire**, réservé aux tests.
@@ -117,11 +117,15 @@ impl AppState {
     pub fn in_memory() -> AppResult<Self> {
         let pool = open_pool(None)?;
         run_local_migrations(&pool)?;
-        Self::sur_pool(pool, PathBuf::new())
+        // Dossier de photos propre à l'instance : deux états en mémoire ne doivent pas se
+        // marcher dessus, et rien ne subsiste entre deux exécutions de la suite.
+        let photos_dir =
+            std::env::temp_dir().join(format!("candilog-photos-{}", uuid::Uuid::new_v4()));
+        Self::sur_pool(pool, PathBuf::new(), photos_dir)
     }
 
     /// Assemble dépôts et services autour d'un pool déjà migré.
-    fn sur_pool(pool: SqlitePool, db_path: PathBuf) -> AppResult<Self> {
+    fn sur_pool(pool: SqlitePool, db_path: PathBuf, photos_dir: PathBuf) -> AppResult<Self> {
         // Les référentiels sont semés par `init_schema.sql` : aucune étape d'amorçage n'est
         // nécessaire ici, et les listes sont donc identiques d'une installation à l'autre.
         Ok(Self {
@@ -151,9 +155,10 @@ impl AppState {
                 pool.clone(),
                 db_path.clone(),
             )),
-            profile: Arc::new(ProfileService::new(SqliteProfileRepository::new(
-                pool.clone(),
-            ))),
+            profile: Arc::new(ProfileService::new(
+                SqliteProfileRepository::new(pool.clone()),
+                photos_dir,
+            )),
             followups: Arc::new(FollowUpService::new(SqliteFollowUpRepository::new(
                 pool.clone(),
             ))),

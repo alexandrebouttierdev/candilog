@@ -1,11 +1,23 @@
 import { Link } from "react-router-dom";
-import type { ActivityWeek, Dashboard, UpcomingItem } from "@/shared/types/generated/analytics";
+import type {
+  ActivityWeek,
+  Dashboard,
+  Step,
+  UpcomingItem,
+} from "@/shared/types/generated/analytics";
 import type { Application } from "@/shared/types/generated/applications";
 import { status_meta } from "@/features/applications/model/statuses";
 import { dayOf, timeFromTimestamp } from "@/shared/lib/dates";
 import { cn } from "@/shared/lib/cn";
-import { ActivityChart } from "./AnalyticsUi";
-import { Button, InspectorSectionLabel, Skeleton, StatusPill } from "@/shared/ui";
+import { ActivityChart, PipelineChart } from "./charts";
+import {
+  Button,
+  EmptyState,
+  Icon,
+  InspectorSectionLabel,
+  Skeleton,
+  StatusPill,
+} from "@/shared/ui";
 
 function pad(value: number): string {
   return String(value).padStart(2, "0");
@@ -61,12 +73,20 @@ function initials(value: string): string {
     .toUpperCase();
 }
 
+/**
+ * Le bureau est-il réellement vide ?
+ *
+ * Le pipeline entre dans le calcul : une candidature envoyée hors de la fenêtre d'activité,
+ * sans échéance ni réponse, n'apparaîtrait dans aucun autre compteur. L'écran affichait
+ * alors « rien du tout » à quelqu'un qui suit pourtant des candidatures.
+ */
 export function isTodayEmpty(data: Dashboard): boolean {
   return (
     data.upcoming_items.length === 0 &&
     data.recent.length === 0 &&
     data.performance.overdue_follow_ups === 0 &&
-    data.activity.every((week) => week.count === 0)
+    data.activity.every((week) => week.count === 0) &&
+    data.pipeline.every((step) => step.count === 0)
   );
 }
 
@@ -215,11 +235,30 @@ export function UpcomingRows({
   );
 }
 
-export function UpcomingEmpty() {
+/**
+ * Section « Prochainement » sans échéance.
+ *
+ * Un vrai état vide plutôt qu'une phrase grise : c'est l'état le plus fréquent d'une
+ * recherche bien tenue, et il doit se lire comme une bonne nouvelle, pas comme un trou.
+ */
+export function UpcomingEmpty({ onOpenCalendar }: { onOpenCalendar?: () => void }) {
   return (
-    <p className="py-3 text-note leading-relaxed text-ink-faint">
-      Aucun entretien ni relance n'est programmé.
-    </p>
+    <EmptyState
+      bordered
+      icon="event_available"
+      title="Rien de prévu aujourd’hui"
+      description="Vous êtes à jour."
+      className="py-5"
+      {...(onOpenCalendar
+        ? {
+            action: (
+              <Button icon="calendar_month" onClick={onOpenCalendar}>
+                Ouvrir le calendrier
+              </Button>
+            ),
+          }
+        : {})}
+    />
   );
 }
 
@@ -316,7 +355,10 @@ export function TodoRows({
         ) : null}
       </div>
       {todos.length === 0 ? (
-        <p className="py-3 text-note leading-relaxed text-ink-faint">Rien à traiter aujourd'hui.</p>
+        <p className="flex items-center gap-1.5 py-3 text-note leading-relaxed text-ink-faint">
+          <Icon name="check_circle" size={15} className="flex-none text-success" />
+          Rien à traiter aujourd’hui.
+        </p>
       ) : (
         <ul className="flex flex-col">
           {todos.map((todo) => (
@@ -361,7 +403,13 @@ export function RecentRows({
 }) {
   if (applications.length === 0) {
     return (
-      <p className="py-3 text-note leading-relaxed text-ink-faint">Aucune candidature récente.</p>
+      <EmptyState
+        bordered
+        icon="work"
+        title="Aucune candidature récente"
+        description="Les dernières candidatures enregistrées apparaîtront ici."
+        className="py-5"
+      />
     );
   }
 
@@ -403,29 +451,72 @@ export function TodayActivity({ activity }: { activity: readonly ActivityWeek[] 
         <InspectorSectionLabel>Activité</InspectorSectionLabel>
         <p className="mb-[7px] text-meta text-ink-faint">candidatures / semaine</p>
       </div>
-      <ActivityChart activity={activity} height={72} gap={5} showCounts shortLabels />
+      <ActivityChart activity={activity} height={104} shortLabels />
     </section>
   );
 }
 
-/** Bureau vide : même geste que le briefing, sans horloge factice. */
-export function TodayEmpty({ onCreate }: { onCreate: () => void }) {
+/**
+ * Bureau entièrement vide : aucune échéance, aucune candidature, aucune activité.
+ *
+ * Le geste principal reste unique — créer une candidature — mais les deux raccourcis
+ * secondaires évitent l'impasse d'un écran qui n'offrirait qu'une seule sortie. Aucune
+ * illustration décorative : le design system s'en tient à la pastille d'icône.
+ */
+export function TodayEmpty({
+  onCreate,
+  onOpenApplications,
+  onOpenCalendar,
+}: {
+  onCreate: () => void;
+  onOpenApplications: () => void;
+  onOpenCalendar: () => void;
+}) {
   return (
-    <div className="flex min-h-0 flex-1 items-center px-[18px] pb-16">
-      <div className="max-w-[22rem] border-l-2 border-accent pl-4">
-        <p className="text-eyebrow uppercase text-ink-label">Aujourd'hui</p>
-        <p className="mt-2 text-title text-ink">Rien de prévu</p>
-        <p className="mt-1.5 text-note leading-relaxed text-ink-faint">
-          Le prochain entretien s'affichera ici, avec l'heure en grand. Commence par une
-          candidature.
+    <div className="flex min-h-0 flex-1 items-center justify-center px-[18px] pb-16">
+      <div className="w-full max-w-[30rem] text-center">
+        <span className="mb-4 inline-flex size-[52px] items-center justify-center rounded-overlay bg-accent-tint text-accent">
+          <Icon name="event_available" size={26} />
+        </span>
+        <p className="text-eyebrow uppercase text-ink-label">Aujourd’hui</p>
+        <h2 className="mt-2 text-heading tracking-tight text-ink">Rien de prévu pour aujourd’hui</h2>
+        <p className="mx-auto mt-2.5 max-w-[26rem] text-body leading-relaxed text-ink-faint">
+          Vous êtes à jour. Ajoutez une candidature pour lancer le suivi, ou revenez sur celles
+          déjà envoyées.
         </p>
-        <div className="mt-4">
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-2.5">
           <Button variant="primary" icon="add" onClick={onCreate}>
-            Nouvelle candidature
+            Ajouter une candidature
+          </Button>
+          <Button icon="work" onClick={onOpenApplications}>
+            Voir les candidatures
+          </Button>
+          <Button variant="ghost" icon="calendar_month" onClick={onOpenCalendar}>
+            Voir les prochains entretiens
           </Button>
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Répartition du pipeline, sous le graphique d'activité.
+ *
+ * Le tableau de bord recevait déjà cette donnée du backend sans jamais l'afficher. Elle
+ * donne à la colonne de droite un contenu utile même les jours sans échéance.
+ */
+export function TodayPipeline({ pipeline }: { pipeline: readonly Step[] }) {
+  if (pipeline.reduce((somme, step) => somme + step.count, 0) === 0) return null;
+
+  return (
+    <section className="mt-6" aria-label="Pipeline">
+      <div className="flex items-center gap-2">
+        <InspectorSectionLabel>Pipeline</InspectorSectionLabel>
+        <p className="mb-[7px] text-meta text-ink-faint">toutes périodes</p>
+      </div>
+      <PipelineChart steps={pipeline} />
+    </section>
   );
 }
 

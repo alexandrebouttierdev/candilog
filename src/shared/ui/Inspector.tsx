@@ -1,6 +1,5 @@
 import { useCallback, useRef, useState, type ReactNode } from "react";
 import { cn } from "@/shared/lib/cn";
-import { Icon } from "./Icon";
 import { IconButton } from "./Button";
 import { useDismissable } from "@/shared/hooks/useDismissable";
 import { usePointerDrag } from "@/shared/hooks/usePointerDrag";
@@ -92,25 +91,6 @@ export function Inspector({
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3.5">{children}</div>
     </aside>
-  );
-}
-
-/** État vide de l'inspecteur lorsqu'aucun élément est sélectionné. */
-export function InspectorEmpty({
-  title = "Aucune sélection",
-  description = "Sélectionnez un élément pour afficher son détail ici, sans quitter la liste.",
-}: {
-  title?: string;
-  description?: string;
-}) {
-  return (
-    <div className="flex h-full flex-col items-center justify-center px-6 py-10 text-center">
-      <span className="mb-3 flex size-[46px] items-center justify-center rounded-overlay bg-surface-elevated">
-        <Icon name="left_panel_open" size={23} className="text-ink-label" />
-      </span>
-      <p className="text-item font-semibold text-ink">{title}</p>
-      <p className="mt-1.5 max-w-[230px] text-note text-ink-faint">{description}</p>
-    </div>
   );
 }
 

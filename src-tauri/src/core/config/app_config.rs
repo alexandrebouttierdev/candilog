@@ -31,6 +31,9 @@ pub struct AppPaths {
     pub database: PathBuf,
     /// Dossier d'exports utilisateur.
     pub exports_dir: PathBuf,
+    /// Dossier des photos de profil, hors base : une image n'a pas sa place dans une
+    /// colonne JSON relue à chaque ouverture d'écran.
+    pub photos_dir: PathBuf,
 }
 
 impl AppPaths {
@@ -76,6 +79,7 @@ impl AppPaths {
     pub fn discover_dans(data_dir: &std::path::Path) -> AppResult<Self> {
         let data_dir = data_dir.to_path_buf();
         let exports_dir = data_dir.join("exports");
+        let photos_dir = data_dir.join("photos");
         // `Validation` et non `Database` : à ce stade aucune base n'a été ouverte. La
         // variante `Database` affichait « Le fichier de données de Candilog est illisible ou
         // endommagé » à quelqu'un dont le disque est plein ou le dossier en lecture seule —
@@ -83,7 +87,7 @@ impl AppPaths {
         //
         // Le chemin figure dans le message : c'est celui de l'utilisateur, pas un chemin
         // interne, et sans lui la phrase n'indique rien à corriger.
-        std::fs::create_dir_all(&exports_dir).map_err(|error| {
+        std::fs::create_dir_all(&photos_dir).and_then(|()| std::fs::create_dir_all(&exports_dir)).map_err(|error| {
             // L'erreur système est en anglais et parle en numéros (« os error 13 ») : elle
             // part au journal, où elle sert au diagnostic, et non à l'écran (§1, §13).
             tracing::error!(dossier = %data_dir.display(), %error, "dossier de données non créé");
@@ -98,6 +102,7 @@ impl AppPaths {
             database: data_dir.join(DATABASE_FILE),
             data_dir,
             exports_dir,
+            photos_dir,
         })
     }
 
@@ -133,6 +138,7 @@ impl AppPaths {
         let mut cibles = vec![
             (data_dir.to_path_buf(), 0o700),
             (data_dir.join("exports"), 0o700),
+            (data_dir.join("photos"), 0o700),
             (data_dir.join(DATABASE_FILE), 0o600),
             (data_dir.join("candilog.sqlite-wal"), 0o600),
             (data_dir.join("candilog.sqlite-shm"), 0o600),
@@ -184,6 +190,7 @@ impl AppPaths {
         Self {
             database: data_dir.join(DATABASE_FILE),
             exports_dir: data_dir.join("exports"),
+            photos_dir: data_dir.join("photos"),
             data_dir,
         }
     }

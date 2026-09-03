@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { applicationService } from "../services/applicationService";
 import type {
@@ -34,7 +35,8 @@ export function useApplicationsViewModel() {
   const queryClient = useQueryClient();
   const notify = useUiStore((state) => state.notify);
 
-  const [view, setView] = useState<TrackingView>("kanban");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [view, setVue] = useState<TrackingView>("kanban");
   const [page, setPage] = useState(1);
   const [sizePage, setSizePage] = useState<number>(PAGE_SIZE);
   const [search, setSearch] = useState("");
@@ -42,7 +44,26 @@ export function useApplicationsViewModel() {
   const [filters, setFilters] = useState<ApplicationFilterValues>(FILTER_VIDE);
   const [sort, setSort] = useState<ApplicationSort>("date");
   const [descending, setDescending] = useState(true);
-  const [selected_id, setSelectedId] = useState<string | null>(null);
+
+  // La fiche ouverte vit dans l'URL, pas dans un état local : le Dashboard ouvre une
+  // candidature par `?fiche=<id>`, et le panneau survit ainsi à un rechargement comme à un
+  // retour arrière. Aucune fiche n'est sélectionnée tant que le paramètre est absent.
+  const selected_id = searchParams.get("fiche");
+
+  const selectionner = useCallback(
+    (id: string | null) => {
+      setSearchParams(
+        (actuel) => {
+          const suivant = new URLSearchParams(actuel);
+          if (id === null) suivant.delete("fiche");
+          else suivant.set("fiche", id);
+          return suivant;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
 
   /** Filtre tel qu'envoyé au backend, recherche et tri compris. */
   const filter = useMemo<ApplicationFilter>(
@@ -66,6 +87,15 @@ export function useApplicationsViewModel() {
     queryFn: () => applicationService.breakdown(filter),
   });
 
+  // Le détail est chargé par son identifiant, pas cherché dans `items` : une fiche ouverte
+  // depuis le Dashboard, ou restée sélectionnée après un changement de page, de filtre ou
+  // de tri, n'appartient pas forcément à la page affichée.
+  const detail = useQuery({
+    queryKey: [...APPLICATIONS_KEY, "detail", selected_id],
+    queryFn: () => applicationService.get(selected_id as string),
+    enabled: selected_id !== null,
+  });
+
   const invalider = useCallback(
     () => queryClient.invalidateQueries({ queryKey: APPLICATIONS_KEY }),
     [queryClient],
@@ -86,7 +116,7 @@ export function useApplicationsViewModel() {
     mutationFn: (input: NewApplication) => applicationService.create(input),
     onSuccess: async (application) => {
       await invalider();
-      setSelectedId(application.id);
+      selectionner(application.id);
       notify({
         tone: "success",
         title: "Candidature enregistrée",
@@ -118,8 +148,8 @@ export function useApplicationsViewModel() {
   const suppression = useMutation({
     mutationFn: (id: string) => applicationService.delete(id),
     onSuccess: async (_result, id) => {
+      if (selected_id === id) selectionner(null);
       await invalider();
-      if (selected_id === id) setSelectedId(null);
       notify({ tone: "success", title: "Candidature supprimée" });
     },
     onError: signalerEchec("Suppression impossible"),
@@ -133,8 +163,8 @@ export function useApplicationsViewModel() {
       return ids.length;
     },
     onSuccess: async (count, ids) => {
+      if (selected_id !== null && ids.includes(selected_id)) selectionner(null);
       await invalider();
-      if (selected_id && ids.includes(selected_id)) setSelectedId(null);
       notify({
         tone: "success",
         title: count === 1 ? "Candidature supprimée" : `${count} candidatures supprimées`,
@@ -209,7 +239,20 @@ export function useApplicationsViewModel() {
   );
 
   const items: Application[] = list.data?.items ?? [];
-  const selection = items.find((item) => item.id === selected_id) ?? null;
+  const selection = selected_id === null ? null : (detail.data ?? null);
+
+  // Un `?fiche=` pointant sur une candidature supprimée ou inconnue ne doit pas laisser
+  // l'URL mentir : le paramètre est retiré et l'échec annoncé une seule fois.
+  const detailError = detail.error;
+  useEffect(() => {
+    if (detailError === null) return;
+    selectionner(null);
+    notify({
+      tone: "error",
+      title: "Candidature introuvable",
+      detail: detailError instanceof AppError ? detailError.message : undefined,
+    });
+  }, [detailError, selectionner, notify]);
 
   return {
     view,
@@ -227,12 +270,17 @@ export function useApplicationsViewModel() {
     selection,
     selected_id,
     isLoading: list.isPending,
+    isLoadingDetail: selected_id !== null && detail.isPending,
     error: list.error,
     isSaving: creation.isPending || modification.isPending,
     isDeleting: suppression.isPending || suppressionMultiple.isPending,
     isExporting: exportCsv.isPending,
 
-    setView,
+    /** Change de vue et revient à la première page : le Kanban charge tout le pipeline. */
+    setView: useCallback((suivante: TrackingView) => {
+      setVue(suivante);
+      setPage(1);
+    }, []),
     setPage,
     /** Change la densité de la vue List et revient à la première page. */
     setPageSize: useCallback((size: number) => {
@@ -243,8 +291,9 @@ export function useApplicationsViewModel() {
     appliquerFilters,
     resetFilters,
     trierPar,
-    selectionner: setSelectedId,
-    recharger: () => void list.refetch(),
+    selectionner,
+    /** Recharge la liste, les compteurs et la fiche ouverte, pas seulement la page. */
+    recharger: () => void invalider(),
     create: creation.mutateAsync,
     update: modification.mutateAsync,
     changeStatus: changementStatus.mutateAsync,

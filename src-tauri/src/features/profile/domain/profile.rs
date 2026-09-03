@@ -143,6 +143,13 @@ pub struct Certification {
 pub struct Profile {
     #[serde(default, alias = "identite")]
     pub identity: Identity,
+    /// Name du fichier de la photo dans le dossier de données, jamais un chemin absolu.
+    ///
+    /// Hors du formulaire : `profile_save` ne peut pas y toucher, seules les commandes
+    /// dédiées la posent ou la retirent. Un écran qui n'affiche pas la photo ne risque donc
+    /// pas de l'effacer en enregistrant le reste du profil.
+    #[serde(default, deserialize_with = "option_string_lenient")]
+    pub photo: Option<String>,
     #[serde(default)]
     pub experiences: Vec<Experience>,
     #[serde(default, alias = "competences", deserialize_with = "skills_lenient")]

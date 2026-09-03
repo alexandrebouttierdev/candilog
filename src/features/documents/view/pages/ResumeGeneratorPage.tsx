@@ -10,6 +10,7 @@ import { A4Preview, AiProgress, DocumentPanel, OverflowStatus, UndoRedoControls 
 import { ProfileSkillChoiceDialog } from "../components/ProfileSkillChoiceDialog";
 import { ResumeAtsPanel } from "../components/ResumeAtsPanel";
 import { ResumePaper } from "../components/ResumePaper";
+import { useProfilePhoto } from "@/features/profile";
 import { ChampOffre, HeaderBadge, Screen, exportPdf, generationFromNavigation } from "./documentPageSupport";
 
 export function ResumeGeneratorPage() {
@@ -115,6 +116,8 @@ function ResumeEditorScreen({
 }) {
   const notify = useUiStore((s) => s.notify);
   const editor = useResumeEditor(initial);
+  // La photo suit le profil courant, exactement comme à l'export PDF.
+  const photo = useProfilePhoto().data ?? null;
   const [overflow, setOverflow] = useState(false);
 
   return (
@@ -147,7 +150,13 @@ function ResumeEditorScreen({
         {briefPanel}
         <DocumentPanel title="Aperçu HTML · A4" icon="article" className="flex min-h-0 flex-col">
           <div className="flex min-h-0 flex-1 flex-col items-center gap-3 overflow-auto bg-page p-[26px]">
-            <ResumePaper workspace={editor.workspace} editable onChange={editor.updateField} onOverflowChange={setOverflow} />
+            <ResumePaper
+              workspace={editor.workspace}
+              editable
+              onChange={editor.updateField}
+              onOverflowChange={setOverflow}
+              photo={photo}
+            />
           </div>
         </DocumentPanel>
         <DocumentPanel title="Analyse ATS" icon="query_stats" className="flex min-h-0 flex-col overflow-y-auto">

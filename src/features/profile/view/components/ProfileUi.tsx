@@ -1,7 +1,7 @@
 import type { KeyboardEvent, ReactNode } from "react";
 import type { Identity } from "@/shared/types/generated/profile";
 import { cn } from "@/shared/lib/cn";
-import { Icon, Skeleton } from "@/shared/ui";
+import { Button, Card, CardHeader, Icon, Skeleton } from "@/shared/ui";
 import type { IconName } from "@/shared/ui/icon-names";
 
 export type ProfileTab =
@@ -130,7 +130,14 @@ export function SectionCard({
   );
 }
 
-export function ProfileIdentity({ identity }: { identity: Identity }) {
+export function ProfileIdentity({
+  identity,
+  photo,
+}: {
+  identity: Identity;
+  /** Photo en `data:` URL, ou `null` : la pastille retombe alors sur les initiales. */
+  photo?: string | null;
+}) {
   const name = [identity.first_name, identity.name].filter(Boolean).join(" ") || "Profil à compléter";
   const initials = [identity.first_name, identity.name]
     .filter(Boolean)
@@ -144,9 +151,19 @@ export function ProfileIdentity({ identity }: { identity: Identity }) {
 
   return (
     <div className="flex min-w-[260px] flex-1 items-start gap-4">
-      <span className="flex size-14 flex-none items-center justify-center rounded-full bg-accent-tint text-lg font-strong text-accent">
-        {initials}
-      </span>
+      {photo ? (
+        // Décorative : le nom qu'elle accompagne est juste à côté, et la carte « Photo »
+        // porte déjà l'aperçu nommé.
+        <img
+          src={photo}
+          alt=""
+          className="size-14 flex-none rounded-full border border-line object-cover"
+        />
+      ) : (
+        <span className="flex size-14 flex-none items-center justify-center rounded-full bg-accent-tint text-lg font-strong text-accent">
+          {initials}
+        </span>
+      )}
       <div className="min-w-0">
         <h2 className="text-title text-ink">{name}</h2>
         <p className="mt-1 text-body font-mid text-accent">
@@ -214,6 +231,89 @@ export function ProfileSkeleton() {
         </div>
         <Skeleton className="mt-[18px] h-10 w-full" />
       </div>
+    </div>
+  );
+}
+
+/**
+ * Photo du profil : aperçu, remplacement, suppression.
+ *
+ * Facultative de bout en bout — le profil et les CV fonctionnent sans elle. Le cadre garde
+ * le rapport de l'image (`object-contain`) : c'est celui que reprend l'export PDF.
+ */
+export function ProfilePhotoCard({
+  photo,
+  busy,
+  onPick,
+  onRemove,
+}: {
+  photo: string | null;
+  busy: boolean;
+  onPick: () => void;
+  onRemove: () => void;
+}) {
+  return (
+    <Card clipped>
+      <CardHeader compact icon="photo_camera">
+        Photo
+      </CardHeader>
+      <div className="px-[18px] pt-1 pb-4">
+        {photo ? (
+          <div className="flex items-start gap-3.5">
+            <img
+              src={photo}
+              alt="Photo de profil"
+              className="h-[92px] w-[78px] flex-none rounded-tile border border-line bg-surface-elevated object-contain"
+            />
+            <div className="flex min-w-0 flex-col gap-2">
+              <p className="text-label leading-[1.55] text-ink-muted">
+                Elle apparaît en haut à droite de vos CV, à son rapport d’origine.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button icon="swap_horiz" disabled={busy} onClick={onPick}>
+                  Remplacer la photo
+                </Button>
+                <Button variant="ghost" icon="delete" disabled={busy} onClick={onRemove}>
+                  Supprimer la photo
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-start gap-3.5">
+            <span className="flex h-[92px] w-[78px] flex-none items-center justify-center rounded-tile border border-dashed border-line bg-surface-elevated text-ink-faint">
+              <Icon name="photo_camera" size={22} />
+            </span>
+            <div className="flex min-w-0 flex-col gap-2">
+              <p className="text-label leading-[1.55] text-ink-muted">
+                Facultative. Sans photo, les CV se composent normalement, sans espace réservé.
+              </p>
+              <Button icon="add_a_photo" disabled={busy} onClick={onPick}>
+                Ajouter une photo
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+/** Action destructive du profil, isolée en bas de colonne et clairement signalée. */
+export function ProfileResetCard({ busy, onReset }: { busy: boolean; onReset: () => void }) {
+  return (
+    <div className="rounded-card border border-danger-border bg-danger-tint px-[18px] py-4">
+      <div className="mb-2 flex items-center gap-2">
+        <Icon name="warning" size={18} className="text-danger" />
+        <span className="text-item font-semibold text-danger">Réinitialiser le profil</span>
+      </div>
+      <p className="mb-3 text-label leading-[1.55] text-ink-muted">
+        Efface uniquement les informations de votre profil. Vos candidatures et vos autres
+        données restent intactes.
+      </p>
+      <Button variant="danger" icon="restart_alt" className="w-full" disabled={busy} onClick={onReset}>
+        Réinitialiser mon profil
+      </Button>
     </div>
   );
 }

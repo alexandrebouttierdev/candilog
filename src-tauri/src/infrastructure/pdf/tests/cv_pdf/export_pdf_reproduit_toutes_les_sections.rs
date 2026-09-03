@@ -60,7 +60,7 @@ fn document_complet() -> ResumeDocument {
 
 #[test]
 fn export_pdf_reproduit_toutes_les_sections() {
-    let resume = build(&document_complet());
+    let resume = build(&document_complet(), None);
     let octets = resume.render_bytes().unwrap();
     let document = lopdf::Document::load_mem(&octets).unwrap();
     assert_eq!(document.get_pages().len(), 1);

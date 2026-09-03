@@ -69,21 +69,38 @@ export function useUpdatesViewModel() {
     onError: (caught: unknown) => setError(errorMessage(caught, "Téléchargement impossible.")),
   });
 
+  // Ni `check` ni `download` ne rejettent : leur échec est déjà porté par `error`, que
+  // l'écran affiche. Propager en plus un rejet obligeait chaque appelant à l'attraper pour
+  // ne rien en faire, et un `void vm.check()` laissait filer un rejet non traité.
+  async function check(): Promise<void> {
+    await checkMutation.mutateAsync().catch(() => undefined);
+  }
+
   async function download(): Promise<void> {
     if (!update?.asset) {
-      await settingsService.openReleasePage(officialReleasePage(update?.page_url ?? RELEASES_PAGE));
+      await settingsService
+        .openReleasePage(officialReleasePage(update?.page_url ?? RELEASES_PAGE))
+        .catch(() => setError("Page des versions inaccessible."));
       return;
     }
-    await downloadMutation.mutateAsync();
+    await downloadMutation.mutateAsync().catch(() => undefined);
   }
+
+  // Typé explicitement : la déduction élargirait le ternaire à `string`, et l'écran ne
+  // pourrait plus distinguer une vérification d'un téléchargement.
+  const busy: "check" | "download" | null = checkMutation.isPending
+    ? "check"
+    : downloadMutation.isPending
+      ? "download"
+      : null;
 
   return {
     version: about.data?.version ?? (about.isError ? "inconnue" : "…"),
     update,
-    busy: checkMutation.isPending ? "check" : downloadMutation.isPending ? "download" : null,
+    busy,
     progress,
     error,
-    check: checkMutation.mutateAsync,
+    check,
     download,
   };
 }

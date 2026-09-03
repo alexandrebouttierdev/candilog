@@ -9,8 +9,11 @@ use crate::infrastructure::pdf::{
 };
 
 /// Construit le modèle de CV directement depuis le document enregistré.
+///
+/// `photo` porte les octets PNG de la photo du profil, ou `None` : le CV se compose
+/// exactement de la même façon dans les deux cas, seul l'en-tête diffère.
 #[must_use]
-pub fn build(document: &ResumeDocument) -> ResumePdf {
+pub fn build(document: &ResumeDocument, photo: Option<Vec<u8>>) -> ResumePdf {
     let identity = &document.identity;
     ResumePdf {
         name: identity.full_name.clone(),
@@ -66,6 +69,7 @@ pub fn build(document: &ResumeDocument) -> ResumePdf {
                 level: language.level.clone(),
             })
             .collect(),
+        photo,
     }
 }
 

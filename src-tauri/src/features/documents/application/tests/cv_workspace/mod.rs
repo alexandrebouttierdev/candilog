@@ -14,6 +14,7 @@ use crate::features::profile::domain::{
 
 fn profile() -> Profile {
     Profile {
+        photo: None,
         identity: Identity {
             first_name: "  Alex ".into(),
             name: " Exemple  ".into(),

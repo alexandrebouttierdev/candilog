@@ -17,12 +17,7 @@ export { FormField, controlClasses } from "./FormField";
 export { GlassSurface } from "./GlassSurface";
 export { Icon } from "./Icon";
 export { ICON_NAMES, type IconName } from "./icon-names";
-export {
-  Inspector,
-  InspectorEmpty,
-  InspectorRow,
-  InspectorSectionLabel,
-} from "./Inspector";
+export { Inspector, InspectorRow, InspectorSectionLabel } from "./Inspector";
 export { MasterList, MasterListItem, MasterListTag, initials, wordInitials } from "./MasterList";
 export { ModalHost, ModalSection } from "./ModalHost";
 export { PageHeader, SegmentedControl } from "./PageHeader";

@@ -218,6 +218,17 @@ Références : `ApplicationFilters`, `CompanyFilters`, `ContactFilters`.
 - Kanban : colonnes denses, sélection multiple → actions dans la FilterBar (pas une barre flottante SaaS).
 - Fiche : `Inspector` (380 px, redimensionnable 320–460, glass), rangées `InspectorRow`.
 
+### Graphiques (Aujourd’hui, Analyses)
+
+- Une seule bibliothèque : **Recharts**, en SVG, dans `analytics/view/components/charts`.
+- Couleurs prises dans `chartTheme.ts`, qui ne contient que des `var(--candilog-…)` :
+  le SVG résout la variable au rendu, un changement de thème repeint donc sans re-render.
+- Aucune valeur accessible par le seul survol : axe visible ou liste `sr-only` équivalente.
+- Une seule série → pas de légende, la carte la nomme. Deux séries ou plus → légende
+  systématique, avec libellé **et** compte, car les teintes de statut vert et rouge sont
+  proches pour une deutéranopie.
+- États vides gérés par le graphique lui-même (`EmptyState`), pas par l’écran appelant.
+
 ### Réglages (IA, Sauvegardes, Mises à jour, À propos)
 
 - `PageHeader` + `SettingsBody` (padding 18 / 16 / 22, gap 4, scroll).
@@ -226,6 +237,8 @@ Références : `ApplicationFilters`, `CompanyFilters`, `ContactFilters`.
 - `ActionCard` : **une action** (export, rechercher une MAJ) — pas une grille de bénéfices produit.
 - `SettingsHero` : écrans de **maintenance** (version, sauvegarde), pas un slogan.
 - À propos : identité (logo + nom + version) + faits (`InspectorRow`) + auteur. **Pas** de hero, **pas** de pile technique.
+- IA : bandeau fournisseur (logo, nom, modèle, état, test), puis `Fournisseur`, `Configuration`, `Génération`, `Apparence`. L’état vient de `model/etatIa.ts` et existe **avant** tout test manuel ; la clé API n’est jamais rendue en clair.
+- Mises à jour : version installée, version disponible, état, action. Rien sur le mécanisme de téléchargement — cela n’aide pas à décider.
 
 ### Formulaires
 
@@ -276,6 +289,7 @@ Toujours importer depuis `@/shared/ui` (sauf `SettingsUi`, propre aux réglages)
 | Date / heure | `DateInput` / `TimeInput` (saisie **ou** picker, format FR) |
 | Pagination | `Pager` / `ColumnPager` |
 | KPI compact (Analyses) | `StatCard` — pas en bandeau de chaque écran |
+| Graphique | `analytics/view/components/charts` (Recharts) — jamais des `div` à largeur calculée |
 | Surface glass overlay | classes `glass-popover`, `glass-modal` |
 
 `Card` existe pour des blocs denses déjà dans le design ; ne pas s’en servir pour recréer un dashboard de widgets.

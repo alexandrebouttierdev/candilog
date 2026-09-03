@@ -139,6 +139,44 @@ describe("TodoRows", () => {
         onOpenCalendar={() => {}}
       />,
     );
-    expect(screen.getByText("Rien à traiter aujourd'hui.")).toBeInTheDocument();
+    expect(screen.getByText(/Rien à traiter aujourd’hui\./)).toBeInTheDocument();
+  });
+});
+
+describe("isTodayEmpty", () => {
+  const BASE = {
+    metrics: {
+      applications: 0,
+      interviews: 0,
+      responses: 0,
+      rejected: 0,
+      pending: 0,
+      followed_up: 0,
+      response_rate: 0,
+      interview_rate: 0,
+    },
+    performance: {
+      average_response_days: null,
+      applications_per_week: 0,
+      upcoming_interviews: 0,
+      overdue_follow_ups: 0,
+    },
+    upcoming_items: [],
+    pipeline: [],
+    activity: [],
+    recent: [],
+  };
+
+  it("considère le bureau vide quand aucune donnée n'existe", () => {
+    expect(isTodayEmpty(BASE)).toBe(true);
+  });
+
+  it("ne le considère pas vide dès qu'une candidature est dans le pipeline", () => {
+    expect(
+      isTodayEmpty({
+        ...BASE,
+        pipeline: [{ label: "En attente", count: 1, percentage: 100 }],
+      }),
+    ).toBe(false);
   });
 });

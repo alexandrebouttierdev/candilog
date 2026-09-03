@@ -332,6 +332,7 @@ mod tests {
 
     fn profile_rust() -> Profile {
         Profile {
+            photo: None,
             identity: Identity {
                 first_name: "Camille".into(),
                 name: "Martin".into(),

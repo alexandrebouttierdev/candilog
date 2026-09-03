@@ -9,8 +9,7 @@ import {
 import { versDateAffichee } from "@/shared/lib/dates";
 import { Statuses } from "../../model/statuses";
 import type { Application, NewApplication } from "../../services/applicationService";
-import { useQuery } from "@tanstack/react-query";
-import { companyService } from "@/features/companies/services/companyService";
+import { CompanyPicker, useCompany } from "@/features/companies";
 import {
   ApplicationTypes,
   WeeklyWorkSchedules,
@@ -18,7 +17,6 @@ import {
 } from "@/features/referentials";
 import {
   DateInput,
-  EntityPicker,
   FormField,
   ModalHost,
   Select,
@@ -116,10 +114,17 @@ export function ApplicationFormModal({
 
   const applicationType = useWatch({ control: form.control, name: "application_type" });
   const companyId = useWatch({ control: form.control, name: "company_id" });
-  const company = useQueryCompany(companyId || null).data ?? null;
+  const company = useCompany(companyId || null).data ?? null;
 
+  // L'échec d'enregistrement est déjà annoncé par la mutation appelante. Il est intercepté
+  // ici pour que la modale reste ouverte sur la saisie en cours, et pour ne pas laisser
+  // filer un rejet non traité.
   const save = form.handleSubmit(async (values) => {
-    await onSubmit(values);
+    try {
+      await onSubmit(values);
+    } catch {
+      return;
+    }
     onClose();
   });
 
@@ -162,7 +167,7 @@ export function ApplicationFormModal({
                   control={form.control}
                   name="company_id"
                   render={({ field }) => (
-                    <CompanyFieldPicker
+                    <CompanyPicker
                       id={props.id}
                       describedBy={props["aria-describedby"]}
                       invalid={props["aria-invalid"]}
@@ -368,70 +373,4 @@ export function ApplicationFormModal({
 /** Indication de la valeur héritée de l'entreprise, si elle existe. */
 function heritage(value: string | null, prefix: string): string | undefined {
   return value ? `${prefix} : ${value}` : undefined;
-}
-
-/**
- * Sélecteur d'entreprise du formulaire, branché sur le répertoire paginé.
- *
- * Le libellé de la sélection est chargé séparément : le sélecteur ne connaît que la page
- * courante, et l'entreprise déjà choisie peut n'y figurer pas.
- */
-function CompanyFieldPicker({
-  id,
-  describedBy,
-  invalid,
-  value,
-  onChange,
-}: {
-  id: string;
-  describedBy: string | undefined;
-  invalid: boolean;
-  value: string | null;
-  onChange: (id: string | null) => void;
-}) {
-  const selected = useQueryCompany(value).data ?? null;
-
-  return (
-    <EntityPicker
-      id={id}
-      describedBy={describedBy}
-      invalid={invalid}
-      value={value}
-      selectedLabel={selected?.name ?? null}
-      placeholder="Rechercher une entreprise…"
-      emptyHelp="Aucun résultat. Créez l'entreprise depuis l'écran Relations."
-      queryKey={["entreprises"]}
-      onChange={onChange}
-      fetchPage={async ({ page, page_size, search }) => {
-        const resultat = await companyService.listPage({
-          page,
-          page_size,
-          filter: {
-            search,
-            sector_id: null,
-            company_type_id: null,
-            company_size: null,
-          },
-        });
-        return {
-          ...resultat,
-          items: resultat.items.map((company) => ({
-            id: company.id,
-            label: company.name,
-            meta:
-              [company.sector_name, company.city].filter(Boolean).join(" · ") || undefined,
-          })),
-        };
-      }}
-    />
-  );
-}
-
-/** Fiche complète d'une entreprise, pour son libellé et ses valeurs héritables. */
-function useQueryCompany(id: string | null) {
-  return useQuery({
-    queryKey: ["entreprises", "detail", id],
-    queryFn: () => companyService.get(id as string),
-    enabled: id !== null,
-  });
 }

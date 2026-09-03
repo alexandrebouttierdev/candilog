@@ -77,7 +77,7 @@ describe("ViewModel des mises à jour", () => {
     vi.spyOn(settingsService, "checkUpdate").mockRejectedValue(new Error("hors ligne"));
     const { result } = renderHook(() => useUpdatesViewModel(), { wrapper });
 
-    await act(async () => { await result.current.check().catch(() => undefined); });
+    await act(async () => { await result.current.check(); });
 
     expect(result.current.error).toBe("Vérification impossible.");
   });

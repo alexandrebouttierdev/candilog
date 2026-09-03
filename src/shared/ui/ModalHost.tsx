@@ -1,10 +1,20 @@
 import type { ReactNode } from "react";
-import { useEffect, useRef } from "react";
+import { createContext, useContext, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "./Icon";
 import { Button, IconButton } from "./Button";
 import { useDismissable } from "@/shared/hooks/useDismissable";
 import type { IconName } from "./icon-names";
+
+/**
+ * Profondeur d'imbrication des modales.
+ *
+ * Une modale ouverte depuis le corps d'une autre — créer une entreprise sans quitter le
+ * formulaire de candidature — est un descendant React de la première, portail compris. Le
+ * contexte la superpose donc de façon explicite, sans dépendre de l'ordre d'insertion des
+ * portails dans le document.
+ */
+const ProfondeurModale = createContext(0);
 
 /**
  * Modale du guide : en-tête, corps défilant, pied fixe.
@@ -58,6 +68,7 @@ export function ModalHost({
 }) {
   const panel = useRef<HTMLDivElement>(null);
   const body = useRef<HTMLDivElement>(null);
+  const profondeur = useContext(ProfondeurModale);
 
   useDismissable({ open, onDismiss: onClose, ...(onSubmit ? { onSubmit } : {}) });
 
@@ -80,7 +91,10 @@ export function ModalHost({
   if (!open) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/70 p-[34px] backdrop-blur-[2px]">
+    <div
+      style={{ zIndex: 50 + profondeur * 10 }}
+      className="fixed inset-0 flex items-center justify-center bg-scrim/70 p-[34px] backdrop-blur-[2px]"
+    >
       <div
         ref={panel}
         role="dialog"
@@ -113,7 +127,7 @@ export function ModalHost({
               : "min-h-0 flex-1 overflow-y-auto px-[22px] pt-1.5 pb-[18px]"
           }
         >
-          {children}
+          <ProfondeurModale.Provider value={profondeur + 1}>{children}</ProfondeurModale.Provider>
         </div>
 
         <footer className="flex flex-none flex-wrap items-center gap-3 border-t border-line bg-surface-alt px-[22px] py-3.5">

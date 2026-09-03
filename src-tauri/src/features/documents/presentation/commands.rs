@@ -106,14 +106,21 @@ pub async fn documents_resume_reject_proposal(
 #[tauri::command(rename_all = "snake_case")]
 pub async fn documents_resume_export_pdf(
     app: AppHandle,
+    state: State<'_, AppState>,
     document: ResumeDocument,
 ) -> AppResult<bool> {
     let Some(cible) = select_save_target(&app, "Exporter le CV", "cv.pdf", "Document PDF", "pdf")?
     else {
         return Ok(false);
     };
+    let profile = std::sync::Arc::clone(&state.profile);
     blocking::execute(move || {
-        let bytes = build(&document).render_bytes()?;
+        // La photo suit le profil courant, pas la version de CV enregistrée : un CV rouvert
+        // après suppression de la photo s'exporte sans elle, sans laisser de cadre vide.
+        let photo = profile
+            .photo_path()?
+            .and_then(|chemin| std::fs::read(chemin).ok());
+        let bytes = build(&document, photo).render_bytes()?;
         atomic_write(&cible, "pdf", |temporaire| {
             std::fs::write(temporaire, &bytes).map_err(|error| {
                 tracing::error!(%error, "export PDF impossible");

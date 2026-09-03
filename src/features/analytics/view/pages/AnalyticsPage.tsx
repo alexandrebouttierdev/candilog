@@ -2,12 +2,11 @@ import { useState } from "react";
 import type { ToFollowUp, Period } from "@/shared/types/generated/analytics";
 import { useAnalyticsViewModel } from "../../viewmodel/useAnalyticsViewModel";
 import {
-  ActivityChart,
   AnalyticsSkeleton,
   FollowUpList,
-  FunnelChart,
   PerformanceList,
 } from "../components/AnalyticsUi";
+import { ActivityChart, FunnelChart } from "../components/charts";
 import { ContextBarAccessory, ContextNote } from "@/app/layout/ContextBar";
 import { FollowUpFormModal } from "@/features/followups/view/components/FollowUpFormModal";
 import { AppError } from "@/shared/types/app-error";
@@ -143,7 +142,11 @@ export function AnalyticsPage() {
                 >
                   Candidatures envoyées
                 </CardTitle>
-                <ActivityChart activity={vm.data.activity} height={150} gap={10} />
+                <ActivityChart
+                  activity={vm.data.activity}
+                  height={168}
+                  shortLabels={vm.period !== "trente_days"}
+                />
               </Card>
 
               <Card padded className="flex-[1_1_320px]">
