@@ -74,15 +74,17 @@ export function ProfilePage() {
                   busy={vm.isPhotoBusy}
                   onPick={() => void vm.setPhoto()}
                   onRemove={() => void vm.removePhoto()}
-                />
-                <CompletionBar
-                  value={vm.data.completion}
-                  hint={
-                    vm.data.incomplete_sections.length === 0
-                      ? "Votre profil contient toutes les sections essentielles."
-                      : `Ajoutez ${vm.data.incomplete_sections.slice(0, 2).join(" et ").toLowerCase()} pour atteindre 100 %.`
-                  }
-                />
+                >
+                  <CompletionBar
+                    value={vm.data.completion}
+                    hint={
+                      vm.data.incomplete_sections.length === 0
+                        ? "Votre profil contient toutes les sections essentielles."
+                        : `Ajoutez ${vm.data.incomplete_sections.slice(0, 2).join(" et ").toLowerCase()} pour atteindre 100 %.`
+                    }
+                  />
+                </ProfileIdentity>
+                <ImportCta onOpen={() => setImportOpen(true)} />
               </div>
               <ProfileTabs
                 active={tab}
@@ -159,19 +161,6 @@ export function ProfilePage() {
                     <Row label="Site" value={vm.data.profile.identity.website} />
                   </div>
                 </Card>
-
-                <div className="rounded-card border border-accent-border bg-accent-tint px-[18px] py-4">
-                  <div className="mb-2 flex items-center gap-2">
-                    <Icon name="auto_awesome" size={18} className="text-accent" />
-                    <span className="text-item font-semibold text-accent">Importer depuis un CV</span>
-                  </div>
-                  <p className="mb-3 text-label leading-[1.55] text-ink-muted">
-                    L'IA extrait vos expériences, compétences et formations depuis un PDF. Vous validez chaque champ avant enregistrement.
-                  </p>
-                  <Button variant="primary" icon="upload_file" className="w-full" onClick={() => setImportOpen(true)}>
-                    Analyser un CV
-                  </Button>
-                </div>
 
                 <ProfileResetCard busy={vm.isResetting} onReset={() => setResetOuvert(true)} />
               </div>
@@ -255,6 +244,30 @@ function EducationList({ profile, onEdit }: { profile: Profile; onEdit: () => vo
 function SimpleList({ items, empty, action, onEdit }: { items: { title: string; meta: string | null; body: string | null }[]; empty: string; action: string; onEdit: () => void }) {
   if (items.length === 0) return <Vide icon="add_notes" title={empty} description="Cette section est facultative, mais peut renforcer votre profil." action={action} onEdit={onEdit} />;
   return <ul className="divide-y divide-line">{items.map((item, index) => <li key={`${item.title}-${index}`} className="px-4 py-3"><div className="flex items-baseline justify-between gap-3"><p className="font-medium text-ink">{item.title}</p>{item.meta ? <span className="text-meta text-ink-faint">{item.meta}</span> : null}</div>{item.body ? <p className="mt-1 text-body text-ink-muted">{item.body}</p> : null}</li>)}</ul>;
+}
+
+/**
+ * Appel à l'import de CV, en bout de bandeau.
+ *
+ * Il fait face à l'identité et à sa progression, qui répondent ensemble à « comment compléter
+ * ce profil » ; la carte reléguée en bas de la colonne de droite ne se voyait pas.
+ */
+function ImportCta({ onOpen }: { onOpen: () => void }) {
+  return (
+    <div className="min-w-[230px] max-w-[320px] flex-[1_1_240px] rounded-card border border-accent-border bg-accent-tint px-3.5 py-3">
+      <div className="mb-1.5 flex items-center gap-2">
+        <Icon name="auto_awesome" size={16} className="flex-none text-accent" />
+        <span className="text-label font-semibold text-accent">Importer depuis un CV</span>
+      </div>
+      <p className="mb-2.5 text-meta leading-[1.55] text-ink-muted">
+        L'IA extrait vos expériences, compétences et formations depuis un PDF. Vous validez
+        chaque champ avant enregistrement.
+      </p>
+      <Button variant="primary" icon="upload_file" className="w-full" onClick={onOpen}>
+        Analyser un CV
+      </Button>
+    </div>
+  );
 }
 
 function Vide({ icon, title, description, action, onEdit }: { icon: IconName; title: string; description: string; action: string; onEdit: () => void }) {

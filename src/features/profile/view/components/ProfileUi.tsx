@@ -131,7 +131,7 @@ export function SectionCard({
 }
 
 /**
- * Identité du bandeau, pastille comprise.
+ * Identité du bandeau : pastille, nom, coordonnées, et ce que l'appelant glisse dessous.
  *
  * La photo se change là où elle s'affiche : deux commandes de 24 px sous la pastille, au
  * lieu d'une carte séparée en bas de la colonne de droite. La suppression n'apparaît que
@@ -143,6 +143,7 @@ export function ProfileIdentity({
   busy,
   onPick,
   onRemove,
+  children,
 }: {
   identity: Identity;
   /** Photo en `data:` URL, ou `null` : la pastille retombe alors sur les initiales. */
@@ -150,6 +151,8 @@ export function ProfileIdentity({
   busy: boolean;
   onPick: () => void;
   onRemove: () => void;
+  /** Complément aligné sous les coordonnées, dans la colonne du nom. */
+  children?: ReactNode;
 }) {
   const name = [identity.first_name, identity.name].filter(Boolean).join(" ") || "Profil à compléter";
   const initials = [identity.first_name, identity.name]
@@ -213,6 +216,7 @@ export function ProfileIdentity({
             ))}
           </div>
         ) : null}
+        {children ? <div className="mt-3.5">{children}</div> : null}
       </div>
     </div>
   );

@@ -121,6 +121,25 @@ describe("écran Profil — photo", () => {
   });
 });
 
+describe("écran Profil — import de CV", () => {
+  it("propose l'import dans le bandeau, après la progression du profil", async () => {
+    render(<ProfilePage />, { wrapper });
+
+    const onglets = await screen.findByRole("tablist", { name: "Sections du profil" });
+    const progression = screen.getByRole("progressbar", { name: "Profil complété" });
+    const bouton = screen.getByRole("button", { name: "Analyser un CV" });
+
+    // Le bloc suit la barre de progression et précède les onglets : il est donc en bout de
+    // bandeau, et non plus en bas de la colonne de droite.
+    expect(progression.compareDocumentPosition(bouton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(bouton.compareDocumentPosition(onglets) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    await userEvent.click(bouton);
+
+    expect(await screen.findByRole("dialog", { name: "Importer depuis un CV" })).toBeInTheDocument();
+  });
+});
+
 describe("écran Profil — réinitialisation", () => {
   it("ne réinitialise rien tant que la confirmation n'est pas donnée", async () => {
     const reset = vi.spyOn(profileService, "reset");

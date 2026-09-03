@@ -1,8 +1,9 @@
 import { ContextBarAccessory, ContextNote } from "@/app/layout/ContextBar";
 import { Button, Icon, PageHeader, StatusPill } from "@/shared/ui";
+import { cn } from "@/shared/lib/cn";
 import type { UpdateInfo } from "@/shared/types/generated/settings";
 import { useUpdatesViewModel } from "../../viewmodel/useUpdatesViewModel";
-import { SettingsBody } from "../components/SettingsUi";
+import { SettingsBody, SettingsCard } from "../components/SettingsUi";
 
 /**
  * Mises à jour : version installée, disponibilité, action.
@@ -26,80 +27,125 @@ export function UpdatesPage() {
         subtitle="Candilog ne vérifie rien sans votre demande"
       />
       <SettingsBody>
-        <section className="flex flex-wrap items-start gap-x-10 gap-y-5 border-b border-line-soft pb-6">
-          <div className="min-w-[200px] flex-1">
-            <p className="text-eyebrow uppercase text-ink-label">Version installée</p>
-            <p className="mt-1.5 font-mono tabular text-heading tracking-tight text-ink">
-              {vm.version}
-            </p>
-          </div>
+        {/* Colonne bornée et blocs sur surface, comme l'écran Intelligence artificielle :
+            l'écran ne porte que quatre faits, les étaler sur 1200 px les dilue. */}
+        <div className="flex min-w-0 max-w-[760px] flex-col gap-4">
+          <section className="min-w-0 overflow-hidden rounded-card border border-line bg-surface">
+            <div className="flex flex-wrap items-start gap-x-4 gap-y-3 px-[18px] py-4">
+              <Vignette update={vm.update} error={vm.error} installerOpened={vm.installerOpened} />
+              <div className="min-w-[200px] flex-1">
+                <Message
+                  update={vm.update}
+                  busy={vm.busy}
+                  error={vm.error}
+                  installerOpened={vm.installerOpened}
+                />
+              </div>
+              <div className="flex flex-none flex-col items-end gap-2.5">
+                <Etat update={vm.update} busy={vm.busy} installerOpened={vm.installerOpened} />
+                {vm.update ? (
+                  <Button
+                    variant="primary"
+                    icon="download"
+                    disabled={enCours}
+                    onClick={() => void vm.download()}
+                  >
+                    Mettre à jour
+                  </Button>
+                ) : (
+                  <Button icon="refresh" disabled={enCours} onClick={() => void vm.check()}>
+                    Rechercher une mise à jour
+                  </Button>
+                )}
+              </div>
+            </div>
 
-          {vm.update ? (
-            <div className="min-w-[200px] flex-1">
-              <p className="text-eyebrow uppercase text-ink-label">Nouvelle version</p>
-              <p className="mt-1.5 font-mono tabular text-heading tracking-tight text-accent-text">
-                {vm.update.version}
+            <div className="flex flex-wrap gap-x-10 gap-y-4 border-t border-line px-[18px] py-4">
+              <div className="min-w-[150px] flex-1">
+                <p className="text-eyebrow uppercase text-ink-label">Version installée</p>
+                <p className="mt-1.5 font-mono tabular text-heading tracking-tight text-ink">
+                  {vm.version}
+                </p>
+              </div>
+              {vm.update ? (
+                <div className="min-w-[150px] flex-1">
+                  <p className="text-eyebrow uppercase text-ink-label">Nouvelle version</p>
+                  <p className="mt-1.5 font-mono tabular text-heading tracking-tight text-accent-text">
+                    {vm.update.version}
+                  </p>
+                </div>
+              ) : null}
+            </div>
+
+            {vm.progress !== null && !vm.installerOpened ? (
+              <div className="border-t border-line px-[18px] py-4" aria-label="Téléchargement">
+                <div
+                  role="progressbar"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={vm.progress}
+                  aria-label="Téléchargement de la mise à jour"
+                  className="h-1.5 overflow-hidden rounded-pill bg-neutral-tint"
+                >
+                  <div
+                    className="h-full bg-accent transition-[width] duration-hover"
+                    style={{ width: `${vm.progress}%` }}
+                  />
+                </div>
+                <p className="mt-2 font-mono tabular text-meta text-ink-faint">
+                  {vm.progress} % téléchargés
+                </p>
+              </div>
+            ) : null}
+          </section>
+
+          {vm.update?.notes ? (
+            <SettingsCard icon="new_releases" title="Nouveautés">
+              <p className="text-body leading-relaxed whitespace-pre-line text-ink-muted">
+                {vm.update.notes}
               </p>
-            </div>
+            </SettingsCard>
           ) : null}
-
-          <div className="flex flex-none flex-col items-end gap-2.5 pt-0.5">
-            <Etat update={vm.update} busy={vm.busy} installerOpened={vm.installerOpened} />
-            {vm.update ? (
-              <Button
-                variant="primary"
-                icon="download"
-                disabled={enCours}
-                onClick={() => void vm.download()}
-              >
-                Mettre à jour
-              </Button>
-            ) : (
-              <Button icon="refresh" disabled={enCours} onClick={() => void vm.check()}>
-                Rechercher une mise à jour
-              </Button>
-            )}
-          </div>
-        </section>
-
-        <Message
-          update={vm.update}
-          busy={vm.busy}
-          error={vm.error}
-          installerOpened={vm.installerOpened}
-        />
-
-        {vm.progress !== null && !vm.installerOpened ? (
-          <section aria-label="Téléchargement">
-            <div
-              role="progressbar"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={vm.progress}
-              aria-label="Téléchargement de la mise à jour"
-              className="h-1.5 overflow-hidden rounded-pill bg-neutral-tint"
-            >
-              <div
-                className="h-full bg-accent transition-[width] duration-hover"
-                style={{ width: `${vm.progress}%` }}
-              />
-            </div>
-            <p className="mt-2 font-mono tabular text-meta text-ink-faint">
-              {vm.progress} % téléchargés
-            </p>
-          </section>
-        ) : null}
-
-        {vm.update?.notes ? (
-          <section className="min-w-0">
-            <p className="text-eyebrow uppercase text-ink-label">Nouveautés</p>
-            <p className="mt-2 max-w-2xl text-body leading-relaxed whitespace-pre-line text-ink-muted">
-              {vm.update.notes}
-            </p>
-          </section>
-        ) : null}
+        </div>
       </SettingsBody>
     </div>
+  );
+}
+
+/**
+ * Vignette d'état : elle reprend le sens de la pastille, en plus gros et sans mot.
+ *
+ * Un rectangle neutre aurait décoré sans informer ; ici la couleur et l'icône disent déjà
+ * si l'on doit agir, avant même de lire la phrase.
+ */
+function Vignette({
+  update,
+  error,
+  installerOpened,
+}: {
+  update: UpdateInfo | null | undefined;
+  error: string | null;
+  installerOpened: boolean;
+}) {
+  const apparence =
+    error !== null
+      ? { icon: "warning" as const, classes: "bg-danger-tint text-danger" }
+      : installerOpened || update
+        ? { icon: "new_releases" as const, classes: "bg-success-tint text-success" }
+        : update === null
+          ? { icon: "check_circle" as const, classes: "bg-success-tint text-success" }
+          : { icon: "system_update" as const, classes: "bg-fill text-ink-muted" };
+
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "flex size-11 flex-none items-center justify-center rounded-tile",
+        apparence.classes,
+      )}
+    >
+      <Icon name={apparence.icon} size={22} />
+    </span>
   );
 }
 
