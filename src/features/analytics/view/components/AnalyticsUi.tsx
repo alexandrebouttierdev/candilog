@@ -117,9 +117,9 @@ export function AnalyticsSkeleton() {
     <div
       role="status"
       aria-label="Chargement en cours"
-      className="px-7 pt-[22px] pb-8"
+      className="flex flex-col gap-4 px-[18px] pt-4 pb-[22px]"
     >
-      <div className="mb-4 grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr))]">
+      <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr))]">
         {Array.from({ length: 4 }, (_, index) => (
           <div key={index} className="rounded-card border border-line bg-surface px-[18px] py-4">
             <Skeleton className="h-3 w-24" />
@@ -127,11 +127,11 @@ export function AnalyticsSkeleton() {
           </div>
         ))}
       </div>
-      <div className="mb-4 grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr))]">
+      <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr))]">
         <Skeleton className="h-[232px] rounded-card" />
         <Skeleton className="h-[232px] rounded-card" />
       </div>
-      <Skeleton className="mb-4 h-[124px] rounded-card" />
+      <Skeleton className="h-[124px] rounded-card" />
       <Skeleton className="h-[300px] rounded-card" />
     </div>
   );

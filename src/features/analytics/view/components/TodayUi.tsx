@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import type {
   ActivityWeek,
@@ -14,7 +15,6 @@ import {
   Button,
   EmptyState,
   Icon,
-  InspectorSectionLabel,
   Skeleton,
   StatusPill,
 } from "@/shared/ui";
@@ -91,6 +91,45 @@ export function isTodayEmpty(data: Dashboard): boolean {
 }
 
 /** Compteurs du mois : kicker, chiffres mono, filets. Pas de cartes. */
+/**
+ * Panneau de l'écran Aujourd'hui : intitulé, contenu, sur la surface.
+ *
+ * Les blocs étaient posés à même le fond de page et séparés par des filets ; sur une
+ * fenêtre large, plus rien ne les tenait ensemble. Le panneau nommé donne aussi à chaque
+ * bloc une région repérable au lecteur d'écran.
+ */
+export function TodayCard({
+  label,
+  hint,
+  badge,
+  action,
+  children,
+}: {
+  label: string;
+  /** Précision d'unité ou de période, à côté de l'intitulé. */
+  hint?: string;
+  badge?: ReactNode;
+  action?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section
+      aria-label={label}
+      className="min-w-0 rounded-card border border-line bg-surface px-[18px] py-4"
+    >
+      <header className="mb-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <p className="text-eyebrow uppercase tracking-[0.07em] text-ink-label">{label}</p>
+          {hint ? <p className="text-meta text-ink-faint">{hint}</p> : null}
+          {badge}
+        </div>
+        {action}
+      </header>
+      {children}
+    </section>
+  );
+}
+
 export function TodayStats({
   applications,
   responses,
@@ -107,8 +146,7 @@ export function TodayStats({
   ];
 
   return (
-    <div className="mb-6 border-b border-line-soft pb-4">
-      <p className="mb-3 text-eyebrow uppercase text-ink-label">30 derniers jours</p>
+    <TodayCard label="30 derniers jours">
       <dl className="flex flex-wrap items-start gap-y-3">
         {items.map((item, index) => (
           <div
@@ -122,7 +160,7 @@ export function TodayStats({
           </div>
         ))}
       </dl>
-    </div>
+    </TodayCard>
   );
 }
 
@@ -323,22 +361,23 @@ export function TodoRows({
   const todos = buildTodos(overdue, items, now);
 
   return (
-    <section className="mt-6" aria-label="À faire">
-      <div className="flex items-center gap-2">
-        <InspectorSectionLabel>À faire</InspectorSectionLabel>
-        {todos.length > 0 ? (
+    <TodayCard
+      label="À faire"
+      badge={
+        todos.length > 0 ? (
           <span
             aria-label={`${todos.length} à faire`}
             className={cn(
-              "mb-[7px] inline-flex h-5 min-w-5 items-center justify-center rounded-chip px-1.5",
+              "inline-flex h-5 min-w-5 items-center justify-center rounded-chip px-1.5",
               "font-mono tabular text-note font-semibold",
               todos.some((todo) => todo.warn) ? "bg-warning-tint text-warning" : "bg-fill text-ink",
             )}
           >
             {todos.length}
           </span>
-        ) : null}
-      </div>
+        ) : null
+      }
+    >
       {todos.length === 0 ? (
         <p className="flex items-center gap-1.5 py-3 text-note leading-relaxed text-ink-faint">
           <Icon name="check_circle" size={15} className="flex-none text-success" />
@@ -375,7 +414,7 @@ export function TodoRows({
           ))}
         </ul>
       )}
-    </section>
+    </TodayCard>
   );
 }
 
@@ -431,13 +470,9 @@ export function TodayActivity({ activity }: { activity: readonly ActivityWeek[] 
   if (activity.every((week) => week.count === 0)) return null;
 
   return (
-    <section className="mt-6" aria-label="Activité">
-      <div className="flex items-center gap-2">
-        <InspectorSectionLabel>Activité</InspectorSectionLabel>
-        <p className="mb-[7px] text-meta text-ink-faint">candidatures / semaine</p>
-      </div>
+    <TodayCard label="Activité" hint="candidatures / semaine">
       <ActivityChart activity={activity} height={104} shortLabels />
-    </section>
+    </TodayCard>
   );
 }
 
@@ -495,42 +530,28 @@ export function TodayPipeline({ pipeline }: { pipeline: readonly Step[] }) {
   if (pipeline.reduce((somme, step) => somme + step.count, 0) === 0) return null;
 
   return (
-    <section className="mt-6" aria-label="Pipeline">
-      <div className="flex items-center gap-2">
-        <InspectorSectionLabel>Pipeline</InspectorSectionLabel>
-        <p className="mb-[7px] text-meta text-ink-faint">toutes périodes</p>
-      </div>
+    <TodayCard label="Pipeline" hint="toutes périodes">
       <PipelineChart steps={pipeline} />
-    </section>
+    </TodayCard>
   );
 }
 
 export function TodaySkeleton() {
   return (
-    <div className="px-[18px] pt-4 pb-[22px]" role="status" aria-label="Chargement de l'écran">
-      <div className="mb-6 border-b border-line-soft pb-4">
-        <Skeleton className="mb-3 h-2.5 w-24" />
-        <div className="flex gap-7">
-          {Array.from({ length: 3 }, (_, index) => (
-            <div key={index} className={cn(index > 0 && "border-l border-field pl-7")}>
-              <Skeleton className="h-5 w-8" />
-              <Skeleton className="mt-1.5 h-2.5 w-16" />
-            </div>
-          ))}
+    <div
+      className="flex flex-col gap-4 px-[18px] pt-4 pb-[22px]"
+      role="status"
+      aria-label="Chargement de l'écran"
+    >
+      <Skeleton className="h-[86px] w-full rounded-card" />
+      <div className="grid gap-4 min-[1280px]:grid-cols-2">
+        <div className="flex flex-col gap-4">
+          <Skeleton className="h-[168px] w-full rounded-card" />
+          <Skeleton className="h-[136px] w-full rounded-card" />
         </div>
-      </div>
-      <div className="grid gap-8 min-[1280px]:grid-cols-2">
-        <div>
-          <Skeleton className="mb-3 h-2.5 w-24" />
-          <Skeleton className="h-[72px] w-full" />
-          <Skeleton className="mt-3 h-10 w-full" />
-          <Skeleton className="mt-1 h-10 w-full" />
-        </div>
-        <div>
-          <Skeleton className="mb-3 h-2.5 w-32" />
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="mt-1 h-10 w-full" />
-          <Skeleton className="mt-1 h-10 w-full" />
+        <div className="flex flex-col gap-4">
+          <Skeleton className="h-[168px] w-full rounded-card" />
+          <Skeleton className="h-[136px] w-full rounded-card" />
         </div>
       </div>
     </div>

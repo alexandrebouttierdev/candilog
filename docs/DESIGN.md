@@ -219,6 +219,16 @@ Références : `ApplicationFilters`, `CompanyFilters`, `ContactFilters`.
   sélection multiple → actions dans la FilterBar (pas une barre flottante SaaS).
 - Fiche : `Inspector` (380 px, redimensionnable 320–460, glass), rangées `InspectorRow`.
 
+### Tableau de bord (Aujourd’hui)
+
+- Blocs sur `bg-surface` dans des `TodayCard` (`analytics/view/components/TodayUi.tsx`) :
+  intitulé en eyebrow, pastille de compte ou action à droite, contenu dessous. Pas de
+  bandes posées à même le fond de page ni de filet vertical entre les colonnes.
+- Bandeau de compteurs pleine largeur, puis deux colonnes : `Prochainement` et `À faire`
+  à gauche, `Candidatures récentes`, `Activité` et `Pipeline` à droite.
+- Chaque panneau est une région nommée : `aria-label` égal à son intitulé.
+- Bureau entièrement vide : `TodayEmpty` prend l’écran, sans panneau.
+
 ### Graphiques (Aujourd’hui, Analyses)
 
 - Une seule bibliothèque : **Recharts**, en SVG, dans `analytics/view/components/charts`.

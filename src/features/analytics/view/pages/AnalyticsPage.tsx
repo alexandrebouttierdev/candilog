@@ -72,7 +72,7 @@ export function AnalyticsPage() {
         {vm.isLoading ? (
           <AnalyticsSkeleton />
         ) : vm.error || !vm.data ? (
-          <div className="px-7 pt-[22px]">
+          <div className="px-[18px] pt-4">
             <ErrorBanner
               message={
                 vm.error instanceof AppError
@@ -83,8 +83,8 @@ export function AnalyticsPage() {
             />
           </div>
         ) : (
-          <div className="px-7 pt-[22px] pb-8">
-            <div className="mb-4 grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(min(190px,100%),1fr))]">
+          <div className="flex flex-col gap-4 px-[18px] pt-4 pb-[22px]">
+            <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(190px,100%),1fr))]">
               <StatCard
                 icon="work"
                 tone="accent"
@@ -125,7 +125,7 @@ export function AnalyticsPage() {
               />
             </div>
 
-            <div className="mb-4 flex flex-wrap items-start gap-3.5">
+            <div className="flex flex-wrap items-start gap-4">
               <Card padded className="flex-[1_1_480px]">
                 <CardTitle
                   icon="bar_chart_4_bars"
@@ -157,7 +157,7 @@ export function AnalyticsPage() {
               </Card>
             </div>
 
-            <div className="flex flex-wrap items-start gap-3.5">
+            <div className="flex flex-wrap items-start gap-4">
               <Card clipped className="flex-[1_1_420px]">
                 <CardHeader
                   icon="notifications_active"

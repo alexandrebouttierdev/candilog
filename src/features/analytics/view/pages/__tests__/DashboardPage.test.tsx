@@ -75,10 +75,12 @@ describe("écran Aujourd'hui", () => {
     });
     expect(screen.getByText("10")).toBeInTheDocument();
     expect(screen.getByText("Prochainement")).toBeInTheDocument();
-    const stats = screen.getByText("30 derniers jours").parentElement;
-    expect(stats).toBeTruthy();
+    // Chaque bloc de l'écran est un panneau nommé posé sur la surface, pas une bande à filet.
+    const stats = screen.getByRole("region", { name: "30 derniers jours" });
     expect(stats).toHaveTextContent("Entretiens2");
     expect(stats).not.toHaveTextContent("À relancer");
+    expect(screen.getByRole("region", { name: "Prochainement" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Candidatures récentes" })).toBeInTheDocument();
     expect(screen.getByText("Relancer les candidatures en retard")).toBeInTheDocument();
     expect(screen.getAllByText("Nova Digital").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Atlas Studio").length).toBeGreaterThan(0);
