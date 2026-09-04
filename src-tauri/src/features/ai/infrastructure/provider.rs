@@ -61,16 +61,15 @@ fn segment_url(valeur: &str) -> String {
         .collect()
 }
 
-/// Texte produit par un appel, et le nombre de jetons qu'il a consommés si le fournisseur
+/// Texte produit par un appel, et le nombre de tokens qu'il a consommés si le fournisseur
 /// le rapporte.
 ///
-/// `tokens` vaut `0` pour un fournisseur qui ne renvoie aucune métrique d'usage (certains
-/// points de terminaison personnalisés, notamment) : c'est une absence de donnée, pas une
-/// génération gratuite, mais rien ne permet de la distinguer d'un vrai zéro.
+/// `tokens` vaut `None` pour un fournisseur qui ne renvoie aucune métrique d'usage, afin de
+/// ne pas présenter une absence de donnée comme une génération gratuite.
 #[derive(Debug)]
 pub struct GenerationOutput {
     pub text: String,
-    pub tokens: u32,
+    pub tokens: Option<u32>,
 }
 
 #[async_trait]
@@ -396,29 +395,42 @@ fn text(value: &serde_json::Value, pointer: &str) -> AppResult<String> {
         .ok_or_else(|| AppError::Provider("Le fournisseur IA a renvoyé une réponse vide".into()))
 }
 
-/// Jetons consommés par un appel, si le fournisseur les rapporte.
+/// Tokens consommés par un appel, si le fournisseur les rapporte.
 ///
 /// Chaque fournisseur place ce total à un endroit différent — OpenAI et compatibles sous
 /// `usage.total_tokens`, Claude sous deux compteurs séparés sans total, Gemini sous
 /// `usageMetadata`, Ollama à la racine — et un point de terminaison personnalisé peut
 /// n'en rapporter aucun. Best-effort volontaire : l'absence de métrique ne doit jamais faire
-/// échouer une génération par ailleurs réussie, elle se traduit juste par `0`.
-fn total_tokens(value: &serde_json::Value) -> u32 {
+/// échouer une génération par ailleurs réussie, elle se traduit par `None`.
+fn total_tokens(value: &serde_json::Value) -> Option<u32> {
     let u64_at = |pointer: &str| value.pointer(pointer).and_then(serde_json::Value::as_u64);
+    let bounded = |value: u64| value.min(u64::from(u32::MAX)) as u32;
 
     if let Some(total) = u64_at("/usage/total_tokens") {
-        return total as u32;
+        return Some(bounded(total));
     }
     if let Some(total) = u64_at("/usageMetadata/totalTokenCount") {
-        return total as u32;
+        return Some(bounded(total));
     }
-    let claude =
-        u64_at("/usage/input_tokens").unwrap_or(0) + u64_at("/usage/output_tokens").unwrap_or(0);
-    if claude > 0 {
-        return claude as u32;
+    let claude_input = u64_at("/usage/input_tokens");
+    let claude_output = u64_at("/usage/output_tokens");
+    if claude_input.is_some() || claude_output.is_some() {
+        return Some(bounded(
+            claude_input
+                .unwrap_or(0)
+                .saturating_add(claude_output.unwrap_or(0)),
+        ));
     }
-    let ollama = u64_at("/prompt_eval_count").unwrap_or(0) + u64_at("/eval_count").unwrap_or(0);
-    ollama as u32
+    let ollama_prompt = u64_at("/prompt_eval_count");
+    let ollama_eval = u64_at("/eval_count");
+    if ollama_prompt.is_some() || ollama_eval.is_some() {
+        return Some(bounded(
+            ollama_prompt
+                .unwrap_or(0)
+                .saturating_add(ollama_eval.unwrap_or(0)),
+        ));
+    }
+    None
 }
 
 async fn json_limite<T: DeserializeOwned>(mut response: reqwest::Response) -> AppResult<T> {
@@ -609,30 +621,34 @@ mod tests {
     #[test]
     fn total_tokens_lit_le_format_openai_et_compatibles() {
         let reponse = serde_json::json!({"usage":{"prompt_tokens":120,"completion_tokens":45,"total_tokens":165}});
-        assert_eq!(total_tokens(&reponse), 165);
+        assert_eq!(total_tokens(&reponse), Some(165));
     }
 
     #[test]
     fn total_tokens_additionne_les_deux_compteurs_claude() {
         let reponse = serde_json::json!({"usage":{"input_tokens":300,"output_tokens":80}});
-        assert_eq!(total_tokens(&reponse), 380);
+        assert_eq!(total_tokens(&reponse), Some(380));
     }
 
     #[test]
     fn total_tokens_lit_le_format_gemini() {
         let reponse = serde_json::json!({"usageMetadata":{"promptTokenCount":50,"candidatesTokenCount":20,"totalTokenCount":70}});
-        assert_eq!(total_tokens(&reponse), 70);
+        assert_eq!(total_tokens(&reponse), Some(70));
     }
 
     #[test]
     fn total_tokens_additionne_les_deux_compteurs_ollama() {
         let reponse = serde_json::json!({"prompt_eval_count":40,"eval_count":15});
-        assert_eq!(total_tokens(&reponse), 55);
+        assert_eq!(total_tokens(&reponse), Some(55));
     }
 
     #[test]
-    fn total_tokens_vaut_zero_sans_metrique_rapportee() {
+    fn total_tokens_distingue_absence_et_zero_rapporte() {
         let reponse = serde_json::json!({"choices":[{"message":{"content":"Bonjour"}}]});
-        assert_eq!(total_tokens(&reponse), 0);
+        assert_eq!(total_tokens(&reponse), None);
+        assert_eq!(
+            total_tokens(&serde_json::json!({"usage":{"total_tokens":0}})),
+            Some(0)
+        );
     }
 }

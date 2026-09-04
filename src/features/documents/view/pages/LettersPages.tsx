@@ -5,7 +5,7 @@ import { documentsService, type CoverLetter } from "../../services/documentsServ
 import { aiService, generation_id } from "@/features/ai/services/aiService";
 import { useAiProgress, useCancelAiOnUnmount } from "@/features/ai/viewmodel/useAiProgress";
 import { useAiTimer } from "@/features/ai/viewmodel/useAiTimer";
-import { formatDuration } from "@/shared/lib/duration";
+import { formatAiSummary } from "@/shared/lib/duration";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 import { Button, ConfirmDialog, EmptyState, ErrorBanner, FormField, Icon, PageHeader, Pager, Select, TextArea } from "@/shared/ui";
@@ -284,10 +284,17 @@ export function LetterWriterPage() {
     }
     timer.start();
     try {
-      const lettre = await aiService.generateCoverLetter({ generation_id: id, company: company || null, job_title: job_title || null, tone, length, context: context || null, previous_cover_letter: null, instruction: suite.length > 0 ? suite.join(" ; ") : null });
-      const duree = timer.stop();
-      setOutput(lettre);
-      setEchanges((current) => [...current, { auteur: "candilog", texte: `${instruction === null ? "Lettre rédigée" : "Lettre régénérée"} en ${formatDuration(duree ?? 0)}` }]);
+      const execution = await aiService.generateCoverLetter({ generation_id: id, company: company || null, job_title: job_title || null, tone, length, context: context || null, previous_cover_letter: null, instruction: suite.length > 0 ? suite.join(" ; ") : null });
+      timer.stop();
+      setOutput(execution.output);
+      setEchanges((current) => [...current, {
+        auteur: "candilog",
+        texte: formatAiSummary(
+          instruction === null ? "Lettre rédigée" : "Lettre régénérée",
+          execution.elapsed_ms,
+          execution.tokens_used,
+        ),
+      }]);
       setBriefOuvert(false);
     } catch (e) {
       if (!(e instanceof AppError && e.code === "CANCELLED")) setError(message(e));

@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { aiService, generation_id } from "@/features/ai/services/aiService";
-import type { ImportedResumeAnalysis } from "@/features/ai/model/types";
+import type { AiExecution, ImportedResumeAnalysis, SelectedResumeFile } from "@/features/ai/model/types";
 import { useAiProgress, useCancelAiOnUnmount } from "@/features/ai/viewmodel/useAiProgress";
 import { useAiTimer } from "@/features/ai/viewmodel/useAiTimer";
-import { formatDuration } from "@/shared/lib/duration";
+import { formatAiSummary } from "@/shared/lib/duration";
 import { AppError } from "@/shared/types/app-error";
 import { Button, EmptyState, ErrorBanner, Icon, PageHeader } from "@/shared/ui";
 import { A4Preview, AiProgress, DocumentPanel, ScoreBadge } from "../components/DocumentUi";
@@ -11,24 +11,49 @@ import { ChampOffre, HeaderBadge, labelSection, Screen, TexteNonVerifie, message
 
 export function ResumeAnalysisPage() {
   const [job_offer, setJobOffer] = useState("");
+  const [selectedFile, setSelectedFile] = useState<SelectedResumeFile | null>(null);
+  const [selecting, setSelecting] = useState(false);
   const [operation, setOperation] = useState<string | null>(null);
   const [result, setResult] = useState<ImportedResumeAnalysis | null>(null);
+  const [metrics, setMetrics] = useState<Pick<AiExecution<unknown>, "elapsed_ms" | "tokens_used"> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const progress = useAiProgress(operation);
   useCancelAiOnUnmount(operation);
   const timer = useAiTimer(operation !== null);
+
+  const selectFile = async () => {
+    setSelecting(true);
+    setError(null);
+    try {
+      const selected = await aiService.selectResumeFile();
+      if (selected !== null) {
+        setSelectedFile(selected);
+        setResult(null);
+        setMetrics(null);
+      }
+    } catch (caught) {
+      setError(message(caught));
+    } finally {
+      setSelecting(false);
+    }
+  };
+
   const run = async () => {
-    if (!job_offer.trim()) { setError("Collez l’offre ciblée avant de choisir le CV PDF."); return; }
+    if (!selectedFile) { setError("Choisissez le CV PDF à analyser."); return; }
+    if (!job_offer.trim()) { setError("Collez l’offre ciblée avant de lancer l’analyse."); return; }
     const id = generation_id();
     setOperation(id);
     setError(null);
     timer.start();
     try {
-      const next = await aiService.analyzeResume({ generation_id: id, job_offer });
-      if (next !== null) {
-        timer.stop();
-        setResult(next);
-      }
+      const execution = await aiService.analyzeResume({
+        generation_id: id,
+        job_offer,
+        file_path: selectedFile.path,
+      });
+      timer.stop();
+      setResult(execution.output);
+      setMetrics(execution);
     } catch (e) {
       if (!(e instanceof AppError && e.code === "CANCELLED")) setError(message(e));
     } finally {
@@ -43,22 +68,29 @@ export function ResumeAnalysisPage() {
         subtitle="Comparez un PDF à l’offre ciblée"
         badge={
           <>
-            {timer.durationMs !== null && operation === null ? (
-              <HeaderBadge icon="schedule">Analysé en {formatDuration(timer.durationMs)}</HeaderBadge>
+            {metrics !== null && operation === null ? (
+              <HeaderBadge icon="schedule">
+                {formatAiSummary("Analysé", metrics.elapsed_ms, metrics.tokens_used)}
+              </HeaderBadge>
             ) : null}
             <HeaderBadge icon="lock">Lecture locale</HeaderBadge>
           </>
         }
-        primary={<Button variant="primary" icon="bolt" disabled={operation !== null} onClick={() => void run()}>Analyser le CV</Button>}
+        primary={<Button variant="primary" icon="bolt" disabled={operation !== null || selecting || selectedFile === null || !job_offer.trim()} onClick={() => void run()}>Analyser le CV</Button>}
       />
     }>
       <div className="grid gap-4 xl:grid-cols-[400px_minmax(480px,1fr)]">
         <div className="space-y-4">
           <DocumentPanel title="Document à analyser" icon="upload_file">
             <div className="space-y-4 p-4">
-              <button type="button" onClick={() => void run()} className="flex w-full flex-col items-center gap-2 rounded-card border border-dashed border-accent-border bg-accent-tint px-5 py-8 text-center">
+              <button type="button" aria-label="Choisir un fichier" disabled={selecting || operation !== null} onClick={() => void selectFile()} className="flex w-full flex-col items-center gap-2 rounded-card border border-dashed border-accent-border bg-accent-tint px-5 py-8 text-center disabled:cursor-default">
                 <Icon name="upload_file" size={28} className="text-accent" />
-                <span className="font-medium text-ink">Choisir et analyser un CV PDF</span>
+                <span className="font-medium text-ink">
+                  {selecting ? "Sélection du fichier…" : "Choisir un fichier"}
+                </span>
+                {selectedFile ? (
+                  <span className="font-mono text-meta text-accent">{selectedFile.name}</span>
+                ) : null}
                 <span className="text-meta text-ink-muted">PDF uniquement · 10 Mo maximum</span>
               </button>
               <ChampOffre label="Offre ciblée" required rows={13} value={job_offer} onChange={setJobOffer} />

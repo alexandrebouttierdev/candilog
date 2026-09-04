@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { formatDuration, formatElapsed, formatTokens } from "../duration";
+import {
+  formatAiSummary,
+  formatDuration,
+  formatElapsed,
+  formatTokens,
+} from "../duration";
 
 describe("formatElapsed", () => {
   it("affiche mm:ss sous une heure", () => {
@@ -35,5 +40,19 @@ describe("formatTokens", () => {
 
   it("laisse un petit nombre sans séparateur", () => {
     expect(formatTokens(640)).toBe("640");
+  });
+});
+
+describe("formatAiSummary", () => {
+  it("accole la durée et les tokens communiqués", () => {
+    expect(formatAiSummary("Généré", 18_400, 1_024)).toBe(
+      "Généré en 18,4 s · 1\u202f024 tokens",
+    );
+  });
+
+  it("nomme explicitement une métrique absente", () => {
+    expect(formatAiSummary("Analysé", 21_000, null)).toBe(
+      "Analysé en 21 s · tokens non communiqués",
+    );
   });
 });

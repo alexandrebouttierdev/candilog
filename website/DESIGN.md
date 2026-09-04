@@ -183,7 +183,9 @@ visible.
   contient restent atteignables au clavier alors qu'ils sont invisibles.
 - Les deux `DownloadMenu` (hero et CTA) ne sont jamais ouverts en même temps
   (`lib/menuOuvert.ts`). Fermeture au clic extérieur et à `Échap`, focus rendu au
-  déclencheur.
+  déclencheur. Le conteneur `.reveal-in` qui possède un menu ouvert est élevé au-dessus des
+  sections suivantes : son `transform` crée un contexte d’empilement que le `z-index` du
+  panneau ne peut pas traverser seul.
 - La fenêtre du hero est décorative : `aria-hidden`, zéro élément focusable.
 - Icônes décoratives : `aria-hidden="true"` (posé par `Icon` et `BrandIcon`).
 

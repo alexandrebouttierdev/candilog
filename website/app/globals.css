@@ -199,6 +199,12 @@
       opacity 640ms var(--ease-reveal),
       transform 720ms var(--ease-reveal);
   }
+  /* `transform` fait de chaque bloc révélé un contexte d'empilement. Lorsqu'un menu
+     dépasse verticalement de ce bloc, la section suivante serait sinon peinte par-dessus. */
+  .reveal-in:has(button[aria-expanded="true"][aria-controls$="-panneau"]) {
+    position: relative;
+    z-index: 50;
+  }
   /* Barre de nav défilante sans scrollbar visible (en-tête mobile) */
   .no-scrollbar {
     scrollbar-width: none;

@@ -126,9 +126,16 @@ de profil. La télémétrie est best-effort et ne masque jamais le résultat mé
 
 Aucun de ces événements ne porte de pourcentage : la durée dépend du fournisseur et du
 modèle, et un chiffre calculé à partir du numéro d'étape n'était qu'une constante déguisée
-en mesure. Les événements ne transportent que l'étape en cours et, pour la lettre, les
-fragments de texte ; l'interface affiche une barre indéterminée avec le temps écoulé, puis
-la durée totale une fois le traitement terminé.
+en mesure. Les événements transportent l'étape en cours, les tokens cumulés déjà connus et,
+pour la lettre, les fragments de texte ; l'interface affiche une barre indéterminée avec le
+temps écoulé.
+
+Chaque commande IA réussie retourne son résultat dans `AiExecution<T>`, avec la durée
+native `elapsed_ms` et le total `tokens_used` communiqué par le fournisseur. L'interface
+conserve ces métriques après la progression et les affiche ensemble, par exemple
+« Généré en 18,4 s · 1 024 tokens ». Si un endpoint compatible ne fournit pas sa
+consommation, Candilog affiche « tokens non communiqués » au lieu d'inventer un zéro. Un
+traitement composé de plusieurs appels, reprise JSON comprise, cumule leurs tokens.
 
 La fin d'un traitement est aussi annoncée par un signal sonore, émis une seule fois dans
 `features/ai/services/aiService.ts` pour que plus aucun écran ne puisse l'oublier. La

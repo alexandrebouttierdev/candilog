@@ -24,11 +24,24 @@ export function formatDuration(ms: number): string {
 }
 
 /**
- * Nombre de jetons, séparateur de milliers français.
+ * Nombre de tokens, séparateur de milliers français.
  *
  * Affiché à côté du temps écoulé dans `AiProgress` : les deux mesures répondent à la même
- * question pendant un traitement IA — combien ça coûte, en temps et en jetons.
+ * question pendant un traitement IA — combien ça coûte, en temps et en tokens.
  */
 export function formatTokens(count: number): string {
   return new Intl.NumberFormat("fr-FR").format(count);
+}
+
+/** Récapitulatif conservé après un traitement IA terminé. */
+export function formatAiSummary(
+  action: string,
+  elapsedMs: number,
+  tokensUsed: number | null,
+): string {
+  const tokens =
+    tokensUsed === null
+      ? "tokens non communiqués"
+      : `${formatTokens(tokensUsed)} tokens`;
+  return `${action} en ${formatDuration(elapsedMs)} · ${tokens}`;
 }

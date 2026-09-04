@@ -25,7 +25,9 @@ export function ImportAnalysisPanel({
       {step ? <p className="text-body text-ink-muted">{step}</p> : null}
       <p className="tabular text-meta text-ink-faint">
         Temps écoulé : {formatElapsed(elapsedMs)}
-        {tokens_used ? ` · ${formatTokens(tokens_used)} jetons` : null}
+        {tokens_used !== null && tokens_used !== undefined
+          ? ` · ${formatTokens(tokens_used)} tokens`
+          : null}
       </p>
       <ImportJournal entries={entries} />
     </div>

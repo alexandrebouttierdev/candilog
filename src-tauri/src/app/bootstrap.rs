@@ -84,6 +84,7 @@ pub fn run() {
             ai::ai_generate_resume,
             ai::ai_generate_cover_letter,
             ai::ai_analyze_resume,
+            ai::ai_select_resume_file,
             ai::ai_import_profile,
             ai::ai_cancel,
             settings::settings_load,

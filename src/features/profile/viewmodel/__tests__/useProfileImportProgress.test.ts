@@ -58,7 +58,7 @@ describe("useProfileImportProgress", () => {
     expect(result.current.entries[0]?.message).toBe("Lecture du fichier");
   });
 
-  it("retient le total de jetons annoncé, sans l'effacer entre deux étapes", async () => {
+  it("retient le total de tokens annoncé, sans l'effacer entre deux étapes", async () => {
     const { result } = renderHook(() => useProfileImportProgress("gen-1"));
     await act(async () => {
       await Promise.resolve();

@@ -36,6 +36,18 @@ describe("aiService", () => {
     expect(playCompletionSound).not.toHaveBeenCalled();
   });
 
+  it("sélectionne un PDF sans lancer ni annoncer un traitement IA", async () => {
+    vi.mocked(ipc).mockResolvedValue({ path: "/tmp/cv.pdf", name: "cv.pdf" });
+
+    await expect(aiService.selectResumeFile()).resolves.toEqual({
+      path: "/tmp/cv.pdf",
+      name: "cv.pdf",
+    });
+
+    expect(ipc).toHaveBeenCalledWith("ai_select_resume_file");
+    expect(playCompletionSound).not.toHaveBeenCalled();
+  });
+
   it("reste muet quand la génération échoue", async () => {
     vi.mocked(ipc).mockRejectedValue(new Error("indisponible"));
 

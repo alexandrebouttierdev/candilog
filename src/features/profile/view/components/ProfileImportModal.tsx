@@ -7,6 +7,7 @@ import type {
   ImportProfileResult,
 } from "@/shared/types/generated/profile";
 import { aiService, generation_id } from "@/features/ai/services/aiService";
+import type { AiExecution } from "@/features/ai/model/types";
 import { useCancelAiOnUnmount } from "@/features/ai/viewmodel/useAiProgress";
 import { AppError } from "@/shared/types/app-error";
 import {
@@ -16,7 +17,7 @@ import {
   Icon,
   ModalHost,
 } from "@/shared/ui";
-import { formatDuration } from "@/shared/lib/duration";
+import { formatAiSummary } from "@/shared/lib/duration";
 import {
   countMarked,
   explainImportErrors,
@@ -56,7 +57,9 @@ export function ProfileImportModal({
   const [preview, setPreview] = useState<ImportProfilePreview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [requestedAt, setRequestedAt] = useState<number | null>(null);
-  const [finishedAt, setFinishedAt] = useState<number | null>(null);
+  const [metrics, setMetrics] = useState<
+    Pick<AiExecution<unknown>, "elapsed_ms" | "tokens_used"> | null
+  >(null);
   const [result, setResult] = useState<ImportProfileResult | null>(null);
   const [totalMs, setTotalMs] = useState(0);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -74,8 +77,6 @@ export function ProfileImportModal({
     phase === "picking" && analysisStartedAt !== null ? "analyze" : phase;
   const startedAt = analysisStartedAt ?? requestedAt;
   const elapsedMs = useElapsedClock(view === "analyze", startedAt);
-  const analysisMs =
-    finishedAt !== null && startedAt !== null ? finishedAt - startedAt : 0;
 
   const form = useForm<
     ImportProfileFormInput,
@@ -92,7 +93,6 @@ export function ProfileImportModal({
     const id = generation_id();
     setOperation(id);
     setRequestedAt(Date.now());
-    setFinishedAt(null);
     setPhase("picking");
     setError(null);
     try {
@@ -101,9 +101,12 @@ export function ProfileImportModal({
         setPhase("pick");
         return;
       }
-      setPreview(next);
-      form.reset(previewToFormValues(next));
-      setFinishedAt(Date.now());
+      setPreview(next.output);
+      form.reset(previewToFormValues(next.output));
+      setMetrics({
+        elapsed_ms: next.elapsed_ms,
+        tokens_used: next.tokens_used,
+      });
       setPhase("review");
     } catch (caught) {
       if (caught instanceof AppError && caught.code === "CANCELLED") {
@@ -115,7 +118,6 @@ export function ProfileImportModal({
           ? caught.message
           : "L'analyse du CV n'a pas pu être terminée.",
       );
-      setFinishedAt(Date.now());
       setPhase("error");
     } finally {
       setOperation(null);
@@ -169,7 +171,9 @@ export function ProfileImportModal({
 
   const subtitle =
     view === "review"
-      ? `Analyse terminée en ${formatDuration(analysisMs)}`
+      ? metrics
+        ? formatAiSummary("Analysé", metrics.elapsed_ms, metrics.tokens_used)
+        : "Analyse terminée"
       : view === "done"
         ? "Les éléments choisis ont été enregistrés"
         : view === "picking"
@@ -233,7 +237,7 @@ export function ProfileImportModal({
           />
         ) : null}
         {view === "done" && result ? (
-          <ImportDonePanel result={result} totalMs={totalMs} />
+          <ImportDonePanel result={result} totalMs={totalMs} aiMetrics={metrics} />
         ) : null}
       </ModalHost>
       <ConfirmDialog

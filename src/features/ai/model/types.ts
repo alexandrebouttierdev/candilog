@@ -16,4 +16,6 @@ export type {
   AtsRecommendation,
   AtsRecommendationSection,
   MatchScore,
+  AiExecution,
+  SelectedResumeFile,
 } from "@/shared/types/generated/ai";

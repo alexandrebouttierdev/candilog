@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { aiService, generation_id } from "@/features/ai/services/aiService";
-import type { ResumeGeneration } from "@/features/ai/model/types";
+import type { AiExecution, ResumeGeneration } from "@/features/ai/model/types";
 import { useAiProgress, useCancelAiOnUnmount } from "@/features/ai/viewmodel/useAiProgress";
 import { useAiTimer } from "@/features/ai/viewmodel/useAiTimer";
 import { useUiStore } from "@/shared/lib/ui-store";
@@ -38,6 +38,9 @@ export function useResumeGeneratorViewModel(initial: ResumeGeneratorInitial) {
   const [workspace, setWorkspace] = useState<ResumeWorkspace | null>(initial.workspace);
   const [generationIndex, setGenerationIndex] = useState(0);
   const [briefOpen, setBriefOpen] = useState(false);
+  const [metrics, setMetrics] = useState<
+    Pick<AiExecution<unknown>, "elapsed_ms" | "tokens_used"> | null
+  >(null);
   const progress = useAiProgress(operation);
   useCancelAiOnUnmount(operation);
   const timer = useAiTimer(operation !== null);
@@ -77,14 +80,18 @@ export function useResumeGeneratorViewModel(initial: ResumeGeneratorInitial) {
     setError(null);
     timer.start();
     try {
-      const generation = await aiService.generateResume({ generation_id: id, job_offer: jobOffer });
+      const execution = await aiService.generateResume({ generation_id: id, job_offer: jobOffer });
       if (!mounted.current) return;
-      const prepared = await documentsService.prepareResume(generation);
+      const prepared = await documentsService.prepareResume(execution.output);
       if (!mounted.current) return;
       timer.stop();
       setWorkspace(prepared);
       setGenerationIndex((index) => index + 1);
       setBriefOpen(false);
+      setMetrics({
+        elapsed_ms: execution.elapsed_ms,
+        tokens_used: execution.tokens_used,
+      });
       setName(`CV — ${prepared.job_offer.title || "Version ciblée"}`);
     } catch (caught) {
       if (
@@ -124,6 +131,7 @@ export function useResumeGeneratorViewModel(initial: ResumeGeneratorInitial) {
     progress,
     elapsedMs: timer.elapsedMs,
     durationMs: timer.durationMs,
+    metrics,
     isSaving: save.isPending,
     setJobOffer,
     setName,

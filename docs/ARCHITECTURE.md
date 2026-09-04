@@ -77,9 +77,12 @@ couche `presentation` de la feature concernée :
 | `profile_import_progress` | `features/ai` — import de profil depuis un CV |
 | `update-progress` | `features/settings` — téléchargement d'une mise à jour |
 
-Quand une commande ouvre d'abord un sélecteur de fichier natif (import de CV), son premier
-événement n'est émis qu'une fois le fichier choisi : l'interface s'en sert pour distinguer
-la sélection du traitement et ne jamais annoncer une analyse qui n'a pas commencé.
+L'écran « Analyser » sépare strictement le choix du PDF du traitement :
+`ai_select_resume_file` ouvre le dialogue natif et retourne le nom et le chemin validé,
+puis seule l'action explicite « Analyser le CV » appelle `ai_analyze_resume`. Le chemin est
+revalidé en Rust avant lecture. L'import du profil conserve un sélecteur intégré à sa
+commande ; son premier événement n'est émis qu'une fois le fichier choisi afin de ne jamais
+annoncer une analyse qui n'a pas commencé.
 
 `core/events/` reste un module de réservation, sans contenu.
 

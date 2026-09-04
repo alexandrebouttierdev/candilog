@@ -123,9 +123,9 @@ export function AiProgress({
       <div className="flex items-center gap-2">
         <Icon name="progress_activity" size={17} className="animate-spin text-accent" />
         <p className="flex-1 text-label font-medium text-ink">{progress?.step ?? "Préparation…"}</p>
-        {progress?.tokens_used ? (
+        {progress?.tokens_used !== null && progress?.tokens_used !== undefined ? (
           <span className="tabular text-meta text-accent">
-            {formatTokens(progress.tokens_used)} jetons
+            {formatTokens(progress.tokens_used)} tokens
           </span>
         ) : null}
         <span className="tabular text-meta text-accent">{formatElapsed(elapsedMs)}</span>

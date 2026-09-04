@@ -53,4 +53,23 @@ describe("OnboardingTour", () => {
       screen.getByRole("dialog", { name: ONBOARDING_STEPS[0]!.title }),
     ).toBeInTheDocument();
   });
+
+  it("n'affiche que des données de démonstration explicitement fictives", async () => {
+    render(<OnboardingTour onFinish={vi.fn()} />);
+    const seen: string[] = [];
+
+    for (let index = 0; index < ONBOARDING_STEPS.length; index += 1) {
+      seen.push(screen.getByRole("dialog").textContent ?? "");
+      if (index < ONBOARDING_STEPS.length - 1) {
+        await userEvent.click(screen.getByRole("button", { name: "Suivant" }));
+      }
+    }
+
+    const content = seen.join(" ");
+    expect(content).not.toMatch(
+      /Linxea|ISCOD|Nova Digital|Atlas Studio|Camille Rivet/,
+    );
+    expect(content).toContain("Données fictives");
+    expect(content).toContain("Camille Exemple");
+  });
 });

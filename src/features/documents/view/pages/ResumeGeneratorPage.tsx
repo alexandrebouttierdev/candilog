@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useLocation } from "react-router-dom";
-import { formatDuration } from "@/shared/lib/duration";
+import { formatAiSummary } from "@/shared/lib/duration";
 import { useUiStore } from "@/shared/lib/ui-store";
 import type { ResumeWorkspace } from "@/shared/types/generated/documents";
 import { Button, EmptyState, ErrorBanner, FormField, PageHeader, TextInput } from "@/shared/ui";
@@ -58,7 +58,7 @@ export function ResumeGeneratorPage() {
         isSaving={vm.isSaving}
         briefPanel={vm.briefOpen ? briefPanel : null}
         onReopenBrief={vm.openBrief}
-        durationBadge={vm.operation === null && vm.durationMs !== null ? <HeaderBadge icon="schedule">Généré en {formatDuration(vm.durationMs)}</HeaderBadge> : undefined}
+        durationBadge={vm.operation === null && vm.metrics !== null ? <HeaderBadge icon="schedule">{formatAiSummary("Généré", vm.metrics.elapsed_ms, vm.metrics.tokens_used)}</HeaderBadge> : undefined}
       />
     );
   }
@@ -69,7 +69,7 @@ export function ResumeGeneratorPage() {
         icon="auto_awesome"
         title="Générer un CV"
         subtitle="Analysez une offre, générez un CV ciblé, exportez en PDF"
-        badge={vm.operation === null && vm.durationMs !== null ? <HeaderBadge icon="schedule">Généré en {formatDuration(vm.durationMs)}</HeaderBadge> : undefined}
+        badge={vm.operation === null && vm.metrics !== null ? <HeaderBadge icon="schedule">{formatAiSummary("Généré", vm.metrics.elapsed_ms, vm.metrics.tokens_used)}</HeaderBadge> : undefined}
       />
     }>
       <div className="grid min-h-[660px] gap-4 xl:grid-cols-[350px_minmax(460px,1fr)_320px]">

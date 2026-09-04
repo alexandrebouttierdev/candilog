@@ -388,6 +388,7 @@ async fn obtenir_generation(
             |_| {},
         )
         .await
+        .map(|execution| execution.output)
         .map_err(|error| error.to_string());
     compte.generation_ms = debut.elapsed().as_millis();
     generation
@@ -422,6 +423,7 @@ async fn obtenir_lettre(
             |_| {},
         )
         .await
+        .map(|execution| execution.output)
         .map_err(|error| error.to_string());
     compte.lettre_ms = debut.elapsed().as_millis();
     lettre

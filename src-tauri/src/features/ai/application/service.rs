@@ -77,9 +77,10 @@ impl AiService {
         build_provider(&load_config(&self.pool)?).await
     }
 
-    pub async fn analyze_listing(&self, text: String) -> AppResult<ListingAnalysis> {
+    pub async fn analyze_listing(&self, text: String) -> AppResult<AiExecution<ListingAnalysis>> {
+        let started_at = std::time::Instant::now();
         validate_source_text(&text, "L'offre")?;
-        let (mut job_offer, _tokens): (StructuredListing, u32) = generate_json(
+        let (mut job_offer, tokens): (StructuredListing, Option<u32>) = generate_json(
             self.provider().await?,
             &bloc_donnees("offre", &text),
             JOB_OFFER_SYSTEM,
@@ -87,20 +88,27 @@ impl AiService {
         .await?;
         ground_extracted_listing(&text, &mut job_offer);
         let score = profile_score(&self.profile()?, &job_offer);
-        Ok(ListingAnalysis { job_offer, score })
+        Ok(execution(
+            started_at,
+            ListingAnalysis { job_offer, score },
+            tokens,
+        ))
     }
 
     pub async fn generate_resume(
         &self,
         request: ResumeGenerationRequest,
         notifier: impl Fn(AiProgress),
-    ) -> AppResult<ResumeGeneration> {
+    ) -> AppResult<AiExecution<ResumeGeneration>> {
+        let started_at = std::time::Instant::now();
         validate_source_text(&request.job_offer, "L'offre")?;
         let id = request.generation_id.clone();
         let token = self.start(&id);
         let _guard = GenerationEnCours { service: self, id };
-        self.generate_resume_interne(&request, &token, &notifier)
-            .await
+        let (output, tokens_used) = self
+            .generate_resume_interne(&request, &token, &notifier)
+            .await?;
+        Ok(execution(started_at, output, tokens_used))
     }
 
     async fn generate_resume_interne(
@@ -108,7 +116,7 @@ impl AiService {
         request: &ResumeGenerationRequest,
         token: &CancellationToken,
         notifier: &impl Fn(AiProgress),
-    ) -> AppResult<ResumeGeneration> {
+    ) -> AppResult<(ResumeGeneration, Option<u32>)> {
         let profile = self.profile()?;
         validate_profile_input(&profile)?;
         if profile.identity.first_name.trim().is_empty()
@@ -120,7 +128,7 @@ impl AiService {
             ));
         }
         let provider = self.provider().await?;
-        let mut tokens: u32 = 0;
+        let mut tokens = Some(0_u32);
         progres(
             notifier,
             &request.generation_id,
@@ -128,7 +136,7 @@ impl AiService {
             None,
             None,
         );
-        let (mut job_offer, jetons): (StructuredListing, u32) = cancel(
+        let (mut job_offer, call_tokens): (StructuredListing, Option<u32>) = cancel(
             token,
             generate_json(
                 provider.clone(),
@@ -137,7 +145,7 @@ impl AiService {
             ),
         )
         .await?;
-        tokens += jetons;
+        tokens = add_tokens(tokens, call_tokens);
         ground_extracted_listing(&request.job_offer, &mut job_offer);
         let score = profile_score(&profile, &job_offer);
         progres(
@@ -145,11 +153,11 @@ impl AiService {
             &request.generation_id,
             "Adaptation du CV",
             None,
-            Some(tokens),
+            tokens,
         );
         let context =
             serde_json::json!({"profile":profile,"offre":job_offer,"score":score}).to_string();
-        let (mut resume, jetons): (GeneratedResume, u32) = cancel(
+        let (mut resume, call_tokens): (GeneratedResume, Option<u32>) = cancel(
             token,
             generate_json(
                 provider.clone(),
@@ -158,42 +166,40 @@ impl AiService {
             ),
         )
         .await?;
-        tokens += jetons;
+        tokens = add_tokens(tokens, call_tokens);
         ground_generated_resume(&profile, &mut resume);
         progres(
             notifier,
             &request.generation_id,
             "Analyse ATS",
             None,
-            Some(tokens),
+            tokens,
         );
         let context_ats = serde_json::json!({"cv":resume,"offre":job_offer}).to_string();
-        let (analysis, jetons): (AtsAnalysis, u32) = cancel(
+        let (analysis, call_tokens): (AtsAnalysis, Option<u32>) = cancel(
             token,
             generate_json(provider, &bloc_donnees("analyse", &context_ats), ATS_SYSTEM),
         )
         .await?;
-        tokens += jetons;
-        progres(
-            notifier,
-            &request.generation_id,
-            "Terminé",
-            None,
-            Some(tokens),
-        );
-        Ok(ResumeGeneration {
-            resume,
-            analysis,
-            job_offer,
-            profile_score: score,
-        })
+        tokens = add_tokens(tokens, call_tokens);
+        progres(notifier, &request.generation_id, "Terminé", None, tokens);
+        Ok((
+            ResumeGeneration {
+                resume,
+                analysis,
+                job_offer,
+                profile_score: score,
+            },
+            tokens,
+        ))
     }
 
     pub async fn generate_cover_letter(
         &self,
         request: CoverLetterRequest,
         notifier: impl Fn(AiProgress),
-    ) -> AppResult<String> {
+    ) -> AppResult<AiExecution<String>> {
+        let started_at = std::time::Instant::now();
         validate_cover_letter_request(&request)?;
         if request
             .company
@@ -238,7 +244,7 @@ impl AiService {
         })
         .to_string();
         progres(&notifier, &id, "Rédaction", None, None);
-        let generation = cancel(
+        let (plan, tokens) = cancel(
             &token,
             generate_json::<CoverLetterPlan>(
                 self.provider().await?,
@@ -246,34 +252,24 @@ impl AiService {
                 COVER_LETTER_SYSTEM,
             ),
         )
-        .await;
-        let tokens = generation.as_ref().ok().map(|(_, jetons)| *jetons);
-        let resultat =
-            generation.and_then(|(plan, _)| render_grounded_letter(&catalog, &plan, &request));
-        if let (Ok(cover_letter), Some(tokens)) = (&resultat, tokens) {
-            let fragments = decouper_fragments(cover_letter);
-            for chunk in &fragments {
-                if token.is_cancelled() {
-                    return Err(AppError::Cancelled);
-                }
-                progres(
-                    &notifier,
-                    &id,
-                    "Rédaction",
-                    Some(chunk.clone()),
-                    Some(tokens),
-                );
+        .await?;
+        let cover_letter = render_grounded_letter(&catalog, &plan, &request)?;
+        let fragments = decouper_fragments(&cover_letter);
+        for chunk in &fragments {
+            if token.is_cancelled() {
+                return Err(AppError::Cancelled);
             }
+            progres(&notifier, &id, "Rédaction", Some(chunk.clone()), tokens);
         }
-        resultat
+        Ok(execution(started_at, cover_letter, tokens))
     }
 
     pub async fn analyze_resume_imported(
         &self,
         request: ResumeAnalysisRequest,
-        path: PathBuf,
         notifier: impl Fn(AiProgress),
-    ) -> AppResult<ImportedResumeAnalysis> {
+    ) -> AppResult<AiExecution<ImportedResumeAnalysis>> {
+        let started_at = std::time::Instant::now();
         validate_source_text(&request.job_offer, "L'offre")?;
         let id = request.generation_id.clone();
         let token = self.start(&id);
@@ -282,12 +278,12 @@ impl AiService {
             id: id.clone(),
         };
         progres(&notifier, &id, "Lecture locale du PDF", None, None);
-        let text = extract_pdf(path).await?;
+        let text = extract_pdf(PathBuf::from(&request.file_path)).await?;
         validate_source_text(&text, "Le CV")?;
         let provider = self.provider().await?;
-        let mut tokens: u32 = 0;
+        let mut tokens = Some(0_u32);
         progres(&notifier, &id, "Structuration du CV", None, None);
-        let (mut resume, jetons): (GeneratedResume, u32) = cancel(
+        let (mut resume, call_tokens): (GeneratedResume, Option<u32>) = cancel(
             &token,
             generate_json(
                 provider.clone(),
@@ -296,10 +292,10 @@ impl AiService {
             ),
         )
         .await?;
-        tokens += jetons;
+        tokens = add_tokens(tokens, call_tokens);
         ground_imported_resume(&text, &mut resume);
-        progres(&notifier, &id, "Analyse de l'offre", None, Some(tokens));
-        let (mut job_offer, jetons): (StructuredListing, u32) = cancel(
+        progres(&notifier, &id, "Analyse de l'offre", None, tokens);
+        let (mut job_offer, call_tokens): (StructuredListing, Option<u32>) = cancel(
             &token,
             generate_json(
                 provider.clone(),
@@ -308,11 +304,11 @@ impl AiService {
             ),
         )
         .await?;
-        tokens += jetons;
+        tokens = add_tokens(tokens, call_tokens);
         ground_extracted_listing(&request.job_offer, &mut job_offer);
         let score = score_resume_imported(&resume, &job_offer);
-        progres(&notifier, &id, "Recommandations ATS", None, Some(tokens));
-        let (analysis, jetons): (AtsAnalysis, u32) = cancel(
+        progres(&notifier, &id, "Recommandations ATS", None, tokens);
+        let (analysis, call_tokens): (AtsAnalysis, Option<u32>) = cancel(
             &token,
             generate_json(
                 provider,
@@ -324,14 +320,18 @@ impl AiService {
             ),
         )
         .await?;
-        tokens += jetons;
-        progres(&notifier, &id, "Terminé", None, Some(tokens));
-        Ok(ImportedResumeAnalysis {
-            resume,
-            job_offer,
-            score,
-            analysis,
-        })
+        tokens = add_tokens(tokens, call_tokens);
+        progres(&notifier, &id, "Terminé", None, tokens);
+        Ok(execution(
+            started_at,
+            ImportedResumeAnalysis {
+                resume,
+                job_offer,
+                score,
+                analysis,
+            },
+            tokens,
+        ))
     }
 
     pub async fn import_profile(
@@ -339,7 +339,8 @@ impl AiService {
         request: ProfileImportRequest,
         path: PathBuf,
         notifier: impl Fn(ProfileImportProgress),
-    ) -> AppResult<ImportProfilePreview> {
+    ) -> AppResult<AiExecution<ImportProfilePreview>> {
+        let started_at = std::time::Instant::now();
         let id = request.generation_id.clone();
         let token = self.start(&id);
         let _guard = GenerationEnCours {
@@ -384,7 +385,7 @@ impl AiService {
             "Analyse démarrée",
             None,
         );
-        let (mut profile, tokens): (Profile, u32) = match cancel(
+        let (mut profile, tokens): (Profile, Option<u32>) = match cancel(
             &token,
             generate_json(
                 self.provider().await?,
@@ -407,13 +408,7 @@ impl AiService {
             && profile.experiences.is_empty()
             && profile.skills.is_empty()
         {
-            emit_import(
-                &notifier,
-                &id,
-                None,
-                "Aucune donnée exploitable",
-                Some(tokens),
-            );
+            emit_import(&notifier, &id, None, "Aucune donnée exploitable", tokens);
             return Err(AppError::Provider(
                 "Aucune donnée de profil exploitable n'a été trouvée dans le CV".into(),
             ));
@@ -424,10 +419,14 @@ impl AiService {
             &id,
             Some("Préparation de la revue…"),
             "Analyse terminée",
-            Some(tokens),
+            tokens,
         );
         let current = self.profile()?;
-        Ok(build_preview(&current, &profile))
+        Ok(execution(
+            started_at,
+            build_preview(&current, &profile),
+            tokens,
+        ))
     }
 }
 
@@ -442,19 +441,31 @@ impl Drop for GenerationEnCours<'_> {
     }
 }
 
+fn execution<T>(
+    started_at: std::time::Instant,
+    output: T,
+    tokens_used: Option<u32>,
+) -> AiExecution<T> {
+    AiExecution {
+        output,
+        elapsed_ms: started_at.elapsed().as_millis().min(u128::from(u32::MAX)) as u32,
+        tokens_used,
+    }
+}
+
 async fn generate_json<T: serde::de::DeserializeOwned + ValidateAiOutput>(
     provider: Arc<dyn LlmGenerator>,
     prompt: &str,
     system: &str,
-) -> AppResult<(T, u32)> {
+) -> AppResult<(T, Option<u32>)> {
     let mut current = prompt.to_owned();
     let mut derniere = None;
-    // La reprise sur JSON invalide consomme un second appel réel : ses jetons doivent
+    // La reprise sur JSON invalide consomme un second appel réel : ses tokens doivent
     // s'ajouter à ceux du premier, pas les remplacer.
-    let mut tokens: u32 = 0;
+    let mut tokens = Some(0_u32);
     for _ in 0..2 {
         let sortie = provider.generate(&current, system, true).await?;
-        tokens += sortie.tokens;
+        tokens = add_tokens(tokens, sortie.tokens);
         validate_raw_output(&sortie.text)?;
         match parse_json::<T>(&sortie.text) {
             Ok(value) => {
@@ -472,6 +483,10 @@ async fn generate_json<T: serde::de::DeserializeOwned + ValidateAiOutput>(
     Err(AppError::Serialization(
         derniere.unwrap_or_else(|| "Réponse IA illisible".into()),
     ))
+}
+
+fn add_tokens(total: Option<u32>, call: Option<u32>) -> Option<u32> {
+    Some(total?.saturating_add(call?))
 }
 
 fn parse_json<T: serde::de::DeserializeOwned>(raw: &str) -> Result<T, serde_json::Error> {
@@ -542,7 +557,7 @@ fn emit_detected(
     notifier: &impl Fn(ProfileImportProgress),
     id: &str,
     profile: &Profile,
-    tokens_used: u32,
+    tokens_used: Option<u32>,
 ) {
     let lines = [
         counted(
@@ -573,7 +588,7 @@ fn emit_detected(
         ),
     ];
     for line in lines.into_iter().flatten() {
-        emit_import(notifier, id, None, &line, Some(tokens_used));
+        emit_import(notifier, id, None, &line, tokens_used);
     }
 }
 
@@ -626,11 +641,11 @@ mod tests {
     /// LlmGenerator>`, ce qui rend ce double possible sans toucher à `AiService`, dont le
     /// fournisseur passe par `build_provider` et un vrai appel réseau.
     struct FakeProvider {
-        reponses: std::sync::Mutex<std::vec::IntoIter<(&'static str, u32)>>,
+        reponses: std::sync::Mutex<std::vec::IntoIter<(&'static str, Option<u32>)>>,
     }
 
     impl FakeProvider {
-        fn provider(reponses: Vec<(&'static str, u32)>) -> Arc<dyn LlmGenerator> {
+        fn provider(reponses: Vec<(&'static str, Option<u32>)>) -> Arc<dyn LlmGenerator> {
             Arc::new(Self {
                 reponses: std::sync::Mutex::new(reponses.into_iter()),
             })
@@ -676,30 +691,46 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn generate_json_compte_les_jetons_d_un_seul_appel_reussi() {
-        let provider = FakeProvider::provider(vec![(r#"{"valeur":"ok"}"#, 42)]);
+    async fn generate_json_compte_les_tokens_d_un_seul_appel_reussi() {
+        let provider = FakeProvider::provider(vec![(r#"{"valeur":"ok"}"#, Some(42))]);
 
         let (sonde, tokens) = generate_json::<Sonde>(provider, "prompt", "system")
             .await
             .unwrap();
 
         assert_eq!(sonde.valeur, "ok");
-        assert_eq!(tokens, 42);
+        assert_eq!(tokens, Some(42));
     }
 
     #[tokio::test]
-    async fn generate_json_additionne_les_jetons_de_la_reprise() {
-        // Le premier essai renvoie un JSON invalide : il a quand même consommé des jetons
+    async fn generate_json_additionne_les_tokens_de_la_reprise() {
+        // Le premier essai renvoie un JSON invalide : il a quand même consommé des tokens
         // réels, que la reprise ne doit pas effacer du total.
-        let provider =
-            FakeProvider::provider(vec![("pas du json", 30), (r#"{"valeur":"ok"}"#, 25)]);
+        let provider = FakeProvider::provider(vec![
+            ("pas du json", Some(30)),
+            (r#"{"valeur":"ok"}"#, Some(25)),
+        ]);
 
         let (sonde, tokens) = generate_json::<Sonde>(provider, "prompt", "system")
             .await
             .unwrap();
 
         assert_eq!(sonde.valeur, "ok");
-        assert_eq!(tokens, 55);
+        assert_eq!(tokens, Some(55));
+    }
+
+    #[tokio::test]
+    async fn generate_json_signale_une_metrique_incomplete() {
+        let provider = FakeProvider::provider(vec![
+            ("pas du json", Some(30)),
+            (r#"{"valeur":"ok"}"#, None),
+        ]);
+
+        let (_, tokens) = generate_json::<Sonde>(provider, "prompt", "system")
+            .await
+            .unwrap();
+
+        assert_eq!(tokens, None);
     }
 
     #[test]

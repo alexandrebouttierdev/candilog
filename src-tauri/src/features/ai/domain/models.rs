@@ -260,6 +260,7 @@ pub struct ImportedResumeAnalysis {
 pub struct ResumeAnalysisRequest {
     pub generation_id: String,
     pub job_offer: String,
+    pub file_path: String,
 }
 
 #[derive(Debug, Clone, Deserialize, TS)]
@@ -269,6 +270,25 @@ pub struct ProfileImportRequest {
     pub generation_id: String,
 }
 
+/// Résultat final d'un traitement IA et métriques communiquées à l'interface.
+#[derive(Debug, Clone, Serialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "ai.ts")]
+pub struct AiExecution<T> {
+    pub output: T,
+    pub elapsed_ms: u32,
+    pub tokens_used: Option<u32>,
+}
+
+/// PDF choisi par l'utilisateur avant le lancement explicite de son analyse.
+#[derive(Debug, Clone, Serialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "ai.ts")]
+pub struct SelectedResumeFile {
+    pub path: String,
+    pub name: String,
+}
+
 #[derive(Debug, Clone, Serialize, TS)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "ai.ts")]
@@ -276,7 +296,7 @@ pub struct AiProgress {
     pub generation_id: String,
     pub step: String,
     pub chunk: Option<String>,
-    /// Total de jetons consommés depuis le début de cette génération, si le fournisseur les
+    /// Total de tokens consommés depuis le début de cette génération, si le fournisseur les
     /// rapporte. `None` avant le premier appel terminé.
     pub tokens_used: Option<u32>,
 }
@@ -290,7 +310,7 @@ pub struct ProfileImportProgress {
     pub at: String,
     pub message: String,
     pub step: Option<String>,
-    /// Total de jetons consommés depuis le début de cet import, si le fournisseur les
+    /// Total de tokens consommés depuis le début de cet import, si le fournisseur les
     /// rapporte. `None` avant le premier appel terminé.
     pub tokens_used: Option<u32>,
 }
@@ -298,6 +318,36 @@ pub struct ProfileImportProgress {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn une_execution_ia_serialise_resultat_duree_et_tokens() {
+        let execution = AiExecution {
+            output: "résultat".to_owned(),
+            elapsed_ms: 1_840,
+            tokens_used: Some(1_024),
+        };
+
+        assert_eq!(
+            serde_json::to_value(execution).unwrap(),
+            serde_json::json!({
+                "output": "résultat",
+                "elapsed_ms": 1_840,
+                "tokens_used": 1_024
+            })
+        );
+    }
+
+    #[test]
+    fn une_analyse_de_cv_transporte_le_chemin_selectionne() {
+        let request: ResumeAnalysisRequest = serde_json::from_value(serde_json::json!({
+            "generation_id": "generation-1",
+            "job_offer": "Offre",
+            "file_path": "/tmp/cv.pdf"
+        }))
+        .unwrap();
+
+        assert_eq!(request.file_path, "/tmp/cv.pdf");
+    }
 
     /// Une analyse enregistrée avant la fermeture du contrat portait `score`, `suggestions`
     /// et un `impact` par recommandation, et une section libre (`"resume"`) sans `item_index`.

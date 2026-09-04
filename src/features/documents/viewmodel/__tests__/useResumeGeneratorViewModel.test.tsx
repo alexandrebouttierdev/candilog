@@ -31,6 +31,10 @@ function generation(): ResumeGeneration {
   };
 }
 
+function execution(output = generation()) {
+  return { output, elapsed_ms: 18_400, tokens_used: 1_024 };
+}
+
 beforeEach(() => {
   vi.restoreAllMocks();
   useUiStore.setState({ toasts: [] });
@@ -53,7 +57,7 @@ describe("ViewModel du générateur de CV", () => {
   it("génère puis prépare un workspace autonome", async () => {
     const source = generation();
     const prepared = workspaceFixture();
-    vi.spyOn(aiService, "generateResume").mockResolvedValue(source);
+    vi.spyOn(aiService, "generateResume").mockResolvedValue(execution(source));
     vi.spyOn(documentsService, "prepareResume").mockResolvedValue(prepared);
     const { result } = renderHook(
       () => useResumeGeneratorViewModel({ result: null, workspace: null, name: "" }),
@@ -67,6 +71,7 @@ describe("ViewModel du générateur de CV", () => {
     expect(result.current.name).toBe("CV — Développeur");
     expect(result.current.generationIndex).toBe(1);
     expect(result.current.briefOpen).toBe(false);
+    expect(result.current.metrics).toEqual({ elapsed_ms: 18_400, tokens_used: 1_024 });
   });
 
   it("prépare une génération historique reçue par navigation", async () => {

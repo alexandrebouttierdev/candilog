@@ -1,14 +1,17 @@
 import type { ImportProfileResult } from "@/shared/types/generated/profile";
+import type { AiExecution } from "@/features/ai/model/types";
 import { Icon, StatCard } from "@/shared/ui";
-import { formatDuration } from "@/shared/lib/duration";
+import { formatAiSummary, formatDuration } from "@/shared/lib/duration";
 
 /** Bilan d'un import réussi : totaux en cartes, pas une liste à plat. */
 export function ImportDonePanel({
   result,
   totalMs,
+  aiMetrics,
 }: {
   result: ImportProfileResult;
   totalMs: number;
+  aiMetrics: Pick<AiExecution<unknown>, "elapsed_ms" | "tokens_used"> | null;
 }) {
   return (
     <div className="pt-3">
@@ -30,6 +33,12 @@ export function ImportDonePanel({
         <Icon name="schedule" size={15} className="flex-none" />
         Terminé en {formatDuration(totalMs)}
       </p>
+      {aiMetrics ? (
+        <p className="mt-1.5 flex items-center gap-1.5 text-label text-ink-faint">
+          <Icon name="smart_toy" size={15} className="flex-none" />
+          {formatAiSummary("Analysé", aiMetrics.elapsed_ms, aiMetrics.tokens_used)}
+        </p>
+      ) : null}
     </div>
   );
 }

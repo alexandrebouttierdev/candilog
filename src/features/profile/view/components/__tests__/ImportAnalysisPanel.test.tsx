@@ -19,7 +19,7 @@ describe("ImportAnalysisPanel", () => {
     expect(screen.queryByText("42 %")).not.toBeInTheDocument();
   });
 
-  it("ajoute le total de jetons au temps écoulé quand il est connu", () => {
+  it("ajoute le total de tokens au temps écoulé quand il est connu", () => {
     render(
       <ImportAnalysisPanel
         step="Analyse du CV…"
@@ -29,6 +29,19 @@ describe("ImportAnalysisPanel", () => {
       />,
     );
 
-    expect(screen.getByText("Temps écoulé : 00:12 · 1 024 jetons")).toBeInTheDocument();
+    expect(screen.getByText("Temps écoulé : 00:12 · 1 024 tokens")).toBeInTheDocument();
+  });
+
+  it("affiche un zéro communiqué par le fournisseur", () => {
+    render(
+      <ImportAnalysisPanel
+        step="Analyse du CV…"
+        elapsedMs={12_000}
+        entries={[]}
+        tokens_used={0}
+      />,
+    );
+
+    expect(screen.getByText("Temps écoulé : 00:12 · 0 tokens")).toBeInTheDocument();
   });
 });

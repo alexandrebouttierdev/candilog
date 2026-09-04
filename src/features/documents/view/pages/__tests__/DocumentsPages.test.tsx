@@ -10,6 +10,7 @@ import type { ResumeWorkspace } from "@/shared/types/generated/documents";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { ResumeLibraryPage } from "../ResumeLibraryPage";
 import { ResumeGeneratorPage } from "../ResumeGeneratorPage";
+import { ResumeAnalysisPage } from "../ResumeAnalysisPage";
 import { LetterWriterPage } from "../LettersPages";
 import { AppError } from "@/shared/types/app-error";
 import { aiService } from "@/features/ai/services/aiService";
@@ -23,6 +24,10 @@ vi.mock("react-router-dom", async () => {
 function wrapper({ children }: { children: ReactNode }) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return <QueryClientProvider client={client}><MemoryRouter>{children}</MemoryRouter></QueryClientProvider>;
+}
+
+function aiExecution<T>(output: T) {
+  return { output, elapsed_ms: 18_400, tokens_used: 1_024 };
 }
 
 beforeEach(() => {
@@ -53,6 +58,58 @@ describe("bibliothèque de CV paginée", () => {
     await userEvent.type(search, "cible");
     await waitFor(() => expect(paged).toHaveBeenCalledWith({ page: 1, page_size: 8, search: "cible" }));
     expect(exhaustive).not.toHaveBeenCalled();
+  });
+});
+
+describe("analyse explicite d'un CV sélectionné", () => {
+  it("sélectionne le PDF sans analyser puis transmet son chemin au clic dédié", async () => {
+    vi.spyOn(aiService, "selectResumeFile").mockResolvedValue({
+      path: "/tmp/cv.pdf",
+      name: "cv.pdf",
+    });
+    const analyze = vi.spyOn(aiService, "analyzeResume").mockResolvedValue({
+      output: {
+        resume: { resume: "Profil", experiences: [], skills: [], education: [] },
+        job_offer: {
+          title: "Développeur",
+          skills: [],
+          soft_skills: [],
+          experience: null,
+          keywords: [],
+        },
+        score: {
+          total: 72,
+          skills: null,
+          experience: null,
+          ats: null,
+          present: [],
+          missing: [],
+        },
+        analysis: { recap: "Analyse terminée", recommendations: [] },
+      },
+      elapsed_ms: 18_400,
+      tokens_used: 1_024,
+    });
+
+    render(<ResumeAnalysisPage />, { wrapper });
+    await userEvent.type(screen.getByLabelText(/Offre ciblée/), "Une offre");
+    await userEvent.click(screen.getByRole("button", { name: "Choisir un fichier" }));
+
+    expect(analyze).not.toHaveBeenCalled();
+    expect(await screen.findByText("cv.pdf")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Analyser le CV" }));
+
+    await waitFor(() =>
+      expect(analyze).toHaveBeenCalledWith({
+        generation_id: expect.any(String),
+        job_offer: "Une offre",
+        file_path: "/tmp/cv.pdf",
+      }),
+    );
+    expect(
+      await screen.findByText("Analysé en 18,4 s · 1 024 tokens"),
+    ).toBeInTheDocument();
   });
 });
 
@@ -103,7 +160,7 @@ describe("échecs d'enregistrement", () => {
   });
 
   it("signale le refus d'enregistrement d'une lettre", async () => {
-    vi.spyOn(aiService, "generateCoverLetter").mockResolvedValue("Madame, Monsieur,");
+    vi.spyOn(aiService, "generateCoverLetter").mockResolvedValue(aiExecution("Madame, Monsieur,"));
     vi.spyOn(documentsService, "saveCoverLetter").mockRejectedValue(
       new AppError({ code: "VALIDATION_ERROR", message: "Le nom de la lettre est trop long" }),
     );
@@ -159,7 +216,7 @@ describe("collage d'une offre depuis le presse-papiers", () => {
 
 describe("retouche de la lettre sur la page", () => {
   async function lettreGeneree(contenu = "Madame, Monsieur,") {
-    vi.spyOn(aiService, "generateCoverLetter").mockResolvedValue(contenu);
+    vi.spyOn(aiService, "generateCoverLetter").mockResolvedValue(aiExecution(contenu));
     const save = vi.spyOn(documentsService, "saveCoverLetter").mockResolvedValue({
       id: "lettre-1",
       name: "Lettre — Candidature",
@@ -219,7 +276,7 @@ describe("retouche de la lettre sur la page", () => {
 
 describe("itérations sur la lettre", () => {
   async function redigerUneLettre(contenu = "Madame, Monsieur,") {
-    vi.spyOn(aiService, "generateCoverLetter").mockResolvedValue(contenu);
+    vi.spyOn(aiService, "generateCoverLetter").mockResolvedValue(aiExecution(contenu));
     render(<LetterWriterPage />, { wrapper });
     await userEvent.type(screen.getByLabelText("Contexte ou offre"), "Une offre");
     await userEvent.click(screen.getByRole("button", { name: /Rédiger la lettre/ }));
@@ -228,7 +285,9 @@ describe("itérations sur la lettre", () => {
   it("remplace le brief par les itérations et annonce la durée de rédaction", async () => {
     await redigerUneLettre();
 
-    expect(await screen.findByText(/Lettre rédigée en/)).toBeInTheDocument();
+    expect(
+      await screen.findByText("Lettre rédigée en 18,4 s · 1 024 tokens"),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText("Que faut-il changer ?")).toBeInTheDocument();
     expect(screen.queryByLabelText("Contexte ou offre")).not.toBeInTheDocument();
   });
@@ -365,12 +424,12 @@ describe("décisions ATS et confirmation profil dans le générateur de CV", () 
   }
 
   it("demande séparément si la compétence rejoint le profil", async () => {
-    vi.spyOn(aiService, "generateResume").mockResolvedValue({
+    vi.spyOn(aiService, "generateResume").mockResolvedValue(aiExecution({
       resume: { resume: "", experiences: [], skills: [], education: [] },
       analysis: { recap: "", recommendations: [] },
       job_offer: { title: "Développeur", skills: [], soft_skills: [], experience: null, keywords: [] },
       profile_score: { total: 60, skills: null, experience: null, ats: null, present: [], missing: [] },
-    });
+    }));
     const workspace = missingSkillWorkspace();
     vi.spyOn(documentsService, "prepareResume").mockResolvedValue(workspace);
     vi.spyOn(documentsService, "applyResumeProposal").mockResolvedValue({
@@ -389,12 +448,12 @@ describe("décisions ATS et confirmation profil dans le générateur de CV", () 
   });
 
   it("efface l'offre une fois le CV généré, et sait y revenir", async () => {
-    vi.spyOn(aiService, "generateResume").mockResolvedValue({
+    vi.spyOn(aiService, "generateResume").mockResolvedValue(aiExecution({
       resume: { resume: "", experiences: [], skills: [], education: [] },
       analysis: { recap: "", recommendations: [] },
       job_offer: { title: "Développeur", skills: [], soft_skills: [], experience: null, keywords: [] },
       profile_score: { total: 60, skills: null, experience: null, ats: null, present: [], missing: [] },
-    });
+    }));
     vi.spyOn(documentsService, "prepareResume").mockResolvedValue(missingSkillWorkspace());
 
     render(<ResumeGeneratorPage />, { wrapper });

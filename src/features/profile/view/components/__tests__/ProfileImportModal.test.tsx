@@ -2,6 +2,7 @@ import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { aiService } from "@/features/ai/services/aiService";
+import type { AiExecution } from "@/features/ai/model/types";
 import type { ImportProfilePreview } from "@/shared/types/generated/profile";
 import { ProfileImportModal } from "../ProfileImportModal";
 
@@ -15,7 +16,7 @@ vi.mock("@/features/ai/viewmodel/useAiProgress", () => ({
 }));
 
 const progress = vi.hoisted(() => ({
-  current: { step: null as string | null, entries: [] as { at: string; message: string }[] },
+  current: { step: null as string | null, entries: [] as { at: string; message: string }[], tokens_used: null as number | null },
 }));
 
 vi.mock("../../../viewmodel/useProfileImportProgress", () => ({
@@ -51,9 +52,17 @@ function conflictOnlyPreview(): ImportProfilePreview {
   };
 }
 
+function execution(
+  output = conflictOnlyPreview(),
+  elapsed_ms = 2_000,
+  tokens_used: number | null = 640,
+): AiExecution<ImportProfilePreview> {
+  return { output, elapsed_ms, tokens_used };
+}
+
 describe("ProfileImportModal", () => {
   beforeEach(() => {
-    progress.current = { step: null, entries: [] };
+    progress.current = { step: null, entries: [], tokens_used: null };
   });
 
   afterEach(() => {
@@ -93,6 +102,7 @@ describe("ProfileImportModal", () => {
     progress.current = {
       step: "Lecture du fichier…",
       entries: [{ at: "2026-08-30T10:00:00Z", message: "Lecture du fichier" }],
+      tokens_used: null,
     };
     rerender(ui());
 
@@ -103,7 +113,7 @@ describe("ProfileImportModal", () => {
   it("mesure la durée d'analyse sans le temps passé dans le sélecteur", async () => {
     const now = vi.spyOn(Date, "now");
     now.mockReturnValue(1_000);
-    let publish: (preview: ImportProfilePreview) => void = () => undefined;
+    let publish: (preview: AiExecution<ImportProfilePreview>) => void = () => undefined;
     vi.mocked(aiService.importProfile).mockReturnValue(
       new Promise((resolve) => {
         publish = resolve;
@@ -120,20 +130,21 @@ describe("ProfileImportModal", () => {
     progress.current = {
       step: "Lecture du fichier…",
       entries: [{ at: new Date(10_000).toISOString(), message: "Lecture du fichier" }],
+      tokens_used: null,
     };
     rerender(ui());
     now.mockReturnValue(12_000);
     await act(async () => {
-      publish(conflictOnlyPreview());
+      publish(execution());
       await Promise.resolve();
     });
 
-    expect(screen.getByText("Analyse terminée en 2 s")).toBeInTheDocument();
+    expect(screen.getByText("Analysé en 2 s · 640 tokens")).toBeInTheDocument();
     now.mockRestore();
   });
 
   it("applique l'import même si tout conserve l'existant", async () => {
-    vi.mocked(aiService.importProfile).mockResolvedValue(conflictOnlyPreview());
+    vi.mocked(aiService.importProfile).mockResolvedValue(execution());
     const onApply = vi.fn().mockResolvedValue({ added: 0, replaced: 0, skipped: 1 });
 
     render(<ProfileImportModal open busy={false} onClose={vi.fn()} onApply={onApply} />);

@@ -93,7 +93,10 @@ export function DownloadMenu({ libelle = "Télécharger Candilog" }: { libelle?:
   );
 
   return (
-    <div ref={racine} className="relative shrink-0">
+    <div
+      ref={racine}
+      className={cn("relative shrink-0", ouvert && "z-50")}
+    >
       <Button
         ref={declencheur}
         onClick={() => ouvrirMenu(ouvert ? null : id)}

@@ -23,6 +23,7 @@ function Frame({ children }: { children: React.ReactNode }) {
         <span className="size-1.5 rounded-full bg-neutral-tint" />
         <span className="size-1.5 rounded-full bg-neutral-tint" />
         <span className="size-1.5 rounded-full bg-neutral-tint" />
+        <span className="ml-auto text-tag text-ink-faint">Données fictives</span>
       </div>
       <div className="flex h-[calc(100%-28px)] flex-col gap-2 bg-page p-2.5">{children}</div>
     </div>
@@ -58,14 +59,14 @@ function TodayPreview() {
         <p className="mb-1.5 text-tag uppercase tracking-[0.07em] text-ink-label">Prochainement</p>
         <div className="flex items-center gap-2">
           <span className="tabular font-mono text-tag text-accent">Auj.</span>
-          <Initials>LX</Initials>
-          <span className="min-w-0 flex-1 truncate text-tag text-ink">Linxea</span>
+          <Initials>ED</Initials>
+          <span className="min-w-0 flex-1 truncate text-tag text-ink">Entreprise Démo</span>
           <span className="text-tag text-warning">Relance</span>
         </div>
         <div className="mt-1.5 flex items-center gap-2 border-t border-field pt-1.5">
           <span className="tabular font-mono text-tag text-ink-faint">Jeu.</span>
-          <Initials>ND</Initials>
-          <span className="min-w-0 flex-1 truncate text-tag text-ink">Nova Digital</span>
+          <Initials>SF</Initials>
+          <span className="min-w-0 flex-1 truncate text-tag text-ink">Studio Fictif</span>
           <span className="text-tag text-accent-text">Entretien</span>
         </div>
       </div>
@@ -75,9 +76,9 @@ function TodayPreview() {
 
 function KanbanPreview() {
   const columns = [
-    { label: "En attente", count: "12", cards: ["Nova Digital", "ISCOD"] },
-    { label: "Relancée", count: "5", cards: ["Linxea"] },
-    { label: "Entretien", count: "2", cards: ["Atlas Studio"], actif: true },
+    { label: "En attente", count: "12", cards: ["Entreprise Démo", "Société Exemple"] },
+    { label: "Relancée", count: "5", cards: ["Studio Fictif"] },
+    { label: "Entretien", count: "2", cards: ["Atelier Exemple"], actif: true },
     { label: "Refus", count: "9", cards: [] },
   ];
   return (
@@ -111,9 +112,9 @@ function KanbanPreview() {
 
 function NetworkPreview() {
   const rows = [
-    { initials: "ND", name: "Nova Digital", detail: "ESN · Rennes" },
-    { initials: "AS", name: "Atlas Studio", detail: "Client final · Nantes" },
-    { initials: "CR", name: "Camille Rivet", detail: "Recruteuse" },
+    { initials: "ED", name: "Entreprise Démo", detail: "ESN fictive · Rennes" },
+    { initials: "AE", name: "Atelier Exemple", detail: "Client fictif · Nantes" },
+    { initials: "CE", name: "Camille Exemple", detail: "Contact fictif" },
   ];
   return (
     <Frame>
@@ -139,7 +140,7 @@ function DocumentsPreview() {
             <Icon name="auto_awesome" size={9} />
             CV ciblé
           </span>
-          <p className="truncate text-tag font-strong text-ink">Camille Rivet</p>
+          <p className="truncate text-tag font-strong text-ink">Camille Exemple</p>
           <p className="truncate text-tag text-ink-faint">Développeuse Front-end</p>
           <span className="mt-0.5 block h-px bg-line" />
           <span className="block h-1 w-full rounded-full bg-fill" />
@@ -148,7 +149,7 @@ function DocumentsPreview() {
         </div>
         <div className="flex flex-1 flex-col gap-1 rounded-tile border border-line bg-surface p-2">
           <p className="truncate text-tag font-strong text-ink">Lettre de motivation</p>
-          <p className="truncate text-tag text-ink-faint">Nova Digital</p>
+          <p className="truncate text-tag text-ink-faint">Entreprise Démo</p>
           <span className="mt-0.5 block h-px bg-line" />
           <span className="block h-1 w-full rounded-full bg-fill" />
           <span className="block h-1 w-full rounded-full bg-fill" />
@@ -196,10 +197,10 @@ function ProfilePreview() {
     <Frame>
       <div className="flex items-center gap-2">
         <span className="flex size-8 flex-none items-center justify-center rounded-full bg-accent-tint text-tag font-strong text-accent">
-          CR
+          CE
         </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-item text-ink">Camille Rivet</p>
+          <p className="truncate text-item text-ink">Camille Exemple</p>
           <p className="truncate text-tag text-accent">Développeuse Front-end</p>
         </div>
       </div>
