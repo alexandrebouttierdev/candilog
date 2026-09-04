@@ -5,6 +5,7 @@ import { TopBar } from "./TopBar";
 import { SubNav } from "./SubNav";
 import { ContextBarProvider } from "./ContextBar";
 import { sectionForPath } from "@/app/router/routes";
+import { AiNavigationGuard } from "./AiNavigationGuard";
 
 function PageFallback() {
   return (
@@ -28,6 +29,7 @@ export function AppShell() {
       >
         Aller au contenu
       </a>
+      <AiNavigationGuard />
       <NavRail />
       <ContextBarProvider>
         {(slotRef) => (

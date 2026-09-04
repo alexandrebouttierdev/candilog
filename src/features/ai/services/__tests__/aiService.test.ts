@@ -54,4 +54,31 @@ describe("aiService", () => {
     await expect(aiService.analyzeListing("offre")).rejects.toThrow();
     expect(playCompletionSound).not.toHaveBeenCalled();
   });
+
+  it("reste muet quand une génération annulée se résout tardivement", async () => {
+    let resolveGeneration: ((value: string) => void) | undefined;
+    const generation = new Promise<string>((resolve) => {
+      resolveGeneration = resolve;
+    });
+    vi.mocked(ipc).mockImplementation((command) => {
+      if (command === "ai_cancel") return Promise.resolve(undefined);
+      return generation;
+    });
+
+    const run = aiService.generateCoverLetter({
+      generation_id: "gen-late",
+      company: null,
+      job_title: null,
+      tone: "formal",
+      length: "medium",
+      context: null,
+      previous_cover_letter: null,
+      instruction: null,
+    });
+    await aiService.cancel("gen-late");
+    resolveGeneration?.("Résultat tardif");
+    await run;
+
+    expect(playCompletionSound).not.toHaveBeenCalled();
+  });
 });

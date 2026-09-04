@@ -1,6 +1,7 @@
 import { formatElapsed, formatTokens } from "@/shared/lib/duration";
 import type { ImportJournalEntry } from "../../viewmodel/useProfileImportProgress";
 import { ImportJournal } from "./ImportJournal";
+import { AiStopButton } from "@/features/ai/view/components/AiStopButton";
 
 /** Progression indéterminée : aucune valeur chiffrée n'est affichée. */
 export function ImportAnalysisPanel({
@@ -8,11 +9,15 @@ export function ImportAnalysisPanel({
   elapsedMs,
   entries,
   tokens_used,
+  stopping,
+  onStop,
 }: {
   step: string | null;
   elapsedMs: number;
   entries: ImportJournalEntry[];
   tokens_used?: number | null;
+  stopping: boolean;
+  onStop: () => void;
 }) {
   return (
     <div className="space-y-4 pt-3">
@@ -29,6 +34,7 @@ export function ImportAnalysisPanel({
           ? ` · ${formatTokens(tokens_used)} tokens`
           : null}
       </p>
+      <AiStopButton stopping={stopping} onStop={onStop} />
       <ImportJournal entries={entries} />
     </div>
   );

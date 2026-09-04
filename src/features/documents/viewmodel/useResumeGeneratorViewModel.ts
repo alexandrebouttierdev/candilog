@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { aiService, generation_id } from "@/features/ai/services/aiService";
+import { aiService } from "@/features/ai/services/aiService";
 import type { AiExecution, ResumeGeneration } from "@/features/ai/model/types";
-import { useAiProgress, useCancelAiOnUnmount } from "@/features/ai/viewmodel/useAiProgress";
+import { useAiOperation } from "@/features/ai/viewmodel/useAiOperation";
+import { useAiProgress } from "@/features/ai/viewmodel/useAiProgress";
 import { useAiTimer } from "@/features/ai/viewmodel/useAiTimer";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
@@ -31,7 +32,7 @@ export function useResumeGeneratorViewModel(initial: ResumeGeneratorInitial) {
   const queryClient = useQueryClient();
   const notify = useUiStore((state) => state.notify);
   const [jobOffer, setJobOffer] = useState("");
-  const [operation, setOperation] = useState<string | null>(null);
+  const { operation, stopping, start, stop, finish, isCurrent } = useAiOperation();
   const [error, setError] = useState<string | null>(null);
   const [historical] = useState(initial.result);
   const [name, setName] = useState(initial.name);
@@ -41,9 +42,8 @@ export function useResumeGeneratorViewModel(initial: ResumeGeneratorInitial) {
   const [metrics, setMetrics] = useState<
     Pick<AiExecution<unknown>, "elapsed_ms" | "tokens_used"> | null
   >(null);
-  const progress = useAiProgress(operation);
-  useCancelAiOnUnmount(operation);
-  const timer = useAiTimer(operation !== null);
+  const progress = useAiProgress(stopping ? null : (operation?.id ?? null));
+  const timer = useAiTimer(operation !== null && !stopping);
 
   useEffect(() => {
     mounted.current = true;
@@ -75,15 +75,20 @@ export function useResumeGeneratorViewModel(initial: ResumeGeneratorInitial) {
       setError("Collez le texte de l’offre à cibler.");
       return;
     }
-    const id = generation_id();
-    setOperation(id);
+    let id: string;
+    try {
+      id = start("generation");
+    } catch (caught) {
+      setError(errorMessage(caught));
+      return;
+    }
     setError(null);
     timer.start();
     try {
       const execution = await aiService.generateResume({ generation_id: id, job_offer: jobOffer });
-      if (!mounted.current) return;
+      if (!mounted.current || !isCurrent(id)) return;
       const prepared = await documentsService.prepareResume(execution.output);
-      if (!mounted.current) return;
+      if (!mounted.current || !isCurrent(id)) return;
       timer.stop();
       setWorkspace(prepared);
       setGenerationIndex((index) => index + 1);
@@ -96,12 +101,21 @@ export function useResumeGeneratorViewModel(initial: ResumeGeneratorInitial) {
     } catch (caught) {
       if (
         mounted.current &&
+        isCurrent(id) &&
         !(caught instanceof AppError && caught.code === "CANCELLED")
       ) {
         setError(errorMessage(caught));
       }
     } finally {
-      if (mounted.current) setOperation(null);
+      finish(id);
+    }
+  }
+
+  async function stopGeneration(): Promise<void> {
+    try {
+      await stop();
+    } catch (caught) {
+      if (mounted.current) setError(errorMessage(caught));
     }
   }
 
@@ -123,6 +137,7 @@ export function useResumeGeneratorViewModel(initial: ResumeGeneratorInitial) {
   return {
     jobOffer,
     operation,
+    stopping,
     error,
     name,
     workspace,
@@ -138,7 +153,7 @@ export function useResumeGeneratorViewModel(initial: ResumeGeneratorInitial) {
     openBrief: () => setBriefOpen(true),
     closeBrief: () => setBriefOpen(false),
     generate,
-    cancel: () => (operation ? aiService.cancel(operation) : Promise.resolve()),
+    stop: stopGeneration,
     saveResume: save.mutateAsync,
   };
 }

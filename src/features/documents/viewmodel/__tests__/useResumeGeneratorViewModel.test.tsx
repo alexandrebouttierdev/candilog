@@ -9,10 +9,10 @@ import { AppError } from "@/shared/types/app-error";
 import { documentsService } from "../../services/documentsService";
 import { workspaceFixture } from "../../model/resumeWorkspace";
 import { useResumeGeneratorViewModel } from "../useResumeGeneratorViewModel";
+import { useAiOperationStore } from "@/features/ai/viewmodel/ai-operation-store";
 
 vi.mock("@/features/ai/viewmodel/useAiProgress", () => ({
   useAiProgress: () => null,
-  useCancelAiOnUnmount: () => undefined,
 }));
 
 function wrapper({ children }: { children: ReactNode }) {
@@ -37,6 +37,7 @@ function execution(output = generation()) {
 
 beforeEach(() => {
   vi.restoreAllMocks();
+  useAiOperationStore.setState({ active: null });
   useUiStore.setState({ toasts: [] });
 });
 
@@ -72,6 +73,57 @@ describe("ViewModel du générateur de CV", () => {
     expect(result.current.generationIndex).toBe(1);
     expect(result.current.briefOpen).toBe(false);
     expect(result.current.metrics).toEqual({ elapsed_ms: 18_400, tokens_used: 1_024 });
+  });
+
+  it("arrête la génération et ignore sa réponse tardive", async () => {
+    let resolveGeneration: ((value: ReturnType<typeof execution>) => void) | undefined;
+    vi.spyOn(aiService, "generateResume").mockReturnValue(
+      new Promise((resolve) => { resolveGeneration = resolve; }),
+    );
+    const prepareResume = vi.spyOn(documentsService, "prepareResume");
+    const cancel = vi.spyOn(aiService, "cancel").mockResolvedValue(undefined);
+    const { result } = renderHook(
+      () => useResumeGeneratorViewModel({ result: null, workspace: null, name: "" }),
+      { wrapper },
+    );
+    act(() => result.current.setJobOffer("Une offre Rust"));
+
+    let generationPromise: Promise<void> | undefined;
+    act(() => { generationPromise = result.current.generate(); });
+    await waitFor(() => expect(result.current.operation).not.toBeNull());
+    const operationId = result.current.operation?.id;
+
+    await act(async () => { await result.current.stop(); });
+
+    expect(cancel).toHaveBeenCalledWith(operationId);
+    expect(result.current.operation).toBeNull();
+
+    await act(async () => {
+      resolveGeneration?.(execution());
+      await generationPromise;
+    });
+    expect(prepareResume).not.toHaveBeenCalled();
+    expect(result.current.workspace).toBeNull();
+    expect(result.current.error).toBeNull();
+  });
+
+  it("affiche l'échec de l'arrêt sans produire de rejet non géré", async () => {
+    vi.spyOn(aiService, "generateResume").mockReturnValue(new Promise(() => undefined));
+    vi.spyOn(aiService, "cancel").mockRejectedValue(
+      new AppError({ code: "IO_ERROR", message: "L'arrêt a échoué." }),
+    );
+    const { result } = renderHook(
+      () => useResumeGeneratorViewModel({ result: null, workspace: null, name: "" }),
+      { wrapper },
+    );
+    act(() => result.current.setJobOffer("Une offre Rust"));
+    act(() => { void result.current.generate(); });
+    await waitFor(() => expect(result.current.operation).not.toBeNull());
+
+    await act(async () => { await result.current.stop(); });
+
+    expect(result.current.error).toBe("L'arrêt a échoué.");
+    expect(result.current.operation).toMatchObject({ stopping: false });
   });
 
   it("prépare une génération historique reçue par navigation", async () => {

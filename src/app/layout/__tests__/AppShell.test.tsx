@@ -1,21 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import {
+  createMemoryRouter,
+  MemoryRouter,
+  RouterProvider,
+  type RouteObject,
+} from "react-router-dom";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { AppShell } from "../AppShell";
 import { NavRail } from "../NavRail";
 import { TopBar } from "../TopBar";
 
+function renderShell(children: RouteObject[], initialEntries = ["/"]) {
+  const router = createMemoryRouter(
+    [{ path: "/", element: <AppShell />, children }],
+    { initialEntries },
+  );
+  return render(<RouterProvider router={router} />);
+}
+
 describe("coque applicative", () => {
   it("offre un lien d'évitement vers le contenu et un seul main", () => {
-    render(
-      <MemoryRouter>
-        <Routes>
-          <Route element={<AppShell />}>
-            <Route index element={<p>Accueil</p>} />
-          </Route>
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderShell([{ index: true, element: <p>Accueil</p> }]);
     const skip = screen.getByRole("link", { name: "Aller au contenu" });
     expect(skip).toHaveAttribute("href", "#contenu");
     expect(screen.getAllByRole("main")).toHaveLength(1);
@@ -23,16 +28,10 @@ describe("coque applicative", () => {
   });
 
   it("ne navigue plus au clavier avec Ctrl/Cmd + chiffre", () => {
-    render(
-      <MemoryRouter initialEntries={["/"]}>
-        <Routes>
-          <Route element={<AppShell />}>
-            <Route index element={<p>Accueil</p>} />
-            <Route path="tracking/applications" element={<p>Candidatures</p>} />
-          </Route>
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderShell([
+      { index: true, element: <p>Accueil</p> },
+      { path: "tracking/applications", element: <p>Candidatures</p> },
+    ]);
 
     fireEvent.keyDown(document, { key: "2", ctrlKey: true });
 
@@ -41,15 +40,7 @@ describe("coque applicative", () => {
   });
 
   it("n'ouvre plus de palette globale avec Ctrl/Cmd+K", () => {
-    render(
-      <MemoryRouter>
-        <Routes>
-          <Route element={<AppShell />}>
-            <Route index element={<p>Accueil</p>} />
-          </Route>
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderShell([{ index: true, element: <p>Accueil</p> }]);
 
     fireEvent.keyDown(document, { key: "k", ctrlKey: true });
 

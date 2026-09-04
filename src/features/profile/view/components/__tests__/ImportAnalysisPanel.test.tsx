@@ -9,6 +9,8 @@ describe("ImportAnalysisPanel", () => {
         step="Analyse du CV…"
         elapsedMs={12_000}
         entries={[{ at: "2026-08-29T14:32:01.000Z", message: "Analyse démarrée" }]}
+        stopping={false}
+        onStop={() => undefined}
       />,
     );
 
@@ -26,6 +28,8 @@ describe("ImportAnalysisPanel", () => {
         elapsedMs={12_000}
         entries={[]}
         tokens_used={1_024}
+        stopping={false}
+        onStop={() => undefined}
       />,
     );
 
@@ -39,9 +43,25 @@ describe("ImportAnalysisPanel", () => {
         elapsedMs={12_000}
         entries={[]}
         tokens_used={0}
+        stopping={false}
+        onStop={() => undefined}
       />,
     );
 
     expect(screen.getByText("Temps écoulé : 00:12 · 0 tokens")).toBeInTheDocument();
+  });
+
+  it("permet d'arrêter l'analyse", () => {
+    render(
+      <ImportAnalysisPanel
+        step={null}
+        elapsedMs={0}
+        entries={[]}
+        stopping
+        onStop={() => undefined}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Arrêt…" })).toBeDisabled();
   });
 });

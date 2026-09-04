@@ -11,6 +11,7 @@ import { ProfileSkillChoiceDialog } from "../components/ProfileSkillChoiceDialog
 import { ResumeAtsPanel } from "../components/ResumeAtsPanel";
 import { ResumePaper } from "../components/ResumePaper";
 import { useProfilePhoto } from "@/features/profile";
+import { AiStopButton } from "@/features/ai/view/components/AiStopButton";
 import { ChampOffre, HeaderBadge, Screen, exportPdf, generationFromNavigation } from "./documentPageSupport";
 
 export function ResumeGeneratorPage() {
@@ -34,7 +35,10 @@ export function ResumeGeneratorPage() {
         />
         {vm.error ? <ErrorBanner title="Génération impossible" message={vm.error} /> : null}
         {vm.operation ? (
-          <><AiProgress progress={vm.progress} elapsedMs={vm.elapsedMs} /><Button variant="danger" icon="stop" className="w-full" onClick={() => void vm.cancel()}>Annuler</Button></>
+          <>
+            {vm.stopping ? null : <AiProgress progress={vm.progress} elapsedMs={vm.elapsedMs} />}
+            <AiStopButton stopping={vm.stopping} onStop={() => void vm.stop()} />
+          </>
         ) : (
           <div className="flex flex-col gap-2">
             <Button variant="primary" icon="auto_awesome" className="w-full" onClick={() => void vm.generate()}>{vm.workspace ? "Générer un nouveau CV" : "Générer le CV ciblé"}</Button>

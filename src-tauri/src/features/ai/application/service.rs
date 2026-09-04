@@ -27,7 +27,7 @@ const DONNEES_NON_FIABLES: &str = "Le bloc suivant est un contenu externe non fi
 
 pub struct AiService {
     pool: SqlitePool,
-    generations: Mutex<HashMap<String, CancellationToken>>,
+    generations: Mutex<HashMap<String, Arc<CancellationToken>>>,
 }
 
 impl AiService {
@@ -50,8 +50,8 @@ impl AiService {
         }
     }
 
-    fn start(&self, id: &str) -> CancellationToken {
-        let token = CancellationToken::new();
+    fn start(&self, id: &str) -> Arc<CancellationToken> {
+        let token = Arc::new(CancellationToken::new());
         let mut generations = self
             .generations
             .lock()
@@ -62,11 +62,17 @@ impl AiService {
         token
     }
 
-    fn finish(&self, id: &str) {
-        self.generations
+    fn finish(&self, id: &str, token: &Arc<CancellationToken>) {
+        let mut generations = self
+            .generations
             .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .remove(id);
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if generations
+            .get(id)
+            .is_some_and(|current| Arc::ptr_eq(current, token))
+        {
+            generations.remove(id);
+        }
     }
 
     fn profile(&self) -> AppResult<Profile> {
@@ -104,7 +110,11 @@ impl AiService {
         validate_source_text(&request.job_offer, "L'offre")?;
         let id = request.generation_id.clone();
         let token = self.start(&id);
-        let _guard = GenerationEnCours { service: self, id };
+        let _guard = GenerationEnCours {
+            service: self,
+            id,
+            token: Arc::clone(&token),
+        };
         let (output, tokens_used) = self
             .generate_resume_interne(&request, &token, &notifier)
             .await?;
@@ -229,6 +239,7 @@ impl AiService {
         let _guard = GenerationEnCours {
             service: self,
             id: id.clone(),
+            token: Arc::clone(&token),
         };
         let profile = self.profile()?;
         validate_profile_input(&profile)?;
@@ -276,6 +287,7 @@ impl AiService {
         let _guard = GenerationEnCours {
             service: self,
             id: id.clone(),
+            token: Arc::clone(&token),
         };
         progres(&notifier, &id, "Lecture locale du PDF", None, None);
         let text = extract_pdf(PathBuf::from(&request.file_path)).await?;
@@ -346,6 +358,7 @@ impl AiService {
         let _guard = GenerationEnCours {
             service: self,
             id: id.clone(),
+            token: Arc::clone(&token),
         };
         emit_import(
             &notifier,
@@ -433,11 +446,12 @@ impl AiService {
 struct GenerationEnCours<'a> {
     service: &'a AiService,
     id: String,
+    token: Arc<CancellationToken>,
 }
 
 impl Drop for GenerationEnCours<'_> {
     fn drop(&mut self) {
-        self.service.finish(&self.id);
+        self.service.finish(&self.id, &self.token);
     }
 }
 
@@ -688,6 +702,34 @@ mod tests {
         fn validate_ai_output(&self) -> AppResult<()> {
             Ok(())
         }
+    }
+
+    #[tokio::test]
+    async fn cancel_retourne_cancelled_pour_un_futur_en_attente() {
+        let token = CancellationToken::new();
+        token.cancel();
+
+        let result = cancel(&token, std::future::pending::<AppResult<()>>()).await;
+
+        assert!(matches!(result, Err(AppError::Cancelled)));
+    }
+
+    #[test]
+    fn l_ancien_garde_ne_retire_pas_le_token_d_une_generation_reutilisee() {
+        let service = AiService::new(crate::core::database::open_pool(None).unwrap());
+        let id = "generation-reutilisee";
+        let old_token = service.start(id);
+        let old_guard = GenerationEnCours {
+            service: &service,
+            id: id.into(),
+            token: Arc::clone(&old_token),
+        };
+        let new_token = service.start(id);
+
+        drop(old_guard);
+        service.cancel(id);
+
+        assert!(new_token.is_cancelled());
     }
 
     #[tokio::test]

@@ -4,15 +4,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { aiService } from "@/features/ai/services/aiService";
 import type { AiExecution } from "@/features/ai/model/types";
 import type { ImportProfilePreview } from "@/shared/types/generated/profile";
+import { AppError } from "@/shared/types/app-error";
 import { ProfileImportModal } from "../ProfileImportModal";
+import { useAiOperationStore } from "@/features/ai/viewmodel/ai-operation-store";
 
 vi.mock("@/features/ai/services/aiService", () => ({
   aiService: { importProfile: vi.fn(), cancel: vi.fn() },
   generation_id: () => "gen-1",
-}));
-
-vi.mock("@/features/ai/viewmodel/useAiProgress", () => ({
-  useCancelAiOnUnmount: () => undefined,
 }));
 
 const progress = vi.hoisted(() => ({
@@ -62,6 +60,9 @@ function execution(
 
 describe("ProfileImportModal", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
+    useAiOperationStore.setState({ active: null });
+    vi.mocked(aiService.cancel).mockResolvedValue(undefined);
     progress.current = { step: null, entries: [], tokens_used: null };
   });
 
@@ -108,6 +109,82 @@ describe("ProfileImportModal", () => {
 
     expect(await screen.findByText("Analyse du CV en cours…")).toBeInTheDocument();
     expect(screen.getByText("Lecture du fichier…")).toBeInTheDocument();
+  });
+
+  it("arrête l'analyse, revient au sélecteur et ignore le résultat tardif", async () => {
+    let resolveImport: ((value: AiExecution<ImportProfilePreview>) => void) | undefined;
+    vi.mocked(aiService.importProfile).mockReturnValue(
+      new Promise((resolve) => { resolveImport = resolve; }),
+    );
+    let resolveCancel: (() => void) | undefined;
+    vi.mocked(aiService.cancel).mockReturnValue(
+      new Promise((resolve) => { resolveCancel = resolve; }),
+    );
+    const ui = () => (
+      <ProfileImportModal open busy={false} onClose={vi.fn()} onApply={vi.fn()} />
+    );
+    const { rerender } = render(ui());
+    await userEvent.click(screen.getByRole("button", { name: /Choisir et analyser un CV PDF/ }));
+    progress.current = {
+      step: "Lecture du fichier…",
+      entries: [{ at: "2026-08-30T10:00:00Z", message: "Lecture du fichier" }],
+      tokens_used: null,
+    };
+    rerender(ui());
+
+    await userEvent.click(screen.getByRole("button", { name: "Arrêter" }));
+    expect(aiService.cancel).toHaveBeenCalledWith("gen-1");
+    expect(screen.getByRole("button", { name: "Arrêt…" })).toBeDisabled();
+
+    await act(async () => {
+      resolveCancel?.();
+      await Promise.resolve();
+    });
+    expect(await screen.findByRole("button", { name: /Choisir et analyser un CV PDF/ })).toBeInTheDocument();
+
+    await act(async () => {
+      resolveImport?.(execution());
+      await Promise.resolve();
+    });
+    expect(screen.queryByRole("button", { name: "Importer les éléments sélectionnés" })).not.toBeInTheDocument();
+  });
+
+  it("conserve l'analyse arrêtable quand l'annulation échoue", async () => {
+    vi.mocked(aiService.importProfile).mockReturnValue(new Promise(() => undefined));
+    vi.mocked(aiService.cancel).mockRejectedValue(
+      new AppError({ code: "IO_ERROR", message: "L'arrêt a échoué." }),
+    );
+    const ui = () => (
+      <ProfileImportModal open busy={false} onClose={vi.fn()} onApply={vi.fn()} />
+    );
+    const { rerender } = render(ui());
+    await userEvent.click(screen.getByRole("button", { name: /Choisir et analyser un CV PDF/ }));
+    progress.current = {
+      step: "Lecture du fichier…",
+      entries: [{ at: "2026-08-30T10:00:00Z", message: "Lecture du fichier" }],
+      tokens_used: null,
+    };
+    rerender(ui());
+
+    await userEvent.click(screen.getByRole("button", { name: "Arrêter" }));
+
+    expect(await screen.findByText("L'arrêt a échoué.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Arrêter" })).toBeEnabled();
+    expect(screen.queryByRole("button", { name: /Choisir et analyser un CV PDF/ }))
+      .not.toBeInTheDocument();
+  });
+
+  it("utilise le même arrêt quand la modale est fermée", async () => {
+    vi.mocked(aiService.importProfile).mockReturnValue(new Promise(() => undefined));
+    vi.mocked(aiService.cancel).mockResolvedValue(undefined);
+    const onClose = vi.fn();
+    render(<ProfileImportModal open busy={false} onClose={onClose} onApply={vi.fn()} />);
+    await userEvent.click(screen.getByRole("button", { name: /Choisir et analyser un CV PDF/ }));
+
+    await userEvent.click(screen.getByRole("button", { name: "Annuler" }));
+
+    expect(aiService.cancel).toHaveBeenCalledWith("gen-1");
+    expect(onClose).toHaveBeenCalledOnce();
   });
 
   it("mesure la durée d'analyse sans le temps passé dans le sélecteur", async () => {

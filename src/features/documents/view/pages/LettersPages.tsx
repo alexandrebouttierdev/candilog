@@ -2,8 +2,10 @@ import { useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "react-router-dom";
 import { documentsService, type CoverLetter } from "../../services/documentsService";
-import { aiService, generation_id } from "@/features/ai/services/aiService";
-import { useAiProgress, useCancelAiOnUnmount } from "@/features/ai/viewmodel/useAiProgress";
+import { aiService } from "@/features/ai/services/aiService";
+import { AiStopButton } from "@/features/ai/view/components/AiStopButton";
+import { useAiOperation } from "@/features/ai/viewmodel/useAiOperation";
+import { useAiProgress } from "@/features/ai/viewmodel/useAiProgress";
 import { useAiTimer } from "@/features/ai/viewmodel/useAiTimer";
 import { formatAiSummary } from "@/shared/lib/duration";
 import { useUiStore } from "@/shared/lib/ui-store";
@@ -163,6 +165,7 @@ function IterationPanel({
   echanges,
   consigne,
   busy,
+  stopping,
   error,
   progress,
   onConsigneChange,
@@ -173,6 +176,7 @@ function IterationPanel({
   echanges: Echange[];
   consigne: string;
   busy: boolean;
+  stopping: boolean;
   error: string | null;
   progress: ReactNode;
   onConsigneChange: (value: string) => void;
@@ -207,7 +211,7 @@ function IterationPanel({
           {busy ? (
             <>
               {progress}
-              <Button variant="danger" icon="stop" className="w-full" onClick={onCancel}>Arrêter</Button>
+              <AiStopButton stopping={stopping} onStop={onCancel} />
             </>
           ) : (
             <>
@@ -256,7 +260,7 @@ export function LetterWriterPage() {
   const [length, setLength] = useState(cover_letter_initiale?.length || "medium");
   const [context, setContext] = useState("");
   const [output, setOutput] = useState(cover_letter_initiale?.content ?? "");
-  const [operation, setOperation] = useState<string | null>(null);
+  const { operation, stopping, start, stop, finish, isCurrent } = useAiOperation();
   const [error, setError] = useState<string | null>(null);
   const [echanges, setEchanges] = useState<Echange[]>([]);
   const [consignes, setConsignes] = useState<string[]>([]);
@@ -264,17 +268,21 @@ export function LetterWriterPage() {
   const [briefOuvert, setBriefOuvert] = useState(false);
   const [abandonOuvert, setAbandonOuvert] = useState(false);
   const [overflow, setOverflow] = useState(false);
-  const progress = useAiProgress(operation);
-  useCancelAiOnUnmount(operation);
-  const timer = useAiTimer(operation !== null);
+  const progress = useAiProgress(stopping ? null : (operation?.id ?? null));
+  const timer = useAiTimer(operation !== null && !stopping);
   // Le brief laisse la place aux itérations dès qu'une lettre existe : c'est là que se
   // poursuit le travail, et le rouvrir reste possible pour changer le ton ou l'offre.
   const enIteration = echanges.length > 0 && !briefOuvert;
 
   const run = async (instruction: string | null) => {
-    const id = generation_id();
+    let id: string;
+    try {
+      id = start("generation");
+    } catch (caught) {
+      setError(message(caught));
+      return;
+    }
     const suite = instruction === null ? consignes : [...consignes, instruction].slice(-MAX_CONSIGNES);
-    setOperation(id);
     setError(null);
     if (instruction === null) setOutput("");
     if (instruction !== null) {
@@ -285,6 +293,7 @@ export function LetterWriterPage() {
     timer.start();
     try {
       const execution = await aiService.generateCoverLetter({ generation_id: id, company: company || null, job_title: job_title || null, tone, length, context: context || null, previous_cover_letter: null, instruction: suite.length > 0 ? suite.join(" ; ") : null });
+      if (!isCurrent(id)) return;
       timer.stop();
       setOutput(execution.output);
       setEchanges((current) => [...current, {
@@ -297,9 +306,11 @@ export function LetterWriterPage() {
       }]);
       setBriefOuvert(false);
     } catch (e) {
-      if (!(e instanceof AppError && e.code === "CANCELLED")) setError(message(e));
+      if (isCurrent(id) && !(e instanceof AppError && e.code === "CANCELLED")) {
+        setError(message(e));
+      }
     } finally {
-      setOperation(null);
+      finish(id);
     }
   };
   const letterExport = () => ({
@@ -344,11 +355,12 @@ export function LetterWriterPage() {
             echanges={echanges}
             consigne={consigne}
             busy={operation !== null}
+            stopping={stopping}
             error={error}
-            progress={operation ? <AiProgress progress={progress} elapsedMs={timer.elapsedMs} /> : null}
+            progress={operation && !stopping ? <AiProgress progress={progress} elapsedMs={timer.elapsedMs} /> : null}
             onConsigneChange={setConsigne}
             onSubmit={() => void run(consigne.trim())}
-            onCancel={() => { if (operation) void aiService.cancel(operation); }}
+            onCancel={() => void stop().catch((caught: unknown) => setError(message(caught)))}
             onReopenBrief={() => setBriefOuvert(true)}
           />
         ) : (
@@ -363,7 +375,13 @@ export function LetterWriterPage() {
             <ChampOffre label="Contexte ou offre" rows={10} value={context} onChange={setContext} />
             {error ? <ErrorBanner title="Rédaction impossible" message={error} /> : null}
             {operation ? (
-              <><AiProgress progress={progress} elapsedMs={timer.elapsedMs} /><Button variant="danger" icon="stop" className="w-full" onClick={() => void aiService.cancel(operation)}>Arrêter</Button></>
+              <>
+                {stopping ? null : <AiProgress progress={progress} elapsedMs={timer.elapsedMs} />}
+                <AiStopButton
+                  stopping={stopping}
+                  onStop={() => void stop().catch((caught: unknown) => setError(message(caught)))}
+                />
+              </>
             ) : (
               <div className="flex flex-col gap-2">
                 <Button variant="primary" icon="auto_awesome" className="w-full" onClick={() => void run(null)}>{echanges.length > 0 ? "Rédiger une nouvelle lettre" : "Rédiger la lettre"}</Button>

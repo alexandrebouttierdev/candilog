@@ -141,11 +141,18 @@ La fin d'un traitement est aussi annoncée par un signal sonore, émis une seule
 `features/ai/services/aiService.ts` pour que plus aucun écran ne puisse l'oublier. La
 préférence « Son de fin de traitement » (Réglages → IA) est locale à la machine
 (`shared/lib/completion-sound.ts`, `localStorage`) et active par défaut.
+Une opération annulée reste muette même si sa promesse frontend se résout tardivement.
 
 Chaque génération possède un `CancellationToken`, indexé par `generation_id` ;
 `ai_cancel` le déclenche. L'annulation abandonne le futur en cours — la requête HTTP est
 portée par ce futur, elle s'interrompt donc avec lui. Relancer une génération avec un
 identifiant déjà actif annule la précédente.
+
+Le frontend enregistre l'unique traitement actif dans la feature IA. Tous les écrans
+utilisent le même cycle de vie : l'arrêt invalide d'abord l'identifiant pour ignorer toute
+réponse tardive, désabonne la progression, arrête le chronomètre, puis appelle `ai_cancel`.
+La coque bloque une navigation interne tant que ce traitement est actif et ne la poursuit
+qu'après confirmation et transmission de l'arrêt au backend.
 
 ## Cache
 

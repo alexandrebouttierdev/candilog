@@ -84,6 +84,13 @@ revalidé en Rust avant lecture. L'import du profil conserve un sélecteur inté
 commande ; son premier événement n'est émis qu'une fois le fichier choisi afin de ne jamais
 annoncer une analyse qui n'a pas commencé.
 
+Le cycle de vie des traitements IA est coordonné dans `features/ai/viewmodel`. La coque
+`AppShell` porte l'unique garde React Router : analyse de CV, génération de CV, lettre et
+import de profil ne dupliquent donc pas la confirmation de sortie. Après une demande
+d'arrêt, l'identifiant est invalidé côté interface avant l'IPC et les résultats tardifs sont
+ignorés ; `ai_cancel` déclenche ensuite le `CancellationToken` Rust qui abandonne le futur
+HTTP en cours.
+
 `core/events/` reste un module de réservation, sans contenu.
 
 ## Le site

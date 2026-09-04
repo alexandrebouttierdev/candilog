@@ -14,10 +14,12 @@ export function useDismissable({
   open,
   onDismiss,
   onSubmit,
+  dismissDisabled = false,
 }: {
   open: boolean;
   onDismiss: () => void;
   onSubmit?: () => void;
+  dismissDisabled?: boolean;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -32,7 +34,7 @@ export function useDismissable({
 
       if (event.key === "Escape") {
         event.stopPropagation();
-        onDismiss();
+        if (!dismissDisabled) onDismiss();
         return;
       }
       if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && onSubmit) {
@@ -47,5 +49,5 @@ export function useDismissable({
       const i = stack.indexOf(token);
       if (i >= 0) stack.splice(i, 1);
     };
-  }, [open, onDismiss, onSubmit]);
+  }, [dismissDisabled, open, onDismiss, onSubmit]);
 }

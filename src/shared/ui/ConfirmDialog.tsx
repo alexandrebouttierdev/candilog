@@ -2,6 +2,7 @@ import { createPortal } from "react-dom";
 import { Icon } from "./Icon";
 import { Button } from "./Button";
 import { useDismissable } from "@/shared/hooks/useDismissable";
+import type { IconName } from "./icon-names";
 
 /**
  * Confirmation d'une action destructive.
@@ -20,7 +21,10 @@ export function ConfirmDialog({
   description,
   note,
   confirmLabel = "Supprimer",
+  confirmIcon = "delete",
   busy = false,
+  cancelDisabled = false,
+  dismissDisabled = false,
   onCancel,
   onConfirm,
 }: {
@@ -30,11 +34,14 @@ export function ConfirmDialog({
   /** Ce que l'action ne détruit pas, ou toute précision rassurante. */
   note?: string | undefined;
   confirmLabel?: string;
+  confirmIcon?: IconName;
   busy?: boolean;
+  cancelDisabled?: boolean;
+  dismissDisabled?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
-  useDismissable({ open, onDismiss: onCancel });
+  useDismissable({ open, onDismiss: onCancel, dismissDisabled });
 
   if (!open) return null;
 
@@ -61,14 +68,16 @@ export function ConfirmDialog({
         </div>
 
         <footer className="flex items-center gap-2.5 border-t border-line bg-surface-alt px-[22px] py-3.5">
-          <p className="flex-1 text-label text-ink-faint">Échap pour annuler</p>
-          <Button variant="secondary" size="dialog" onClick={onCancel}>
+          <p className="flex-1 text-label text-ink-faint">
+            {dismissDisabled ? "Arrêt en cours…" : "Échap pour annuler"}
+          </p>
+          <Button variant="secondary" size="dialog" disabled={cancelDisabled} onClick={onCancel}>
             Annuler
           </Button>
           <Button
             variant="primary"
             size="dialog"
-            icon={busy ? "progress_activity" : "delete"}
+            icon={busy ? "progress_activity" : confirmIcon}
             disabled={busy}
             onClick={onConfirm}
             className="bg-danger shadow-none hover:brightness-110"

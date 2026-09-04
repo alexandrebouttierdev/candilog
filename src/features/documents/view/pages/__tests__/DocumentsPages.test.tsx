@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -14,6 +14,7 @@ import { ResumeAnalysisPage } from "../ResumeAnalysisPage";
 import { LetterWriterPage } from "../LettersPages";
 import { AppError } from "@/shared/types/app-error";
 import { aiService } from "@/features/ai/services/aiService";
+import { useAiOperationStore } from "@/features/ai/viewmodel/ai-operation-store";
 
 const navigateMock = vi.hoisted(() => vi.fn());
 vi.mock("react-router-dom", async () => {
@@ -32,6 +33,7 @@ function aiExecution<T>(output: T) {
 
 beforeEach(() => {
   vi.restoreAllMocks();
+  useAiOperationStore.setState({ active: null });
   navigateMock.mockReset();
   useUiStore.setState({ toasts: [] });
 });
@@ -92,6 +94,8 @@ describe("analyse explicite d'un CV sélectionné", () => {
     });
 
     render(<ResumeAnalysisPage />, { wrapper });
+    expect(screen.getByText("Comparez un CV à l’offre ciblée")).toBeInTheDocument();
+    expect(screen.queryByText("Lecture locale")).not.toBeInTheDocument();
     await userEvent.type(screen.getByLabelText(/Offre ciblée/), "Une offre");
     await userEvent.click(screen.getByRole("button", { name: "Choisir un fichier" }));
 
@@ -100,16 +104,84 @@ describe("analyse explicite d'un CV sélectionné", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Analyser le CV" }));
 
-    await waitFor(() =>
-      expect(analyze).toHaveBeenCalledWith({
-        generation_id: expect.any(String),
-        job_offer: "Une offre",
-        file_path: "/tmp/cv.pdf",
-      }),
-    );
+    await waitFor(() => expect(analyze).toHaveBeenCalledOnce());
+    expect(analyze.mock.calls[0]?.[0]).toMatchObject({
+      job_offer: "Une offre",
+      file_path: "/tmp/cv.pdf",
+    });
+    expect(analyze.mock.calls[0]?.[0].generation_id).toEqual(expect.any(String));
     expect(
       await screen.findByText("Analysé en 18,4 s · 1 024 tokens"),
     ).toBeInTheDocument();
+  });
+
+  it("masque le formulaire pendant l'analyse puis le restaure après un arrêt réel", async () => {
+    vi.spyOn(aiService, "selectResumeFile").mockResolvedValue({
+      path: "/tmp/cv.pdf",
+      name: "cv.pdf",
+    });
+    let resolveAnalysis: ((value: ReturnType<typeof aiExecution<{
+      resume: { resume: string; experiences: never[]; skills: never[]; education: never[] };
+      job_offer: { title: string; skills: never[]; soft_skills: never[]; experience: null; keywords: never[] };
+      score: { total: number; skills: null; experience: null; ats: null; present: never[]; missing: never[] };
+      analysis: { recap: string; recommendations: never[] };
+    }>>) => void) | undefined;
+    vi.spyOn(aiService, "analyzeResume").mockReturnValue(
+      new Promise((resolve) => { resolveAnalysis = resolve; }),
+    );
+    let resolveCancel: (() => void) | undefined;
+    const cancel = vi.spyOn(aiService, "cancel").mockReturnValue(
+      new Promise((resolve) => { resolveCancel = resolve; }),
+    );
+
+    render(<ResumeAnalysisPage />, { wrapper });
+    await userEvent.type(screen.getByLabelText(/Offre ciblée/), "Une offre");
+    await userEvent.click(screen.getByRole("button", { name: "Choisir un fichier" }));
+    await userEvent.click(screen.getByRole("button", { name: "Analyser le CV" }));
+
+    expect(screen.queryByLabelText(/Offre ciblée/)).not.toBeInTheDocument();
+    expect(screen.queryByText("cv.pdf")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Analyser le CV" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Arrêter" })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Arrêter" }));
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(screen.getByRole("button", { name: "Arrêt…" })).toBeDisabled();
+    expect(screen.queryByText("Préparation du traitement…")).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolveCancel?.();
+      await Promise.resolve();
+    });
+    expect(await screen.findByLabelText(/Offre ciblée/)).toHaveValue("Une offre");
+    expect(screen.getByText("cv.pdf")).toBeInTheDocument();
+
+    await act(async () => {
+      resolveAnalysis?.(aiExecution({
+        resume: { resume: "Résultat tardif", experiences: [], skills: [], education: [] },
+        job_offer: { title: "Dev", skills: [], soft_skills: [], experience: null, keywords: [] },
+        score: { total: 99, skills: null, experience: null, ats: null, present: [], missing: [] },
+        analysis: { recap: "Analyse tardive", recommendations: [] },
+      }));
+      await Promise.resolve();
+    });
+    expect(screen.queryByText("Analyse tardive")).not.toBeInTheDocument();
+  });
+
+  it("restaure le formulaire et conserve le fichier après une erreur", async () => {
+    vi.spyOn(aiService, "selectResumeFile").mockResolvedValue({ path: "/tmp/cv.pdf", name: "cv.pdf" });
+    vi.spyOn(aiService, "analyzeResume").mockRejectedValue(
+      new AppError({ code: "PROVIDER_ERROR", message: "Le fournisseur ne répond pas." }),
+    );
+
+    render(<ResumeAnalysisPage />, { wrapper });
+    await userEvent.type(screen.getByLabelText(/Offre ciblée/), "Une offre");
+    await userEvent.click(screen.getByRole("button", { name: "Choisir un fichier" }));
+    await userEvent.click(screen.getByRole("button", { name: "Analyser le CV" }));
+
+    expect(await screen.findByText("Le fournisseur ne répond pas.")).toBeInTheDocument();
+    expect(screen.getByText("cv.pdf")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Analyser le CV" })).toBeInTheDocument();
   });
 });
 
@@ -290,6 +362,39 @@ describe("itérations sur la lettre", () => {
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Que faut-il changer ?")).toBeInTheDocument();
     expect(screen.queryByLabelText("Contexte ou offre")).not.toBeInTheDocument();
+  });
+
+  it("arrête la première rédaction et ignore son résultat tardif", async () => {
+    let resolveGeneration: ((value: ReturnType<typeof aiExecution<string>>) => void) | undefined;
+    vi.spyOn(aiService, "generateCoverLetter").mockReturnValue(
+      new Promise((resolve) => { resolveGeneration = resolve; }),
+    );
+    let resolveCancel: (() => void) | undefined;
+    const cancel = vi.spyOn(aiService, "cancel").mockReturnValue(
+      new Promise((resolve) => { resolveCancel = resolve; }),
+    );
+    render(<LetterWriterPage />, { wrapper });
+    await userEvent.type(screen.getByLabelText("Contexte ou offre"), "Une offre");
+    await userEvent.click(screen.getByRole("button", { name: /Rédiger la lettre/ }));
+
+    await userEvent.click(screen.getByRole("button", { name: "Arrêter" }));
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(screen.getByRole("button", { name: "Arrêt…" })).toBeDisabled();
+    expect(screen.queryByText("Préparation du traitement…")).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolveCancel?.();
+      await Promise.resolve();
+    });
+    expect(await screen.findByRole("button", { name: /Rédiger la lettre/ })).toBeInTheDocument();
+    expect(screen.queryByText("Rédaction impossible")).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolveGeneration?.(aiExecution("Réponse tardive"));
+      await Promise.resolve();
+    });
+    expect(screen.queryByText("Réponse tardive")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Enregistrer/ })).not.toBeInTheDocument();
   });
 
   it("cumule les consignes successives dans la demande envoyée au modèle", async () => {

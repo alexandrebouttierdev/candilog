@@ -6,9 +6,9 @@ import type {
   ImportProfileRequest,
   ImportProfileResult,
 } from "@/shared/types/generated/profile";
-import { aiService, generation_id } from "@/features/ai/services/aiService";
+import { aiService } from "@/features/ai/services/aiService";
 import type { AiExecution } from "@/features/ai/model/types";
-import { useCancelAiOnUnmount } from "@/features/ai/viewmodel/useAiProgress";
+import { useAiOperation } from "@/features/ai/viewmodel/useAiOperation";
 import { AppError } from "@/shared/types/app-error";
 import {
   Button,
@@ -52,7 +52,7 @@ export function ProfileImportModal({
   onApply: (request: ImportProfileRequest) => Promise<ImportProfileResult>;
 }) {
   const formId = useId();
-  const [operation, setOperation] = useState<string | null>(null);
+  const { operation, stopping, start, stop, finish, isCurrent } = useAiOperation();
   const [phase, setPhase] = useState<Phase>("pick");
   const [preview, setPreview] = useState<ImportProfilePreview | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -66,8 +66,7 @@ export function ProfileImportModal({
   const [pendingRequest, setPendingRequest] =
     useState<ImportProfileRequest | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
-  const progress = useProfileImportProgress(operation);
-  useCancelAiOnUnmount(operation);
+  const progress = useProfileImportProgress(stopping ? null : (operation?.id ?? null));
 
   // Le sélecteur de fichier natif est ouvert par la commande Rust : le clic ne déclenche
   // rien d'autre. L'analyse ne commence qu'au premier événement de progression, émis une
@@ -76,7 +75,7 @@ export function ProfileImportModal({
   const view: Phase =
     phase === "picking" && analysisStartedAt !== null ? "analyze" : phase;
   const startedAt = analysisStartedAt ?? requestedAt;
-  const elapsedMs = useElapsedClock(view === "analyze", startedAt);
+  const elapsedMs = useElapsedClock(view === "analyze" && !stopping, startedAt);
 
   const form = useForm<
     ImportProfileFormInput,
@@ -90,13 +89,24 @@ export function ProfileImportModal({
   const marked = countMarked(form.getValues());
 
   const analyze = async () => {
-    const id = generation_id();
-    setOperation(id);
+    let id: string;
+    try {
+      id = start("import");
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "L'analyse du CV n'a pas pu démarrer.",
+      );
+      setPhase("error");
+      return;
+    }
     setRequestedAt(Date.now());
     setPhase("picking");
     setError(null);
     try {
       const next = await aiService.importProfile({ generation_id: id });
+      if (!isCurrent(id)) return;
       if (next === null) {
         setPhase("pick");
         return;
@@ -109,6 +119,7 @@ export function ProfileImportModal({
       });
       setPhase("review");
     } catch (caught) {
+      if (!isCurrent(id)) return;
       if (caught instanceof AppError && caught.code === "CANCELLED") {
         setPhase("pick");
         return;
@@ -120,12 +131,27 @@ export function ProfileImportModal({
       );
       setPhase("error");
     } finally {
-      setOperation(null);
+      finish(id);
+    }
+  };
+
+  const stopAnalysis = async () => {
+    setError(null);
+    try {
+      await stop();
+      setRequestedAt(null);
+      setPhase("pick");
+    } catch (caught) {
+      setError(
+        caught instanceof AppError
+          ? caught.message
+          : "L'analyse du CV n'a pas pu être arrêtée.",
+      );
     }
   };
 
   const close = () => {
-    if (operation) void aiService.cancel(operation);
+    if (operation) void stopAnalysis();
     onClose();
   };
 
@@ -202,12 +228,17 @@ export function ProfileImportModal({
           <PickFile waiting={view === "picking"} onChoose={() => void analyze()} />
         ) : null}
         {view === "analyze" ? (
-          <ImportAnalysisPanel
-            step={progress.step}
-            elapsedMs={elapsedMs}
-            entries={progress.entries}
-            tokens_used={progress.tokens_used}
-          />
+          <div className="space-y-4">
+            {error ? <ErrorBanner title="Arrêt impossible" message={error} /> : null}
+            <ImportAnalysisPanel
+              step={progress.step}
+              elapsedMs={elapsedMs}
+              entries={progress.entries}
+              tokens_used={progress.tokens_used}
+              stopping={stopping}
+              onStop={() => void stopAnalysis()}
+            />
+          </div>
         ) : null}
         {view === "error" ? (
           <div className="space-y-4 pt-3">
