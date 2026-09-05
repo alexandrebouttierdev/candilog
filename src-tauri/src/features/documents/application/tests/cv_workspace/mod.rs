@@ -2,11 +2,13 @@
 
 use super::*;
 use crate::features::ai::domain::{
-    AtsAnalysis, AtsRecommendation, AtsRecommendationSection, GeneratedEducation,
-    GeneratedExperience, GeneratedResume, MatchScore, ResumeGeneration, StructuredListing,
+    AtsAnalysis, AtsContentRecommendation, AtsRecommendation, AtsRecommendationSection,
+    ContentRelevance, GeneratedEducation, GeneratedExperience, GeneratedResume, MatchScore,
+    ResumeGeneration, StructuredListing,
 };
 use crate::features::documents::domain::{
-    ResumeDocument, ResumeIdentity, ResumeProposalKind, ResumeProposalStatus, ResumeSkillGroup,
+    ResumeContentRecommendationAction, ResumeDocument, ResumeIdentity, ResumeProfileItemContent,
+    ResumeProposalStatus, ResumeSkillGroup,
 };
 use crate::features::profile::domain::{
     Certification, Education, Experience, Identity, Language, Profile, Project, Skill,
@@ -81,7 +83,14 @@ fn generation() -> ResumeGeneration {
                 school: "ENI".into(),
             }],
         },
-        analysis: AtsAnalysis::default(),
+        analysis: AtsAnalysis {
+            content_recommendations: vec![AtsContentRecommendation {
+                item_id: "skill-0".into(),
+                reason: "Rust est directement demandé par l’offre.".into(),
+                relevance: ContentRelevance::VeryRelevant,
+            }],
+            ..AtsAnalysis::default()
+        },
         job_offer: StructuredListing {
             title: "Développeur Rust".into(),
             skills: vec!["Rust".into(), "SQL".into()],
@@ -92,6 +101,7 @@ fn generation() -> ResumeGeneration {
             total: 99,
             ..MatchScore::default()
         },
+        recommendation_error: None,
     }
 }
 
@@ -126,8 +136,18 @@ fn workspace_avec_offre(offer_skills: Vec<&str>, profile_skills: Vec<&str>) -> R
         .iter()
         .map(|skill| skill.name.clone())
         .collect();
+    generation.analysis.content_recommendations = source
+        .skills
+        .iter()
+        .enumerate()
+        .map(|(index, skill)| AtsContentRecommendation {
+            item_id: format!("skill-{index}"),
+            reason: format!("{} correspond à l’offre.", skill.name),
+            relevance: ContentRelevance::Relevant,
+        })
+        .collect();
     generation.job_offer.skills = offer_skills.into_iter().map(str::to_owned).collect();
-    prepare_workspace(&source, generation).unwrap()
+    prepare_workspace(&source, generation, None).unwrap()
 }
 
 /// Compose un document dont le profil vaut `original` et porte une unique recommandation IA
@@ -143,7 +163,7 @@ fn workspace_avec_recommandation(original: &str, proposed: &str) -> ResumeWorksp
         original_text: original.into(),
         proposed_text: proposed.into(),
     }];
-    prepare_workspace(&profile(), generation).unwrap()
+    prepare_workspace(&profile(), generation, None).unwrap()
 }
 
 mod applique_une_suggestion_textuelle;
@@ -152,4 +172,5 @@ mod compose_un_document_autonome;
 mod refuse_une_suggestion_perimee;
 mod reprend_les_competences_du_profil;
 mod reprend_les_experiences_et_formations_du_profil;
+mod selection_editoriale;
 mod valide_les_bornes_du_document;

@@ -350,8 +350,16 @@ le tour à l'état « jamais vu » — une base vidée, c'est une application ne
   et le bouton **Exporter** est désactivé — aucun texte n'est tronqué silencieusement.
 - L'édition est **directe sur le papier** (`ResumeEditableText`) : le texte affiché est celui
   qui sera enregistré et exporté. Le collage ne conserve que le texte brut.
-- Le panneau latéral porte le score ATS, le gain cumulé et les propositions (acceptation,
-  refus, annulation) ; il ne remplace pas le papier comme surface d'édition.
+- Le panneau latéral **Aide au contenu** sépare clairement « Recommandé pour cette offre »
+  (petite sélection expliquée) de « Disponible dans votre profil » (bibliothèque complète
+  absente du document). Les listes sont compactes, sans score IA artificiel ni accumulation
+  de cards. Ajouter ou ignorer met le panneau et le papier à jour immédiatement.
+- Un indicateur qualitatif reprend la mesure PDF : Bonne marge, Espace disponible, Peu
+  d'espace restant, CV presque plein ou Dépassement. Sa jauge utilise la hauteur mesurée,
+  mais aucun faux pourcentage n'est affiché. En dépassement, les choix restent intacts et
+  les recommandations cessent d'aggraver la page.
+- Les compétences demandées mais absentes du profil apparaissent dans « Compétences
+  manquantes à vérifier », sans bouton qui les ferait passer pour acquises.
 - Une fois le CV généré, le panneau **Offre ciblée** s'efface : à trois colonnes l'aperçu
   était trop étroit pour une page A4. **Modifier l'offre** le ramène, **Revenir au CV** le
   referme. Les panneaux défilent, et le papier ne se comprime jamais sous sa largeur A4.

@@ -71,7 +71,10 @@ pub async fn documents_resume_prepare(
     let profile = Arc::clone(&state.profile);
     blocking::execute(move || {
         let payload = profile.load()?;
-        prepare_workspace(&payload.profile, generation)
+        let photo = profile
+            .photo_path()?
+            .and_then(|path| std::fs::read(path).ok());
+        prepare_workspace(&payload.profile, generation, photo)
     })
     .await
 }
@@ -79,27 +82,51 @@ pub async fn documents_resume_prepare(
 /// Revalide le document puis recalcule score et propositions après une édition manuelle.
 #[tauri::command(rename_all = "snake_case")]
 pub async fn documents_resume_recalculate(
+    state: State<'_, AppState>,
     workspace: ResumeWorkspace,
 ) -> AppResult<ResumeWorkspace> {
-    blocking::execute(move || recalculate(workspace)).await
+    let profile = Arc::clone(&state.profile);
+    blocking::execute(move || {
+        let photo = profile
+            .photo_path()?
+            .and_then(|path| std::fs::read(path).ok());
+        recalculate(workspace, photo)
+    })
+    .await
 }
 
 /// Applique une proposition puis recalcule le poste de travail.
 #[tauri::command(rename_all = "snake_case")]
 pub async fn documents_resume_apply_proposal(
+    state: State<'_, AppState>,
     workspace: ResumeWorkspace,
     proposal_id: String,
 ) -> AppResult<ResumeWorkspace> {
-    blocking::execute(move || apply_proposal(workspace, &proposal_id)).await
+    let profile = Arc::clone(&state.profile);
+    blocking::execute(move || {
+        let photo = profile
+            .photo_path()?
+            .and_then(|path| std::fs::read(path).ok());
+        apply_proposal(workspace, &proposal_id, photo)
+    })
+    .await
 }
 
 /// Refuse une proposition sans modifier le document, puis recalcule le poste de travail.
 #[tauri::command(rename_all = "snake_case")]
 pub async fn documents_resume_reject_proposal(
+    state: State<'_, AppState>,
     workspace: ResumeWorkspace,
     proposal_id: String,
 ) -> AppResult<ResumeWorkspace> {
-    blocking::execute(move || reject_proposal(workspace, &proposal_id)).await
+    let profile = Arc::clone(&state.profile);
+    blocking::execute(move || {
+        let photo = profile
+            .photo_path()?
+            .and_then(|path| std::fs::read(path).ok());
+        reject_proposal(workspace, &proposal_id, photo)
+    })
+    .await
 }
 
 /// Exporte un document CV autonome au chemin choisi dans le sélecteur natif.

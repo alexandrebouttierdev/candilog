@@ -1,7 +1,9 @@
 //! Construction du modèle PDF à partir d'un document autonome.
 
+use crate::core::errors::AppResult;
 use crate::features::documents::domain::{
-    ResumeDocument, ResumeExperienceBlock, ResumeProjectBlock,
+    ResumeDocument, ResumeExperienceBlock, ResumeLayoutMeasurement, ResumeLayoutStatus,
+    ResumeProjectBlock,
 };
 use crate::infrastructure::pdf::{
     ResumeCertification, ResumeEducation, ResumeExperience, ResumeLanguage, ResumePdf,
@@ -71,6 +73,40 @@ pub fn build(document: &ResumeDocument, photo: Option<Vec<u8>>) -> ResumePdf {
             .collect(),
         photo,
     }
+}
+
+/// Mesure le document par la chaîne de composition PDF, sans créer d'artefact.
+///
+/// # Errors
+/// Retourne une erreur si les polices embarquées ne peuvent pas être décodées.
+pub fn measure(
+    document: &ResumeDocument,
+    photo: Option<Vec<u8>>,
+) -> AppResult<ResumeLayoutMeasurement> {
+    let measured = build(document, photo).measure()?;
+    let status = if measured.overflow {
+        ResumeLayoutStatus::Overflow
+    } else if measured.density_index >= 4 && measured.used_ratio >= 0.97 {
+        ResumeLayoutStatus::Full
+    } else if measured.density_index >= 3 || measured.used_ratio >= 0.90 {
+        ResumeLayoutStatus::AlmostFull
+    } else if measured.used_ratio >= 0.72 {
+        ResumeLayoutStatus::Available
+    } else {
+        ResumeLayoutStatus::Spacious
+    };
+    let page_count = if measured.overflow {
+        measured.used_ratio.ceil().clamp(2.0, f32::from(u8::MAX)) as u8
+    } else {
+        1
+    };
+    Ok(ResumeLayoutMeasurement {
+        status,
+        used_per_mille: (measured.used_ratio * 1_000.0).round().clamp(0.0, 2_000.0) as u16,
+        remaining_points: measured.remaining_points.round() as i32,
+        page_count,
+        overflow: measured.overflow,
+    })
 }
 
 fn experience_from_block(experience: &ResumeExperienceBlock) -> ResumeExperience {

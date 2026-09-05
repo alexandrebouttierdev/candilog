@@ -25,9 +25,10 @@ function wrapper({ children }: { children: ReactNode }) {
 function generation(): ResumeGeneration {
   return {
     resume: { resume: "Profil ciblé", experiences: [], skills: [], education: [] },
-    analysis: { recap: "", recommendations: [] },
+    analysis: { recap: "", recommendations: [], content_recommendations: [] },
     job_offer: { title: "Développeur Rust", skills: [], soft_skills: [], experience: null, keywords: [] },
     profile_score: { total: 70, skills: null, experience: null, ats: null, present: [], missing: [] },
+    recommendation_error: null,
   };
 }
 

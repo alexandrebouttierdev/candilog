@@ -13,7 +13,7 @@ fn un_cv_sans_formation_reprend_celles_du_profil() {
     let mut generation = generation();
     generation.resume.education = Vec::new();
 
-    let workspace = prepare_workspace(&profile(), generation).unwrap();
+    let workspace = prepare_workspace(&profile(), generation, None).unwrap();
 
     let formations = &workspace.document.education;
     assert_eq!(formations.len(), 1, "section Formation absente du CV");
@@ -31,7 +31,7 @@ fn un_cv_sans_experience_reprend_celles_du_profil() {
     let mut generation = generation();
     generation.resume.experiences = Vec::new();
 
-    let workspace = prepare_workspace(&profile(), generation).unwrap();
+    let workspace = prepare_workspace(&profile(), generation, None).unwrap();
 
     let experiences = &workspace.document.experiences;
     assert_eq!(experiences.len(), 1, "section Expériences absente du CV");
@@ -53,7 +53,7 @@ fn un_profil_sans_formation_ni_experience_ne_cree_pas_de_section() {
     profile.education = Vec::new();
     profile.experiences = Vec::new();
 
-    let workspace = prepare_workspace(&profile, generation).unwrap();
+    let workspace = prepare_workspace(&profile, generation, None).unwrap();
 
     assert!(workspace.document.education.is_empty());
     assert!(workspace.document.experiences.is_empty());
@@ -74,7 +74,7 @@ fn une_formation_ecartee_par_le_recadrage_est_retablie() {
     });
 
     // La génération n'en renvoie qu'une : l'autre a été reformulée puis écartée.
-    let workspace = prepare_workspace(&profile, generation()).unwrap();
+    let workspace = prepare_workspace(&profile, generation(), None).unwrap();
 
     let diplomes: Vec<_> = workspace
         .document
@@ -101,7 +101,7 @@ fn l_ordre_de_la_generation_est_conserve() {
         },
     );
 
-    let workspace = prepare_workspace(&profile, generation()).unwrap();
+    let workspace = prepare_workspace(&profile, generation(), None).unwrap();
 
     let entreprises: Vec<_> = workspace
         .document

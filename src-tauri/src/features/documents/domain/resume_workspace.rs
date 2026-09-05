@@ -1,6 +1,6 @@
 //! Document de travail autonome d'un CV ciblé.
 
-use crate::features::ai::domain::{AtsAnalysis, MatchScore, StructuredListing};
+use crate::features::ai::domain::{AtsAnalysis, ContentRelevance, MatchScore, StructuredListing};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
@@ -17,6 +17,57 @@ pub struct ResumeWorkspace {
     pub score: MatchScore,
     pub initial_score: u8,
     pub proposals: Vec<ResumeProposal>,
+    /// Bibliothèque optionnelle figée au moment de la génération. Un CV enregistré reste
+    /// ainsi éditable même si le profil général change ensuite.
+    #[serde(default)]
+    pub profile_library: Vec<ResumeProfileItem>,
+    /// Intentions explicites de l'utilisateur, conservées dans la session et à
+    /// l'enregistrement du workspace.
+    #[serde(default)]
+    pub decisions: ResumeEditorialDecisions,
+    /// Mesure issue du même moteur de composition que le PDF final.
+    #[serde(default)]
+    pub layout: ResumeLayoutMeasurement,
+    /// Sous-ensemble prioritaire recalculé localement à partir des candidates IA.
+    #[serde(default)]
+    pub content_recommendations: Vec<ResumeContentRecommendation>,
+    /// Erreur non bloquante de l'assistance IA. Les suggestions locales restent actives.
+    #[serde(default)]
+    pub recommendation_error: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "documents.ts")]
+pub struct ResumeEditorialDecisions {
+    pub explicitly_added: Vec<String>,
+    pub explicitly_removed: Vec<String>,
+    pub ignored: Vec<String>,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "documents.ts")]
+pub enum ResumeLayoutStatus {
+    #[default]
+    Spacious,
+    Available,
+    AlmostFull,
+    Full,
+    Overflow,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "documents.ts")]
+pub struct ResumeLayoutMeasurement {
+    pub status: ResumeLayoutStatus,
+    /// Hauteur utilisée rapportée à la zone imprimable, bornée à 2000 (200 %).
+    pub used_per_mille: u16,
+    /// Place restante en points PDF ; négative en cas de dépassement.
+    pub remaining_points: i32,
+    pub page_count: u8,
+    pub overflow: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -110,6 +161,51 @@ pub struct ResumeLanguageBlock {
     pub id: String,
     pub name: String,
     pub level: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(tag = "type", rename_all = "snake_case")]
+#[ts(export, export_to = "documents.ts")]
+pub enum ResumeProfileItemContent {
+    Skill { name: String },
+    Project { value: ResumeProjectBlock },
+    Certification { value: ResumeCertificationBlock },
+    Language { value: ResumeLanguageBlock },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "documents.ts")]
+pub struct ResumeProfileItem {
+    pub id: String,
+    pub label: String,
+    pub detail: Option<String>,
+    pub content: ResumeProfileItemContent,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(tag = "type", rename_all = "snake_case")]
+#[ts(export, export_to = "documents.ts")]
+pub enum ResumeContentRecommendationAction {
+    Add {
+        item_id: String,
+    },
+    Replace {
+        add_item_id: String,
+        remove_item_id: String,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "documents.ts")]
+pub struct ResumeContentRecommendation {
+    pub id: String,
+    pub label: String,
+    pub reason: String,
+    pub relevance: ContentRelevance,
+    pub action: ResumeContentRecommendationAction,
+    pub layout_after: ResumeLayoutMeasurement,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]

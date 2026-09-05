@@ -46,9 +46,10 @@ contenus non fiables sont encadrés par `bloc_donnees`, dont la balise porte un 
 tiré au sort à chaque appel et dont la balise fermante est neutralisée dans le contenu — un
 délimiteur fixe pouvait figurer dans l'offre elle-même et refermer le bloc.
 
-Le récapitulatif et les suggestions de `AtsAnalysis` restent du texte libre du modèle :
-bornés, mais non recadrés sur les faits. L'interface les présente comme un commentaire, à
-côté du score, qui est calculé par Candilog.
+Le récapitulatif et les reformulations de `AtsAnalysis` restent du texte libre borné. Les
+recommandations de contenu, elles, ne transportent que des identifiants du catalogue du
+profil, une justification et une pertinence qualitative. `ground_content_recommendations`
+écarte les identifiants inconnus et les doublons avant l'éditeur.
 
 La lettre de motivation est **assemblée**, pas rédigée : le modèle ne renvoie qu'une
 sélection d'identifiants du catalogue de faits et des mots-clés du brief
@@ -82,7 +83,28 @@ couverte, et l'éditeur lui proposait d'ajouter une compétence déjà présente
 complet. La frontière de mot reste celle de `contains_search_term` — « Java » ne couvre
 toujours pas « JavaScript ».
 
-## Recommandations ATS de l'éditeur de CV
+## Assistance éditoriale du CV
+
+Le profil est une bibliothèque ; le CV n'en est pas une copie. Le socle initial contient
+l'identité, les coordonnées, les expériences et les formations. Compétences, projets,
+certifications et langues commencent hors du document et restent disponibles dans
+**Suggestions**.
+
+La troisième étape de génération reçoit l'offre, le socle courant et le catalogue optionnel.
+Elle renvoie au plus huit candidates pertinentes, jamais le catalogue complet. Rust vérifie
+leurs identifiants, les trie par pertinence qualitative puis en retient au plus quatre après
+simulation cumulée dans le moteur PDF. Un ajout qui déborde n'est pas recommandé. Si le CV
+est plein, un remplacement plus pertinent peut être proposé, sans modifier le document.
+
+Accepter, ignorer, retirer ou réajouter est local à l'éditeur. Ces intentions sont conservées
+dans `ResumeEditorialDecisions` : un élément ignoré ou retiré ne revient pas au recalcul, mais
+reste disponible dans Suggestions. Ajouter manuellement retire l'élément des Suggestions ;
+le retirer l'y remet immédiatement.
+
+Le LLM n'est appelé que pendant la génération pour extraire l'offre, adapter le socle et
+classer sémantiquement les candidates. Présence dans le CV, filtrage, score, décisions,
+simulation et place disponible sont calculés localement. Une interaction dans l'éditeur ne
+déclenche donc aucun nouvel appel DeepSeek.
 
 Chaque recommandation du modèle (`AtsRecommendation`) cible une section **fermée** :
 
@@ -98,16 +120,11 @@ aucun gain de score.
 Dans l'éditeur, chaque recommandation applicable devient une `ResumeProposal`. Son **gain**
 (`proposal.gain`) est simulé localement par `simulate_gain` sur une copie du document
 (`build_proposals`, `recalculate`) — jamais repris du LLM. Une proposition non applicable
-(compétence déjà présente, texte modifié depuis la génération) reste visible avec son statut
-mais sans action possible.
+(texte modifié depuis la génération) reste visible avec son statut mais sans action possible.
 
-Les compétences manquantes de l'offre (`MatchScore.missing`) produisent des propositions
-`missing_skill` distinctes des reformulations textuelles.
-
-Si la génération ne renvoie **aucune** compétence — la validation de sortie ne borne qu'un
-maximum, une liste vide passe donc sans erreur — `prepare_workspace` reprend celles du
-profil. Sans ce repli, le CV partait amputé de toute sa section Compétences en silence, et
-le score ATS s'effondrait.
+Les compétences manquantes de l'offre (`MatchScore.missing`) qui n'existent pas dans le
+profil sont affichées comme **écarts à vérifier**, jamais comme compétences possédées ni
+comme actions d'ajout au CV.
 
 Les **expériences et les formations** ne sont pas une sélection : la consigne de génération
 est de toutes les conserver, le modèle n'en choisit que l'ordre et la mise en avant. Le
@@ -116,7 +133,8 @@ l'identique — reformuler « BTS SIO » en « BTS Services informatiques aux or
 suffisait à faire disparaître le diplôme du CV. `prepare_workspace` **complète** donc la
 liste générée par les entrées du profil qu'elle a laissées de côté, à la suite et dans
 l'ordre du profil. Les compétences, elles, restent une sélection : c'est leur rôle
-vis-à-vis de l'offre, et les manquantes reviennent comme propositions ATS.
+vis-à-vis de l'offre ; elles restent désormais dans la bibliothèque tant qu'aucun choix
+utilisateur ne les ajoute.
 
 ## Progression et annulation
 

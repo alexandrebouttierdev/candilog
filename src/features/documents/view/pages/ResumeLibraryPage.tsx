@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { documentsService, type ResumeVersion } from "../../services/documentsService";
-import { isResumeWorkspace } from "../../model/resumeWorkspace";
+import { normalizeResumeWorkspace } from "../../model/resumeWorkspace";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { Button, ConfirmDialog, EmptyState, ErrorBanner, Icon, PageHeader, Pager } from "@/shared/ui";
 import { A4Preview, PreviewAction } from "../components/DocumentUi";
@@ -63,7 +63,7 @@ export function ResumeLibraryPage() {
       notify({ tone: "error", title: "Duplication impossible", detail: detailErreur(error) }),
   });
   const version = detail.data;
-  const workspace = version && isResumeWorkspace(version.content) ? version.content : null;
+  const workspace = version ? normalizeResumeWorkspace(version.content) : null;
   const generation = version && isLegacyGeneration(version.content) ? version.content : null;
   const atsScore = workspace?.score.total ?? generation?.profile_score.total;
 
@@ -241,10 +241,11 @@ function ResumeSavedPreview({ version }: { version: ResumeVersion }) {
   // son ajout l'affiche donc, et une version rouverte après sa suppression ne l'affiche plus.
   const photo = useProfilePhoto().data ?? null;
 
-  if (isResumeWorkspace(version.content)) {
+  const workspace = normalizeResumeWorkspace(version.content);
+  if (workspace) {
     return (
       <div className="flex min-h-0 flex-1 justify-center overflow-auto bg-page p-[26px]">
-        <ResumePaper workspace={version.content} editable={false} onChange={() => {}} photo={photo} />
+        <ResumePaper workspace={workspace} editable={false} onChange={() => {}} photo={photo} />
       </div>
     );
   }

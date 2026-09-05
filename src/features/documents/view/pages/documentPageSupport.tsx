@@ -8,6 +8,7 @@ import { ContextBarAccessory, ContextSearch } from "@/app/layout/ContextBar";
 import { Button, FormField, Icon, TextArea, TextInput } from "@/shared/ui";
 import { useUiStore } from "@/shared/lib/ui-store";
 import type { IconName } from "@/shared/ui/icon-names";
+import { normalizeResumeWorkspace } from "../../model/resumeWorkspace";
 
 export const RESUME_KEY = ["documents", "cv"] as const;
 export const COVER_LETTERS_KEY = ["documents", "lettres"] as const;
@@ -168,12 +169,13 @@ export function generationFromNavigation(state: unknown): {
   name: string;
 } {
   if (typeof state !== "object" || state === null) return { result: null, workspace: null, name: "" };
-  const payload = state as { generation?: ResumeGeneration; workspace?: ResumeWorkspace; name?: string };
-  if (payload.workspace) {
+  const payload = state as { generation?: ResumeGeneration; workspace?: unknown; name?: string };
+  const workspace = normalizeResumeWorkspace(payload.workspace);
+  if (workspace) {
     return {
       result: null,
-      workspace: payload.workspace,
-      name: payload.name ?? `CV — ${payload.workspace.job_offer.title || "Version ciblée"}`,
+      workspace,
+      name: payload.name ?? `CV — ${workspace.job_offer.title || "Version ciblée"}`,
     };
   }
   if (payload.generation) {

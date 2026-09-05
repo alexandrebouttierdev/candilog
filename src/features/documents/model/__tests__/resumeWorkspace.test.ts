@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
   addExperienceBullet,
+  addProfileItem,
   addProjectBullet,
   addSection,
   addSkill,
+  applyContentRecommendation,
+  availableProfileItems,
+  ignoreContentRecommendation,
   isResumeWorkspace,
+  missingProfileSkills,
+  normalizeResumeWorkspace,
   removeExperienceBullet,
   removeProjectBullet,
   removeSection,
@@ -23,6 +29,20 @@ describe("garde de reconnaissance du workspace", () => {
   it("refuse une autre version de schéma", () => {
     const workspace = workspaceFixture();
     expect(isResumeWorkspace({ ...workspace, schema_version: 2 })).toBe(false);
+  });
+
+  it("met à niveau une version enregistrée avant la bibliothèque éditoriale", () => {
+    const current = workspaceFixture();
+    const legacy = { ...current } as Record<string, unknown>;
+    delete legacy.profile_library;
+    delete legacy.decisions;
+    delete legacy.layout;
+    delete legacy.content_recommendations;
+    legacy.analysis = { recap: "Historique", recommendations: [] };
+    const normalized = normalizeResumeWorkspace(legacy);
+    expect(normalized?.document).toEqual(current.document);
+    expect(normalized?.profile_library).toEqual([]);
+    expect(normalized?.analysis.content_recommendations).toEqual([]);
   });
 });
 
@@ -131,5 +151,68 @@ describe("opérations fermées sur les listes", () => {
 
     const unchanged = removeSection(base, "language", 4);
     expect(unchanged).toBe(base);
+  });
+});
+
+describe("bibliothèque éditoriale du profil", () => {
+  function editorialWorkspace() {
+    const base = workspaceFixture({ projects: [], skill_groups: [], certifications: [], languages: [] });
+    return {
+      ...base,
+      score: { ...base.score, missing: ["Docker", "Kubernetes"] },
+      profile_library: [
+        { id: "skill-docker", label: "Docker", detail: null, content: { type: "skill" as const, name: "Docker" } },
+        { id: "project-lab", label: "Homelab", detail: null, content: { type: "project" as const, value: { id: "project-lab", name: "Homelab", meta: null, url: null, bullets: [] } } },
+      ],
+      content_recommendations: [
+        { id: "recommend-docker", label: "Docker", reason: "Demandé", relevance: "very_relevant" as const, action: { type: "add" as const, item_id: "skill-docker" }, layout_after: base.layout },
+      ],
+    };
+  }
+
+  it("affiche un élément absent, puis le retire des suggestions dès son ajout", () => {
+    const before = editorialWorkspace();
+    expect(availableProfileItems(before).map((item) => item.id)).toContain("skill-docker");
+    const after = addProfileItem(before, "skill-docker");
+    expect(after.document.skill_groups[0]?.items).toEqual(["Docker"]);
+    expect(availableProfileItems(after).map((item) => item.id)).not.toContain("skill-docker");
+    expect(after.decisions.explicitly_added).toContain("skill-docker");
+  });
+
+  it("rend une compétence disponible après son retrait et préserve cette intention", () => {
+    const added = addProfileItem(editorialWorkspace(), "skill-docker");
+    const removed = removeSkill(added, 0, 0);
+    expect(availableProfileItems(removed).map((item) => item.id)).toContain("skill-docker");
+    expect(removed.decisions.explicitly_removed).toContain("skill-docker");
+    expect(removed.decisions.explicitly_added).not.toContain("skill-docker");
+    const readded = addProfileItem(removed, "skill-docker");
+    expect(readded.document.skill_groups[0]?.items).toEqual(["Docker"]);
+    expect(readded.decisions.explicitly_removed).not.toContain("skill-docker");
+  });
+
+  it("ne repropose pas un élément explicitement ajouté puis reformulé", () => {
+    const added = addProfileItem(editorialWorkspace(), "skill-docker");
+    const edited = updateResumeField(added, { type: "skill", group: 0, item: 0 }, "Docker avancé");
+    expect(availableProfileItems(edited).map((item) => item.id)).not.toContain("skill-docker");
+  });
+
+  it("ignore une recommandation sans masquer l'élément des suggestions normales", () => {
+    const ignored = ignoreContentRecommendation(editorialWorkspace(), "recommend-docker");
+    expect(ignored.content_recommendations).toEqual([]);
+    expect(ignored.decisions.ignored).toEqual(["skill-docker"]);
+    expect(availableProfileItems(ignored).map((item) => item.id)).toContain("skill-docker");
+  });
+
+  it("accepte une recommandation uniquement à la demande de l'utilisateur", () => {
+    const before = editorialWorkspace();
+    expect(before.document.skill_groups).toEqual([]);
+    const after = applyContentRecommendation(before, "recommend-docker");
+    expect(after.document.skill_groups[0]?.items).toEqual(["Docker"]);
+  });
+
+  it("signale une exigence absente du profil sans proposer de l'ajouter au CV", () => {
+    const workspace = editorialWorkspace();
+    expect(missingProfileSkills(workspace)).toEqual(["Kubernetes"]);
+    expect(workspace.content_recommendations.every((item) => item.label !== "Kubernetes")).toBe(true);
   });
 });

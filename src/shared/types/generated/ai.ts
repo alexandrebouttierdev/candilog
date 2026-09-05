@@ -12,7 +12,16 @@ export type AiProgress = { generation_id: string, step: string, chunk: string | 
  */
 tokens_used: number | null, };
 
-export type AtsAnalysis = { recap: string, recommendations: Array<AtsRecommendation>, };
+export type AtsAnalysis = { recap: string, recommendations: Array<AtsRecommendation>, 
+/**
+ * Petite liste ordonnée d'éléments optionnels du profil à considérer pour ce CV.
+ *
+ * Les identifiants sont recadrés sur le catalogue transmis au modèle avant que cette
+ * structure atteigne l'éditeur : une valeur inventée est donc simplement écartée.
+ */
+content_recommendations: Array<AtsContentRecommendation>, };
+
+export type AtsContentRecommendation = { item_id: string, reason: string, relevance: ContentRelevance, };
 
 export type AtsRecommendation = { section: AtsRecommendationSection, item_index: number | null, original_text: string, proposed_text: string, };
 
@@ -22,6 +31,8 @@ export type AtsRecommendation = { section: AtsRecommendationSection, item_index:
  * — et donc simulable puis applicable — reste présentée comme une action possible.
  */
 export type AtsRecommendationSection = "profile" | "experience";
+
+export type ContentRelevance = "very_relevant" | "relevant" | "secondary";
 
 export type CoverLetterRequest = { generation_id: string, company: string | null, job_title: string | null, tone: string | null, length: string | null, context: string | null, previous_cover_letter: string | null, instruction: string | null, };
 
@@ -51,7 +62,12 @@ export type ProfileImportRequest = { generation_id: string, };
 
 export type ResumeAnalysisRequest = { generation_id: string, job_offer: string, file_path: string, };
 
-export type ResumeGeneration = { resume: GeneratedResume, analysis: AtsAnalysis, job_offer: StructuredListing, profile_score: MatchScore, };
+export type ResumeGeneration = { resume: GeneratedResume, analysis: AtsAnalysis, job_offer: StructuredListing, profile_score: MatchScore, 
+/**
+ * Présent lorsque le socle a été produit localement parce que l'assistance IA était
+ * indisponible. Le profil reste alors exploitable comme bibliothèque de contenu.
+ */
+recommendation_error: string | null, };
 
 export type ResumeGenerationRequest = { generation_id: string, job_offer: string, };
 

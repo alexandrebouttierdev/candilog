@@ -5,6 +5,7 @@ import type {
   ResumeExperienceBlock,
   ResumeIdentity,
   ResumeLanguageBlock,
+  ResumeProfileItem,
   ResumeProjectBlock,
   ResumeSkillGroup,
   ResumeWorkspace,
@@ -46,7 +47,7 @@ export type ResumeSectionKind =
  * obligatoires. Un objet `{ schema_version: 1 }` sans document structuré n'en est pas un :
  * seule une composition passée par `prepare_workspace` (Rust) l'est.
  */
-export function isResumeWorkspace(value: unknown): value is ResumeWorkspace {
+function hasResumeDocument(value: unknown): value is { schema_version: number; document: ResumeDocument } {
   if (typeof value !== "object" || value === null) return false;
   const candidate = value as Partial<ResumeWorkspace>;
   if (candidate.schema_version !== RESUME_WORKSPACE_VERSION) return false;
@@ -60,6 +61,195 @@ export function isResumeWorkspace(value: unknown): value is ResumeWorkspace {
     Array.isArray(document.certifications) &&
     Array.isArray(document.languages)
   );
+}
+
+/** Met à niveau les workspaces v1 créés avant la bibliothèque éditoriale. */
+export function normalizeResumeWorkspace(value: unknown): ResumeWorkspace | null {
+  if (!hasResumeDocument(value)) return null;
+  const candidate = value as Partial<ResumeWorkspace> & {
+    analysis?: Partial<ResumeWorkspace["analysis"]>;
+  };
+  return {
+    ...(candidate as ResumeWorkspace),
+    analysis: {
+      recap: candidate.analysis?.recap ?? "",
+      recommendations: candidate.analysis?.recommendations ?? [],
+      content_recommendations: candidate.analysis?.content_recommendations ?? [],
+    },
+    profile_library: candidate.profile_library ?? [],
+    decisions: candidate.decisions ?? { explicitly_added: [], explicitly_removed: [], ignored: [] },
+    layout: candidate.layout ?? {
+      status: "available",
+      used_per_mille: 0,
+      remaining_points: 0,
+      page_count: 1,
+      overflow: false,
+    },
+    content_recommendations: candidate.content_recommendations ?? [],
+    recommendation_error: candidate.recommendation_error ?? null,
+  };
+}
+
+export function isResumeWorkspace(value: unknown): value is ResumeWorkspace {
+  return normalizeResumeWorkspace(value) !== null;
+}
+
+function searchKey(value: string): string {
+  return value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").trim().toLocaleLowerCase("fr-FR");
+}
+
+export function isProfileItemPresent(document: ResumeDocument, item: ResumeProfileItem): boolean {
+  switch (item.content.type) {
+    case "skill": {
+      const key = searchKey(item.content.name);
+      return document.skill_groups.some((group) => group.items.some((skill) => searchKey(skill) === key));
+    }
+    case "project": {
+      const key = searchKey(item.content.value.name);
+      return document.projects.some((entry) => entry.id === item.id || searchKey(entry.name) === key);
+    }
+    case "certification": {
+      const key = searchKey(item.content.value.name);
+      return document.certifications.some((entry) => entry.id === item.id || searchKey(entry.name) === key);
+    }
+    case "language": {
+      const key = searchKey(item.content.value.name);
+      return document.languages.some((entry) => entry.id === item.id || searchKey(entry.name) === key);
+    }
+  }
+}
+
+/** Éléments du profil encore disponibles, indépendamment de leur rang IA. */
+export function availableProfileItems(workspace: ResumeWorkspace): ResumeProfileItem[] {
+  return workspace.profile_library.filter((item) => {
+    if (isProfileItemPresent(workspace.document, item)) return false;
+    return !workspace.decisions.explicitly_added.includes(item.id)
+      || workspace.decisions.explicitly_removed.includes(item.id);
+  });
+}
+
+/** Exigences de l'offre absentes à la fois du CV et de la bibliothèque du profil. */
+export function missingProfileSkills(workspace: ResumeWorkspace): string[] {
+  const profileSkills = workspace.profile_library
+    .filter((item) => item.content.type === "skill")
+    .map((item) => searchKey(item.content.type === "skill" ? item.content.name : ""));
+  return workspace.score.missing.filter((skill) => {
+    const requirement = searchKey(skill);
+    return !profileSkills.some((candidate) => containsWholeTerm(candidate, requirement));
+  });
+}
+
+function containsWholeTerm(value: string, term: string): boolean {
+  if (!term) return false;
+  let offset = value.indexOf(term);
+  while (offset >= 0) {
+    const before = offset === 0 ? "" : value[offset - 1] ?? "";
+    const afterIndex = offset + term.length;
+    const after = afterIndex >= value.length ? "" : value[afterIndex] ?? "";
+    if (!/[a-z0-9]/i.test(before) && !/[a-z0-9]/i.test(after)) return true;
+    offset = value.indexOf(term, offset + 1);
+  }
+  return false;
+}
+
+function addDecision(values: string[], id: string): string[] {
+  return values.includes(id) ? values : [...values, id];
+}
+
+function removeDecision(values: string[], id: string): string[] {
+  return values.filter((value) => value !== id);
+}
+
+function insertProfileItem(document: ResumeDocument, item: ResumeProfileItem): ResumeDocument {
+  if (isProfileItemPresent(document, item)) return document;
+  switch (item.content.type) {
+    case "skill": {
+      const first = document.skill_groups[0];
+      const skill_groups = first
+        ? [{ ...first, items: [...first.items, item.content.name] }, ...document.skill_groups.slice(1)]
+        : [{ id: "profile-skills", name: "Compétences", items: [item.content.name] }];
+      return { ...document, skill_groups };
+    }
+    case "project": return { ...document, projects: [...document.projects, item.content.value] };
+    case "certification": return { ...document, certifications: [...document.certifications, item.content.value] };
+    case "language": return { ...document, languages: [...document.languages, item.content.value] };
+  }
+}
+
+function removeProfileItem(document: ResumeDocument, item: ResumeProfileItem): ResumeDocument {
+  switch (item.content.type) {
+    case "skill": {
+      const key = searchKey(item.content.name);
+      return {
+        ...document,
+        skill_groups: document.skill_groups
+          .map((group) => ({ ...group, items: group.items.filter((skill) => searchKey(skill) !== key) }))
+          .filter((group) => group.items.length > 0),
+      };
+    }
+    case "project": {
+      const key = searchKey(item.content.value.name);
+      return { ...document, projects: document.projects.filter((entry) => entry.id !== item.id && searchKey(entry.name) !== key) };
+    }
+    case "certification": {
+      const key = searchKey(item.content.value.name);
+      return { ...document, certifications: document.certifications.filter((entry) => entry.id !== item.id && searchKey(entry.name) !== key) };
+    }
+    case "language": {
+      const key = searchKey(item.content.value.name);
+      return { ...document, languages: document.languages.filter((entry) => entry.id !== item.id && searchKey(entry.name) !== key) };
+    }
+  }
+}
+
+export function addProfileItem(workspace: ResumeWorkspace, itemId: string): ResumeWorkspace {
+  const item = workspace.profile_library.find((candidate) => candidate.id === itemId);
+  if (!item || isProfileItemPresent(workspace.document, item)) return workspace;
+  return {
+    ...workspace,
+    document: insertProfileItem(workspace.document, item),
+    decisions: {
+      ...workspace.decisions,
+      explicitly_added: addDecision(workspace.decisions.explicitly_added, item.id),
+      explicitly_removed: removeDecision(workspace.decisions.explicitly_removed, item.id),
+      ignored: removeDecision(workspace.decisions.ignored, item.id),
+    },
+    content_recommendations: workspace.content_recommendations.filter((entry) =>
+      entry.action.type === "add" ? entry.action.item_id !== item.id : entry.action.add_item_id !== item.id),
+  };
+}
+
+export function ignoreContentRecommendation(workspace: ResumeWorkspace, recommendationId: string): ResumeWorkspace {
+  const recommendation = workspace.content_recommendations.find((entry) => entry.id === recommendationId);
+  if (!recommendation) return workspace;
+  const itemId = recommendation.action.type === "add" ? recommendation.action.item_id : recommendation.action.add_item_id;
+  return {
+    ...workspace,
+    decisions: { ...workspace.decisions, ignored: addDecision(workspace.decisions.ignored, itemId) },
+    content_recommendations: workspace.content_recommendations.filter((entry) => entry.id !== recommendationId),
+  };
+}
+
+export function applyContentRecommendation(workspace: ResumeWorkspace, recommendationId: string): ResumeWorkspace {
+  const recommendation = workspace.content_recommendations.find((entry) => entry.id === recommendationId);
+  if (!recommendation) return workspace;
+  if (recommendation.action.type === "add") return addProfileItem(workspace, recommendation.action.item_id);
+  const action = recommendation.action;
+  const added = workspace.profile_library.find((item) => item.id === action.add_item_id);
+  const removed = workspace.profile_library.find((item) => item.id === action.remove_item_id);
+  if (!added || !removed) return workspace;
+  const withoutOld = removeProfileItem(workspace.document, removed);
+  return {
+    ...workspace,
+    document: insertProfileItem(withoutOld, added),
+    decisions: {
+      ...workspace.decisions,
+      explicitly_added: addDecision(workspace.decisions.explicitly_added, added.id),
+      explicitly_removed: addDecision(removeDecision(workspace.decisions.explicitly_removed, added.id), removed.id),
+      ignored: removeDecision(workspace.decisions.ignored, added.id),
+    },
+    content_recommendations: workspace.content_recommendations.filter((entry) => entry.id !== recommendationId),
+  };
 }
 
 /**
@@ -309,13 +499,26 @@ export function addSkill(workspace: ResumeWorkspace, group: number): ResumeWorks
 }
 
 export function removeSkill(workspace: ResumeWorkspace, group: number, item: number): ResumeWorkspace {
-  return withDocument(workspace, (document) => {
+  const removed = workspace.document.skill_groups[group]?.items[item];
+  const next = withDocument(workspace, (document) => {
     const skill_groups = updateAt(document.skill_groups, group, (skillGroup) => {
       const items = removeAt(skillGroup.items, item);
       return items ? { ...skillGroup, items } : null;
     });
     return skill_groups ? { ...document, skill_groups } : null;
   });
+  if (next === workspace || removed === undefined) return next;
+  const profileItem = workspace.profile_library.find((candidate) =>
+    candidate.content.type === "skill" && searchKey(candidate.content.name) === searchKey(removed));
+  if (!profileItem) return next;
+  return {
+    ...next,
+    decisions: {
+      ...next.decisions,
+      explicitly_added: removeDecision(next.decisions.explicitly_added, profileItem.id),
+      explicitly_removed: addDecision(next.decisions.explicitly_removed, profileItem.id),
+    },
+  };
 }
 
 function newBlockId(): string {
@@ -372,7 +575,26 @@ export function addSection(workspace: ResumeWorkspace, section: ResumeSectionKin
 }
 
 export function removeSection(workspace: ResumeWorkspace, section: ResumeSectionKind, index: number): ResumeWorkspace {
-  return withDocument(workspace, (document) => {
+  const removedItems = workspace.profile_library.filter((item) => {
+    if (section === "project" && item.content.type === "project") {
+      const value = workspace.document.projects[index];
+      return value !== undefined && (value.id === item.id || searchKey(value.name) === searchKey(item.content.value.name));
+    }
+    if (section === "certification" && item.content.type === "certification") {
+      const value = workspace.document.certifications[index];
+      return value !== undefined && (value.id === item.id || searchKey(value.name) === searchKey(item.content.value.name));
+    }
+    if (section === "language" && item.content.type === "language") {
+      const value = workspace.document.languages[index];
+      return value !== undefined && (value.id === item.id || searchKey(value.name) === searchKey(item.content.value.name));
+    }
+    if (section === "skill_group" && item.content.type === "skill") {
+      const skillName = item.content.name;
+      return workspace.document.skill_groups[index]?.items.some((skill) => searchKey(skill) === searchKey(skillName)) ?? false;
+    }
+    return false;
+  });
+  const next = withDocument(workspace, (document) => {
     switch (section) {
       case "experience": {
         const experiences = removeAt(document.experiences, index);
@@ -400,6 +622,15 @@ export function removeSection(workspace: ResumeWorkspace, section: ResumeSection
       }
     }
   });
+  if (next === workspace || removedItems.length === 0) return next;
+  return {
+    ...next,
+    decisions: removedItems.reduce((decisions, item) => ({
+      ...decisions,
+      explicitly_added: removeDecision(decisions.explicitly_added, item.id),
+      explicitly_removed: addDecision(decisions.explicitly_removed, item.id),
+    }), next.decisions),
+  };
 }
 
 /** Jumeau frontend de `split_bullets` (Rust) : une puce par ligne, sans marqueur ni espace. */
@@ -515,9 +746,14 @@ export function workspaceFixture(overrides: Partial<ResumeDocument> = {}): Resum
     schema_version: RESUME_WORKSPACE_VERSION,
     document,
     job_offer: { title: "Développeur", skills: [], soft_skills: [], experience: null, keywords: [] },
-    analysis: { recap: "", recommendations: [] },
+    analysis: { recap: "", recommendations: [], content_recommendations: [] },
     score: { total: 60, skills: null, experience: null, ats: null, present: [], missing: [] },
     initial_score: 60,
     proposals: [],
+    profile_library: [],
+    decisions: { explicitly_added: [], explicitly_removed: [], ignored: [] },
+    layout: { status: "available", used_per_mille: 0, remaining_points: 0, page_count: 1, overflow: false },
+    content_recommendations: [],
+    recommendation_error: null,
   };
 }

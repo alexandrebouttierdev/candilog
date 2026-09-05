@@ -31,5 +31,5 @@ fn normalise_le_parent_sans_modifier_le_nom() {
 
     let validee = validate_selected_target(&cible, "pdf").unwrap();
 
-    assert_eq!(validee, cible);
+    assert_eq!(validee, temp.path().canonicalize().unwrap().join("CV.PDF"));
 }

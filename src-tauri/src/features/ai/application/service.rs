@@ -17,8 +17,8 @@ use std::sync::{Arc, Mutex};
 use tokio_util::sync::CancellationToken;
 
 const JOB_OFFER_SYSTEM: &str = r#"Extrais une offre d'emploi en JSON. Recopie uniquement les informations présentes, sans traduire ni inventer. Réponds exactement avec les clés {"titre":"","competences":[],"savoirEtre":[],"experience":null,"motsCles":[]}. Réponds uniquement en JSON."#;
-const RESUME_SYSTEM: &str = r#"Adapte un CV à une offre en JSON. Reformule uniquement les faits du profil, sans ajouter compétence, entreprise, diplôme ou expérience. Conserve toutes les expériences et formations. Réponds avec {"resume":"","experiences":[{"intitule":"","entreprise":"","description":""}],"competences":[],"formations":[{"diplome":"","etablissement":""}]}. JSON uniquement."#;
-const ATS_SYSTEM: &str = r#"Compare le CV et l'offre fournis. Réponds en français, uniquement en JSON : {"recap":"","recommendations":[{"section":"profile","item_index":null,"original_text":"","proposed_text":""}]}. "section" vaut "profile" ou "experience". Pour "experience", "item_index" est l'indice (à partir de 0) de l'expérience du CV concernée ; laisse "item_index" à null pour "profile". "original_text" doit reprendre exactement un texte présent dans le CV fourni, "proposed_text" est la reformulation proposée. N'invente aucun fait absent du CV ou de l'offre."#;
+const RESUME_SYSTEM: &str = r#"Adapte le socle d'un CV à une offre en JSON. Reformule uniquement les faits du profil, sans ajouter compétence, entreprise, diplôme ou expérience. Conserve toutes les expériences et formations. Laisse toujours competences vide : les contenus optionnels seront choisis ensuite par l'utilisateur. Réponds avec {"resume":"","experiences":[{"intitule":"","entreprise":"","description":""}],"competences":[],"formations":[{"diplome":"","etablissement":""}]}. JSON uniquement."#;
+const ATS_SYSTEM: &str = r#"Compare le CV et l'offre fournis. Réponds en français, uniquement en JSON : {"recap":"","recommendations":[{"section":"profile","item_index":null,"original_text":"","proposed_text":""}],"content_recommendations":[{"item_id":"","reason":"","relevance":"very_relevant"}]}. "section" vaut "profile" ou "experience". Pour "experience", "item_index" est l'indice (à partir de 0) de l'expérience du CV concernée ; laisse "item_index" à null pour "profile". "original_text" doit reprendre exactement un texte présent dans le CV fourni, "proposed_text" est la reformulation proposée. Pour content_recommendations, sélectionne au maximum 8 identifiants du tableau contenu_profil, dans l'ordre de priorité. relevance vaut "very_relevant", "relevant" ou "secondary". Privilégie la cohérence et la valeur pour le recruteur, pas la répétition de mots-clés. Ne renvoie pas tout le catalogue. N'invente aucun fait ni identifiant absent du CV, de l'offre ou du catalogue."#;
 const COVER_LETTER_SYSTEM: &str = r#"Sélectionne les faits les plus pertinents pour une lettre de motivation. Réponds uniquement en JSON avec {"selected_fact_ids":[],"motivation_keywords":[]}. Utilise exclusivement des identifiants présents dans le catalogue. Les mots-clés doivent être recopiés exactement depuis le brief. N'écris aucune phrase de lettre et n'invente aucune information."#;
 const PARSE_RESUME_SYSTEM: &str = r#"Structure le texte brut d'un CV sans traduire, reformuler ni inventer. Réponds uniquement en JSON : {"resume":"","experiences":[{"intitule":"","entreprise":"","description":""}],"competences":[],"formations":[{"diplome":"","etablissement":""}]}"#;
 const PROFILE_SYSTEM: &str = r#"Extrais le profil du CV sans inventer. Recopie les valeurs et utilise null ou [] si absentes. Dates au format AAAA-MM ou AAAA. Réponds uniquement en JSON camelCase avec exactement cette structure : {"identite":{"prenom":"","nom":"","email":"","telephone":null,"ville":null,"titre":null,"resume":null,"linkedin":null,"github":null,"siteWeb":null},"experiences":[{"intitule":"","entreprise":"","lieu":null,"start_date":"","end_date":null,"posteActuel":false,"description":null}],"competences":[{"nom":""}],"formations":[{"diplome":"","etablissement":"","lieu":null,"start_date":null,"end_date":null,"description":null}],"langues":[{"nom":"","niveau":""}],"projets":[{"nom":"","description":null,"url":null,"technologies":null}],"certifications":[{"nom":"","organisme":null,"date":null,"url":null}]}"#;
@@ -115,9 +115,34 @@ impl AiService {
             id,
             token: Arc::clone(&token),
         };
-        let (output, tokens_used) = self
+        let result = self
             .generate_resume_interne(&request, &token, &notifier)
-            .await?;
+            .await;
+        let (output, tokens_used) = match result {
+            Ok(value) => value,
+            Err(error)
+                if matches!(
+                    &error,
+                    AppError::Http(_) | AppError::Provider(_) | AppError::Serialization(_)
+                ) =>
+            {
+                tracing::warn!(error = %error, "génération de CV poursuivie en mode local");
+                let profile = self.profile()?;
+                validate_profile_input(&profile)?;
+                progres(
+                    &notifier,
+                    &request.generation_id,
+                    "Suggestions locales disponibles",
+                    None,
+                    None,
+                );
+                (
+                    fallback_resume_generation(&profile, &request.job_offer, error.user_message()),
+                    None,
+                )
+            }
+            Err(error) => return Err(error),
+        };
         Ok(execution(started_at, output, tokens_used))
     }
 
@@ -185,12 +210,24 @@ impl AiService {
             None,
             tokens,
         );
-        let context_ats = serde_json::json!({"cv":resume,"offre":job_offer}).to_string();
-        let (analysis, call_tokens): (AtsAnalysis, Option<u32>) = cancel(
+        let content_catalog = profile_content_catalog(&profile);
+        // Le socle éditorial ne porte volontairement aucun élément optionnel. Les compétences
+        // sélectionnées par l'étape de rédaction deviennent des candidates, jamais des ajouts
+        // silencieux au document.
+        let mut resume_base = resume.clone();
+        resume_base.skills.clear();
+        let context_ats = serde_json::json!({
+            "cv": resume_base,
+            "offre": job_offer,
+            "contenu_profil": content_catalog,
+        })
+        .to_string();
+        let (mut analysis, call_tokens): (AtsAnalysis, Option<u32>) = cancel(
             token,
             generate_json(provider, &bloc_donnees("analyse", &context_ats), ATS_SYSTEM),
         )
         .await?;
+        ground_content_recommendations(&content_catalog, &mut analysis);
         tokens = add_tokens(tokens, call_tokens);
         progres(notifier, &request.generation_id, "Terminé", None, tokens);
         Ok((
@@ -199,6 +236,7 @@ impl AiService {
                 analysis,
                 job_offer,
                 profile_score: score,
+                recommendation_error: None,
             },
             tokens,
         ))
@@ -440,6 +478,68 @@ impl AiService {
             build_preview(&current, &profile),
             tokens,
         ))
+    }
+}
+
+/// Construit un socle factuel sans fournisseur : aucune sélection sémantique n'est simulée,
+/// mais toutes les données du profil restent accessibles dans Suggestions.
+fn fallback_resume_generation(
+    profile: &Profile,
+    raw_offer: &str,
+    reason: String,
+) -> ResumeGeneration {
+    let title = raw_offer
+        .lines()
+        .map(str::trim)
+        .find(|line| !line.is_empty())
+        .unwrap_or("Offre ciblée")
+        .chars()
+        .take(160)
+        .collect::<String>();
+    let job_offer = StructuredListing {
+        title,
+        ..StructuredListing::default()
+    };
+    let resume_text = profile
+        .identity
+        .resume
+        .as_deref()
+        .or(profile.identity.title.as_deref())
+        .or_else(|| {
+            profile
+                .experiences
+                .first()
+                .map(|experience| experience.title.as_str())
+        })
+        .unwrap_or("Profil à compléter.")
+        .to_owned();
+    let resume = GeneratedResume {
+        resume: resume_text,
+        experiences: profile
+            .experiences
+            .iter()
+            .map(|experience| GeneratedExperience {
+                title: experience.title.clone(),
+                company: experience.company.clone(),
+                description: experience.description.clone().unwrap_or_default(),
+            })
+            .collect(),
+        skills: Vec::new(),
+        education: profile
+            .education
+            .iter()
+            .map(|education| GeneratedEducation {
+                degree: education.degree.clone(),
+                school: education.school.clone(),
+            })
+            .collect(),
+    };
+    ResumeGeneration {
+        resume,
+        analysis: AtsAnalysis::default(),
+        profile_score: profile_score(profile, &job_offer),
+        job_offer,
+        recommendation_error: Some(reason),
     }
 }
 
@@ -702,6 +802,36 @@ mod tests {
         fn validate_ai_output(&self) -> AppResult<()> {
             Ok(())
         }
+    }
+
+    #[test]
+    fn le_mode_local_conserve_les_faits_et_signale_l_indisponibilite_ia() {
+        let mut profile = Profile::default();
+        profile.identity.first_name = "Alex".into();
+        profile.identity.resume = Some("Administration de systèmes Windows.".into());
+        profile
+            .experiences
+            .push(crate::features::profile::domain::Experience {
+                title: "Technicien systèmes".into(),
+                company: "Exemple".into(),
+                description: Some("Support utilisateurs".into()),
+                ..crate::features::profile::domain::Experience::default()
+            });
+
+        let generation = fallback_resume_generation(
+            &profile,
+            "Administrateur systèmes\nActive Directory",
+            "Service indisponible".into(),
+        );
+
+        assert_eq!(generation.job_offer.title, "Administrateur systèmes");
+        assert_eq!(generation.resume.experiences[0].company, "Exemple");
+        assert!(generation.resume.skills.is_empty());
+        assert_eq!(
+            generation.recommendation_error.as_deref(),
+            Some("Service indisponible")
+        );
+        assert!(generation.analysis.content_recommendations.is_empty());
     }
 
     #[tokio::test]

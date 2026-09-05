@@ -96,16 +96,20 @@ test.describe("contenu des documents", () => {
       expect(puccesInventees, "puces d'expérience absentes du profil source").toEqual([]);
     });
 
-    test(`${profil} — le CV est complet et exploitable`, () => {
+    test(`${profil} — le socle est complet sans copier les contenus optionnels`, () => {
       const source = lire<ProfilSource>(profil, "profile.json");
-      const document = lire<{ document: DocumentCv }>(profil, "workspace.json").document;
+      const workspace = lire<{ document: DocumentCv; profile_library: unknown[] }>(profil, "workspace.json");
+      const document = workspace.document;
 
       expect(document.experiences.length, "expériences retenues").toBe(source.experiences.length);
       expect(document.education.length, "formations retenues").toBe(source.education.length);
-      expect(
-        document.skill_groups.flatMap((groupe) => groupe.items).length,
-        "compétences retenues",
-      ).toBeGreaterThan(0);
+      expect(document.skill_groups, "compétences copiées automatiquement").toEqual([]);
+      expect(document.projects, "projets copiés automatiquement").toEqual([]);
+      expect(document.certifications, "certifications copiées automatiquement").toEqual([]);
+      expect(document.languages, "langues copiées automatiquement").toEqual([]);
+      expect(workspace.profile_library.length, "bibliothèque optionnelle").toBe(
+        source.skills.length + source.projects.length + source.certifications.length + source.languages.length,
+      );
 
       const texte = texteDuCv(document);
       expect(texte, "valeur parasite dans le CV").not.toMatch(/\b(undefined|null|NaN)\b|\[object |\{\{|\$\{/);

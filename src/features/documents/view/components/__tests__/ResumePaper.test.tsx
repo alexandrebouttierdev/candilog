@@ -63,6 +63,25 @@ describe("ResumePaper", () => {
     expect(onChange).toHaveBeenCalledWith({ type: "experience_bullet", index: 0, item: 0 }, "Nouvelle réalisation");
   });
 
+  it("expose des retraits explicites pour les contenus optionnels", () => {
+    const onRemoveSkill = vi.fn();
+    const onRemoveSection = vi.fn();
+    render(
+      <ResumePaper
+        workspace={workspaceFixture()}
+        editable
+        onChange={vi.fn()}
+        onRemoveSkill={onRemoveSkill}
+        onRemoveSection={onRemoveSection}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Retirer Rust" }));
+    fireEvent.click(screen.getByRole("button", { name: "Retirer le projet Candilog" }));
+    expect(onRemoveSkill).toHaveBeenCalledWith(0, 0);
+    expect(onRemoveSection).toHaveBeenCalledWith("project", 0);
+  });
+
   it("rend une URL sûre dans un nouvel onglet isolé", () => {
     const workspace = workspaceFixture({
       identity: {

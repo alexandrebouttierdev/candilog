@@ -1,9 +1,10 @@
 //! Score ATS local et déterministe, sans appel réseau.
 
 use super::normalization::{contains_search_term, deduplicate_labels};
-use super::{search_key, GeneratedResume, MatchScore, StructuredListing};
+use super::{search_key, AtsAnalysis, GeneratedResume, MatchScore, StructuredListing};
 use crate::features::profile::domain::Profile;
 use chrono::Datelike;
+use serde::Serialize;
 use std::collections::HashSet;
 
 /// Pondération du score de compétences dans le total profil.
@@ -12,6 +13,91 @@ const WEIGHT_SKILLS: u16 = 40;
 const WEIGHT_EXPERIENCE: u16 = 40;
 /// Pondération des mots-clés ATS dans le total profil.
 const WEIGHT_ATS: u16 = 20;
+
+/// Entrée compacte transmise au modèle : l'identifiant est la seule valeur qu'une
+/// recommandation de contenu peut ensuite cibler.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ProfileContentCatalogEntry {
+    pub id: String,
+    pub kind: &'static str,
+    pub label: String,
+    pub context: String,
+}
+
+#[must_use]
+pub fn profile_content_catalog(profile: &Profile) -> Vec<ProfileContentCatalogEntry> {
+    let skills =
+        profile
+            .skills
+            .iter()
+            .enumerate()
+            .map(|(index, item)| ProfileContentCatalogEntry {
+                id: format!("skill-{index}"),
+                kind: "skill",
+                label: item.name.trim().to_owned(),
+                context: String::new(),
+            });
+    let projects =
+        profile
+            .projects
+            .iter()
+            .enumerate()
+            .map(|(index, item)| ProfileContentCatalogEntry {
+                id: format!("project-{index}"),
+                kind: "project",
+                label: item.name.trim().to_owned(),
+                context: format!(
+                    "{} {}",
+                    item.technologies.as_deref().unwrap_or_default(),
+                    item.description.as_deref().unwrap_or_default()
+                )
+                .trim()
+                .to_owned(),
+            });
+    let certifications = profile
+        .certifications
+        .iter()
+        .enumerate()
+        .map(|(index, item)| ProfileContentCatalogEntry {
+            id: format!("certification-{index}"),
+            kind: "certification",
+            label: item.name.trim().to_owned(),
+            context: item.issuer.as_deref().unwrap_or_default().trim().to_owned(),
+        });
+    let languages =
+        profile
+            .languages
+            .iter()
+            .enumerate()
+            .map(|(index, item)| ProfileContentCatalogEntry {
+                id: format!("language-{index}"),
+                kind: "language",
+                label: item.name.trim().to_owned(),
+                context: item.level.trim().to_owned(),
+            });
+
+    skills
+        .chain(projects)
+        .chain(certifications)
+        .chain(languages)
+        .filter(|entry| !entry.label.is_empty())
+        .collect()
+}
+
+/// Écarte les identifiants inventés, les doublons et les recommandations sans motif.
+pub fn ground_content_recommendations(
+    catalog: &[ProfileContentCatalogEntry],
+    analysis: &mut AtsAnalysis,
+) {
+    let allowed: HashSet<&str> = catalog.iter().map(|entry| entry.id.as_str()).collect();
+    let mut seen = HashSet::new();
+    analysis.content_recommendations.retain(|recommendation| {
+        allowed.contains(recommendation.item_id.as_str())
+            && !recommendation.reason.trim().is_empty()
+            && seen.insert(recommendation.item_id.clone())
+    });
+    analysis.content_recommendations.truncate(8);
+}
 #[must_use]
 pub fn profile_score(profile: &Profile, job_offer: &StructuredListing) -> MatchScore {
     let names: Vec<&str> = profile
@@ -327,7 +413,9 @@ fn year(value: &str) -> Option<i32> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::features::ai::domain::{GeneratedEducation, GeneratedExperience};
+    use crate::features::ai::domain::{
+        AtsContentRecommendation, ContentRelevance, GeneratedEducation, GeneratedExperience,
+    };
     use crate::features::profile::domain::{Education, Experience, Identity, Profile, Skill};
 
     fn profile_rust() -> Profile {
@@ -689,6 +777,38 @@ mod tests {
         ground_extracted_listing("Offre Rust backend, CLI", &mut listing);
         assert_eq!(listing.skills, vec!["Rust"]);
         assert!(listing.keywords.is_empty());
+    }
+
+    #[test]
+    fn recommandations_de_contenu_ecartent_identifiants_inventes_et_doublons() {
+        let profile = profile_rust();
+        let catalog = profile_content_catalog(&profile);
+        let real_id = catalog[0].id.clone();
+        let mut analysis = AtsAnalysis {
+            content_recommendations: vec![
+                AtsContentRecommendation {
+                    item_id: "skill-kubernetes-invente".into(),
+                    reason: "Demandé".into(),
+                    relevance: ContentRelevance::VeryRelevant,
+                },
+                AtsContentRecommendation {
+                    item_id: real_id.clone(),
+                    reason: "Présent dans le profil".into(),
+                    relevance: ContentRelevance::Relevant,
+                },
+                AtsContentRecommendation {
+                    item_id: real_id.clone(),
+                    reason: "Doublon".into(),
+                    relevance: ContentRelevance::Secondary,
+                },
+            ],
+            ..AtsAnalysis::default()
+        };
+
+        ground_content_recommendations(&catalog, &mut analysis);
+
+        assert_eq!(analysis.content_recommendations.len(), 1);
+        assert_eq!(analysis.content_recommendations[0].item_id, real_id);
     }
 
     #[test]

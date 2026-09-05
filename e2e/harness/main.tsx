@@ -9,12 +9,20 @@
  * Il ne fait partie ni de l'application ni de son bundle : `vite build` n'a qu'une entrée,
  * `index.html`, et ce fichier n'est jamais importé depuis `src/`.
  */
-import { StrictMode } from "react";
+import { StrictMode, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { LetterContent } from "@/features/documents/view/components/LetterEditor";
 import { LetterPaper } from "@/features/documents/view/components/LetterPaper";
 import { ResumePaper } from "@/features/documents/view/components/ResumePaper";
+import { ResumeAtsPanel } from "@/features/documents/view/components/ResumeAtsPanel";
+import {
+  addProfileItem,
+  applyContentRecommendation,
+  ignoreContentRecommendation,
+  removeSection,
+  removeSkill,
+} from "@/features/documents/model/resumeWorkspace";
 import { PROFILE_KEY } from "@/features/profile/viewmodel/useProfileViewModel";
 import type { Identity } from "@/shared/types/generated/profile";
 import type { ResumeWorkspace } from "@/shared/types/generated/documents";
@@ -33,6 +41,8 @@ type LettreArtefact = {
 const parametres = new URLSearchParams(globalThis.location.search);
 const dossier = parametres.get("dir") ?? "";
 const genre = parametres.get("kind") ?? "resume";
+const theme = parametres.get("theme") === "dark" ? "dark" : "light";
+document.documentElement.dataset["theme"] = theme;
 
 /** Le banc annonce son état par cet attribut : Playwright attend `pret` avant de mesurer. */
 function etat(valeur: string, detail?: string) {
@@ -95,6 +105,9 @@ async function demarrer() {
           </QueryClientProvider>
         </StrictMode>,
       );
+    } else if (genre === "assistant") {
+      const workspace = await charger<ResumeWorkspace>("workspace.json");
+      racine.render(<AssistantHarness initial={workspace} />);
     } else {
       const workspace = await charger<ResumeWorkspace>("workspace.json");
       racine.render(
@@ -112,6 +125,34 @@ async function demarrer() {
   await document.fonts.ready;
   await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
   etat("pret");
+}
+
+function AssistantHarness({ initial }: { initial: ResumeWorkspace }) {
+  const [workspace, setWorkspace] = useState(initial);
+  return (
+    <div className="flex min-h-screen gap-5 bg-page p-6">
+      <div className="min-w-0 flex-1 overflow-auto rounded-card border border-line bg-surface p-6">
+        <ResumePaper
+          workspace={workspace}
+          editable
+          onChange={() => {}}
+          onRemoveSkill={(group, item) => setWorkspace((current) => removeSkill(current, group, item))}
+          onRemoveSection={(section, index) => setWorkspace((current) => removeSection(current, section, index))}
+        />
+      </div>
+      <aside className="h-[1280px] w-[340px] flex-none overflow-y-auto rounded-card border border-line bg-surface">
+        <ResumeAtsPanel
+          workspace={workspace}
+          onAddProfileItem={(id) => setWorkspace((current) => addProfileItem(current, id))}
+          onApplyRecommendation={(id) => setWorkspace((current) => applyContentRecommendation(current, id))}
+          onIgnoreRecommendation={(id) => setWorkspace((current) => ignoreContentRecommendation(current, id))}
+          onAccept={() => {}}
+          onReject={() => {}}
+          onUndo={() => {}}
+        />
+      </aside>
+    </div>
+  );
 }
 
 void demarrer();

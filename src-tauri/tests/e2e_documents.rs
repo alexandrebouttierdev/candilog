@@ -19,6 +19,7 @@
 //! | --- | --- | --- |
 //! | `CANDILOG_E2E` | active le scénario | absent → ignoré |
 //! | `CANDILOG_E2E_LIVE` | appelle réellement le fournisseur IA | absent → rejeu |
+//! | `CANDILOG_E2E_SYNTHETIC` | produit des artefacts factuels sans cache ni IA | absent → non |
 //! | `CANDILOG_E2E_OFFER` | fichier de l'offre | requis en live |
 //! | `CANDILOG_E2E_SETTINGS_DB` | base dont on copie les réglages IA | base de développement |
 //! | `CANDILOG_E2E_OUT` | dossier des artefacts | `<repo>/test-output` |
@@ -28,7 +29,9 @@ use candilog_lib::core::database::helpers::connection;
 use candilog_lib::core::database::{open_pool, run_local_migrations, SqlitePool};
 use candilog_lib::features::ai::application::AiService;
 use candilog_lib::features::ai::domain::{
-    CoverLetterRequest, ResumeGeneration, ResumeGenerationRequest,
+    profile_content_catalog, profile_score, AtsAnalysis, AtsContentRecommendation,
+    ContentRelevance, CoverLetterRequest, GeneratedEducation, GeneratedExperience, GeneratedResume,
+    ResumeGeneration, ResumeGenerationRequest, StructuredListing,
 };
 use candilog_lib::features::documents::application::{
     build, build_cover_letter, prepare_workspace,
@@ -68,6 +71,10 @@ fn settings_source() -> PathBuf {
 
 fn live() -> bool {
     std::env::var("CANDILOG_E2E_LIVE").is_ok_and(|value| value == "1")
+}
+
+fn synthetic() -> bool {
+    std::env::var("CANDILOG_E2E_SYNTHETIC").is_ok_and(|value| value == "1")
 }
 
 /// Prépare une base isolée : schéma neuf, réglages IA recopiés, profil du cas de test.
@@ -265,7 +272,7 @@ async fn chaine_de_generation_de_documents() {
         };
         ecrire_json(&cas.dossier.join("generation.json"), &generation);
 
-        match prepare_workspace(&cas.profile, generation) {
+        match prepare_workspace(&cas.profile, generation, None) {
             Ok(workspace) => {
                 ecrire_json(&cas.dossier.join("workspace.json"), &workspace);
                 let debut = Instant::now();
@@ -275,7 +282,7 @@ async fn chaine_de_generation_de_documents() {
                 // tient sur une page, et un parcours qui la dépasse doit être annoncé, pas
                 // tronqué. L'attente est déclarée à côté du profil, jamais devinée ici.
                 match (rendu, cas.attendu.as_deref()) {
-                    (Ok(octets), None) => {
+                    (Ok(octets), None | Some("accept")) => {
                         compte.cv_pdf_octets = octets.len();
                         ecrire(&cas.dossier.join("cv.pdf"), &octets);
                     }
@@ -372,6 +379,9 @@ async fn obtenir_generation(
 ) -> Result<ResumeGeneration, String> {
     let cache = cas.dossier.join("generation.json");
     if !live() {
+        if synthetic() {
+            return Ok(generation_synthetique(&cas.profile));
+        }
         let brut = std::fs::read_to_string(&cache)
             .map_err(|_| format!("aucune génération enregistrée dans {}", cache.display()))?;
         return serde_json::from_str(&brut).map_err(|error| error.to_string());
@@ -394,6 +404,76 @@ async fn obtenir_generation(
     generation
 }
 
+fn generation_synthetique(profile: &Profile) -> ResumeGeneration {
+    let mut skills: Vec<String> = profile
+        .skills
+        .iter()
+        .take(4)
+        .map(|skill| skill.name.clone())
+        .collect();
+    skills.push("Compétence absente du profil".into());
+    let job_offer = StructuredListing {
+        title: JOB_TITLE.into(),
+        skills,
+        keywords: vec!["support".into(), "automatisation".into()],
+        ..StructuredListing::default()
+    };
+    let catalog = profile_content_catalog(profile);
+    let analysis = AtsAnalysis {
+        content_recommendations: catalog
+            .iter()
+            .take(8)
+            .enumerate()
+            .map(|(index, item)| AtsContentRecommendation {
+                item_id: item.id.clone(),
+                reason: format!(
+                    "{} apporte un élément concret pour cette offre.",
+                    item.label
+                ),
+                relevance: if index < 2 {
+                    ContentRelevance::VeryRelevant
+                } else {
+                    ContentRelevance::Relevant
+                },
+            })
+            .collect(),
+        ..AtsAnalysis::default()
+    };
+    let resume = GeneratedResume {
+        resume: profile
+            .identity
+            .resume
+            .clone()
+            .or_else(|| profile.identity.title.clone())
+            .unwrap_or_else(|| "Profil à compléter.".into()),
+        experiences: profile
+            .experiences
+            .iter()
+            .map(|experience| GeneratedExperience {
+                title: experience.title.clone(),
+                company: experience.company.clone(),
+                description: experience.description.clone().unwrap_or_default(),
+            })
+            .collect(),
+        skills: Vec::new(),
+        education: profile
+            .education
+            .iter()
+            .map(|education| GeneratedEducation {
+                degree: education.degree.clone(),
+                school: education.school.clone(),
+            })
+            .collect(),
+    };
+    ResumeGeneration {
+        resume,
+        analysis,
+        profile_score: profile_score(profile, &job_offer),
+        job_offer,
+        recommendation_error: None,
+    }
+}
+
 /// Lettre de motivation : appel réel au fournisseur en mode live, relecture sinon.
 async fn obtenir_lettre(
     cas: &Cas,
@@ -402,6 +482,56 @@ async fn obtenir_lettre(
 ) -> Result<String, String> {
     let cache = cas.dossier.join("cover-letter.txt");
     if !live() {
+        if synthetic() {
+            let nom = format!(
+                "{} {}",
+                cas.profile.identity.first_name, cas.profile.identity.name
+            );
+            let mut paragraphes = vec![format!(
+                "Madame, Monsieur,\n\nJe souhaite rejoindre {} au poste d'{}.",
+                COMPANY, JOB_TITLE
+            )];
+            if let Some(resume) = cas.profile.identity.resume.as_deref() {
+                paragraphes.push(format!(
+                    "Mon projet professionnel : {}.",
+                    resume.trim().trim_end_matches('.')
+                ));
+            }
+            if let Some(experience) = cas.profile.experiences.first() {
+                let description = experience
+                    .description
+                    .as_deref()
+                    .unwrap_or_default()
+                    .lines()
+                    .map(str::trim)
+                    .collect::<Vec<_>>()
+                    .join(" ");
+                let precision = if description.is_empty() {
+                    String::new()
+                } else {
+                    format!(" : {}", description.trim_end_matches('.'))
+                };
+                paragraphes.push(format!(
+                    "Mon expérience comprend notamment {} chez {}{}.",
+                    experience.title, experience.company, precision
+                ));
+            }
+            if let Some(skill) = cas.profile.skills.first() {
+                paragraphes.push(format!(
+                    "Je peux notamment mobiliser {}.",
+                    skill.name.trim_end_matches('.')
+                ));
+            }
+            if let Some(education) = cas.profile.education.first() {
+                paragraphes.push(format!(
+                    "Ma formation inclut {} à {}.",
+                    education.degree.trim_end_matches('.'),
+                    education.school.trim_end_matches('.')
+                ));
+            }
+            paragraphes.push(format!("Cordialement,\n{}", nom.trim()));
+            return Ok(paragraphes.join("\n\n"));
+        }
         return std::fs::read_to_string(&cache)
             .map_err(|_| format!("aucune lettre enregistrée dans {}", cache.display()));
     }

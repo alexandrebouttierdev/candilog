@@ -1,24 +1,27 @@
 //! Composition et validation du document de travail autonome d'un CV.
 
-use super::resume_document::{format_month_date, split_bullets};
+use super::resume_document::{format_month_date, measure, split_bullets};
 use crate::core::errors::{AppError, AppResult};
 use crate::core::utils::text::search_key;
 use crate::core::utils::validation::validate_optional_http_url;
 use crate::features::ai::domain::{
-    score_resume_imported, AtsRecommendation, AtsRecommendationSection, GeneratedEducation,
-    GeneratedExperience, GeneratedResume, ResumeGeneration, MAX_ITEMS, MAX_ITEM_CHARS,
+    score_resume_imported, AtsRecommendation, AtsRecommendationSection, ContentRelevance,
+    GeneratedEducation, GeneratedExperience, GeneratedResume, ResumeGeneration, MAX_ITEMS,
+    MAX_ITEM_CHARS,
 };
 use crate::features::documents::domain::{
-    ResumeCertificationBlock, ResumeDocument, ResumeEducationBlock, ResumeExperienceBlock,
-    ResumeIdentity, ResumeLanguageBlock, ResumeProjectBlock, ResumeProposal, ResumeProposalKind,
+    ResumeCertificationBlock, ResumeContentRecommendation, ResumeContentRecommendationAction,
+    ResumeDocument, ResumeEditorialDecisions, ResumeEducationBlock, ResumeExperienceBlock,
+    ResumeIdentity, ResumeLanguageBlock, ResumeLayoutStatus, ResumeProfileItem,
+    ResumeProfileItemContent, ResumeProjectBlock, ResumeProposal, ResumeProposalKind,
     ResumeProposalStatus, ResumeProposalTarget, ResumeSkillGroup, ResumeWorkspace,
     RESUME_WORKSPACE_VERSION,
 };
 use crate::features::profile::domain::Profile;
 use uuid::Uuid;
 
-/// Identifiant du groupe de compétences créé à la volée quand le CV n'en porte encore aucun.
 const DEFAULT_SKILL_GROUP_ID: &str = "competences";
+const MAX_CONTENT_RECOMMENDATIONS: usize = 4;
 
 /// Fige le profil et la génération IA dans un document qui ne dépend plus de leurs sources.
 ///
@@ -27,11 +30,13 @@ const DEFAULT_SKILL_GROUP_ID: &str = "competences";
 pub fn prepare_workspace(
     profile: &Profile,
     generation: ResumeGeneration,
+    photo: Option<Vec<u8>>,
 ) -> AppResult<ResumeWorkspace> {
     let ResumeGeneration {
         resume,
         analysis,
         job_offer,
+        recommendation_error,
         ..
     } = generation;
     let identity = &profile.identity;
@@ -92,45 +97,10 @@ pub fn prepare_workspace(
             }
         })
         .collect(),
-        projects: profile
-            .projects
-            .iter()
-            .map(|project| ResumeProjectBlock {
-                id: Uuid::new_v4().to_string(),
-                name: project.name.clone(),
-                meta: trimmed_option(project.technologies.as_deref()),
-                url: normalize_http_url(project.url.as_deref()),
-                bullets: project
-                    .description
-                    .as_deref()
-                    .map(split_bullets)
-                    .unwrap_or_default(),
-            })
-            .collect(),
-        skill_groups: {
-            // La validation de sortie ne borne qu'un maximum : un modèle qui ne renvoie
-            // aucune compétence passe sans erreur. Reprendre alors celles du profil, sinon
-            // le CV part amputé de toute une section sans que rien ne le signale.
-            let items = if resume.skills.is_empty() {
-                profile
-                    .skills
-                    .iter()
-                    .map(|skill| skill.name.trim().to_owned())
-                    .filter(|name| !name.is_empty())
-                    .collect()
-            } else {
-                resume.skills
-            };
-            if items.is_empty() {
-                Vec::new()
-            } else {
-                vec![ResumeSkillGroup {
-                    id: Uuid::new_v4().to_string(),
-                    name: "Compétences".into(),
-                    items,
-                }]
-            }
-        },
+        // Ces sections relèvent d'un choix éditorial. Elles restent dans la bibliothèque
+        // du workspace et ne sont jamais copiées silencieusement dans le CV initial.
+        projects: Vec::new(),
+        skill_groups: Vec::new(),
         education: completer_depuis_le_profil(
             resume.education,
             &profile.education,
@@ -163,33 +133,13 @@ pub fn prepare_workspace(
             }
         })
         .collect(),
-        certifications: profile
-            .certifications
-            .iter()
-            .map(|certification| ResumeCertificationBlock {
-                id: Uuid::new_v4().to_string(),
-                name: certification.name.clone(),
-                issuer: trimmed_option(certification.issuer.as_deref()),
-                date: certification
-                    .date
-                    .as_deref()
-                    .map(format_month_date)
-                    .and_then(|date| trimmed_option(Some(&date))),
-            })
-            .collect(),
-        languages: profile
-            .languages
-            .iter()
-            .map(|language| ResumeLanguageBlock {
-                id: Uuid::new_v4().to_string(),
-                name: language.name.clone(),
-                level: language.level.clone(),
-            })
-            .collect(),
+        certifications: Vec::new(),
+        languages: Vec::new(),
     };
 
     validate_document(&document)?;
     let score = score_resume_imported(&to_generated_resume(&document), &job_offer);
+    let layout = measure(&document, photo.clone())?;
     let mut workspace = ResumeWorkspace {
         schema_version: RESUME_WORKSPACE_VERSION,
         document,
@@ -198,9 +148,326 @@ pub fn prepare_workspace(
         initial_score: score.total,
         score,
         proposals: Vec::new(),
+        profile_library: build_profile_library(profile),
+        decisions: ResumeEditorialDecisions::default(),
+        layout,
+        content_recommendations: Vec::new(),
+        recommendation_error,
     };
     workspace.proposals = build_proposals(&workspace);
+    workspace.content_recommendations =
+        build_content_recommendations(&workspace, photo.as_deref())?;
     Ok(workspace)
+}
+
+fn build_profile_library(profile: &Profile) -> Vec<ResumeProfileItem> {
+    let mut items = Vec::new();
+    for (index, skill) in profile.skills.iter().enumerate() {
+        let name = skill.name.trim();
+        if name.is_empty() {
+            continue;
+        }
+        items.push(ResumeProfileItem {
+            id: format!("skill-{index}"),
+            label: name.to_owned(),
+            detail: None,
+            content: ResumeProfileItemContent::Skill {
+                name: name.to_owned(),
+            },
+        });
+    }
+    for (index, project) in profile.projects.iter().enumerate() {
+        let name = project.name.trim();
+        if name.is_empty() {
+            continue;
+        }
+        let id = format!("project-{index}");
+        items.push(ResumeProfileItem {
+            id: id.clone(),
+            label: name.to_owned(),
+            detail: trimmed_option(project.technologies.as_deref()),
+            content: ResumeProfileItemContent::Project {
+                value: ResumeProjectBlock {
+                    id,
+                    name: name.to_owned(),
+                    meta: trimmed_option(project.technologies.as_deref()),
+                    url: normalize_http_url(project.url.as_deref()),
+                    bullets: project
+                        .description
+                        .as_deref()
+                        .map(split_bullets)
+                        .unwrap_or_default(),
+                },
+            },
+        });
+    }
+    for (index, certification) in profile.certifications.iter().enumerate() {
+        let name = certification.name.trim();
+        if name.is_empty() {
+            continue;
+        }
+        let id = format!("certification-{index}");
+        let date = certification
+            .date
+            .as_deref()
+            .map(format_month_date)
+            .and_then(|value| trimmed_option(Some(&value)));
+        items.push(ResumeProfileItem {
+            id: id.clone(),
+            label: name.to_owned(),
+            detail: trimmed_option(certification.issuer.as_deref()),
+            content: ResumeProfileItemContent::Certification {
+                value: ResumeCertificationBlock {
+                    id,
+                    name: name.to_owned(),
+                    issuer: trimmed_option(certification.issuer.as_deref()),
+                    date,
+                },
+            },
+        });
+    }
+    for (index, language) in profile.languages.iter().enumerate() {
+        let name = language.name.trim();
+        if name.is_empty() {
+            continue;
+        }
+        let id = format!("language-{index}");
+        items.push(ResumeProfileItem {
+            id: id.clone(),
+            label: name.to_owned(),
+            detail: trimmed_option(Some(&language.level)),
+            content: ResumeProfileItemContent::Language {
+                value: ResumeLanguageBlock {
+                    id,
+                    name: name.to_owned(),
+                    level: language.level.trim().to_owned(),
+                },
+            },
+        });
+    }
+    items
+}
+
+fn content_priority(relevance: ContentRelevance) -> u8 {
+    match relevance {
+        ContentRelevance::VeryRelevant => 3,
+        ContentRelevance::Relevant => 2,
+        ContentRelevance::Secondary => 1,
+    }
+}
+
+fn build_content_recommendations(
+    workspace: &ResumeWorkspace,
+    photo: Option<&[u8]>,
+) -> AppResult<Vec<ResumeContentRecommendation>> {
+    if matches!(
+        workspace.layout.status,
+        ResumeLayoutStatus::Full | ResumeLayoutStatus::Overflow
+    ) {
+        return build_replacement_recommendations(workspace, photo);
+    }
+
+    let mut candidates: Vec<_> = workspace.analysis.content_recommendations.iter().collect();
+    candidates.sort_by_key(|candidate| std::cmp::Reverse(content_priority(candidate.relevance)));
+    let mut planned_document = workspace.document.clone();
+    let mut recommendations = Vec::new();
+
+    for candidate in candidates {
+        if recommendations.len() >= MAX_CONTENT_RECOMMENDATIONS
+            || workspace.decisions.ignored.contains(&candidate.item_id)
+            || workspace
+                .decisions
+                .explicitly_added
+                .contains(&candidate.item_id)
+            || workspace
+                .decisions
+                .explicitly_removed
+                .contains(&candidate.item_id)
+        {
+            continue;
+        }
+        let Some(item) = workspace
+            .profile_library
+            .iter()
+            .find(|item| item.id == candidate.item_id)
+        else {
+            continue;
+        };
+        if profile_item_present(&workspace.document, item) {
+            continue;
+        }
+
+        let mut simulated = planned_document.clone();
+        insert_profile_item(&mut simulated, item);
+        let layout_after = measure(&simulated, photo.map(<[u8]>::to_vec))?;
+        if layout_after.overflow {
+            continue;
+        }
+        recommendations.push(ResumeContentRecommendation {
+            id: format!("content-add-{}", item.id),
+            label: item.label.clone(),
+            reason: candidate.reason.trim().to_owned(),
+            relevance: candidate.relevance,
+            action: ResumeContentRecommendationAction::Add {
+                item_id: item.id.clone(),
+            },
+            layout_after,
+        });
+        planned_document = simulated;
+    }
+
+    if recommendations.is_empty() {
+        build_replacement_recommendations(workspace, photo)
+    } else {
+        Ok(recommendations)
+    }
+}
+
+fn build_replacement_recommendations(
+    workspace: &ResumeWorkspace,
+    photo: Option<&[u8]>,
+) -> AppResult<Vec<ResumeContentRecommendation>> {
+    for candidate in &workspace.analysis.content_recommendations {
+        if workspace.decisions.ignored.contains(&candidate.item_id)
+            || workspace
+                .decisions
+                .explicitly_added
+                .contains(&candidate.item_id)
+            || workspace
+                .decisions
+                .explicitly_removed
+                .contains(&candidate.item_id)
+        {
+            continue;
+        }
+        let Some(add_item) = workspace
+            .profile_library
+            .iter()
+            .find(|item| item.id == candidate.item_id)
+        else {
+            continue;
+        };
+        if profile_item_present(&workspace.document, add_item) {
+            continue;
+        }
+
+        let candidate_score = item_offer_score(add_item, workspace)
+            + usize::from(content_priority(candidate.relevance)) * 2;
+        let replacement = workspace
+            .profile_library
+            .iter()
+            .filter(|item| profile_item_present(&workspace.document, item))
+            .filter(|item| !workspace.decisions.explicitly_added.contains(&item.id))
+            .min_by_key(|item| item_offer_score(item, workspace));
+        let Some(remove_item) = replacement else {
+            continue;
+        };
+        if candidate_score <= item_offer_score(remove_item, workspace) + 1 {
+            continue;
+        }
+
+        let mut simulated = workspace.document.clone();
+        remove_profile_item(&mut simulated, remove_item);
+        insert_profile_item(&mut simulated, add_item);
+        let layout_after = measure(&simulated, photo.map(<[u8]>::to_vec))?;
+        if layout_after.overflow {
+            continue;
+        }
+        return Ok(vec![ResumeContentRecommendation {
+            id: format!("content-replace-{}-{}", remove_item.id, add_item.id),
+            label: format!("Remplacer {} par {}", remove_item.label, add_item.label),
+            reason: format!(
+                "{} Cet élément est plus directement lié à l’offre.",
+                candidate.reason.trim()
+            ),
+            relevance: candidate.relevance,
+            action: ResumeContentRecommendationAction::Replace {
+                add_item_id: add_item.id.clone(),
+                remove_item_id: remove_item.id.clone(),
+            },
+            layout_after,
+        }]);
+    }
+    Ok(Vec::new())
+}
+
+fn item_offer_score(item: &ResumeProfileItem, workspace: &ResumeWorkspace) -> usize {
+    let detail = item.detail.as_deref().unwrap_or_default();
+    let haystack = search_key(&format!("{} {detail}", item.label));
+    workspace
+        .job_offer
+        .skills
+        .iter()
+        .chain(workspace.job_offer.keywords.iter())
+        .filter(|term| {
+            let key = search_key(term);
+            !key.is_empty() && (haystack.contains(&key) || key.contains(&haystack))
+        })
+        .count()
+}
+
+fn profile_item_present(document: &ResumeDocument, item: &ResumeProfileItem) -> bool {
+    match &item.content {
+        ResumeProfileItemContent::Skill { name } => skill_present(document, name),
+        ResumeProfileItemContent::Project { value } => document
+            .projects
+            .iter()
+            .any(|entry| entry.id == item.id || search_key(&entry.name) == search_key(&value.name)),
+        ResumeProfileItemContent::Certification { value } => document
+            .certifications
+            .iter()
+            .any(|entry| entry.id == item.id || search_key(&entry.name) == search_key(&value.name)),
+        ResumeProfileItemContent::Language { value } => document
+            .languages
+            .iter()
+            .any(|entry| entry.id == item.id || search_key(&entry.name) == search_key(&value.name)),
+    }
+}
+
+fn insert_profile_item(document: &mut ResumeDocument, item: &ResumeProfileItem) {
+    if profile_item_present(document, item) {
+        return;
+    }
+    match &item.content {
+        ResumeProfileItemContent::Skill { name } => match document.skill_groups.first_mut() {
+            Some(group) => group.items.push(name.clone()),
+            None => document.skill_groups.push(ResumeSkillGroup {
+                id: DEFAULT_SKILL_GROUP_ID.into(),
+                name: "Compétences".into(),
+                items: vec![name.clone()],
+            }),
+        },
+        ResumeProfileItemContent::Project { value } => document.projects.push(value.clone()),
+        ResumeProfileItemContent::Certification { value } => {
+            document.certifications.push(value.clone());
+        }
+        ResumeProfileItemContent::Language { value } => document.languages.push(value.clone()),
+    }
+}
+
+fn remove_profile_item(document: &mut ResumeDocument, item: &ResumeProfileItem) {
+    match &item.content {
+        ResumeProfileItemContent::Skill { name } => {
+            let key = search_key(name);
+            for group in &mut document.skill_groups {
+                group.items.retain(|entry| search_key(entry) != key);
+            }
+            document
+                .skill_groups
+                .retain(|group| !group.items.is_empty());
+        }
+        ResumeProfileItemContent::Project { value } => document.projects.retain(|entry| {
+            entry.id != item.id && search_key(&entry.name) != search_key(&value.name)
+        }),
+        ResumeProfileItemContent::Certification { value } => {
+            document.certifications.retain(|entry| {
+                entry.id != item.id && search_key(&entry.name) != search_key(&value.name)
+            });
+        }
+        ResumeProfileItemContent::Language { value } => document.languages.retain(|entry| {
+            entry.id != item.id && search_key(&entry.name) != search_key(&value.name)
+        }),
+    }
 }
 
 /// Complète une liste générée par les entrées du profil qu'elle a laissées de côté.
@@ -394,28 +661,22 @@ pub fn to_generated_resume(document: &ResumeDocument) -> GeneratedResume {
     }
 }
 
-/// Construit les propositions applicables au document courant : une par compétence de
-/// l'offre encore absente du CV, une par recommandation IA dont la cible est identifiable.
+/// Construit les propositions de reformulation dont la cible est identifiable.
+///
+/// Les exigences absentes du profil restent visibles comme écarts, mais ne deviennent plus
+/// des boutons « Ajouter » : elles ne sont pas des faits possédés par le candidat.
 /// Le gain de chacune est simulé sur une copie du document, jamais déclaré par le LLM.
 #[must_use]
 pub fn build_proposals(workspace: &ResumeWorkspace) -> Vec<ResumeProposal> {
-    let mut proposals: Vec<ResumeProposal> = workspace
-        .score
-        .missing
+    workspace
+        .analysis
+        .recommendations
         .iter()
-        .map(|skill| missing_skill_proposal(workspace, skill))
-        .collect();
-    proposals.extend(
-        workspace
-            .analysis
-            .recommendations
-            .iter()
-            .enumerate()
-            .filter_map(|(index, recommendation)| {
-                text_replacement_proposal(workspace, index, recommendation)
-            }),
-    );
-    proposals
+        .enumerate()
+        .filter_map(|(index, recommendation)| {
+            text_replacement_proposal(workspace, index, recommendation)
+        })
+        .collect()
 }
 
 /// Recalcule le score courant puis reconstruit les propositions : leur applicabilité et leur
@@ -424,7 +685,10 @@ pub fn build_proposals(workspace: &ResumeWorkspace) -> Vec<ResumeProposal> {
 ///
 /// # Errors
 /// Retourne une validation si le document dépasse les bornes d'édition.
-pub fn recalculate(mut workspace: ResumeWorkspace) -> AppResult<ResumeWorkspace> {
+pub fn recalculate(
+    mut workspace: ResumeWorkspace,
+    photo: Option<Vec<u8>>,
+) -> AppResult<ResumeWorkspace> {
     validate_document(&workspace.document)?;
     workspace.score = score_resume_imported(
         &to_generated_resume(&workspace.document),
@@ -448,6 +712,9 @@ pub fn recalculate(mut workspace: ResumeWorkspace) -> AppResult<ResumeWorkspace>
         }
     }
     workspace.proposals = proposals;
+    workspace.layout = measure(&workspace.document, photo.clone())?;
+    workspace.content_recommendations =
+        build_content_recommendations(&workspace, photo.as_deref())?;
     Ok(workspace)
 }
 
@@ -459,6 +726,7 @@ pub fn recalculate(mut workspace: ResumeWorkspace) -> AppResult<ResumeWorkspace>
 pub fn apply_proposal(
     mut workspace: ResumeWorkspace,
     proposal_id: &str,
+    photo: Option<Vec<u8>>,
 ) -> AppResult<ResumeWorkspace> {
     let index = workspace
         .proposals
@@ -474,7 +742,7 @@ pub fn apply_proposal(
     apply_change(&mut workspace.document, &proposal);
     validate_document(&workspace.document)?;
     workspace.proposals[index].status = ResumeProposalStatus::Accepted;
-    recalculate(workspace)
+    recalculate(workspace, photo)
 }
 
 /// Refuse une proposition sans modifier le document, puis recalcule le poste de travail.
@@ -485,6 +753,7 @@ pub fn apply_proposal(
 pub fn reject_proposal(
     mut workspace: ResumeWorkspace,
     proposal_id: &str,
+    photo: Option<Vec<u8>>,
 ) -> AppResult<ResumeWorkspace> {
     let proposal = workspace
         .proposals
@@ -492,28 +761,7 @@ pub fn reject_proposal(
         .find(|proposal| proposal.id == proposal_id)
         .ok_or_else(|| AppError::Validation("Cette proposition n'existe plus.".into()))?;
     proposal.status = ResumeProposalStatus::Rejected;
-    recalculate(workspace)
-}
-
-fn missing_skill_proposal(workspace: &ResumeWorkspace, skill: &str) -> ResumeProposal {
-    let group_id = workspace.document.skill_groups.first().map_or_else(
-        || DEFAULT_SKILL_GROUP_ID.to_owned(),
-        |group| group.id.clone(),
-    );
-    let mut proposal = ResumeProposal {
-        id: format!("skill-{}", search_key(skill)),
-        kind: ResumeProposalKind::MissingSkill,
-        target: ResumeProposalTarget::SkillGroup { group_id },
-        label: format!("Ajouter la compétence « {skill} » attendue par l'offre"),
-        original_text: None,
-        proposed_text: skill.to_owned(),
-        gain: 0,
-        status: ResumeProposalStatus::Pending,
-        applicable: true,
-    };
-    proposal.gain = simulate_gain(workspace, &proposal);
-    proposal.applicable = is_applicable(&workspace.document, &proposal);
-    proposal
+    recalculate(workspace, photo)
 }
 
 /// `None` quand la cible de la recommandation n'existe plus dans le document (section

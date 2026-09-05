@@ -1,21 +1,20 @@
-//! Cas de test isolé.
+//! Les compétences du profil restent disponibles sans être copiées dans le CV.
 
 use super::*;
 
-/// Une génération sans compétence ne doit pas amputer le CV.
-///
-/// La validation de sortie ne borne qu'un maximum : une liste vide passait, et le CV
-/// partait sans sa section Compétences alors que le profil en portait.
+/// La génération ne transforme jamais la bibliothèque complète en section Compétences.
 #[test]
-fn un_cv_sans_competence_reprend_celles_du_profil() {
+fn un_cv_sans_competence_garde_celles_du_profil_en_bibliotheque() {
     let mut generation = generation();
     generation.resume.skills = Vec::new();
 
-    let workspace = prepare_workspace(&profile(), generation).unwrap();
+    let workspace = prepare_workspace(&profile(), generation, None).unwrap();
 
-    let groupes = &workspace.document.skill_groups;
-    assert_eq!(groupes.len(), 1, "section Compétences absente du CV");
-    assert_eq!(groupes[0].items, vec!["Rust".to_owned()]);
+    assert!(workspace.document.skill_groups.is_empty());
+    assert!(workspace
+        .profile_library
+        .iter()
+        .any(|item| item.label == "Rust"));
 }
 
 /// Un profil lui aussi sans compétence ne fabrique pas de section vide.
@@ -26,7 +25,11 @@ fn un_profil_sans_competence_ne_cree_pas_de_section() {
     let mut profile = profile();
     profile.skills = Vec::new();
 
-    let workspace = prepare_workspace(&profile, generation).unwrap();
+    let workspace = prepare_workspace(&profile, generation, None).unwrap();
 
     assert!(workspace.document.skill_groups.is_empty());
+    assert!(workspace
+        .profile_library
+        .iter()
+        .all(|item| !matches!(item.content, ResumeProfileItemContent::Skill { .. })));
 }

@@ -210,6 +210,34 @@ pub struct AtsAnalysis {
         deserialize_with = "recommendations_lenient"
     )]
     pub recommendations: Vec<AtsRecommendation>,
+    /// Petite liste ordonnée d'éléments optionnels du profil à considérer pour ce CV.
+    ///
+    /// Les identifiants sont recadrés sur le catalogue transmis au modèle avant que cette
+    /// structure atteigne l'éditeur : une valeur inventée est donc simplement écartée.
+    #[serde(default)]
+    pub content_recommendations: Vec<AtsContentRecommendation>,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "ai.ts")]
+pub enum ContentRelevance {
+    VeryRelevant,
+    #[default]
+    Relevant,
+    Secondary,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "ai.ts")]
+pub struct AtsContentRecommendation {
+    #[serde(default, deserialize_with = "string_lenient")]
+    pub item_id: String,
+    #[serde(default, deserialize_with = "string_lenient")]
+    pub reason: String,
+    #[serde(default)]
+    pub relevance: ContentRelevance,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -220,6 +248,10 @@ pub struct ResumeGeneration {
     pub analysis: AtsAnalysis,
     pub job_offer: StructuredListing,
     pub profile_score: MatchScore,
+    /// Présent lorsque le socle a été produit localement parce que l'assistance IA était
+    /// indisponible. Le profil reste alors exploitable comme bibliothèque de contenu.
+    #[serde(default)]
+    pub recommendation_error: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, TS)]

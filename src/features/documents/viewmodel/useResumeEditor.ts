@@ -119,6 +119,15 @@ export function useResumeEditor(initial: ResumeWorkspace) {
   function removeSection(section: ResumeSectionKind, index: number): void {
     applyLocalChange(model.removeSection(workspace, section, index));
   }
+  function addProfileItem(itemId: string): void {
+    applyLocalChange(model.addProfileItem(workspace, itemId));
+  }
+  function applyContentRecommendation(recommendationId: string): void {
+    applyLocalChange(model.applyContentRecommendation(workspace, recommendationId));
+  }
+  function ignoreContentRecommendation(recommendationId: string): void {
+    applyLocalChange(model.ignoreContentRecommendation(workspace, recommendationId));
+  }
 
   /** Restaure le document précédent sans appel IPC : la pile porte déjà un état cohérent. */
   function undo(): void {
@@ -244,6 +253,9 @@ export function useResumeEditor(initial: ResumeWorkspace) {
     removeSkill,
     addSection,
     removeSection,
+    addProfileItem,
+    applyContentRecommendation,
+    ignoreContentRecommendation,
     applyProposal,
     rejectProposal,
     undoProposal,

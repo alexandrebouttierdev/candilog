@@ -10,6 +10,8 @@ import type {
   ResumeWorkspace,
 } from "@/shared/types/generated/documents";
 import { safeResumeUrl, type ResumeField } from "../../model/resumeWorkspace";
+import type { ResumeSectionKind } from "../../model/resumeWorkspace";
+import { Icon } from "@/shared/ui";
 import { ResumeEditableText } from "./ResumeEditableText";
 
 type ResumeFieldChange = (field: ResumeField, value: string) => void;
@@ -43,12 +45,16 @@ export function ResumePaper({
   workspace,
   editable,
   onChange,
+  onRemoveSkill,
+  onRemoveSection,
   onOverflowChange,
   photo = null,
 }: {
   workspace: ResumeWorkspace;
   editable: boolean;
   onChange: ResumeFieldChange;
+  onRemoveSkill?: (group: number, item: number) => void;
+  onRemoveSection?: (section: ResumeSectionKind, index: number) => void;
   onOverflowChange?: (overflow: boolean) => void;
   /**
    * Photo du profil en `data:` URL, facultative.
@@ -111,11 +117,11 @@ export function ResumePaper({
           <main className="flex flex-col gap-[calc(13px*var(--resume-sp))]">
             <ProfileSection profile={document.profile} editable={editable} onChange={onChange} />
             <ExperiencesSection experiences={document.experiences} editable={editable} onChange={onChange} />
-            <ProjectsSection projects={document.projects} editable={editable} onChange={onChange} />
-            <SkillsSection groups={document.skill_groups} editable={editable} onChange={onChange} />
+            <ProjectsSection projects={document.projects} editable={editable} onChange={onChange} onRemove={onRemoveSection} />
+            <SkillsSection groups={document.skill_groups} editable={editable} onChange={onChange} onRemove={onRemoveSkill} />
             <EducationSection education={document.education} editable={editable} onChange={onChange} />
-            <CertificationsSection certifications={document.certifications} editable={editable} onChange={onChange} />
-            <LanguagesSection languages={document.languages} editable={editable} onChange={onChange} />
+            <CertificationsSection certifications={document.certifications} editable={editable} onChange={onChange} onRemove={onRemoveSection} />
+            <LanguagesSection languages={document.languages} editable={editable} onChange={onChange} onRemove={onRemoveSection} />
           </main>
         </div>
       </article>
@@ -385,10 +391,12 @@ function ProjectsSection({
   projects,
   editable,
   onChange,
+  onRemove,
 }: {
   projects: ResumeProjectBlock[];
   editable: boolean;
   onChange: ResumeFieldChange;
+  onRemove: ((section: ResumeSectionKind, index: number) => void) | undefined;
 }) {
   if (projects.length === 0) return null;
   return (
@@ -398,7 +406,8 @@ function ProjectsSection({
       </div>
       <div className="flex flex-col gap-[calc(8px*var(--resume-sp))]">
         {projects.map((project, index) => (
-          <div key={project.id} className="flex flex-col gap-[calc(3px*var(--resume-sp))]">
+          <div key={project.id} className="group/resume-item relative flex flex-col gap-[calc(3px*var(--resume-sp))]">
+            {editable && onRemove ? <RemoveItemButton label={`Retirer le projet ${project.name}`} onClick={() => onRemove("project", index)} /> : null}
             <div className="flex items-baseline justify-between gap-[14px]">
               <ResumeEditableText
                 tag="h3"
@@ -480,10 +489,11 @@ function BulletList({
       {bullets.map((bullet, item) => (
         <li
           key={`${blockId}-bullet-${item}`}
-          className="relative pl-[11px] text-[calc(11.3px*var(--resume-fs))] leading-[1.45] text-[var(--resume-body)] before:absolute before:top-[0.55em] before:left-px before:h-[3px] before:w-[3px] before:rounded-full before:bg-[var(--resume-accent-soft)] before:content-['']"
+          className="relative min-w-0 break-words pl-[11px] text-[calc(11.3px*var(--resume-fs))] leading-[1.45] text-[var(--resume-body)] [overflow-wrap:anywhere] before:absolute before:top-[0.55em] before:left-px before:h-[3px] before:w-[3px] before:rounded-full before:bg-[var(--resume-accent-soft)] before:content-['']"
         >
           <ResumeEditableText
             tag="span"
+            className="block min-w-0 break-words [overflow-wrap:anywhere]"
             editable={editable}
             multiline
             label={`${labelPrefix}.${item + 1}`}
@@ -500,10 +510,12 @@ function SkillsSection({
   groups,
   editable,
   onChange,
+  onRemove,
 }: {
   groups: ResumeSkillGroup[];
   editable: boolean;
   onChange: ResumeFieldChange;
+  onRemove: ((group: number, item: number) => void) | undefined;
 }) {
   // Un groupe vidé de tous ses items par `removeSkill` ne doit pas laisser un intitulé de
   // groupe orphelin, sans puce — l'index d'origine reste utilisé pour cibler `onChange`,
@@ -527,7 +539,7 @@ function SkillsSection({
               {group.items.map((item, itemIndex) => (
                 <li
                   key={`${group.id}-item-${itemIndex}`}
-                  className="rounded bg-[var(--resume-chip)] px-2 pt-[2.5px] pb-[3px] text-[calc(10.4px*var(--resume-fs))] leading-[1.32] text-[var(--resume-ink)]"
+                  className="group/resume-item relative rounded bg-[var(--resume-chip)] px-2 pt-[2.5px] pb-[3px] text-[calc(10.4px*var(--resume-fs))] leading-[1.32] text-[var(--resume-ink)]"
                 >
                   <ResumeEditableText
                     tag="span"
@@ -536,6 +548,7 @@ function SkillsSection({
                     value={item}
                     onChange={(value) => onChange({ type: "skill", group: groupIndex, item: itemIndex }, value)}
                   />
+                  {editable && onRemove ? <RemoveItemButton label={`Retirer ${item}`} onClick={() => onRemove(groupIndex, itemIndex)} compact /> : null}
                 </li>
               ))}
             </ul>
@@ -625,10 +638,12 @@ function CertificationsSection({
   certifications,
   editable,
   onChange,
+  onRemove,
 }: {
   certifications: ResumeCertificationBlock[];
   editable: boolean;
   onChange: ResumeFieldChange;
+  onRemove: ((section: ResumeSectionKind, index: number) => void) | undefined;
 }) {
   if (certifications.length === 0) return null;
   return (
@@ -638,7 +653,8 @@ function CertificationsSection({
       </div>
       <ul className="m-0 flex list-none flex-col gap-[calc(2.5px*var(--resume-sp))] p-0">
         {certifications.map((certification, index) => (
-          <li key={certification.id} className="text-[calc(11.2px*var(--resume-fs))] leading-[1.42] text-[var(--resume-body)]">
+          <li key={certification.id} className="group/resume-item relative text-[calc(11.2px*var(--resume-fs))] leading-[1.42] text-[var(--resume-body)]">
+            {editable && onRemove ? <RemoveItemButton label={`Retirer la certification ${certification.name}`} onClick={() => onRemove("certification", index)} /> : null}
             <ResumeEditableText
               tag="span"
               editable={editable}
@@ -681,10 +697,12 @@ function LanguagesSection({
   languages,
   editable,
   onChange,
+  onRemove,
 }: {
   languages: ResumeLanguageBlock[];
   editable: boolean;
   onChange: ResumeFieldChange;
+  onRemove: ((section: ResumeSectionKind, index: number) => void) | undefined;
 }) {
   if (languages.length === 0) return null;
   return (
@@ -694,7 +712,8 @@ function LanguagesSection({
       </div>
       <ul className="m-0 flex list-none flex-wrap gap-x-[22px] gap-y-[calc(2px*var(--resume-sp))] p-0">
         {languages.map((language, index) => (
-          <li key={language.id} className="text-[calc(11.2px*var(--resume-fs))] leading-[1.42] text-[var(--resume-body)]">
+          <li key={language.id} className="group/resume-item relative text-[calc(11.2px*var(--resume-fs))] leading-[1.42] text-[var(--resume-body)]">
+            {editable && onRemove ? <RemoveItemButton label={`Retirer la langue ${language.name}`} onClick={() => onRemove("language", index)} /> : null}
             <ResumeEditableText
               tag="span"
               editable={editable}
@@ -714,5 +733,20 @@ function LanguagesSection({
         ))}
       </ul>
     </section>
+  );
+}
+
+function RemoveItemButton({ label, onClick, compact = false }: { label: string; onClick: () => void; compact?: boolean }) {
+  return (
+    <button
+      type="button"
+      data-print-hide
+      aria-label={label}
+      title={label}
+      className={`absolute z-10 flex items-center justify-center rounded-full border border-control bg-surface text-ink-faint opacity-0 shadow-sm transition-opacity hover:text-danger focus-visible:opacity-100 focus-visible:outline-1 focus-visible:outline-accent-focus group-hover/resume-item:opacity-100 ${compact ? "-top-2.5 -right-2.5 size-4" : "top-0 -right-6 size-5"}`}
+      onClick={onClick}
+    >
+      <Icon name="close" size={compact ? 11 : 13} />
+    </button>
   );
 }

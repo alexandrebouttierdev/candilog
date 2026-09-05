@@ -8,5 +8,5 @@ pub use cover_letter_pdf::CoverLetterPdf;
 pub use page::{Density, LayoutBounds, Margins, PageSpec, A4, DENSITY_PROFILES};
 pub use resume_pdf::{
     ResumeCertification, ResumeEducation, ResumeExperience, ResumeLanguage, ResumePdf,
-    ResumeProject, ResumeSkillGroup,
+    ResumePdfMeasurement, ResumeProject, ResumeSkillGroup,
 };

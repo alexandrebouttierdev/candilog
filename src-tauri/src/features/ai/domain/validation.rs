@@ -213,6 +213,10 @@ impl ValidateAiOutput for AtsAnalysis {
         validate_structured_size(self)?;
         ensure_output_string(&self.recap, "le récapitulatif ATS")?;
         ensure_output_list(&self.recommendations, "les recommandations ATS")?;
+        ensure_output_list(
+            &self.content_recommendations,
+            "les recommandations de contenu du CV",
+        )?;
         for recommendation in &self.recommendations {
             validate_strings(
                 [
@@ -222,6 +226,15 @@ impl ValidateAiOutput for AtsAnalysis {
                 "une recommandation ATS",
             )?;
             ensure_recommendation_targetable(recommendation)?;
+        }
+        for recommendation in &self.content_recommendations {
+            validate_strings(
+                [
+                    recommendation.item_id.as_str(),
+                    recommendation.reason.as_str(),
+                ],
+                "une recommandation de contenu du CV",
+            )?;
         }
         Ok(())
     }
@@ -431,6 +444,7 @@ mod tests {
         let analysis = AtsAnalysis {
             recap: "Recap".into(),
             recommendations: vec![recommandation(AtsRecommendationSection::Profile, Some(0))],
+            ..AtsAnalysis::default()
         };
 
         assert!(matches!(
@@ -444,6 +458,7 @@ mod tests {
         let analysis = AtsAnalysis {
             recap: "Recap".into(),
             recommendations: vec![recommandation(AtsRecommendationSection::Experience, None)],
+            ..AtsAnalysis::default()
         };
 
         assert!(matches!(
@@ -459,6 +474,7 @@ mod tests {
         let analysis = AtsAnalysis {
             recap: "Recap".into(),
             recommendations: vec![recommandation],
+            ..AtsAnalysis::default()
         };
 
         assert!(matches!(
@@ -475,6 +491,7 @@ mod tests {
                 AtsRecommendationSection::Experience,
                 Some(0),
             )],
+            ..AtsAnalysis::default()
         };
 
         assert!(analysis.validate_ai_output().is_ok());

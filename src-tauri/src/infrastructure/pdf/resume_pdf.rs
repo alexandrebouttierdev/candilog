@@ -140,6 +140,15 @@ pub struct ResumePdf {
     pub photo: Option<Vec<u8>>,
 }
 
+/// Mesure géométrique du CV obtenue sans écrire de fichier.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ResumePdfMeasurement {
+    pub used_ratio: f32,
+    pub remaining_points: f32,
+    pub density_index: u8,
+    pub overflow: bool,
+}
+
 const MM: f32 = 72.0 / 25.4;
 const PAGE_W: f32 = A4.width_pt;
 const PAGE_H: f32 = A4.height_pt;
@@ -181,6 +190,13 @@ const TRACKING_LIBELLE: f32 = 0.11;
 const TRACKING_PERIODE: f32 = 0.01;
 const TRACKING_TITRE: f32 = -0.006;
 const TRACKING_GROUPE: f32 = -0.004;
+
+/// Marge de parité entre le dernier palier PDF et le gabarit HTML.
+///
+/// Sous ce palier ultime, moins de 2,5 % de hauteur libre ne suffit plus à absorber les
+/// écarts sub-pixel de composition entre printpdf et Chromium. Accepter le PDF dans cette
+/// zone ferait apparaître comme valide un aperçu qui déborde déjà à l'écran.
+const LAST_DENSITY_MAX_USED_RATIO: f32 = 0.975;
 
 const INK: (f32, f32, f32) = (20.0, 22.0, 27.0);
 const BODY: (f32, f32, f32) = (58.0, 63.0, 76.0);
@@ -234,10 +250,13 @@ impl ResumePdf {
     /// Refuse un contenu qui dépasse la page A4.
     pub fn render_bytes(&self) -> AppResult<Vec<u8>> {
         let mut dernier = Debordement::Hauteur;
-        for density in DENSITY_PROFILES {
-            match self.render_density(density)? {
-                Ok(bytes) => return Ok(bytes),
-                Err(cause) => dernier = cause,
+        for (index, density) in DENSITY_PROFILES.into_iter().enumerate() {
+            let mut rendered = self.compose_density(density, true)?;
+            rendered.apply_preview_safety_margin(index);
+            match (rendered.bytes, rendered.overflow) {
+                (Some(bytes), None) => return Ok(bytes),
+                (_, Some(cause)) => dernier = cause,
+                _ => dernier = Debordement::Hauteur,
             }
         }
         // Le message nomme la cause : un CV refusé pour une seule ligne trop large n'est pas
@@ -253,7 +272,32 @@ impl ResumePdf {
         }))
     }
 
-    fn render_density(&self, density: Density) -> AppResult<Result<Vec<u8>, Debordement>> {
+    /// Mesure le document avec les mêmes polices, ruptures de ligne, marges et paliers de
+    /// densité que l'export. Aucun pourcentage n'est inventé par le modèle IA.
+    pub fn measure(&self) -> AppResult<ResumePdfMeasurement> {
+        let mut last = ResumePdfMeasurement {
+            used_ratio: 1.0,
+            remaining_points: 0.0,
+            density_index: 0,
+            overflow: true,
+        };
+        for (index, density) in DENSITY_PROFILES.into_iter().enumerate() {
+            let mut rendered = self.compose_density(density, false)?;
+            rendered.apply_preview_safety_margin(index);
+            last = ResumePdfMeasurement {
+                used_ratio: rendered.used_ratio,
+                remaining_points: rendered.remaining_points,
+                density_index: u8::try_from(index).unwrap_or(u8::MAX),
+                overflow: rendered.overflow.is_some(),
+            };
+            if rendered.overflow.is_none() {
+                return Ok(last);
+            }
+        }
+        Ok(last)
+    }
+
+    fn compose_density(&self, density: Density, save: bool) -> AppResult<DensityRender> {
         let mut avertissements = Vec::new();
         let mut document = PdfDocument::new("CV Candilog");
         let fonts = load_fonts(&mut document)?;
@@ -289,14 +333,60 @@ impl ResumePdf {
         plan.section_certifications(self);
         plan.section_languages(self);
 
+        let printable_height = PAGE_H - MARGIN_BOTTOM - MARGIN_TOP;
+        let used_height = (plan.bounds.max_y.max(plan.y) - MARGIN_TOP).max(0.0);
+        let used_ratio = if printable_height > 0.0 {
+            used_height / printable_height
+        } else {
+            1.0
+        };
+        let remaining_points = printable_height - used_height;
+
         if plan.overflow || ensure_inside(plan.bounds, page_margins(), "overflow").is_err() {
-            return Ok(Err(plan.debordement.unwrap_or(Debordement::Hauteur)));
+            return Ok(DensityRender {
+                bytes: None,
+                overflow: Some(plan.debordement.unwrap_or(Debordement::Hauteur)),
+                used_ratio,
+                remaining_points,
+            });
         }
 
-        let page = PdfPage::new(Mm(A4.width_mm), Mm(A4.height_mm), plan.ops);
-        Ok(Ok(document
-            .with_pages(vec![page])
-            .save(&PdfSaveOptions::default(), &mut avertissements)))
+        let bytes = if save {
+            let page = PdfPage::new(Mm(A4.width_mm), Mm(A4.height_mm), plan.ops);
+            Some(
+                document
+                    .with_pages(vec![page])
+                    .save(&PdfSaveOptions::default(), &mut avertissements),
+            )
+        } else {
+            None
+        };
+        Ok(DensityRender {
+            bytes,
+            overflow: None,
+            used_ratio,
+            remaining_points,
+        })
+    }
+}
+
+struct DensityRender {
+    bytes: Option<Vec<u8>>,
+    overflow: Option<Debordement>,
+    used_ratio: f32,
+    remaining_points: f32,
+}
+
+impl DensityRender {
+    fn apply_preview_safety_margin(&mut self, density_index: usize) {
+        let is_last_density = density_index + 1 == DENSITY_PROFILES.len();
+        if is_last_density
+            && self.overflow.is_none()
+            && self.used_ratio >= LAST_DENSITY_MAX_USED_RATIO
+        {
+            self.bytes = None;
+            self.overflow = Some(Debordement::Hauteur);
+        }
     }
 }
 

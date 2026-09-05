@@ -87,7 +87,7 @@ describe("analyse explicite d'un CV sélectionné", () => {
           present: [],
           missing: [],
         },
-        analysis: { recap: "Analyse terminée", recommendations: [] },
+        analysis: { recap: "Analyse terminée", recommendations: [], content_recommendations: [] },
       },
       elapsed_ms: 18_400,
       tokens_used: 1_024,
@@ -124,7 +124,7 @@ describe("analyse explicite d'un CV sélectionné", () => {
       resume: { resume: string; experiences: never[]; skills: never[]; education: never[] };
       job_offer: { title: string; skills: never[]; soft_skills: never[]; experience: null; keywords: never[] };
       score: { total: number; skills: null; experience: null; ats: null; present: never[]; missing: never[] };
-      analysis: { recap: string; recommendations: never[] };
+      analysis: { recap: string; recommendations: never[]; content_recommendations: never[] };
     }>>) => void) | undefined;
     vi.spyOn(aiService, "analyzeResume").mockReturnValue(
       new Promise((resolve) => { resolveAnalysis = resolve; }),
@@ -161,7 +161,7 @@ describe("analyse explicite d'un CV sélectionné", () => {
         resume: { resume: "Résultat tardif", experiences: [], skills: [], education: [] },
         job_offer: { title: "Dev", skills: [], soft_skills: [], experience: null, keywords: [] },
         score: { total: 99, skills: null, experience: null, ats: null, present: [], missing: [] },
-        analysis: { recap: "Analyse tardive", recommendations: [] },
+        analysis: { recap: "Analyse tardive", recommendations: [], content_recommendations: [] },
       }));
       await Promise.resolve();
     });
@@ -203,7 +203,7 @@ describe("échecs d'enregistrement", () => {
       name: "CV Produit",
       content: {
         resume: { resume: "", experiences: [], skills: [], education: [] },
-        analysis: { recap: "", recommendations: [] },
+        analysis: { recap: "", recommendations: [], content_recommendations: [] },
         job_offer: { title: "Dev", skills: [], soft_skills: [], experience: null, keywords: [] },
         profile_score: {
           total: 70,
@@ -472,9 +472,10 @@ describe("bibliothèque CV workspace", () => {
   it("prépare une génération historique seulement à l'export", async () => {
     const generation = {
       resume: { resume: "Résumé historique.", experiences: [], skills: [], education: [] },
-      analysis: { recap: "", recommendations: [] },
+      analysis: { recap: "", recommendations: [], content_recommendations: [] },
       job_offer: { title: "Dev", skills: [], soft_skills: [], experience: null, keywords: [] },
       profile_score: { total: 72, skills: null, experience: null, ats: null, present: [], missing: [] },
+      recommendation_error: null,
     };
     const prepared = workspaceFixture({ profile: "Document préparé à l'export." });
     vi.spyOn(documentsService, "listResumePage").mockResolvedValue({
@@ -512,6 +513,7 @@ describe("décisions ATS et confirmation profil dans le générateur de CV", () 
     const workspace = workspaceFixture();
     return {
       ...workspace,
+      score: { ...workspace.score, missing: ["Docker"] },
       proposals: [
         {
           id: "missing-skill-docker",
@@ -528,36 +530,34 @@ describe("décisions ATS et confirmation profil dans le générateur de CV", () 
     };
   }
 
-  it("demande séparément si la compétence rejoint le profil", async () => {
+  it("signale une compétence absente du profil sans proposer de l'ajouter au CV", async () => {
     vi.spyOn(aiService, "generateResume").mockResolvedValue(aiExecution({
       resume: { resume: "", experiences: [], skills: [], education: [] },
-      analysis: { recap: "", recommendations: [] },
+      analysis: { recap: "", recommendations: [], content_recommendations: [] },
       job_offer: { title: "Développeur", skills: [], soft_skills: [], experience: null, keywords: [] },
       profile_score: { total: 60, skills: null, experience: null, ats: null, present: [], missing: [] },
+      recommendation_error: null,
     }));
     const workspace = missingSkillWorkspace();
     vi.spyOn(documentsService, "prepareResume").mockResolvedValue(workspace);
-    vi.spyOn(documentsService, "applyResumeProposal").mockResolvedValue({
-      ...workspace,
-      proposals: [{ ...workspace.proposals[0]!, status: "accepted" }],
-    });
 
     render(<ResumeGeneratorPage />, { wrapper });
     await userEvent.type(screen.getByLabelText(/Texte de l’offre/), "Une offre");
     await userEvent.click(screen.getByRole("button", { name: /Générer le CV ciblé/ }));
 
-    await userEvent.click(await screen.findByRole("button", { name: "Accepter Docker" }));
-
-    expect(await screen.findByRole("button", { name: "CV uniquement" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Ajouter au profil" })).toBeInTheDocument();
+    expect(await screen.findByText("Docker")).toBeInTheDocument();
+    expect(screen.getByText(/absentes de votre profil/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Accepter Docker" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Ajouter au profil" })).not.toBeInTheDocument();
   });
 
   it("efface l'offre une fois le CV généré, et sait y revenir", async () => {
     vi.spyOn(aiService, "generateResume").mockResolvedValue(aiExecution({
       resume: { resume: "", experiences: [], skills: [], education: [] },
-      analysis: { recap: "", recommendations: [] },
+      analysis: { recap: "", recommendations: [], content_recommendations: [] },
       job_offer: { title: "Développeur", skills: [], soft_skills: [], experience: null, keywords: [] },
       profile_score: { total: 60, skills: null, experience: null, ats: null, present: [], missing: [] },
+      recommendation_error: null,
     }));
     vi.spyOn(documentsService, "prepareResume").mockResolvedValue(missingSkillWorkspace());
 

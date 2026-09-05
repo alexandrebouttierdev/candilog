@@ -1,4 +1,4 @@
 {
-  "cv_pdf": "refus_longueur",
-  "pourquoi": "Profil volontairement dense — cinq expériences, trois formations, vingt-cinq compétences, deux projets, quatre certifications, quatre langues. Son contenu dépasse d'environ un quart la surface d'une page A4 au palier de densité le plus serré : l'aperçu l'annonce par son avertissement de débordement, et l'export doit dire la même chose. Ce cas garde l'aperçu et l'export d'accord entre eux : c'est ici qu'ils divergeaient, l'export tassant ses lignes de 24 % pour faire entrer une page que l'utilisateur n'avait jamais vue."
+  "cv_pdf": "accept",
+  "pourquoi": "Le profil est volontairement dense, mais ses vingt-cinq compétences, projets, certifications et langues appartiennent désormais à la bibliothèque éditoriale. Le socle initial conserve les cinq expériences et trois formations et doit tenir sur une page ; l'utilisateur choisit ensuite les contenus optionnels compatibles avec la place restante."
 }

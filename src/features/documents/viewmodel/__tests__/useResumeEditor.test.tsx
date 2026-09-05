@@ -64,6 +64,32 @@ describe("édition locale immédiate", () => {
     expect(result.current.workspace.document.profile).toBe("Nouveau profil");
     expect(recalculate).not.toHaveBeenCalled();
   });
+
+  it("ajoute un contenu du profil immédiatement puis recalcule le layout une seule fois", async () => {
+    vi.useFakeTimers();
+    const base = workspaceFixture({ skill_groups: [] });
+    base.profile_library = [
+      { id: "skill-docker", label: "Docker", detail: null, content: { type: "skill", name: "Docker" } },
+    ];
+    const recalculate = vi
+      .spyOn(documentsService, "recalculateResume")
+      .mockImplementation((workspace) => Promise.resolve({
+        ...workspace,
+        layout: { ...workspace.layout, status: "almost_full" },
+      }));
+    const { result } = renderHook(() => useResumeEditor(base), { wrapper });
+
+    act(() => { result.current.addProfileItem("skill-docker"); });
+
+    expect(result.current.workspace.document.skill_groups[0]?.items).toEqual(["Docker"]);
+    expect(recalculate).not.toHaveBeenCalled();
+
+    await act(async () => { await vi.advanceTimersByTimeAsync(300); });
+
+    expect(recalculate).toHaveBeenCalledTimes(1);
+    expect(recalculate.mock.calls[0]![0].document.skill_groups[0]?.items).toEqual(["Docker"]);
+    expect(result.current.workspace.layout.status).toBe("almost_full");
+  });
 });
 
 describe("recalcul différé", () => {

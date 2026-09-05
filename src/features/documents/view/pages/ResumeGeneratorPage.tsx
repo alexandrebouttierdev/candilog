@@ -79,7 +79,7 @@ export function ResumeGeneratorPage() {
       <div className="grid min-h-[660px] gap-4 xl:grid-cols-[350px_minmax(460px,1fr)_320px]">
         {briefPanel}
         <DocumentPanel title="Aperçu HTML · A4" icon="article"><A4Preview /></DocumentPanel>
-        <DocumentPanel title="Analyse ATS" icon="query_stats">
+        <DocumentPanel title="Aide au contenu" icon="tips_and_updates">
           <div className="space-y-5 p-4">
             <EmptyState
               icon="query_stats"
@@ -158,15 +158,20 @@ function ResumeEditorScreen({
               workspace={editor.workspace}
               editable
               onChange={editor.updateField}
+              onRemoveSkill={editor.removeSkill}
+              onRemoveSection={editor.removeSection}
               onOverflowChange={setOverflow}
               photo={photo}
             />
           </div>
         </DocumentPanel>
-        <DocumentPanel title="Analyse ATS" icon="query_stats" className="flex min-h-0 flex-col overflow-y-auto">
+        <DocumentPanel title="Aide au contenu" icon="tips_and_updates" className="flex min-h-0 flex-col overflow-y-auto">
           <ResumeAtsPanel
             workspace={editor.workspace}
             busy={editor.isRecalculating}
+            onAddProfileItem={editor.addProfileItem}
+            onApplyRecommendation={editor.applyContentRecommendation}
+            onIgnoreRecommendation={editor.ignoreContentRecommendation}
             onAccept={(id) => void editor.applyProposal(id)}
             onReject={(id) => void editor.rejectProposal(id)}
             onUndo={(id) => void editor.undoProposal(id)}

@@ -5,7 +5,7 @@ use super::*;
 #[test]
 fn compose_un_document_autonome() {
     let mut source = profile();
-    let workspace = prepare_workspace(&source, generation()).unwrap();
+    let workspace = prepare_workspace(&source, generation(), None).unwrap();
 
     assert_eq!(workspace.schema_version, 1);
     assert_eq!(workspace.document.identity.full_name, "Alex Exemple");
@@ -17,19 +17,19 @@ fn compose_un_document_autonome() {
         workspace.document.experiences[0].period,
         "Janv. 2024 — Aujourd’hui"
     );
-    assert_eq!(workspace.document.projects[0].name, "Candilog");
-    assert_eq!(workspace.document.skill_groups[0].name, "Compétences");
+    assert!(workspace.document.projects.is_empty());
+    assert!(workspace.document.skill_groups.is_empty());
+    assert!(workspace.document.certifications.is_empty());
+    assert!(workspace.document.languages.is_empty());
+    assert_eq!(workspace.profile_library.len(), 4);
+    assert_eq!(workspace.content_recommendations.len(), 1);
+    assert_eq!(workspace.content_recommendations[0].label, "Rust");
     assert_eq!(workspace.initial_score, workspace.score.total);
     assert_ne!(workspace.initial_score, 99);
-    // L'offre attend "SQL", absent du CV généré : une proposition de compétence manquante
-    // est déjà construite à la composition, pour que l'IPC de la tâche 3 la retourne sans
-    // recalcul supplémentaire.
-    assert_eq!(workspace.proposals.len(), 1);
-    assert_eq!(
-        workspace.proposals[0].kind,
-        ResumeProposalKind::MissingSkill
-    );
-    assert_eq!(workspace.proposals[0].proposed_text, "SQL");
+    // SQL est demandé mais absent du profil : l'écart reste dans le score, sans action
+    // frauduleuse qui l'ajouterait comme compétence possédée.
+    assert_eq!(workspace.score.missing, vec!["Rust", "SQL"]);
+    assert!(workspace.proposals.is_empty());
 
     let snapshot = workspace.clone();
     source.identity.first_name = "Camille".into();
@@ -39,11 +39,11 @@ fn compose_un_document_autonome() {
 
 #[test]
 fn reconstruit_un_cv_genere_depuis_le_document() {
-    let workspace = prepare_workspace(&profile(), generation()).unwrap();
+    let workspace = prepare_workspace(&profile(), generation(), None).unwrap();
     let generated = to_generated_resume(&workspace.document);
 
     assert_eq!(generated.resume, workspace.document.profile);
-    assert_eq!(generated.skills, vec!["Rust", "React"]);
+    assert!(generated.skills.is_empty());
     assert_eq!(
         generated.experiences[0].description,
         "Conception d'une application\nTests automatisés"
@@ -58,7 +58,7 @@ fn normalise_les_liens_historiques_sans_schema() {
     source.identity.website = Some("alex.example.test".into());
     source.projects[0].url = Some("project.example.test/demo".into());
 
-    let workspace = prepare_workspace(&source, generation()).unwrap();
+    let workspace = prepare_workspace(&source, generation(), None).unwrap();
 
     assert_eq!(
         workspace.document.identity.linkedin.as_deref(),
@@ -68,10 +68,16 @@ fn normalise_les_liens_historiques_sans_schema() {
         workspace.document.identity.website.as_deref(),
         Some("https://alex.example.test/")
     );
-    assert_eq!(
-        workspace.document.projects[0].url.as_deref(),
-        Some("https://project.example.test/demo")
-    );
+    let project = workspace
+        .profile_library
+        .iter()
+        .find(|item| item.id == "project-0")
+        .unwrap();
+    assert!(matches!(
+        &project.content,
+        ResumeProfileItemContent::Project { value }
+            if value.url.as_deref() == Some("https://project.example.test/demo")
+    ));
 }
 
 #[test]
@@ -80,7 +86,7 @@ fn ne_normalise_pas_un_chemin_relatif_en_domaine() {
     source.identity.website = Some("/profil".into());
 
     assert!(matches!(
-        prepare_workspace(&source, generation()),
+        prepare_workspace(&source, generation(), None),
         Err(AppError::Validation(message)) if message == "Le site web du CV doit être une URL valide"
     ));
 }
