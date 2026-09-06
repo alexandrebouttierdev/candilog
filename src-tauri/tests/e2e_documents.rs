@@ -27,7 +27,7 @@
 
 use candilog_lib::core::database::helpers::connection;
 use candilog_lib::core::database::{open_pool, run_local_migrations, SqlitePool};
-use candilog_lib::features::ai::application::AiService;
+use candilog_lib::features::ai::application::{AiService, LocalAiService};
 use candilog_lib::features::ai::domain::{
     profile_content_catalog, profile_score, AtsAnalysis, AtsContentRecommendation,
     ContentRelevance, CoverLetterRequest, GeneratedEducation, GeneratedExperience, GeneratedResume,
@@ -40,6 +40,7 @@ use candilog_lib::features::documents::domain::CoverLetterExport;
 use candilog_lib::features::profile::domain::{Profile, ProfileRepository};
 use candilog_lib::features::profile::infrastructure::SqliteProfileRepository;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::time::Instant;
 
 /// Poste et entreprise de l'offre de référence, passés à la lettre comme le fait l'écran.
@@ -107,6 +108,15 @@ fn seeded_pool(profile: &Profile) -> SqlitePool {
         .save(profile)
         .expect("profil de test");
     pool
+}
+
+fn ai_service(pool: SqlitePool) -> Result<AiService, String> {
+    let models_dir =
+        std::env::temp_dir().join(format!("candilog-e2e-local-ai-{}", uuid::Uuid::new_v4()));
+    let local_ai = LocalAiService::new(pool.clone(), models_dir)
+        .map(Arc::new)
+        .map_err(|error| error.to_string())?;
+    Ok(AiService::new(pool, local_ai))
 }
 
 /// Un cas de test : le profil source et le dossier où déposer ses artefacts.
@@ -387,7 +397,7 @@ async fn obtenir_generation(
         return serde_json::from_str(&brut).map_err(|error| error.to_string());
     }
     let offre = offre.ok_or_else(|| "CANDILOG_E2E_OFFER est requis en mode live".to_owned())?;
-    let service = AiService::new(seeded_pool(&cas.profile));
+    let service = ai_service(seeded_pool(&cas.profile))?;
     let debut = Instant::now();
     let generation = service
         .generate_resume(
@@ -536,7 +546,7 @@ async fn obtenir_lettre(
             .map_err(|_| format!("aucune lettre enregistrée dans {}", cache.display()));
     }
     let offre = offre.ok_or_else(|| "CANDILOG_E2E_OFFER est requis en mode live".to_owned())?;
-    let service = AiService::new(seeded_pool(&cas.profile));
+    let service = ai_service(seeded_pool(&cas.profile))?;
     let debut = Instant::now();
     let lettre = service
         .generate_cover_letter(

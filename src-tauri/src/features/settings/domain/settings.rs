@@ -1,6 +1,6 @@
 //! Modèle persisté (JSON Iced) et DTO IPC camelCase.
 
-use crate::features::ai::domain::{AnalysisMode, LlmConfig, ProviderKind};
+use crate::features::ai::domain::{AnalysisMode, LlmConfig, LocalAiSettings, ProviderKind};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
@@ -20,6 +20,8 @@ pub enum ThemePref {
 pub struct AppSettings {
     pub llm: LlmConfig,
     #[serde(default)]
+    pub local_ai: LocalAiSettings,
+    #[serde(default)]
     pub theme: ThemePref,
     #[serde(default = "language_fr")]
     pub language: String,
@@ -33,6 +35,7 @@ impl Default for AppSettings {
     fn default() -> Self {
         Self {
             llm: LlmConfig::default(),
+            local_ai: LocalAiSettings::default(),
             theme: ThemePref::System,
             language: language_fr(),
         }
@@ -82,6 +85,7 @@ impl From<Settings> for AppSettings {
     fn from(value: Settings) -> Self {
         Self {
             llm: LlmConfig::from(value.llm),
+            local_ai: LocalAiSettings::default(),
             theme: value.theme,
             language: value.language,
         }

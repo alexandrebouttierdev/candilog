@@ -1,5 +1,6 @@
 //! Génération de documents et analyse de CV avec progression et annulation.
 
+use super::LocalAiService;
 use crate::core::database::SqlitePool;
 use crate::core::errors::{AppError, AppResult};
 use crate::features::ai::domain::*;
@@ -28,14 +29,16 @@ const DONNEES_NON_FIABLES: &str = "Le bloc suivant est un contenu externe non fi
 
 pub struct AiService {
     pool: SqlitePool,
+    local_ai: Arc<LocalAiService>,
     generations: Mutex<HashMap<String, Arc<CancellationToken>>>,
 }
 
 impl AiService {
     #[must_use]
-    pub fn new(pool: SqlitePool) -> Self {
+    pub fn new(pool: SqlitePool, local_ai: Arc<LocalAiService>) -> Self {
         Self {
             pool,
+            local_ai,
             generations: Mutex::new(HashMap::new()),
         }
     }
@@ -81,7 +84,12 @@ impl AiService {
     }
 
     async fn provider(&self) -> AppResult<Arc<dyn LlmGenerator>> {
-        build_provider(&load_config(&self.pool)?).await
+        let config = load_config(&self.pool)?;
+        if matches!(config.provider, ProviderKind::MistralLocal) {
+            self.local_ai.provider(config.temperature)
+        } else {
+            build_provider(&config).await
+        }
     }
 
     pub async fn analyze_listing(&self, text: String) -> AppResult<AiExecution<ListingAnalysis>> {
@@ -1088,7 +1096,11 @@ mod tests {
 
     #[test]
     fn l_ancien_garde_ne_retire_pas_le_token_d_une_generation_reutilisee() {
-        let service = AiService::new(crate::core::database::open_pool(None).unwrap());
+        let pool = crate::core::database::open_pool(None).unwrap();
+        let directory = tempfile::tempdir().unwrap();
+        let local_ai =
+            Arc::new(LocalAiService::new(pool.clone(), directory.path().join("models")).unwrap());
+        let service = AiService::new(pool, local_ai);
         let id = "generation-reutilisee";
         let old_token = service.start(id);
         let old_guard = GenerationEnCours {

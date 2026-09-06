@@ -44,6 +44,17 @@ Copyright © Jeff Muizelaar. Licence **MIT** —
 Provenance et nature de la modification locale :
 [`vendor/pdf-extract-0.12.0/VENDOR.md`](./vendor/pdf-extract-0.12.0/VENDOR.md).
 
+## Runtime d'inférence embarqué
+
+### llama.cpp / llama-cpp-2 0.1.156
+
+Copyright © 2023–2026 The ggml authors. Licence **MIT** — texte intégral :
+[`src-tauri/assets/licenses/llama.cpp-LICENSE`](./src-tauri/assets/licenses/llama.cpp-LICENSE).
+
+Utilisation : exécution dans le processus Candilog des modèles GGUF de Mistral Local. Le
+runtime est compilé et lié au paquet ; l'utilisateur n'installe ni serveur, ni CLI, ni
+environnement d'exécution séparé.
+
 ---
 
 ## Bibliothèques liées

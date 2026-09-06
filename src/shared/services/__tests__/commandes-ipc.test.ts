@@ -17,14 +17,14 @@ const racine = process.cwd();
 
 /** Attributs `#[tauri::command…]` et le nom de fonction qui suit. */
 function attributsCommandes(): { attribut: string; nom: string }[] {
-  const fichiers = globSync("src-tauri/src/features/*/presentation/commands.rs", {
+  const fichiers = globSync("src-tauri/src/features/*/presentation/*.rs", {
     cwd: racine,
   });
   const attributs: { attribut: string; nom: string }[] = [];
   for (const fichier of fichiers) {
     const source = readFileSync(`${racine}/${fichier}`, "utf8");
     for (const correspondance of source.matchAll(
-      /#\[tauri::command((?:\([^)]*\))?)\]\s*(?:pub\s+)?async\s+fn\s+(\w+)/g,
+      /#\[tauri::command((?:\([^)]*\))?)\]\s*(?:pub\s+)?(?:async\s+)?fn\s+(\w+)/g,
     )) {
       attributs.push({ attribut: correspondance[1] ?? "", nom: correspondance[2]! });
     }

@@ -1,7 +1,7 @@
 //! Construction et lancement de l'application Tauri.
 
 use crate::app::state::AppState;
-use crate::features::ai::presentation::commands as ai;
+use crate::features::ai::presentation::{commands as ai, local_commands as local_ai};
 use crate::features::analytics::presentation::commands as analytics;
 use crate::features::applications::presentation::commands as applications;
 use crate::features::companies::presentation::commands as companies;
@@ -12,6 +12,7 @@ use crate::features::interviews::presentation::commands as interviews;
 use crate::features::profile::presentation::commands as profile;
 use crate::features::referentials::presentation::commands as referentials;
 use crate::features::settings::presentation::commands as settings;
+use tauri::Manager;
 
 /// Démarre Candilog : journal, état applicatif, plugins, commandes.
 ///
@@ -35,6 +36,11 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .manage(state)
+        .on_window_event(|window, event| {
+            if window.label() == "main" && matches!(event, tauri::WindowEvent::Destroyed) {
+                window.state::<AppState>().local_ai.shutdown();
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             analytics::analytics_dashboard,
             analytics::analytics_load,
@@ -88,6 +94,14 @@ pub fn run() {
             ai::ai_select_resume_file,
             ai::ai_import_profile,
             ai::ai_cancel,
+            local_ai::detect_local_ai_hardware,
+            local_ai::get_local_ai_recommendation,
+            local_ai::get_local_ai_status,
+            local_ai::install_local_ai_model,
+            local_ai::cancel_local_ai_download,
+            local_ai::remove_local_ai_model,
+            local_ai::benchmark_local_ai_model,
+            local_ai::test_local_ai_model,
             settings::settings_load,
             settings::settings_save,
             settings::settings_clear_api_key,

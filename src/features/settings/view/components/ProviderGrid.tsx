@@ -15,6 +15,7 @@ import logoNvidia from "@/assets/providers/nvidia.svg";
 import logoCustom from "@/assets/providers/custom.svg";
 
 const LOGOS: Record<FournisseurOption["id"], { src: string; mono: boolean }> = {
+  mistral_local: { src: logoMistral, mono: false },
   ollama: { src: logoOllama, mono: true },
   claude: { src: logoClaude, mono: false },
   openai: { src: logoOpenai, mono: true },
@@ -86,25 +87,13 @@ export function ProviderGrid({
                 className={cn("size-5", logo.mono && "dark:invert")}
               />
             </span>
-            <span
-              className={cn(
-                "w-full truncate text-center text-label font-mid",
-                selected ? "text-accent" : "text-ink-muted",
-              )}
-            >
+            <span className={cn("w-full truncate text-center text-label font-mid", selected ? "text-accent" : "text-ink-muted")}>
               {fournisseur.label}
             </span>
-            {fournisseur.id === "ollama" ? (
-              // Seul fournisseur qui tourne sur la machine de l'utilisateur, sans clé ni
-              // connexion : la distinction se voit sur la tuile, pas seulement dans un
-              // texte d'aide qu'on ne lit qu'une fois sélectionné.
-              //
-              // Aucune surcharge de `className` : `cn` ne fait pas de `tailwind-merge`, un
-              // `bg-accent` ajouté ici cohabiterait avec le `bg-neutral-tint` du composant
-              // et c'est l'ordre du CSS qui trancherait — en clair, le texte devenait blanc
-              // sur fond pâle, donc illisible.
-              <Tag>Local</Tag>
-            ) : null}
+            <span className="min-h-8 text-center text-meta leading-tight text-ink-faint">
+              {fournisseur.hint}
+            </span>
+            {fournisseur.recommended ? <Tag>Recommandé</Tag> : null}
           </button>
         );
       })}

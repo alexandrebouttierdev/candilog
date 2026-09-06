@@ -4,6 +4,18 @@ La base `candilog.sqlite` est résolue par `core::config::AppPaths`. Une release
 
 Les règles de relation restent : entreprise/candidature en `RESTRICT`, candidature/dépendances en `CASCADE`, contact optionnel en `SET NULL`. Les UUID et dates ISO 8601 sont générés en Rust. Les tests n'ouvrent jamais la base utilisateur.
 
+## Modèles d'IA locale
+
+`AppPaths` place Mistral Local sous le dossier de données résolu par le système, sans chemin
+spécifique à un OS : `ai/models/` pour les GGUF, `ai/metadata/` et `ai/cache/` pour les
+extensions futures. Les téléchargements incomplets portent le suffixe `.part` dans
+`ai/models/` et ne sont jamais considérés comme installés.
+
+La configuration (provider, profil, identifiant, révision, empreinte, chemin, backend,
+statut et benchmark horodaté) réutilise le JSON `settings` de SQLite. Il n'existe pas de
+deuxième magasin de réglages. Les chemins persistés ne sont jamais acceptés comme une entrée
+libre : ils doivent être exactement le nom issu du `ModelRegistry` sous `ai/models/`.
+
 ## Référentiels métier
 
 Le schéma courant (`PRAGMA user_version = 2`) porte
@@ -129,7 +141,7 @@ tables, qu'aucune requête de cette commande n'atteint.
 
 La base contient l'intégralité des données personnelles : profil, CV générés, coordonnées
 des contacts, notes d'entretien. Sur Unix, `AppPaths` force donc `700` sur le dossier de
-données et ses sous-dossiers `exports` et `photos`, et `600` sur `candilog.sqlite`, ses journaux WAL et
+données et ses sous-dossiers `exports`, `photos` et `ai`, et `600` sur `candilog.sqlite`, ses journaux WAL et
 SHM ainsi que `candilog.log` **et ses fichiers tournés** (`candilog.log.1` …) — le `umask`
 de session donnerait sinon `755` / `644`, et un journal tourné porte les mêmes lignes que
 le courant. Les

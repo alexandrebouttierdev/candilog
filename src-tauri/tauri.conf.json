@@ -41,12 +41,16 @@
       "icons/icon.ico"
     ],
     "category": "Utility",
+    "macOS": {
+      "minimumSystemVersion": "11.0"
+    },
     "shortDescription": "Suivi de candidatures et assistance IA locale",
     "longDescription": "Candilog suit vos candidatures, entreprises, contacts, entretiens et relances, et génère CV et lettres de motivation avec une IA locale ou distante.",
     "resources": {
       "../LICENSE": "LICENSE",
       "../NOTICE": "NOTICE",
-      "../THIRD_PARTY_NOTICES.md": "THIRD_PARTY_NOTICES.md"
+      "../THIRD_PARTY_NOTICES.md": "THIRD_PARTY_NOTICES.md",
+      "assets/licenses/llama.cpp-LICENSE": "licenses/llama.cpp-LICENSE"
     },
     "licenseFile": "../LICENSE"
   }

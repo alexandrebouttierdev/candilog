@@ -10,16 +10,28 @@ Installer, lancer, régénérer, valider. Les règles de code sont dans
 | Node.js | LTS | la CI utilise `node-version: lts/*` |
 | Rust | 1.91 | `rust-version` de `src-tauri/Cargo.toml` |
 | Cargo | fourni par la toolchain Rust | — |
+| CMake | 3.21+ | compilation du runtime llama.cpp embarqué |
 
 Dépendances système Linux (liste appliquée par le workflow de release sur Ubuntu 22.04 ;
 adapter les noms de paquets à la distribution) :
 
 ```
 libwebkit2gtk-4.1-dev  libappindicator3-dev  librsvg2-dev  patchelf  xdg-utils
+libvulkan-dev  glslc
 ```
 
 Sur macOS et Windows, suivre les prérequis Tauri 2 officiels (Xcode Command Line Tools,
-Microsoft C++ Build Tools et WebView2).
+Microsoft C++ Build Tools et WebView2). Le build de release Windows installe le SDK Vulkan
+sur le runner ; ce SDK est un prérequis de **compilation**, jamais de la machine utilisateur.
+
+Le runtime local est lié au paquet par `llama-cpp-2 = 0.1.156`. Metal est sélectionné par
+la cible macOS ARM64. Les builds Linux/Windows du workflow passent
+`--features local-ai-vulkan`. Une variante NVIDIA peut être construite sur un runner CUDA
+avec `--features local-ai-cuda` ; ne pas activer ce flag sur un runner sans toolkit.
+
+Le paquet macOS cible macOS 11.0 au minimum. Cette borne, déclarée dans
+`tauri.conf.json`, couvre les API requises par le runtime natif et reste cohérente avec
+la cible minimale du binaire produit par la toolchain de release.
 
 Outils facultatifs : `cargo-deny` (audit des dépendances Rust, non installé par le dépôt).
 

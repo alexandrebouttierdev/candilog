@@ -34,6 +34,11 @@ pub struct AppPaths {
     /// Dossier des photos de profil, hors base : une image n'a pas sa place dans une
     /// colonne JSON relue à chaque ouverture d'écran.
     pub photos_dir: PathBuf,
+    /// Racine des modèles et métadonnées de l'IA embarquée.
+    pub local_ai_dir: PathBuf,
+    pub local_ai_models_dir: PathBuf,
+    pub local_ai_metadata_dir: PathBuf,
+    pub local_ai_cache_dir: PathBuf,
 }
 
 impl AppPaths {
@@ -80,6 +85,10 @@ impl AppPaths {
         let data_dir = data_dir.to_path_buf();
         let exports_dir = data_dir.join("exports");
         let photos_dir = data_dir.join("photos");
+        let local_ai_dir = data_dir.join("ai");
+        let local_ai_models_dir = local_ai_dir.join("models");
+        let local_ai_metadata_dir = local_ai_dir.join("metadata");
+        let local_ai_cache_dir = local_ai_dir.join("cache");
         // `Validation` et non `Database` : à ce stade aucune base n'a été ouverte. La
         // variante `Database` affichait « Le fichier de données de Candilog est illisible ou
         // endommagé » à quelqu'un dont le disque est plein ou le dossier en lecture seule —
@@ -87,7 +96,12 @@ impl AppPaths {
         //
         // Le chemin figure dans le message : c'est celui de l'utilisateur, pas un chemin
         // interne, et sans lui la phrase n'indique rien à corriger.
-        std::fs::create_dir_all(&photos_dir).and_then(|()| std::fs::create_dir_all(&exports_dir)).map_err(|error| {
+        std::fs::create_dir_all(&photos_dir)
+            .and_then(|()| std::fs::create_dir_all(&exports_dir))
+            .and_then(|()| std::fs::create_dir_all(&local_ai_models_dir))
+            .and_then(|()| std::fs::create_dir_all(&local_ai_metadata_dir))
+            .and_then(|()| std::fs::create_dir_all(&local_ai_cache_dir))
+            .map_err(|error| {
             // L'erreur système est en anglais et parle en numéros (« os error 13 ») : elle
             // part au journal, où elle sert au diagnostic, et non à l'écran (§1, §13).
             tracing::error!(dossier = %data_dir.display(), %error, "dossier de données non créé");
@@ -103,6 +117,10 @@ impl AppPaths {
             data_dir,
             exports_dir,
             photos_dir,
+            local_ai_dir,
+            local_ai_models_dir,
+            local_ai_metadata_dir,
+            local_ai_cache_dir,
         })
     }
 
@@ -139,6 +157,10 @@ impl AppPaths {
             (data_dir.to_path_buf(), 0o700),
             (data_dir.join("exports"), 0o700),
             (data_dir.join("photos"), 0o700),
+            (data_dir.join("ai"), 0o700),
+            (data_dir.join("ai/models"), 0o700),
+            (data_dir.join("ai/metadata"), 0o700),
+            (data_dir.join("ai/cache"), 0o700),
             (data_dir.join(DATABASE_FILE), 0o600),
             (data_dir.join("candilog.sqlite-wal"), 0o600),
             (data_dir.join("candilog.sqlite-shm"), 0o600),
@@ -191,6 +213,10 @@ impl AppPaths {
             database: data_dir.join(DATABASE_FILE),
             exports_dir: data_dir.join("exports"),
             photos_dir: data_dir.join("photos"),
+            local_ai_dir: data_dir.join("ai"),
+            local_ai_models_dir: data_dir.join("ai/models"),
+            local_ai_metadata_dir: data_dir.join("ai/metadata"),
+            local_ai_cache_dir: data_dir.join("ai/cache"),
             data_dir,
         }
     }

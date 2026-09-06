@@ -19,6 +19,7 @@ pub enum AnalysisMode {
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "settings.ts")]
 pub enum ProviderKind {
+    MistralLocal,
     Ollama,
     Claude,
     #[serde(rename = "openai", alias = "open_ai", alias = "OpenAI")]
@@ -58,6 +59,7 @@ impl LlmConfig {
     #[must_use]
     pub fn endpoint_effectif(&self) -> &str {
         self.endpoint.as_deref().unwrap_or(match self.provider {
+            ProviderKind::MistralLocal => "",
             ProviderKind::Ollama => "http://localhost:11434",
             ProviderKind::Claude => "https://api.anthropic.com",
             ProviderKind::Gemini => "https://generativelanguage.googleapis.com",
@@ -71,6 +73,7 @@ impl LlmConfig {
     pub fn est_configure(&self) -> bool {
         !self.model.trim().is_empty()
             && match self.provider {
+                ProviderKind::MistralLocal => true,
                 ProviderKind::Ollama => !self.endpoint_effectif().trim().is_empty(),
                 _ => self
                     .api_key

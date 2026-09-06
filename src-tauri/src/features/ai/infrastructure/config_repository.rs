@@ -29,13 +29,15 @@ pub fn load_config_avec(
         None => LlmConfig::default(),
     };
     // Ollama n'interroge pas le trousseau : CI et tests n'ont souvent aucun service de secrets.
-    if !matches!(config.provider, ProviderKind::Ollama)
-        && config
-            .api_key
-            .as_deref()
-            .unwrap_or_default()
-            .trim()
-            .is_empty()
+    if !matches!(
+        config.provider,
+        ProviderKind::Ollama | ProviderKind::MistralLocal
+    ) && config
+        .api_key
+        .as_deref()
+        .unwrap_or_default()
+        .trim()
+        .is_empty()
     {
         config.api_key = secret_store.load_api_key()?;
     }

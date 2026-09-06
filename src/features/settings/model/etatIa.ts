@@ -51,8 +51,11 @@ function manquants(llm: LlmForm): string[] {
   const id = idProvider(llm.provider);
   const manques: string[] = [];
   if (llm.model.trim().length === 0) manques.push("le modèle");
-  // Ollama tourne en local sans clé ; un endpoint compatible OpenAI peut aussi s'en passer.
-  if (id !== "ollama" && id !== "custom" && !llm.api_key_configured) manques.push("la clé API");
+  // Les deux fournisseurs locaux fonctionnent sans clé ; un endpoint compatible OpenAI
+  // peut également être configuré sans secret.
+  if (id !== "ollama" && id !== "mistral_local" && id !== "custom" && !llm.api_key_configured) {
+    manques.push("la clé API");
+  }
   if (id === "custom" && (llm.endpoint ?? "").trim().length === 0) manques.push("l'endpoint");
   return manques;
 }

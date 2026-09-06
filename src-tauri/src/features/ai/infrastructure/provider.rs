@@ -81,6 +81,11 @@ pub trait LlmGenerator: Send + Sync {
 }
 
 pub async fn build_provider(config: &LlmConfig) -> AppResult<Arc<dyn LlmGenerator>> {
+    if matches!(config.provider, ProviderKind::MistralLocal) {
+        return Err(AppError::Provider(
+            "Le fournisseur Mistral Local doit utiliser le runtime embarqué.".into(),
+        ));
+    }
     let endpoint = config.endpoint_effectif().trim_end_matches('/').to_owned();
     let url = url::Url::parse(&endpoint)
         .map_err(|_| AppError::Validation("Endpoint IA invalide".into()))?;
@@ -133,6 +138,9 @@ impl LlmGenerator for ProviderHttp {
         json: bool,
     ) -> AppResult<GenerationOutput> {
         match self.config.provider {
+            ProviderKind::MistralLocal => Err(AppError::Provider(
+                "Le runtime Mistral Local n'est pas initialisé.".into(),
+            )),
             ProviderKind::Ollama => self.ollama(prompt, system, json).await,
             ProviderKind::Claude => self.claude(prompt, system).await,
             ProviderKind::Gemini => self.gemini(prompt, system, json).await,
@@ -149,6 +157,9 @@ impl LlmGenerator for ProviderHttp {
 
     async fn list_models(&self) -> AppResult<Vec<String>> {
         match self.config.provider {
+            ProviderKind::MistralLocal => Err(AppError::Provider(
+                "Le runtime Mistral Local n'est pas initialisé.".into(),
+            )),
             ProviderKind::Ollama => self.models_ollama().await,
             ProviderKind::Claude => self.models_claude().await,
             ProviderKind::Gemini => self.models_gemini().await,

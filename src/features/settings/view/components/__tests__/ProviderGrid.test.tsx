@@ -5,7 +5,7 @@ import { ProviderGrid } from "../ProviderGrid";
 import { FOURNISSEURS } from "../../../model/providers";
 
 describe("grille des fournisseurs", () => {
-  it("propose les sept fournisseurs comme un groupe de boutons radio", () => {
+  it("propose tous les fournisseurs comme un groupe de boutons radio", () => {
     render(<ProviderGrid value="ollama" onChange={() => undefined} />);
     expect(screen.getByRole("radiogroup", { name: "Fournisseur IA" })).toBeInTheDocument();
     expect(screen.getAllByRole("radio")).toHaveLength(FOURNISSEURS.length);
@@ -27,15 +27,10 @@ describe("grille des fournisseurs", () => {
     expect(onChange).toHaveBeenCalledWith("claude");
   });
 
-  it("distingue Ollama des autres fournisseurs par une mention « Local »", () => {
+  it("présente Mistral Local comme le choix recommandé sans confondre Ollama", () => {
     render(<ProviderGrid value="ollama" onChange={() => undefined} />);
 
-    expect(
-      within(screen.getByRole("radio", { name: "Ollama" })).getByText("Local"),
-    ).toBeInTheDocument();
-    for (const fournisseur of FOURNISSEURS.filter((item) => item.id !== "ollama")) {
-      const radio = screen.getByRole("radio", { name: fournisseur.label });
-      expect(within(radio).queryByText("Local")).not.toBeInTheDocument();
-    }
+    expect(within(screen.getByRole("radio", { name: "Mistral Local" })).getByText("Recommandé")).toBeInTheDocument();
+    expect(within(screen.getByRole("radio", { name: "Ollama" })).getByText("Votre installation ou Ollama Cloud")).toBeInTheDocument();
   });
 });

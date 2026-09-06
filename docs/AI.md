@@ -5,8 +5,8 @@ Toute l'IA vit dans `src-tauri/src/features/ai/`. Le frontend n'envoie que des D
 
 ## Fournisseurs
 
-Ollama, Claude, OpenAI, Gemini, Mistral, Nvidia et un point de terminaison personnalisé
-implémentent `LlmProvider` (`infrastructure/provider.rs`). Le choix, le modèle, la
+Mistral Local, Ollama, Claude, OpenAI, Gemini, Mistral, Nvidia et un point de terminaison
+personnalisé implémentent `LlmGenerator`. Le choix, le modèle, la
 température et le mode d'analyse sont persistés dans les paramètres ; la clé API vit dans
 le coffre du système (`core::secrets`), jamais dans SQLite ni dans les journaux.
 
@@ -32,6 +32,54 @@ le futur qui porte la boucle, attente comprise.
 Elle ne remplace pas la reprise de `generate_json`, qui vise un tout autre défaut : une
 réponse HTTP valide dont le corps n'est pas le JSON attendu. Les deux se cumulent —
 transport d'abord, forme de la réponse ensuite.
+
+## Mistral Local
+
+Mistral Local est un provider distinct d'Ollama. `MistralLocalProvider` adapte le runtime
+embarqué llama.cpp à `LlmGenerator` ; aucun autre service n'appelle llama.cpp directement.
+Il ne lance ni serveur, ni processus, ni CLI. Le modèle est chargé par `mmap` à la première
+requête, réutilisé entre les requêtes, remplacé sous verrou (jamais deux modèles chargés) et
+libéré à la fermeture de la fenêtre principale.
+
+`domain/local_ai.rs::ModelRegistry` est l'unique source des artefacts. Les trois entrées ont
+été relevées dans les dépôts officiels Mistral et verrouillées sur un commit :
+
+| Profil UI | Dépôt / fichier Q4_K_M | Révision | Octets | SHA-256 |
+| --- | --- | --- | ---: | --- |
+| Léger | `mistralai/Ministral-3-3B-Instruct-2512-GGUF` / `Ministral-3-3B-Instruct-2512-Q4_K_M.gguf` | `eb599d408350ea2bb60452cb86be7c7b2fc28227` | 2 147 023 008 | `9ed150d4367e68df0ac8e1540f6ddc65b42d0ee26378329d1ecbca60f93fc5f8` |
+| Équilibré | `mistralai/Ministral-3-8B-Instruct-2512-GGUF` / `Ministral-3-8B-Instruct-2512-Q4_K_M.gguf` | `0102285ad796bd99af90f58de616092e5630e970` | 5 198 911 904 | `33e7a72cf5e6e2cfc2f2847075acc013d68bba023e35310cef86b5cf8fdca761` |
+| Qualité | `mistralai/Ministral-3-14B-Instruct-2512-GGUF` / `Ministral-3-14B-Instruct-2512-Q4_K_M.gguf` | `74fac473c43357d7fb2671713608183cc72496d0` | 8 239 593 024 | `824e0f3373e69b84f2cae46fdcb9bd1ebc6ab3bfc7acc125d818b7b8178cc613` |
+
+La sélection teste Qualité, Équilibré puis Léger. Les seuils nominaux sont 24/16/8 Gio de
+RAM ou de mémoire unifiée et 12/8/4 Gio de VRAM. Elle exige en plus que l'artefact et ses
+buffers tiennent dans 68 % de la RAM (Apple compris) ou 80 % de la VRAM, que la mémoire
+actuellement disponible suffise et, en CPU, que 8/6/4 cœurs physiques soient présents. Un
+modèle seulement chargeable est `NotRecommended` et n'est jamais choisi automatiquement.
+Sur Apple Silicon, RAM et VRAM ne sont jamais additionnées.
+
+Le downloader n'accepte comme source initiale que `https://huggingface.co`, limite les
+redirections aux domaines de distribution Hugging Face, vérifie l'espace disque avec une
+réserve de 512 Mio, écrit le flux dans `.part`, reprend avec HTTP Range et ne publie le
+`.gguf` par renommage qu'après contrôle de la taille et du SHA-256. Une empreinte est aussi
+recontrôlée avant le premier chargement de chaque session.
+
+Le contexte normal est 8 192 tokens (16 384 réservé techniquement). Après installation, un
+prompt synthétique sans donnée utilisateur mesure chargement, tokens/s et mémoire du
+processus. Les paliers sont excellent (> 20), bon (10–20), acceptable (5–10) et trop lent
+(< 5). Dans ce dernier cas, l'interface propose le profil inférieur mais ne le télécharge
+qu'après confirmation. Un ancien modèle n'est proposé à la suppression qu'après validation
+du nouveau.
+
+Les paquets macOS ARM64 utilisent Metal ; macOS Intel retombe sur le CPU. Les paquets Linux
+et Windows du workflow de release activent Vulkan, avec fallback CPU. Le feature flag
+`local-ai-cuda` permet une variante CUDA bâtie sur un runner équipé du toolkit ; la release
+publique courante ne produit pas encore cet artefact NVIDIA séparé.
+
+Les commandes `detect_local_ai_hardware`, `get_local_ai_recommendation`,
+`get_local_ai_status`, `install_local_ai_model`, `cancel_local_ai_download`,
+`remove_local_ai_model`, `benchmark_local_ai_model` et `test_local_ai_model` restent minces.
+Le téléchargement publie `local-ai://download-progress`, `local-ai://download-completed` et
+`local-ai://download-error` ; aucun polling n'est utilisé.
 
 ## Sorties du modèle
 

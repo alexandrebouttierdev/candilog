@@ -25,7 +25,8 @@ Vue React → ViewModel (hook) → service frontend → invoke
   sauvegardes, mises à jour, coffre à secrets, validation partagée.
 - `src-tauri/src/features/` : domaines métier (`domain`, `application`, `infrastructure`,
   `presentation`). L'IA vit dans `features/ai/` (prompts, providers HTTP, extraction PDF,
-  scoring ATS).
+  scoring ATS). Mistral Local suit `commande → LocalAiService → ModelDownloader / runtime`
+  et n'expose jamais llama.cpp au reste de l'application.
 - `src-tauri/src/infrastructure/` : PDF d'export (CV et lettres).
 - `src-tauri/migrations/` : schéma SQLite embarqué (`init_schema.sql`, `PRAGMA user_version`).
 
@@ -85,6 +86,9 @@ couche `presentation` de la feature concernée :
 | `ia-progression` | `features/ai` — génération et analyse |
 | `profile_import_progress` | `features/ai` — import de profil depuis un CV |
 | `update-progress` | `features/settings` — téléchargement d'une mise à jour |
+| `local-ai://download-progress` | `features/ai` — octets, total, débit et étape Mistral Local |
+| `local-ai://download-completed` | `features/ai` — modèle vérifié, installé et benchmarké |
+| `local-ai://download-error` | `features/ai` — erreur typée et message français |
 
 L'écran « Analyser » sépare strictement le choix du PDF du traitement :
 `ai_select_resume_file` ouvre le dialogue natif et retourne le nom et le chemin validé,

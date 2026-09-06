@@ -32,6 +32,8 @@ export type AtsRecommendation = { section: AtsRecommendationSection, item_index:
  */
 export type AtsRecommendationSection = "profile" | "experience";
 
+export type BenchmarkRating = "excellent" | "good" | "acceptable" | "too_slow";
+
 export type ContentRelevance = "very_relevant" | "relevant" | "secondary";
 
 export type CoverLetterRequest = { generation_id: string, company: string | null, job_title: string | null, tone: string | null, length: string | null, context: string | null, previous_cover_letter: string | null, instruction: string | null, };
@@ -43,6 +45,10 @@ export type GeneratedExperience = { title: string, company: string, description:
 export type GeneratedResume = { resume: string, experiences: Array<GeneratedExperience>, skills: Array<string>, education: Array<GeneratedEducation>, };
 
 export type ImportedResumeAnalysis = { resume: GeneratedResume, job_offer: StructuredListing, score: MatchScore, analysis: AtsAnalysis, };
+
+export type InstallLocalAiRequest = { model_id: LocalModelId, };
+
+export type InstalledLocalModel = { model_id: LocalModelId, profile: LocalModelProfile, revision: string, checksum: string, model_path: string, backend: LocalAiBackend, benchmark: LocalAiBenchmark | null, };
 
 /**
  * Champ textuel isolé pour une relecture linguistique. L'identifiant est opaque pour le
@@ -56,7 +62,41 @@ export type LanguageCorrectionResult = { fields: Array<LanguageCorrectionField>,
 
 export type ListingAnalysis = { job_offer: StructuredListing, score: MatchScore, };
 
+export type LocalAiBackend = "metal" | "cuda" | "vulkan" | "cpu";
+
+export type LocalAiBenchmark = { load_time_ms: number, tokens_per_second: number, memory_used_mb: number, generated_tokens: number, rating: BenchmarkRating, measured_at: string, };
+
+export type LocalAiDownloadCompleted = { model_id: LocalModelId, };
+
+export type LocalAiDownloadError = { model_id: LocalModelId, code: string, message: string, };
+
+export type LocalAiDownloadProgress = { model_id: LocalModelId, state: LocalAiState, downloaded_bytes: number, total_bytes: number, bytes_per_second: number, progress: number, };
+
+export type LocalAiHardware = { os: string, architecture: string, cpu: string, cpu_model: string, logical_cores: number, physical_cores: number | null, total_ram_mb: number, available_ram_mb: number, gpus: Array<LocalGpuInfo>, apple_silicon: boolean, soc_model: string | null, unified_memory_mb: number, metal: boolean, cuda: boolean, vulkan: boolean, };
+
+export type LocalAiInstallationStatus = "not_installed" | "downloading" | "verifying" | "installing" | "benchmarking" | "installed" | "error";
+
+export type LocalAiRecommendation = { hardware: LocalAiHardware, selected_model: LocalModelDefinition | null, backend: LocalAiBackend, evaluations: Array<LocalModelEvaluation>, reason: string, };
+
+export type LocalAiSettings = { selected_profile: LocalModelProfile | null, active_model_id: LocalModelId | null, installation_status: LocalAiInstallationStatus, installed_models: Array<InstalledLocalModel>, last_error: string | null, };
+
+export type LocalAiState = "not_configured" | "detecting_hardware" | "recommendation_ready" | "downloading" | "verifying" | "installing" | "benchmarking" | "ready" | "error";
+
+export type LocalAiStatus = { state: LocalAiState, active_model: LocalModelDefinition | null, installed_models: Array<LocalModelDefinition>, backend: LocalAiBackend | null, benchmark: LocalAiBenchmark | null, last_error: string | null, };
+
+export type LocalGpuInfo = { name: string, vendor: string, total_vram_mb: number, available_vram_mb: number, backend: LocalAiBackend | null, };
+
+export type LocalModelDefinition = { id: LocalModelId, profile: LocalModelProfile, display_name: string, repository: string, filename: string, local_filename: string, revision: string, sha256: string, download_size_bytes: number, estimated_ram_mb: number, recommended_ram_mb: number, recommended_vram_mb: number, context_size: number, quantization: string, runtime: string, };
+
+export type LocalModelEvaluation = { model: LocalModelDefinition, compatibility: ModelCompatibility, reason: string, };
+
+export type LocalModelId = "ministral3_light" | "ministral3_balanced" | "ministral3_quality";
+
+export type LocalModelProfile = "light" | "balanced" | "quality";
+
 export type MatchScore = { total: number, skills: number | null, experience: number | null, ats: number | null, present: Array<string>, missing: Array<string>, };
+
+export type ModelCompatibility = "optimal" | "supported" | "not_recommended" | "unsupported";
 
 /**
  * Progression d'analyse de CV : étape connue et ligne de journal, sans pourcentage.

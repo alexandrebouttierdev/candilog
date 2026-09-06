@@ -1,14 +1,29 @@
 import type { ProviderKind } from "@/shared/types/generated/settings";
 
 export interface FournisseurOption {
-  readonly id: "ollama" | "claude" | "openai" | "gemini" | "mistral" | "nvidia" | "custom";
+  readonly id:
+    | "mistral_local"
+    | "ollama"
+    | "claude"
+    | "openai"
+    | "gemini"
+    | "mistral"
+    | "nvidia"
+    | "custom";
   readonly label: string;
   readonly hint: string;
+  readonly recommended?: boolean;
 }
 
-/** Grid des sept fournisseurs, jamais un menu déroulant. */
+/** Grille des fournisseurs, jamais un menu déroulant. */
 export const FOURNISSEURS: readonly FournisseurOption[] = [
-  { id: "ollama", label: "Ollama", hint: "Local, sans clé" },
+  {
+    id: "mistral_local",
+    label: "Mistral Local",
+    hint: "Directement dans Candilog",
+    recommended: true,
+  },
+  { id: "ollama", label: "Ollama", hint: "Votre installation ou Ollama Cloud" },
   { id: "claude", label: "Claude", hint: "Anthropic" },
   { id: "openai", label: "OpenAI", hint: "GPT" },
   { id: "gemini", label: "Gemini", hint: "Google" },
@@ -31,6 +46,8 @@ export function versProvider(id: FournisseurOption["id"]): ProviderKind {
 
 export function endpointDefaut(id: FournisseurOption["id"]): string | null {
   switch (id) {
+    case "mistral_local":
+      return null;
     case "ollama":
       return "http://localhost:11434";
     case "claude":
@@ -49,6 +66,8 @@ export function endpointDefaut(id: FournisseurOption["id"]): string | null {
 
 export function modelDefaut(id: FournisseurOption["id"]): string {
   switch (id) {
+    case "mistral_local":
+      return "";
     case "ollama":
       return "llama3.2:3b";
     case "claude":

@@ -2,6 +2,7 @@
 
 mod config;
 mod cover_letter;
+mod local_ai;
 mod models;
 mod normalization;
 mod scoring;
@@ -10,6 +11,7 @@ mod validation;
 pub use crate::core::utils::text::search_key;
 pub use config::*;
 pub use cover_letter::*;
+pub use local_ai::*;
 pub use models::*;
 pub use scoring::{
     ground_content_recommendations, ground_extracted_listing, ground_generated_resume,

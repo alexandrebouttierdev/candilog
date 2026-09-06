@@ -31,6 +31,7 @@ import {
 } from "../../model/providers";
 import { etatIa, type EtatIa, type TestConnexion } from "../../model/etatIa";
 import { ProviderGrid, defFournisseur, logoFournisseur } from "../components/ProviderGrid";
+import { MistralLocalPanel } from "../components/MistralLocalPanel";
 import { SettingsBody, SettingsCard } from "../components/SettingsUi";
 import { cn } from "@/shared/lib/cn";
 
@@ -135,6 +136,7 @@ export function AiPage() {
 
   const fournisseur = llm ? defFournisseur(llm.provider) : null;
   const logo = fournisseur ? logoFournisseur(fournisseur.id) : null;
+  const isMistralLocal = llm ? idProvider(llm.provider) === "mistral_local" : false;
 
   return (
     <div className="flex h-full flex-col">
@@ -180,20 +182,25 @@ export function AiPage() {
           {/* Colonne bornée : au-delà, un champ « Endpoint » s'étirait sur 600 px et la
               grille de fournisseurs devenait un alignement de logos perdus. */}
           <div className="flex min-w-0 max-w-[1000px] flex-col gap-4">
-            <AiHero
-              logo={logo}
-              label={fournisseur.label}
-              model={llm.model}
-              etat={etatIa(llm, test)}
-              testMessage={test === "error" ? testMessage : null}
-              busy={test === "pending"}
-              onTest={() => void runTest()}
-            />
+            {!isMistralLocal ? (
+              <AiHero
+                logo={logo}
+                label={fournisseur.label}
+                model={llm.model}
+                etat={etatIa(llm, test)}
+                testMessage={test === "error" ? testMessage : null}
+                busy={test === "pending"}
+                onTest={() => void runTest()}
+              />
+            ) : null}
 
             <SettingsCard icon="hub" title="Fournisseur">
               <ProviderGrid value={llm.provider} onChange={choisirFournisseur} />
             </SettingsCard>
 
+            {isMistralLocal ? (
+              <MistralLocalPanel onConfigured={() => setDraft(null)} />
+            ) : (
             <div className="grid gap-4 min-[900px]:grid-cols-2 min-[900px]:items-start">
               <SettingsCard icon="tune" title="Configuration">
                 <div className="flex flex-col gap-3.5">
@@ -345,6 +352,7 @@ export function AiPage() {
                 </SettingsCard>
               </div>
             </div>
+            )}
           </div>
         </SettingsBody>
       )}
