@@ -11,7 +11,7 @@ import logoClaude from "@/assets/providers/claude.svg";
 import logoOpenai from "@/assets/providers/openai.svg";
 import logoGemini from "@/assets/providers/googlegemini.svg";
 import logoMistral from "@/assets/providers/mistralai.svg";
-import logoNvidia from "@/assets/providers/nvidia.svg";
+import logoDeepseek from "@/assets/providers/deepseek.svg";
 import logoCustom from "@/assets/providers/custom.svg";
 
 const LOGOS: Record<FournisseurOption["id"], { src: string; mono: boolean }> = {
@@ -21,7 +21,7 @@ const LOGOS: Record<FournisseurOption["id"], { src: string; mono: boolean }> = {
   openai: { src: logoOpenai, mono: true },
   gemini: { src: logoGemini, mono: false },
   mistral: { src: logoMistral, mono: false },
-  nvidia: { src: logoNvidia, mono: false },
+  deepseek: { src: logoDeepseek, mono: false },
   custom: { src: logoCustom, mono: true },
 };
 

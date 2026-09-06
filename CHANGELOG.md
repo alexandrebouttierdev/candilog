@@ -6,7 +6,11 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
 
 ## [Non publié]
 
-Rien pour l'instant.
+### Modifié
+
+- Fournisseur IA NVIDIA remplacé par DeepSeek (API compatible OpenAI,
+  `https://api.deepseek.com`, modèle par défaut `deepseek-v4-flash`). Un réglage encore
+  enregistré sous `nvidia` est relu comme DeepSeek.
 
 ## [0.0.1] — non publiée
 
@@ -22,7 +26,7 @@ la première.
 - Calendrier des entretiens et des relances.
 - Profil professionnel, génération de CV et de lettres de motivation en PDF A4 d'une page,
   analyse ATS déterministe.
-- Fournisseurs IA au choix : Ollama (local), Claude, OpenAI, Gemini, Mistral, Nvidia ou
+- Fournisseurs IA au choix : Ollama (local), Claude, OpenAI, Gemini, Mistral, DeepSeek ou
   point de terminaison personnalisé. La clé API vit dans le coffre du système.
 - Sauvegarde et restauration de la base, avec retour arrière en cas d'échec.
 - Mise à jour assistée depuis les GitHub Releases : empreinte SHA-256 vérifiée avant

@@ -146,7 +146,7 @@ impl LlmGenerator for ProviderHttp {
             ProviderKind::Gemini => self.gemini(prompt, system, json).await,
             ProviderKind::OpenAI
             | ProviderKind::Mistral
-            | ProviderKind::Nvidia
+            | ProviderKind::DeepSeek
             | ProviderKind::Custom(_) => self.openai(prompt, system, json).await,
         }
     }
@@ -165,7 +165,7 @@ impl LlmGenerator for ProviderHttp {
             ProviderKind::Gemini => self.models_gemini().await,
             ProviderKind::OpenAI
             | ProviderKind::Mistral
-            | ProviderKind::Nvidia
+            | ProviderKind::DeepSeek
             | ProviderKind::Custom(_) => self.models_openai().await,
         }
     }

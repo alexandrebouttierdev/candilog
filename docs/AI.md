@@ -5,7 +5,7 @@ Toute l'IA vit dans `src-tauri/src/features/ai/`. Le frontend n'envoie que des D
 
 ## Fournisseurs
 
-Mistral Local, Ollama, Claude, OpenAI, Gemini, Mistral, Nvidia et un point de terminaison
+Mistral Local, Ollama, Claude, OpenAI, Gemini, Mistral, DeepSeek et un point de terminaison
 personnalisé implémentent `LlmGenerator`. Le choix, le modèle, la
 température et le mode d'analyse sont persistés dans les paramètres ; la clé API vit dans
 le coffre du système (`core::secrets`), jamais dans SQLite ni dans les journaux.
@@ -168,7 +168,7 @@ Le LLM est appelé pendant la génération pour extraire l'offre, adapter le soc
 sémantiquement les candidates et effectuer la relecture finale. Dans l'éditeur, seul un clic
 explicite sur « Corriger l'orthographe » déclenche un autre appel. Présence dans le CV,
 filtrage, score, impact ATS de chaque action, décisions, simulation et place disponible sont
-calculés localement ; les autres interactions ne déclenchent donc aucun appel DeepSeek.
+calculés localement ; les autres interactions ne déclenchent donc aucun appel au modèle.
 
 Chaque recommandation du modèle (`AtsRecommendation`) cible une section **fermée** :
 

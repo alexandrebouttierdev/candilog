@@ -12,7 +12,7 @@ export type AnalysisMode = "auto" | "small" | "standard" | "advanced";
 
 export type LlmForm = { provider: ProviderKind, api_key_configured: boolean, endpoint: string | null, model: string, temperature: number, mode: AnalysisMode, };
 
-export type ProviderKind = "mistral_local" | "ollama" | "claude" | "openai" | "gemini" | "mistral" | "nvidia" | { "custom": string };
+export type ProviderKind = "mistral_local" | "ollama" | "claude" | "openai" | "gemini" | "mistral" | "deepseek" | { "custom": string };
 
 /**
  * Résultat détaillé d'une réinitialisation locale.

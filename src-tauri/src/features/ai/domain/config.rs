@@ -26,7 +26,8 @@ pub enum ProviderKind {
     OpenAI,
     Gemini,
     Mistral,
-    Nvidia,
+    #[serde(rename = "deepseek", alias = "nvidia")]
+    DeepSeek,
     Custom(String),
 }
 
@@ -56,6 +57,19 @@ impl Default for LlmConfig {
 }
 
 impl LlmConfig {
+    /// Réécrit un ancien enregistrement NVIDIA (alias `nvidia` → DeepSeek).
+    pub fn normaliser_legacy(&mut self) {
+        if !matches!(self.provider, ProviderKind::DeepSeek) {
+            return;
+        }
+        if self.endpoint.as_deref() == Some("https://integrate.api.nvidia.com") {
+            self.endpoint = Some("https://api.deepseek.com".into());
+        }
+        if self.model == "meta/llama-3.1-70b-instruct" {
+            self.model = "deepseek-v4-flash".into();
+        }
+    }
+
     #[must_use]
     pub fn endpoint_effectif(&self) -> &str {
         self.endpoint.as_deref().unwrap_or(match self.provider {
@@ -64,7 +78,7 @@ impl LlmConfig {
             ProviderKind::Claude => "https://api.anthropic.com",
             ProviderKind::Gemini => "https://generativelanguage.googleapis.com",
             ProviderKind::Mistral => "https://api.mistral.ai",
-            ProviderKind::Nvidia => "https://integrate.api.nvidia.com",
+            ProviderKind::DeepSeek => "https://api.deepseek.com",
             ProviderKind::OpenAI | ProviderKind::Custom(_) => "https://api.openai.com",
         })
     }
@@ -88,4 +102,29 @@ pub struct SettingsStockes {
     /// Absent sur une base neuve (`data = '{}'`), présent dès que les réglages ont été sauvés.
     #[serde(default)]
     pub llm: LlmConfig,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn nvidia_est_relu_comme_deepseek() {
+        let config: LlmConfig = serde_json::from_str(
+            r#"{
+                "provider": "nvidia",
+                "api_key": null,
+                "endpoint": "https://integrate.api.nvidia.com",
+                "model": "meta/llama-3.1-70b-instruct",
+                "temperature": 0.7
+            }"#,
+        )
+        .unwrap();
+        assert_eq!(config.provider, ProviderKind::DeepSeek);
+
+        let mut config = config;
+        config.normaliser_legacy();
+        assert_eq!(config.endpoint.as_deref(), Some("https://api.deepseek.com"));
+        assert_eq!(config.model, "deepseek-v4-flash");
+    }
 }

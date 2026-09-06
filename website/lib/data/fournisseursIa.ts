@@ -16,11 +16,10 @@ export type FournisseurIa = {
 };
 
 /** Les sept fournisseurs de `FOURNISSEURS` (src/features/settings/model/providers.ts),
- *  dans le même ordre que la grille des réglages.
+ *  dans le même ordre que la grille des réglages (hors Mistral Local).
  *
- *  Les noms sont ceux que l'application affiche : « Claude », pas « Anthropic ». Les deux
- *  derniers ne sont pas des marques — NVIDIA passe par ses NIM, et « Personnalisé » désigne
- *  n'importe quel point d'accès compatible OpenAI. */
+ *  Les noms sont ceux que l'application affiche : « Claude », pas « Anthropic ».
+ *  « Personnalisé » désigne n'importe quel point d'accès compatible OpenAI. */
 export const FOURNISSEURS_IA: readonly FournisseurIa[] = [
   {
     nom: "Ollama",
@@ -69,11 +68,11 @@ export const FOURNISSEURS_IA: readonly FournisseurIa[] = [
     decalage: 26,
   },
   {
-    nom: "NVIDIA",
-    logo: "nvidia",
-    degrade: "linear-gradient(155deg,#a5e05a,#5c9200)",
-    ombre: "inset 0 1.5px 0 rgba(255,255,255,0.32), 0 10px 22px rgba(92,146,0,0.28)",
-    ombreSurvol: "inset 0 1.5px 0 rgba(255,255,255,0.34), 0 18px 34px rgba(92,146,0,0.34)",
+    nom: "DeepSeek",
+    logo: "deepseek",
+    degrade: "linear-gradient(155deg,#7aa0ff,#3d5fd4)",
+    ombre: "inset 0 1.5px 0 rgba(255,255,255,0.32), 0 10px 22px rgba(61,95,212,0.28)",
+    ombreSurvol: "inset 0 1.5px 0 rgba(255,255,255,0.34), 0 18px 34px rgba(61,95,212,0.34)",
     rotation: -6,
     decalage: 4,
   },

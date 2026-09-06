@@ -75,8 +75,11 @@ impl SettingsRepository for SqliteSettingsRepository {
         let Some(text) = content else {
             return Ok(AppSettings::default());
         };
-        match serde_json::from_str(&text) {
-            Ok(settings) => Ok(settings),
+        match serde_json::from_str::<AppSettings>(&text) {
+            Ok(mut settings) => {
+                settings.llm.normaliser_legacy();
+                Ok(settings)
+            }
             Err(error) => {
                 tracing::warn!(%error, "paramètres illisibles, valeurs par défaut");
                 let redacted_text = redact_corrupt_settings(&text);

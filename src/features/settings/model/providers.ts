@@ -8,7 +8,7 @@ export interface FournisseurOption {
     | "openai"
     | "gemini"
     | "mistral"
-    | "nvidia"
+    | "deepseek"
     | "custom";
   readonly label: string;
   readonly hint: string;
@@ -28,7 +28,7 @@ export const FOURNISSEURS: readonly FournisseurOption[] = [
   { id: "openai", label: "OpenAI", hint: "GPT" },
   { id: "gemini", label: "Gemini", hint: "Google" },
   { id: "mistral", label: "Mistral", hint: "Europe" },
-  { id: "nvidia", label: "NVIDIA", hint: "NIM" },
+  { id: "deepseek", label: "DeepSeek", hint: "API" },
   { id: "custom", label: "Personnalisé", hint: "Compatible OpenAI" },
 ];
 
@@ -56,8 +56,8 @@ export function endpointDefaut(id: FournisseurOption["id"]): string | null {
       return "https://generativelanguage.googleapis.com";
     case "mistral":
       return "https://api.mistral.ai";
-    case "nvidia":
-      return "https://integrate.api.nvidia.com";
+    case "deepseek":
+      return "https://api.deepseek.com";
     case "openai":
     case "custom":
       return "https://api.openai.com";
@@ -78,8 +78,8 @@ export function modelDefaut(id: FournisseurOption["id"]): string {
       return "gemini-2.0-flash";
     case "mistral":
       return "mistral-small-latest";
-    case "nvidia":
-      return "meta/llama-3.1-70b-instruct";
+    case "deepseek":
+      return "deepseek-v4-flash";
     case "custom":
       return "";
   }

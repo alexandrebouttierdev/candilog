@@ -28,6 +28,7 @@ pub fn load_config_avec(
             })?,
         None => LlmConfig::default(),
     };
+    config.normaliser_legacy();
     // Ollama n'interroge pas le trousseau : CI et tests n'ont souvent aucun service de secrets.
     if !matches!(
         config.provider,

@@ -295,7 +295,7 @@ fn validate_llm(llm: &LlmConfig, api_key_configured: bool) -> AppResult<()> {
         | ProviderKind::OpenAI
         | ProviderKind::Gemini
         | ProviderKind::Mistral
-        | ProviderKind::Nvidia => {
+        | ProviderKind::DeepSeek => {
             if !api_key_configured {
                 Err(AppError::Validation(
                     "Une clé API est requise pour ce fournisseur".into(),

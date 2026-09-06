@@ -20,7 +20,7 @@ candilog.fr, projet Next.js autonome.
 - Calendrier des entretiens et des relances.
 - Profil professionnel, génération de CV et de lettres de motivation en PDF A4 une page,
   analyse ATS déterministe.
-- Fournisseurs IA au choix : Ollama (local), Claude, OpenAI, Gemini, Mistral, Nvidia ou
+- Fournisseurs IA au choix : Ollama (local), Claude, OpenAI, Gemini, Mistral, DeepSeek ou
   point de terminaison personnalisé. La clé API vit dans le coffre du système.
 - Sauvegarde et restauration de la base, mise à jour assistée depuis les GitHub Releases.
 

@@ -89,7 +89,7 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
     eyebrow: "Intelligence artificielle",
     title: "Votre moteur, votre choix",
     description:
-      "Claude, OpenAI, Gemini, Mistral, NVIDIA — ou Ollama en local, sans clé API ni connexion, pour que vos données ne quittent jamais votre machine.",
+      "Claude, OpenAI, Gemini, Mistral, DeepSeek — ou Ollama en local, sans clé API ni connexion, pour que vos données ne quittent jamais votre machine.",
   },
   {
     kind: "closing",
