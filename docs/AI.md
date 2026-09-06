@@ -15,7 +15,8 @@ distant, réponse plafonnée à 5 Mio, PDF source plafonné à 10 Mio.
 
 Chaque appel HTTP est **repris jusqu'à trois fois** sur un échec transitoire — délai
 dépassé, connexion impossible, `429`, `5xx` — avec une attente de 1 s puis 2 s. Une
-génération de CV enchaîne trois appels et dure une à deux minutes : sans reprise, un
+génération de CV enchaîne quatre appels (offre, socle, relecture, sélection) et peut durer
+une à deux minutes : sans reprise, un
 incident réseau passager sur le dernier annulait tout le travail et laissait payés les deux
 appels déjà aboutis. Une erreur de configuration (`4xx` : clé refusée, modèle inconnu)
 n'est **jamais** reprise — la retenter ne ferait que retarder le message que l'utilisateur
@@ -68,6 +69,15 @@ successives sont cumulées et renvoyées ensemble, faute de quoi « plus court �
 formel » ne vaudraient jamais en même temps. Elles orientent la **sélection de faits**, pas
 la prose : le corps reste assemblé par Candilog.
 
+Une relecture française termine désormais les générations de CV et de lettre. Elle échange
+une liste de champs `{id, text}` plutôt que le document complet : les identifiants inconnus
+ou dupliqués sont ignorés, l'ordre vient toujours de la requête et les chiffres, coordonnées,
+noms propres à majuscule et technologies à casse distinctive doivent rester présents. Une
+réponse vide, beaucoup plus courte ou plus longue, ou qui perd un de ces fragments est
+remplacée localement par le texte source. Le même contrat sert au bouton manuel « Corriger
+l'orthographe » ; le CV ne transmet que ses champs de prose, et la lettre réinjecte chaque
+fragment dans sa mise en forme existante.
+
 Le score ATS affiché est toujours le calcul déterministe Rust (`profile_score` /
 `score_resume_imported`, `domain/scoring.rs`), jamais le chiffre renvoyé par le modèle.
 
@@ -101,10 +111,11 @@ dans `ResumeEditorialDecisions` : un élément ignoré ou retiré ne revient pas
 reste disponible dans Suggestions. Ajouter manuellement retire l'élément des Suggestions ;
 le retirer l'y remet immédiatement.
 
-Le LLM n'est appelé que pendant la génération pour extraire l'offre, adapter le socle et
-classer sémantiquement les candidates. Présence dans le CV, filtrage, score, décisions,
-simulation et place disponible sont calculés localement. Une interaction dans l'éditeur ne
-déclenche donc aucun nouvel appel DeepSeek.
+Le LLM est appelé pendant la génération pour extraire l'offre, adapter le socle, classer
+sémantiquement les candidates et effectuer la relecture finale. Dans l'éditeur, seul un clic
+explicite sur « Corriger l'orthographe » déclenche un autre appel. Présence dans le CV,
+filtrage, score, impact ATS de chaque action, décisions, simulation et place disponible sont
+calculés localement ; les autres interactions ne déclenchent donc aucun appel DeepSeek.
 
 Chaque recommandation du modèle (`AtsRecommendation`) cible une section **fermée** :
 
@@ -119,7 +130,9 @@ aucun gain de score.
 
 Dans l'éditeur, chaque recommandation applicable devient une `ResumeProposal`. Son **gain**
 (`proposal.gain`) est simulé localement par `simulate_gain` sur une copie du document
-(`build_proposals`, `recalculate`) — jamais repris du LLM. Une proposition non applicable
+(`build_proposals`, `recalculate`) — jamais repris du LLM. Les recommandations de contenu
+exposent de même un `score_delta`, obtenu en recalculant le score sur une copie du document
+avec l'ajout ou le remplacement simulé. Une proposition non applicable
 (texte modifié depuis la génération) reste visible avec son statut mais sans action possible.
 
 Les compétences manquantes de l'offre (`MatchScore.missing`) qui n'existent pas dans le

@@ -22,6 +22,11 @@ export interface LetterParagraph {
   size: LetterSize;
 }
 
+export interface LetterCorrectionField {
+  id: string;
+  text: string;
+}
+
 /** Lit un corps de lettre, balisé ou écrit avant l'éditeur (texte brut). */
 export function parseLetter(content: string): LetterParagraph[] {
   if (!content.includes("<p")) {
@@ -86,6 +91,28 @@ export function toPlainText(content: string): string {
   return parseLetter(content)
     .map((paragraph) => paragraph.runs.map((run) => run.text).join(""))
     .join("\n\n");
+}
+
+/** Extrait chaque fragment de texte sans exposer ni perdre sa mise en forme. */
+export function letterCorrectionFields(content: string): LetterCorrectionField[] {
+  return parseLetter(content).flatMap((paragraph, paragraphIndex) =>
+    paragraph.runs
+      .map((run, runIndex) => ({ id: `paragraph:${paragraphIndex}:run:${runIndex}`, text: run.text }))
+      .filter((field) => field.text.trim() !== ""),
+  );
+}
+
+/** Réinjecte une relecture dans les fragments existants et conserve gras, souligné et alignement. */
+export function applyLetterCorrection(content: string, fields: LetterCorrectionField[]): string {
+  const corrected = new Map(fields.map((field) => [field.id, field.text]));
+  const paragraphs = parseLetter(content).map((paragraph, paragraphIndex) => ({
+    ...paragraph,
+    runs: paragraph.runs.map((run, runIndex) => ({
+      ...run,
+      text: corrected.get(`paragraph:${paragraphIndex}:run:${runIndex}`) ?? run.text,
+    })),
+  }));
+  return toMarkup(paragraphs);
 }
 
 /**

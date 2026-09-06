@@ -6,6 +6,7 @@ import {
   addSection,
   addSkill,
   applyContentRecommendation,
+  applyResumeCorrection,
   availableProfileItems,
   ignoreContentRecommendation,
   isResumeWorkspace,
@@ -15,6 +16,7 @@ import {
   removeProjectBullet,
   removeSection,
   removeSkill,
+  resumeCorrectionFields,
   safeResumeUrl,
   updateResumeField,
   workspaceFixture,
@@ -165,7 +167,7 @@ describe("bibliothèque éditoriale du profil", () => {
         { id: "project-lab", label: "Homelab", detail: null, content: { type: "project" as const, value: { id: "project-lab", name: "Homelab", meta: null, url: null, bullets: [] } } },
       ],
       content_recommendations: [
-        { id: "recommend-docker", label: "Docker", reason: "Demandé", relevance: "very_relevant" as const, action: { type: "add" as const, item_id: "skill-docker" }, layout_after: base.layout },
+        { id: "recommend-docker", label: "Docker", reason: "Demandé", relevance: "very_relevant" as const, action: { type: "add" as const, item_id: "skill-docker" }, score_delta: 5, layout_after: base.layout },
       ],
     };
   }
@@ -214,5 +216,23 @@ describe("bibliothèque éditoriale du profil", () => {
     const workspace = editorialWorkspace();
     expect(missingProfileSkills(workspace)).toEqual(["Kubernetes"]);
     expect(workspace.content_recommendations.every((item) => item.label !== "Kubernetes")).toBe(true);
+  });
+});
+
+describe("relecture linguistique du CV", () => {
+  it("n'expose que la prose et réinjecte chaque correction à sa cible", () => {
+    const base = workspaceFixture();
+    const fields = resumeCorrectionFields(base.document);
+    expect(fields.some((field) => field.id === "profile")).toBe(true);
+    expect(fields.some((field) => field.id.includes("email"))).toBe(false);
+
+    const corrected = applyResumeCorrection(base, [
+      { id: "profile", text: "Profil corrigé." },
+      { id: "experience:0:bullet:0", text: "Réalisation corrigée." },
+      { id: "unknown", text: "Texte inventé" },
+    ]);
+    expect(corrected.document.profile).toBe("Profil corrigé.");
+    expect(corrected.document.experiences[0]?.bullets[0]).toBe("Réalisation corrigée.");
+    expect(JSON.stringify(corrected.document)).not.toContain("Texte inventé");
   });
 });

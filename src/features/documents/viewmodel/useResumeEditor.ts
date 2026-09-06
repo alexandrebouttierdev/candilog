@@ -8,6 +8,8 @@ import { profileService } from "@/features/profile/services/profileService";
 import { PROFILE_KEY } from "@/features/profile/viewmodel/useProfileViewModel";
 import { AppError } from "@/shared/types/app-error";
 import { runResumeRecalculation } from "./resumeRecalculation";
+import { aiService } from "@/features/ai/services/aiService";
+import { useAiOperation } from "@/features/ai/viewmodel/useAiOperation";
 
 /** Pile d'annulation/rétablissement bornée : au-delà, les plus anciens états sont perdus. */
 const HISTORY_LIMIT = 50;
@@ -36,10 +38,13 @@ function errorMessage(error: unknown): string {
  */
 export function useResumeEditor(initial: ResumeWorkspace) {
   const queryClient = useQueryClient();
+  const aiOperation = useAiOperation();
   const [workspace, setWorkspace] = useState(initial);
   const [undoStack, setUndoStack] = useState<ResumeWorkspace[]>([]);
   const [redoStack, setRedoStack] = useState<ResumeWorkspace[]>([]);
   const [isRecalculating, setIsRecalculating] = useState(false);
+  const [isProofreading, setIsProofreading] = useState(false);
+  const [lastScoreImpact, setLastScoreImpact] = useState<{ label: string; delta: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pendingProfileSkill, setPendingProfileSkill] = useState<PendingProfileSkill | null>(null);
 
@@ -63,7 +68,7 @@ export function useResumeEditor(initial: ResumeWorkspace) {
     revision.current += 1;
   }
 
-  function scheduleRecalculation(base: ResumeWorkspace): void {
+  function scheduleRecalculation(base: ResumeWorkspace, scoreLabel?: string): void {
     if (recalcTimer.current) clearTimeout(recalcTimer.current);
     revision.current += 1;
     const requested = revision.current;
@@ -75,6 +80,9 @@ export function useResumeEditor(initial: ResumeWorkspace) {
         isCurrent: () => mounted.current && revision.current === requested,
         onSuccess: (updated) => {
           setWorkspace(updated);
+          if (scoreLabel) {
+            setLastScoreImpact({ label: scoreLabel, delta: updated.score.total - base.score.total });
+          }
           setError(null);
         },
         onError: (caught) => setError(errorMessage(caught)),
@@ -84,12 +92,12 @@ export function useResumeEditor(initial: ResumeWorkspace) {
   }
 
   /** Édition locale immédiate : le document change avant tout aller-retour IPC. */
-  function applyLocalChange(next: ResumeWorkspace): void {
+  function applyLocalChange(next: ResumeWorkspace, scoreLabel?: string): void {
     if (next === workspace) return;
     setUndoStack((stack) => [...stack, workspace].slice(-HISTORY_LIMIT));
     setRedoStack([]);
     setWorkspace(next);
-    scheduleRecalculation(next);
+    scheduleRecalculation(next, scoreLabel);
   }
 
   function updateField(field: ResumeField, value: string): void {
@@ -111,22 +119,65 @@ export function useResumeEditor(initial: ResumeWorkspace) {
     applyLocalChange(model.addSkill(workspace, group));
   }
   function removeSkill(group: number, item: number): void {
-    applyLocalChange(model.removeSkill(workspace, group, item));
+    const label = workspace.document.skill_groups[group]?.items[item];
+    applyLocalChange(model.removeSkill(workspace, group, item), label ? `Retrait de ${label}` : undefined);
   }
   function addSection(section: ResumeSectionKind): void {
     applyLocalChange(model.addSection(workspace, section));
   }
   function removeSection(section: ResumeSectionKind, index: number): void {
-    applyLocalChange(model.removeSection(workspace, section, index));
+    const labels = {
+      experience: workspace.document.experiences[index]?.title,
+      project: workspace.document.projects[index]?.name,
+      skill_group: workspace.document.skill_groups[index]?.name,
+      education: workspace.document.education[index]?.degree,
+      certification: workspace.document.certifications[index]?.name,
+      language: workspace.document.languages[index]?.name,
+    };
+    const label = labels[section];
+    applyLocalChange(model.removeSection(workspace, section, index), label ? `Retrait de ${label}` : undefined);
   }
   function addProfileItem(itemId: string): void {
-    applyLocalChange(model.addProfileItem(workspace, itemId));
+    const label = workspace.profile_library.find((item) => item.id === itemId)?.label;
+    applyLocalChange(model.addProfileItem(workspace, itemId), label ? `Ajout de ${label}` : undefined);
   }
   function applyContentRecommendation(recommendationId: string): void {
-    applyLocalChange(model.applyContentRecommendation(workspace, recommendationId));
+    const label = workspace.content_recommendations.find((item) => item.id === recommendationId)?.label;
+    applyLocalChange(model.applyContentRecommendation(workspace, recommendationId), label ? `Choix : ${label}` : undefined);
   }
   function ignoreContentRecommendation(recommendationId: string): void {
     applyLocalChange(model.ignoreContentRecommendation(workspace, recommendationId));
+  }
+
+  /** Relecture à la demande : la réponse est ignorée si l'utilisateur a modifié le CV entre-temps. */
+  async function correctFrench(): Promise<"corrected" | "unchanged" | "failed"> {
+    const fields = model.resumeCorrectionFields(workspace.document);
+    if (fields.length === 0) return "unchanged";
+    invalidatePendingRecalculation();
+    const requested = revision.current;
+    let id: string;
+    try {
+      id = aiOperation.start("correction");
+    } catch (caught) {
+      setError(errorMessage(caught));
+      return "failed";
+    }
+    setIsProofreading(true);
+    try {
+      const execution = await aiService.correctFrench({ generation_id: id, fields });
+      if (!mounted.current || revision.current !== requested || !aiOperation.isCurrent(id)) return "failed";
+      const next = model.applyResumeCorrection(workspace, execution.output.fields);
+      if (next === workspace) return "unchanged";
+      applyLocalChange(next);
+      setError(null);
+      return "corrected";
+    } catch (caught) {
+      if (mounted.current) setError(errorMessage(caught));
+      return "failed";
+    } finally {
+      aiOperation.finish(id);
+      if (mounted.current) setIsProofreading(false);
+    }
   }
 
   /** Restaure le document précédent sans appel IPC : la pile porte déjà un état cohérent. */
@@ -162,8 +213,9 @@ export function useResumeEditor(initial: ResumeWorkspace) {
       setUndoStack((stack) => [...stack, before].slice(-HISTORY_LIMIT));
       setRedoStack([]);
       setWorkspace(updated);
-      setError(null);
       const accepted = updated.proposals.find((proposal) => proposal.id === proposal_id);
+      setLastScoreImpact({ label: accepted?.label ?? "Recommandation ATS", delta: updated.score.total - before.score.total });
+      setError(null);
       if (accepted && accepted.kind === "missing_skill") {
         setPendingProfileSkill({
           proposal_id: accepted.id,
@@ -215,6 +267,11 @@ export function useResumeEditor(initial: ResumeWorkspace) {
       setUndoStack((stack) => [...stack, before].slice(-HISTORY_LIMIT));
       setRedoStack([]);
       setWorkspace(updated);
+      const proposal = before.proposals.find((item) => item.id === proposal_id);
+      setLastScoreImpact({
+        label: proposal ? `Annulation : ${proposal.label}` : "Annulation d’une recommandation",
+        delta: updated.score.total - before.score.total,
+      });
       setError(null);
     } catch (caught) {
       if (mounted.current) setError(errorMessage(caught));
@@ -256,6 +313,7 @@ export function useResumeEditor(initial: ResumeWorkspace) {
     addProfileItem,
     applyContentRecommendation,
     ignoreContentRecommendation,
+    correctFrench,
     applyProposal,
     rejectProposal,
     undoProposal,
@@ -267,6 +325,8 @@ export function useResumeEditor(initial: ResumeWorkspace) {
     keepSkillInResumeOnly,
     addPendingSkillToProfile,
     isRecalculating,
+    isProofreading,
+    lastScoreImpact,
     error,
   };
 }

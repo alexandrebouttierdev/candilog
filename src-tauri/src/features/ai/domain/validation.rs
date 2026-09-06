@@ -3,7 +3,7 @@
 use crate::core::errors::{AppError, AppResult};
 use crate::features::ai::domain::{
     AtsAnalysis, AtsRecommendation, AtsRecommendationSection, CoverLetterRequest, GeneratedResume,
-    StructuredListing,
+    LanguageCorrectionRequest, LanguageCorrectionResult, StructuredListing,
 };
 use crate::features::profile::domain::Profile;
 use serde::Serialize;
@@ -99,6 +99,42 @@ pub fn validate_cover_letter_request(request: &CoverLetterRequest) -> AppResult<
                 "La taille maximale autorisée pour {label} est dépassée."
             )));
         }
+    }
+    Ok(())
+}
+
+/// Valide une relecture demandée par l'éditeur avant tout appel au fournisseur.
+pub fn validate_language_correction_request(request: &LanguageCorrectionRequest) -> AppResult<()> {
+    use std::collections::HashSet;
+
+    if request.fields.is_empty() || request.fields.len() > MAX_ITEMS {
+        return Err(AppError::Validation(
+            "Le document ne contient aucun texte relisible ou dépasse la limite autorisée.".into(),
+        ));
+    }
+    let mut ids = HashSet::new();
+    let mut total = 0_usize;
+    for field in &request.fields {
+        if field.id.trim().is_empty()
+            || field.id.chars().count() > 200
+            || !ids.insert(field.id.as_str())
+        {
+            return Err(AppError::Validation(
+                "Les champs à relire ne sont pas identifiables de manière unique.".into(),
+            ));
+        }
+        let size = field.text.chars().count();
+        if size == 0 || size > MAX_CONTEXT_CHARS {
+            return Err(AppError::Validation(
+                "Un champ à relire dépasse la taille maximale autorisée.".into(),
+            ));
+        }
+        total = total.saturating_add(size);
+    }
+    if total > MAX_SOURCE_CHARS {
+        return Err(AppError::Validation(
+            "Le document est trop volumineux pour être relu en une fois.".into(),
+        ));
     }
     Ok(())
 }
@@ -203,6 +239,20 @@ impl ValidateAiOutput for GeneratedResume {
                 [education.degree.as_str(), education.school.as_str()],
                 "une formation du CV",
             )?;
+        }
+        Ok(())
+    }
+}
+
+impl ValidateAiOutput for LanguageCorrectionResult {
+    fn validate_ai_output(&self) -> AppResult<()> {
+        validate_structured_size(self)?;
+        ensure_output_list(&self.fields, "les champs corrigés")?;
+        for field in &self.fields {
+            ensure_output_string(&field.id, "l'identifiant d'un champ corrigé")?;
+            if field.text.chars().count() > MAX_CONTEXT_CHARS {
+                return Err(output_error("un champ corrigé"));
+            }
         }
         Ok(())
     }

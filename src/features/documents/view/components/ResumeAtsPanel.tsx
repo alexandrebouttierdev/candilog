@@ -32,6 +32,7 @@ export function ResumeAtsPanel({
   onAccept,
   onReject,
   onUndo,
+  lastScoreImpact,
   busy = false,
 }: {
   workspace: ResumeWorkspace;
@@ -41,9 +42,11 @@ export function ResumeAtsPanel({
   onAccept: (proposalId: string) => void;
   onReject: (proposalId: string) => void;
   onUndo: (proposalId: string) => void;
+  lastScoreImpact?: { label: string; delta: number } | null;
   busy?: boolean;
 }) {
   const layout = LAYOUT_LABELS[workspace.layout.status];
+  const scoreEvolution = workspace.score.total - workspace.initial_score;
   const available = availableProfileItems(workspace);
   const missing = missingProfileSkills(workspace);
   const hasOffer = Boolean(workspace.job_offer.title.trim()
@@ -52,8 +55,33 @@ export function ResumeAtsPanel({
 
   return (
     <div className="space-y-6 p-4">
-      <section className="space-y-2" aria-label="Espace disponible dans le CV">
-        <div className="flex items-center justify-between gap-3">
+      <section className="space-y-2.5" aria-label="Score ATS et espace disponible dans le CV">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <p className="text-meta font-medium text-ink-faint">Score ATS</p>
+            <p className="tabular text-[22px] font-semibold leading-none text-ink">
+              {workspace.score.total}<span className="ml-1 text-label font-normal text-ink-faint">/ 100</span>
+            </p>
+          </div>
+          <span className={`tabular text-meta font-semibold ${scoreEvolution > 0 ? "text-success" : scoreEvolution < 0 ? "text-danger" : "text-ink-faint"}`}>
+            {scoreEvolution > 0 ? "+" : ""}{scoreEvolution} pt{Math.abs(scoreEvolution) > 1 ? "s" : ""} depuis la génération
+          </span>
+        </div>
+        <div className="h-1.5 overflow-hidden rounded-pill bg-fill" aria-hidden="true">
+          <div
+            className={workspace.score.total >= 70 ? "h-full rounded-pill bg-success" : workspace.score.total >= 45 ? "h-full rounded-pill bg-warning" : "h-full rounded-pill bg-danger"}
+            style={{ width: `${workspace.score.total}%` }}
+          />
+        </div>
+        {lastScoreImpact ? (
+          <p className="flex items-center justify-between gap-3 text-meta text-ink-muted">
+            <span className="truncate">{lastScoreImpact.label}</span>
+            <span className={`tabular flex-none font-semibold ${lastScoreImpact.delta > 0 ? "text-success" : lastScoreImpact.delta < 0 ? "text-danger" : "text-ink-faint"}`}>
+              {lastScoreImpact.delta > 0 ? "+" : ""}{lastScoreImpact.delta} pt{Math.abs(lastScoreImpact.delta) > 1 ? "s" : ""}
+            </span>
+          </p>
+        ) : null}
+        <div className="flex items-center justify-between gap-3 border-t border-line pt-2.5">
           <p className="text-label font-semibold text-ink">Mise en page</p>
           <StatusPill tone={layout.tone} icon={workspace.layout.overflow ? "warning" : "article"}>
             {layout.label}
@@ -165,11 +193,16 @@ function ContentRecommendationRow({ recommendation, workspace, disabled, onApply
   const replacementAction = recommendation.action.type === "replace" ? recommendation.action : null;
   const replacement = replacementAction !== null;
   const removed = replacementAction ? workspace.profile_library.find((item) => item.id === replacementAction.remove_item_id)?.label : null;
+  // Les workspaces enregistrés avant l'ajout de cette mesure restent lisibles.
+  const scoreDelta = recommendation.score_delta ?? 0;
   return (
     <li className="space-y-2.5 py-3 first:pt-2">
       <div className="flex items-start justify-between gap-2"><p className="min-w-0 text-label font-semibold text-ink">{recommendation.label}</p><span className="flex-none text-meta font-medium text-accent">{relevance}</span></div>
       {replacement && removed ? <p className="flex items-center gap-1.5 text-meta text-ink-muted"><span className="line-through">{removed}</span><Icon name="swap_horiz" size={14} /><span>{recommendation.label}</span></p> : null}
       <p className="text-meta leading-relaxed text-ink-muted">{recommendation.reason}</p>
+      <p className={`tabular text-meta font-semibold ${scoreDelta > 0 ? "text-success" : scoreDelta < 0 ? "text-danger" : "text-ink-faint"}`}>
+        {scoreDelta > 0 ? "+" : ""}{scoreDelta} pt{Math.abs(scoreDelta) > 1 ? "s" : ""} ATS
+      </p>
       <div className="flex gap-1.5"><Button size="dialog" variant="primary" disabled={disabled} onClick={() => onApply(recommendation.id)}>{replacement ? "Appliquer" : "Ajouter"}</Button><Button size="dialog" variant="ghost" disabled={disabled} onClick={() => onIgnore(recommendation.id)}>Ignorer</Button></div>
     </li>
   );
@@ -188,10 +221,16 @@ function ProfileLibrary({ items, disabled, onAdd }: { items: ResumeProfileItem[]
 }
 
 function ResumeProposalRow({ proposal, busy, onAccept, onReject, onUndo }: { proposal: ResumeProposal; busy: boolean; onAccept: (id: string) => void; onReject: (id: string) => void; onUndo: (id: string) => void }) {
+  const scoreDelta = proposal.gain;
   return (
     <li className="space-y-2.5 py-3">
       <div className="flex items-start justify-between gap-2"><p className="text-label font-semibold text-ink">{proposal.label}</p>{!proposal.applicable ? <StatusPill tone="neutral" icon="block">Non applicable</StatusPill> : proposal.status === "accepted" ? <StatusPill tone="success" icon="check">Appliquée</StatusPill> : proposal.status === "rejected" ? <StatusPill tone="neutral" icon="close">Ignorée</StatusPill> : null}</div>
       <p className="text-meta leading-relaxed text-ink-muted">{proposal.proposed_text}</p>
+      {proposal.applicable ? (
+        <p className={`tabular text-meta font-semibold ${scoreDelta > 0 ? "text-success" : scoreDelta < 0 ? "text-danger" : "text-ink-faint"}`}>
+          {scoreDelta > 0 ? "+" : ""}{scoreDelta} pt{Math.abs(scoreDelta) > 1 ? "s" : ""} ATS
+        </p>
+      ) : null}
       {proposal.status === "pending" && proposal.applicable ? <div className="flex gap-1.5"><Button size="dialog" variant="primary" disabled={busy} onClick={() => onAccept(proposal.id)}>Accepter</Button><Button size="dialog" variant="ghost" disabled={busy} onClick={() => onReject(proposal.id)}>Ignorer</Button></div> : proposal.status !== "pending" ? <Button size="dialog" variant="ghost" disabled={busy} onClick={() => onUndo(proposal.id)}>Annuler</Button> : null}
     </li>
   );

@@ -18,4 +18,7 @@ export type {
   MatchScore,
   AiExecution,
   SelectedResumeFile,
+  LanguageCorrectionField,
+  LanguageCorrectionRequest,
+  LanguageCorrectionResult,
 } from "@/shared/types/generated/ai";

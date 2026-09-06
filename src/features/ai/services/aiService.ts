@@ -1,6 +1,6 @@
 import { playCompletionSound } from "@/shared/lib/completion-sound";
 import { ipc } from "@/shared/services/ipc";
-import type { AiExecution, ImportedResumeAnalysis, ListingAnalysis, ResumeAnalysisRequest, ResumeGenerationRequest, ProfileImportRequest, CoverLetterRequest, ResumeGeneration, SelectedResumeFile } from "../model/types";
+import type { AiExecution, ImportedResumeAnalysis, LanguageCorrectionRequest, LanguageCorrectionResult, ListingAnalysis, ResumeAnalysisRequest, ResumeGenerationRequest, ProfileImportRequest, CoverLetterRequest, ResumeGeneration, SelectedResumeFile } from "../model/types";
 import type { ImportProfilePreview } from "@/shared/types/generated/profile";
 
 /**
@@ -27,6 +27,7 @@ export const aiService = {
   analyzeListing: (text: string) => announce(ipc<AiExecution<ListingAnalysis>>("ai_analyze_listing", { text })),
   generateResume: (request: ResumeGenerationRequest) => announce(ipc<AiExecution<ResumeGeneration>>("ai_generate_resume", { request }), request.generation_id),
   generateCoverLetter: (request: CoverLetterRequest) => announce(ipc<AiExecution<string>>("ai_generate_cover_letter", { request }), request.generation_id),
+  correctFrench: (request: LanguageCorrectionRequest) => announce(ipc<AiExecution<LanguageCorrectionResult>>("ai_correct_french", { request }), request.generation_id),
   selectResumeFile: () => ipc<SelectedResumeFile | null>("ai_select_resume_file"),
   analyzeResume: (request: ResumeAnalysisRequest) => announce(ipc<AiExecution<ImportedResumeAnalysis>>("ai_analyze_resume", { request }), request.generation_id),
   importProfile: (request: ProfileImportRequest) => announce(ipc<AiExecution<ImportProfilePreview> | null>("ai_import_profile", { request }), request.generation_id),

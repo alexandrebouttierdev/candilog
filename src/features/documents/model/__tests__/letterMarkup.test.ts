@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyLetterCorrection,
+  letterCorrectionFields,
   markupFromDom,
   parseLetter,
   toMarkup,
@@ -68,5 +70,16 @@ describe("balisage de lettre", () => {
 
     expect(markup).toBe("<p>5 &lt; 7</p>");
     expect(toPlainText(markup)).toBe("5 < 7");
+  });
+
+  it("réinjecte une correction sans perdre la mise en forme", () => {
+    const source = '<p align="center">Je suis <b>motivé</b></p>';
+    const fields = letterCorrectionFields(source);
+    expect(fields.map((field) => field.text)).toEqual(["Je suis ", "motivé"]);
+
+    expect(applyLetterCorrection(source, [
+      { id: "paragraph:0:run:0", text: "Je suis " },
+      { id: "paragraph:0:run:1", text: "motivée" },
+    ])).toBe('<p align="center">Je suis <b>motivée</b></p>');
   });
 });

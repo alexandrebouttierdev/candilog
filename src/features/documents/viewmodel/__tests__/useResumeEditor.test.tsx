@@ -8,6 +8,8 @@ import { documentsService } from "../../services/documentsService";
 import { profileService } from "@/features/profile/services/profileService";
 import type { ResumeProposal, ResumeWorkspace } from "@/shared/types/generated/documents";
 import { AppError } from "@/shared/types/app-error";
+import { aiService } from "@/features/ai/services/aiService";
+import { useAiOperationStore } from "@/features/ai/viewmodel/ai-operation-store";
 
 function wrapper({ children }: { children: ReactNode }) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
@@ -46,6 +48,7 @@ function textReplacementProposal(overrides: Partial<ResumeProposal> = {}): Resum
 
 beforeEach(() => {
   vi.restoreAllMocks();
+  useAiOperationStore.setState({ active: null });
 });
 
 afterEach(() => {
@@ -53,6 +56,45 @@ afterEach(() => {
 });
 
 describe("édition locale immédiate", () => {
+  it("corrige la prose à la demande puis programme le recalcul ATS", async () => {
+    vi.useFakeTimers();
+    const base = workspaceFixture();
+    base.document.profile = "Profil polyvalent et motive.";
+    const correct = vi.spyOn(aiService, "correctFrench").mockResolvedValue({
+      output: { fields: [{ id: "profile", text: "Profil polyvalent et motivé." }] },
+      elapsed_ms: 120,
+      tokens_used: 20,
+    });
+    const recalculate = vi.spyOn(documentsService, "recalculateResume").mockImplementation((workspace) => Promise.resolve(workspace));
+    const { result } = renderHook(() => useResumeEditor(base), { wrapper });
+
+    await act(async () => { expect(await result.current.correctFrench()).toBe("corrected"); });
+    expect(correct.mock.calls[0]?.[0].fields.some((field) => field.id === "profile")).toBe(true);
+    expect(result.current.workspace.document.profile).toBe("Profil polyvalent et motivé.");
+
+    await act(async () => { await vi.advanceTimersByTimeAsync(300); });
+    expect(recalculate).toHaveBeenCalledOnce();
+  });
+
+  it("signale une relecture sans changement sans créer d'historique ni recalculer", async () => {
+    vi.useFakeTimers();
+    const base = workspaceFixture();
+    vi.spyOn(aiService, "correctFrench").mockResolvedValue({
+      output: { fields: [{ id: "profile", text: base.document.profile }] },
+      elapsed_ms: 80,
+      tokens_used: 10,
+    });
+    const recalculate = vi.spyOn(documentsService, "recalculateResume");
+    const { result } = renderHook(() => useResumeEditor(base), { wrapper });
+
+    await act(async () => { expect(await result.current.correctFrench()).toBe("unchanged"); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(300); });
+
+    expect(result.current.workspace).toBe(base);
+    expect(result.current.canUndo).toBe(false);
+    expect(recalculate).not.toHaveBeenCalled();
+  });
+
   it("modifie le document localement sans attendre l'IPC", () => {
     const recalculate = vi.spyOn(documentsService, "recalculateResume");
     const { result } = renderHook(() => useResumeEditor(workspaceFixture()), { wrapper });

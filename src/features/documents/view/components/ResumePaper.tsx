@@ -530,11 +530,13 @@ function SkillsSection({
         <h2 className={LABEL}>Compétences</h2>
       </div>
       <div className="flex flex-col gap-[calc(5px*var(--resume-sp))]">
-        {groupesNonVides.map(({ group, groupIndex }) => (
-          <div key={group.id} className="grid grid-cols-[27%_1fr] items-baseline gap-[14px]">
-            <h3 className="m-0 text-[calc(11px*var(--resume-fs))] font-semibold tracking-[-0.004em] text-[var(--resume-ink)]">
+        {groupesNonVides.map(({ group, groupIndex }) => {
+          const genericName = group.name.trim().localeCompare("Compétences", "fr", { sensitivity: "base" }) === 0;
+          return (
+          <div key={group.id} className={genericName ? "block" : "grid grid-cols-[27%_1fr] items-baseline gap-[14px]"}>
+            {genericName ? null : <h3 className="m-0 text-[calc(11px*var(--resume-fs))] font-semibold tracking-[-0.004em] text-[var(--resume-ink)]">
               {group.name}
-            </h3>
+            </h3>}
             <ul className="m-0 flex list-none flex-wrap gap-x-[5px] gap-y-[calc(3.5px*var(--resume-sp))] p-0">
               {group.items.map((item, itemIndex) => (
                 <li
@@ -553,7 +555,8 @@ function SkillsSection({
               ))}
             </ul>
           </div>
-        ))}
+          );
+        })}
       </div>
     </section>
   );

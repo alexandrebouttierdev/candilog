@@ -205,6 +205,9 @@ pub struct ResumeContentRecommendation {
     pub reason: String,
     pub relevance: ContentRelevance,
     pub action: ResumeContentRecommendationAction,
+    // Écart du score ATS déterministe si cette action est appliquée au document courant.
+    #[serde(default)]
+    pub score_delta: i16,
     pub layout_after: ResumeLayoutMeasurement,
 }
 

@@ -96,6 +96,67 @@ fn beaucoup_de_candidates_sont_priorisees_et_bornees_a_quatre() {
 }
 
 #[test]
+fn impact_ats_d_une_recommandation_est_simule_sur_le_document_courant() {
+    let mut profile = profile();
+    profile.skills = vec![Skill {
+        name: "Active Directory".into(),
+    }];
+    let mut generation = generation();
+    generation.job_offer.skills = vec!["Active Directory".into()];
+    generation.analysis.content_recommendations = vec![AtsContentRecommendation {
+        item_id: "skill-0".into(),
+        reason: "Compétence centrale de l'offre.".into(),
+        relevance: ContentRelevance::VeryRelevant,
+    }];
+
+    let workspace = prepare_workspace(&profile, generation, None).unwrap();
+
+    assert!(workspace.content_recommendations[0].score_delta > 0);
+    assert!(workspace.document.skill_groups.is_empty());
+}
+
+#[test]
+fn le_score_ats_prend_en_compte_un_projet_reellement_affiche() {
+    let mut source = profile();
+    source.skills.clear();
+    source.certifications.clear();
+    source.languages.clear();
+    let mut generation = generation();
+    generation.job_offer.skills.clear();
+    generation.job_offer.keywords = vec!["Candilog".into()];
+    generation.analysis.content_recommendations = vec![AtsContentRecommendation {
+        item_id: "project-0".into(),
+        reason: "Le projet correspond au produit recherché.".into(),
+        relevance: ContentRelevance::VeryRelevant,
+    }];
+
+    let mut workspace = prepare_workspace(&source, generation, None).unwrap();
+    let recommendation = workspace
+        .content_recommendations
+        .iter()
+        .find(|item| item.label == "Candilog")
+        .unwrap();
+    assert!(recommendation.score_delta > 0);
+
+    let project = workspace
+        .profile_library
+        .iter()
+        .find(|item| item.id == "project-0")
+        .unwrap()
+        .clone();
+    let score_before = workspace.score.total;
+    insert_profile_item(&mut workspace.document, &project);
+    let recalculated = recalculate(workspace, None).unwrap();
+
+    assert!(recalculated.score.total > score_before);
+    assert!(recalculated
+        .document
+        .projects
+        .iter()
+        .any(|item| item.name == "Candilog"));
+}
+
+#[test]
 fn une_decision_ignoree_ou_un_retrait_explicite_ne_revient_pas_au_recalcul() {
     let profile = profile_with_skill_count(3);
     let mut generation = generation();

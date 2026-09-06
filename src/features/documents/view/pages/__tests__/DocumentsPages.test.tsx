@@ -306,7 +306,7 @@ describe("retouche de la lettre sur la page", () => {
     await userEvent.type(screen.getByLabelText("Contexte ou offre"), "Une offre");
     await userEvent.click(screen.getByRole("button", { name: /Rédiger la lettre/ }));
     const corps = await screen.findByLabelText("Contenu de la lettre");
-    await waitFor(() => expect(corps).toHaveTextContent("Madame, Monsieur,"));
+    await waitFor(() => expect(corps).toHaveTextContent(contenu));
     return { corps, save };
   }
 
@@ -319,6 +319,19 @@ describe("retouche de la lettre sur la page", () => {
     await waitFor(() =>
       expect(save.mock.lastCall?.[0].content).toContain("Astek"),
     );
+  });
+
+  it("corrige l'orthographe à la demande en conservant la lettre éditable", async () => {
+    await lettreGeneree("Je suis motive.");
+    const correction = vi.spyOn(aiService, "correctFrench").mockResolvedValue(aiExecution({
+      fields: [{ id: "paragraph:0:run:0", text: "Je suis motivé." }],
+    }));
+
+    await userEvent.click(screen.getByRole("button", { name: "Corriger l’orthographe" }));
+
+    await waitFor(() => expect(correction).toHaveBeenCalledOnce());
+    expect(await screen.findByLabelText("Contenu de la lettre")).toHaveTextContent("Je suis motivé.");
+    expect(useUiStore.getState().toasts.map((toast) => toast.title)).toContain("Orthographe corrigée");
   });
 
   it("porte l'alignement demandé jusqu'au contenu enregistré", async () => {
@@ -457,6 +470,8 @@ describe("bibliothèque CV workspace", () => {
 
     render(<ResumeLibraryPage />, { wrapper });
     expect(await screen.findByText("Profil visible en bibliothèque.")).toBeInTheDocument();
+    expect(screen.getByText("Aperçu")).toBeInTheDocument();
+    expect(screen.queryByText("Aperçu — CV Workspace")).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: /Modifier/ }));
     expect(navigateMock).toHaveBeenCalledWith("/documents/generate-resume", {
@@ -546,6 +561,8 @@ describe("décisions ATS et confirmation profil dans le générateur de CV", () 
     await userEvent.click(screen.getByRole("button", { name: /Générer le CV ciblé/ }));
 
     expect(await screen.findByText("Docker")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "CV ciblé" })).toBeInTheDocument();
+    expect(screen.queryByText("Analysez une offre, générez un CV ciblé, exportez en PDF")).not.toBeInTheDocument();
     expect(screen.getByText(/absentes de votre profil/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Accepter Docker" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Ajouter au profil" })).not.toBeInTheDocument();

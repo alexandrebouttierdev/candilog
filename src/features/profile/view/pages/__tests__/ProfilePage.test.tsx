@@ -92,6 +92,8 @@ describe("écran Profil — photo", () => {
 
     const apercu = await screen.findByRole("img", { name: "Photo de profil" });
     expect(apercu).toHaveAttribute("src", PHOTO);
+    expect(apercu.className).toContain("rounded-field");
+    expect(apercu.className).not.toContain("rounded-full");
 
     await userEvent.click(screen.getByRole("button", { name: "Remplacer la photo" }));
 
@@ -122,17 +124,12 @@ describe("écran Profil — photo", () => {
 });
 
 describe("écran Profil — import de CV", () => {
-  it("propose l'import dans le bandeau, après la progression du profil", async () => {
+  it("présente l'import comme action principale et ouvre la revue", async () => {
     render(<ProfilePage />, { wrapper });
 
-    const onglets = await screen.findByRole("tablist", { name: "Sections du profil" });
-    const progression = screen.getByRole("progressbar", { name: "Profil complété" });
-    const bouton = screen.getByRole("button", { name: "Analyser un CV" });
-
-    // Le bloc suit la barre de progression et précède les onglets : il est donc en bout de
-    // bandeau, et non plus en bas de la colonne de droite.
-    expect(progression.compareDocumentPosition(bouton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(bouton.compareDocumentPosition(onglets) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    await screen.findByRole("tablist", { name: "Sections du profil" });
+    const bouton = screen.getByRole("button", { name: "Importer mon profil" });
+    expect(bouton.className).toContain("bg-accent");
 
     await userEvent.click(bouton);
 

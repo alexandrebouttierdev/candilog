@@ -276,6 +276,31 @@ pub struct CoverLetterRequest {
     pub instruction: Option<String>,
 }
 
+/// Champ textuel isolé pour une relecture linguistique. L'identifiant est opaque pour le
+/// fournisseur et permet au client de remettre le texte corrigé exactement à sa place.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "ai.ts")]
+pub struct LanguageCorrectionField {
+    pub id: String,
+    pub text: String,
+}
+
+#[derive(Debug, Clone, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "ai.ts")]
+pub struct LanguageCorrectionRequest {
+    pub generation_id: String,
+    pub fields: Vec<LanguageCorrectionField>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "ai.ts")]
+pub struct LanguageCorrectionResult {
+    pub fields: Vec<LanguageCorrectionField>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "ai.ts")]

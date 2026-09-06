@@ -10,6 +10,7 @@ import type {
   ResumeSkillGroup,
   ResumeWorkspace,
 } from "@/shared/types/generated/documents";
+import type { LanguageCorrectionField } from "@/shared/types/generated/ai";
 
 /** Jumeau frontend de `RESUME_WORKSPACE_VERSION` (Rust) : seule cette version est éditable ici. */
 export const RESUME_WORKSPACE_VERSION = 1;
@@ -85,13 +86,82 @@ export function normalizeResumeWorkspace(value: unknown): ResumeWorkspace | null
       page_count: 1,
       overflow: false,
     },
-    content_recommendations: candidate.content_recommendations ?? [],
+    content_recommendations: (candidate.content_recommendations ?? []).map((recommendation) => ({
+      ...recommendation,
+      score_delta: recommendation.score_delta ?? 0,
+    })),
     recommendation_error: candidate.recommendation_error ?? null,
   };
 }
 
 export function isResumeWorkspace(value: unknown): value is ResumeWorkspace {
   return normalizeResumeWorkspace(value) !== null;
+}
+
+/** Champs de prose relisibles sans confier la structure ni les coordonnées du CV au modèle. */
+export function resumeCorrectionFields(document: ResumeDocument): LanguageCorrectionField[] {
+  const fields: LanguageCorrectionField[] = [];
+  const add = (id: string, text: string | null | undefined) => {
+    if (text?.trim()) fields.push({ id, text });
+  };
+  add("profile", document.profile);
+  add("identity:title", document.identity.title);
+  add("identity:headline", document.identity.headline);
+  document.experiences.forEach((experience, index) => {
+    add(`experience:${index}:title`, experience.title);
+    experience.bullets.forEach((bullet, item) => add(`experience:${index}:bullet:${item}`, bullet));
+  });
+  document.projects.forEach((project, index) => {
+    add(`project:${index}:name`, project.name);
+    project.bullets.forEach((bullet, item) => add(`project:${index}:bullet:${item}`, bullet));
+  });
+  document.education.forEach((education, index) => add(`education:${index}:description`, education.description));
+  return fields;
+}
+
+/** Réinjecte uniquement les identifiants fermés produits par `resumeCorrectionFields`. */
+export function applyResumeCorrection(
+  workspace: ResumeWorkspace,
+  fields: LanguageCorrectionField[],
+): ResumeWorkspace {
+  const corrected = new Map(fields.map((field) => [field.id, field.text]));
+  let changed = false;
+  const value = (id: string, fallback: string) => {
+    const next = corrected.get(id) ?? fallback;
+    if (next !== fallback) changed = true;
+    return next;
+  };
+  const next: ResumeWorkspace = {
+    ...workspace,
+    document: {
+      ...workspace.document,
+      profile: value("profile", workspace.document.profile),
+      identity: {
+        ...workspace.document.identity,
+        title: value("identity:title", workspace.document.identity.title),
+        headline: workspace.document.identity.headline === null
+          ? null
+          : value("identity:headline", workspace.document.identity.headline),
+      },
+      experiences: workspace.document.experiences.map((experience, index) => ({
+        ...experience,
+        title: value(`experience:${index}:title`, experience.title),
+        bullets: experience.bullets.map((bullet, item) => value(`experience:${index}:bullet:${item}`, bullet)),
+      })),
+      projects: workspace.document.projects.map((project, index) => ({
+        ...project,
+        name: value(`project:${index}:name`, project.name),
+        bullets: project.bullets.map((bullet, item) => value(`project:${index}:bullet:${item}`, bullet)),
+      })),
+      education: workspace.document.education.map((education, index) => ({
+        ...education,
+        description: education.description === null
+          ? null
+          : value(`education:${index}:description`, education.description),
+      })),
+    },
+  };
+  return changed ? next : workspace;
 }
 
 function searchKey(value: string): string {

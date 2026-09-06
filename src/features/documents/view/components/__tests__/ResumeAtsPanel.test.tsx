@@ -23,6 +23,7 @@ function assistantWorkspace(): ResumeWorkspace {
         reason: "Directement demandé dans l’offre.",
         relevance: "very_relevant",
         action: { type: "add", item_id: "skill-docker" },
+        score_delta: 6,
         layout_after: base.layout,
       },
     ],
@@ -45,6 +46,32 @@ function renderPanel(workspace: ResumeWorkspace, overrides: Partial<ComponentPro
 }
 
 describe("ResumeAtsPanel", () => {
+  it("affiche le score global, son évolution et l'impact calculé d'une recommandation", () => {
+    const workspace = assistantWorkspace();
+    workspace.score.total = 71;
+    workspace.initial_score = 65;
+    renderPanel(workspace);
+    expect(screen.getByText("71")).toBeInTheDocument();
+    expect(screen.getByText("+6 pts depuis la génération")).toBeInTheDocument();
+    expect(screen.getByText("+6 pts ATS")).toBeInTheDocument();
+  });
+
+  it("affiche le gain calculé d'une reformulation applicable", () => {
+    const workspace = assistantWorkspace();
+    workspace.proposals = [{
+      id: "proposal-profile",
+      kind: "text_replacement",
+      label: "Clarifier le profil",
+      original_text: "Profil polyvalent.",
+      proposed_text: "Profil polyvalent et autonome.",
+      gain: 4,
+      status: "pending",
+      applicable: true,
+      target: { type: "profile" },
+    }];
+    renderPanel(workspace);
+    expect(screen.getByText("+4 pts ATS")).toBeInTheDocument();
+  });
   it("sépare la recommandation, la bibliothèque et une compétence absente du profil", () => {
     renderPanel(assistantWorkspace());
     expect(screen.getByRole("heading", { name: "Recommandé pour cette offre" })).toBeInTheDocument();

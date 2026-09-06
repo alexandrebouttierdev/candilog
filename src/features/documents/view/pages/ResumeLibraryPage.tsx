@@ -157,15 +157,13 @@ export function ResumeLibraryPage() {
             <Pager page={page} page_size={PAGE_SIZE} total={list.data?.total ?? 0} label="versions" dense onPageChange={setPage} />
           </div>
           <div className="flex min-w-0 flex-1 flex-col bg-page">
-            <div className="flex flex-none items-center justify-between gap-3 border-b border-line bg-surface px-[22px] py-3">
+            <div className="flex flex-none items-center justify-between gap-3 border-b border-line bg-surface px-4 py-3">
               <div className="flex min-w-0 items-center gap-[9px]">
                 <Icon name="visibility" size={17} className="text-ink-faint" />
-                <p className="truncate text-body font-mid">
-                  {version ? `Aperçu · ${version.name}` : "Aperçu"}
-                </p>
+                <p className="truncate text-body font-mid">Aperçu</p>
               </div>
               {version ? (
-                <div className="flex items-center gap-1.5">
+                <div className="flex flex-none items-center gap-1.5">
                   {workspace ? (
                     <>
                       <PreviewAction
@@ -180,6 +178,8 @@ export function ResumeLibraryPage() {
                       </PreviewAction>
                       <PreviewAction
                         icon="content_copy"
+                        label="Dupliquer"
+                        compact
                         disabled={dupliquer.isPending}
                         onClick={() => dupliquer.mutate()}
                       >
@@ -187,9 +187,11 @@ export function ResumeLibraryPage() {
                       </PreviewAction>
                       <PreviewAction
                         icon="download"
+                        label="Exporter PDF"
+                        compact
                         onClick={() => void exportPdf(workspace.document, notify)}
                       >
-                        Exporter PDF
+                        PDF
                       </PreviewAction>
                     </>
                   ) : null}
@@ -207,6 +209,8 @@ export function ResumeLibraryPage() {
                       </PreviewAction>
                       <PreviewAction
                         icon="content_copy"
+                        label="Dupliquer"
+                        compact
                         disabled={dupliquer.isPending}
                         onClick={() => dupliquer.mutate()}
                       >
@@ -214,13 +218,15 @@ export function ResumeLibraryPage() {
                       </PreviewAction>
                       <PreviewAction
                         icon="download"
+                        label="Exporter PDF"
+                        compact
                         onClick={() => void exporterHistorique()}
                       >
-                        Exporter PDF
+                        PDF
                       </PreviewAction>
                     </>
                   ) : null}
-                  <PreviewAction tone="danger" icon="delete" onClick={() => setDeleteId(version.id)}>
+                  <PreviewAction tone="danger" icon="delete" label="Supprimer" compact onClick={() => setDeleteId(version.id)}>
                     Supprimer
                   </PreviewAction>
                 </div>

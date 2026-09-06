@@ -138,7 +138,7 @@ pub fn prepare_workspace(
     };
 
     validate_document(&document)?;
-    let score = score_resume_imported(&to_generated_resume(&document), &job_offer);
+    let score = score_resume_imported(&to_scored_resume(&document), &job_offer);
     let layout = measure(&document, photo.clone())?;
     let mut workspace = ResumeWorkspace {
         schema_version: RESUME_WORKSPACE_VERSION,
@@ -303,6 +303,10 @@ fn build_content_recommendations(
         if layout_after.overflow {
             continue;
         }
+        let mut score_document = workspace.document.clone();
+        insert_profile_item(&mut score_document, item);
+        let score_after =
+            score_resume_imported(&to_scored_resume(&score_document), &workspace.job_offer).total;
         recommendations.push(ResumeContentRecommendation {
             id: format!("content-add-{}", item.id),
             label: item.label.clone(),
@@ -311,6 +315,7 @@ fn build_content_recommendations(
             action: ResumeContentRecommendationAction::Add {
                 item_id: item.id.clone(),
             },
+            score_delta: i16::from(score_after) - i16::from(workspace.score.total),
             layout_after,
         });
         planned_document = simulated;
@@ -385,6 +390,9 @@ fn build_replacement_recommendations(
                 add_item_id: add_item.id.clone(),
                 remove_item_id: remove_item.id.clone(),
             },
+            score_delta: i16::from(
+                score_resume_imported(&to_scored_resume(&simulated), &workspace.job_offer).total,
+            ) - i16::from(workspace.score.total),
             layout_after,
         }]);
     }
@@ -661,6 +669,45 @@ pub fn to_generated_resume(document: &ResumeDocument) -> GeneratedResume {
     }
 }
 
+/// Vue textuelle réservée au score ATS : elle reprend tout le contenu réellement rendu.
+///
+/// Les projets, certifications et langues contribuent aux mots-clés sans être promus dans
+/// `skills` : leur présence améliore donc la couverture ATS, mais ne prétend jamais que le
+/// candidat possède une compétence qui n'est pas explicitement listée comme telle.
+fn to_scored_resume(document: &ResumeDocument) -> GeneratedResume {
+    let mut resume = to_generated_resume(document);
+    let mut visible_text = vec![
+        document.profile.clone(),
+        document.identity.title.clone(),
+        document.identity.headline.clone().unwrap_or_default(),
+    ];
+    for experience in &document.experiences {
+        visible_text.push(experience.location.clone().unwrap_or_default());
+        visible_text.push(experience.period.clone());
+    }
+    for project in &document.projects {
+        visible_text.push(project.name.clone());
+        visible_text.push(project.meta.clone().unwrap_or_default());
+        visible_text.extend(project.bullets.iter().cloned());
+    }
+    for education in &document.education {
+        visible_text.push(education.location.clone().unwrap_or_default());
+        visible_text.push(education.period.clone());
+        visible_text.push(education.description.clone().unwrap_or_default());
+    }
+    for certification in &document.certifications {
+        visible_text.push(certification.name.clone());
+        visible_text.push(certification.issuer.clone().unwrap_or_default());
+        visible_text.push(certification.date.clone().unwrap_or_default());
+    }
+    for language in &document.languages {
+        visible_text.push(language.name.clone());
+        visible_text.push(language.level.clone());
+    }
+    resume.resume = visible_text.join(" ");
+    resume
+}
+
 /// Construit les propositions de reformulation dont la cible est identifiable.
 ///
 /// Les exigences absentes du profil restent visibles comme écarts, mais ne deviennent plus
@@ -690,10 +737,8 @@ pub fn recalculate(
     photo: Option<Vec<u8>>,
 ) -> AppResult<ResumeWorkspace> {
     validate_document(&workspace.document)?;
-    workspace.score = score_resume_imported(
-        &to_generated_resume(&workspace.document),
-        &workspace.job_offer,
-    );
+    workspace.score =
+        score_resume_imported(&to_scored_resume(&workspace.document), &workspace.job_offer);
     let previous = std::mem::take(&mut workspace.proposals);
     let mut proposals = build_proposals(&workspace);
     for proposal in &mut proposals {
@@ -837,7 +882,7 @@ fn is_applicable(document: &ResumeDocument, proposal: &ResumeProposal) -> bool {
 fn simulate_gain(workspace: &ResumeWorkspace, proposal: &ResumeProposal) -> i16 {
     let mut document = workspace.document.clone();
     apply_change(&mut document, proposal);
-    let after = score_resume_imported(&to_generated_resume(&document), &workspace.job_offer).total;
+    let after = score_resume_imported(&to_scored_resume(&document), &workspace.job_offer).total;
     i16::from(after) - i16::from(workspace.score.total)
 }
 

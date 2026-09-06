@@ -1,9 +1,9 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useLocation } from "react-router-dom";
-import { formatAiSummary } from "@/shared/lib/duration";
+import { formatElapsed, formatTokens } from "@/shared/lib/duration";
 import { useUiStore } from "@/shared/lib/ui-store";
 import type { ResumeWorkspace } from "@/shared/types/generated/documents";
-import { Button, EmptyState, ErrorBanner, FormField, PageHeader, TextInput } from "@/shared/ui";
+import { Button, EmptyState, ErrorBanner, FormField, IconButton, PageHeader, TextInput } from "@/shared/ui";
 import { useResumeEditor } from "../../viewmodel/useResumeEditor";
 import { useResumeGeneratorViewModel } from "../../viewmodel/useResumeGeneratorViewModel";
 import { A4Preview, AiProgress, DocumentPanel, OverflowStatus, UndoRedoControls } from "../components/DocumentUi";
@@ -62,7 +62,7 @@ export function ResumeGeneratorPage() {
         isSaving={vm.isSaving}
         briefPanel={vm.briefOpen ? briefPanel : null}
         onReopenBrief={vm.openBrief}
-        durationBadge={vm.operation === null && vm.metrics !== null ? <HeaderBadge icon="schedule">{formatAiSummary("Généré", vm.metrics.elapsed_ms, vm.metrics.tokens_used)}</HeaderBadge> : undefined}
+        durationBadge={vm.operation === null && vm.metrics !== null ? <GenerationMetrics elapsedMs={vm.metrics.elapsed_ms} tokens={vm.metrics.tokens_used} /> : undefined}
       />
     );
   }
@@ -71,9 +71,9 @@ export function ResumeGeneratorPage() {
     <Screen header={
       <PageHeader
         icon="auto_awesome"
-        title="Générer un CV"
-        subtitle="Analysez une offre, générez un CV ciblé, exportez en PDF"
-        badge={vm.operation === null && vm.metrics !== null ? <HeaderBadge icon="schedule">{formatAiSummary("Généré", vm.metrics.elapsed_ms, vm.metrics.tokens_used)}</HeaderBadge> : undefined}
+        title="Nouveau CV ciblé"
+        subtitle="À partir d’une offre"
+        badge={vm.operation === null && vm.metrics !== null ? <GenerationMetrics elapsedMs={vm.metrics.elapsed_ms} tokens={vm.metrics.tokens_used} /> : undefined}
       />
     }>
       <div className="grid min-h-[660px] gap-4 xl:grid-cols-[350px_minmax(460px,1fr)_320px]">
@@ -123,26 +123,40 @@ function ResumeEditorScreen({
   // La photo suit le profil courant, exactement comme à l'export PDF.
   const photo = useProfilePhoto().data ?? null;
   const [overflow, setOverflow] = useState(false);
+  const correctFrench = async () => {
+    const result = await editor.correctFrench();
+    notify(result === "failed" ? {
+      tone: "error",
+      title: "Correction impossible",
+      detail: "Vérifiez la configuration de votre fournisseur IA puis réessayez.",
+    } : {
+      tone: "success",
+      title: result === "corrected" ? "Orthographe corrigée" : "Aucune correction nécessaire",
+      detail: result === "corrected"
+        ? "Le sens et les faits du CV ont été conservés."
+        : "Le contenu actuel a été relu sans modification.",
+    });
+  };
 
   return (
     <Screen header={
       <PageHeader
         icon="auto_awesome"
-        title="Générer un CV"
-        subtitle="Analysez une offre, générez un CV ciblé, exportez en PDF"
-        badge={<>{durationBadge}<OverflowStatus overflow={overflow} /></>}
+        title="CV ciblé"
+        subtitle={initial.job_offer.title || "Édition du document"}
+        badge={durationBadge || overflow ? <>{durationBadge}{overflow ? <OverflowStatus overflow /> : null}</> : undefined}
         secondary={
           <>
-            {briefPanel ? null : <Button icon="target" onClick={onReopenBrief}>Modifier l’offre</Button>}
+            {briefPanel ? null : <IconButton icon="target" label="Modifier l’offre" onClick={onReopenBrief} />}
             <UndoRedoControls canUndo={editor.canUndo} canRedo={editor.canRedo} onUndo={editor.undo} onRedo={editor.redo} />
-            <Button icon="save" disabled={!name.trim() || isSaving} onClick={() => void onSave(editor.workspace)}>Enregistrer</Button>
+            <Button icon="save" disabled={!name.trim() || isSaving || editor.isProofreading || editor.isRecalculating} onClick={() => void onSave(editor.workspace)}>Enregistrer</Button>
           </>
         }
         primary={
           <Button
             variant="primary"
             icon="download"
-            disabled={overflow}
+            disabled={overflow || editor.isProofreading || editor.isRecalculating}
             onClick={() => void exportPdf(editor.workspace.document, notify)}
           >
             Exporter le PDF
@@ -152,11 +166,25 @@ function ResumeEditorScreen({
     } padded={false}>
       <div className={`grid min-h-0 flex-1 gap-4 overflow-hidden p-5 min-[1200px]:p-6 ${briefPanel ? "xl:grid-cols-[350px_minmax(460px,1fr)_320px]" : "xl:grid-cols-[minmax(460px,1fr)_320px]"}`}>
         {briefPanel}
-        <DocumentPanel title="Aperçu HTML · A4" icon="article" className="flex min-h-0 flex-col">
+        <DocumentPanel
+          title="Aperçu A4"
+          icon="article"
+          action={
+            <Button
+              size="dialog"
+              icon="edit_note"
+              disabled={editor.isProofreading || editor.isRecalculating}
+              onClick={() => void correctFrench()}
+            >
+              {editor.isProofreading ? "Correction…" : "Corriger l’orthographe"}
+            </Button>
+          }
+          className="flex min-h-0 flex-col"
+        >
           <div className="flex min-h-0 flex-1 flex-col items-center gap-3 overflow-auto bg-page p-[26px]">
             <ResumePaper
               workspace={editor.workspace}
-              editable
+              editable={!editor.isProofreading}
               onChange={editor.updateField}
               onRemoveSkill={editor.removeSkill}
               onRemoveSection={editor.removeSection}
@@ -168,13 +196,14 @@ function ResumeEditorScreen({
         <DocumentPanel title="Aide au contenu" icon="tips_and_updates" className="flex min-h-0 flex-col overflow-y-auto">
           <ResumeAtsPanel
             workspace={editor.workspace}
-            busy={editor.isRecalculating}
+            busy={editor.isRecalculating || editor.isProofreading}
             onAddProfileItem={editor.addProfileItem}
             onApplyRecommendation={editor.applyContentRecommendation}
             onIgnoreRecommendation={editor.ignoreContentRecommendation}
             onAccept={(id) => void editor.applyProposal(id)}
             onReject={(id) => void editor.rejectProposal(id)}
             onUndo={(id) => void editor.undoProposal(id)}
+            lastScoreImpact={editor.lastScoreImpact}
           />
           <div className="px-4 pb-4">
             <FormField label="Nom de la version" required>
@@ -190,5 +219,13 @@ function ResumeEditorScreen({
         onAddToProfile={editor.addPendingSkillToProfile}
       />
     </Screen>
+  );
+}
+
+function GenerationMetrics({ elapsedMs, tokens }: { elapsedMs: number; tokens: number | null }) {
+  return (
+    <HeaderBadge icon="schedule">
+      {formatElapsed(elapsedMs)} · {tokens === null ? "tokens non communiqués" : `${formatTokens(tokens)} tokens`}
+    </HeaderBadge>
   );
 }

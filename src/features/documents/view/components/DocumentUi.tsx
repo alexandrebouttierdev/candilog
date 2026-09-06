@@ -204,20 +204,27 @@ export function PreviewAction({
   onClick,
   disabled,
   tone,
+  label,
+  compact = false,
 }: {
   icon: IconName;
   children: ReactNode;
   onClick: () => void;
   disabled?: boolean;
   tone?: "danger";
+  label?: string;
+  compact?: boolean;
 }) {
   return (
     <button
       type="button"
+      aria-label={label}
+      title={label}
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "inline-flex h-[29px] items-center gap-1.5 rounded-control border px-[11px]",
+        "inline-flex h-[29px] flex-none items-center gap-1.5 whitespace-nowrap rounded-control border",
+        compact ? "w-[29px] justify-center px-0" : "px-[11px]",
         "text-note font-medium transition-colors duration-150",
         "disabled:pointer-events-none disabled:text-ink-faint",
         tone === "danger"
@@ -226,7 +233,7 @@ export function PreviewAction({
       )}
     >
       <Icon name={icon} size={15} />
-      {children}
+      <span className={compact ? "sr-only" : undefined}>{children}</span>
     </button>
   );
 }

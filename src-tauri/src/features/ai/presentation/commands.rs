@@ -4,9 +4,9 @@ use crate::app::state::AppState;
 use crate::core::errors::{AppError, AppResult};
 use crate::core::files::select_source;
 use crate::features::ai::domain::{
-    AiExecution, AiProgress, CoverLetterRequest, ImportedResumeAnalysis, ListingAnalysis,
-    ProfileImportProgress, ProfileImportRequest, ResumeAnalysisRequest, ResumeGeneration,
-    ResumeGenerationRequest, SelectedResumeFile,
+    AiExecution, AiProgress, CoverLetterRequest, ImportedResumeAnalysis, LanguageCorrectionRequest,
+    LanguageCorrectionResult, ListingAnalysis, ProfileImportProgress, ProfileImportRequest,
+    ResumeAnalysisRequest, ResumeGeneration, ResumeGenerationRequest, SelectedResumeFile,
 };
 use crate::features::profile::domain::ImportProfilePreview;
 use tauri::{AppHandle, Emitter, State};
@@ -51,6 +51,15 @@ pub async fn ai_generate_cover_letter(
     request: CoverLetterRequest,
 ) -> AppResult<AiExecution<String>> {
     state.ai.generate_cover_letter(request, notifier(app)).await
+}
+
+#[tauri::command(rename_all = "snake_case")]
+pub async fn ai_correct_french(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    request: LanguageCorrectionRequest,
+) -> AppResult<AiExecution<LanguageCorrectionResult>> {
+    state.ai.correct_french(request, notifier(app)).await
 }
 
 #[tauri::command(rename_all = "snake_case")]

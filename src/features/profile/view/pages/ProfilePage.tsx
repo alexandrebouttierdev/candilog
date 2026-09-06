@@ -10,7 +10,6 @@ import {
   ConfirmDialog,
   EmptyState,
   ErrorBanner,
-  Icon,
   PageHeader,
 } from "@/shared/ui";
 import { useProfilePhoto, useProfileViewModel } from "../../viewmodel/useProfileViewModel";
@@ -48,13 +47,14 @@ export function ProfilePage() {
         title="Profil professionnel"
         subtitle="Source de vérité de vos documents"
         secondary={
-          <Button variant="secondary" icon="description" onClick={() => void navigate("/documents/cv")}>
-            Mes CV
-          </Button>
+          <>
+            <Button variant="secondary" icon="description" onClick={() => void navigate("/documents/cv")}>Mes CV</Button>
+            <Button variant="secondary" icon="edit" disabled={!vm.data} onClick={() => setSection("identity")}>Modifier le profil</Button>
+          </>
         }
         primary={
-          <Button variant="primary" icon="edit" disabled={!vm.data} onClick={() => setSection("identity")}>
-            Modifier le profil
+          <Button variant="primary" icon="upload_file" disabled={!vm.data} onClick={() => setImportOpen(true)}>
+            Importer mon profil
           </Button>
         }
       />
@@ -84,7 +84,6 @@ export function ProfilePage() {
                     }
                   />
                 </ProfileIdentity>
-                <ImportCta onOpen={() => setImportOpen(true)} />
               </div>
               <ProfileTabs
                 active={tab}
@@ -244,30 +243,6 @@ function EducationList({ profile, onEdit }: { profile: Profile; onEdit: () => vo
 function SimpleList({ items, empty, action, onEdit }: { items: { title: string; meta: string | null; body: string | null }[]; empty: string; action: string; onEdit: () => void }) {
   if (items.length === 0) return <Vide icon="add_notes" title={empty} description="Cette section est facultative, mais peut renforcer votre profil." action={action} onEdit={onEdit} />;
   return <ul className="divide-y divide-line">{items.map((item, index) => <li key={`${item.title}-${index}`} className="px-4 py-3"><div className="flex items-baseline justify-between gap-3"><p className="font-medium text-ink">{item.title}</p>{item.meta ? <span className="text-meta text-ink-faint">{item.meta}</span> : null}</div>{item.body ? <p className="mt-1 text-body text-ink-muted">{item.body}</p> : null}</li>)}</ul>;
-}
-
-/**
- * Appel à l'import de CV, en bout de bandeau.
- *
- * Il fait face à l'identité et à sa progression, qui répondent ensemble à « comment compléter
- * ce profil » ; la carte reléguée en bas de la colonne de droite ne se voyait pas.
- */
-function ImportCta({ onOpen }: { onOpen: () => void }) {
-  return (
-    <div className="min-w-[230px] max-w-[320px] flex-[1_1_240px] rounded-card border border-accent-border bg-accent-tint px-3.5 py-3">
-      <div className="mb-1.5 flex items-center gap-2">
-        <Icon name="auto_awesome" size={16} className="flex-none text-accent" />
-        <span className="text-label font-semibold text-accent">Importer depuis un CV</span>
-      </div>
-      <p className="mb-2.5 text-meta leading-[1.55] text-ink-muted">
-        L'IA extrait vos expériences, compétences et formations depuis un PDF. Vous validez
-        chaque champ avant enregistrement.
-      </p>
-      <Button variant="primary" icon="upload_file" className="w-full" onClick={onOpen}>
-        Analyser un CV
-      </Button>
-    </div>
-  );
 }
 
 function Vide({ icon, title, description, action, onEdit }: { icon: IconName; title: string; description: string; action: string; onEdit: () => void }) {

@@ -1261,23 +1261,30 @@ impl Plan<'_> {
             if index > 0 {
                 self.avance(pt(5.0));
             }
+            let generic_name = group.name.trim().eq_ignore_ascii_case("Compétences");
             let mut group_w = 0.0;
-            self.avec_tracking(TRACKING_GROUPE, |plan| {
-                plan.text(
-                    CONTENT_X,
-                    plan.y + ASCENT * plan.font_size(pt(11.0)),
-                    FontFace::Sans(SansWeight::SemiBold),
-                    pt(11.0),
-                    rgb(GROUP_TITLE.0, GROUP_TITLE.1, GROUP_TITLE.2),
-                    &group.name,
-                );
-                group_w = plan.largeur_text(
-                    FontFace::Sans(SansWeight::SemiBold),
-                    plan.font_size(pt(11.0)),
-                    &group.name,
-                );
-            });
-            let chips_x = CONTENT_X + group_w + pt(14.0);
+            if !generic_name {
+                self.avec_tracking(TRACKING_GROUPE, |plan| {
+                    plan.text(
+                        CONTENT_X,
+                        plan.y + ASCENT * plan.font_size(pt(11.0)),
+                        FontFace::Sans(SansWeight::SemiBold),
+                        pt(11.0),
+                        rgb(GROUP_TITLE.0, GROUP_TITLE.1, GROUP_TITLE.2),
+                        &group.name,
+                    );
+                    group_w = plan.largeur_text(
+                        FontFace::Sans(SansWeight::SemiBold),
+                        plan.font_size(pt(11.0)),
+                        &group.name,
+                    );
+                });
+            }
+            let chips_x = if generic_name {
+                CONTENT_X
+            } else {
+                CONTENT_X + group_w + pt(14.0)
+            };
             // Une rangée avance de la hauteur réelle d'une pastille, plus l'écart vertical
             // du gabarit. L'avance était figée à `10.4 + 3.5` pt, sans rapport avec la
             // hauteur dessinée : dès que la densité aérait les pastilles, chaque rangée

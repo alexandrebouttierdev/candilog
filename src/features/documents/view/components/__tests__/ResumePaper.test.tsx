@@ -55,6 +55,12 @@ describe("ResumePaper", () => {
     expect(screen.getByText("Docker")).toBeInTheDocument();
   });
 
+  it("n'affiche qu'une fois le titre Compétences pour le groupe générique", () => {
+    render(<ResumePaper workspace={workspaceFixture()} editable={false} onChange={vi.fn()} />);
+    expect(screen.getAllByRole("heading", { name: "Compétences" })).toHaveLength(1);
+    expect(screen.queryByText("Compétences", { selector: "h3" })).not.toBeInTheDocument();
+  });
+
   it("cible la bonne puce d'expérience à l'édition", () => {
     const onChange = vi.fn();
     render(<ResumePaper workspace={workspaceFixture()} editable onChange={onChange} />);

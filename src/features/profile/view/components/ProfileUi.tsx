@@ -131,7 +131,7 @@ export function SectionCard({
 }
 
 /**
- * Identité du bandeau : pastille, nom, coordonnées, et ce que l'appelant glisse dessous.
+ * Identité du bandeau : photo carrée, nom, coordonnées, et complément de l'appelant.
  *
  * La photo se change là où elle s'affiche : deux commandes de 24 px sous la pastille, au
  * lieu d'une carte séparée en bas de la colonne de droite. La suppression n'apparaît que
@@ -168,17 +168,25 @@ export function ProfileIdentity({
   return (
     <div className="flex min-w-[260px] flex-1 items-start gap-4">
       <div className="flex flex-none flex-col items-center gap-1.5">
-        {photo ? (
-          <img
-            src={photo}
-            alt="Photo de profil"
-            className="size-16 rounded-full border border-line object-cover"
-          />
-        ) : (
-          <span className="flex size-16 items-center justify-center rounded-full bg-accent-tint text-lg font-strong text-accent">
-            {initials}
-          </span>
-        )}
+        <div className="relative">
+          {photo ? (
+            <>
+              <img
+                src={photo}
+                alt="Photo de profil"
+                className="size-16 rounded-field border border-line object-cover"
+              />
+              <span
+                aria-hidden="true"
+                className="absolute -top-2 right-1.5 h-5 w-2.5 rotate-12 rounded-pill border-[1.5px] border-control-strong bg-surface/80 shadow-e1 after:absolute after:inset-[2px] after:rounded-pill after:border after:border-control"
+              />
+            </>
+          ) : (
+            <span className="flex size-16 items-center justify-center rounded-field border border-accent-border bg-accent-tint text-lg font-strong text-accent">
+              {initials}
+            </span>
+          )}
+        </div>
         {/* Deux contrôles de 30 px : côte à côte, ils tiennent exactement la largeur de la
             pastille et gardent le gabarit standard du design system. */}
         <div className="flex gap-1">
@@ -257,12 +265,11 @@ export function ProfileSkeleton() {
     <div>
       <div className="border-b border-line bg-surface px-7 pt-[22px] pb-0">
         <div className="flex items-start gap-4">
-          <Skeleton className="size-16 rounded-full" />
+          <Skeleton className="size-16 rounded-field" />
           <div className="flex-1 space-y-2">
             <Skeleton className="h-5 w-52" />
             <Skeleton className="h-3 w-72" />
           </div>
-          <Skeleton className="h-16 w-56" />
         </div>
         <Skeleton className="mt-[18px] h-10 w-full" />
       </div>

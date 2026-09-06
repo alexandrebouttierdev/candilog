@@ -23,7 +23,7 @@ export type NewResume = { name: string, content: unknown, };
 
 export type ResumeCertificationBlock = { id: string, name: string, issuer: string | null, date: string | null, };
 
-export type ResumeContentRecommendation = { id: string, label: string, reason: string, relevance: ContentRelevance, action: ResumeContentRecommendationAction, layout_after: ResumeLayoutMeasurement, };
+export type ResumeContentRecommendation = { id: string, label: string, reason: string, relevance: ContentRelevance, action: ResumeContentRecommendationAction, score_delta: number, layout_after: ResumeLayoutMeasurement, };
 
 export type ResumeContentRecommendationAction = { "type": "add", item_id: string, } | { "type": "replace", add_item_id: string, remove_item_id: string, };
 

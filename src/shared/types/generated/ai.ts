@@ -44,6 +44,16 @@ export type GeneratedResume = { resume: string, experiences: Array<GeneratedExpe
 
 export type ImportedResumeAnalysis = { resume: GeneratedResume, job_offer: StructuredListing, score: MatchScore, analysis: AtsAnalysis, };
 
+/**
+ * Champ textuel isolé pour une relecture linguistique. L'identifiant est opaque pour le
+ * fournisseur et permet au client de remettre le texte corrigé exactement à sa place.
+ */
+export type LanguageCorrectionField = { id: string, text: string, };
+
+export type LanguageCorrectionRequest = { generation_id: string, fields: Array<LanguageCorrectionField>, };
+
+export type LanguageCorrectionResult = { fields: Array<LanguageCorrectionField>, };
+
 export type ListingAnalysis = { job_offer: StructuredListing, score: MatchScore, };
 
 export type MatchScore = { total: number, skills: number | null, experience: number | null, ats: number | null, present: Array<string>, missing: Array<string>, };

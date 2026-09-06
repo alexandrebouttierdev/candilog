@@ -20,6 +20,7 @@ const JOB_OFFER_SYSTEM: &str = r#"Extrais une offre d'emploi en JSON. Recopie un
 const RESUME_SYSTEM: &str = r#"Adapte le socle d'un CV à une offre en JSON. Reformule uniquement les faits du profil, sans ajouter compétence, entreprise, diplôme ou expérience. Conserve toutes les expériences et formations. Laisse toujours competences vide : les contenus optionnels seront choisis ensuite par l'utilisateur. Réponds avec {"resume":"","experiences":[{"intitule":"","entreprise":"","description":""}],"competences":[],"formations":[{"diplome":"","etablissement":""}]}. JSON uniquement."#;
 const ATS_SYSTEM: &str = r#"Compare le CV et l'offre fournis. Réponds en français, uniquement en JSON : {"recap":"","recommendations":[{"section":"profile","item_index":null,"original_text":"","proposed_text":""}],"content_recommendations":[{"item_id":"","reason":"","relevance":"very_relevant"}]}. "section" vaut "profile" ou "experience". Pour "experience", "item_index" est l'indice (à partir de 0) de l'expérience du CV concernée ; laisse "item_index" à null pour "profile". "original_text" doit reprendre exactement un texte présent dans le CV fourni, "proposed_text" est la reformulation proposée. Pour content_recommendations, sélectionne au maximum 8 identifiants du tableau contenu_profil, dans l'ordre de priorité. relevance vaut "very_relevant", "relevant" ou "secondary". Privilégie la cohérence et la valeur pour le recruteur, pas la répétition de mots-clés. Ne renvoie pas tout le catalogue. N'invente aucun fait ni identifiant absent du CV, de l'offre ou du catalogue."#;
 const COVER_LETTER_SYSTEM: &str = r#"Sélectionne les faits les plus pertinents pour une lettre de motivation. Réponds uniquement en JSON avec {"selected_fact_ids":[],"motivation_keywords":[]}. Utilise exclusivement des identifiants présents dans le catalogue. Les mots-clés doivent être recopiés exactement depuis le brief. N'écris aucune phrase de lettre et n'invente aucune information."#;
+const FRENCH_CORRECTION_SYSTEM: &str = r#"Tu es un correcteur professionnel de français. Corrige uniquement l'orthographe, la grammaire, les accords, la ponctuation, les coquilles et les formulations manifestement maladroites. Préserve strictement le sens, les faits, les noms propres, les chiffres, les dates, les coordonnées, les technologies et le niveau de précision. N'ajoute aucune information, ne supprime aucun fait et ne réécris pas un passage déjà correct. Chaque objet reçu contient un id opaque et un texte : renvoie exactement un objet par id, dans le même ordre, avec {"fields":[{"id":"","text":""}]}. Recopie le texte à l'identique si aucune correction n'est nécessaire. JSON uniquement."#;
 const PARSE_RESUME_SYSTEM: &str = r#"Structure le texte brut d'un CV sans traduire, reformuler ni inventer. Réponds uniquement en JSON : {"resume":"","experiences":[{"intitule":"","entreprise":"","description":""}],"competences":[],"formations":[{"diplome":"","etablissement":""}]}"#;
 const PROFILE_SYSTEM: &str = r#"Extrais le profil du CV sans inventer. Recopie les valeurs et utilise null ou [] si absentes. Dates au format AAAA-MM ou AAAA. Réponds uniquement en JSON camelCase avec exactement cette structure : {"identite":{"prenom":"","nom":"","email":"","telephone":null,"ville":null,"titre":null,"resume":null,"linkedin":null,"github":null,"siteWeb":null},"experiences":[{"intitule":"","entreprise":"","lieu":null,"start_date":"","end_date":null,"posteActuel":false,"description":null}],"competences":[{"nom":""}],"formations":[{"diplome":"","etablissement":"","lieu":null,"start_date":null,"end_date":null,"description":null}],"langues":[{"nom":"","niveau":""}],"projets":[{"nom":"","description":null,"url":null,"technologies":null}],"certifications":[{"nom":"","organisme":null,"date":null,"url":null}]}"#;
 
@@ -206,6 +207,25 @@ impl AiService {
         progres(
             notifier,
             &request.generation_id,
+            "Relecture du français",
+            None,
+            tokens,
+        );
+        let correction_request = resume_correction_request(&request.generation_id, &resume);
+        if !correction_request.fields.is_empty() {
+            let (correction, call_tokens) = cancel(
+                token,
+                correct_language_fields(provider.clone(), &correction_request),
+            )
+            .await?;
+            tokens = add_tokens(tokens, call_tokens);
+            apply_resume_correction(&mut resume, &correction);
+        }
+        // Le socle a déjà été recadré sur le profil avant la relecture. Le recadrer une
+        // seconde fois restaurerait les textes source et annulerait toutes les corrections.
+        progres(
+            notifier,
+            &request.generation_id,
             "Analyse ATS",
             None,
             tokens,
@@ -224,7 +244,11 @@ impl AiService {
         .to_string();
         let (mut analysis, call_tokens): (AtsAnalysis, Option<u32>) = cancel(
             token,
-            generate_json(provider, &bloc_donnees("analyse", &context_ats), ATS_SYSTEM),
+            generate_json(
+                provider.clone(),
+                &bloc_donnees("analyse", &context_ats),
+                ATS_SYSTEM,
+            ),
         )
         .await?;
         ground_content_recommendations(&content_catalog, &mut analysis);
@@ -293,16 +317,34 @@ impl AiService {
         })
         .to_string();
         progres(&notifier, &id, "Rédaction", None, None);
-        let (plan, tokens) = cancel(
+        let provider = self.provider().await?;
+        let (plan, mut tokens) = cancel(
             &token,
             generate_json::<CoverLetterPlan>(
-                self.provider().await?,
+                provider.clone(),
                 &bloc_donnees("brief", &context),
                 COVER_LETTER_SYSTEM,
             ),
         )
         .await?;
-        let cover_letter = render_grounded_letter(&catalog, &plan, &request)?;
+        let mut cover_letter = render_grounded_letter(&catalog, &plan, &request)?;
+        progres(&notifier, &id, "Relecture du français", None, tokens);
+        let correction_request = LanguageCorrectionRequest {
+            generation_id: id.clone(),
+            fields: vec![LanguageCorrectionField {
+                id: "letter:body".into(),
+                text: cover_letter.clone(),
+            }],
+        };
+        let (correction, call_tokens) = cancel(
+            &token,
+            correct_language_fields(provider, &correction_request),
+        )
+        .await?;
+        tokens = add_tokens(tokens, call_tokens);
+        if let Some(field) = correction.fields.first() {
+            cover_letter = field.text.clone();
+        }
         let fragments = decouper_fragments(&cover_letter);
         for chunk in &fragments {
             if token.is_cancelled() {
@@ -311,6 +353,31 @@ impl AiService {
             progres(&notifier, &id, "Rédaction", Some(chunk.clone()), tokens);
         }
         Ok(execution(started_at, cover_letter, tokens))
+    }
+
+    /// Relit les champs textuels du document courant sans modifier sa structure.
+    pub async fn correct_french(
+        &self,
+        request: LanguageCorrectionRequest,
+        notifier: impl Fn(AiProgress),
+    ) -> AppResult<AiExecution<LanguageCorrectionResult>> {
+        let started_at = std::time::Instant::now();
+        validate_language_correction_request(&request)?;
+        let id = request.generation_id.clone();
+        let token = self.start(&id);
+        let _guard = GenerationEnCours {
+            service: self,
+            id: id.clone(),
+            token: Arc::clone(&token),
+        };
+        progres(&notifier, &id, "Relecture du français", None, None);
+        let (output, tokens) = cancel(
+            &token,
+            correct_language_fields(self.provider().await?, &request),
+        )
+        .await?;
+        progres(&notifier, &id, "Correction terminée", None, tokens);
+        Ok(execution(started_at, output, tokens))
     }
 
     pub async fn analyze_resume_imported(
@@ -565,6 +632,181 @@ fn execution<T>(
         elapsed_ms: started_at.elapsed().as_millis().min(u128::from(u32::MAX)) as u32,
         tokens_used,
     }
+}
+
+fn resume_correction_request(
+    generation_id: &str,
+    resume: &GeneratedResume,
+) -> LanguageCorrectionRequest {
+    let mut fields = Vec::with_capacity(resume.experiences.len() + 1);
+    if !resume.resume.trim().is_empty() {
+        fields.push(LanguageCorrectionField {
+            id: "resume:profile".into(),
+            text: resume.resume.clone(),
+        });
+    }
+    fields.extend(
+        resume
+            .experiences
+            .iter()
+            .enumerate()
+            .filter(|(_, experience)| !experience.description.trim().is_empty())
+            .map(|(index, experience)| LanguageCorrectionField {
+                id: format!("resume:experience:{index}"),
+                text: experience.description.clone(),
+            }),
+    );
+    LanguageCorrectionRequest {
+        generation_id: generation_id.into(),
+        fields,
+    }
+}
+
+fn apply_resume_correction(resume: &mut GeneratedResume, correction: &LanguageCorrectionResult) {
+    for field in &correction.fields {
+        if field.id == "resume:profile" {
+            resume.resume.clone_from(&field.text);
+        } else if let Some(index) = field
+            .id
+            .strip_prefix("resume:experience:")
+            .and_then(|value| value.parse::<usize>().ok())
+        {
+            if let Some(experience) = resume.experiences.get_mut(index) {
+                experience.description.clone_from(&field.text);
+            }
+        }
+    }
+}
+
+async fn correct_language_fields(
+    provider: Arc<dyn LlmGenerator>,
+    request: &LanguageCorrectionRequest,
+) -> AppResult<(LanguageCorrectionResult, Option<u32>)> {
+    validate_language_correction_request(request)?;
+    let source = serde_json::to_string(&serde_json::json!({ "fields": request.fields }))
+        .map_err(|error| AppError::Serialization(error.to_string()))?;
+    let (candidate, tokens): (LanguageCorrectionResult, Option<u32>) = generate_json(
+        provider,
+        &bloc_donnees("document", &source),
+        FRENCH_CORRECTION_SYSTEM,
+    )
+    .await?;
+    Ok((ground_language_correction(request, candidate), tokens))
+}
+
+/// Réordonne la réponse sur la source et refuse localement toute correction suspecte.
+/// Les identifiants inventés ou dupliqués ne peuvent donc jamais atteindre le document.
+fn ground_language_correction(
+    request: &LanguageCorrectionRequest,
+    candidate: LanguageCorrectionResult,
+) -> LanguageCorrectionResult {
+    use std::collections::HashMap;
+
+    let mut by_id = HashMap::new();
+    for field in candidate.fields {
+        if by_id.contains_key(field.id.as_str()) {
+            continue;
+        }
+        by_id.insert(field.id.clone(), field.text);
+    }
+    LanguageCorrectionResult {
+        fields: request
+            .fields
+            .iter()
+            .map(|source| {
+                let corrected = by_id
+                    .get(source.id.as_str())
+                    .filter(|value| conservative_correction(&source.text, value))
+                    .cloned()
+                    .unwrap_or_else(|| source.text.clone());
+                LanguageCorrectionField {
+                    id: source.id.clone(),
+                    text: corrected,
+                }
+            })
+            .collect(),
+    }
+}
+
+fn conservative_correction(source: &str, corrected: &str) -> bool {
+    if corrected.trim().is_empty() {
+        return false;
+    }
+    let source_len = source.chars().count();
+    let corrected_len = corrected.chars().count();
+    if source_len >= 20
+        && (corrected_len.saturating_mul(10) < source_len.saturating_mul(6)
+            || corrected_len > source_len.saturating_mul(14) / 10)
+    {
+        return false;
+    }
+    let corrected_protected = protected_fragments(corrected);
+    protected_fragments(source)
+        .into_iter()
+        .all(|fragment| corrected_protected.contains(&fragment))
+        && trigram_similarity(source, corrected) >= 0.62
+}
+
+/// Une relecture légitime conserve l'essentiel des séquences de caractères. Cette mesure
+/// linéaire rejette une réécriture de longueur comparable qui garderait seulement les noms
+/// propres et les chiffres protégés, sans prétendre juger elle-même la qualité du français.
+fn trigram_similarity(source: &str, corrected: &str) -> f32 {
+    use std::collections::HashMap;
+
+    fn trigrams(value: &str) -> HashMap<[char; 3], usize> {
+        let normalized: Vec<_> = value
+            .to_lowercase()
+            .chars()
+            .filter(|character| character.is_alphanumeric() || character.is_whitespace())
+            .collect();
+        let mut counts = HashMap::new();
+        for window in normalized.windows(3) {
+            *counts.entry([window[0], window[1], window[2]]).or_insert(0) += 1;
+        }
+        counts
+    }
+
+    let source = trigrams(source);
+    let corrected = trigrams(corrected);
+    let source_count: usize = source.values().sum();
+    let corrected_count: usize = corrected.values().sum();
+    let denominator = source_count.max(corrected_count);
+    if denominator == 0 {
+        return 1.0;
+    }
+    let common: usize = source
+        .iter()
+        .map(|(trigram, count)| count.min(corrected.get(trigram).unwrap_or(&0)))
+        .sum();
+    common as f32 / denominator as f32
+}
+
+/// Chiffres, coordonnées et noms de technologies à casse distinctive sont des faits, pas de
+/// la prose. Une correction qui en perd ou en altère un est rejetée en bloc.
+fn protected_fragments(value: &str) -> std::collections::HashSet<String> {
+    value
+        .split_whitespace()
+        .map(|token| {
+            token.trim_matches(|character: char| {
+                matches!(
+                    character,
+                    '.' | ',' | ';' | ':' | '!' | '?' | '(' | ')' | '[' | ']' | '{' | '}'
+                )
+            })
+        })
+        .filter(|token| {
+            token.chars().any(|character| character.is_ascii_digit())
+                || token.contains('@')
+                || token.contains("://")
+                || token.chars().any(char::is_uppercase)
+                || (token.chars().count() > 1
+                    && token
+                        .chars()
+                        .filter(|character| character.is_alphabetic())
+                        .all(char::is_uppercase))
+        })
+        .map(str::to_owned)
+        .collect()
 }
 
 async fn generate_json<T: serde::de::DeserializeOwned + ValidateAiOutput>(
@@ -903,6 +1145,58 @@ mod tests {
             .unwrap();
 
         assert_eq!(tokens, None);
+    }
+
+    #[test]
+    fn la_relecture_ne_peut_ni_inventer_un_champ_ni_perdre_un_fait_protege() {
+        let request = LanguageCorrectionRequest {
+            generation_id: "proofread".into(),
+            fields: vec![
+                LanguageCorrectionField {
+                    id: "profile".into(),
+                    text: "J'ai administré Windows Server 2022.".into(),
+                },
+                LanguageCorrectionField {
+                    id: "bullet".into(),
+                    text: "Gestion des sauvegarde quotidiennes.".into(),
+                },
+                LanguageCorrectionField {
+                    id: "meaning".into(),
+                    text: "Je maîtrise la maintenance Linux au quotidien.".into(),
+                },
+            ],
+        };
+        let grounded = ground_language_correction(
+            &request,
+            LanguageCorrectionResult {
+                fields: vec![
+                    LanguageCorrectionField {
+                        id: "invented".into(),
+                        text: "Kubernetes".into(),
+                    },
+                    LanguageCorrectionField {
+                        id: "profile".into(),
+                        text: "J'ai administré Linux.".into(),
+                    },
+                    LanguageCorrectionField {
+                        id: "bullet".into(),
+                        text: "Gestion des sauvegardes quotidiennes.".into(),
+                    },
+                    LanguageCorrectionField {
+                        id: "meaning".into(),
+                        text: "Je refuse toute intervention sur Linux au quotidien.".into(),
+                    },
+                ],
+            },
+        );
+
+        assert_eq!(grounded.fields.len(), 3);
+        assert_eq!(grounded.fields[0].text, request.fields[0].text);
+        assert_eq!(
+            grounded.fields[1].text,
+            "Gestion des sauvegardes quotidiennes."
+        );
+        assert_eq!(grounded.fields[2].text, request.fields[2].text);
     }
 
     #[test]

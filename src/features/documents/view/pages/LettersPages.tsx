@@ -14,6 +14,7 @@ import { Button, ConfirmDialog, EmptyState, ErrorBanner, FormField, Icon, PageHe
 import { AiProgress, DocumentPanel, PreviewAction } from "../components/DocumentUi";
 import { LetterContent, LetterEditor } from "../components/LetterEditor";
 import { LetterPaper, type LetterPaperField } from "../components/LetterPaper";
+import { applyLetterCorrection, letterCorrectionFields } from "../../model/letterMarkup";
 import { PAGE_SIZE } from "@/shared/types/page";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { Champ, ChampOffre, COVER_LETTERS_KEY, HeaderBadge, Screen, coverLetterFromNavigation, date, detail, exportLetterPdf, labelTone, message } from "./documentPageSupport";
@@ -313,6 +314,40 @@ export function LetterWriterPage() {
       finish(id);
     }
   };
+  const correct = async () => {
+    const fields = letterCorrectionFields(output);
+    if (fields.length === 0) return;
+    let id: string;
+    try {
+      id = start("correction");
+    } catch (caught) {
+      setError(message(caught));
+      return;
+    }
+    setError(null);
+    timer.start();
+    try {
+      const execution = await aiService.correctFrench({ generation_id: id, fields });
+      if (!isCurrent(id)) return;
+      timer.stop();
+      const corrected = applyLetterCorrection(output, execution.output.fields);
+      setOutput(corrected);
+      notify({
+        tone: "success",
+        title: corrected === output ? "Aucune correction nécessaire" : "Orthographe corrigée",
+        detail: corrected === output
+          ? "Le contenu actuel a été relu sans modification."
+          : "La mise en forme, le sens et les faits de la lettre ont été conservés.",
+      });
+    } catch (caught) {
+      if (isCurrent(id) && !(caught instanceof AppError && caught.code === "CANCELLED")) {
+        setError(message(caught));
+        notify({ tone: "error", title: "Correction impossible", detail: message(caught) });
+      }
+    } finally {
+      finish(id);
+    }
+  };
   const letterExport = () => ({
     name: `Lettre — ${job_title || company || "Candidature"}`,
     company: company || null,
@@ -342,11 +377,14 @@ export function LetterWriterPage() {
         subtitle="Rédigez, itérez et enregistrez"
         secondary={output ? (
           <>
-            <Button icon="download" disabled={overflow} onClick={() => void exportLetterPdf(letterExport(), notify)}>Exporter le PDF</Button>
-            <Button icon="close" onClick={() => setAbandonOuvert(true)}>Annuler</Button>
+            <Button icon="edit_note" disabled={operation !== null} onClick={() => void correct()}>
+              {operation?.kind === "correction" ? "Correction…" : "Corriger l’orthographe"}
+            </Button>
+            <Button icon="download" disabled={overflow || operation !== null} onClick={() => void exportLetterPdf(letterExport(), notify)}>Exporter le PDF</Button>
+            <Button icon="close" disabled={operation !== null} onClick={() => setAbandonOuvert(true)}>Annuler</Button>
           </>
         ) : undefined}
-        primary={output ? <Button variant="primary" icon="save" disabled={save.isPending || overflow} onClick={() => save.mutate()}>Enregistrer</Button> : undefined}
+        primary={output ? <Button variant="primary" icon="save" disabled={save.isPending || overflow || operation !== null} onClick={() => save.mutate()}>Enregistrer</Button> : undefined}
       />
     }>
       <div className="grid min-h-0 flex-1 gap-4 overflow-hidden p-5 min-[1200px]:p-6 xl:grid-cols-[350px_minmax(480px,1fr)]">

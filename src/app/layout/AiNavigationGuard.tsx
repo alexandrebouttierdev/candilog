@@ -8,6 +8,7 @@ const DESCRIPTIONS: Record<AiOperationKind, string> = {
   analyse: "L’analyse en cours sera arrêtée avant de quitter cet écran.",
   generation: "La génération en cours sera arrêtée avant de quitter cet écran.",
   import: "L’import en cours sera arrêté avant de quitter cet écran.",
+  correction: "La correction en cours sera arrêtée avant de quitter cet écran.",
 };
 
 /** Bloque les changements d'écran tant qu'une opération IA doit être arrêtée. */
