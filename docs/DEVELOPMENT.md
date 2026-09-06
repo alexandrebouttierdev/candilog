@@ -10,15 +10,35 @@ Installer, lancer, régénérer, valider. Les règles de code sont dans
 | Node.js | LTS | la CI utilise `node-version: lts/*` |
 | Rust | 1.91 | `rust-version` de `src-tauri/Cargo.toml` |
 | Cargo | fourni par la toolchain Rust | — |
+| Clang + libclang | version fournie par le système | génération des bindings de `llama.cpp` par `bindgen` |
 | CMake | 3.21+ | compilation du runtime llama.cpp embarqué |
 
 Dépendances système Linux (liste appliquée par le workflow de release sur Ubuntu 22.04 ;
 adapter les noms de paquets à la distribution) :
 
 ```
-libwebkit2gtk-4.1-dev  libappindicator3-dev  librsvg2-dev  patchelf  xdg-utils
+clang  cmake  libwebkit2gtk-4.1-dev  libappindicator3-dev  librsvg2-dev  patchelf  xdg-utils
 libvulkan-dev  glslc
 ```
+
+Sur Fedora, `llama-cpp-sys-2` a besoin du pilote Clang en plus de `libclang` : installer
+uniquement `clang-libs` laisse les en-têtes présents sur le disque, mais empêche `bindgen`
+de découvrir leur chemin. Pour corriger ou compléter une installation de développement :
+
+```bash
+sudo dnf install clang cmake
+```
+
+Sur Ubuntu / Debian, l'équivalent est :
+
+```bash
+sudo apt install clang libclang-dev cmake build-essential
+```
+
+Sur macOS, les Command Line Tools de Xcode fournissent Clang pour Intel comme pour Apple
+Silicon ; CMake reste à installer séparément. Sous Windows, installer les outils C++ MSVC,
+LLVM/Clang et CMake. Ces outils servent à **construire** Candilog : les installateurs
+publiés n'imposent ni Clang ni CMake sur la machine de l'utilisateur.
 
 Sur macOS et Windows, suivre les prérequis Tauri 2 officiels (Xcode Command Line Tools,
 Microsoft C++ Build Tools et WebView2). Le build de release Windows installe le SDK Vulkan

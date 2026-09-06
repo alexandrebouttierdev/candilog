@@ -71,6 +71,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
+            clang \
+            cmake \
             libwebkit2gtk-4.1-dev \
             libappindicator3-dev \
             librsvg2-dev \
@@ -143,6 +145,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
+            clang \
+            cmake \
             libwebkit2gtk-4.1-dev \
             libappindicator3-dev \
             librsvg2-dev \
