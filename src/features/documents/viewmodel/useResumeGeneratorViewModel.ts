@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { aiService } from "@/features/ai/services/aiService";
 import type { AiExecution, ResumeGeneration } from "@/features/ai/model/types";
 import { useAiOperation } from "@/features/ai/viewmodel/useAiOperation";
+import { isAiNotConfiguredError } from "@/features/ai/model/ai-not-configured";
 import { useAiProgress } from "@/features/ai/viewmodel/useAiProgress";
 import { useAiTimer } from "@/features/ai/viewmodel/useAiTimer";
 import { useUiStore } from "@/shared/lib/ui-store";
@@ -79,6 +80,7 @@ export function useResumeGeneratorViewModel(initial: ResumeGeneratorInitial) {
     try {
       id = start("generation");
     } catch (caught) {
+      if (isAiNotConfiguredError(caught)) return;
       setError(errorMessage(caught));
       return;
     }

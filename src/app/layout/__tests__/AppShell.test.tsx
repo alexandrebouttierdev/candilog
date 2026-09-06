@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createMemoryRouter,
   MemoryRouter,
@@ -6,17 +6,42 @@ import {
   type RouteObject,
 } from "react-router-dom";
 import { fireEvent, render, screen } from "@testing-library/react";
+import { QueryWrapper } from "@/shared/lib/test-utils";
+import { settingsService } from "@/features/settings/services/settingsService";
+import type { Settings } from "@/shared/types/generated/settings";
 import { AppShell } from "../AppShell";
 import { NavRail } from "../NavRail";
 import { TopBar } from "../TopBar";
+
+const REGLAGES: Settings = {
+  llm: {
+    provider: "openai",
+    api_key_configured: true,
+    endpoint: "https://api.openai.com",
+    model: "gpt-4o",
+    temperature: 0.7,
+    mode: "auto",
+  },
+  theme: "system",
+  language: "fr",
+};
 
 function renderShell(children: RouteObject[], initialEntries = ["/"]) {
   const router = createMemoryRouter(
     [{ path: "/", element: <AppShell />, children }],
     { initialEntries },
   );
-  return render(<RouterProvider router={router} />);
+  return render(
+    <QueryWrapper>
+      <RouterProvider router={router} />
+    </QueryWrapper>,
+  );
 }
+
+beforeEach(() => {
+  vi.restoreAllMocks();
+  vi.spyOn(settingsService, "load").mockResolvedValue(REGLAGES);
+});
 
 describe("coque applicative", () => {
   it("offre un lien d'évitement vers le contenu et un seul main", () => {

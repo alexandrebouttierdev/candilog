@@ -46,8 +46,13 @@ export function etatIa(llm: LlmForm, test: TestConnexion): EtatIa {
   };
 }
 
+/** Indique si un fournisseur et un modèle sont prêts à lancer une action IA. */
+export function iaEstConfiguree(llm: LlmForm): boolean {
+  return manquants(llm).length === 0;
+}
+
 /** Champs indispensables encore vides, dans l'ordre où l'écran les présente. */
-function manquants(llm: LlmForm): string[] {
+export function manquants(llm: LlmForm): string[] {
   const id = idProvider(llm.provider);
   const manques: string[] = [];
   if (llm.model.trim().length === 0) manques.push("le modèle");

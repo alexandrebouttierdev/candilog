@@ -152,8 +152,13 @@ export function AiPage() {
         title="Intelligence artificielle"
         subtitle="Le moteur reste sous votre contrôle"
         primary={
-          <Button variant="primary" icon="save" disabled={!form || vm.isSaving} onClick={() => void save()}>
-            Enregistrer
+          <Button
+            variant="primary"
+            icon={vm.isSaving ? "progress_activity" : "save"}
+            disabled={!form || vm.isSaving}
+            onClick={() => void save()}
+          >
+            {vm.isSaving ? "Enregistrement…" : "Enregistrer"}
           </Button>
         }
       />

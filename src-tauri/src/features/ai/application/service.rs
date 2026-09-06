@@ -21,6 +21,7 @@ const JOB_OFFER_SYSTEM: &str = r#"Extrais une offre d'emploi en JSON. Recopie un
 const RESUME_SYSTEM: &str = r#"Adapte le socle d'un CV à une offre en JSON. Reformule uniquement les faits du profil, sans ajouter compétence, entreprise, diplôme ou expérience. Conserve toutes les expériences et formations. Laisse toujours competences vide : les contenus optionnels seront choisis ensuite par l'utilisateur. Réponds avec {"resume":"","experiences":[{"intitule":"","entreprise":"","description":""}],"competences":[],"formations":[{"diplome":"","etablissement":""}]}. JSON uniquement."#;
 const ATS_SYSTEM: &str = r#"Compare le CV et l'offre fournis. Réponds en français, uniquement en JSON : {"recap":"","recommendations":[{"section":"profile","item_index":null,"original_text":"","proposed_text":""}],"content_recommendations":[{"item_id":"","reason":"","relevance":"very_relevant"}]}. "section" vaut "profile" ou "experience". Pour "experience", "item_index" est l'indice (à partir de 0) de l'expérience du CV concernée ; laisse "item_index" à null pour "profile". "original_text" doit reprendre exactement un texte présent dans le CV fourni, "proposed_text" est la reformulation proposée. Pour content_recommendations, sélectionne au maximum 8 identifiants du tableau contenu_profil, dans l'ordre de priorité. relevance vaut "very_relevant", "relevant" ou "secondary". Privilégie la cohérence et la valeur pour le recruteur, pas la répétition de mots-clés. Ne renvoie pas tout le catalogue. N'invente aucun fait ni identifiant absent du CV, de l'offre ou du catalogue."#;
 const COVER_LETTER_SYSTEM: &str = r#"Sélectionne les faits les plus pertinents pour une lettre de motivation. Réponds uniquement en JSON avec {"selected_fact_ids":[],"motivation_keywords":[]}. Utilise exclusivement des identifiants présents dans le catalogue. Les mots-clés doivent être recopiés exactement depuis le brief. N'écris aucune phrase de lettre et n'invente aucune information."#;
+const COVER_LETTER_ITERATION_SYSTEM: &str = r#"Ajuste la sélection de faits d'une lettre déjà rédigée selon l'instruction. Réponds uniquement en JSON avec {"selected_fact_ids":[],"motivation_keywords":[]}. Pars de la lettre précédente et du catalogue compact : ne change que ce que demande l'instruction. Utilise exclusivement des identifiants du catalogue. Les mots-clés doivent être recopiés exactement depuis le brief ou l'instruction. N'écris aucune phrase de lettre et n'invente aucune information."#;
 const FRENCH_CORRECTION_SYSTEM: &str = r#"Tu es un correcteur professionnel de français. Corrige uniquement l'orthographe, la grammaire, les accords, la ponctuation, les coquilles et les formulations manifestement maladroites. Préserve strictement le sens, les faits, les noms propres, les chiffres, les dates, les coordonnées, les technologies et le niveau de précision. N'ajoute aucune information, ne supprime aucun fait et ne réécris pas un passage déjà correct. Chaque objet reçu contient un id opaque et un texte : renvoie exactement un objet par id, dans le même ordre, avec {"fields":[{"id":"","text":""}]}. Recopie le texte à l'identique si aucune correction n'est nécessaire. JSON uniquement."#;
 const PARSE_RESUME_SYSTEM: &str = r#"Structure le texte brut d'un CV sans traduire, reformuler ni inventer. Réponds uniquement en JSON : {"resume":"","experiences":[{"intitule":"","entreprise":"","description":""}],"competences":[],"formations":[{"diplome":"","etablissement":""}]}"#;
 const PROFILE_SYSTEM: &str = r#"Extrais le profil du CV sans inventer. Recopie les valeurs et utilise null ou [] si absentes. Dates au format AAAA-MM ou AAAA. Réponds uniquement en JSON camelCase avec exactement cette structure : {"identite":{"prenom":"","nom":"","email":"","telephone":null,"ville":null,"titre":null,"resume":null,"linkedin":null,"github":null,"siteWeb":null},"experiences":[{"intitule":"","entreprise":"","lieu":null,"start_date":"","end_date":null,"posteActuel":false,"description":null}],"competences":[{"nom":""}],"formations":[{"diplome":"","etablissement":"","lieu":null,"start_date":null,"end_date":null,"description":null}],"langues":[{"nom":"","niveau":""}],"projets":[{"nom":"","description":null,"url":null,"technologies":null}],"certifications":[{"nom":"","organisme":null,"date":null,"url":null}]}"#;
@@ -314,24 +315,58 @@ impl AiService {
         let profile = self.profile()?;
         validate_profile_input(&profile)?;
         let catalog = build_fact_catalog(&profile);
-        let context = serde_json::json!({
-            "catalogue": catalog,
-            "entreprise": request.company,
-            "poste": request.job_title,
-            "ton": request.tone.as_deref().unwrap_or("formal"),
-            "longueur": request.length.as_deref().unwrap_or("medium"),
-            "contexte": request.context,
-            "instruction": request.instruction,
-        })
+        // Sur une itération, on compacte le brief : la lettre précédente + la consigne
+        // suffisent à réorienter la sélection de faits, sans renvoyer toute l'offre.
+        let iterating = request
+            .previous_cover_letter
+            .as_deref()
+            .is_some_and(|letter| !letter.trim().is_empty());
+        let compact_catalog: Vec<_> = catalog
+            .iter()
+            .map(|fact| {
+                let text = if iterating {
+                    truncate_chars(&fact.text, 220)
+                } else {
+                    truncate_chars(&fact.text, 480)
+                };
+                serde_json::json!({ "id": fact.id, "kind": fact.kind, "text": text })
+            })
+            .collect();
+        let context = if iterating {
+            serde_json::json!({
+                "catalogue": compact_catalog,
+                "entreprise": request.company,
+                "poste": request.job_title,
+                "ton": request.tone.as_deref().unwrap_or("formal"),
+                "longueur": request.length.as_deref().unwrap_or("medium"),
+                "lettre_precedente": request.previous_cover_letter,
+                "instruction": request.instruction,
+            })
+        } else {
+            serde_json::json!({
+                "catalogue": compact_catalog,
+                "entreprise": request.company,
+                "poste": request.job_title,
+                "ton": request.tone.as_deref().unwrap_or("formal"),
+                "longueur": request.length.as_deref().unwrap_or("medium"),
+                "contexte": request.context.as_deref().map(|value| truncate_chars(value, 4_000)),
+                "instruction": request.instruction,
+            })
+        }
         .to_string();
         progres(&notifier, &id, "Rédaction", None, None);
         let provider = self.provider().await?;
+        let system = if iterating {
+            COVER_LETTER_ITERATION_SYSTEM
+        } else {
+            COVER_LETTER_SYSTEM
+        };
         let (plan, mut tokens) = cancel(
             &token,
             generate_json::<CoverLetterPlan>(
                 provider.clone(),
                 &bloc_donnees("brief", &context),
-                COVER_LETTER_SYSTEM,
+                system,
             ),
         )
         .await?;
@@ -511,11 +546,14 @@ impl AiService {
             "Analyse démarrée",
             None,
         );
+        // Un CV long saturait le contexte local (et plantait parfois llama.cpp) : on borne
+        // le texte envoyé après validation, tout en gardant le plafond utilisateur plus haut.
+        let analysis_text = truncate_chars(&text, 12_000);
         let (mut profile, tokens): (Profile, Option<u32>) = match cancel(
             &token,
             generate_json(
                 self.provider().await?,
-                &bloc_donnees("cv", &text),
+                &bloc_donnees("cv", &analysis_text),
                 PROFILE_SYSTEM,
             ),
         )
@@ -815,6 +853,16 @@ fn protected_fragments(value: &str) -> std::collections::HashSet<String> {
         })
         .map(str::to_owned)
         .collect()
+}
+
+fn truncate_chars(value: &str, max_chars: usize) -> String {
+    let count = value.chars().count();
+    if count <= max_chars {
+        return value.to_owned();
+    }
+    let mut truncated: String = value.chars().take(max_chars.saturating_sub(1)).collect();
+    truncated.push('…');
+    truncated
 }
 
 async fn generate_json<T: serde::de::DeserializeOwned + ValidateAiOutput>(

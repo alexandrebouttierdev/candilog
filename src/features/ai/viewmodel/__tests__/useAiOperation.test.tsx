@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { aiService, generation_id } from "../../services/aiService";
 import { useAiOperationStore } from "../ai-operation-store";
 import { useAiOperation } from "../useAiOperation";
+import { useAiRequiredStore } from "../ai-required-store";
+import { AiNotConfiguredError } from "../../model/ai-not-configured";
 
 vi.mock("../../services/aiService", () => ({
   aiService: { cancel: vi.fn() },
@@ -18,6 +20,7 @@ describe("useAiOperation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     useAiOperationStore.setState({ active: null });
+    useAiRequiredStore.setState({ llm: null, open: false });
     vi.mocked(generation_id).mockReturnValue("gen-1");
     vi.mocked(aiService.cancel).mockResolvedValue(undefined);
   });
@@ -205,4 +208,27 @@ describe("useAiOperation", () => {
     expect(aiService.cancel).toHaveBeenCalledWith("gen-1");
     expect(result.current.operation).toBeNull();
   });
+
+  it("ouvre le garde-fou et refuse de démarrer sans IA configurée", () => {
+    useAiRequiredStore.setState({
+      llm: {
+        provider: "openai",
+        api_key_configured: false,
+        endpoint: "https://api.openai.com",
+        model: "",
+        temperature: 0.7,
+        mode: "auto",
+      },
+      open: false,
+    });
+    const { result } = renderHook(() => useAiOperation());
+    expect(() => {
+      act(() => {
+        result.current.start("analyse");
+      });
+    }).toThrow(AiNotConfiguredError);
+    expect(useAiRequiredStore.getState().open).toBe(true);
+    expect(useAiOperationStore.getState().active).toBeNull();
+  });
+
 });

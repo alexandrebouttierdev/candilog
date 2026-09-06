@@ -4,6 +4,8 @@ import {
   useAiOperationStore,
   type AiOperationKind,
 } from "./ai-operation-store";
+import { AiNotConfiguredError } from "../model/ai-not-configured";
+import { useAiRequiredStore } from "./ai-required-store";
 
 export function useAiOperation() {
   const operation = useAiOperationStore((state) => state.active);
@@ -49,6 +51,11 @@ export function useAiOperation() {
   const start = useCallback((kind: AiOperationKind): string => {
     if (useAiOperationStore.getState().active) {
       throw new Error("Impossible de démarrer une opération IA : une opération est déjà active.");
+    }
+    const ready = useAiRequiredStore.getState().configured();
+    if (ready === false) {
+      useAiRequiredStore.getState().show();
+      throw new AiNotConfiguredError();
     }
     const id = generation_id();
     ownedIdRef.current = id;

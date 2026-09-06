@@ -149,7 +149,13 @@ function ResumeEditorScreen({
           <>
             {briefPanel ? null : <IconButton icon="target" label="Modifier l’offre" onClick={onReopenBrief} />}
             <UndoRedoControls canUndo={editor.canUndo} canRedo={editor.canRedo} onUndo={editor.undo} onRedo={editor.redo} />
-            <Button icon="save" disabled={!name.trim() || isSaving || editor.isProofreading || editor.isRecalculating} onClick={() => void onSave(editor.workspace)}>Enregistrer</Button>
+            <Button
+              icon={isSaving ? "progress_activity" : "save"}
+              disabled={!name.trim() || isSaving || editor.isProofreading || editor.isRecalculating}
+              onClick={() => void onSave(editor.workspace)}
+            >
+              {isSaving ? "Enregistrement…" : "Enregistrer"}
+            </Button>
           </>
         }
         primary={
@@ -172,11 +178,11 @@ function ResumeEditorScreen({
           action={
             <Button
               size="dialog"
-              icon="edit_note"
+              icon={editor.isProofreading ? "progress_activity" : "edit_note"}
               disabled={editor.isProofreading || editor.isRecalculating}
               onClick={() => void correctFrench()}
             >
-              {editor.isProofreading ? "Correction…" : "Corriger l’orthographe"}
+              {editor.isProofreading ? "Correction en cours…" : "Corriger l’orthographe"}
             </Button>
           }
           className="flex min-h-0 flex-col"

@@ -168,25 +168,17 @@ export function ProfileIdentity({
   return (
     <div className="flex min-w-[260px] flex-1 items-start gap-4">
       <div className="flex flex-none flex-col items-center gap-1.5">
-        <div className="relative">
-          {photo ? (
-            <>
-              <img
-                src={photo}
-                alt="Photo de profil"
-                className="size-16 rounded-field border border-line object-cover"
-              />
-              <span
-                aria-hidden="true"
-                className="absolute -top-2 right-1.5 h-5 w-2.5 rotate-12 rounded-pill border-[1.5px] border-control-strong bg-surface/80 shadow-e1 after:absolute after:inset-[2px] after:rounded-pill after:border after:border-control"
-              />
-            </>
-          ) : (
-            <span className="flex size-16 items-center justify-center rounded-field border border-accent-border bg-accent-tint text-lg font-strong text-accent">
-              {initials}
-            </span>
-          )}
-        </div>
+        {photo ? (
+          <img
+            src={photo}
+            alt="Photo de profil"
+            className="size-16 rounded-field border border-line object-cover"
+          />
+        ) : (
+          <span className="flex size-16 items-center justify-center rounded-field border border-accent-border bg-accent-tint text-lg font-strong text-accent">
+            {initials}
+          </span>
+        )}
         {/* Deux contrôles de 30 px : côte à côte, ils tiennent exactement la largeur de la
             pastille et gardent le gabarit standard du design system. */}
         <div className="flex gap-1">

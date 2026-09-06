@@ -10,6 +10,7 @@ import { AppError } from "@/shared/types/app-error";
 import { runResumeRecalculation } from "./resumeRecalculation";
 import { aiService } from "@/features/ai/services/aiService";
 import { useAiOperation } from "@/features/ai/viewmodel/useAiOperation";
+import { isAiNotConfiguredError } from "@/features/ai/model/ai-not-configured";
 
 /** Pile d'annulation/rétablissement bornée : au-delà, les plus anciens états sont perdus. */
 const HISTORY_LIMIT = 50;
@@ -159,6 +160,7 @@ export function useResumeEditor(initial: ResumeWorkspace) {
     try {
       id = aiOperation.start("correction");
     } catch (caught) {
+      if (isAiNotConfiguredError(caught)) return "failed";
       setError(errorMessage(caught));
       return "failed";
     }

@@ -154,7 +154,7 @@ export function ModalHost({
               disabled={submitDisabled || busy}
               onClick={onSubmit}
             >
-              {submitLabel}
+              {busy ? "Enregistrement…" : submitLabel}
             </Button>
           ) : null}
         </footer>

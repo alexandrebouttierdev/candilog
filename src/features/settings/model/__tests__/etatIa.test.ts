@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { etatIa } from "../etatIa";
+import { etatIa, iaEstConfiguree } from "../etatIa";
 import type { LlmForm } from "@/shared/types/generated/settings";
 
 function llm(patch: Partial<LlmForm> = {}): LlmForm {
@@ -55,5 +55,19 @@ describe("etatIa", () => {
       label: "Erreur",
       tone: "danger",
     });
+  });
+});
+
+describe("iaEstConfiguree", () => {
+  it("accepte une configuration cloud complète", () => {
+    expect(iaEstConfiguree(llm())).toBe(true);
+  });
+
+  it("refuse un modèle vide", () => {
+    expect(iaEstConfiguree(llm({ model: "  " }))).toBe(false);
+  });
+
+  it("refuse une clé API manquante pour un fournisseur distant", () => {
+    expect(iaEstConfiguree(llm({ api_key_configured: false }))).toBe(false);
   });
 });

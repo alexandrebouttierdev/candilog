@@ -5,6 +5,7 @@ import { documentsService, type CoverLetter } from "../../services/documentsServ
 import { aiService } from "@/features/ai/services/aiService";
 import { AiStopButton } from "@/features/ai/view/components/AiStopButton";
 import { useAiOperation } from "@/features/ai/viewmodel/useAiOperation";
+import { isAiNotConfiguredError } from "@/features/ai/model/ai-not-configured";
 import { useAiProgress } from "@/features/ai/viewmodel/useAiProgress";
 import { useAiTimer } from "@/features/ai/viewmodel/useAiTimer";
 import { formatAiSummary } from "@/shared/lib/duration";
@@ -280,6 +281,7 @@ export function LetterWriterPage() {
     try {
       id = start("generation");
     } catch (caught) {
+      if (isAiNotConfiguredError(caught)) return;
       setError(message(caught));
       return;
     }
@@ -293,7 +295,18 @@ export function LetterWriterPage() {
     }
     timer.start();
     try {
-      const execution = await aiService.generateCoverLetter({ generation_id: id, company: company || null, job_title: job_title || null, tone, length, context: context || null, previous_cover_letter: null, instruction: suite.length > 0 ? suite.join(" ; ") : null });
+      const execution = await aiService.generateCoverLetter({
+        generation_id: id,
+        company: company || null,
+        job_title: job_title || null,
+        tone,
+        length,
+        context: context || null,
+        // Une itération part de la lettre affichée : le backend peut alors ajuster
+        // plutôt que de replanifier tout le catalogue à chaque consigne.
+        previous_cover_letter: instruction !== null && output.trim().length > 0 ? output : null,
+        instruction: suite.length > 0 ? suite.join(" ; ") : null,
+      });
       if (!isCurrent(id)) return;
       timer.stop();
       setOutput(execution.output);
@@ -321,6 +334,7 @@ export function LetterWriterPage() {
     try {
       id = start("correction");
     } catch (caught) {
+      if (isAiNotConfiguredError(caught)) return;
       setError(message(caught));
       return;
     }
@@ -377,14 +391,27 @@ export function LetterWriterPage() {
         subtitle="Rédigez, itérez et enregistrez"
         secondary={output ? (
           <>
-            <Button icon="edit_note" disabled={operation !== null} onClick={() => void correct()}>
-              {operation?.kind === "correction" ? "Correction…" : "Corriger l’orthographe"}
+            <Button
+              icon={operation?.kind === "correction" ? "progress_activity" : "edit_note"}
+              disabled={operation !== null}
+              onClick={() => void correct()}
+            >
+              {operation?.kind === "correction" ? "Correction en cours…" : "Corriger l’orthographe"}
             </Button>
             <Button icon="download" disabled={overflow || operation !== null} onClick={() => void exportLetterPdf(letterExport(), notify)}>Exporter le PDF</Button>
             <Button icon="close" disabled={operation !== null} onClick={() => setAbandonOuvert(true)}>Annuler</Button>
           </>
         ) : undefined}
-        primary={output ? <Button variant="primary" icon="save" disabled={save.isPending || overflow || operation !== null} onClick={() => save.mutate()}>Enregistrer</Button> : undefined}
+        primary={output ? (
+          <Button
+            variant="primary"
+            icon={save.isPending ? "progress_activity" : "save"}
+            disabled={save.isPending || overflow || operation !== null}
+            onClick={() => save.mutate()}
+          >
+            {save.isPending ? "Enregistrement…" : "Enregistrer"}
+          </Button>
+        ) : undefined}
       />
     }>
       <div className="grid min-h-0 flex-1 gap-4 overflow-hidden p-5 min-[1200px]:p-6 xl:grid-cols-[350px_minmax(480px,1fr)]">

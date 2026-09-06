@@ -172,28 +172,49 @@ function Installation({
     installing: "Installation du modèle",
     benchmarking: "Mesure des performances",
   };
+  const descriptions: Partial<Record<LocalAiState, string>> = {
+    downloading: "Téléchargement en cours… Veuillez patienter.",
+    verifying: "Contrôle de l'intégrité du fichier… Veuillez patienter.",
+    installing: "Installation et préparation du modèle… Veuillez patienter.",
+    benchmarking: "Mesure des performances en cours… Veuillez patienter.",
+  };
   const title = titles[state] ?? "Préparation de l'IA locale";
+  const description = descriptions[state] ?? "Traitement en cours… Veuillez patienter.";
+  const showDownloadProgress = state === "downloading" && progress !== null;
   const percentage = progress?.progress ?? 0;
   return (
-    <SettingsCard icon="download" title={title}>
-      <div role="status" aria-live="polite">
-        <div className="h-2 overflow-hidden rounded-full bg-fill">
-          <div className="h-full rounded-full bg-accent transition-[width]" style={{ width: `${percentage}%` }} />
+    <SettingsCard icon="progress_activity" title={title}>
+      <div role="status" aria-live="polite" className="space-y-3">
+        <div className="flex items-start gap-3">
+          <Icon name="progress_activity" size={20} className="mt-0.5 flex-none animate-spin text-accent" />
+          <p className="text-body text-ink-muted">{description}</p>
         </div>
-        <div className="mt-2 flex flex-wrap justify-between gap-2 font-mono text-note tabular-nums text-ink-muted">
-          <span>{percentage} %</span>
-          {progress ? (
-            <span>
-              {formatBytes(progress.downloaded_bytes)} / {formatBytes(progress.total_bytes)}
-              {progress.bytes_per_second > 0 ? ` · ${formatBytes(progress.bytes_per_second)}/s` : ""}
-            </span>
-          ) : model ? <span>{formatBytes(model.download_size_bytes)}</span> : null}
-        </div>
+        {showDownloadProgress ? (
+          <>
+            <div className="h-2 overflow-hidden rounded-full bg-fill">
+              <div className="h-full rounded-full bg-accent transition-[width]" style={{ width: `${percentage}%` }} />
+            </div>
+            <div className="flex flex-wrap justify-between gap-2 font-mono text-note tabular-nums text-ink-muted">
+              <span>{percentage} %</span>
+              <span>
+                {formatBytes(progress.downloaded_bytes)} / {formatBytes(progress.total_bytes)}
+                {progress.bytes_per_second > 0 ? ` · ${formatBytes(progress.bytes_per_second)}/s` : ""}
+              </span>
+            </div>
+          </>
+        ) : (
+          <div className="h-2 overflow-hidden rounded-full bg-fill">
+            <div className="h-full w-1/3 animate-pulse rounded-full bg-accent" />
+          </div>
+        )}
         {state === "benchmarking" ? (
-          <p className="mt-3 text-note text-ink-faint">Test synthétique local, sans aucune donnée personnelle.</p>
+          <p className="text-note text-ink-faint">Test synthétique local, sans aucune donnée personnelle.</p>
+        ) : null}
+        {!showDownloadProgress && model ? (
+          <p className="font-mono text-note text-ink-faint">{formatBytes(model.download_size_bytes)}</p>
         ) : null}
         {state === "downloading" ? (
-          <Button className="mt-4" icon="close" onClick={onCancel}>Annuler</Button>
+          <Button className="mt-1" icon="close" onClick={onCancel}>Annuler</Button>
         ) : null}
       </div>
     </SettingsCard>
@@ -235,10 +256,23 @@ function Ready({
         />
       </div>
       <div className="mt-5 flex flex-wrap gap-2">
-        <Button variant="primary" icon="smart_toy" disabled={testing} onClick={onTest}>Tester l'IA</Button>
-        <Button icon="delete" onClick={() => onRemove(model)}>Supprimer le modèle</Button>
-        <Button icon="refresh" onClick={onReevaluate}>Réévaluer ma configuration</Button>
+        <Button
+          variant="primary"
+          icon={testing ? "progress_activity" : "smart_toy"}
+          disabled={testing}
+          onClick={onTest}
+        >
+          {testing ? "Test en cours…" : "Tester l'IA"}
+        </Button>
+        <Button icon="delete" disabled={testing} onClick={() => onRemove(model)}>Supprimer le modèle</Button>
+        <Button icon="refresh" disabled={testing} onClick={onReevaluate}>Réévaluer ma configuration</Button>
       </div>
+      {testing ? (
+        <p role="status" className="mt-3 flex items-center gap-2 text-body text-ink-muted">
+          <Icon name="progress_activity" size={16} className="animate-spin text-accent" />
+          Vérification de la configuration locale…
+        </p>
+      ) : null}
       {testResult ? <p role="status" className="mt-3 text-body text-success">{testResult}</p> : null}
       {downgrade ? (
         <div className="mt-4 rounded-field border border-warning bg-warning-tint px-3 py-3">
@@ -272,7 +306,9 @@ function Ready({
           <Advanced label="Contexte" value={`${model.context_size} tokens`} />
           <Advanced label="RAM estimée" value={`${model.estimated_ram_mb} Mo`} />
         </dl>
-        <Button className="mt-3" icon="refresh" onClick={onBenchmark}>Relancer le benchmark</Button>
+        <Button className="mt-3" icon="refresh" disabled={testing} onClick={onBenchmark}>
+          Relancer le benchmark
+        </Button>
       </details>
     </SettingsCard>
   );

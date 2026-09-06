@@ -14,6 +14,8 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock};
 
 const MAX_OUTPUT_TOKENS: usize = 4_096;
+/// Taille de lot d'inférence : bien inférieure au contexte pour limiter la RAM allouée.
+const LOCAL_AI_BATCH_SIZE: u32 = 512;
 const JSON_GRAMMAR: &str = r#"
 root ::= ws value ws
 value ::= object | array | string | number | "true" | "false" | "null"
@@ -133,7 +135,7 @@ impl MistralLocalRuntime {
             .max(1);
         let context_params = LlamaContextParams::default()
             .with_n_ctx(NonZeroU32::new(LOCAL_AI_CONTEXT_SIZE))
-            .with_n_batch(LOCAL_AI_CONTEXT_SIZE)
+            .with_n_batch(LOCAL_AI_BATCH_SIZE)
             .with_n_ubatch(512)
             .with_n_threads(threads)
             .with_n_threads_batch(threads);
@@ -248,8 +250,20 @@ impl MistralLocalRuntime {
         };
         let model = Arc::new(
             LlamaModel::load_from_file(&llama_backend, path, &params).map_err(|error| {
-                tracing::error!(model = ?model_id, backend = ?actual_backend, %error, "modèle local non chargé");
-                AppError::Provider("Le modèle local n'a pas pu être chargé.".into())
+                let detail = error.to_string();
+                tracing::error!(model = ?model_id, backend = ?actual_backend, %detail, "modèle local non chargé");
+                let lowered = detail.to_ascii_lowercase();
+                if lowered.contains("out of memory")
+                    || lowered.contains("oom")
+                    || lowered.contains("failed to allocate")
+                    || lowered.contains("cannot allocate")
+                {
+                    AppError::Provider(
+                        "Mémoire insuffisante pour charger le modèle local. Fermez d'autres applications ou choisissez un profil plus léger.".into(),
+                    )
+                } else {
+                    AppError::Provider("Le modèle local n'a pas pu être chargé.".into())
+                }
             })?,
         );
         let load_time_ms = started.elapsed().as_millis().min(u128::from(u64::MAX)) as u64;
@@ -265,7 +279,19 @@ impl MistralLocalRuntime {
 }
 
 fn runtime_error(error: impl std::fmt::Display) -> AppError {
-    tracing::error!(%error, "inférence Mistral Local échouée");
+    let detail = error.to_string();
+    tracing::error!(%detail, "inférence Mistral Local échouée");
+    let lowered = detail.to_ascii_lowercase();
+    if lowered.contains("out of memory")
+        || lowered.contains("oom")
+        || lowered.contains("failed to allocate")
+        || lowered.contains("cannot allocate")
+        || lowered.contains("std::bad_alloc")
+    {
+        return AppError::Provider(
+            "Mémoire insuffisante pour l'IA locale. Fermez d'autres applications, choisissez un profil plus léger, ou raccourcissez le document.".into(),
+        );
+    }
     AppError::Provider(
         "L'inférence locale a échoué. Réessayez ou réévaluez la configuration.".into(),
     )

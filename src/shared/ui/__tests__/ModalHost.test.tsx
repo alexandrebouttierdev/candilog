@@ -65,8 +65,8 @@ describe("ModalHost", () => {
     expect(screen.queryByRole("button", { name: /Enregistrer/ })).not.toBeInTheDocument();
   });
 
-  it("désactive l'action primaire pendant l'enregistrement", () => {
+  it("désactive l'action primaire et annonce l'enregistrement en cours", () => {
     ouvrir({ busy: true });
-    expect(screen.getByRole("button", { name: /Enregistrer/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Enregistrement…" })).toBeDisabled();
   });
 });

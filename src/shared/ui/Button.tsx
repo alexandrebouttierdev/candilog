@@ -52,7 +52,13 @@ export function Button({
       )}
       {...props}
     >
-      {icon ? <Icon name={icon} size={gabarit.icon} /> : null}
+      {icon ? (
+        <Icon
+          name={icon}
+          size={gabarit.icon}
+          {...(icon === "progress_activity" ? { className: "animate-spin" } : {})}
+        />
+      ) : null}
       {children}
     </button>
   );

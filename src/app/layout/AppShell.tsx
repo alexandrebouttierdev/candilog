@@ -6,6 +6,8 @@ import { SubNav } from "./SubNav";
 import { ContextBarProvider } from "./ContextBar";
 import { sectionForPath } from "@/app/router/routes";
 import { AiNavigationGuard } from "./AiNavigationGuard";
+import { AiConfigBridge } from "@/features/ai/view/components/AiConfigBridge";
+import { AiRequiredModal } from "@/features/ai/view/components/AiRequiredModal";
 
 function PageFallback() {
   return (
@@ -30,6 +32,8 @@ export function AppShell() {
         Aller au contenu
       </a>
       <AiNavigationGuard />
+      <AiConfigBridge />
+      <AiRequiredModal />
       <NavRail />
       <ContextBarProvider>
         {(slotRef) => (

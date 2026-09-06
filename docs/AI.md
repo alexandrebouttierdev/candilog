@@ -63,9 +63,11 @@ réserve de 512 Mio, écrit le flux dans `.part`, reprend avec HTTP Range et ne 
 `.gguf` par renommage qu'après contrôle de la taille et du SHA-256. Une empreinte est aussi
 recontrôlée avant le premier chargement de chaque session.
 
-Le contexte normal est 8 192 tokens (16 384 réservé techniquement). Après installation, un
-prompt synthétique sans donnée utilisateur mesure chargement, tokens/s et mémoire du
-processus. Les paliers sont excellent (> 20), bon (10–20), acceptable (5–10) et trop lent
+Le contexte normal est 8 192 tokens (16 384 réservé techniquement) ; le lot
+d'inférence (`n_batch`) reste à 512 pour limiter la RAM allouée lors d'un import de CV.
+Une saturation mémoire remonte une erreur explicite plutôt que de faire quitter
+l'application. Après installation, un prompt synthétique sans donnée utilisateur mesure
+chargement, tokens/s et mémoire du processus. Les paliers sont excellent (> 20), bon (10–20), acceptable (5–10) et trop lent
 (< 5). Dans ce dernier cas, l'interface propose le profil inférieur mais ne le télécharge
 qu'après confirmation. Un ancien modèle n'est proposé à la suppression qu'après validation
 du nouveau.
@@ -115,7 +117,10 @@ dédoublonnée.
 Les itérations de l'écran passent par le champ `instruction` du brief : les consignes
 successives sont cumulées et renvoyées ensemble, faute de quoi « plus court » puis « plus
 formel » ne vaudraient jamais en même temps. Elles orientent la **sélection de faits**, pas
-la prose : le corps reste assemblé par Candilog.
+la prose : le corps reste assemblé par Candilog. Quand une lettre précédente est fournie
+(`previous_cover_letter`), le brief d'itération omet le long contexte d'offre, compacte le
+catalogue et réutilise un prompt d'ajustement : une simple retouche ne doit plus reconstruire
+toute la lettre ni renvoyer des dizaines de milliers de tokens.
 
 Une relecture française termine désormais les générations de CV et de lettre. Elle échange
 une liste de champs `{id, text}` plutôt que le document complet : les identifiants inconnus

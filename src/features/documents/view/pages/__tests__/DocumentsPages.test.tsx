@@ -410,13 +410,19 @@ describe("itérations sur la lettre", () => {
     expect(screen.queryByRole("button", { name: /Enregistrer/ })).not.toBeInTheDocument();
   });
 
-  it("cumule les consignes successives dans la demande envoyée au modèle", async () => {
-    await redigerUneLettre();
+  it("cumule les consignes successives et renvoie la lettre précédente au modèle", async () => {
+    await redigerUneLettre("Madame, Monsieur, première version.");
     const generate = vi.mocked(aiService.generateCoverLetter);
 
     await userEvent.type(await screen.findByLabelText("Que faut-il changer ?"), "Plus court");
     await userEvent.click(screen.getByRole("button", { name: /Régénérer avec cette consigne/ }));
     await waitFor(() => expect(screen.getByText(/Lettre régénérée en/)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(generate.mock.lastCall?.[0]).toMatchObject({
+        instruction: "Plus court",
+        previous_cover_letter: "Madame, Monsieur, première version.",
+      }),
+    );
 
     await userEvent.type(screen.getByLabelText("Que faut-il changer ?"), "Plus formel");
     await userEvent.click(screen.getByRole("button", { name: /Régénérer avec cette consigne/ }));
@@ -424,6 +430,7 @@ describe("itérations sur la lettre", () => {
     await waitFor(() =>
       expect(generate.mock.lastCall?.[0].instruction).toBe("Plus court ; Plus formel"),
     );
+    expect(generate.mock.lastCall?.[0].previous_cover_letter).toBeTruthy();
   });
 
   it("abandonne la lettre et rend le brief après confirmation", async () => {

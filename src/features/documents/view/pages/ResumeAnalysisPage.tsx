@@ -3,12 +3,13 @@ import { aiService } from "@/features/ai/services/aiService";
 import type { AiExecution, ImportedResumeAnalysis, SelectedResumeFile } from "@/features/ai/model/types";
 import { AiStopButton } from "@/features/ai/view/components/AiStopButton";
 import { useAiOperation } from "@/features/ai/viewmodel/useAiOperation";
+import { isAiNotConfiguredError } from "@/features/ai/model/ai-not-configured";
 import { useAiProgress } from "@/features/ai/viewmodel/useAiProgress";
 import { useAiTimer } from "@/features/ai/viewmodel/useAiTimer";
 import { formatAiSummary } from "@/shared/lib/duration";
 import { AppError } from "@/shared/types/app-error";
 import { Button, EmptyState, ErrorBanner, Icon, PageHeader } from "@/shared/ui";
-import { A4Preview, AiProgress, DocumentPanel, ScoreBadge } from "../components/DocumentUi";
+import { AiProgress, DocumentPanel, ScoreBadge } from "../components/DocumentUi";
 import { ChampOffre, HeaderBadge, labelSection, Screen, TexteNonVerifie, message } from "./documentPageSupport";
 
 export function ResumeAnalysisPage() {
@@ -39,6 +40,15 @@ export function ResumeAnalysisPage() {
     }
   };
 
+  const reset = () => {
+    if (operation !== null) return;
+    setSelectedFile(null);
+    setResult(null);
+    setMetrics(null);
+    setError(null);
+    setJobOffer("");
+  };
+
   const run = async () => {
     if (!selectedFile) { setError("Choisissez le CV PDF à analyser."); return; }
     if (!job_offer.trim()) { setError("Collez l’offre ciblée avant de lancer l’analyse."); return; }
@@ -46,6 +56,7 @@ export function ResumeAnalysisPage() {
     try {
       id = start("analyse");
     } catch (caught) {
+      if (isAiNotConfiguredError(caught)) return;
       setError(message(caught));
       return;
     }
@@ -69,6 +80,7 @@ export function ResumeAnalysisPage() {
       finish(id);
     }
   };
+  const canReset = operation === null && (selectedFile !== null || result !== null || job_offer.trim().length > 0 || error !== null);
   return (
     <Screen header={
       <PageHeader
@@ -83,6 +95,13 @@ export function ResumeAnalysisPage() {
               </HeaderBadge>
             ) : null}
           </>
+        }
+        secondary={
+          canReset ? (
+            <Button icon="restart_alt" disabled={operation !== null} onClick={reset}>
+              Réinitialiser
+            </Button>
+          ) : undefined
         }
       />
     }>
@@ -150,7 +169,6 @@ export function ResumeAnalysisPage() {
                   <EmptyState icon="tips_and_updates" title="Aucune recommandation" description="Le modèle n’a proposé aucune reformulation pour cette analyse." />
                 )}
               </DocumentPanel>
-              <DocumentPanel title="Aperçu du CV lu" icon="visibility"><A4Preview resume={result.resume} /></DocumentPanel>
             </>
           ) : (
             <DocumentPanel title="Résultat de l’analyse" icon="analytics">

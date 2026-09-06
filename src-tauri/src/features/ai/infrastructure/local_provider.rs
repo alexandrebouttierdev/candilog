@@ -66,7 +66,13 @@ impl LlmGenerator for MistralLocalProvider {
         .await
         .map_err(|error| {
             tracing::error!(%error, "tâche d'inférence locale interrompue");
-            AppError::Provider("L'inférence locale a été interrompue.".into())
+            if error.is_panic() {
+                AppError::Provider(
+                    "L'IA locale a manqué de mémoire ou s'est interrompue. Réessayez avec un document plus court, ou choisissez un profil plus léger.".into(),
+                )
+            } else {
+                AppError::Provider("L'inférence locale a été interrompue.".into())
+            }
         })??;
         Ok(GenerationOutput {
             text: output.text,
