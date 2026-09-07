@@ -21,7 +21,7 @@ export function AiHero({
   onTest,
 }: {
   logo: { src: string; mono: boolean };
-  /** Badge secondaire (ex. Qwen sur IA locale). */
+  /** Badge secondaire (ex. Luth sur IA locale). */
   secondaryLogo?: { src: string } | null;
   label: string;
   model: string;

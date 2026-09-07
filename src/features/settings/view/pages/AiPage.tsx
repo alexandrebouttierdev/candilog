@@ -37,7 +37,7 @@ import { cn } from "@/shared/lib/cn";
 import { etatIa, type TestConnexion } from "../../model/etatIa";
 import { etatLocalIa, isLocalAiBusy } from "../../model/etatLocalIa";
 import { useLocalAiViewModel } from "../../viewmodel/useLocalAiViewModel";
-import logoQwen from "@/assets/providers/qwen.svg";
+import logoLuth from "@/assets/providers/luth.svg";
 
 const MODES: Array<{ value: AnalysisMode; label: string }> = [
   { value: "auto", label: "Auto" },
@@ -207,7 +207,7 @@ export function AiPage() {
             {isMistralLocal ? (
               <AiHero
                 logo={logo}
-                secondaryLogo={{ src: logoQwen }}
+                secondaryLogo={{ src: logoLuth }}
                 label={fournisseur.label}
                 model={localModelLabel}
                 etat={etatLocalIa(localVm.state, localActive, localVm.testResult, localVm.error)}

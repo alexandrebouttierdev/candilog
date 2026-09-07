@@ -55,19 +55,18 @@ est signalé plus précisément en aval, par `LocalAiService::provider` (« Inst
 locale avant de l'utiliser »).
 
 `domain/local_ai.rs::ModelRegistry` est l'unique source des artefacts. Quatre entrées sont
-verrouillées sur un commit et un SHA-256 : trois GGUF officiels Mistral, plus un Qwen3 1.7B
-Q4_K_M (le dépôt officiel `Qwen/Qwen3-1.7B-GGUF` ne publie que du Q8_0 ; l'artefact Q4_K_M
-retenu vient de `unsloth/Qwen3-1.7B-GGUF`).
+verrouillées sur un commit et un SHA-256 : trois GGUF officiels Mistral, plus un Luth LFM2
+1.2B Q4_K_M (spécialisation française de Liquid LFM2, quantifié par mradermacher).
 
 | Profil UI | Famille | Dépôt / fichier Q4_K_M | Révision | Octets | SHA-256 |
 | --- | --- | --- | --- | ---: | --- |
-| Ultra léger | Qwen | `unsloth/Qwen3-1.7B-GGUF` / `Qwen3-1.7B-Q4_K_M.gguf` | `d7f544eead698dbd1f15126ef60b45a1e1933222` | 1 107 409 472 | `b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897` |
+| Ultra léger | Luth | `mradermacher/Luth-LFM2-1.2B-GGUF` / `Luth-LFM2-1.2B.Q4_K_M.gguf` | `5f91c560983cf8874def628fd4a3fb5ef7333a16` | 730 895 296 | `9ca9c9a4f53ec05855434061a65f541e1336a47fa7fdc38a2215b6a6e4e7d18d` |
 | Léger | Mistral | `mistralai/Ministral-3-3B-Instruct-2512-GGUF` / `Ministral-3-3B-Instruct-2512-Q4_K_M.gguf` | `eb599d408350ea2bb60452cb86be7c7b2fc28227` | 2 147 023 008 | `9ed150d4367e68df0ac8e1540f6ddc65b42d0ee26378329d1ecbca60f93fc5f8` |
 | Équilibré | Mistral | `mistralai/Ministral-3-8B-Instruct-2512-GGUF` / `Ministral-3-8B-Instruct-2512-Q4_K_M.gguf` | `0102285ad796bd99af90f58de616092e5630e970` | 5 198 911 904 | `33e7a72cf5e6e2cfc2f2847075acc013d68bba023e35310cef86b5cf8fdca761` |
 | Qualité | Mistral | `mistralai/Ministral-3-14B-Instruct-2512-GGUF` / `Ministral-3-14B-Instruct-2512-Q4_K_M.gguf` | `74fac473c43357d7fb2671713608183cc72496d0` | 8 239 593 024 | `824e0f3373e69b84f2cae46fdcb9bd1ebc6ab3bfc7acc125d818b7b8178cc613` |
 
 La sélection teste Qualité, Équilibré, Léger puis Ultra léger. L'écran de réglages affiche pour chaque profil le poids disque, la RAM et la VRAM recommandées, et le nombre de cœurs (`recommended_*` du registre). Les seuils nominaux sont
-24/16/8/4 Gio de RAM ou de mémoire unifiée et 12/8/4/2,5 Gio de VRAM. Elle exige en plus
+24/16/8/4 Gio de RAM ou de mémoire unifiée et 12/8/4/2 Gio de VRAM. Elle exige en plus
 que l'artefact et ses buffers tiennent dans 68 % de la RAM (Apple compris) ou 80 % de la
 VRAM, que la mémoire actuellement disponible suffise et, en CPU, que 8/6/4/2 cœurs
 physiques soient présents. Un modèle seulement chargeable est `NotRecommended` et n'est

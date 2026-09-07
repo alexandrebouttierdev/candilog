@@ -11,7 +11,7 @@ import logoClaude from "@/assets/providers/claude.svg";
 import logoOpenai from "@/assets/providers/openai.svg";
 import logoGemini from "@/assets/providers/googlegemini.svg";
 import logoMistral from "@/assets/providers/mistralai.svg";
-import logoQwen from "@/assets/providers/qwen.svg";
+import logoLuth from "@/assets/providers/luth.svg";
 import logoDeepseek from "@/assets/providers/deepseek.svg";
 import logoCustom from "@/assets/providers/custom.svg";
 
@@ -108,11 +108,11 @@ export function ProviderGrid({
                 // Badge secondaire lisible : assez grand pour se distinguer, toujours
                 // plus petit que le logo Mistral. Le filet le détache du fond coloré.
                 <img
-                  src={logoQwen}
+                  src={logoLuth}
                   alt=""
                   width={16}
                   height={16}
-                  data-provider-logo="qwen"
+                  data-provider-logo="luth"
                   className="absolute -bottom-1 -right-1 size-4 rounded-control border border-line bg-surface p-px"
                 />
               ) : null}

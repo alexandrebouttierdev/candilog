@@ -267,11 +267,11 @@ mod tests {
 
     #[test]
     fn dedicated_gpu_thresholds() {
-        assert_eq!(selected(gpu(2_560)), Some(LocalModelProfile::UltraLight));
+        assert_eq!(selected(gpu(2_048)), Some(LocalModelProfile::UltraLight));
         assert_eq!(selected(gpu(4_096)), Some(LocalModelProfile::Light));
         assert_eq!(selected(gpu(8_192)), Some(LocalModelProfile::Balanced));
         assert_eq!(selected(gpu(12_288)), Some(LocalModelProfile::Quality));
-        assert_eq!(selected(gpu(2_559)), None);
+        assert_eq!(selected(gpu(2_047)), None);
         assert_eq!(selected(gpu(4_095)), Some(LocalModelProfile::UltraLight));
         assert_eq!(selected(gpu(8_191)), Some(LocalModelProfile::Light));
         assert_eq!(selected(gpu(12_287)), Some(LocalModelProfile::Balanced));

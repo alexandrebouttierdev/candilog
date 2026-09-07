@@ -51,9 +51,14 @@ Provenance et nature de la modification locale :
 Copyright © 2023–2026 The ggml authors. Licence **MIT** — texte intégral :
 [`src-tauri/assets/licenses/llama.cpp-LICENSE`](./src-tauri/assets/licenses/llama.cpp-LICENSE).
 
-Utilisation : exécution dans le processus Candilog des modèles GGUF de Mistral Local. Le
-runtime est compilé et lié au paquet ; l'utilisateur n'installe ni serveur, ni CLI, ni
-environnement d'exécution séparé.
+Utilisation : exécution dans le processus Candilog des modèles GGUF de l'IA locale
+(Ministral et Luth LFM2). Le runtime est compilé et lié au paquet ; l'utilisateur n'installe
+ni serveur, ni CLI, ni environnement d'exécution séparé.
+
+Les poids GGUF ne sont **pas** redistribués avec Candilog : ils sont téléchargés par
+l'utilisateur depuis Hugging Face. Luth LFM2 est soumis à la licence **LFM Open License
+v1.0** de Liquid AI (seuil commercial 10 M$ de CA) et au travail de spécialisation
+française Kurakura / Luth ; les artefacts Ministral restent sous leurs conditions Mistral.
 
 ---
 

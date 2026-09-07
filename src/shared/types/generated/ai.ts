@@ -105,9 +105,9 @@ export type LocalModelEvaluation = { model: LocalModelDefinition, compatibility:
  * Portée par une propriété et non déduite du nom affiché : l'interface choisit son logo
  * dessus, et une comparaison de chaîne casserait au premier renommage.
  */
-export type LocalModelFamily = "mistral" | "qwen";
+export type LocalModelFamily = "mistral" | "luth";
 
-export type LocalModelId = "qwen3_ultra_light" | "ministral3_light" | "ministral3_balanced" | "ministral3_quality";
+export type LocalModelId = "luth_lfm2_ultra_light" | "ministral3_light" | "ministral3_balanced" | "ministral3_quality";
 
 export type LocalModelProfile = "ultra_light" | "light" | "balanced" | "quality";
 

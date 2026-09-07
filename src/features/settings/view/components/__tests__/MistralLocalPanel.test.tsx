@@ -22,19 +22,19 @@ const actions = {
 function model(profile: LocalModelProfile): LocalModelDefinition {
   if (profile === "ultra_light") {
     return {
-      id: "qwen3_ultra_light",
+      id: "luth_lfm2_ultra_light",
       profile,
-      family: "qwen",
-      display_name: "Qwen3 1.7B Instruct",
-      repository: "unsloth/Qwen3-1.7B-GGUF",
-      filename: "Qwen3-1.7B-Q4_K_M.gguf",
-      local_filename: "qwen3-1.7b-q4_k_m.gguf",
+      family: "luth",
+      display_name: "Luth LFM2 1.2B",
+      repository: "mradermacher/Luth-LFM2-1.2B-GGUF",
+      filename: "Luth-LFM2-1.2B.Q4_K_M.gguf",
+      local_filename: "luth-lfm2-1.2b-q4_k_m.gguf",
       revision: "a".repeat(40),
       sha256: "b".repeat(64),
-      download_size_bytes: 1_107_409_472,
-      estimated_ram_mb: 2_000,
+      download_size_bytes: 730_895_296,
+      estimated_ram_mb: 1_600,
       recommended_ram_mb: 4_096,
-      recommended_vram_mb: 2_560,
+      recommended_vram_mb: 2_048,
       recommended_cores: 2,
       context_size: 8192,
       quantization: "Q4_K_M",
@@ -256,7 +256,7 @@ describe("configuration Mistral Local", () => {
   });
 
   // Le logo doit venir de la propriété `family` renvoyée par le backend, jamais d'une
-  // recherche de « Ministral » ou « Qwen » dans le nom affiché.
+  // recherche de « Ministral » ou « Luth » dans le nom affiché.
   it("illustre le modèle avec le logo de sa famille", () => {
     const active = model("light");
     const { container } = render(
@@ -282,7 +282,7 @@ describe("configuration Mistral Local", () => {
     expect(screen.getByText("Mistral")).toBeInTheDocument();
   });
 
-  it("annonce le mode ultra léger pour le profil Qwen", () => {
+  it("annonce le mode ultra léger pour le profil Luth", () => {
     const active = model("ultra_light");
     render(<MistralLocalPanel vm={setup({ state: "ready", recommendation: recommendation(active), status: status(active) })} />);
 
@@ -303,8 +303,8 @@ describe("configuration Mistral Local", () => {
     render(<MistralLocalPanel vm={setup({ state: "ready", recommendation: recommendation(active), status: status(active) })} />);
 
     expect(screen.getByText("RAM estimée")).toBeInTheDocument();
-    expect(screen.getByText("2 Go")).toBeInTheDocument();
-    expect(screen.queryByText(/2000 Mo/)).not.toBeInTheDocument();
+    expect(screen.getByText("1,6 Go")).toBeInTheDocument();
+    expect(screen.queryByText(/1600 Mo/)).not.toBeInTheDocument();
   });
 
   // Le backend évalue chaque profil ; l'écran n'en montrait aucun, si bien qu'on ne pouvait
@@ -371,7 +371,7 @@ describe("configuration Mistral Local", () => {
 
     // Valeurs issues du modèle (registre), pas recalculées dans React.
     expect(screen.getAllByText(/RAM reco 4 Go/).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/VRAM reco 2,5 Go/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/VRAM reco 2 Go/).length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/2 cœurs/).length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/RAM reco 8 Go/).length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/VRAM reco 4 Go/).length).toBeGreaterThanOrEqual(1);

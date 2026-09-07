@@ -19,7 +19,9 @@ pub const LOCAL_AI_SYSTEM_MARGIN_MB: u64 = 768;
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "ai.ts")]
 pub enum LocalModelId {
-    Qwen3UltraLight,
+    /// Ancien id `qwen3_ultra_light` : les réglages déjà enregistrés restent lisibles.
+    #[serde(alias = "qwen3_ultra_light")]
+    LuthLfm2UltraLight,
     Ministral3Light,
     Ministral3Balanced,
     Ministral3Quality,
@@ -34,7 +36,7 @@ pub enum LocalModelId {
 #[ts(export, export_to = "ai.ts")]
 pub enum LocalModelFamily {
     Mistral,
-    Qwen,
+    Luth,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -152,19 +154,20 @@ impl ModelRegistry {
     pub fn all() -> Vec<LocalModelDefinition> {
         vec![
             LocalModelDefinition {
-                id: LocalModelId::Qwen3UltraLight,
+                id: LocalModelId::LuthLfm2UltraLight,
                 profile: LocalModelProfile::UltraLight,
-                family: LocalModelFamily::Qwen,
-                display_name: "Qwen3 1.7B Instruct".into(),
-                repository: "unsloth/Qwen3-1.7B-GGUF".into(),
-                filename: "Qwen3-1.7B-Q4_K_M.gguf".into(),
-                local_filename: "qwen3-1.7b-q4_k_m.gguf".into(),
-                revision: "d7f544eead698dbd1f15126ef60b45a1e1933222".into(),
-                sha256: "b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897".into(),
-                download_size_bytes: 1_107_409_472,
-                estimated_ram_mb: 2_000,
+                family: LocalModelFamily::Luth,
+                display_name: "Luth LFM2 1.2B".into(),
+                repository: "mradermacher/Luth-LFM2-1.2B-GGUF".into(),
+                filename: "Luth-LFM2-1.2B.Q4_K_M.gguf".into(),
+                local_filename: "luth-lfm2-1.2b-q4_k_m.gguf".into(),
+                revision: "5f91c560983cf8874def628fd4a3fb5ef7333a16".into(),
+                sha256: "9ca9c9a4f53ec05855434061a65f541e1336a47fa7fdc38a2215b6a6e4e7d18d".into(),
+                download_size_bytes: 730_895_296,
+                estimated_ram_mb: 1_600,
                 recommended_ram_mb: 4_096,
-                recommended_vram_mb: Some(2_560),
+                // Seuil bas : le profil reste viable sans GPU, mais une petite VRAM accélère.
+                recommended_vram_mb: Some(2_048),
                 recommended_cores: 2,
                 context_size: LOCAL_AI_CONTEXT_SIZE,
                 quantization: LOCAL_AI_QUANTIZATION.into(),
@@ -493,7 +496,7 @@ mod tests {
             assert_eq!(model.quantization, "Q4_K_M");
         }
         assert_eq!(
-            ModelRegistry::get(LocalModelId::Qwen3UltraLight).map(|m| m.profile),
+            ModelRegistry::get(LocalModelId::LuthLfm2UltraLight).map(|m| m.profile),
             Some(LocalModelProfile::UltraLight)
         );
         assert_eq!(
@@ -511,13 +514,13 @@ mod tests {
     }
 
     /// Le fournisseur local peut retenir des artefacts de familles différentes. L'interface
-    /// doit choisir le logo sur une propriété, jamais en cherchant « Qwen » ou « Ministral »
+    /// doit choisir le logo sur une propriété, jamais en cherchant « Luth » ou « Ministral »
     /// dans le nom affiché.
     #[test]
     fn chaque_modele_declare_sa_famille() {
         assert_eq!(
-            ModelRegistry::get(LocalModelId::Qwen3UltraLight).map(|m| m.family),
-            Some(LocalModelFamily::Qwen)
+            ModelRegistry::get(LocalModelId::LuthLfm2UltraLight).map(|m| m.family),
+            Some(LocalModelFamily::Luth)
         );
         assert_eq!(
             ModelRegistry::get(LocalModelId::Ministral3Light).map(|m| m.family),
@@ -525,7 +528,7 @@ mod tests {
         );
         assert!(ModelRegistry::all()
             .iter()
-            .any(|model| model.family == LocalModelFamily::Qwen));
+            .any(|model| model.family == LocalModelFamily::Luth));
         assert!(ModelRegistry::all()
             .iter()
             .any(|model| model.family == LocalModelFamily::Mistral));
@@ -536,11 +539,11 @@ mod tests {
         let models = ModelRegistry::all();
         let expected = [
             (
-                "unsloth/Qwen3-1.7B-GGUF",
-                "Qwen3-1.7B-Q4_K_M.gguf",
-                "d7f544eead698dbd1f15126ef60b45a1e1933222",
-                "b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897",
-                1_107_409_472_u64,
+                "mradermacher/Luth-LFM2-1.2B-GGUF",
+                "Luth-LFM2-1.2B.Q4_K_M.gguf",
+                "5f91c560983cf8874def628fd4a3fb5ef7333a16",
+                "9ca9c9a4f53ec05855434061a65f541e1336a47fa7fdc38a2215b6a6e4e7d18d",
+                730_895_296_u64,
             ),
             (
                 "mistralai/Ministral-3-3B-Instruct-2512-GGUF",
