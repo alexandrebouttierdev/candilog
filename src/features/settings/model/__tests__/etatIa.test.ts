@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { etatIa, iaEstConfiguree } from "../etatIa";
+import { etatIa, iaEstConfiguree, manquants } from "../etatIa";
 import type { LlmForm } from "@/shared/types/generated/settings";
 
 function llm(patch: Partial<LlmForm> = {}): LlmForm {
@@ -69,5 +69,32 @@ describe("iaEstConfiguree", () => {
 
   it("refuse une clé API manquante pour un fournisseur distant", () => {
     expect(iaEstConfiguree(llm({ api_key_configured: false }))).toBe(false);
+  });
+
+  // La grille des fournisseurs vide `model` en sélectionnant Mistral Local, et l'écran
+  // affiche MistralLocalPanel au lieu d'un champ « Modèle » : ce champ ne peut donc jamais
+  // être rempli. L'exiger affichait AiRequiredModal après un enregistrement pourtant réussi.
+  it("accepte Mistral Local sans nom de modèle, qu'il ne stocke pas dans llm.model", () => {
+    expect(
+      iaEstConfiguree(
+        llm({ provider: "mistral_local", model: "", endpoint: null, api_key_configured: false }),
+      ),
+    ).toBe(true);
+  });
+});
+
+describe("manquants", () => {
+  it("ne réclame aucun champ pour Mistral Local", () => {
+    expect(
+      manquants(
+        llm({ provider: "mistral_local", model: "", endpoint: null, api_key_configured: false }),
+      ),
+    ).toEqual([]);
+  });
+
+  it("réclame toujours le modèle des autres fournisseurs locaux", () => {
+    expect(manquants(llm({ provider: "ollama", model: "", api_key_configured: false }))).toEqual([
+      "le modèle",
+    ]);
   });
 });

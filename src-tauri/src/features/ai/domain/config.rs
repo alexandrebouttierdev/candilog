@@ -85,15 +85,23 @@ impl LlmConfig {
 
     #[must_use]
     pub fn est_configure(&self) -> bool {
-        !self.model.trim().is_empty()
-            && match self.provider {
-                ProviderKind::MistralLocal => true,
-                ProviderKind::Ollama => !self.endpoint_effectif().trim().is_empty(),
-                _ => self
-                    .api_key
-                    .as_deref()
-                    .is_some_and(|key| !key.trim().is_empty()),
+        match self.provider {
+            // Mistral Local ne se décrit pas par `llm.model` : son artefact est désigné par
+            // `local_ai.active_model_id`, et l'écran de réglages n'offre aucun champ pour
+            // saisir un nom de modèle. Exiger ce champ rendait le fournisseur inutilisable
+            // dès que la grille le sélectionnait, puisqu'elle le vide.
+            ProviderKind::MistralLocal => true,
+            ProviderKind::Ollama => {
+                !self.model.trim().is_empty() && !self.endpoint_effectif().trim().is_empty()
             }
+            _ => {
+                !self.model.trim().is_empty()
+                    && self
+                        .api_key
+                        .as_deref()
+                        .is_some_and(|key| !key.trim().is_empty())
+            }
+        }
     }
 }
 
@@ -107,6 +115,44 @@ pub struct SettingsStockes {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn config(provider: ProviderKind, model: &str) -> LlmConfig {
+        LlmConfig {
+            provider,
+            api_key: None,
+            endpoint: None,
+            model: model.into(),
+            temperature: 0.7,
+            mode: AnalysisMode::Auto,
+        }
+    }
+
+    /// Mistral Local ne tire pas son modèle de `llm.model` mais de
+    /// `local_ai.active_model_id` : la grille des fournisseurs vide donc ce champ, et
+    /// l'écran n'offre aucun moyen de le remplir. L'exiger rendait le fournisseur
+    /// inutilisable dès le premier enregistrement.
+    #[test]
+    fn mistral_local_reste_configure_sans_nom_de_modele() {
+        assert!(config(ProviderKind::MistralLocal, "").est_configure());
+    }
+
+    #[test]
+    fn ollama_exige_toujours_un_modele() {
+        assert!(!config(ProviderKind::Ollama, "").est_configure());
+        assert!(config(ProviderKind::Ollama, "llama3.2:3b").est_configure());
+    }
+
+    #[test]
+    fn un_fournisseur_cloud_exige_toujours_un_modele_et_une_cle() {
+        assert!(!config(ProviderKind::Claude, "").est_configure());
+        let mut avec_modele = config(ProviderKind::Claude, "claude-sonnet-4-0");
+        assert!(
+            !avec_modele.est_configure(),
+            "sans clé, rien n'est configuré"
+        );
+        avec_modele.api_key = Some("sk-test".into());
+        assert!(avec_modele.est_configure());
+    }
 
     #[test]
     fn nvidia_est_relu_comme_deepseek() {

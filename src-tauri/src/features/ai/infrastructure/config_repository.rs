@@ -87,6 +87,23 @@ mod tests {
         );
     }
 
+    /// Chaîne complète du bogue signalé : la grille des réglages vide `llm.model` en
+    /// sélectionnant Mistral Local, l'enregistrement est accepté, mais toute opération IA
+    /// repassait ensuite par `est_configure` et échouait sur « Configurez un fournisseur ».
+    #[test]
+    fn mistral_local_enregistre_sans_modele_reste_utilisable() {
+        let pool = pool();
+        connection(&pool)
+            .unwrap()
+            .execute(
+                "INSERT INTO settings (id, data, updated_at) VALUES (1, ?1, datetime('now'))",
+                [r#"{"llm":{"provider":"mistral_local","api_key":null,"endpoint":null,"model":"","temperature":0.7}}"#],
+            )
+            .unwrap();
+        let config = load_config(&pool).expect("Mistral Local doit rester utilisable");
+        assert_eq!(config.provider, ProviderKind::MistralLocal);
+    }
+
     struct CoffreFixe(Option<String>);
 
     impl SecretStoreContract for CoffreFixe {
