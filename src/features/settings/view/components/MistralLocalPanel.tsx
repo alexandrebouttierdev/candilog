@@ -1,30 +1,54 @@
 import { useState } from "react";
+import { cn } from "@/shared/lib/cn";
 import type {
   LocalAiBackend,
   LocalAiState,
   LocalAiStatus,
   LocalModelDefinition,
+  LocalModelEvaluation,
   LocalModelFamily,
   LocalModelProfile,
+  ModelCompatibility,
 } from "@/shared/types/generated/ai";
 import logoMistral from "@/assets/providers/mistralai.svg";
-import { Button, ConfirmDialog, ErrorBanner, Icon, Skeleton } from "@/shared/ui";
+import logoQwen from "@/assets/providers/qwen.svg";
+import { Button, ConfirmDialog, ErrorBanner, Icon, Skeleton, StatusPill } from "@/shared/ui";
+import type { IconName, Tone } from "@/shared/ui";
 import { SettingsCard } from "./SettingsUi";
 import { useLocalAiViewModel } from "../../viewmodel/useLocalAiViewModel";
 
 const PROFILE_LABELS: Record<LocalModelProfile, string> = {
+  ultra_light: "Ultra léger",
   light: "Léger",
   balanced: "Équilibré",
   quality: "Qualité",
+};
+
+/// Icône de chaque profil : du plus frugal au plus exigeant.
+const PROFILE_ICONS: Record<LocalModelProfile, IconName> = {
+  ultra_light: "bolt",
+  light: "rocket_launch",
+  balanced: "tune",
+  quality: "workspace_premium",
 };
 
 /// Logo et nom de chaque famille d'artefacts, choisis sur la propriété `family` renvoyée
 /// par le backend — jamais sur le nom affiché du modèle.
 const FAMILY_LOGOS: Record<LocalModelFamily, { src: string; label: string; mono: boolean }> = {
   mistral: { src: logoMistral, label: "Mistral", mono: false },
-  // Aucun artefact Qwen n'est encore publié par le registre : l'entrée retombe sur le logo
-  // Mistral jusqu'à l'ajout de l'asset, plutôt que d'afficher une image manquante.
-  qwen: { src: logoMistral, label: "Qwen", mono: false },
+  qwen: { src: logoQwen, label: "Qwen", mono: false },
+};
+
+/// Traduction de la compatibilité mesurée par le backend.
+///
+/// La couleur ne porte jamais l'information seule : chaque état est écrit. Un profil
+/// `unsupported` n'est pas seulement grisé, il annonce « Incompatible » et la raison
+/// calculée côté Rust.
+const COMPATIBILITY: Record<ModelCompatibility, { label: string; tone: Tone }> = {
+  optimal: { label: "Recommandé pour votre ordinateur", tone: "accent" },
+  supported: { label: "Compatible", tone: "success" },
+  not_recommended: { label: "Déconseillé", tone: "warning" },
+  unsupported: { label: "Incompatible", tone: "danger" },
 };
 
 const BACKEND_LABELS: Record<LocalAiBackend, string> = {
@@ -42,7 +66,7 @@ export function MistralLocalPanel({ onConfigured }: { onConfigured?: () => void 
   const active = vm.status?.active_model ?? null;
   const tooSlow = vm.status?.benchmark?.rating === "too_slow";
   const downgrade = active && tooSlow
-    ? findDowngrade(active, vm.recommendation?.evaluations.map((item) => item.model) ?? [])
+    ? findDowngrade(active, vm.recommendation?.evaluations ?? [])
     : null;
 
   return (
@@ -61,6 +85,14 @@ export function MistralLocalPanel({ onConfigured }: { onConfigured?: () => void 
       ) : null}
       {isBusy(vm.state) ? (
         <Installation state={vm.state} model={recommended} progress={vm.progress} onCancel={vm.cancel} />
+      ) : null}
+      {vm.recommendation && vm.recommendation.evaluations.length > 0 && !isBusy(vm.state) ? (
+        <ModelChoice
+          evaluations={vm.recommendation.evaluations}
+          activeId={active?.id ?? null}
+          tooSlowActive={tooSlow}
+          onInstall={setInstallCandidate}
+        />
       ) : null}
       {vm.state === "ready" && active && vm.status ? (
         <Ready
@@ -157,9 +189,13 @@ function Recommendation({ model, onInstall }: { model: LocalModelDefinition; onI
   return (
     <SettingsCard icon="check_circle" title="Votre ordinateur est compatible avec l'IA locale">
       <div className="grid max-w-2xl gap-3 sm:grid-cols-3">
-        <Metric label="Modèle recommandé" value={PROFILE_LABELS[model.profile]} />
+        <Metric
+          label="Modèle recommandé"
+          value={PROFILE_LABELS[model.profile]}
+          icon={PROFILE_ICONS[model.profile]}
+        />
         <Metric label="Qualité" value={model.profile === "light" ? "Bonne" : "Élevée"} />
-        <Metric label="Téléchargement" value={formatBytes(model.download_size_bytes)} />
+        <Metric label="Poids sur le disque" value={formatBytes(model.download_size_bytes)} />
       </div>
       <Button variant="primary" icon="download" className="mt-5" onClick={onInstall}>
         Installer l'IA locale
@@ -262,18 +298,31 @@ function Ready({
   return (
     <SettingsCard icon="check_circle" title="IA locale prête">
       <div className="grid gap-3 sm:grid-cols-4">
-        <Metric label="Profil" value={PROFILE_LABELS[model.profile]} />
+        <Metric
+          label="Profil"
+          value={PROFILE_LABELS[model.profile]}
+          icon={PROFILE_ICONS[model.profile]}
+        />
         <Metric
           label="Modèle"
           value={model.display_name.replace(" Instruct", "")}
           family={model.family}
         />
-        <Metric label="Stockage" value={formatBytes(model.download_size_bytes)} />
+        <Metric label="Poids sur le disque" value={formatBytes(model.download_size_bytes)} />
         <Metric
           label="Vitesse"
           value={status.benchmark ? `${formatDecimal(status.benchmark.tokens_per_second)} tokens/s` : "À mesurer"}
         />
       </div>
+      {model.profile === "ultra_light" ? (
+        <div className="mt-4 rounded-field border border-line bg-fill px-3 py-3">
+          <p className="text-body font-mid text-ink">Mode ultra léger</p>
+          <p className="mt-1 text-note text-ink-muted">
+            Votre ordinateur utilise un modèle optimisé pour les configurations disposant de moins
+            de mémoire. La qualité des générations peut être légèrement inférieure.
+          </p>
+        </div>
+      ) : null}
       <div className="mt-5 flex flex-wrap gap-2">
         <Button
           variant="primary"
@@ -309,7 +358,7 @@ function Ready({
                 Le profil {PROFILE_LABELS[downgrade.profile]} devrait être plus fluide. Il ne sera téléchargé qu'après votre confirmation.
               </p>
               <Button className="mt-3" icon="download" onClick={onDowngrade}>
-                Installer le profil {PROFILE_LABELS[downgrade.profile]}
+                Passer au profil {PROFILE_LABELS[downgrade.profile]}
               </Button>
             </>
           ) : (
@@ -343,7 +392,7 @@ function Ready({
           <Advanced label="Runtime" value={model.runtime} />
           <Advanced label="Backend" value={status.backend ? BACKEND_LABELS[status.backend] : "CPU"} />
           <Advanced label="Contexte" value={`${model.context_size} tokens`} />
-          <Advanced label="RAM estimée" value={`${model.estimated_ram_mb} Mo`} />
+          <Advanced label="RAM estimée" value={formatGoFromMb(model.estimated_ram_mb)} />
         </dl>
         <Button className="mt-3" icon="refresh" disabled={testing} onClick={onBenchmark}>
           Relancer le benchmark
@@ -353,20 +402,122 @@ function Ready({
   );
 }
 
+/// Liste des profils évalués, avec l'état calculé par le backend et la raison qui l'explique.
+///
+/// L'écran ne recalcule pas la RAM : `compatibility` et `reason` viennent de
+/// `LocalModelSelector`. En revanche un benchmark `too_slow` sur le profil actif
+/// prime sur un `optimal` matériel — la machine « tenait » sur le papier, pas à l'usage.
+function ModelChoice({
+  evaluations,
+  activeId,
+  tooSlowActive,
+  onInstall,
+}: {
+  evaluations: LocalModelEvaluation[];
+  activeId: string | null;
+  tooSlowActive: boolean;
+  onInstall: (model: LocalModelDefinition) => void;
+}) {
+  const ordered = [...evaluations].sort(
+    (a, b) => a.model.download_size_bytes - b.model.download_size_bytes,
+  );
+  return (
+    <SettingsCard icon="tune" title="Profils disponibles">
+      <ul className="flex flex-col gap-2">
+        {ordered.map((evaluation) => {
+          const { model, reason: hardwareReason } = evaluation;
+          const measuredTooSlow = tooSlowActive && model.id === activeId;
+          const compatibility = measuredTooSlow ? "not_recommended" : evaluation.compatibility;
+          const reason = measuredTooSlow
+            ? "Mesuré trop lent sur votre ordinateur."
+            : hardwareReason;
+          const actif = model.id === activeId;
+          // Seuls optimal et supported restent installables : déconseillé charge encore
+          // mais sans marge, incompatible ne tient pas en mémoire. Un profil déjà mesuré
+          // trop lent est traité comme déconseillé.
+          const installable = compatibility === "optimal" || compatibility === "supported";
+          const logo = FAMILY_LOGOS[model.family];
+          const etat = COMPATIBILITY[compatibility];
+          return (
+            <li
+              key={model.id}
+              className={cn(
+                "flex flex-wrap items-center gap-x-3 gap-y-2 rounded-field border px-3 py-2.5",
+                actif ? "border-accent bg-accent-tint-12" : "border-line bg-fill",
+                !installable && "opacity-70",
+              )}
+            >
+              <img
+                src={logo.src}
+                alt=""
+                data-family={model.family}
+                width={18}
+                height={18}
+                className={cn("size-4.5 flex-none", logo.mono && "dark:invert")}
+              />
+              <div className="min-w-0 flex-1">
+                <p className="flex min-w-0 items-center gap-1.5 text-body font-mid text-ink">
+                  <Icon
+                    name={PROFILE_ICONS[model.profile]}
+                    size={16}
+                    className="flex-none text-ink-muted"
+                  />
+                  <span className="truncate">
+                    {PROFILE_LABELS[model.profile]} · {model.display_name.replace(" Instruct", "")}
+                  </span>
+                </p>
+                <p className="mt-0.5 text-note text-ink-muted">
+                  {formatBytes(model.download_size_bytes)} sur le disque
+                  {" · "}
+                  RAM reco {formatGoFromMb(model.recommended_ram_mb)}
+                  {" · "}
+                  VRAM reco {formatGoFromMb(model.recommended_vram_mb ?? model.recommended_ram_mb)}
+                  {" · "}
+                  {model.recommended_cores} cœurs
+                </p>
+                <p className="mt-0.5 text-note text-ink-muted">{reason}</p>
+              </div>
+              <StatusPill tone={etat.tone}>{etat.label}</StatusPill>
+              {actif ? (
+                <StatusPill tone="success" icon="check_circle">
+                  Profil actif
+                </StatusPill>
+              ) : (
+                <Button
+                  icon="download"
+                  disabled={!installable}
+                  onClick={() => onInstall(model)}
+                >
+                  Installer le profil {PROFILE_LABELS[model.profile]}
+                </Button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </SettingsCard>
+  );
+}
+
 function Metric({
   label,
   value,
   family,
+  icon,
 }: {
   label: string;
   value: string;
   family?: LocalModelFamily;
+  icon?: IconName;
 }) {
   const logo = family ? FAMILY_LOGOS[family] : null;
   return (
     <div className="rounded-field bg-fill px-3 py-2.5">
       <p className="text-meta text-ink-faint">{label}</p>
       <p className="mt-1 flex min-w-0 items-center gap-1.5 text-item font-semibold text-ink">
+        {icon ? (
+          <Icon name={icon} size={16} className="flex-none text-ink-muted" />
+        ) : null}
         {logo ? (
           // Décoratif : le nom du modèle est écrit juste à côté, un `alt` le ferait
           // annoncer deux fois.
@@ -398,6 +549,15 @@ function formatBytes(bytes: number): string {
   return `${(bytes / 1_000_000_000).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} Go`;
 }
 
+/// Même convention que le sélecteur Rust : Mo internes → Go (base 1024), virgule française.
+function formatGoFromMb(mb: number): string {
+  const tenths = Math.round((mb / 1024) * 10) / 10;
+  if (Number.isInteger(tenths)) {
+    return `${tenths} Go`;
+  }
+  return `${tenths.toLocaleString("fr-FR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} Go`;
+}
+
 function formatDecimal(value: number): string {
   return value.toLocaleString("fr-FR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 }
@@ -415,12 +575,20 @@ function estimationAnalyseMinutes(tokensPerSecond: number): number {
 
 function findDowngrade(
   active: LocalModelDefinition,
-  models: LocalModelDefinition[],
+  evaluations: LocalModelEvaluation[],
 ): LocalModelDefinition | null {
   const target: Partial<Record<LocalModelProfile, LocalModelProfile>> = {
     quality: "balanced",
     balanced: "light",
+    light: "ultra_light",
   };
   const profile = target[active.profile];
-  return profile ? models.find((model) => model.profile === profile) ?? null : null;
+  if (!profile) return null;
+  const candidate = evaluations.find((item) => item.model.profile === profile);
+  if (!candidate) return null;
+  // Même règle que la liste : pas de repli vers un profil déconseillé ou incompatible.
+  if (candidate.compatibility !== "optimal" && candidate.compatibility !== "supported") {
+    return null;
+  }
+  return candidate.model;
 }

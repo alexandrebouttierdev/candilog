@@ -24,7 +24,29 @@ const actions = {
 };
 
 function model(profile: LocalModelProfile): LocalModelDefinition {
+  if (profile === "ultra_light") {
+    return {
+      id: "qwen3_ultra_light",
+      profile,
+      family: "qwen",
+      display_name: "Qwen3 1.7B Instruct",
+      repository: "unsloth/Qwen3-1.7B-GGUF",
+      filename: "Qwen3-1.7B-Q4_K_M.gguf",
+      local_filename: "qwen3-1.7b-q4_k_m.gguf",
+      revision: "a".repeat(40),
+      sha256: "b".repeat(64),
+      download_size_bytes: 1_107_409_472,
+      estimated_ram_mb: 2_000,
+      recommended_ram_mb: 4_096,
+      recommended_vram_mb: 2_560,
+      recommended_cores: 2,
+      context_size: 8192,
+      quantization: "Q4_K_M",
+      runtime: "llama.cpp",
+    };
+  }
   const rank = profile === "light" ? "3" : profile === "balanced" ? "8" : "14";
+  const cores = profile === "light" ? 4 : profile === "balanced" ? 6 : 8;
   return {
     id: profile === "light" ? "ministral3_light" : profile === "balanced" ? "ministral3_balanced" : "ministral3_quality",
     profile,
@@ -37,8 +59,9 @@ function model(profile: LocalModelProfile): LocalModelDefinition {
     sha256: "b".repeat(64),
     download_size_bytes: Number(rank) * 500_000_000,
     estimated_ram_mb: Number(rank) * 700,
-    recommended_ram_mb: Number(rank) * 1_500,
-    recommended_vram_mb: Number(rank) * 1_000,
+    recommended_ram_mb: profile === "light" ? 8_192 : profile === "balanced" ? 16_384 : 24_576,
+    recommended_vram_mb: profile === "light" ? 4_096 : profile === "balanced" ? 8_192 : 12_288,
+    recommended_cores: cores,
     context_size: 8192,
     quantization: "Q4_K_M",
     runtime: "llama.cpp",
@@ -205,7 +228,9 @@ describe("configuration Mistral Local", () => {
     render(<MistralLocalPanel />);
     expect(screen.getByText("Ce profil est trop lent sur votre ordinateur.")).toBeInTheDocument();
     expect(actions.install).not.toHaveBeenCalled();
-    await userEvent.click(screen.getByRole("button", { name: "Installer le profil Équilibré" }));
+    // Le bandeau d'avertissement propose le repli ; la liste « Profils disponibles »
+    // propose aussi l'installation. Les libellés restent distincts pour éviter l'ambiguïté.
+    await userEvent.click(screen.getByRole("button", { name: "Passer au profil Équilibré" }));
     expect(screen.getByRole("alertdialog", { name: "Installer l'IA locale ?" })).toBeInTheDocument();
     expect(actions.install).not.toHaveBeenCalled();
   });
@@ -257,6 +282,211 @@ describe("configuration Mistral Local", () => {
 
     expect(screen.getByText("Famille")).toBeInTheDocument();
     expect(screen.getByText("Mistral")).toBeInTheDocument();
+  });
+
+  it("annonce le mode ultra léger pour le profil Qwen", () => {
+    const active = model("ultra_light");
+    setup({ state: "ready", recommendation: recommendation(active), status: status(active) });
+    render(<MistralLocalPanel />);
+
+    expect(screen.getByText("Ultra léger")).toBeInTheDocument();
+    expect(screen.getByText("Mode ultra léger")).toBeInTheDocument();
+    expect(screen.getByText(/moins de mémoire/)).toBeInTheDocument();
+  });
+
+  it("n'annonce pas le mode ultra léger pour un profil Ministral", () => {
+    const active = model("light");
+    setup({ state: "ready", recommendation: recommendation(active), status: status(active) });
+    render(<MistralLocalPanel />);
+
+    expect(screen.queryByText("Mode ultra léger")).not.toBeInTheDocument();
+  });
+
+  it("affiche la RAM estimée en Go dans la configuration avancée", () => {
+    const active = model("ultra_light");
+    setup({ state: "ready", recommendation: recommendation(active), status: status(active) });
+    render(<MistralLocalPanel />);
+
+    expect(screen.getByText("RAM estimée")).toBeInTheDocument();
+    expect(screen.getByText("2 Go")).toBeInTheDocument();
+    expect(screen.queryByText(/2000 Mo/)).not.toBeInTheDocument();
+  });
+
+  // Le backend évalue chaque profil ; l'écran n'en montrait aucun, si bien qu'on ne pouvait
+  // ni comparer, ni comprendre pourquoi un profil était écarté.
+  it("illustre chaque profil avec une icône distinctive", () => {
+    const active = model("ultra_light");
+    setup({
+      state: "ready",
+      status: status(active),
+      recommendation: {
+        ...recommendation(active),
+        evaluations: [
+          { model: active, compatibility: "optimal", reason: "Compatible." },
+          { model: model("light"), compatibility: "supported", reason: "Compatible." },
+          { model: model("balanced"), compatibility: "supported", reason: "Compatible." },
+          { model: model("quality"), compatibility: "unsupported", reason: "Trop lourd." },
+        ],
+      },
+    });
+    render(<MistralLocalPanel />);
+
+    expect(screen.getAllByText("bolt").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("rocket_launch").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("tune").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("workspace_premium").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("liste chaque profil avec sa compatibilité mesurée", () => {
+    const active = model("light");
+    setup({
+      state: "ready",
+      status: status(active),
+      recommendation: {
+        ...recommendation(active),
+        evaluations: [
+          { model: active, compatibility: "optimal", reason: "16 Go de RAM, 8 cœurs." },
+          { model: model("balanced"), compatibility: "not_recommended", reason: "Marge insuffisante." },
+          { model: model("quality"), compatibility: "unsupported", reason: "24 Go recommandés." },
+        ],
+      },
+    });
+    render(<MistralLocalPanel />);
+
+    expect(screen.getByText("Recommandé pour votre ordinateur")).toBeInTheDocument();
+    expect(screen.getByText("Déconseillé")).toBeInTheDocument();
+    expect(screen.getByText("Incompatible")).toBeInTheDocument();
+    // La raison vient du backend, jamais d'une règle réécrite dans React.
+    // Elle partage la ligne avec le poids disque (« 7 Go sur le disque · 24 Go recommandés. »).
+    expect(screen.getAllByText(/sur le disque/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/24 Go recommandés/)).toBeInTheDocument();
+  });
+
+  it("affiche la config recommandée (RAM, VRAM, cœurs) pour chaque profil", () => {
+    const active = model("ultra_light");
+    setup({
+      state: "ready",
+      status: status(active),
+      recommendation: {
+        ...recommendation(active),
+        evaluations: [
+          { model: active, compatibility: "optimal", reason: "Compatible." },
+          { model: model("light"), compatibility: "supported", reason: "Compatible." },
+        ],
+      },
+    });
+    render(<MistralLocalPanel />);
+
+    // Valeurs issues du modèle (registre), pas recalculées dans React.
+    expect(screen.getAllByText(/RAM reco 4 Go/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/VRAM reco 2,5 Go/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/2 cœurs/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/RAM reco 8 Go/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/VRAM reco 4 Go/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/4 cœurs/).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("n'annonce pas recommandé un profil mesuré trop lent", () => {
+    const active = model("light");
+    const slowStatus = status(active);
+    if (slowStatus.benchmark) {
+      slowStatus.benchmark.rating = "too_slow";
+      slowStatus.benchmark.tokens_per_second = 2.6;
+    }
+    setup({
+      state: "ready",
+      status: slowStatus,
+      recommendation: {
+        ...recommendation(active),
+        evaluations: [
+          { model: active, compatibility: "optimal", reason: "16 Go de RAM, 8 cœurs." },
+          { model: model("ultra_light"), compatibility: "supported", reason: "Compatible." },
+        ],
+      },
+    });
+    render(<MistralLocalPanel />);
+
+    // Le matériel suffisait, mais le benchmark a prouvé le contraire : la pastille suit la mesure.
+    expect(screen.queryByText("Recommandé pour votre ordinateur")).not.toBeInTheDocument();
+    expect(screen.getByText("Déconseillé")).toBeInTheDocument();
+    expect(screen.getByText("Mesuré trop lent sur votre ordinateur.")).toBeInTheDocument();
+    expect(screen.getByText("Ce profil est trop lent sur votre ordinateur.")).toBeInTheDocument();
+  });
+
+  it("interdit d'installer un profil incompatible", () => {
+    const active = model("light");
+    setup({
+      state: "ready",
+      status: status(active),
+      recommendation: {
+        ...recommendation(active),
+        evaluations: [
+          { model: active, compatibility: "optimal", reason: "Compatible." },
+          { model: model("quality"), compatibility: "unsupported", reason: "Trop lourd." },
+        ],
+      },
+    });
+    render(<MistralLocalPanel />);
+
+    expect(screen.getByRole("button", { name: /Installer le profil Qualité/ })).toBeDisabled();
+    expect(screen.getByText("Profil actif")).toBeInTheDocument();
+  });
+
+  it("interdit d'installer un profil déconseillé", () => {
+    const active = model("light");
+    setup({
+      state: "ready",
+      status: status(active),
+      recommendation: {
+        ...recommendation(active),
+        evaluations: [
+          { model: active, compatibility: "optimal", reason: "Compatible." },
+          { model: model("balanced"), compatibility: "not_recommended", reason: "Marge insuffisante." },
+        ],
+      },
+    });
+    render(<MistralLocalPanel />);
+
+    expect(screen.getByRole("button", { name: /Installer le profil Équilibré/ })).toBeDisabled();
+  });
+
+  it("ne propose pas de repli vers un profil déconseillé après un benchmark trop lent", () => {
+    const active = model("balanced");
+    const lower = model("light");
+    const slowStatus = status(active);
+    if (slowStatus.benchmark) slowStatus.benchmark.rating = "too_slow";
+    setup({
+      state: "ready",
+      recommendation: {
+        ...recommendation(active),
+        evaluations: [{ model: lower, compatibility: "not_recommended", reason: "Marge insuffisante." }],
+      },
+      status: slowStatus,
+    });
+    render(<MistralLocalPanel />);
+
+    expect(screen.getByText(/trop lent sur votre ordinateur/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Passer au profil/ })).not.toBeInTheDocument();
+  });
+
+  it("confirme avant d'installer un autre profil compatible", async () => {
+    const active = model("light");
+    setup({
+      state: "ready",
+      status: status(active),
+      recommendation: {
+        ...recommendation(active),
+        evaluations: [
+          { model: active, compatibility: "optimal", reason: "Compatible." },
+          { model: model("balanced"), compatibility: "supported", reason: "Compatible." },
+        ],
+      },
+    });
+    render(<MistralLocalPanel />);
+
+    await userEvent.click(screen.getByRole("button", { name: /Installer le profil Équilibré/ }));
+    expect(screen.getByRole("alertdialog", { name: "Installer l'IA locale ?" })).toBeInTheDocument();
+    expect(actions.install).not.toHaveBeenCalled();
   });
 
   it("confirme la suppression avant d'appeler le service", async () => {

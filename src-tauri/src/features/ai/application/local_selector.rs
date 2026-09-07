@@ -2,7 +2,7 @@
 
 use crate::features::ai::domain::{
     LocalAiBackend, LocalAiHardware, LocalAiRecommendation, LocalModelDefinition,
-    LocalModelEvaluation, LocalModelId, LocalModelProfile, ModelCompatibility, ModelRegistry,
+    LocalModelEvaluation, LocalModelProfile, ModelCompatibility, ModelRegistry,
 };
 
 const CPU_MEMORY_PERCENT: u64 = 68;
@@ -94,8 +94,10 @@ fn unified_memory_compatibility(
         comfortable,
         can_load,
         format!(
-            "{} Mo de mémoire unifiée, {} Mo disponibles ; {} Mo recommandés.",
-            total, available, model.recommended_ram_mb
+            "{} de mémoire unifiée, {} disponibles ; {} recommandés.",
+            format_go(total),
+            format_go(available),
+            format_go(model.recommended_ram_mb)
         ),
     )
 }
@@ -123,8 +125,10 @@ fn gpu_compatibility(
         comfortable,
         can_load,
         format!(
-            "{} Mo de mémoire graphique, {} Mo disponibles ; {} Mo recommandés.",
-            total, available, recommended
+            "{} de mémoire graphique, {} disponibles ; {} recommandés.",
+            format_go(total),
+            format_go(available),
+            format_go(recommended)
         ),
     )
 }
@@ -137,11 +141,7 @@ fn cpu_compatibility(
     let available = hardware.available_ram_mb;
     let budget = total.saturating_mul(CPU_MEMORY_PERCENT) / 100;
     let physical = hardware.physical_cores.unwrap_or(hardware.logical_cores);
-    let minimum_cores = match model.id {
-        LocalModelId::Ministral3Light => 4,
-        LocalModelId::Ministral3Balanced => 6,
-        LocalModelId::Ministral3Quality => 8,
-    };
+    let minimum_cores = model.recommended_cores;
     let comfortable = total >= model.recommended_ram_mb
         && budget >= model.estimated_ram_mb
         && available >= model.estimated_ram_mb
@@ -151,17 +151,36 @@ fn cpu_compatibility(
         comfortable,
         can_load,
         format!(
-            "{} Mo de RAM, {} Mo disponibles et {} cœurs physiques ; {} Mo et {} cœurs recommandés.",
-            total, available, physical, model.recommended_ram_mb, minimum_cores
+            "{} de RAM, {} disponibles et {} cœurs physiques ; {} et {} cœurs recommandés.",
+            format_go(total),
+            format_go(available),
+            physical,
+            format_go(model.recommended_ram_mb),
+            minimum_cores
         ),
     )
 }
 
 const fn profile_label(profile: LocalModelProfile) -> &'static str {
     match profile {
+        LocalModelProfile::UltraLight => "Ultra léger",
         LocalModelProfile::Light => "Léger",
         LocalModelProfile::Balanced => "Équilibré",
         LocalModelProfile::Quality => "Qualité",
+    }
+}
+
+/// Convertit une quantité interne en Mo vers un libellé en Go lisible.
+///
+/// Les seuils du registre sont en multiples de 1024 Mo ; on garde cette base pour que
+/// « 4096 Mo recommandés » s'affiche « 4 Go », pas « 4,1 Go ».
+fn format_go(mb: u64) -> String {
+    let go = mb as f64 / 1024.0;
+    let tenths = (go * 10.0).round() / 10.0;
+    if (tenths - tenths.round()).abs() < f64::EPSILON {
+        format!("{} Go", tenths.round() as u64)
+    } else {
+        format!("{tenths:.1} Go").replace('.', ",")
     }
 }
 
@@ -223,10 +242,12 @@ mod tests {
 
     #[test]
     fn cpu_thresholds() {
+        assert_eq!(selected(cpu(4_096)), Some(LocalModelProfile::UltraLight));
         assert_eq!(selected(cpu(8_192)), Some(LocalModelProfile::Light));
         assert_eq!(selected(cpu(16_384)), Some(LocalModelProfile::Balanced));
         assert_eq!(selected(cpu(24_576)), Some(LocalModelProfile::Quality));
-        assert_eq!(selected(cpu(8_191)), None);
+        assert_eq!(selected(cpu(4_095)), None);
+        assert_eq!(selected(cpu(8_191)), Some(LocalModelProfile::UltraLight));
         assert_eq!(selected(cpu(16_383)), Some(LocalModelProfile::Light));
         assert_eq!(selected(cpu(24_575)), Some(LocalModelProfile::Balanced));
         assert_eq!(selected(cpu(24_577)), Some(LocalModelProfile::Quality));
@@ -234,20 +255,24 @@ mod tests {
 
     #[test]
     fn apple_silicon_thresholds() {
+        assert_eq!(selected(apple(4_096)), Some(LocalModelProfile::UltraLight));
         assert_eq!(selected(apple(8_192)), Some(LocalModelProfile::Light));
         assert_eq!(selected(apple(16_384)), Some(LocalModelProfile::Balanced));
         assert_eq!(selected(apple(24_576)), Some(LocalModelProfile::Quality));
-        assert_eq!(selected(apple(8_191)), None);
+        assert_eq!(selected(apple(4_095)), None);
+        assert_eq!(selected(apple(8_191)), Some(LocalModelProfile::UltraLight));
         assert_eq!(selected(apple(16_383)), Some(LocalModelProfile::Light));
         assert_eq!(selected(apple(24_575)), Some(LocalModelProfile::Balanced));
     }
 
     #[test]
     fn dedicated_gpu_thresholds() {
+        assert_eq!(selected(gpu(2_560)), Some(LocalModelProfile::UltraLight));
         assert_eq!(selected(gpu(4_096)), Some(LocalModelProfile::Light));
         assert_eq!(selected(gpu(8_192)), Some(LocalModelProfile::Balanced));
         assert_eq!(selected(gpu(12_288)), Some(LocalModelProfile::Quality));
-        assert_eq!(selected(gpu(4_095)), None);
+        assert_eq!(selected(gpu(2_559)), None);
+        assert_eq!(selected(gpu(4_095)), Some(LocalModelProfile::UltraLight));
         assert_eq!(selected(gpu(8_191)), Some(LocalModelProfile::Light));
         assert_eq!(selected(gpu(12_287)), Some(LocalModelProfile::Balanced));
         assert_eq!(selected(gpu(12_289)), Some(LocalModelProfile::Quality));
@@ -255,7 +280,7 @@ mod tests {
 
     #[test]
     fn low_end_machine_has_no_automatic_model() {
-        assert_eq!(selected(cpu(6_000)), None);
+        assert_eq!(selected(cpu(3_000)), None);
     }
 
     #[test]
@@ -263,5 +288,40 @@ mod tests {
         let mut hardware = cpu(24_576);
         hardware.physical_cores = Some(4);
         assert_eq!(selected(hardware), Some(LocalModelProfile::Light));
+    }
+
+    /// Les raisons sont lues telles quelles dans l'interface : afficher 15 559 Mo n'aide
+    /// pas à comparer avec un seuil de 4 Go. On convertit toujours en Go (base 1024).
+    #[test]
+    fn format_go_arrondit_et_utilise_la_virgule_francaise() {
+        assert_eq!(format_go(4_096), "4 Go");
+        assert_eq!(format_go(2_560), "2,5 Go");
+        assert_eq!(format_go(15_559), "15,2 Go");
+        assert_eq!(format_go(6_954), "6,8 Go");
+    }
+
+    #[test]
+    fn les_raisons_dexvaluation_affichent_la_memoire_en_go() {
+        let mut hardware = cpu(15_559);
+        hardware.available_ram_mb = 6_954;
+        hardware.physical_cores = Some(4);
+        let reason = LocalModelSelector::recommend(hardware)
+            .evaluations
+            .into_iter()
+            .find(|item| item.model.profile == LocalModelProfile::UltraLight)
+            .expect("profil ultra léger évalué")
+            .reason;
+        assert!(
+            reason.contains("15,2 Go de RAM") && reason.contains("6,8 Go disponibles"),
+            "raison inattendue : {reason}"
+        );
+        assert!(
+            reason.contains("4 Go") && reason.contains("2 cœurs recommandés"),
+            "raison inattendue : {reason}"
+        );
+        assert!(
+            !reason.contains(" Mo"),
+            "plus aucun Mo dans la raison : {reason}"
+        );
     }
 }

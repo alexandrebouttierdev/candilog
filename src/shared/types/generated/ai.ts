@@ -91,7 +91,11 @@ export type LocalGpuInfo = { name: string, vendor: string, total_vram_mb: number
  */
 export type LocalInferenceProgress = { generated_tokens: number, elapsed_ms: number, tokens_per_second: number, };
 
-export type LocalModelDefinition = { id: LocalModelId, profile: LocalModelProfile, family: LocalModelFamily, display_name: string, repository: string, filename: string, local_filename: string, revision: string, sha256: string, download_size_bytes: number, estimated_ram_mb: number, recommended_ram_mb: number, recommended_vram_mb: number, context_size: number, quantization: string, runtime: string, };
+export type LocalModelDefinition = { id: LocalModelId, profile: LocalModelProfile, family: LocalModelFamily, display_name: string, repository: string, filename: string, local_filename: string, revision: string, sha256: string, download_size_bytes: number, estimated_ram_mb: number, recommended_ram_mb: number, recommended_vram_mb: number, 
+/**
+ * Nombre de cœurs physiques minimum pour un usage confortable en CPU.
+ */
+recommended_cores: number, context_size: number, quantization: string, runtime: string, };
 
 export type LocalModelEvaluation = { model: LocalModelDefinition, compatibility: ModelCompatibility, reason: string, };
 
@@ -103,9 +107,9 @@ export type LocalModelEvaluation = { model: LocalModelDefinition, compatibility:
  */
 export type LocalModelFamily = "mistral" | "qwen";
 
-export type LocalModelId = "ministral3_light" | "ministral3_balanced" | "ministral3_quality";
+export type LocalModelId = "qwen3_ultra_light" | "ministral3_light" | "ministral3_balanced" | "ministral3_quality";
 
-export type LocalModelProfile = "light" | "balanced" | "quality";
+export type LocalModelProfile = "ultra_light" | "light" | "balanced" | "quality";
 
 export type MatchScore = { total: number, skills: number | null, experience: number | null, ats: number | null, present: Array<string>, missing: Array<string>, };
 

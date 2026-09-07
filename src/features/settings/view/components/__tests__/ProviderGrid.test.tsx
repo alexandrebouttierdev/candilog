@@ -56,4 +56,16 @@ describe("grille des fournisseurs", () => {
     expect(within(screen.getByRole("radio", { name: "IA locale" })).getByText("Recommandé")).toBeInTheDocument();
     expect(within(screen.getByRole("radio", { name: "Ollama" })).getByText("Votre installation ou Ollama Cloud")).toBeInTheDocument();
   });
+
+  // L'IA locale peut retenir un artefact Mistral ou Qwen : le logo principal reste
+  // Mistral, avec Qwen en badge secondaire — sans créer une seconde carte fournisseur.
+  it("superpose le badge Qwen au logo Mistral sur la tuile IA locale", () => {
+    const { container } = render(<ProviderGrid value="ollama" onChange={() => undefined} />);
+    const tuile = screen.getByRole("radio", { name: "IA locale" });
+
+    expect(tuile.querySelector('[data-provider-logo="mistral"]')).not.toBeNull();
+    expect(tuile.querySelector('[data-provider-logo="qwen"]')).not.toBeNull();
+    // Les autres tuiles n'ont qu'un logo : pas de badge secondaire inventé.
+    expect(container.querySelectorAll('[data-provider-logo="qwen"]')).toHaveLength(1);
+  });
 });

@@ -19,6 +19,7 @@ pub const LOCAL_AI_SYSTEM_MARGIN_MB: u64 = 768;
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "ai.ts")]
 pub enum LocalModelId {
+    Qwen3UltraLight,
     Ministral3Light,
     Ministral3Balanced,
     Ministral3Quality,
@@ -40,6 +41,7 @@ pub enum LocalModelFamily {
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "ai.ts")]
 pub enum LocalModelProfile {
+    UltraLight,
     Light,
     Balanced,
     Quality,
@@ -86,6 +88,8 @@ pub struct LocalModelDefinition {
     pub recommended_ram_mb: u64,
     #[ts(type = "number")]
     pub recommended_vram_mb: Option<u64>,
+    /// Nombre de cœurs physiques minimum pour un usage confortable en CPU.
+    pub recommended_cores: u32,
     pub context_size: u32,
     pub quantization: String,
     pub runtime: String,
@@ -140,13 +144,32 @@ pub const fn local_ai_memory_shortfall_mb(
     }
 }
 
-/// Source de vérité unique des trois artefacts téléchargeables.
+/// Source de vérité unique des artefacts téléchargeables.
 pub struct ModelRegistry;
 
 impl ModelRegistry {
     #[must_use]
     pub fn all() -> Vec<LocalModelDefinition> {
         vec![
+            LocalModelDefinition {
+                id: LocalModelId::Qwen3UltraLight,
+                profile: LocalModelProfile::UltraLight,
+                family: LocalModelFamily::Qwen,
+                display_name: "Qwen3 1.7B Instruct".into(),
+                repository: "unsloth/Qwen3-1.7B-GGUF".into(),
+                filename: "Qwen3-1.7B-Q4_K_M.gguf".into(),
+                local_filename: "qwen3-1.7b-q4_k_m.gguf".into(),
+                revision: "d7f544eead698dbd1f15126ef60b45a1e1933222".into(),
+                sha256: "b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897".into(),
+                download_size_bytes: 1_107_409_472,
+                estimated_ram_mb: 2_000,
+                recommended_ram_mb: 4_096,
+                recommended_vram_mb: Some(2_560),
+                recommended_cores: 2,
+                context_size: LOCAL_AI_CONTEXT_SIZE,
+                quantization: LOCAL_AI_QUANTIZATION.into(),
+                runtime: LOCAL_AI_RUNTIME.into(),
+            },
             LocalModelDefinition {
                 id: LocalModelId::Ministral3Light,
                 profile: LocalModelProfile::Light,
@@ -161,6 +184,7 @@ impl ModelRegistry {
                 estimated_ram_mb: 3_200,
                 recommended_ram_mb: 8_192,
                 recommended_vram_mb: Some(4_096),
+                recommended_cores: 4,
                 context_size: LOCAL_AI_CONTEXT_SIZE,
                 quantization: LOCAL_AI_QUANTIZATION.into(),
                 runtime: LOCAL_AI_RUNTIME.into(),
@@ -179,6 +203,7 @@ impl ModelRegistry {
                 estimated_ram_mb: 7_000,
                 recommended_ram_mb: 16_384,
                 recommended_vram_mb: Some(8_192),
+                recommended_cores: 6,
                 context_size: LOCAL_AI_CONTEXT_SIZE,
                 quantization: LOCAL_AI_QUANTIZATION.into(),
                 runtime: LOCAL_AI_RUNTIME.into(),
@@ -197,6 +222,7 @@ impl ModelRegistry {
                 estimated_ram_mb: 11_000,
                 recommended_ram_mb: 24_576,
                 recommended_vram_mb: Some(12_288),
+                recommended_cores: 8,
                 context_size: LOCAL_AI_CONTEXT_SIZE,
                 quantization: LOCAL_AI_QUANTIZATION.into(),
                 runtime: LOCAL_AI_RUNTIME.into(),
@@ -446,7 +472,7 @@ mod tests {
     #[test]
     fn registry_is_complete_and_consistent() {
         let models = ModelRegistry::all();
-        assert_eq!(models.len(), 3);
+        assert_eq!(models.len(), 4);
         let mut ids = HashSet::new();
         for model in models {
             assert!(ids.insert(model.id));
@@ -467,6 +493,10 @@ mod tests {
             assert_eq!(model.quantization, "Q4_K_M");
         }
         assert_eq!(
+            ModelRegistry::get(LocalModelId::Qwen3UltraLight).map(|m| m.profile),
+            Some(LocalModelProfile::UltraLight)
+        );
+        assert_eq!(
             ModelRegistry::get(LocalModelId::Ministral3Light).map(|m| m.profile),
             Some(LocalModelProfile::Light)
         );
@@ -485,19 +515,33 @@ mod tests {
     /// dans le nom affiché.
     #[test]
     fn chaque_modele_declare_sa_famille() {
-        for model in ModelRegistry::all() {
-            assert_eq!(
-                model.family,
-                LocalModelFamily::Mistral,
-                "le registre ne contient aujourd'hui que des artefacts Mistral"
-            );
-        }
+        assert_eq!(
+            ModelRegistry::get(LocalModelId::Qwen3UltraLight).map(|m| m.family),
+            Some(LocalModelFamily::Qwen)
+        );
+        assert_eq!(
+            ModelRegistry::get(LocalModelId::Ministral3Light).map(|m| m.family),
+            Some(LocalModelFamily::Mistral)
+        );
+        assert!(ModelRegistry::all()
+            .iter()
+            .any(|model| model.family == LocalModelFamily::Qwen));
+        assert!(ModelRegistry::all()
+            .iter()
+            .any(|model| model.family == LocalModelFamily::Mistral));
     }
 
     #[test]
-    fn registry_locks_the_three_verified_official_artifacts() {
+    fn registry_locks_the_verified_artifacts() {
         let models = ModelRegistry::all();
         let expected = [
+            (
+                "unsloth/Qwen3-1.7B-GGUF",
+                "Qwen3-1.7B-Q4_K_M.gguf",
+                "d7f544eead698dbd1f15126ef60b45a1e1933222",
+                "b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897",
+                1_107_409_472_u64,
+            ),
             (
                 "mistralai/Ministral-3-3B-Instruct-2512-GGUF",
                 "Ministral-3-3B-Instruct-2512-Q4_K_M.gguf",

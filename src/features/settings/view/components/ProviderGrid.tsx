@@ -11,6 +11,7 @@ import logoClaude from "@/assets/providers/claude.svg";
 import logoOpenai from "@/assets/providers/openai.svg";
 import logoGemini from "@/assets/providers/googlegemini.svg";
 import logoMistral from "@/assets/providers/mistralai.svg";
+import logoQwen from "@/assets/providers/qwen.svg";
 import logoDeepseek from "@/assets/providers/deepseek.svg";
 import logoCustom from "@/assets/providers/custom.svg";
 
@@ -93,15 +94,28 @@ export function ProviderGrid({
               />
             ) : null}
             <span
-              className="flex size-9 flex-none items-center justify-center rounded-control bg-surface"
+              className="relative flex size-9 flex-none items-center justify-center rounded-control bg-surface"
             >
               <img
                 src={logo.src}
                 alt=""
                 width={20}
                 height={20}
+                data-provider-logo={fournisseur.id === "mistral_local" ? "mistral" : undefined}
                 className={cn("size-5", logo.mono && "dark:invert")}
               />
+              {fournisseur.id === "mistral_local" ? (
+                // Badge secondaire lisible : assez grand pour se distinguer, toujours
+                // plus petit que le logo Mistral. Le filet le détache du fond coloré.
+                <img
+                  src={logoQwen}
+                  alt=""
+                  width={16}
+                  height={16}
+                  data-provider-logo="qwen"
+                  className="absolute -bottom-1 -right-1 size-4 rounded-control border border-line bg-surface p-px"
+                />
+              ) : null}
             </span>
             <span className={cn("w-full truncate text-center text-label font-mid", selected ? "text-accent" : "text-ink-muted")}>
               {fournisseur.label}
