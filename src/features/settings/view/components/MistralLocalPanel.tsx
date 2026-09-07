@@ -11,7 +11,7 @@ import type {
   ModelCompatibility,
 } from "@/shared/types/generated/ai";
 import logoMistral from "@/assets/providers/mistralai.svg";
-import logoLuth from "@/assets/providers/luth.svg";
+import logoQwen from "@/assets/providers/qwen.svg";
 import { Button, ConfirmDialog, ErrorBanner, Icon, Skeleton, StatusPill } from "@/shared/ui";
 import type { IconName, Tone } from "@/shared/ui";
 import { isLocalAiBusy } from "../../model/etatLocalIa";
@@ -37,7 +37,7 @@ const PROFILE_ICONS: Record<LocalModelProfile, IconName> = {
 /// par le backend — jamais sur le nom affiché du modèle.
 const FAMILY_LOGOS: Record<LocalModelFamily, { src: string; label: string; mono: boolean }> = {
   mistral: { src: logoMistral, label: "Mistral", mono: false },
-  luth: { src: logoLuth, label: "Luth", mono: false },
+  qwen: { src: logoQwen, label: "Qwen", mono: false },
 };
 
 /// Traduction de la compatibilité mesurée par le backend.

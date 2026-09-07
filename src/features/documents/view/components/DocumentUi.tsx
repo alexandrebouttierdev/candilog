@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import type { GeneratedResume, AiProgress } from "@/features/ai/model/types";
 import { cn } from "@/shared/lib/cn";
-import { formatElapsed, formatTokens } from "@/shared/lib/duration";
+import { formatElapsed, formatTokens, formatTokensPerSecond, resolveTokensPerSecond } from "@/shared/lib/duration";
 import { Icon, IconButton, StatusPill } from "@/shared/ui";
 import { PaperPreview } from "./PaperPreview";
 import type { IconName } from "@/shared/ui/icon-names";
@@ -118,6 +118,7 @@ export function AiProgress({
   progress: AiProgress | null;
   elapsedMs: number;
 }) {
+  const rate = resolveTokensPerSecond(progress?.tokens_used, elapsedMs);
   return (
     <div role="status" className="rounded-card border border-accent-border bg-accent-tint p-4">
       <div className="flex items-center gap-2">
@@ -127,6 +128,9 @@ export function AiProgress({
           <span className="tabular text-meta text-accent">
             {formatTokens(progress.tokens_used)} tokens
           </span>
+        ) : null}
+        {rate !== null ? (
+          <span className="tabular text-meta text-accent">{formatTokensPerSecond(rate)}</span>
         ) : null}
         <span className="tabular text-meta text-accent">{formatElapsed(elapsedMs)}</span>
       </div>

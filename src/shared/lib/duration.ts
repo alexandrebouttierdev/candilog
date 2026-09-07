@@ -45,3 +45,50 @@ export function formatAiSummary(
       : `${formatTokens(tokensUsed)} tokens`;
   return `${action} en ${formatDuration(elapsedMs)} · ${tokens}`;
 }
+
+
+/** Débit tokens/s, une décimale, virgule française. */
+export function formatTokensPerSecond(rate: number): string {
+  return `${rate.toLocaleString("fr-FR", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })} tokens/s`;
+}
+
+/**
+ * Débit affiché pendant une progression IA.
+ *
+ * Préfère la mesure native (`tokens_per_second`) quand le runtime local la publie ;
+ * sinon estime `tokens / elapsed` dès qu'un total de tokens et au moins une seconde
+ * sont connus — typiquement un fournisseur distant après le premier appel terminé.
+ */
+export function resolveTokensPerSecond(
+  tokensUsed: number | null | undefined,
+  elapsedMs: number,
+  explicit: number | null | undefined = null,
+): number | null {
+  if (explicit !== null && explicit !== undefined && Number.isFinite(explicit) && explicit > 0) {
+    return explicit;
+  }
+  if (tokensUsed === null || tokensUsed === undefined || tokensUsed <= 0 || elapsedMs < 1_000) {
+    return null;
+  }
+  return tokensUsed / (elapsedMs / 1_000);
+}
+
+/** Ligne de métriques : temps, tokens, débit éventuel. */
+export function formatProgressMetrics(
+  elapsedMs: number,
+  tokensUsed: number | null | undefined,
+  tokensPerSecond: number | null | undefined = null,
+): string {
+  const parts = [`Temps écoulé : ${formatElapsed(elapsedMs)}`];
+  if (tokensUsed !== null && tokensUsed !== undefined) {
+    parts.push(`${formatTokens(tokensUsed)} tokens`);
+  }
+  const rate = resolveTokensPerSecond(tokensUsed, elapsedMs, tokensPerSecond);
+  if (rate !== null) {
+    parts.push(formatTokensPerSecond(rate));
+  }
+  return parts.join(" · ");
+}

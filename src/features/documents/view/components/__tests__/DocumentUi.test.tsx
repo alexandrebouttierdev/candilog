@@ -54,3 +54,20 @@ describe("DocumentUi", () => {
     expect(screen.getByRole("status")).toHaveTextContent("0 tokens");
   });
 });
+
+  it("estime le débit tokens/s quand le total et le temps sont connus", () => {
+    render(
+      <AiProgress
+        progress={{
+          generation_id: "op-1",
+          step: "Analyse ATS",
+          chunk: null,
+          tokens_used: 20,
+        }}
+        elapsedMs={10_000}
+      />,
+    );
+    expect(screen.getByRole("status")).toHaveTextContent("20 tokens");
+    expect(screen.getByRole("status")).toHaveTextContent("2,0 tokens/s");
+  });
+

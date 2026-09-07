@@ -11,7 +11,8 @@ export function useProfileImportProgress(generation_id: string | null) {
     step: string | null;
     entries: ImportJournalEntry[];
     tokens_used: number | null;
-  }>({ id: null, step: null, entries: [], tokens_used: null });
+    tokens_per_second: number | null;
+  }>({ id: null, step: null, entries: [], tokens_used: null, tokens_per_second: null });
 
   useEffect(() => {
     if (!generation_id) return;
@@ -33,6 +34,9 @@ export function useProfileImportProgress(generation_id: string | null) {
           tokens_used:
             event.payload.tokens_used ??
             (current.id === generation_id ? current.tokens_used : null),
+          tokens_per_second:
+            event.payload.tokens_per_second ??
+            (current.id === generation_id ? current.tokens_per_second : null),
         };
       });
     })
@@ -57,5 +61,10 @@ export function useProfileImportProgress(generation_id: string | null) {
     step: active ? state.step : generation_id ? null : state.step,
     entries: generation_id && !active ? [] : state.entries,
     tokens_used: active ? state.tokens_used : generation_id ? null : state.tokens_used,
+    tokens_per_second: active
+      ? state.tokens_per_second
+      : generation_id
+        ? null
+        : state.tokens_per_second,
   };
 }

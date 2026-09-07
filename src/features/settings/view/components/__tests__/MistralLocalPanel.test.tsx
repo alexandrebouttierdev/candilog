@@ -22,17 +22,17 @@ const actions = {
 function model(profile: LocalModelProfile): LocalModelDefinition {
   if (profile === "ultra_light") {
     return {
-      id: "luth_lfm2_ultra_light",
+      id: "qwen25_ultra_light",
       profile,
-      family: "luth",
-      display_name: "Luth LFM2 350M",
-      repository: "mradermacher/Luth-LFM2-350M-GGUF",
-      filename: "Luth-LFM2-350M.Q4_K_M.gguf",
-      local_filename: "luth-lfm2-350m-q4_k_m.gguf",
+      family: "qwen",
+      display_name: "Qwen2.5 0.5B Instruct",
+      repository: "Qwen/Qwen2.5-0.5B-Instruct-GGUF",
+      filename: "qwen2.5-0.5b-instruct-q4_k_m.gguf",
+      local_filename: "qwen2.5-0.5b-instruct-q4_k_m.gguf",
       revision: "a".repeat(40),
       sha256: "b".repeat(64),
-      download_size_bytes: 229_311_424,
-      estimated_ram_mb: 650,
+      download_size_bytes: 491_400_032,
+      estimated_ram_mb: 800,
       recommended_ram_mb: 4_096,
       recommended_vram_mb: 2_048,
       recommended_cores: 2,
@@ -256,7 +256,7 @@ describe("configuration Mistral Local", () => {
   });
 
   // Le logo doit venir de la propriété `family` renvoyée par le backend, jamais d'une
-  // recherche de « Ministral » ou « Luth » dans le nom affiché.
+  // recherche de « Ministral » ou « Qwen » dans le nom affiché.
   it("illustre le modèle avec le logo de sa famille", () => {
     const active = model("light");
     const { container } = render(
@@ -282,7 +282,7 @@ describe("configuration Mistral Local", () => {
     expect(screen.getByText("Mistral")).toBeInTheDocument();
   });
 
-  it("annonce le mode ultra léger pour le profil Luth", () => {
+  it("annonce le mode ultra léger pour le profil Qwen", () => {
     const active = model("ultra_light");
     render(<MistralLocalPanel vm={setup({ state: "ready", recommendation: recommendation(active), status: status(active) })} />);
 
@@ -303,8 +303,8 @@ describe("configuration Mistral Local", () => {
     render(<MistralLocalPanel vm={setup({ state: "ready", recommendation: recommendation(active), status: status(active) })} />);
 
     expect(screen.getByText("RAM estimée")).toBeInTheDocument();
-    expect(screen.getByText("0,6 Go")).toBeInTheDocument();
-    expect(screen.queryByText(/650 Mo/)).not.toBeInTheDocument();
+    expect(screen.getByText("0,8 Go")).toBeInTheDocument();
+    expect(screen.queryByText(/800 Mo/)).not.toBeInTheDocument();
   });
 
   // Le backend évalue chaque profil ; l'écran n'en montrait aucun, si bien qu'on ne pouvait

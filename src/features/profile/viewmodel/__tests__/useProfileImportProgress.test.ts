@@ -11,6 +11,7 @@ let handler:
         message: string;
         step: string | null;
         tokens_used?: number | null;
+        tokens_per_second?: number | null;
       };
     }) => void)
   | null = null;
@@ -72,10 +73,12 @@ describe("useProfileImportProgress", () => {
           message: "Structuration du CV",
           step: "Analyse du CV…",
           tokens_used: 640,
+          tokens_per_second: 2.6,
         },
       });
     });
     expect(result.current.tokens_used).toBe(640);
+    expect(result.current.tokens_per_second).toBe(2.6);
 
     // Une étape sans `tokens_used` (message seul, sans nouvel appel terminé) ne doit pas
     // faire retomber le total affiché à zéro.
@@ -87,10 +90,12 @@ describe("useProfileImportProgress", () => {
           message: "1 expérience détectée",
           step: null,
           tokens_used: null,
+          tokens_per_second: null,
         },
       });
     });
     expect(result.current.tokens_used).toBe(640);
+    expect(result.current.tokens_per_second).toBe(2.6);
   });
 
   it("retire le listener au démontage", async () => {

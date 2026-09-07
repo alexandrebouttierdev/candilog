@@ -131,6 +131,12 @@ impl MistralLocalRuntime {
             .current_inference
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(token.clone());
+        // Dès le préremplissage : sans cela le battement d'import reste muet jusqu'au
+        // premier jeton produit, parfois plusieurs minutes sur un portable lent.
+        *self
+            .progression
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = Some((0, Instant::now()));
         token
     }
 
@@ -585,6 +591,14 @@ mod tests {
     #[test]
     fn aucune_progression_hors_inference() {
         assert!(MistralLocalRuntime::new().progression().is_none());
+    }
+
+    #[test]
+    fn le_debut_d_inference_publie_une_progression_a_zero() {
+        let runtime = MistralLocalRuntime::new();
+        runtime.debuter_inference();
+        let progression = runtime.progression().expect("progression initiale");
+        assert_eq!(progression.generated_tokens, 0);
     }
 
     #[test]

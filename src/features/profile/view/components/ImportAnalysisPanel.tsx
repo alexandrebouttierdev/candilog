@@ -1,4 +1,4 @@
-import { formatElapsed, formatTokens } from "@/shared/lib/duration";
+import { formatProgressMetrics } from "@/shared/lib/duration";
 import type { ImportJournalEntry } from "../../viewmodel/useProfileImportProgress";
 import { ImportJournal } from "./ImportJournal";
 import { AiStopButton } from "@/features/ai/view/components/AiStopButton";
@@ -9,6 +9,7 @@ export function ImportAnalysisPanel({
   elapsedMs,
   entries,
   tokens_used,
+  tokens_per_second,
   stopping,
   onStop,
 }: {
@@ -16,6 +17,7 @@ export function ImportAnalysisPanel({
   elapsedMs: number;
   entries: ImportJournalEntry[];
   tokens_used?: number | null;
+  tokens_per_second?: number | null;
   stopping: boolean;
   onStop: () => void;
 }) {
@@ -29,10 +31,7 @@ export function ImportAnalysisPanel({
       </div>
       {step ? <p className="text-body text-ink-muted">{step}</p> : null}
       <p className="tabular text-meta text-ink-faint">
-        Temps écoulé : {formatElapsed(elapsedMs)}
-        {tokens_used !== null && tokens_used !== undefined
-          ? ` · ${formatTokens(tokens_used)} tokens`
-          : null}
+        {formatProgressMetrics(elapsedMs, tokens_used, tokens_per_second)}
       </p>
       <AiStopButton stopping={stopping} onStop={onStop} />
       <ImportJournal entries={entries} />

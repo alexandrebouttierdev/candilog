@@ -370,6 +370,9 @@ pub struct ProfileImportProgress {
     /// Total de tokens consommés depuis le début de cet import, si le fournisseur les
     /// rapporte. `None` avant le premier appel terminé.
     pub tokens_used: Option<u32>,
+    /// Débit instantané (tokens/s) quand l'inférence locale publie un avancement.
+    /// `None` pour un fournisseur distant ou hors génération.
+    pub tokens_per_second: Option<f32>,
 }
 
 #[cfg(test)]

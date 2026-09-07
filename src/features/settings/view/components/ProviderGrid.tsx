@@ -12,7 +12,7 @@ import logoClaude from "@/assets/providers/claude.svg";
 import logoOpenai from "@/assets/providers/openai.svg";
 import logoGemini from "@/assets/providers/googlegemini.svg";
 import logoMistral from "@/assets/providers/mistralai.svg";
-import logoLuth from "@/assets/providers/luth.svg";
+import logoQwen from "@/assets/providers/qwen.svg";
 import logoDeepseek from "@/assets/providers/deepseek.svg";
 import logoCustom from "@/assets/providers/custom.svg";
 
@@ -32,7 +32,7 @@ export const LOCAL_FAMILY_LOGOS: Record<
   { src: string; label: string; mono: boolean }
 > = {
   mistral: { src: logoMistral, label: "Mistral", mono: false },
-  luth: { src: logoLuth, label: "Luth", mono: false },
+  qwen: { src: logoQwen, label: "Qwen", mono: false },
 };
 
 export function logoFournisseur(id: FournisseurOption["id"]) {
@@ -42,7 +42,7 @@ export function logoFournisseur(id: FournisseurOption["id"]) {
 
 /**
  * Logo à afficher pour l'IA locale : famille active si connue, sinon générique (`null`
- * → `smart_toy` côté UI). Pas de pile Mistral+Luth.
+ * → `smart_toy` côté UI). Pas de pile Mistral+Qwen.
  */
 export function logoIaLocale(family: LocalModelFamily | null | undefined) {
   return family ? LOCAL_FAMILY_LOGOS[family] : null;

@@ -3,7 +3,10 @@ import {
   formatAiSummary,
   formatDuration,
   formatElapsed,
+  formatProgressMetrics,
   formatTokens,
+  formatTokensPerSecond,
+  resolveTokensPerSecond,
 } from "../duration";
 
 describe("formatElapsed", () => {
@@ -54,5 +57,46 @@ describe("formatAiSummary", () => {
     expect(formatAiSummary("Analysé", 21_000, null)).toBe(
       "Analysé en 21 s · tokens non communiqués",
     );
+  });
+});
+
+describe("formatTokensPerSecond", () => {
+  it("affiche une décimale à la française", () => {
+    expect(formatTokensPerSecond(0.6)).toBe("0,6 tokens/s");
+    expect(formatTokensPerSecond(18.4)).toBe("18,4 tokens/s");
+  });
+});
+
+describe("resolveTokensPerSecond", () => {
+  it("préfère le débit natif positif", () => {
+    expect(resolveTokensPerSecond(100, 10_000, 2.6)).toBe(2.6);
+  });
+
+  it("estime tokens/elapsed quand le débit manque", () => {
+    expect(resolveTokensPerSecond(23, 39_000, null)).toBeCloseTo(23 / 39, 5);
+  });
+
+  it("reste muet sans tokens ou avant une seconde", () => {
+    expect(resolveTokensPerSecond(null, 5_000, null)).toBeNull();
+    expect(resolveTokensPerSecond(10, 500, null)).toBeNull();
+    expect(resolveTokensPerSecond(0, 5_000, null)).toBeNull();
+  });
+});
+
+describe("formatProgressMetrics", () => {
+  it("accole temps, tokens et débit", () => {
+    expect(formatProgressMetrics(39_000, 23, 0.6)).toBe(
+      "Temps écoulé : 00:39 · 23 tokens · 0,6 tokens/s",
+    );
+  });
+
+  it("estime le débit à défaut de mesure native", () => {
+    expect(formatProgressMetrics(10_000, 20, null)).toBe(
+      "Temps écoulé : 00:10 · 20 tokens · 2,0 tokens/s",
+    );
+  });
+
+  it("n'affiche que le temps tant que les tokens manquent", () => {
+    expect(formatProgressMetrics(12_000, null)).toBe("Temps écoulé : 00:12");
   });
 });

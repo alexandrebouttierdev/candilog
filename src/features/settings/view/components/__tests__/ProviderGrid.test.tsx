@@ -57,7 +57,7 @@ describe("grille des fournisseurs", () => {
     expect(within(screen.getByRole("radio", { name: "Ollama" })).getByText("Votre installation ou Ollama Cloud")).toBeInTheDocument();
   });
 
-  // L'IA locale retient Mistral ou Luth selon la machine : la tuile fournisseur reste
+  // L'IA locale retient Mistral ou Qwen selon la machine : la tuile fournisseur reste
   // générique (`smart_toy`). Les logos de famille n'apparaissent que quand un modèle
   // est actif (AiHero / rail), jamais en pile sur la carte.
   it("affiche l'icône générique smart_toy sur la tuile IA locale, sans badge de famille", () => {
@@ -65,8 +65,8 @@ describe("grille des fournisseurs", () => {
     const tuile = screen.getByRole("radio", { name: "IA locale" });
 
     expect(tuile.querySelector('[data-provider-logo="mistral"]')).toBeNull();
-    expect(tuile.querySelector('[data-provider-logo="luth"]')).toBeNull();
-    expect(container.querySelectorAll('[data-provider-logo="luth"]')).toHaveLength(0);
+    expect(tuile.querySelector('[data-provider-logo="qwen"]')).toBeNull();
+    expect(container.querySelectorAll('[data-provider-logo="qwen"]')).toHaveLength(0);
     expect(within(tuile).getByText("smart_toy")).toBeInTheDocument();
   });
 });

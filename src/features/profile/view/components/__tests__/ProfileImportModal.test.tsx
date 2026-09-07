@@ -14,7 +14,12 @@ vi.mock("@/features/ai/services/aiService", () => ({
 }));
 
 const progress = vi.hoisted(() => ({
-  current: { step: null as string | null, entries: [] as { at: string; message: string }[], tokens_used: null as number | null },
+  current: {
+    step: null as string | null,
+    entries: [] as { at: string; message: string }[],
+    tokens_used: null as number | null,
+    tokens_per_second: null as number | null,
+  },
 }));
 
 vi.mock("../../../viewmodel/useProfileImportProgress", () => ({
@@ -63,7 +68,7 @@ describe("ProfileImportModal", () => {
     vi.clearAllMocks();
     useAiOperationStore.setState({ active: null });
     vi.mocked(aiService.cancel).mockResolvedValue(undefined);
-    progress.current = { step: null, entries: [], tokens_used: null };
+    progress.current = { step: null, entries: [], tokens_used: null, tokens_per_second: null };
   });
 
   afterEach(() => {
@@ -104,6 +109,7 @@ describe("ProfileImportModal", () => {
       step: "Lecture du fichier…",
       entries: [{ at: "2026-08-30T10:00:00Z", message: "Lecture du fichier" }],
       tokens_used: null,
+      tokens_per_second: null,
     };
     rerender(ui());
 
@@ -129,6 +135,7 @@ describe("ProfileImportModal", () => {
       step: "Lecture du fichier…",
       entries: [{ at: "2026-08-30T10:00:00Z", message: "Lecture du fichier" }],
       tokens_used: null,
+      tokens_per_second: null,
     };
     rerender(ui());
 
@@ -163,6 +170,7 @@ describe("ProfileImportModal", () => {
       step: "Lecture du fichier…",
       entries: [{ at: "2026-08-30T10:00:00Z", message: "Lecture du fichier" }],
       tokens_used: null,
+      tokens_per_second: null,
     };
     rerender(ui());
 
@@ -208,6 +216,7 @@ describe("ProfileImportModal", () => {
       step: "Lecture du fichier…",
       entries: [{ at: new Date(10_000).toISOString(), message: "Lecture du fichier" }],
       tokens_used: null,
+      tokens_per_second: null,
     };
     rerender(ui());
     now.mockReturnValue(12_000);

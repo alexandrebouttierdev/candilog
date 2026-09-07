@@ -55,12 +55,12 @@ est signalé plus précisément en aval, par `LocalAiService::provider` (« Inst
 locale avant de l'utiliser »).
 
 `domain/local_ai.rs::ModelRegistry` est l'unique source des artefacts. Quatre entrées sont
-verrouillées sur un commit et un SHA-256 : trois GGUF officiels Mistral, plus un Luth LFM2
-350M Q4_K_M (spécialisation française de Liquid LFM2, quantifié par mradermacher).
+verrouillées sur un commit et un SHA-256 : trois GGUF officiels Mistral, plus un Qwen2.5
+0.5B Instruct Q4_K_M (dépôt officiel Qwen).
 
 | Profil UI | Famille | Dépôt / fichier Q4_K_M | Révision | Octets | SHA-256 |
 | --- | --- | --- | --- | ---: | --- |
-| Ultra léger | Luth | `mradermacher/Luth-LFM2-350M-GGUF` / `Luth-LFM2-350M.Q4_K_M.gguf` | `ba0ab90f75a5d150e108abdd4a19929f04df8262` | 229 311 424 | `bba2d3b665ad660ba05de12bcde84b05dcc1e340d2908928cc269d73d83b7570` |
+| Ultra léger | Qwen | `Qwen/Qwen2.5-0.5B-Instruct-GGUF` / `qwen2.5-0.5b-instruct-q4_k_m.gguf` | `9217f5db79a29953eb74d5343926648285ec7e67` | 491 400 032 | `74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db` |
 | Léger | Mistral | `mistralai/Ministral-3-3B-Instruct-2512-GGUF` / `Ministral-3-3B-Instruct-2512-Q4_K_M.gguf` | `eb599d408350ea2bb60452cb86be7c7b2fc28227` | 2 147 023 008 | `9ed150d4367e68df0ac8e1540f6ddc65b42d0ee26378329d1ecbca60f93fc5f8` |
 | Équilibré | Mistral | `mistralai/Ministral-3-8B-Instruct-2512-GGUF` / `Ministral-3-8B-Instruct-2512-Q4_K_M.gguf` | `0102285ad796bd99af90f58de616092e5630e970` | 5 198 911 904 | `33e7a72cf5e6e2cfc2f2847075acc013d68bba023e35310cef86b5cf8fdca761` |
 | Qualité | Mistral | `mistralai/Ministral-3-14B-Instruct-2512-GGUF` / `Ministral-3-14B-Instruct-2512-Q4_K_M.gguf` | `74fac473c43357d7fb2671713608183cc72496d0` | 8 239 593 024 | `824e0f3373e69b84f2cae46fdcb9bd1ebc6ab3bfc7acc125d818b7b8178cc613` |
@@ -116,11 +116,13 @@ pèsent 336 à 1 928 jetons, et le cas volontairement trop long pour une page A4
 produirait un JSON invalide, soit un échec là où l'on avait un résultat lent.
 
 Pendant l'analyse d'un CV, `cancel_avec_progression` réveille l'appelant chaque seconde et
-publie l'étape « Analyse du CV… N jetons · X jeton/s · T s ». À 2,6 jetons/s sur un portable
+publie l'étape « Analyse du CV… N tokens · X tokens/s · T s » et le débit dans
+`tokens_per_second`. À 2,6 tokens/s sur un portable
 quadricœur, une analyse dure une douzaine de minutes : sans ce battement, rien ne distingue
 une génération lente d'un blocage. Le message reste vide pour ne pas gonfler le journal
-d'import ; seul `step` est remplacé. Un fournisseur distant ne publie aucun avancement, et
-le battement reste alors muet.
+d'import ; seul `step` (et les compteurs) est remplacé. Un fournisseur distant ne publie
+aucun débit temps réel : l'interface affiche alors tokens + temps écoulé, et estime le
+débit (tokens/elapsed) dès que des tokens sont connus.
 
 ### Garde-fou mémoire
 

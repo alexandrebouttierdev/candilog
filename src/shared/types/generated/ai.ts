@@ -105,9 +105,9 @@ export type LocalModelEvaluation = { model: LocalModelDefinition, compatibility:
  * Portée par une propriété et non déduite du nom affiché : l'interface choisit son logo
  * dessus, et une comparaison de chaîne casserait au premier renommage.
  */
-export type LocalModelFamily = "mistral" | "luth";
+export type LocalModelFamily = "mistral" | "qwen";
 
-export type LocalModelId = "luth_lfm2_ultra_light" | "ministral3_light" | "ministral3_balanced" | "ministral3_quality";
+export type LocalModelId = "qwen25_ultra_light" | "ministral3_light" | "ministral3_balanced" | "ministral3_quality";
 
 export type LocalModelProfile = "ultra_light" | "light" | "balanced" | "quality";
 
@@ -123,7 +123,12 @@ export type ProfileImportProgress = { generation_id: string, at: string, message
  * Total de tokens consommés depuis le début de cet import, si le fournisseur les
  * rapporte. `None` avant le premier appel terminé.
  */
-tokens_used: number | null, };
+tokens_used: number | null, 
+/**
+ * Débit instantané (tokens/s) quand l'inférence locale publie un avancement.
+ * `None` pour un fournisseur distant ou hors génération.
+ */
+tokens_per_second: number | null, };
 
 export type ProfileImportRequest = { generation_id: string, };
 

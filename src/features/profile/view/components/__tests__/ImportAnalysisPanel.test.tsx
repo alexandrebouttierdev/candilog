@@ -33,7 +33,7 @@ describe("ImportAnalysisPanel", () => {
       />,
     );
 
-    expect(screen.getByText("Temps écoulé : 00:12 · 1 024 tokens")).toBeInTheDocument();
+    expect(screen.getByText("Temps écoulé : 00:12 · 1 024 tokens · 85,3 tokens/s")).toBeInTheDocument();
   });
 
   it("affiche un zéro communiqué par le fournisseur", () => {
@@ -65,3 +65,39 @@ describe("ImportAnalysisPanel", () => {
     expect(screen.getByRole("button", { name: "Arrêt…" })).toBeDisabled();
   });
 });
+
+  it("affiche le débit natif à côté des tokens", () => {
+    render(
+      <ImportAnalysisPanel
+        step="Analyse du CV… 23 tokens · 0.6 tokens/s · 39 s"
+        elapsedMs={39_000}
+        entries={[]}
+        tokens_used={23}
+        tokens_per_second={0.6}
+        stopping={false}
+        onStop={() => undefined}
+      />,
+    );
+
+    expect(
+      screen.getByText("Temps écoulé : 00:39 · 23 tokens · 0,6 tokens/s"),
+    ).toBeInTheDocument();
+  });
+
+  it("estime le débit quand seul le total de tokens est connu", () => {
+    render(
+      <ImportAnalysisPanel
+        step="Analyse du CV…"
+        elapsedMs={10_000}
+        entries={[]}
+        tokens_used={20}
+        stopping={false}
+        onStop={() => undefined}
+      />,
+    );
+
+    expect(
+      screen.getByText("Temps écoulé : 00:10 · 20 tokens · 2,0 tokens/s"),
+    ).toBeInTheDocument();
+  });
+

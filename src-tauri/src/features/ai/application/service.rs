@@ -518,11 +518,12 @@ impl AiService {
             Some("Lecture du fichier…"),
             "Lecture du fichier",
             None,
+            None,
         );
         let text = match extract_pdf(path).await {
             Ok(text) => text,
             Err(error) => {
-                emit_import(&notifier, &id, None, "Lecture du fichier impossible", None);
+                emit_import(&notifier, &id, None, "Lecture du fichier impossible", None, None);
                 return Err(error);
             }
         };
@@ -532,6 +533,7 @@ impl AiService {
             Some("Extraction du contenu…"),
             "Texte extrait",
             None,
+            None,
         );
         if let Err(error) = validate_source_text(&text, "Le CV") {
             emit_import(
@@ -539,6 +541,7 @@ impl AiService {
                 &id,
                 None,
                 "Extraction du contenu impossible",
+                None,
                 None,
             );
             return Err(error);
@@ -548,6 +551,7 @@ impl AiService {
             &id,
             Some("Analyse du CV…"),
             "Analyse démarrée",
+            None,
             None,
         );
         // Un CV long saturait le contexte local (et plantait parfois llama.cpp) : on borne
@@ -570,6 +574,7 @@ impl AiService {
                         Some(&etape_analyse(&avancement)),
                         "",
                         Some(avancement.generated_tokens),
+                        Some(avancement.tokens_per_second),
                     );
                 }
             },
@@ -579,7 +584,7 @@ impl AiService {
             Ok(sortie) => sortie,
             Err(AppError::Cancelled) => return Err(AppError::Cancelled),
             Err(error) => {
-                emit_import(&notifier, &id, None, "Analyse du CV impossible", None);
+                emit_import(&notifier, &id, None, "Analyse du CV impossible", None, None);
                 return Err(error);
             }
         };
@@ -589,7 +594,7 @@ impl AiService {
             && profile.experiences.is_empty()
             && profile.skills.is_empty()
         {
-            emit_import(&notifier, &id, None, "Aucune donnée exploitable", tokens);
+            emit_import(&notifier, &id, None, "Aucune donnée exploitable", tokens, None);
             return Err(AppError::Provider(
                 "Aucune donnée de profil exploitable n'a été trouvée dans le CV".into(),
             ));
@@ -601,6 +606,7 @@ impl AiService {
             Some("Préparation de la revue…"),
             "Analyse terminée",
             tokens,
+            None,
         );
         let current = self.profile()?;
         Ok(execution(
@@ -991,7 +997,7 @@ fn progres(
 /// Étape affichée pendant une génération locale : ce qui est produit, à quel rythme.
 fn etape_analyse(avancement: &crate::features::ai::domain::LocalInferenceProgress) -> String {
     format!(
-        "Analyse du CV… {} jetons · {:.1} jeton/s · {} s",
+        "Analyse du CV… {} tokens · {:.1} tokens/s · {} s",
         avancement.generated_tokens,
         avancement.tokens_per_second,
         avancement.elapsed_ms / 1_000
@@ -1004,6 +1010,7 @@ fn emit_import(
     step: Option<&str>,
     message: &str,
     tokens_used: Option<u32>,
+    tokens_per_second: Option<f32>,
 ) {
     notifier(ProfileImportProgress {
         generation_id: id.into(),
@@ -1011,6 +1018,7 @@ fn emit_import(
         message: message.into(),
         step: step.map(str::to_owned),
         tokens_used,
+        tokens_per_second,
     });
 }
 
@@ -1049,7 +1057,7 @@ fn emit_detected(
         ),
     ];
     for line in lines.into_iter().flatten() {
-        emit_import(notifier, id, None, &line, tokens_used);
+        emit_import(notifier, id, None, &line, tokens_used, None);
     }
 }
 

@@ -19,11 +19,11 @@ pub const LOCAL_AI_SYSTEM_MARGIN_MB: u64 = 768;
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "ai.ts")]
 pub enum LocalModelId {
-    /// Profil Ultra léger. Alias `qwen3_ultra_light` (ancienne famille) et id snake_case
-    /// `luth_lfm2_ultra_light` restent lisibles. Un artefact 1.2B déjà téléchargé ne
-    /// correspond plus (révision / SHA) : `valid_installed_path` force une réinstallation.
-    #[serde(alias = "qwen3_ultra_light")]
-    LuthLfm2UltraLight,
+    /// Profil Ultra léger. Alias `luth_lfm2_ultra_light` (artefact Luth précédent) et
+    /// `qwen3_ultra_light` (ancienne famille) restent lisibles. Un artefact déjà téléchargé
+    /// ne correspond plus (révision / SHA) : `valid_installed_path` force une réinstallation.
+    #[serde(alias = "luth_lfm2_ultra_light", alias = "qwen3_ultra_light")]
+    Qwen25UltraLight,
     Ministral3Light,
     Ministral3Balanced,
     Ministral3Quality,
@@ -38,7 +38,7 @@ pub enum LocalModelId {
 #[ts(export, export_to = "ai.ts")]
 pub enum LocalModelFamily {
     Mistral,
-    Luth,
+    Qwen,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -156,18 +156,18 @@ impl ModelRegistry {
     pub fn all() -> Vec<LocalModelDefinition> {
         vec![
             LocalModelDefinition {
-                id: LocalModelId::LuthLfm2UltraLight,
+                id: LocalModelId::Qwen25UltraLight,
                 profile: LocalModelProfile::UltraLight,
-                family: LocalModelFamily::Luth,
-                display_name: "Luth LFM2 350M".into(),
-                repository: "mradermacher/Luth-LFM2-350M-GGUF".into(),
-                filename: "Luth-LFM2-350M.Q4_K_M.gguf".into(),
-                local_filename: "luth-lfm2-350m-q4_k_m.gguf".into(),
-                revision: "ba0ab90f75a5d150e108abdd4a19929f04df8262".into(),
-                sha256: "bba2d3b665ad660ba05de12bcde84b05dcc1e340d2908928cc269d73d83b7570".into(),
-                download_size_bytes: 229_311_424,
-                // ~219 Mo de poids + marge KV/activations : nettement sous l'ancien 1.2B (1 600).
-                estimated_ram_mb: 650,
+                family: LocalModelFamily::Qwen,
+                display_name: "Qwen2.5 0.5B Instruct".into(),
+                repository: "Qwen/Qwen2.5-0.5B-Instruct-GGUF".into(),
+                filename: "qwen2.5-0.5b-instruct-q4_k_m.gguf".into(),
+                local_filename: "qwen2.5-0.5b-instruct-q4_k_m.gguf".into(),
+                revision: "9217f5db79a29953eb74d5343926648285ec7e67".into(),
+                sha256: "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db".into(),
+                download_size_bytes: 491_400_032,
+                // ~468 Mo de poids + marge KV/activations : profil le plus frugal du registre.
+                estimated_ram_mb: 800,
                 recommended_ram_mb: 4_096,
                 // Seuil bas : le profil reste viable sans GPU, mais une petite VRAM accélère.
                 recommended_vram_mb: Some(2_048),
@@ -499,7 +499,7 @@ mod tests {
             assert_eq!(model.quantization, "Q4_K_M");
         }
         assert_eq!(
-            ModelRegistry::get(LocalModelId::LuthLfm2UltraLight).map(|m| m.profile),
+            ModelRegistry::get(LocalModelId::Qwen25UltraLight).map(|m| m.profile),
             Some(LocalModelProfile::UltraLight)
         );
         assert_eq!(
@@ -517,13 +517,13 @@ mod tests {
     }
 
     /// Le fournisseur local peut retenir des artefacts de familles différentes. L'interface
-    /// doit choisir le logo sur une propriété, jamais en cherchant « Luth » ou « Ministral »
+    /// doit choisir le logo sur une propriété, jamais en cherchant « Qwen » ou « Ministral »
     /// dans le nom affiché.
     #[test]
     fn chaque_modele_declare_sa_famille() {
         assert_eq!(
-            ModelRegistry::get(LocalModelId::LuthLfm2UltraLight).map(|m| m.family),
-            Some(LocalModelFamily::Luth)
+            ModelRegistry::get(LocalModelId::Qwen25UltraLight).map(|m| m.family),
+            Some(LocalModelFamily::Qwen)
         );
         assert_eq!(
             ModelRegistry::get(LocalModelId::Ministral3Light).map(|m| m.family),
@@ -531,7 +531,7 @@ mod tests {
         );
         assert!(ModelRegistry::all()
             .iter()
-            .any(|model| model.family == LocalModelFamily::Luth));
+            .any(|model| model.family == LocalModelFamily::Qwen));
         assert!(ModelRegistry::all()
             .iter()
             .any(|model| model.family == LocalModelFamily::Mistral));
@@ -542,11 +542,11 @@ mod tests {
         let models = ModelRegistry::all();
         let expected = [
             (
-                "mradermacher/Luth-LFM2-350M-GGUF",
-                "Luth-LFM2-350M.Q4_K_M.gguf",
-                "ba0ab90f75a5d150e108abdd4a19929f04df8262",
-                "bba2d3b665ad660ba05de12bcde84b05dcc1e340d2908928cc269d73d83b7570",
-                229_311_424_u64,
+                "Qwen/Qwen2.5-0.5B-Instruct-GGUF",
+                "qwen2.5-0.5b-instruct-q4_k_m.gguf",
+                "9217f5db79a29953eb74d5343926648285ec7e67",
+                "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+                491_400_032_u64,
             ),
             (
                 "mistralai/Ministral-3-3B-Instruct-2512-GGUF",

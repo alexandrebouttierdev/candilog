@@ -239,6 +239,7 @@ export function ProfileImportModal({
               elapsedMs={elapsedMs}
               entries={progress.entries}
               tokens_used={progress.tokens_used}
+              tokens_per_second={progress.tokens_per_second}
               stopping={stopping}
               onStop={() => void stopAnalysis()}
             />
