@@ -52,7 +52,47 @@ pub fn init() -> GuardJournal {
         )
         .init();
     tracing::info!(version = env!("CARGO_PKG_VERSION"), "démarrage de Candilog");
+    if let Ok(paths) = AppPaths::discover() {
+        signaler_session_precedente(&paths);
+    }
     GuardJournal(Some(guard))
+}
+
+/// Nom du marqueur de session vivante, déposé à côté du journal.
+const MARQUEUR_SESSION: &str = "candilog.session";
+
+/// Ouvre une session et indique si la précédente s'est terminée brutalement.
+///
+/// Un arrêt par le noyau (OOM killer) ne laisse écrire aucune ligne : le journal s'arrête
+/// net, sans erreur. Le marqueur survivant est alors la seule preuve exploitable qu'une
+/// session n'est pas allée à son terme.
+fn ouvrir_session(marqueur: &std::path::Path) -> bool {
+    let interrompue = marqueur.exists();
+    let _ = std::fs::write(marqueur, "");
+    interrompue
+}
+
+/// Retire le marqueur : la session s'est terminée normalement.
+fn fermer_session(marqueur: &std::path::Path) {
+    let _ = std::fs::remove_file(marqueur);
+}
+
+/// Signale dans le journal qu'une session précédente ne s'est pas terminée proprement.
+pub fn signaler_session_precedente(paths: &AppPaths) {
+    if ouvrir_session(&paths.data_dir.join(MARQUEUR_SESSION)) {
+        tracing::warn!(
+            "session précédente terminée brutalement : arrêt par le système (mémoire \
+             insuffisante) ou plantage. Le journal précédent s'interrompt sans erreur."
+        );
+    }
+}
+
+/// Marque l'arrêt normal de la session courante.
+pub fn cloturer_session() {
+    let Ok(paths) = AppPaths::discover() else {
+        return;
+    };
+    fermer_session(&paths.data_dir.join(MARQUEUR_SESSION));
 }
 
 /// Ouvre `candilog.log` sous le dossier de données, après avoir fait tourner les précédents.
