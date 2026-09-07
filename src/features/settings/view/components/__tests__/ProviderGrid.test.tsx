@@ -27,6 +27,20 @@ describe("grille des fournisseurs", () => {
     expect(onChange).toHaveBeenCalledWith("claude");
   });
 
+  // La grille borde et remplit déjà les huit tuiles : la sélection ne se distinguait que
+  // par un fond teinté à 10 % et une bordure à 22 % d'opacité en thème sombre. Un repère
+  // non chromatique reste lisible dans les deux thèmes, et sans distinguer les couleurs.
+  it("marque la tuile choisie autrement que par la seule couleur", () => {
+    render(<ProviderGrid value="ollama" onChange={() => undefined} />);
+
+    expect(
+      within(screen.getByRole("radio", { name: "Ollama" })).getByText("check_circle"),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("radio", { name: "OpenAI" })).queryByText("check_circle"),
+    ).not.toBeInTheDocument();
+  });
+
   it("présente Mistral Local comme le choix recommandé sans confondre Ollama", () => {
     render(<ProviderGrid value="ollama" onChange={() => undefined} />);
 

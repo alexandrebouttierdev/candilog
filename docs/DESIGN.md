@@ -71,7 +71,8 @@ Thème **clair par défaut**, sombre via `data-theme` / préférence système. L
 | `border-line` | Séparation de panneau |
 | `border-line-soft` | Filet d’écran (header, FilterBar) |
 | `border-control` / `border-control-strong` | Bouton, champ, trigger |
-| `border-accent-border` | Chip actif, item sélectionné |
+| `border-accent-border` | Chip actif, item sélectionné **dont les voisins sont sans filet** |
+| `border-accent` (plein) | Item sélectionné parmi des voisins **déjà bordés** — voir `ProviderGrid` |
 | `border-field` | Rangée d’inspecteur |
 
 La hiérarchie = **filet 1 px** + contraste de surface. Pas de drop-shadow sur les cartes de contenu.
@@ -248,7 +249,7 @@ Références : `ApplicationFilters`, `CompanyFilters`, `ContactFilters`.
 - `ActionCard` : **une action** (export, rechercher une MAJ) — pas une grille de bénéfices produit.
 - `SettingsHero` : écrans de **maintenance** (version, sauvegarde), pas un slogan.
 - À propos : identité (logo + nom + version) + faits (`InspectorRow`) + auteur. **Pas** de hero, **pas** de pile technique.
-- IA : colonne bornée à 1000 px, blocs sur `bg-surface` — bandeau fournisseur (logo, nom, modèle, état, test), puis les `SettingsCard` `Fournisseur`, `Configuration`, `Génération`, `Apparence`. Champs plafonnés à 380 px : un « Endpoint » de 600 px de large ne se lit pas mieux. L’état vient de `model/etatIa.ts` et existe **avant** tout test manuel ; la clé API n’est jamais rendue en clair.
+- IA : colonne bornée à 1000 px, blocs sur `bg-surface` — bandeau fournisseur (logo, nom, modèle, état, test), puis les `SettingsCard` `Fournisseur`, `Configuration`, `Génération`, `Apparence`. Champs plafonnés à 380 px : un « Endpoint » de 600 px de large ne se lit pas mieux. L’état vient de `model/etatIa.ts` et existe **avant** tout test manuel ; la clé API n’est jamais rendue en clair. La `ProviderGrid` échappe au couple `accent-border` / `accent-tint` des listes : ses huit tuiles étant toutes bordées et remplies, ce couple ne produisait qu'un écart de contraste de 1,20:1 en clair et 1,09:1 en sombre entre la tuile choisie et ses voisines — invisible. Elle emploie donc un filet accent plein, `bg-accent-tint-12`, et une pastille `check_circle` : un repère non chromatique, seul garant que le choix reste lisible dans les deux thèmes et sans distinguer les couleurs.
 - Mises à jour : colonne bornée à 760 px, une carte de surface unique — vignette d’état, phrase, pastille et action en tête, puis les versions sous un filet, puis la progression. Les notes de version, quand il y en a, forment une `SettingsCard` `Nouveautés`. Rien sur le mécanisme de téléchargement — cela n’aide pas à décider.
 
 ### Formulaires

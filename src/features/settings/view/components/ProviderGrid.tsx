@@ -5,7 +5,7 @@ import {
   type FournisseurOption,
 } from "../../model/providers";
 import type { ProviderKind } from "@/shared/types/generated/settings";
-import { Tag } from "@/shared/ui";
+import { Icon, Tag } from "@/shared/ui";
 import logoOllama from "@/assets/providers/ollama.svg";
 import logoClaude from "@/assets/providers/claude.svg";
 import logoOpenai from "@/assets/providers/openai.svg";
@@ -39,7 +39,15 @@ export function defFournisseur(provider: ProviderKind): FournisseurOption {
  *
  * Une tuile bordée dit qu'elle se clique ; l'ancienne grille sans filet laissait sept logos
  * de 18 px flotter sur toute la largeur et ne se distinguait d'une légende que par le
- * curseur. La sélection reprend le couple `accent-border` / `accent-tint` des items actifs.
+ * curseur.
+ *
+ * La sélection ne peut pas se contenter du couple `accent-border` / `accent-tint` employé
+ * par les listes : celles-ci laissent leurs items non choisis en `border-transparent`, si
+ * bien que le filet accent surgit du néant. Ici les huit tuiles sont déjà bordées et
+ * remplies — un filet à 28 % d'opacité (22 % en sombre) et un fond à 10 % ne changeaient
+ * que la teinte, à valeur presque constante, et le choix se devinait à peine. La tuile
+ * choisie porte donc un filet accent **plein**, la teinte haute, et une pastille de
+ * validation : un repère qui survit aux deux thèmes et à une vision des couleurs atypique.
  */
 export function ProviderGrid({
   value,
@@ -68,14 +76,22 @@ export function ProviderGrid({
             aria-label={fournisseur.label}
             onClick={() => onChange(fournisseur.id)}
             className={cn(
-              "flex min-w-0 flex-col items-center gap-2 rounded-tile border px-2 py-3",
+              "relative flex min-w-0 flex-col items-center gap-2 rounded-tile border px-2 py-3",
               "transition-[background-color,border-color] duration-hover ease-in-out",
               "focus-visible:outline-1 focus-visible:outline-accent-focus",
               selected
-                ? "border-accent-border bg-accent-tint"
+                ? "border-accent bg-accent-tint-12"
                 : "border-control bg-fill hover:bg-fill-hover",
             )}
           >
+            {selected ? (
+              <Icon
+                name="check_circle"
+                size={16}
+                filled
+                className="absolute right-1.5 top-1.5 text-accent"
+              />
+            ) : null}
             <span
               className="flex size-9 flex-none items-center justify-center rounded-control bg-surface"
             >
