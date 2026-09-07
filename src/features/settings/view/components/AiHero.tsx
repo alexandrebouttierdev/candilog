@@ -1,5 +1,5 @@
 import { cn } from "@/shared/lib/cn";
-import { Button, StatusPill } from "@/shared/ui";
+import { Button, Icon, StatusPill } from "@/shared/ui";
 import type { EtatIa } from "../../model/etatIa";
 
 /**
@@ -10,7 +10,6 @@ import type { EtatIa } from "../../model/etatIa";
  */
 export function AiHero({
   logo,
-  secondaryLogo,
   label,
   model,
   etat,
@@ -20,9 +19,8 @@ export function AiHero({
   testDisabled = false,
   onTest,
 }: {
-  logo: { src: string; mono: boolean };
-  /** Badge secondaire (ex. Luth sur IA locale). */
-  secondaryLogo?: { src: string } | null;
+  /** Logo marque ; `null` → icône générique `smart_toy` (IA locale sans famille active). */
+  logo: { src: string; mono: boolean } | null;
   label: string;
   model: string;
   etat: EtatIa;
@@ -36,22 +34,17 @@ export function AiHero({
   return (
     <section className="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-card border border-line bg-surface px-[18px] py-4">
       <span className="relative flex size-12 flex-none items-center justify-center rounded-tile bg-fill">
-        <img
-          src={logo.src}
-          alt=""
-          width={28}
-          height={28}
-          className={cn("size-7", logo.mono && "dark:invert")}
-        />
-        {secondaryLogo ? (
+        {logo ? (
           <img
-            src={secondaryLogo.src}
+            src={logo.src}
             alt=""
-            width={16}
-            height={16}
-            className="absolute -right-1 -bottom-1 size-4 rounded-control border border-line bg-surface p-px"
+            width={28}
+            height={28}
+            className={cn("size-7", logo.mono && "dark:invert")}
           />
-        ) : null}
+        ) : (
+          <Icon name="smart_toy" size={28} className="text-ink-muted" />
+        )}
       </span>
       <div className="min-w-[200px] flex-1">
         {/* Pas d'intitulé « Fournisseur » ici : la section juste en dessous porte déjà ce

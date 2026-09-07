@@ -5,6 +5,7 @@ import {
   type FournisseurOption,
 } from "../../model/providers";
 import type { ProviderKind } from "@/shared/types/generated/settings";
+import type { LocalModelFamily } from "@/shared/types/generated/ai";
 import { Icon, Tag } from "@/shared/ui";
 import logoOllama from "@/assets/providers/ollama.svg";
 import logoClaude from "@/assets/providers/claude.svg";
@@ -15,8 +16,7 @@ import logoLuth from "@/assets/providers/luth.svg";
 import logoDeepseek from "@/assets/providers/deepseek.svg";
 import logoCustom from "@/assets/providers/custom.svg";
 
-const LOGOS: Record<FournisseurOption["id"], { src: string; mono: boolean }> = {
-  mistral_local: { src: logoMistral, mono: false },
+const LOGOS: Record<Exclude<FournisseurOption["id"], "mistral_local">, { src: string; mono: boolean }> = {
   ollama: { src: logoOllama, mono: true },
   claude: { src: logoClaude, mono: false },
   openai: { src: logoOpenai, mono: true },
@@ -26,8 +26,26 @@ const LOGOS: Record<FournisseurOption["id"], { src: string; mono: boolean }> = {
   custom: { src: logoCustom, mono: true },
 };
 
+/** Logos des familles d'artefacts locaux — propriété `family`, jamais le nom affiché. */
+export const LOCAL_FAMILY_LOGOS: Record<
+  LocalModelFamily,
+  { src: string; label: string; mono: boolean }
+> = {
+  mistral: { src: logoMistral, label: "Mistral", mono: false },
+  luth: { src: logoLuth, label: "Luth", mono: false },
+};
+
 export function logoFournisseur(id: FournisseurOption["id"]) {
+  if (id === "mistral_local") return null;
   return LOGOS[id];
+}
+
+/**
+ * Logo à afficher pour l'IA locale : famille active si connue, sinon générique (`null`
+ * → `smart_toy` côté UI). Pas de pile Mistral+Luth.
+ */
+export function logoIaLocale(family: LocalModelFamily | null | undefined) {
+  return family ? LOCAL_FAMILY_LOGOS[family] : null;
 }
 
 export function defFournisseur(provider: ProviderKind): FournisseurOption {
@@ -67,7 +85,8 @@ export function ProviderGrid({
     >
       {FOURNISSEURS.map((fournisseur) => {
         const selected = fournisseur.id === actif;
-        const logo = LOGOS[fournisseur.id];
+        const logo =
+          fournisseur.id === "mistral_local" ? null : LOGOS[fournisseur.id];
         return (
           <button
             key={fournisseur.id}
@@ -96,26 +115,18 @@ export function ProviderGrid({
             <span
               className="relative flex size-9 flex-none items-center justify-center rounded-control bg-surface"
             >
-              <img
-                src={logo.src}
-                alt=""
-                width={20}
-                height={20}
-                data-provider-logo={fournisseur.id === "mistral_local" ? "mistral" : undefined}
-                className={cn("size-5", logo.mono && "dark:invert")}
-              />
-              {fournisseur.id === "mistral_local" ? (
-                // Badge secondaire lisible : assez grand pour se distinguer, toujours
-                // plus petit que le logo Mistral. Le filet le détache du fond coloré.
+              {logo ? (
                 <img
-                  src={logoLuth}
+                  src={logo.src}
                   alt=""
-                  width={16}
-                  height={16}
-                  data-provider-logo="luth"
-                  className="absolute -bottom-1 -right-1 size-4 rounded-control border border-line bg-surface p-px"
+                  width={20}
+                  height={20}
+                  className={cn("size-5", logo.mono && "dark:invert")}
                 />
-              ) : null}
+              ) : (
+                // IA locale : icône générique tant qu'aucune famille n'est active ailleurs.
+                <Icon name="smart_toy" size={20} className="text-ink-muted" />
+              )}
             </span>
             <span className={cn("w-full truncate text-center text-label font-mid", selected ? "text-accent" : "text-ink-muted")}>
               {fournisseur.label}

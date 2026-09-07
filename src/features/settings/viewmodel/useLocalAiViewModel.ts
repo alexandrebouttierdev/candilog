@@ -68,6 +68,16 @@ export function useLocalAiViewModel(
     );
     register(
       localAiService.onError((event) => {
+        // Annulation : ne pas traiter comme une erreur de génération / chargement.
+        if (event.code === "CANCELLED") {
+          setProgress(null);
+          setEventError(null);
+          setTransientState(null);
+          void queryClient.invalidateQueries({ queryKey: LOCAL_AI_KEY });
+          void queryClient.invalidateQueries({ queryKey: SETTINGS_KEY });
+          notify({ tone: "info", title: "Téléchargement annulé" });
+          return;
+        }
         setTransientState("error");
         setEventError(event.message);
       }),
@@ -76,7 +86,7 @@ export function useLocalAiViewModel(
       disposed = true;
       unlisteners.forEach((unlisten) => unlisten());
     };
-  }, [enabled, queryClient]);
+  }, [enabled, notify, queryClient]);
 
   const updateStatus = (status: LocalAiStatus) => {
     queryClient.setQueryData(LOCAL_AI_KEY, (current: typeof query.data) =>
@@ -98,6 +108,15 @@ export function useLocalAiViewModel(
       notify({ tone: "success", title: "IA locale prête" });
     },
     onError: (error: unknown) => {
+      if (error instanceof AppError && error.isCancelled) {
+        setProgress(null);
+        setEventError(null);
+        setTransientState(null);
+        void queryClient.invalidateQueries({ queryKey: LOCAL_AI_KEY });
+        void queryClient.invalidateQueries({ queryKey: SETTINGS_KEY });
+        notify({ tone: "info", title: "Téléchargement annulé" });
+        return;
+      }
       setTransientState("error");
       setEventError(errorMessage(error));
     },

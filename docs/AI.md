@@ -56,11 +56,11 @@ locale avant de l'utiliser »).
 
 `domain/local_ai.rs::ModelRegistry` est l'unique source des artefacts. Quatre entrées sont
 verrouillées sur un commit et un SHA-256 : trois GGUF officiels Mistral, plus un Luth LFM2
-1.2B Q4_K_M (spécialisation française de Liquid LFM2, quantifié par mradermacher).
+350M Q4_K_M (spécialisation française de Liquid LFM2, quantifié par mradermacher).
 
 | Profil UI | Famille | Dépôt / fichier Q4_K_M | Révision | Octets | SHA-256 |
 | --- | --- | --- | --- | ---: | --- |
-| Ultra léger | Luth | `mradermacher/Luth-LFM2-1.2B-GGUF` / `Luth-LFM2-1.2B.Q4_K_M.gguf` | `5f91c560983cf8874def628fd4a3fb5ef7333a16` | 730 895 296 | `9ca9c9a4f53ec05855434061a65f541e1336a47fa7fdc38a2215b6a6e4e7d18d` |
+| Ultra léger | Luth | `mradermacher/Luth-LFM2-350M-GGUF` / `Luth-LFM2-350M.Q4_K_M.gguf` | `ba0ab90f75a5d150e108abdd4a19929f04df8262` | 229 311 424 | `bba2d3b665ad660ba05de12bcde84b05dcc1e340d2908928cc269d73d83b7570` |
 | Léger | Mistral | `mistralai/Ministral-3-3B-Instruct-2512-GGUF` / `Ministral-3-3B-Instruct-2512-Q4_K_M.gguf` | `eb599d408350ea2bb60452cb86be7c7b2fc28227` | 2 147 023 008 | `9ed150d4367e68df0ac8e1540f6ddc65b42d0ee26378329d1ecbca60f93fc5f8` |
 | Équilibré | Mistral | `mistralai/Ministral-3-8B-Instruct-2512-GGUF` / `Ministral-3-8B-Instruct-2512-Q4_K_M.gguf` | `0102285ad796bd99af90f58de616092e5630e970` | 5 198 911 904 | `33e7a72cf5e6e2cfc2f2847075acc013d68bba023e35310cef86b5cf8fdca761` |
 | Qualité | Mistral | `mistralai/Ministral-3-14B-Instruct-2512-GGUF` / `Ministral-3-14B-Instruct-2512-Q4_K_M.gguf` | `74fac473c43357d7fb2671713608183cc72496d0` | 8 239 593 024 | `824e0f3373e69b84f2cae46fdcb9bd1ebc6ab3bfc7acc125d818b7b8178cc613` |

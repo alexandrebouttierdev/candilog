@@ -53,6 +53,11 @@ pub async fn install_local_ai_model(
             }
         }
         Err(error) => {
+            // Annulation : le ViewModel repasse à idle via le rejet CANCELLED de la commande.
+            // Émettre download-error ferait afficher ErrorBanner (« Chargement impossible »).
+            if matches!(error, crate::core::errors::AppError::Cancelled) {
+                return result;
+            }
             let payload = LocalAiDownloadError {
                 model_id,
                 code: error.code().into(),

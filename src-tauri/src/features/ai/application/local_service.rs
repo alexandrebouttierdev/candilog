@@ -118,6 +118,11 @@ impl LocalAiService {
         self.finish_download(model.id);
         match result {
             Ok(status) => Ok(status),
+            // Annulation utilisateur (LocalAiError::DownloadCancelled) : idle, sans last_error.
+            Err(AppError::Cancelled) => {
+                self.clear_cancelled_download()?;
+                Err(AppError::Cancelled)
+            }
             Err(error) => {
                 self.persist_error(error.user_message())?;
                 Err(error)
@@ -499,6 +504,19 @@ impl LocalAiService {
         self.update_settings(|settings| {
             settings.local_ai.installation_status = LocalAiInstallationStatus::Error;
             settings.local_ai.last_error = Some(message);
+        })
+    }
+
+    /// Remet l'installation au repos après une annulation : pas d'état d'erreur persisté.
+    fn clear_cancelled_download(&self) -> AppResult<()> {
+        self.update_settings(|settings| {
+            settings.local_ai.last_error = None;
+            settings.local_ai.installation_status = if settings.local_ai.active_model_id.is_some()
+            {
+                LocalAiInstallationStatus::Installed
+            } else {
+                LocalAiInstallationStatus::NotInstalled
+            };
         })
     }
 

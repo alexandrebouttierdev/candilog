@@ -19,7 +19,9 @@ pub const LOCAL_AI_SYSTEM_MARGIN_MB: u64 = 768;
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "ai.ts")]
 pub enum LocalModelId {
-    /// Ancien id `qwen3_ultra_light` : les réglages déjà enregistrés restent lisibles.
+    /// Profil Ultra léger. Alias `qwen3_ultra_light` (ancienne famille) et id snake_case
+    /// `luth_lfm2_ultra_light` restent lisibles. Un artefact 1.2B déjà téléchargé ne
+    /// correspond plus (révision / SHA) : `valid_installed_path` force une réinstallation.
     #[serde(alias = "qwen3_ultra_light")]
     LuthLfm2UltraLight,
     Ministral3Light,
@@ -157,14 +159,15 @@ impl ModelRegistry {
                 id: LocalModelId::LuthLfm2UltraLight,
                 profile: LocalModelProfile::UltraLight,
                 family: LocalModelFamily::Luth,
-                display_name: "Luth LFM2 1.2B".into(),
-                repository: "mradermacher/Luth-LFM2-1.2B-GGUF".into(),
-                filename: "Luth-LFM2-1.2B.Q4_K_M.gguf".into(),
-                local_filename: "luth-lfm2-1.2b-q4_k_m.gguf".into(),
-                revision: "5f91c560983cf8874def628fd4a3fb5ef7333a16".into(),
-                sha256: "9ca9c9a4f53ec05855434061a65f541e1336a47fa7fdc38a2215b6a6e4e7d18d".into(),
-                download_size_bytes: 730_895_296,
-                estimated_ram_mb: 1_600,
+                display_name: "Luth LFM2 350M".into(),
+                repository: "mradermacher/Luth-LFM2-350M-GGUF".into(),
+                filename: "Luth-LFM2-350M.Q4_K_M.gguf".into(),
+                local_filename: "luth-lfm2-350m-q4_k_m.gguf".into(),
+                revision: "ba0ab90f75a5d150e108abdd4a19929f04df8262".into(),
+                sha256: "bba2d3b665ad660ba05de12bcde84b05dcc1e340d2908928cc269d73d83b7570".into(),
+                download_size_bytes: 229_311_424,
+                // ~219 Mo de poids + marge KV/activations : nettement sous l'ancien 1.2B (1 600).
+                estimated_ram_mb: 650,
                 recommended_ram_mb: 4_096,
                 // Seuil bas : le profil reste viable sans GPU, mais une petite VRAM accélère.
                 recommended_vram_mb: Some(2_048),
@@ -539,11 +542,11 @@ mod tests {
         let models = ModelRegistry::all();
         let expected = [
             (
-                "mradermacher/Luth-LFM2-1.2B-GGUF",
-                "Luth-LFM2-1.2B.Q4_K_M.gguf",
-                "5f91c560983cf8874def628fd4a3fb5ef7333a16",
-                "9ca9c9a4f53ec05855434061a65f541e1336a47fa7fdc38a2215b6a6e4e7d18d",
-                730_895_296_u64,
+                "mradermacher/Luth-LFM2-350M-GGUF",
+                "Luth-LFM2-350M.Q4_K_M.gguf",
+                "ba0ab90f75a5d150e108abdd4a19929f04df8262",
+                "bba2d3b665ad660ba05de12bcde84b05dcc1e340d2908928cc269d73d83b7570",
+                229_311_424_u64,
             ),
             (
                 "mistralai/Ministral-3-3B-Instruct-2512-GGUF",

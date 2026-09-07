@@ -57,15 +57,16 @@ describe("grille des fournisseurs", () => {
     expect(within(screen.getByRole("radio", { name: "Ollama" })).getByText("Votre installation ou Ollama Cloud")).toBeInTheDocument();
   });
 
-  // L'IA locale peut retenir un artefact Mistral ou Luth : le logo principal reste
-  // Mistral, avec Luth en badge secondaire — sans créer une seconde carte fournisseur.
-  it("superpose le badge Luth au logo Mistral sur la tuile IA locale", () => {
+  // L'IA locale retient Mistral ou Luth selon la machine : la tuile fournisseur reste
+  // générique (`smart_toy`). Les logos de famille n'apparaissent que quand un modèle
+  // est actif (AiHero / rail), jamais en pile sur la carte.
+  it("affiche l'icône générique smart_toy sur la tuile IA locale, sans badge de famille", () => {
     const { container } = render(<ProviderGrid value="ollama" onChange={() => undefined} />);
     const tuile = screen.getByRole("radio", { name: "IA locale" });
 
-    expect(tuile.querySelector('[data-provider-logo="mistral"]')).not.toBeNull();
-    expect(tuile.querySelector('[data-provider-logo="luth"]')).not.toBeNull();
-    // Les autres tuiles n'ont qu'un logo : pas de badge secondaire inventé.
-    expect(container.querySelectorAll('[data-provider-logo="luth"]')).toHaveLength(1);
+    expect(tuile.querySelector('[data-provider-logo="mistral"]')).toBeNull();
+    expect(tuile.querySelector('[data-provider-logo="luth"]')).toBeNull();
+    expect(container.querySelectorAll('[data-provider-logo="luth"]')).toHaveLength(0);
+    expect(within(tuile).getByText("smart_toy")).toBeInTheDocument();
   });
 });

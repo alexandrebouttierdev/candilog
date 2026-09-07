@@ -29,7 +29,12 @@ import {
   type FournisseurOption,
 } from "../../model/providers";
 import { useAiRailStatusStore } from "@/features/ai/viewmodel/ai-rail-status-store";
-import { ProviderGrid, defFournisseur, logoFournisseur } from "../components/ProviderGrid";
+import {
+  ProviderGrid,
+  defFournisseur,
+  logoFournisseur,
+  logoIaLocale,
+} from "../components/ProviderGrid";
 import { AiHero } from "../components/AiHero";
 import { MistralLocalPanel } from "../components/MistralLocalPanel";
 import { SettingsBody, SettingsCard } from "../components/SettingsUi";
@@ -37,7 +42,6 @@ import { cn } from "@/shared/lib/cn";
 import { etatIa, type TestConnexion } from "../../model/etatIa";
 import { etatLocalIa, isLocalAiBusy } from "../../model/etatLocalIa";
 import { useLocalAiViewModel } from "../../viewmodel/useLocalAiViewModel";
-import logoLuth from "@/assets/providers/luth.svg";
 
 const MODES: Array<{ value: AnalysisMode; label: string }> = [
   { value: "auto", label: "Auto" },
@@ -148,8 +152,12 @@ export function AiPage() {
   };
 
   const fournisseur = llm ? defFournisseur(llm.provider) : null;
-  const logo = fournisseur ? logoFournisseur(fournisseur.id) : null;
   const localActive = localVm.status?.active_model ?? null;
+  const logo = isMistralLocal
+    ? logoIaLocale(localActive?.family)
+    : fournisseur
+      ? logoFournisseur(fournisseur.id)
+      : null;
   const localModelLabel = localActive
     ? localActive.display_name.replace(" Instruct", "")
     : "";
@@ -187,7 +195,7 @@ export function AiPage() {
             onRetry={vm.recharger}
           />
         </div>
-      ) : vm.isLoading || !form || !llm || !fournisseur || !logo ? (
+      ) : vm.isLoading || !form || !llm || !fournisseur ? (
         <div
           className="max-w-[1000px] space-y-4 px-[18px] pt-4"
           role="status"
@@ -207,7 +215,6 @@ export function AiPage() {
             {isMistralLocal ? (
               <AiHero
                 logo={logo}
-                secondaryLogo={{ src: logoLuth }}
                 label={fournisseur.label}
                 model={localModelLabel}
                 etat={etatLocalIa(localVm.state, localActive, localVm.testResult, localVm.error)}

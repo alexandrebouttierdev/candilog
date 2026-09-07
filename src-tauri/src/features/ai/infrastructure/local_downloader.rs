@@ -82,6 +82,9 @@ impl ModelDownloader {
             .await
             .map_err(file_error)?;
         if cancellation.is_cancelled() {
+            // Domaine : LocalAiError::DownloadCancelled. AppError::Cancelled conserve le
+            // code CANCELLED pour le frontend ; le message « Génération annulée » n'est
+            // pas affiché (install clear + ViewModel toast « Téléchargement annulé »).
             return Err(AppError::Cancelled);
         }
         if valid_existing_model(destination, expected_size, expected_sha256).await? {

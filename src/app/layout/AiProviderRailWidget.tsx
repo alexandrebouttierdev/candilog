@@ -8,6 +8,7 @@ import { railIaStatus } from "@/features/settings/model/railIaStatus";
 import {
   defFournisseur,
   logoFournisseur,
+  logoIaLocale,
 } from "@/features/settings/view/components/ProviderGrid";
 import { settingsService } from "@/features/settings/services/settingsService";
 import { LOCAL_AI_KEY } from "@/features/settings/viewmodel/useLocalAiViewModel";
@@ -81,8 +82,6 @@ export function AiProviderRailWidget() {
   const configured = llm ? iaEstConfiguree(llm) : false;
   const providerId = llm ? idProvider(llm.provider) : null;
   const fournisseur = llm ? defFournisseur(llm.provider) : null;
-  const logo = providerId && configured ? logoFournisseur(providerId) : null;
-
   const busy = useAiOperationStore((state) => state.active !== null);
   const connectionTest = useAiRailStatusStore((state) => state.connectionTest);
   const operationError = useAiRailStatusStore((state) => state.lastOperationFailed);
@@ -101,6 +100,13 @@ export function AiProviderRailWidget() {
   const localError =
     providerId === "mistral_local" &&
     (localQuery.data?.status.state === "error" || Boolean(localQuery.data?.status.last_error));
+
+  const logo =
+    providerId && configured
+      ? providerId === "mistral_local"
+        ? logoIaLocale(localQuery.data?.status.active_model?.family)
+        : logoFournisseur(providerId)
+      : null;
 
   const status = railIaStatus({
     configured,
