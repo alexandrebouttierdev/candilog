@@ -128,7 +128,9 @@ export function AiProviderRailWidget() {
           type="button"
           title={tooltip}
           aria-label={tooltip}
-          onClick={() => navigate("/settings/ai")}
+          onClick={() => {
+            void navigate("/settings/ai");
+          }}
           className={cn(
             "relative flex h-9 w-[42px] flex-none items-center justify-center rounded-tile",
             "text-ink-subtle transition-colors duration-hover hover:bg-surface-hover hover:text-ink-muted",

@@ -12,6 +12,25 @@ import { openExternal } from "@/shared/services/external-link";
 
 vi.mock("@/shared/services/external-link", () => ({ openExternal: vi.fn() }));
 
+vi.mock("../../../viewmodel/useLocalAiViewModel", () => ({
+  useLocalAiViewModel: () => ({
+    state: "not_configured",
+    recommendation: null,
+    status: { state: "not_configured", active_model: null, installed_models: [], backend: null, benchmark: null, last_error: null },
+    progress: null,
+    error: null,
+    testResult: null,
+    isRemoving: false,
+    isTesting: false,
+    install: vi.fn(),
+    cancel: vi.fn(),
+    remove: vi.fn(),
+    benchmark: vi.fn(),
+    test: vi.fn(),
+    reevaluate: vi.fn(),
+  }),
+}));
+
 function reglages(llm: Partial<LlmForm> = {}): Settings {
   return {
     llm: {
@@ -65,6 +84,25 @@ describe("écran Intelligence artificielle", () => {
     expect(screen.getByText("Fournisseur")).toBeInTheDocument();
     expect(screen.getByText("Configuration")).toBeInTheDocument();
     expect(screen.getByText("Apparence")).toBeInTheDocument();
+  });
+
+  it("place le bandeau IA locale au-dessus de la grille des fournisseurs", async () => {
+    vi.spyOn(settingsService, "load").mockResolvedValue(
+      reglages({ provider: "mistral_local", model: "", api_key_configured: false, endpoint: "" }),
+    );
+
+    const { container } = render(<AiPage />, { wrapper });
+
+    expect(await screen.findByRole("button", { name: "Tester l'IA" })).toBeInTheDocument();
+    expect(screen.getByText("Non configuré")).toBeInTheDocument();
+    expect(screen.getByText("Aucun modèle")).toBeInTheDocument();
+
+    const hero = container.querySelector("section");
+    const fournisseur = screen.getByText("Fournisseur");
+    expect(hero).not.toBeNull();
+    expect(
+      Boolean(hero && fournisseur.compareDocumentPosition(hero) & Node.DOCUMENT_POSITION_PRECEDING),
+    ).toBe(true);
   });
 
   it("affiche un squelette pendant le chargement des réglages", () => {

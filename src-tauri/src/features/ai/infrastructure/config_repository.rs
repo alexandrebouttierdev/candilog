@@ -68,7 +68,7 @@ mod tests {
             config.provider,
             crate::features::ai::domain::ProviderKind::Ollama
         );
-        assert_eq!(config.model, "llama3.2:3b");
+        assert_eq!(config.model, "");
     }
 
     #[test]

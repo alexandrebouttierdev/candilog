@@ -17,7 +17,11 @@ function errorMessage(error: unknown): string {
   return error instanceof AppError ? error.message : "L'opération d'IA locale a échoué.";
 }
 
-export function useLocalAiViewModel(onConfigured?: () => void) {
+export function useLocalAiViewModel(
+  onConfigured?: () => void,
+  options: { enabled?: boolean } = {},
+) {
+  const enabled = options.enabled ?? true;
   const queryClient = useQueryClient();
   const notify = useUiStore((state) => state.notify);
   const [progress, setProgress] = useState<LocalAiDownloadProgress | null>(null);
@@ -34,9 +38,11 @@ export function useLocalAiViewModel(onConfigured?: () => void) {
       ]);
       return { recommendation, status };
     },
+    enabled,
   });
 
   useEffect(() => {
+    if (!enabled) return;
     let disposed = false;
     const unlisteners: Array<() => void> = [];
     const register = (promise: Promise<() => void>) => {
@@ -70,7 +76,7 @@ export function useLocalAiViewModel(onConfigured?: () => void) {
       disposed = true;
       unlisteners.forEach((unlisten) => unlisten());
     };
-  }, [queryClient]);
+  }, [enabled, queryClient]);
 
   const updateStatus = (status: LocalAiStatus) => {
     queryClient.setQueryData(LOCAL_AI_KEY, (current: typeof query.data) =>
@@ -124,10 +130,11 @@ export function useLocalAiViewModel(onConfigured?: () => void) {
   });
 
   const state = useMemo<LocalAiState>(() => {
+    if (!enabled) return "not_configured";
     if (transientState) return transientState;
     if (query.isPending) return "detecting_hardware";
     return query.data?.status.state ?? "not_configured";
-  }, [query.data?.status.state, query.isPending, transientState]);
+  }, [enabled, query.data?.status.state, query.isPending, transientState]);
 
   return {
     state,
@@ -150,3 +157,5 @@ export function useLocalAiViewModel(onConfigured?: () => void) {
     },
   };
 }
+
+export type LocalAiViewModel = ReturnType<typeof useLocalAiViewModel>;

@@ -6,6 +6,7 @@ import {
   type RouteObject,
 } from "react-router-dom";
 import { fireEvent, render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { QueryWrapper } from "@/shared/lib/test-utils";
 import { settingsService } from "@/features/settings/services/settingsService";
 import type { Settings } from "@/shared/types/generated/settings";
@@ -75,10 +76,15 @@ describe("coque applicative", () => {
 
 describe("rail de navigation", () => {
   it("expose des entrées accessibles par icône avec libellé complet", () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
     render(
-      <MemoryRouter>
-        <NavRail />
-      </MemoryRouter>,
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <NavRail />
+        </MemoryRouter>
+      </QueryClientProvider>,
     );
     expect(screen.getByRole("navigation", { name: "Navigation principale" })).toHaveClass("z-20");
     expect(screen.getByRole("link", { name: "Aujourd'hui" })).toBeInTheDocument();

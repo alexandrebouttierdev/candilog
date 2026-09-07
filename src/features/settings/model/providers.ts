@@ -67,23 +67,8 @@ export function endpointDefaut(id: FournisseurOption["id"]): string | null {
   }
 }
 
-export function modelDefaut(id: FournisseurOption["id"]): string {
-  switch (id) {
-    case "mistral_local":
-      return "";
-    case "ollama":
-      return "llama3.2:3b";
-    case "claude":
-      return "claude-sonnet-4-0";
-    case "openai":
-      return "gpt-4o";
-    case "gemini":
-      return "gemini-2.0-flash";
-    case "mistral":
-      return "mistral-small-latest";
-    case "deepseek":
-      return "deepseek-v4-flash";
-    case "custom":
-      return "";
-  }
+/** Aucun modèle n'est prérempli : l'utilisateur choisit après avoir sélectionné le fournisseur. */
+export function modelDefaut(_id: FournisseurOption["id"]): string {
+  void _id;
+  return "";
 }

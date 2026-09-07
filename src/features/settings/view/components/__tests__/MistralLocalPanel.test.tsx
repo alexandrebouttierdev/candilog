@@ -8,11 +8,7 @@ import type {
   LocalModelProfile,
 } from "@/shared/types/generated/ai";
 import { MistralLocalPanel } from "../MistralLocalPanel";
-import { useLocalAiViewModel } from "../../../viewmodel/useLocalAiViewModel";
-
-vi.mock("../../../viewmodel/useLocalAiViewModel", () => ({
-  useLocalAiViewModel: vi.fn(),
-}));
+import type { LocalAiViewModel } from "../../../viewmodel/useLocalAiViewModel";
 
 const actions = {
   install: vi.fn(),
@@ -114,8 +110,8 @@ function status(active: LocalModelDefinition | null): LocalAiStatus {
   };
 }
 
-function setup(overrides: Record<string, unknown> = {}) {
-  vi.mocked(useLocalAiViewModel).mockReturnValue({
+function setup(overrides: Partial<LocalAiViewModel> = {}): LocalAiViewModel {
+  return {
     state: "not_configured",
     recommendation: null,
     status: status(null),
@@ -126,24 +122,21 @@ function setup(overrides: Record<string, unknown> = {}) {
     isTesting: false,
     ...actions,
     ...overrides,
-  });
+  };
 }
 
 describe("configuration Mistral Local", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    setup();
   });
 
   it("affiche l'état non configuré sans inventer de recommandation", () => {
-    render(<MistralLocalPanel />);
-    expect(screen.getByText("Fonctionne directement sur votre ordinateur")).toBeInTheDocument();
+    render(<MistralLocalPanel vm={setup()} />);
     expect(document.querySelector("[data-local-ai-state='not_configured']")).toBeInTheDocument();
   });
 
   it("affiche la détection matérielle", () => {
-    setup({ state: "detecting_hardware" });
-    render(<MistralLocalPanel />);
+    render(<MistralLocalPanel vm={setup({ state: "detecting_hardware" })} />);
     expect(screen.getByRole("status", { name: "Détection de la configuration" })).toBeInTheDocument();
   });
 
@@ -153,20 +146,18 @@ describe("configuration Mistral Local", () => {
     ["quality", "Qualité"],
   ] as const)("affiche la recommandation %s", (profile, label) => {
     const selected = model(profile);
-    setup({ state: "recommendation_ready", recommendation: recommendation(selected) });
-    render(<MistralLocalPanel />);
+    render(<MistralLocalPanel vm={setup({ state: "recommendation_ready", recommendation: recommendation(selected) })} />);
     expect(screen.getAllByText(label).length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Installer l'IA locale" })).toBeInTheDocument();
   });
 
   it("refuse proprement une machine incompatible", () => {
-    setup({ state: "recommendation_ready", recommendation: recommendation(null) });
-    render(<MistralLocalPanel />);
+    render(<MistralLocalPanel vm={setup({ state: "recommendation_ready", recommendation: recommendation(null) })} />);
     expect(screen.getByText("IA locale non recommandée")).toBeInTheDocument();
   });
 
   it("affiche une progression de téléchargement réelle", () => {
-    setup({
+    render(<MistralLocalPanel vm={setup({
       state: "downloading",
       recommendation: recommendation(model("balanced")),
       progress: {
@@ -177,8 +168,7 @@ describe("configuration Mistral Local", () => {
         bytes_per_second: 42_000_000,
         progress: 76,
       },
-    });
-    render(<MistralLocalPanel />);
+    })} />);
     expect(screen.getByText("76 %")).toBeInTheDocument();
     expect(screen.getByText(/42 Mo\/s/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Annuler" })).toBeInTheDocument();
@@ -189,30 +179,35 @@ describe("configuration Mistral Local", () => {
     ["installing", "Installation du modèle"],
     ["benchmarking", "Mesure des performances"],
   ] as const)("affiche l'étape %s", (stateValue, title) => {
-    setup({ state: stateValue, recommendation: recommendation(model("light")) });
-    render(<MistralLocalPanel />);
+    render(<MistralLocalPanel vm={setup({ state: stateValue, recommendation: recommendation(model("light")) })} />);
     expect(screen.getByText(title)).toBeInTheDocument();
   });
 
   it("affiche une erreur de téléchargement", () => {
-    setup({ state: "error", error: "Le réseau est indisponible." });
-    render(<MistralLocalPanel />);
+    render(<MistralLocalPanel vm={setup({ state: "error", error: "Le réseau est indisponible." })} />);
     expect(screen.getByText("Le réseau est indisponible.")).toBeInTheDocument();
   });
 
-  it("affiche le modèle prêt, le benchmark et le test", async () => {
+  it("affiche le modèle prêt, le benchmark et le résultat de test", () => {
     const active = model("balanced");
-    setup({ state: "ready", recommendation: recommendation(active), status: status(active), testResult: "Notre équipe d'assistance locale répond." });
-    render(<MistralLocalPanel />);
+    render(
+      <MistralLocalPanel
+        vm={setup({
+          state: "ready",
+          recommendation: recommendation(active),
+          status: status(active),
+          testResult: "Notre équipe d'assistance locale répond.",
+        })}
+      />,
+    );
     expect(screen.getByText("IA locale prête")).toBeInTheDocument();
     expect(screen.getByText("18,4 tokens/s")).toBeInTheDocument();
     // La prose du modèle n'est pas un message d'état : interrogé sur « l'assistance locale »,
     // il répondait « Notre équipe d'assistance locale est entièrement opérationnelle… ».
-    // Seul le fait que le test ait abouti est affiché.
+    // Seul le fait que le test ait abouti est affiché. Le bouton de test vit dans AiHero.
     expect(screen.getByText("Votre modèle local est installé et opérationnel.")).toBeInTheDocument();
     expect(screen.queryByText("Notre équipe d'assistance locale répond.")).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Tester l'IA" }));
-    expect(actions.test).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("button", { name: "Tester l'IA" })).not.toBeInTheDocument();
   });
 
   it("propose le profil inférieur après un benchmark trop lent sans le télécharger", async () => {
@@ -220,12 +215,11 @@ describe("configuration Mistral Local", () => {
     const lower = model("balanced");
     const slowStatus = status(active);
     if (slowStatus.benchmark) slowStatus.benchmark.rating = "too_slow";
-    setup({
+    render(<MistralLocalPanel vm={setup({
       state: "ready",
       recommendation: { ...recommendation(active), evaluations: [{ model: lower, compatibility: "supported", reason: "Compatible" }] },
       status: slowStatus,
-    });
-    render(<MistralLocalPanel />);
+    })} />);
     expect(screen.getByText("Ce profil est trop lent sur votre ordinateur.")).toBeInTheDocument();
     expect(actions.install).not.toHaveBeenCalled();
     // Le bandeau d'avertissement propose le repli ; la liste « Profils disponibles »
@@ -245,8 +239,7 @@ describe("configuration Mistral Local", () => {
       slowStatus.benchmark.rating = "too_slow";
       slowStatus.benchmark.tokens_per_second = 2.6;
     }
-    setup({ state: "ready", recommendation: recommendation(active), status: slowStatus });
-    render(<MistralLocalPanel />);
+    render(<MistralLocalPanel vm={setup({ state: "ready", recommendation: recommendation(active), status: slowStatus })} />);
 
     expect(screen.getByText(/trop lent sur votre ordinateur/)).toBeInTheDocument();
     expect(
@@ -257,8 +250,7 @@ describe("configuration Mistral Local", () => {
 
   it("n'avertit pas quand les performances sont correctes", () => {
     const active = model("light");
-    setup({ state: "ready", recommendation: recommendation(active), status: status(active) });
-    render(<MistralLocalPanel />);
+    render(<MistralLocalPanel vm={setup({ state: "ready", recommendation: recommendation(active), status: status(active) })} />);
 
     expect(screen.queryByText(/trop lent sur votre ordinateur/)).not.toBeInTheDocument();
   });
@@ -267,18 +259,24 @@ describe("configuration Mistral Local", () => {
   // recherche de « Ministral » ou « Qwen » dans le nom affiché.
   it("illustre le modèle avec le logo de sa famille", () => {
     const active = model("light");
-    setup({ state: "ready", recommendation: recommendation(active), status: status(active) });
-    const { container } = render(<MistralLocalPanel />);
+    const { container } = render(
+      <MistralLocalPanel
+        vm={setup({ state: "ready", recommendation: recommendation(active), status: status(active) })}
+      />,
+    );
 
     expect(container.querySelector('img[data-family="mistral"]')).not.toBeNull();
     // Le nom reste écrit : l'information ne dépend jamais du seul logo.
-    expect(screen.getByText("Ministral 3 3B")).toBeInTheDocument();
+    expect(screen.getAllByText("Ministral 3 3B").length).toBeGreaterThan(0);
   });
 
   it("expose la famille du modèle dans la configuration avancée", () => {
     const active = model("balanced");
-    setup({ state: "ready", recommendation: recommendation(active), status: status(active) });
-    render(<MistralLocalPanel />);
+    render(
+      <MistralLocalPanel
+        vm={setup({ state: "ready", recommendation: recommendation(active), status: status(active) })}
+      />,
+    );
 
     expect(screen.getByText("Famille")).toBeInTheDocument();
     expect(screen.getByText("Mistral")).toBeInTheDocument();
@@ -286,8 +284,7 @@ describe("configuration Mistral Local", () => {
 
   it("annonce le mode ultra léger pour le profil Qwen", () => {
     const active = model("ultra_light");
-    setup({ state: "ready", recommendation: recommendation(active), status: status(active) });
-    render(<MistralLocalPanel />);
+    render(<MistralLocalPanel vm={setup({ state: "ready", recommendation: recommendation(active), status: status(active) })} />);
 
     expect(screen.getByText("Ultra léger")).toBeInTheDocument();
     expect(screen.getByText("Mode ultra léger")).toBeInTheDocument();
@@ -296,16 +293,14 @@ describe("configuration Mistral Local", () => {
 
   it("n'annonce pas le mode ultra léger pour un profil Ministral", () => {
     const active = model("light");
-    setup({ state: "ready", recommendation: recommendation(active), status: status(active) });
-    render(<MistralLocalPanel />);
+    render(<MistralLocalPanel vm={setup({ state: "ready", recommendation: recommendation(active), status: status(active) })} />);
 
     expect(screen.queryByText("Mode ultra léger")).not.toBeInTheDocument();
   });
 
   it("affiche la RAM estimée en Go dans la configuration avancée", () => {
     const active = model("ultra_light");
-    setup({ state: "ready", recommendation: recommendation(active), status: status(active) });
-    render(<MistralLocalPanel />);
+    render(<MistralLocalPanel vm={setup({ state: "ready", recommendation: recommendation(active), status: status(active) })} />);
 
     expect(screen.getByText("RAM estimée")).toBeInTheDocument();
     expect(screen.getByText("2 Go")).toBeInTheDocument();
@@ -316,7 +311,7 @@ describe("configuration Mistral Local", () => {
   // ni comparer, ni comprendre pourquoi un profil était écarté.
   it("illustre chaque profil avec une icône distinctive", () => {
     const active = model("ultra_light");
-    setup({
+    render(<MistralLocalPanel vm={setup({
       state: "ready",
       status: status(active),
       recommendation: {
@@ -328,8 +323,7 @@ describe("configuration Mistral Local", () => {
           { model: model("quality"), compatibility: "unsupported", reason: "Trop lourd." },
         ],
       },
-    });
-    render(<MistralLocalPanel />);
+    })} />);
 
     expect(screen.getAllByText("bolt").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("rocket_launch").length).toBeGreaterThanOrEqual(1);
@@ -339,7 +333,7 @@ describe("configuration Mistral Local", () => {
 
   it("liste chaque profil avec sa compatibilité mesurée", () => {
     const active = model("light");
-    setup({
+    render(<MistralLocalPanel vm={setup({
       state: "ready",
       status: status(active),
       recommendation: {
@@ -350,8 +344,7 @@ describe("configuration Mistral Local", () => {
           { model: model("quality"), compatibility: "unsupported", reason: "24 Go recommandés." },
         ],
       },
-    });
-    render(<MistralLocalPanel />);
+    })} />);
 
     expect(screen.getByText("Recommandé pour votre ordinateur")).toBeInTheDocument();
     expect(screen.getByText("Déconseillé")).toBeInTheDocument();
@@ -364,7 +357,7 @@ describe("configuration Mistral Local", () => {
 
   it("affiche la config recommandée (RAM, VRAM, cœurs) pour chaque profil", () => {
     const active = model("ultra_light");
-    setup({
+    render(<MistralLocalPanel vm={setup({
       state: "ready",
       status: status(active),
       recommendation: {
@@ -374,8 +367,7 @@ describe("configuration Mistral Local", () => {
           { model: model("light"), compatibility: "supported", reason: "Compatible." },
         ],
       },
-    });
-    render(<MistralLocalPanel />);
+    })} />);
 
     // Valeurs issues du modèle (registre), pas recalculées dans React.
     expect(screen.getAllByText(/RAM reco 4 Go/).length).toBeGreaterThanOrEqual(1);
@@ -393,7 +385,7 @@ describe("configuration Mistral Local", () => {
       slowStatus.benchmark.rating = "too_slow";
       slowStatus.benchmark.tokens_per_second = 2.6;
     }
-    setup({
+    render(<MistralLocalPanel vm={setup({
       state: "ready",
       status: slowStatus,
       recommendation: {
@@ -403,8 +395,7 @@ describe("configuration Mistral Local", () => {
           { model: model("ultra_light"), compatibility: "supported", reason: "Compatible." },
         ],
       },
-    });
-    render(<MistralLocalPanel />);
+    })} />);
 
     // Le matériel suffisait, mais le benchmark a prouvé le contraire : la pastille suit la mesure.
     expect(screen.queryByText("Recommandé pour votre ordinateur")).not.toBeInTheDocument();
@@ -415,7 +406,7 @@ describe("configuration Mistral Local", () => {
 
   it("interdit d'installer un profil incompatible", () => {
     const active = model("light");
-    setup({
+    render(<MistralLocalPanel vm={setup({
       state: "ready",
       status: status(active),
       recommendation: {
@@ -425,8 +416,7 @@ describe("configuration Mistral Local", () => {
           { model: model("quality"), compatibility: "unsupported", reason: "Trop lourd." },
         ],
       },
-    });
-    render(<MistralLocalPanel />);
+    })} />);
 
     expect(screen.getByRole("button", { name: /Installer le profil Qualité/ })).toBeDisabled();
     expect(screen.getByText("Profil actif")).toBeInTheDocument();
@@ -434,7 +424,7 @@ describe("configuration Mistral Local", () => {
 
   it("interdit d'installer un profil déconseillé", () => {
     const active = model("light");
-    setup({
+    render(<MistralLocalPanel vm={setup({
       state: "ready",
       status: status(active),
       recommendation: {
@@ -444,8 +434,7 @@ describe("configuration Mistral Local", () => {
           { model: model("balanced"), compatibility: "not_recommended", reason: "Marge insuffisante." },
         ],
       },
-    });
-    render(<MistralLocalPanel />);
+    })} />);
 
     expect(screen.getByRole("button", { name: /Installer le profil Équilibré/ })).toBeDisabled();
   });
@@ -455,15 +444,14 @@ describe("configuration Mistral Local", () => {
     const lower = model("light");
     const slowStatus = status(active);
     if (slowStatus.benchmark) slowStatus.benchmark.rating = "too_slow";
-    setup({
+    render(<MistralLocalPanel vm={setup({
       state: "ready",
       recommendation: {
         ...recommendation(active),
         evaluations: [{ model: lower, compatibility: "not_recommended", reason: "Marge insuffisante." }],
       },
       status: slowStatus,
-    });
-    render(<MistralLocalPanel />);
+    })} />);
 
     expect(screen.getByText(/trop lent sur votre ordinateur/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Passer au profil/ })).not.toBeInTheDocument();
@@ -471,7 +459,7 @@ describe("configuration Mistral Local", () => {
 
   it("confirme avant d'installer un autre profil compatible", async () => {
     const active = model("light");
-    setup({
+    render(<MistralLocalPanel vm={setup({
       state: "ready",
       status: status(active),
       recommendation: {
@@ -481,8 +469,7 @@ describe("configuration Mistral Local", () => {
           { model: model("balanced"), compatibility: "supported", reason: "Compatible." },
         ],
       },
-    });
-    render(<MistralLocalPanel />);
+    })} />);
 
     await userEvent.click(screen.getByRole("button", { name: /Installer le profil Équilibré/ }));
     expect(screen.getByRole("alertdialog", { name: "Installer l'IA locale ?" })).toBeInTheDocument();
@@ -491,8 +478,7 @@ describe("configuration Mistral Local", () => {
 
   it("confirme la suppression avant d'appeler le service", async () => {
     const active = model("light");
-    setup({ state: "ready", recommendation: recommendation(active), status: status(active) });
-    render(<MistralLocalPanel />);
+    render(<MistralLocalPanel vm={setup({ state: "ready", recommendation: recommendation(active), status: status(active) })} />);
     await userEvent.click(screen.getByRole("button", { name: "Supprimer le modèle" }));
     await userEvent.click(screen.getByRole("button", { name: "Supprimer" }));
     expect(actions.remove).toHaveBeenCalledWith(active.id);

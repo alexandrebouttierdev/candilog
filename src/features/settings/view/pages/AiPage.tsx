@@ -11,7 +11,6 @@ import {
   SegmentedControl,
   Select,
   Skeleton,
-  StatusPill,
   TextInput,
 } from "@/shared/ui";
 import { openExternal } from "@/shared/services/external-link";
@@ -30,11 +29,15 @@ import {
   type FournisseurOption,
 } from "../../model/providers";
 import { useAiRailStatusStore } from "@/features/ai/viewmodel/ai-rail-status-store";
-import { etatIa, type EtatIa, type TestConnexion } from "../../model/etatIa";
 import { ProviderGrid, defFournisseur, logoFournisseur } from "../components/ProviderGrid";
+import { AiHero } from "../components/AiHero";
 import { MistralLocalPanel } from "../components/MistralLocalPanel";
 import { SettingsBody, SettingsCard } from "../components/SettingsUi";
 import { cn } from "@/shared/lib/cn";
+import { etatIa, type TestConnexion } from "../../model/etatIa";
+import { etatLocalIa, isLocalAiBusy } from "../../model/etatLocalIa";
+import { useLocalAiViewModel } from "../../viewmodel/useLocalAiViewModel";
+import logoQwen from "@/assets/providers/qwen.svg";
 
 const MODES: Array<{ value: AnalysisMode; label: string }> = [
   { value: "auto", label: "Auto" },
@@ -70,6 +73,8 @@ export function AiPage() {
   const [testMessage, setTestMessage] = useState<string | null>(null);
   const form = draft ?? vm.data ?? null;
   const llm = form?.llm;
+  const isMistralLocal = llm ? idProvider(llm.provider) === "mistral_local" : false;
+  const localVm = useLocalAiViewModel(() => setDraft(null), { enabled: isMistralLocal });
 
   const setTest = (value: TestConnexion) => {
     setTestState(value);
@@ -118,8 +123,10 @@ export function AiPage() {
     try {
       const list = await settingsService.listModels(llm, apiKeyDraft.trim() || null);
       setModels(list);
-      if (list.length > 0 && !list.includes(llm.model)) {
-        patchLlm({ model: list[0] ?? llm.model });
+      // Ne pas imposer le premier modèle de la liste : le champ reste vide tant que
+      // l'utilisateur n'a pas choisi, et on efface seulement un modèle devenu invalide.
+      if (llm.model.trim().length > 0 && list.length > 0 && !list.includes(llm.model)) {
+        patchLlm({ model: "" });
       }
     } catch (error) {
       setTest("error");
@@ -142,14 +149,18 @@ export function AiPage() {
 
   const fournisseur = llm ? defFournisseur(llm.provider) : null;
   const logo = fournisseur ? logoFournisseur(fournisseur.id) : null;
-  const isMistralLocal = llm ? idProvider(llm.provider) === "mistral_local" : false;
+  const localActive = localVm.status?.active_model ?? null;
+  const localModelLabel = localActive
+    ? localActive.display_name.replace(" Instruct", "")
+    : "";
+  const noteModele = isMistralLocal ? localModelLabel : (llm?.model ?? "");
 
   return (
     <div className="flex h-full flex-col">
       <ContextBarAccessory>
         <ContextNote>
           {fournisseur
-            ? `${fournisseur.label}${llm?.model ? ` · ${llm.model}` : ""}`
+            ? `${fournisseur.label}${noteModele ? ` · ${noteModele}` : ""}`
             : "Candilog · données locales"}
         </ContextNote>
       </ContextBarAccessory>
@@ -193,7 +204,24 @@ export function AiPage() {
           {/* Colonne bornée : au-delà, un champ « Endpoint » s'étirait sur 600 px et la
               grille de fournisseurs devenait un alignement de logos perdus. */}
           <div className="flex min-w-0 max-w-[1000px] flex-col gap-4">
-            {!isMistralLocal ? (
+            {isMistralLocal ? (
+              <AiHero
+                logo={logo}
+                secondaryLogo={{ src: logoQwen }}
+                label={fournisseur.label}
+                model={localModelLabel}
+                etat={etatLocalIa(localVm.state, localActive, localVm.testResult, localVm.error)}
+                testMessage={null}
+                testLabel="Tester l'IA"
+                busy={localVm.isTesting || isLocalAiBusy(localVm.state)}
+                testDisabled={
+                  !localActive ||
+                  isLocalAiBusy(localVm.state) ||
+                  localVm.state === "detecting_hardware"
+                }
+                onTest={() => localVm.test()}
+              />
+            ) : (
               <AiHero
                 logo={logo}
                 label={fournisseur.label}
@@ -203,14 +231,14 @@ export function AiPage() {
                 busy={test === "pending"}
                 onTest={() => void runTest()}
               />
-            ) : null}
+            )}
 
             <SettingsCard icon="hub" title="Fournisseur">
               <ProviderGrid value={llm.provider} onChange={choisirFournisseur} />
             </SettingsCard>
 
             {isMistralLocal ? (
-              <MistralLocalPanel onConfigured={() => setDraft(null)} />
+              <MistralLocalPanel vm={localVm} />
             ) : (
             <div className="grid gap-4 min-[900px]:grid-cols-2 min-[900px]:items-start">
               <SettingsCard icon="tune" title="Configuration">
@@ -424,66 +452,3 @@ function Temperature({ value, onChange }: { value: number; onChange: (value: num
   );
 }
 
-/**
- * En-tête de l'écran : fournisseur actif, modèle, état, action de test.
- *
- * Un seul bloc, sans carte ni bordure : l'information la plus utile — « est-ce que ça
- * marche ? » — doit se lire d'un coup d'œil, pas se déduire de trois panneaux imbriqués.
- */
-function AiHero({
-  logo,
-  label,
-  model,
-  etat,
-  testMessage,
-  busy,
-  onTest,
-}: {
-  logo: { src: string; mono: boolean };
-  label: string;
-  model: string;
-  etat: EtatIa;
-  /** Message du dernier échec, affiché sous l'état ; `null` sinon. */
-  testMessage: string | null;
-  busy: boolean;
-  onTest: () => void;
-}) {
-  return (
-    <section className="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-card border border-line bg-surface px-[18px] py-4">
-      <span className="flex size-12 flex-none items-center justify-center rounded-tile bg-fill">
-        <img
-          src={logo.src}
-          alt=""
-          width={28}
-          height={28}
-          className={cn("size-7", logo.mono && "dark:invert")}
-        />
-      </span>
-      <div className="min-w-[200px] flex-1">
-        {/* Pas d'intitulé « Fournisseur » ici : la section juste en dessous porte déjà ce
-            libellé, et le répéter ajoutait un niveau de titre pour rien. */}
-        <p className="text-title text-ink">{label}</p>
-        <p className="mt-0.5 truncate font-mono tabular text-note text-ink-faint">
-          {model || "Aucun modèle"}
-        </p>
-      </div>
-      <div className="flex flex-none items-center gap-2.5">
-        <StatusPill tone={etat.tone}>{etat.label}</StatusPill>
-        <Button icon="wifi" disabled={busy} onClick={onTest}>
-          Tester la connexion
-        </Button>
-      </div>
-      {testMessage ?? etat.hint ? (
-        <p
-          role="status"
-          className={cn(
-            "w-full text-note leading-relaxed",
-            testMessage ? "text-danger" : "text-ink-faint",
-          )}
-        >
-          {testMessage ?? etat.hint}
-        </p>
-      ) : null}
-    </section>
-  );
-}

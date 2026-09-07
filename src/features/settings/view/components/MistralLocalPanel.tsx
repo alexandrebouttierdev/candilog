@@ -14,8 +14,9 @@ import logoMistral from "@/assets/providers/mistralai.svg";
 import logoQwen from "@/assets/providers/qwen.svg";
 import { Button, ConfirmDialog, ErrorBanner, Icon, Skeleton, StatusPill } from "@/shared/ui";
 import type { IconName, Tone } from "@/shared/ui";
+import { isLocalAiBusy } from "../../model/etatLocalIa";
 import { SettingsCard } from "./SettingsUi";
-import { useLocalAiViewModel } from "../../viewmodel/useLocalAiViewModel";
+import type { LocalAiViewModel } from "../../viewmodel/useLocalAiViewModel";
 
 const PROFILE_LABELS: Record<LocalModelProfile, string> = {
   ultra_light: "Ultra léger",
@@ -58,8 +59,7 @@ const BACKEND_LABELS: Record<LocalAiBackend, string> = {
   cpu: "CPU",
 };
 
-export function MistralLocalPanel({ onConfigured }: { onConfigured?: () => void }) {
-  const vm = useLocalAiViewModel(onConfigured);
+export function MistralLocalPanel({ vm }: { vm: LocalAiViewModel }) {
   const [installCandidate, setInstallCandidate] = useState<LocalModelDefinition | null>(null);
   const [removeCandidate, setRemoveCandidate] = useState<LocalModelDefinition | null>(null);
   const recommended = vm.recommendation?.selected_model ?? null;
@@ -71,22 +71,20 @@ export function MistralLocalPanel({ onConfigured }: { onConfigured?: () => void 
 
   return (
     <div className="flex flex-col gap-4" data-local-ai-state={vm.state}>
-      <LocalPrivacyNotice />
-
       {vm.state === "detecting_hardware" ? <Detecting /> : null}
       {vm.error && vm.state === "error" ? (
         <ErrorBanner message={vm.error} onRetry={vm.reevaluate} />
       ) : null}
-      {vm.recommendation && !recommended && !isBusy(vm.state) ? (
+      {vm.recommendation && !recommended && !isLocalAiBusy(vm.state) ? (
         <Unsupported onReevaluate={vm.reevaluate} />
       ) : null}
-      {recommended && !active && !isBusy(vm.state) && vm.state !== "error" ? (
+      {recommended && !active && !isLocalAiBusy(vm.state) && vm.state !== "error" ? (
         <Recommendation model={recommended} onInstall={() => setInstallCandidate(recommended)} />
       ) : null}
-      {isBusy(vm.state) ? (
+      {isLocalAiBusy(vm.state) ? (
         <Installation state={vm.state} model={recommended} progress={vm.progress} onCancel={vm.cancel} />
       ) : null}
-      {vm.recommendation && vm.recommendation.evaluations.length > 0 && !isBusy(vm.state) ? (
+      {vm.recommendation && vm.recommendation.evaluations.length > 0 && !isLocalAiBusy(vm.state) ? (
         <ModelChoice
           evaluations={vm.recommendation.evaluations}
           activeId={active?.id ?? null}
@@ -100,7 +98,6 @@ export function MistralLocalPanel({ onConfigured }: { onConfigured?: () => void 
           status={vm.status}
           testResult={vm.testResult}
           testing={vm.isTesting}
-          onTest={vm.test}
           onBenchmark={vm.benchmark}
           onRemove={setRemoveCandidate}
           onReevaluate={vm.reevaluate}
@@ -141,22 +138,6 @@ export function MistralLocalPanel({ onConfigured }: { onConfigured?: () => void 
         }}
       />
     </div>
-  );
-}
-
-function LocalPrivacyNotice() {
-  return (
-    <section className="rounded-card border border-accent-border bg-accent-tint px-[18px] py-4">
-      <div className="flex gap-3">
-        <Icon name="lock" size={20} className="mt-0.5 flex-none text-accent" />
-        <div>
-          <p className="text-item font-semibold text-ink">Fonctionne directement sur votre ordinateur</p>
-          <p className="mt-1 text-body leading-relaxed text-ink-muted">
-            Aucun compte ni clé API requis. Vos données restent sur votre appareil.
-          </p>
-        </div>
-      </div>
-    </section>
   );
 }
 
@@ -212,7 +193,7 @@ function Installation({
 }: {
   state: LocalAiState;
   model: LocalModelDefinition | null;
-  progress: ReturnType<typeof useLocalAiViewModel>["progress"];
+  progress: LocalAiViewModel["progress"];
   onCancel: () => void;
 }) {
   const titles: Partial<Record<LocalAiState, string>> = {
@@ -275,7 +256,6 @@ function Ready({
   status,
   testResult,
   testing,
-  onTest,
   onBenchmark,
   onRemove,
   onReevaluate,
@@ -287,7 +267,6 @@ function Ready({
   status: LocalAiStatus;
   testResult: string | null;
   testing: boolean;
-  onTest: () => void;
   onBenchmark: () => void;
   onRemove: (model: LocalModelDefinition) => void;
   onReevaluate: () => void;
@@ -324,23 +303,9 @@ function Ready({
         </div>
       ) : null}
       <div className="mt-5 flex flex-wrap gap-2">
-        <Button
-          variant="primary"
-          icon={testing ? "progress_activity" : "smart_toy"}
-          disabled={testing}
-          onClick={onTest}
-        >
-          {testing ? "Test en cours…" : "Tester l'IA"}
-        </Button>
         <Button icon="delete" disabled={testing} onClick={() => onRemove(model)}>Supprimer le modèle</Button>
         <Button icon="refresh" disabled={testing} onClick={onReevaluate}>Réévaluer ma configuration</Button>
       </div>
-      {testing ? (
-        <p role="status" className="mt-3 flex items-center gap-2 text-body text-ink-muted">
-          <Icon name="progress_activity" size={16} className="animate-spin text-accent" />
-          Vérification de la configuration locale…
-        </p>
-      ) : null}
       {testResult ? (
         // Le texte renvoyé est la prose du modèle, pas un état : interrogé sur
         // « l'assistance locale », il répondait « Notre équipe d'assistance locale est
@@ -538,10 +503,6 @@ function Metric({
 
 function Advanced({ label, value }: { label: string; value: string }) {
   return <div className="flex justify-between gap-3 border-b border-line-soft py-1"><dt className="text-ink-faint">{label}</dt><dd className="font-mono text-right text-ink">{value}</dd></div>;
-}
-
-function isBusy(state: LocalAiState): boolean {
-  return ["downloading", "verifying", "installing", "benchmarking"].includes(state);
 }
 
 function formatBytes(bytes: number): string {

@@ -97,7 +97,7 @@ describe("AiProviderRailWidget", () => {
         id: "1",
         kind: "analyse",
         stopping: false,
-        stop: async () => undefined,
+        stop: () => Promise.resolve(),
       },
     });
     render(<AiProviderRailWidget />, { wrapper: Wrapper });

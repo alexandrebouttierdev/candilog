@@ -49,7 +49,7 @@ impl Default for LlmConfig {
             provider: ProviderKind::Ollama,
             api_key: None,
             endpoint: Some("http://localhost:11434".into()),
-            model: "llama3.2:3b".into(),
+            model: String::new(),
             temperature: 0.7,
             mode: AnalysisMode::Auto,
         }

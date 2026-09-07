@@ -50,7 +50,7 @@ impl LocalAiService {
     #[must_use]
     pub fn recommendation(&self) -> LocalAiRecommendation {
         let recommendation = super::LocalModelSelector::recommend(self.detect_hardware());
-        tracing::info!(
+        tracing::debug!(
             backend = ?recommendation.backend,
             model = ?recommendation.selected_model.as_ref().map(|model| model.id),
             "configuration Mistral Local évaluée"
