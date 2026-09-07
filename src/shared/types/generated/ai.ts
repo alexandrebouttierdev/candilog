@@ -91,9 +91,17 @@ export type LocalGpuInfo = { name: string, vendor: string, total_vram_mb: number
  */
 export type LocalInferenceProgress = { generated_tokens: number, elapsed_ms: number, tokens_per_second: number, };
 
-export type LocalModelDefinition = { id: LocalModelId, profile: LocalModelProfile, display_name: string, repository: string, filename: string, local_filename: string, revision: string, sha256: string, download_size_bytes: number, estimated_ram_mb: number, recommended_ram_mb: number, recommended_vram_mb: number, context_size: number, quantization: string, runtime: string, };
+export type LocalModelDefinition = { id: LocalModelId, profile: LocalModelProfile, family: LocalModelFamily, display_name: string, repository: string, filename: string, local_filename: string, revision: string, sha256: string, download_size_bytes: number, estimated_ram_mb: number, recommended_ram_mb: number, recommended_vram_mb: number, context_size: number, quantization: string, runtime: string, };
 
 export type LocalModelEvaluation = { model: LocalModelDefinition, compatibility: ModelCompatibility, reason: string, };
+
+/**
+ * Famille d'un artefact local.
+ *
+ * Portée par une propriété et non déduite du nom affiché : l'interface choisit son logo
+ * dessus, et une comparaison de chaîne casserait au premier renommage.
+ */
+export type LocalModelFamily = "mistral" | "qwen";
 
 export type LocalModelId = "ministral3_light" | "ministral3_balanced" | "ministral3_quality";
 

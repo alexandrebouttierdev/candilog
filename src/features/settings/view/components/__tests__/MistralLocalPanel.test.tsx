@@ -28,6 +28,7 @@ function model(profile: LocalModelProfile): LocalModelDefinition {
   return {
     id: profile === "light" ? "ministral3_light" : profile === "balanced" ? "ministral3_balanced" : "ministral3_quality",
     profile,
+    family: "mistral",
     display_name: `Ministral 3 ${rank}B Instruct`,
     repository: `mistralai/test-${rank}`,
     filename: `Ministral-${rank}-Q4_K_M.gguf`,
@@ -178,11 +179,15 @@ describe("configuration Mistral Local", () => {
 
   it("affiche le modèle prêt, le benchmark et le test", async () => {
     const active = model("balanced");
-    setup({ state: "ready", recommendation: recommendation(active), status: status(active), testResult: "Prête." });
+    setup({ state: "ready", recommendation: recommendation(active), status: status(active), testResult: "Notre équipe d'assistance locale répond." });
     render(<MistralLocalPanel />);
     expect(screen.getByText("IA locale prête")).toBeInTheDocument();
     expect(screen.getByText("18,4 tokens/s")).toBeInTheDocument();
-    expect(screen.getByText("Prête.")).toBeInTheDocument();
+    // La prose du modèle n'est pas un message d'état : interrogé sur « l'assistance locale »,
+    // il répondait « Notre équipe d'assistance locale est entièrement opérationnelle… ».
+    // Seul le fait que le test ait abouti est affiché.
+    expect(screen.getByText("Votre modèle local est installé et opérationnel.")).toBeInTheDocument();
+    expect(screen.queryByText("Notre équipe d'assistance locale répond.")).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Tester l'IA" }));
     expect(actions.test).toHaveBeenCalledOnce();
   });
@@ -203,6 +208,55 @@ describe("configuration Mistral Local", () => {
     await userEvent.click(screen.getByRole("button", { name: "Installer le profil Équilibré" }));
     expect(screen.getByRole("alertdialog", { name: "Installer l'IA locale ?" })).toBeInTheDocument();
     expect(actions.install).not.toHaveBeenCalled();
+  });
+
+  // Le profil le plus petit n'a aucun profil inférieur à proposer. L'avertissement était
+  // pourtant conditionné à l'existence de ce repli : sur une machine lente, l'écran
+  // affichait « IA locale prête » et une vitesse de 2,6 tokens/s sans un mot.
+  it("avertit d'un profil trop lent même sans profil inférieur à proposer", () => {
+    const active = model("light");
+    const slowStatus = status(active);
+    if (slowStatus.benchmark) {
+      slowStatus.benchmark.rating = "too_slow";
+      slowStatus.benchmark.tokens_per_second = 2.6;
+    }
+    setup({ state: "ready", recommendation: recommendation(active), status: slowStatus });
+    render(<MistralLocalPanel />);
+
+    expect(screen.getByText(/trop lent sur votre ordinateur/)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Installer le profil/ }),
+      "aucun profil inférieur n'existe : rien à proposer",
+    ).not.toBeInTheDocument();
+  });
+
+  it("n'avertit pas quand les performances sont correctes", () => {
+    const active = model("light");
+    setup({ state: "ready", recommendation: recommendation(active), status: status(active) });
+    render(<MistralLocalPanel />);
+
+    expect(screen.queryByText(/trop lent sur votre ordinateur/)).not.toBeInTheDocument();
+  });
+
+  // Le logo doit venir de la propriété `family` renvoyée par le backend, jamais d'une
+  // recherche de « Ministral » ou « Qwen » dans le nom affiché.
+  it("illustre le modèle avec le logo de sa famille", () => {
+    const active = model("light");
+    setup({ state: "ready", recommendation: recommendation(active), status: status(active) });
+    const { container } = render(<MistralLocalPanel />);
+
+    expect(container.querySelector('img[data-family="mistral"]')).not.toBeNull();
+    // Le nom reste écrit : l'information ne dépend jamais du seul logo.
+    expect(screen.getByText("Ministral 3 3B")).toBeInTheDocument();
+  });
+
+  it("expose la famille du modèle dans la configuration avancée", () => {
+    const active = model("balanced");
+    setup({ state: "ready", recommendation: recommendation(active), status: status(active) });
+    render(<MistralLocalPanel />);
+
+    expect(screen.getByText("Famille")).toBeInTheDocument();
+    expect(screen.getByText("Mistral")).toBeInTheDocument();
   });
 
   it("confirme la suppression avant d'appeler le service", async () => {

@@ -4,8 +4,10 @@ import type {
   LocalAiState,
   LocalAiStatus,
   LocalModelDefinition,
+  LocalModelFamily,
   LocalModelProfile,
 } from "@/shared/types/generated/ai";
+import logoMistral from "@/assets/providers/mistralai.svg";
 import { Button, ConfirmDialog, ErrorBanner, Icon, Skeleton } from "@/shared/ui";
 import { SettingsCard } from "./SettingsUi";
 import { useLocalAiViewModel } from "../../viewmodel/useLocalAiViewModel";
@@ -14,6 +16,15 @@ const PROFILE_LABELS: Record<LocalModelProfile, string> = {
   light: "Léger",
   balanced: "Équilibré",
   quality: "Qualité",
+};
+
+/// Logo et nom de chaque famille d'artefacts, choisis sur la propriété `family` renvoyée
+/// par le backend — jamais sur le nom affiché du modèle.
+const FAMILY_LOGOS: Record<LocalModelFamily, { src: string; label: string; mono: boolean }> = {
+  mistral: { src: logoMistral, label: "Mistral", mono: false },
+  // Aucun artefact Qwen n'est encore publié par le registre : l'entrée retombe sur le logo
+  // Mistral jusqu'à l'ajout de l'asset, plutôt que d'afficher une image manquante.
+  qwen: { src: logoMistral, label: "Qwen", mono: false },
 };
 
 const BACKEND_LABELS: Record<LocalAiBackend, string> = {
@@ -29,7 +40,8 @@ export function MistralLocalPanel({ onConfigured }: { onConfigured?: () => void 
   const [removeCandidate, setRemoveCandidate] = useState<LocalModelDefinition | null>(null);
   const recommended = vm.recommendation?.selected_model ?? null;
   const active = vm.status?.active_model ?? null;
-  const downgrade = active && vm.status?.benchmark?.rating === "too_slow"
+  const tooSlow = vm.status?.benchmark?.rating === "too_slow";
+  const downgrade = active && tooSlow
     ? findDowngrade(active, vm.recommendation?.evaluations.map((item) => item.model) ?? [])
     : null;
 
@@ -60,6 +72,7 @@ export function MistralLocalPanel({ onConfigured }: { onConfigured?: () => void 
           onBenchmark={vm.benchmark}
           onRemove={setRemoveCandidate}
           onReevaluate={vm.reevaluate}
+          tooSlow={tooSlow}
           downgrade={downgrade}
           onDowngrade={() => downgrade && setInstallCandidate(downgrade)}
         />
@@ -230,6 +243,7 @@ function Ready({
   onBenchmark,
   onRemove,
   onReevaluate,
+  tooSlow,
   downgrade,
   onDowngrade,
 }: {
@@ -241,6 +255,7 @@ function Ready({
   onBenchmark: () => void;
   onRemove: (model: LocalModelDefinition) => void;
   onReevaluate: () => void;
+  tooSlow: boolean;
   downgrade: LocalModelDefinition | null;
   onDowngrade: () => void;
 }) {
@@ -248,7 +263,11 @@ function Ready({
     <SettingsCard icon="check_circle" title="IA locale prête">
       <div className="grid gap-3 sm:grid-cols-4">
         <Metric label="Profil" value={PROFILE_LABELS[model.profile]} />
-        <Metric label="Modèle" value={model.display_name.replace(" Instruct", "")} />
+        <Metric
+          label="Modèle"
+          value={model.display_name.replace(" Instruct", "")}
+          family={model.family}
+        />
         <Metric label="Stockage" value={formatBytes(model.download_size_bytes)} />
         <Metric
           label="Vitesse"
@@ -273,16 +292,35 @@ function Ready({
           Vérification de la configuration locale…
         </p>
       ) : null}
-      {testResult ? <p role="status" className="mt-3 text-body text-success">{testResult}</p> : null}
-      {downgrade ? (
+      {testResult ? (
+        // Le texte renvoyé est la prose du modèle, pas un état : interrogé sur
+        // « l'assistance locale », il répondait « Notre équipe d'assistance locale est
+        // entièrement opérationnelle… ». Seul son aboutissement fait un message d'état.
+        <p role="status" className="mt-3 text-body text-success">
+          Votre modèle local est installé et opérationnel.
+        </p>
+      ) : null}
+      {tooSlow ? (
         <div className="mt-4 rounded-field border border-warning bg-warning-tint px-3 py-3">
           <p className="text-body font-mid text-ink">Ce profil est trop lent sur votre ordinateur.</p>
-          <p className="mt-1 text-note text-ink-muted">
-            Le profil {PROFILE_LABELS[downgrade.profile]} devrait être plus fluide. Il ne sera téléchargé qu'après votre confirmation.
-          </p>
-          <Button className="mt-3" icon="download" onClick={onDowngrade}>
-            Installer le profil {PROFILE_LABELS[downgrade.profile]}
-          </Button>
+          {downgrade ? (
+            <>
+              <p className="mt-1 text-note text-ink-muted">
+                Le profil {PROFILE_LABELS[downgrade.profile]} devrait être plus fluide. Il ne sera téléchargé qu'après votre confirmation.
+              </p>
+              <Button className="mt-3" icon="download" onClick={onDowngrade}>
+                Installer le profil {PROFILE_LABELS[downgrade.profile]}
+              </Button>
+            </>
+          ) : (
+            <p className="mt-1 text-note text-ink-muted">
+              {status.benchmark
+                ? `À ${formatDecimal(status.benchmark.tokens_per_second)} tokens/s, l'analyse d'un CV demande environ ${estimationAnalyseMinutes(status.benchmark.tokens_per_second)} minutes.`
+                : "L'analyse d'un CV sera très longue."}{" "}
+              Aucun profil plus léger n'est disponible : pour un usage confortable, choisissez un
+              fournisseur IA distant dans les réglages.
+            </p>
+          )}
         </div>
       ) : null}
       {status.installed_models.filter((installed) => installed.id !== model.id).map((installed) => (
@@ -300,6 +338,7 @@ function Ready({
         <summary className="cursor-pointer text-label font-mid text-ink">Configuration avancée</summary>
         <dl className="mt-3 grid gap-x-6 gap-y-2 text-note sm:grid-cols-2">
           <Advanced label="Modèle" value={model.display_name} />
+          <Advanced label="Famille" value={FAMILY_LOGOS[model.family].label} />
           <Advanced label="Quantification" value={model.quantization} />
           <Advanced label="Runtime" value={model.runtime} />
           <Advanced label="Backend" value={status.backend ? BACKEND_LABELS[status.backend] : "CPU"} />
@@ -314,8 +353,36 @@ function Ready({
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
-  return <div className="rounded-field bg-fill px-3 py-2.5"><p className="text-meta text-ink-faint">{label}</p><p className="mt-1 text-item font-semibold text-ink">{value}</p></div>;
+function Metric({
+  label,
+  value,
+  family,
+}: {
+  label: string;
+  value: string;
+  family?: LocalModelFamily;
+}) {
+  const logo = family ? FAMILY_LOGOS[family] : null;
+  return (
+    <div className="rounded-field bg-fill px-3 py-2.5">
+      <p className="text-meta text-ink-faint">{label}</p>
+      <p className="mt-1 flex min-w-0 items-center gap-1.5 text-item font-semibold text-ink">
+        {logo ? (
+          // Décoratif : le nom du modèle est écrit juste à côté, un `alt` le ferait
+          // annoncer deux fois.
+          <img
+            src={logo.src}
+            alt=""
+            data-family={family}
+            width={16}
+            height={16}
+            className={`size-4 flex-none ${logo.mono ? "dark:invert" : ""}`}
+          />
+        ) : null}
+        <span className="truncate">{value}</span>
+      </p>
+    </div>
+  );
 }
 
 function Advanced({ label, value }: { label: string; value: string }) {
@@ -333,6 +400,17 @@ function formatBytes(bytes: number): string {
 
 function formatDecimal(value: number): string {
   return value.toLocaleString("fr-FR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+}
+
+/// Durée indicative d'une analyse de CV, arrondie à la minute.
+///
+/// Fondée sur la taille réellement mesurée des profils générés — de 336 à 1 928 jetons
+/// selon les cas de `tests/fixtures/profiles/` — dont on retient un ordre de grandeur
+/// médian. Le but est de rendre l'attente prévisible, pas de la chronométrer.
+function estimationAnalyseMinutes(tokensPerSecond: number): number {
+  const JETONS_TYPIQUES = 1_500;
+  if (tokensPerSecond <= 0) return 0;
+  return Math.max(1, Math.round(JETONS_TYPIQUES / tokensPerSecond / 60));
 }
 
 function findDowngrade(

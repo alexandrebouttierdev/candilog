@@ -24,6 +24,18 @@ pub enum LocalModelId {
     Ministral3Quality,
 }
 
+/// Famille d'un artefact local.
+///
+/// Portée par une propriété et non déduite du nom affiché : l'interface choisit son logo
+/// dessus, et une comparaison de chaîne casserait au premier renommage.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "ai.ts")]
+pub enum LocalModelFamily {
+    Mistral,
+    Qwen,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "ai.ts")]
@@ -59,6 +71,7 @@ pub enum LocalAiBackend {
 pub struct LocalModelDefinition {
     pub id: LocalModelId,
     pub profile: LocalModelProfile,
+    pub family: LocalModelFamily,
     pub display_name: String,
     pub repository: String,
     pub filename: String,
@@ -137,6 +150,7 @@ impl ModelRegistry {
             LocalModelDefinition {
                 id: LocalModelId::Ministral3Light,
                 profile: LocalModelProfile::Light,
+                family: LocalModelFamily::Mistral,
                 display_name: "Ministral 3 3B Instruct".into(),
                 repository: "mistralai/Ministral-3-3B-Instruct-2512-GGUF".into(),
                 filename: "Ministral-3-3B-Instruct-2512-Q4_K_M.gguf".into(),
@@ -154,6 +168,7 @@ impl ModelRegistry {
             LocalModelDefinition {
                 id: LocalModelId::Ministral3Balanced,
                 profile: LocalModelProfile::Balanced,
+                family: LocalModelFamily::Mistral,
                 display_name: "Ministral 3 8B Instruct".into(),
                 repository: "mistralai/Ministral-3-8B-Instruct-2512-GGUF".into(),
                 filename: "Ministral-3-8B-Instruct-2512-Q4_K_M.gguf".into(),
@@ -171,6 +186,7 @@ impl ModelRegistry {
             LocalModelDefinition {
                 id: LocalModelId::Ministral3Quality,
                 profile: LocalModelProfile::Quality,
+                family: LocalModelFamily::Mistral,
                 display_name: "Ministral 3 14B Instruct".into(),
                 repository: "mistralai/Ministral-3-14B-Instruct-2512-GGUF".into(),
                 filename: "Ministral-3-14B-Instruct-2512-Q4_K_M.gguf".into(),
@@ -462,6 +478,20 @@ mod tests {
             ModelRegistry::get(LocalModelId::Ministral3Quality).map(|m| m.profile),
             Some(LocalModelProfile::Quality)
         );
+    }
+
+    /// Le fournisseur local peut retenir des artefacts de familles différentes. L'interface
+    /// doit choisir le logo sur une propriété, jamais en cherchant « Qwen » ou « Ministral »
+    /// dans le nom affiché.
+    #[test]
+    fn chaque_modele_declare_sa_famille() {
+        for model in ModelRegistry::all() {
+            assert_eq!(
+                model.family,
+                LocalModelFamily::Mistral,
+                "le registre ne contient aujourd'hui que des artefacts Mistral"
+            );
+        }
     }
 
     #[test]
