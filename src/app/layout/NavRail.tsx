@@ -9,7 +9,7 @@ import logoCandilog from "@/assets/logo-candilog.svg";
 import logoCandilogDark from "@/assets/logo-candilog-dark.svg";
 import { AiProviderRailWidget } from "./AiProviderRailWidget";
 
-/** Rail compact : 68 px, items 42×36, tooltip immédiat. */
+/** Rail compact : items 42×36, tooltip immédiat. */
 export function NavRail() {
   const { pathname } = useLocation();
   const active = sectionForPath(pathname);
@@ -56,7 +56,7 @@ export function NavRail() {
               >
                 <Icon name={section.icon} size={20} />
               </NavLink>
-              <span className="pointer-events-none absolute top-1/2 left-[54px] z-[60] flex -translate-y-1/2 items-center gap-2.5 rounded-button border border-overlay bg-[var(--candilog-glass-menu)] px-2.5 py-1.5 whitespace-nowrap opacity-0 shadow-menu backdrop-blur-[14px] group-hover:opacity-100">
+              <span className="pointer-events-none absolute top-1/2 left-full z-[60] ml-2 flex -translate-y-1/2 items-center gap-2.5 rounded-button border border-overlay bg-[var(--candilog-glass-menu)] px-2.5 py-1.5 whitespace-nowrap opacity-0 shadow-menu backdrop-blur-[14px] group-hover:opacity-100">
                 <span className="text-note whitespace-nowrap text-ink">{section.long_label}</span>
               </span>
             </div>

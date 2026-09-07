@@ -110,10 +110,24 @@ describe("AiProviderRailWidget", () => {
     vi.mocked(settingsService.load).mockResolvedValue(llmSettings());
     render(<AiProviderRailWidget />, { wrapper: Wrapper });
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /Disponible/ })).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Ollama · llama3 — Disponible/ }),
+      ).toBeInTheDocument();
     });
-    await userEvent.click(screen.getByRole("button", { name: /Disponible/ }));
+    await userEvent.click(screen.getByRole("button", { name: /Ollama · llama3 — Disponible/ }));
     expect(screen.getByText("Réglages IA")).toBeInTheDocument();
+  });
+
+  it("annonce fournisseur et modèle dans le tooltip", async () => {
+    vi.mocked(settingsService.load).mockResolvedValue(
+      llmSettings({ provider: "mistral", model: "mistral-small", api_key_configured: true }),
+    );
+    render(<AiProviderRailWidget />, { wrapper: Wrapper });
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: /Mistral · mistral-small — Disponible/ }),
+      ).toBeInTheDocument();
+    });
   });
 
   it("montre un tiret pour la VRAM indisponible", async () => {

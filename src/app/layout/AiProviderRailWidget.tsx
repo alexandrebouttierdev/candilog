@@ -28,7 +28,7 @@ const DOT: Record<Tone, string> = {
 
 function formatPercent(value: number | undefined): string {
   if (value === undefined || !Number.isFinite(value)) return "—";
-  return `${Math.round(value)} %`;
+  return `${Math.round(value)}%`;
 }
 
 function Meter({
@@ -42,15 +42,18 @@ function Meter({
 }) {
   const width = available && percent !== undefined ? Math.min(100, Math.max(0, percent)) : 0;
   return (
-    <div className="flex w-full flex-col gap-0.5 px-1" title={`${label} ${formatPercent(percent)}`}>
-      <div className="flex items-baseline justify-between gap-1">
-        <span className="text-micro font-medium text-ink-subtle">{label}</span>
-        <span className="font-mono text-micro text-ink-muted">
+    <div
+      className="box-border flex w-full min-w-0 flex-col gap-0.5"
+      title={`${label} ${formatPercent(percent)}`}
+    >
+      <div className="flex min-w-0 items-center justify-between gap-1">
+        <span className="shrink-0 text-micro font-medium text-ink-subtle">{label}</span>
+        <span className="min-w-0 truncate font-mono text-micro tabular-nums text-ink-muted">
           {available ? formatPercent(percent) : "—"}
         </span>
       </div>
       <div
-        className="h-1 w-full overflow-hidden rounded-chip bg-fill"
+        className="h-1 w-full min-w-0 overflow-hidden rounded-chip bg-fill"
         role="progressbar"
         aria-label={label}
         aria-valuemin={0}
@@ -59,7 +62,7 @@ function Meter({
         aria-valuetext={available ? formatPercent(percent) : "indisponible"}
       >
         <div
-          className={cn("h-full rounded-chip", available ? "bg-accent" : "bg-fill")}
+          className={cn("h-full max-w-full rounded-chip", available ? "bg-accent" : "bg-fill")}
           style={{ width: `${width}%` }}
         />
       </div>
@@ -67,7 +70,7 @@ function Meter({
   );
 }
 
-/** Indicateur fournisseur IA + charge machine, compact dans le rail 68 px. */
+/** Indicateur fournisseur IA + charge machine, compact dans le rail. */
 export function AiProviderRailWidget() {
   const navigate = useNavigate();
   const settings = useQuery({
@@ -110,12 +113,17 @@ export function AiProviderRailWidget() {
   const resources = useSystemResources();
   const snap = resources.data;
 
-  const nom = configured && fournisseur ? fournisseur.label : "Aucun fournisseur";
-  const tooltip = `${nom} — ${status.label}`;
+  const modele =
+    providerId === "mistral_local"
+      ? localQuery.data?.status.active_model?.display_name?.replace(" Instruct", "")?.trim() || null
+      : llm?.model.trim() || null;
+  const fournisseurLabel = configured && fournisseur ? fournisseur.label : "Aucun fournisseur";
+  const identite = modele ? `${fournisseurLabel} · ${modele}` : fournisseurLabel;
+  const tooltip = `${identite} — ${status.label}`;
 
   return (
-    <div className="mb-1.5 flex w-full flex-col items-center gap-1.5 px-1">
-      <div className="group relative flex justify-center">
+    <div className="mb-1.5 box-border flex w-full min-w-0 max-w-full flex-col items-center gap-1 self-stretch overflow-hidden px-1.5">
+      <div className="group relative flex justify-center overflow-visible">
         <button
           type="button"
           title={tooltip}
@@ -146,11 +154,11 @@ export function AiProviderRailWidget() {
             )}
           />
         </button>
-        <span className="pointer-events-none absolute top-1/2 left-[54px] z-[60] flex -translate-y-1/2 items-center gap-2.5 rounded-button border border-overlay bg-[var(--candilog-glass-menu)] px-2.5 py-1.5 whitespace-nowrap opacity-0 shadow-menu backdrop-blur-[14px] group-hover:opacity-100">
+        <span className="pointer-events-none absolute top-1/2 left-full z-[60] ml-2 flex -translate-y-1/2 items-center gap-2.5 rounded-button border border-overlay bg-[var(--candilog-glass-menu)] px-2.5 py-1.5 whitespace-nowrap opacity-0 shadow-menu backdrop-blur-[14px] group-hover:opacity-100">
           <span className="text-note whitespace-nowrap text-ink">{tooltip}</span>
         </span>
       </div>
-      <div className="flex w-full flex-col gap-1">
+      <div className="flex w-full min-w-0 flex-col gap-1 overflow-hidden">
         <Meter label="CPU" percent={snap?.cpu_percent} available={snap !== undefined} />
         <Meter label="RAM" percent={snap?.ram_used_percent} available={snap !== undefined} />
         <Meter
