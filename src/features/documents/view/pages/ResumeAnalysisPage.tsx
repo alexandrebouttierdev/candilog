@@ -3,6 +3,7 @@ import { aiService } from "@/features/ai/services/aiService";
 import type { AiExecution, ImportedResumeAnalysis, SelectedResumeFile } from "@/features/ai/model/types";
 import { AiStopButton } from "@/features/ai/view/components/AiStopButton";
 import { useAiOperation } from "@/features/ai/viewmodel/useAiOperation";
+import { useAiRailStatusStore } from "@/features/ai/viewmodel/ai-rail-status-store";
 import { isAiNotConfiguredError } from "@/features/ai/model/ai-not-configured";
 import { useAiProgress } from "@/features/ai/viewmodel/useAiProgress";
 import { useAiTimer } from "@/features/ai/viewmodel/useAiTimer";
@@ -75,6 +76,7 @@ export function ResumeAnalysisPage() {
     } catch (e) {
       if (isCurrent(id) && !(e instanceof AppError && e.code === "CANCELLED")) {
         setError(message(e));
+        useAiRailStatusStore.getState().setLastOperationFailed(true);
       }
     } finally {
       finish(id);

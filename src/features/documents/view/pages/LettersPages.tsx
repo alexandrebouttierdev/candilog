@@ -5,6 +5,7 @@ import { documentsService, type CoverLetter } from "../../services/documentsServ
 import { aiService } from "@/features/ai/services/aiService";
 import { AiStopButton } from "@/features/ai/view/components/AiStopButton";
 import { useAiOperation } from "@/features/ai/viewmodel/useAiOperation";
+import { useAiRailStatusStore } from "@/features/ai/viewmodel/ai-rail-status-store";
 import { isAiNotConfiguredError } from "@/features/ai/model/ai-not-configured";
 import { useAiProgress } from "@/features/ai/viewmodel/useAiProgress";
 import { useAiTimer } from "@/features/ai/viewmodel/useAiTimer";
@@ -322,6 +323,7 @@ export function LetterWriterPage() {
     } catch (e) {
       if (isCurrent(id) && !(e instanceof AppError && e.code === "CANCELLED")) {
         setError(message(e));
+        useAiRailStatusStore.getState().setLastOperationFailed(true);
       }
     } finally {
       finish(id);
@@ -356,6 +358,7 @@ export function LetterWriterPage() {
     } catch (caught) {
       if (isCurrent(id) && !(caught instanceof AppError && caught.code === "CANCELLED")) {
         setError(message(caught));
+        useAiRailStatusStore.getState().setLastOperationFailed(true);
         notify({ tone: "error", title: "Correction impossible", detail: message(caught) });
       }
     } finally {

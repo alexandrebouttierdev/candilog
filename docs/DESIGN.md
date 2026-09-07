@@ -172,7 +172,7 @@ Noms d’icônes des sections : `src/app/router/routes.ts`. Logo produit : `src/
 ```
 
 - `AppShell` : `h-screen overflow-hidden`, glass sur rail / topbar / sous-nav (`glass-rail`, `glass-topbar`, `glass-subnav`).
-- `NavRail` : 7 sections, `⌘1`…`⌘7`, tooltip = `long_label`, item actif en teinte accent.
+- `NavRail` : 7 sections, `⌘1`…`⌘7`, tooltip = `long_label`, item actif en teinte accent. Au-dessus du toggle thème : widget fournisseur IA (logo ou `smart_toy`, pastille d’état, clic → `/settings/ai`) et mini-compteurs CPU / RAM / VRAM.
 - `SubNav` : eyebrow = `short_label` uppercase ; item 30 px ; actif `bg-accent-tint-12 text-accent-text-soft`.
 - `TopBar` : titre de section. Accessoire **à droite** via `ContextBarAccessory` (note, ou recherche **seulement** si l’écran n’a pas de FilterBar).
 

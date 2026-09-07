@@ -6,6 +6,7 @@ mod local_ai;
 mod models;
 mod normalization;
 mod scoring;
+mod system_resources;
 mod validation;
 
 pub use crate::core::utils::text::search_key;
@@ -18,4 +19,5 @@ pub use scoring::{
     ground_imported_resume, profile_content_catalog, profile_score, score_resume_imported,
     ProfileContentCatalogEntry,
 };
+pub use system_resources::*;
 pub use validation::*;

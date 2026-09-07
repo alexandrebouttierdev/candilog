@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { aiService } from "@/features/ai/services/aiService";
 import type { AiExecution, ResumeGeneration } from "@/features/ai/model/types";
 import { useAiOperation } from "@/features/ai/viewmodel/useAiOperation";
+import { useAiRailStatusStore } from "@/features/ai/viewmodel/ai-rail-status-store";
 import { isAiNotConfiguredError } from "@/features/ai/model/ai-not-configured";
 import { useAiProgress } from "@/features/ai/viewmodel/useAiProgress";
 import { useAiTimer } from "@/features/ai/viewmodel/useAiTimer";
@@ -107,6 +108,7 @@ export function useResumeGeneratorViewModel(initial: ResumeGeneratorInitial) {
         !(caught instanceof AppError && caught.code === "CANCELLED")
       ) {
         setError(errorMessage(caught));
+        useAiRailStatusStore.getState().setLastOperationFailed(true);
       }
     } finally {
       finish(id);

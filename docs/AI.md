@@ -164,6 +164,11 @@ Les commandes `detect_local_ai_hardware`, `get_local_ai_recommendation`,
 Le téléchargement publie `local-ai://download-progress`, `local-ai://download-completed` et
 `local-ai://download-error` ; aucun polling n'est utilisé.
 
+La commande `system_resource_snapshot` alimente le rail (CPU %, RAM %, VRAM %). Elle
+s'appuie sur `sysinfo` sans réchauffer llama.cpp. Sur Apple Silicon la VRAM reflète la
+mémoire unifiée ; ailleurs elle vient d'un cache rempli lors de
+`detect_local_ai_hardware` (indisponible tant que la détection n'a pas tourné).
+
 ## Sorties du modèle
 
 `AiService` porte le parsing d'offre et de CV, la génération, l'ATS, le grounding et les

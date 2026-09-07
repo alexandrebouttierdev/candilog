@@ -29,6 +29,7 @@ import {
   versProvider,
   type FournisseurOption,
 } from "../../model/providers";
+import { useAiRailStatusStore } from "@/features/ai/viewmodel/ai-rail-status-store";
 import { etatIa, type EtatIa, type TestConnexion } from "../../model/etatIa";
 import { ProviderGrid, defFournisseur, logoFournisseur } from "../components/ProviderGrid";
 import { MistralLocalPanel } from "../components/MistralLocalPanel";
@@ -60,7 +61,7 @@ export function AiPage() {
   const [draft, setDraft] = useState<Settings | null>(null);
   const [apiKeyDraft, setApiKeyDraft] = useState("");
   const [models, setModels] = useState<string[]>([]);
-  const [test, setTest] = useState<TestConnexion>("idle");
+  const [test, setTestState] = useState<TestConnexion>("idle");
   // Préférence locale, appliquée immédiatement : elle ne passe pas par le brouillon des
   // réglages puisqu'elle n'est pas enregistrée en base.
   const [son, setSon] = useState<"on" | "off">(() =>
@@ -69,6 +70,11 @@ export function AiPage() {
   const [testMessage, setTestMessage] = useState<string | null>(null);
   const form = draft ?? vm.data ?? null;
   const llm = form?.llm;
+
+  const setTest = (value: TestConnexion) => {
+    setTestState(value);
+    useAiRailStatusStore.getState().setConnectionTest(value);
+  };
 
   const patchLlm = (partiel: Partial<LlmForm>) => {
     setDraft((current) => {
