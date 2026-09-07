@@ -19,7 +19,10 @@ export interface FournisseurOption {
 export const FOURNISSEURS: readonly FournisseurOption[] = [
   {
     id: "mistral_local",
-    label: "Mistral Local",
+    // Le fournisseur retient l'artefact adapté à la machine : le nommer d'après une seule
+    // famille de modèles serait faux dès qu'une autre peut être sélectionnée. L'identifiant
+    // `mistral_local` reste celui du contrat IPC, que l'interface n'expose pas.
+    label: "IA locale",
     hint: "Directement dans Candilog",
     recommended: true,
   },

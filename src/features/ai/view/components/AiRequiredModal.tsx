@@ -26,7 +26,7 @@ export function AiRequiredModal() {
     >
       <p className="pt-3 text-body leading-relaxed text-ink-muted">
         Candilog n’a pas encore de fournisseur ni de modèle IA prêts à l’emploi. Configurez
-        Mistral Local, Ollama ou un fournisseur distant dans les réglages, puis réessayez.
+        l'IA locale, Ollama ou un fournisseur distant dans les réglages, puis réessayez.
       </p>
     </ModalHost>
   );

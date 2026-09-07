@@ -41,10 +41,19 @@ describe("grille des fournisseurs", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("présente Mistral Local comme le choix recommandé sans confondre Ollama", () => {
+  // Le fournisseur local sélectionne l'artefact adapté à la machine : le nommer d'après une
+  // seule famille de modèles devient faux dès qu'une autre peut être retenue.
+  it("nomme le fournisseur local « IA locale », jamais d'après un modèle", () => {
+    render(<ProviderGrid value="mistral_local" onChange={() => undefined} />);
+
+    expect(screen.getByRole("radio", { name: "IA locale" })).toBeInTheDocument();
+    expect(screen.queryByText("Mistral Local")).not.toBeInTheDocument();
+  });
+
+  it("présente l'IA locale comme le choix recommandé sans confondre Ollama", () => {
     render(<ProviderGrid value="ollama" onChange={() => undefined} />);
 
-    expect(within(screen.getByRole("radio", { name: "Mistral Local" })).getByText("Recommandé")).toBeInTheDocument();
+    expect(within(screen.getByRole("radio", { name: "IA locale" })).getByText("Recommandé")).toBeInTheDocument();
     expect(within(screen.getByRole("radio", { name: "Ollama" })).getByText("Votre installation ou Ollama Cloud")).toBeInTheDocument();
   });
 });
