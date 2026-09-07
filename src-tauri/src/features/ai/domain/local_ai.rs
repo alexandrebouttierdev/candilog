@@ -8,6 +8,13 @@ pub const LOCAL_AI_EXTENDED_CONTEXT_SIZE: u32 = 16_384;
 pub const LOCAL_AI_RUNTIME: &str = "llama.cpp";
 pub const LOCAL_AI_QUANTIZATION: &str = "Q4_K_M";
 
+/// Marge de RAM laissée au système, à la fenêtre WebKit et au reste de Candilog.
+///
+/// Sous Linux, une allocation excessive n'échoue pas : le noyau l'accorde puis tue le
+/// processus (OOM killer). Aucune gestion d'erreur ne rattrape ce `SIGKILL`. La seule
+/// défense est donc de refuser l'inférence *avant* de réserver la mémoire.
+pub const LOCAL_AI_SYSTEM_MARGIN_MB: u64 = 768;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "ai.ts")]
@@ -79,6 +86,45 @@ impl LocalModelDefinition {
             self.repository, self.revision, self.filename
         )
     }
+
+    /// Taille des poids une fois chargés, en mégaoctets.
+    #[must_use]
+    pub const fn weights_mb(&self) -> u64 {
+        self.download_size_bytes / 1_048_576
+    }
+
+    /// Mémoire d'inférence à prévoir *en plus* des poids : cache KV, lot, activations.
+    ///
+    /// Déduite du registre plutôt que recalculée : `estimated_ram_mb` budgète déjà le total,
+    /// dont les poids sont la part connue.
+    #[must_use]
+    pub const fn runtime_overhead_mb(&self) -> u64 {
+        self.estimated_ram_mb.saturating_sub(self.weights_mb())
+    }
+}
+
+/// Mémoire manquante pour lancer une inférence locale sans risquer l'arrêt par le noyau.
+///
+/// Renvoie `None` quand la marge est suffisante, `Some(manquant_mb)` sinon. Un modèle déjà
+/// chargé occupe déjà la RAM mesurée : ses poids ne sont alors pas recomptés, sans quoi le
+/// garde-fou refuserait toute inférence après le premier chargement.
+#[must_use]
+pub const fn local_ai_memory_shortfall_mb(
+    model: &LocalModelDefinition,
+    available_ram_mb: u64,
+    already_loaded: bool,
+) -> Option<u64> {
+    let besoin = if already_loaded {
+        model.runtime_overhead_mb()
+    } else {
+        model.estimated_ram_mb
+    };
+    let requis = besoin.saturating_add(LOCAL_AI_SYSTEM_MARGIN_MB);
+    if requis > available_ram_mb {
+        Some(requis - available_ram_mb)
+    } else {
+        None
+    }
 }
 
 /// Source de vérité unique des trois artefacts téléchargeables.
@@ -146,6 +192,17 @@ impl ModelRegistry {
     pub fn get(id: LocalModelId) -> Option<LocalModelDefinition> {
         Self::all().into_iter().find(|model| model.id == id)
     }
+}
+
+/// Avancement d'une génération locale, publié pendant l'attente.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "ai.ts")]
+pub struct LocalInferenceProgress {
+    pub generated_tokens: u32,
+    #[ts(type = "number")]
+    pub elapsed_ms: u64,
+    pub tokens_per_second: f32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -439,6 +496,53 @@ mod tests {
             assert_eq!(model.revision, revision);
             assert_eq!(model.sha256, sha256);
             assert_eq!(model.download_size_bytes, size);
+        }
+    }
+
+    fn light() -> LocalModelDefinition {
+        ModelRegistry::get(LocalModelId::Ministral3Light).expect("profil léger présent")
+    }
+
+    #[test]
+    fn le_garde_fou_refuse_un_chargement_sans_marge_pour_le_systeme() {
+        let model = light();
+        // 3 200 Mo estimés + 768 Mo de marge : 3 500 Mo disponibles ne suffisent pas.
+        assert_eq!(
+            local_ai_memory_shortfall_mb(&model, 3_500, false),
+            Some(468)
+        );
+    }
+
+    #[test]
+    fn le_garde_fou_accepte_un_chargement_avec_la_marge_requise() {
+        let model = light();
+        assert_eq!(local_ai_memory_shortfall_mb(&model, 3_968, false), None);
+    }
+
+    #[test]
+    fn un_modele_deja_charge_n_est_pas_recompte_dans_le_besoin_memoire() {
+        let model = light();
+        // Les poids occupent déjà la RAM : seul le surcoût d'inférence reste à couvrir.
+        let overhead = model.runtime_overhead_mb();
+        assert!(overhead > 0 && overhead < model.estimated_ram_mb);
+        assert_eq!(
+            local_ai_memory_shortfall_mb(&model, overhead + LOCAL_AI_SYSTEM_MARGIN_MB, true),
+            None
+        );
+        assert_eq!(
+            local_ai_memory_shortfall_mb(&model, overhead + LOCAL_AI_SYSTEM_MARGIN_MB - 1, true),
+            Some(1)
+        );
+    }
+
+    #[test]
+    fn le_garde_fou_couvre_les_trois_profils_du_registre() {
+        for model in ModelRegistry::all() {
+            assert_eq!(
+                local_ai_memory_shortfall_mb(&model, 0, false),
+                Some(model.estimated_ram_mb + LOCAL_AI_SYSTEM_MARGIN_MB)
+            );
+            assert_eq!(local_ai_memory_shortfall_mb(&model, u64::MAX, false), None);
         }
     }
 }

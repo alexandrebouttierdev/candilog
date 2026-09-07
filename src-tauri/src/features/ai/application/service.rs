@@ -53,6 +53,10 @@ impl AiService {
         {
             token.cancel();
         }
+        // Le jeton ci-dessus n'abandonne que le futur. Une inférence locale s'exécute dans
+        // un `spawn_blocking` que Tokio ne peut pas interrompre : sans ce relais, les cœurs
+        // continuaient de calculer bien après le clic sur « Annuler ».
+        self.local_ai.cancel_inference();
     }
 
     fn start(&self, id: &str) -> Arc<CancellationToken> {
@@ -549,13 +553,26 @@ impl AiService {
         // Un CV long saturait le contexte local (et plantait parfois llama.cpp) : on borne
         // le texte envoyé après validation, tout en gardant le plafond utilisateur plus haut.
         let analysis_text = truncate_chars(&text, 12_000);
-        let (mut profile, tokens): (Profile, Option<u32>) = match cancel(
+        let local_ai = Arc::clone(&self.local_ai);
+        let (mut profile, tokens): (Profile, Option<u32>) = match cancel_avec_progression(
             &token,
             generate_json(
                 self.provider().await?,
                 &bloc_donnees("cv", &analysis_text),
                 PROFILE_SYSTEM,
             ),
+            || {
+                // Absent pour un fournisseur distant : le battement reste alors muet.
+                if let Some(avancement) = local_ai.inference_progress() {
+                    emit_import(
+                        &notifier,
+                        &id,
+                        Some(&etape_analyse(&avancement)),
+                        "",
+                        Some(avancement.generated_tokens),
+                    );
+                }
+            },
         )
         .await
         {
@@ -920,6 +937,28 @@ async fn cancel<T>(
 ) -> AppResult<T> {
     tokio::select! { result = work => result, () = token.cancelled() => Err(AppError::Cancelled) }
 }
+
+/// Comme [`cancel`], mais réveille l'appelant chaque seconde pour publier l'avancement.
+///
+/// Une analyse de CV en IA locale dure une douzaine de minutes sur un portable. Sans
+/// battement, l'écran reste figé sur « Analyse du CV… » et rien ne distingue une génération
+/// lente d'un blocage.
+async fn cancel_avec_progression<T>(
+    token: &CancellationToken,
+    work: impl Future<Output = AppResult<T>>,
+    mut battement: impl FnMut(),
+) -> AppResult<T> {
+    tokio::pin!(work);
+    let mut horloge = tokio::time::interval(std::time::Duration::from_secs(1));
+    horloge.tick().await; // le premier top est immédiat : on l'absorbe.
+    loop {
+        tokio::select! {
+            result = &mut work => return result,
+            () = token.cancelled() => return Err(AppError::Cancelled),
+            _ = horloge.tick() => battement(),
+        }
+    }
+}
 /// Encadre un contenu externe dans un bloc que le modèle doit lire comme de la donnée.
 ///
 /// La balise porte un identifiant tiré au sort à chaque appel, et la balise fermante est
@@ -947,6 +986,16 @@ fn progres(
         chunk,
         tokens_used,
     });
+}
+
+/// Étape affichée pendant une génération locale : ce qui est produit, à quel rythme.
+fn etape_analyse(avancement: &crate::features::ai::domain::LocalInferenceProgress) -> String {
+    format!(
+        "Analyse du CV… {} jetons · {:.1} jeton/s · {} s",
+        avancement.generated_tokens,
+        avancement.tokens_per_second,
+        avancement.elapsed_ms / 1_000
+    )
 }
 
 fn emit_import(

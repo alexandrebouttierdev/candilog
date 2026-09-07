@@ -197,6 +197,28 @@ Un profil dont le contenu dépasse réellement la page A4 a pour résultat corre
 d'export : il porte alors un `profile-NN.expected.json` à côté de sa fixture. Le scénario
 échoue aussi bien si l'export refuse à tort que s'il accepte ce qu'il aurait dû refuser.
 
+## Scénario de bout en bout de l'IA locale
+
+`src-tauri/tests/e2e_local_ai.rs` demande une vraie inférence au runtime llama.cpp embarqué,
+sous grammaire JSON puis en texte libre. Il est **ignoré** tant que `CANDILOG_E2E_LOCAL_AI`
+est absent, et suppose le modèle Léger installé.
+
+Un mauvais usage de llama.cpp — invite décodée d'un bloc au-delà de `n_batch`, jeton accepté
+deux fois sous grammaire — ne remonte pas une `Err` : il déclenche un `GGML_ASSERT` qui
+appelle `abort()`. Le processus meurt avant toute assertion Rust, et aucun test unitaire ne
+peut l'observer. Ce scénario est le seul filet contre cette classe de défauts.
+
+```bash
+CANDILOG_E2E_LOCAL_AI=1 cargo test --manifest-path src-tauri/Cargo.toml --locked --test e2e_local_ai -- --nocapture
+```
+
+| Variable | Rôle | Défaut |
+| --- | --- | --- |
+| `CANDILOG_E2E_LOCAL_AI` | active le scénario | absent → ignoré |
+| `CANDILOG_E2E_LOCAL_AI_MODEL` | chemin du `.gguf` | modèle du dossier de développement |
+
+Comptez une à deux minutes : le chargement du modèle domine le temps d'exécution.
+
 ## Contrôle visuel des feuilles A4
 
 Playwright monte les **vrais** composants `ResumePaper` et `LetterPaper` (banc de rendu

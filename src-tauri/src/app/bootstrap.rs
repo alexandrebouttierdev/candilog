@@ -36,6 +36,10 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .manage(state)
+        .setup(|app| {
+            surveiller_inactivite_du_modele_local(app.handle());
+            Ok(())
+        })
         .on_window_event(|window, event| {
             if window.label() == "main" && matches!(event, tauri::WindowEvent::Destroyed) {
                 window.state::<AppState>().local_ai.shutdown();
@@ -135,6 +139,9 @@ pub fn run() {
         tracing::error!(%error, "démarrage de la fenêtre impossible");
         std::process::exit(1);
     }
+    // Sortie normale de la boucle d'événements : la session est close, le marqueur retiré.
+    // Un arrêt brutal ne passe jamais ici, et c'est précisément ce qui le rend détectable.
+    crate::core::logging::cloturer_session();
 }
 
 /// Annonce à l'utilisateur que l'application ne peut pas démarrer.
@@ -155,4 +162,20 @@ fn signaler_demarrage_impossible(message: &str) {
         .set_description(message)
         .set_buttons(rfd::MessageButtons::Ok)
         .show();
+}
+
+/// Rend au système les poids d'un modèle local laissé inactif.
+///
+/// Sans cette surveillance, un import de CV immobilise plusieurs gigaoctets jusqu'à la
+/// fermeture de l'application — de quoi faire désigner Candilog comme victime par l'OOM
+/// killer bien après la fin de l'inférence.
+fn surveiller_inactivite_du_modele_local(app: &tauri::AppHandle) {
+    const PERIODE: std::time::Duration = std::time::Duration::from_secs(60);
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        loop {
+            tokio::time::sleep(PERIODE).await;
+            app.state::<AppState>().local_ai.release_idle_model();
+        }
+    });
 }

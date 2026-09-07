@@ -120,3 +120,60 @@ fn gpu_vendor(name: &str) -> String {
     }
     .into()
 }
+
+/// RAM réellement disponible à l'instant de l'appel, en mégaoctets.
+///
+/// Volontairement distincte de [`detect_local_ai_hardware`] : le garde-fou mémoire est
+/// évalué à chaque inférence et ne doit ni initialiser le backend llama.cpp ni énumérer
+/// les périphériques.
+#[must_use]
+pub fn available_ram_mb() -> u64 {
+    let mut system = System::new_with_specifics(
+        RefreshKind::nothing().with_memory(MemoryRefreshKind::nothing().with_ram()),
+    );
+    system.refresh_memory();
+    system.available_memory() / 1_048_576
+}
+
+/// Empreinte mémoire résidente du processus Candilog, en mégaoctets.
+///
+/// Ne rafraîchit que le processus courant : la mesure est prise à chaque inférence et ne
+/// doit pas énumérer toute la table des processus.
+#[must_use]
+pub fn process_rss_mb() -> Option<u64> {
+    let pid = sysinfo::get_current_pid().ok()?;
+    let mut system = System::new();
+    system.refresh_processes_specifics(
+        sysinfo::ProcessesToUpdate::Some(&[pid]),
+        false,
+        sysinfo::ProcessRefreshKind::nothing().with_memory(),
+    );
+    system
+        .process(pid)
+        .map(|process| process.memory() / 1_048_576)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Une lecture mémoire muette renverrait zéro et ferait refuser *toute* inférence
+    /// locale par le garde-fou. Ce test vérifie que le rafraîchissement ciblé alimente
+    /// bien la valeur, et pas seulement qu'il compile.
+    #[test]
+    fn la_ram_disponible_est_reellement_mesuree() {
+        let disponible = available_ram_mb();
+        assert!(
+            disponible > 0,
+            "la RAM disponible mesurée est nulle : le garde-fou refuserait tout"
+        );
+    }
+
+    /// Même piège pour l'empreinte du processus, qui alimente les lignes de journal
+    /// encadrant chaque inférence.
+    #[test]
+    fn l_empreinte_du_processus_est_reellement_mesuree() {
+        let rss = process_rss_mb().expect("le processus courant doit être lisible");
+        assert!(rss > 0, "empreinte résidente nulle : la mesure est muette");
+    }
+}

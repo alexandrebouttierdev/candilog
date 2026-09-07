@@ -38,8 +38,21 @@ transport d'abord, forme de la réponse ensuite.
 Mistral Local est un provider distinct d'Ollama. `MistralLocalProvider` adapte le runtime
 embarqué llama.cpp à `LlmGenerator` ; aucun autre service n'appelle llama.cpp directement.
 Il ne lance ni serveur, ni processus, ni CLI. Le modèle est chargé par `mmap` à la première
-requête, réutilisé entre les requêtes, remplacé sous verrou (jamais deux modèles chargés) et
-libéré à la fermeture de la fenêtre principale.
+requête, réutilisé entre les requêtes, remplacé sous verrou (jamais deux modèles chargés),
+libéré à la fermeture de la fenêtre principale et rendu au système après cinq minutes sans
+inférence — une surveillance installée au démarrage appelle `release_idle_model` chaque
+minute. Sans elle, un import de CV immobiliserait les poids jusqu'à la fermeture.
+
+Mistral Local est le seul fournisseur dont le modèle ne vient pas de `llm.model` : son
+artefact est désigné par `local_ai.active_model_id`, et l'écran de réglages affiche
+`MistralLocalPanel` au lieu d'un champ « Modèle ». Les deux garde-fous de configuration
+l'exemptent donc du champ « modèle » : `LlmConfig::est_configure` côté Rust et
+`manquants` (`src/features/settings/model/etatIa.ts`) côté interface, ce dernier pilotant
+`AiRequiredModal` via `useAiRequiredStore`. L'exiger rendait le fournisseur inutilisable dès
+que la grille le sélectionnait, puisqu'elle vide ce champ. Les deux gardes doivent rester
+d'accord : n'en corriger qu'un déplace le blocage d'une couche à l'autre. Un modèle absent
+est signalé plus précisément en aval, par `LocalAiService::provider` (« Installez l'IA
+locale avant de l'utiliser »).
 
 `domain/local_ai.rs::ModelRegistry` est l'unique source des artefacts. Les trois entrées ont
 été relevées dans les dépôts officiels Mistral et verrouillées sur un commit :
@@ -65,8 +78,73 @@ recontrôlée avant le premier chargement de chaque session.
 
 Le contexte normal est 8 192 tokens (16 384 réservé techniquement) ; le lot
 d'inférence (`n_batch`) reste à 512 pour limiter la RAM allouée lors d'un import de CV.
-Une saturation mémoire remonte une erreur explicite plutôt que de faire quitter
-l'application. Après installation, un prompt synthétique sans donnée utilisateur mesure
+L'invite est donc **décodée par lots** de cette taille (`lots_de_decodage`), les logits
+n'étant demandés que sur l'ultime jeton. Ce découpage n'est pas une optimisation :
+`llama_context::decode` impose `n_tokens_all <= n_batch` et abandonne le processus par
+`GGML_ASSERT` au-delà. Décoder une invite d'un seul bloc faisait donc planter Candilog pour
+tout texte dépassant 512 jetons — c'est-à-dire n'importe quel CV, le plafond de 12 000
+caractères en produisant plusieurs milliers. Le contrôle de longueur en tête d'inférence
+borne le **contexte** (cache KV), jamais la taille d'un appel à `decode` : les deux limites
+sont distinctes et doivent être tenues séparément.
+
+L'échantillonnage ne doit **jamais** accepter le jeton lui-même : `llama_sampler_sample`
+appelle déjà `llama_sampler_accept`. Un second appel faisait avancer la grammaire JSON de
+deux pas par jeton ; ses piles d'analyse se vidaient, et l'appel suivant abandonnait le
+processus sur `GGML_ASSERT(!stacks.empty())`. Le défaut ne touchait que les générations
+sous grammaire (`json: true`) — donc l'import de CV, jamais le benchmark.
+
+Ces deux pièges ont la même signature : un `abort()` de llama.cpp, que Rust ne peut ni
+intercepter, ni convertir en `Err`, ni journaliser. Seule une inférence réelle les révèle,
+d'où le scénario `tests/e2e_local_ai.rs` (`CANDILOG_E2E_LOCAL_AI=1`), qui couvre la
+génération sous grammaire, le texte libre et l'annulation.
+
+### Annulation, plafond et progression
+
+Une génération locale s'exécute dans un `spawn_blocking`, que Tokio **ne sait pas
+interrompre** : abandonner le futur rend la main à l'interface pendant que les cœurs
+continuent de calculer. `MistralLocalRuntime` expose donc un jeton d'annulation, consulté
+entre chaque lot de préremplissage et à chaque jeton produit ; `AiService::cancel` le
+déclenche en plus du jeton du futur.
+
+Le plafond de sortie dépend de la nature de la réponse : `MAX_OUTPUT_TOKENS` (4 096) en
+texte libre, `MAX_JSON_OUTPUT_TOKENS` (3 072) pour une sortie structurée. Ce second chiffre
+est mesuré, pas estimé : tokenisés avec le modèle, les profils de `tests/fixtures/profiles/`
+pèsent 336 à 1 928 jetons, et le cas volontairement trop long pour une page A4 en pèse
+2 634. Une assertion `const` interdit d'abaisser le plafond sous cette valeur — le tronquer
+produirait un JSON invalide, soit un échec là où l'on avait un résultat lent.
+
+Pendant l'analyse d'un CV, `cancel_avec_progression` réveille l'appelant chaque seconde et
+publie l'étape « Analyse du CV… N jetons · X jeton/s · T s ». À 2,6 jetons/s sur un portable
+quadricœur, une analyse dure une douzaine de minutes : sans ce battement, rien ne distingue
+une génération lente d'un blocage. Le message reste vide pour ne pas gonfler le journal
+d'import ; seul `step` est remplacé. Un fournisseur distant ne publie aucun avancement, et
+le battement reste alors muet.
+
+### Garde-fou mémoire
+
+Sous Linux, une allocation excessive n'échoue pas : le noyau l'accorde puis tue le processus
+(OOM killer). Ce `SIGKILL` n'est ni interceptable, ni journalisable — filtrer `out of memory`
+dans les erreurs de llama.cpp ne protège donc de rien. La seule défense est de refuser
+l'inférence **avant** de réserver la mémoire.
+
+`domain/local_ai.rs::local_ai_memory_shortfall_mb` compare la RAM réellement disponible au
+besoin du modèle augmenté de `LOCAL_AI_SYSTEM_MARGIN_MB` (768 Mio laissés au système, à la
+fenêtre WebKit et au reste de Candilog). `MistralLocalRuntime::generate` l'évalue à chaque
+inférence et remonte une erreur chiffrée (« il manque environ N Mo ») plutôt que de laisser
+le noyau trancher. Un modèle déjà chargé occupe déjà la RAM mesurée : ses poids ne sont pas
+recomptés, sinon le garde-fou refuserait toute inférence après le premier chargement.
+
+Cette vérification est distincte de la compatibilité affichée à l'installation
+(`ensure_supported`), qui n'est évaluée qu'une fois : la mémoire disponible, elle, varie
+pendant la session.
+
+Chaque inférence est encadrée de deux lignes de journal portant l'empreinte résidente du
+processus et la RAM disponible. Après un arrêt brutal, cet encadrement est la seule trace
+montrant qu'une inférence était en cours. En complément, `core/logging.rs` dépose un
+marqueur `candilog.session` au démarrage et le retire en sortie normale : un marqueur
+survivant au lancement suivant signale une session tuée sans un mot dans le journal.
+
+Après installation, un prompt synthétique sans donnée utilisateur mesure
 chargement, tokens/s et mémoire du processus. Les paliers sont excellent (> 20), bon (10–20), acceptable (5–10) et trop lent
 (< 5). Dans ce dernier cas, l'interface propose le profil inférieur mais ne le télécharge
 qu'après confirmation. Un ancien modèle n'est proposé à la suppression qu'après validation

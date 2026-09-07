@@ -10,7 +10,7 @@ use crate::features::ai::domain::{
 };
 use crate::features::ai::infrastructure::{
     detect_local_ai_hardware, MistralLocalProvider, MistralLocalRuntime, ModelDownload,
-    ModelDownloader, RuntimeRequest,
+    ModelDownloader, RuntimeRequest, LOCAL_AI_IDLE_UNLOAD,
 };
 use crate::features::settings::domain::SettingsRepository;
 use crate::features::settings::infrastructure::SqliteSettingsRepository;
@@ -335,6 +335,30 @@ impl LocalAiService {
     pub fn shutdown(&self) {
         self.cancel_download();
         self.runtime.unload();
+    }
+
+    /// Interrompt l'inférence locale en cours.
+    ///
+    /// La génération tourne dans un `spawn_blocking` : abandonner le futur rend la main à
+    /// l'interface sans arrêter le calcul. Seul ce relais stoppe réellement les cœurs.
+    pub fn cancel_inference(&self) {
+        self.runtime.cancel_inference();
+    }
+
+    /// Avancement de l'inférence locale en cours, `None` si aucune n'est active.
+    #[must_use]
+    pub fn inference_progress(
+        &self,
+    ) -> Option<crate::features::ai::domain::LocalInferenceProgress> {
+        self.runtime.progression()
+    }
+
+    /// Rend au système les poids d'un modèle resté inactif.
+    ///
+    /// Appelée périodiquement par la surveillance installée au démarrage : sans elle, un
+    /// import de CV laisserait plusieurs gigaoctets réservés jusqu'à la fermeture.
+    pub fn release_idle_model(&self) {
+        self.runtime.unload_if_idle(LOCAL_AI_IDLE_UNLOAD);
     }
 
     async fn run_benchmark(
