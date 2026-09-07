@@ -46,6 +46,14 @@ pub fn detect_local_ai_hardware() -> LocalAiHardware {
         .any(|device| backend(device) == Some(LocalAiBackend::Vulkan));
     let total_ram_mb = system.total_memory() / 1_048_576;
 
+    if !apple_silicon {
+        if let Some(gpu) = gpus.first() {
+            if let (Some(total), Some(available)) = (gpu.total_vram_mb, gpu.available_vram_mb) {
+                super::system_resources::cache_gpu_vram(total, available);
+            }
+        }
+    }
+
     LocalAiHardware {
         os: std::env::consts::OS.into(),
         architecture: architecture.clone(),

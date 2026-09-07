@@ -144,3 +144,8 @@ export type ResumeGenerationRequest = { generation_id: string, job_offer: string
 export type SelectedResumeFile = { path: string, name: string, };
 
 export type StructuredListing = { title: string, skills: Array<string>, soft_skills: Array<string>, experience: string | null, keywords: Array<string>, };
+
+/**
+ * Charge CPU, RAM et VRAM (ou mémoire unifiée) à un instant donné.
+ */
+export type SystemResourceSnapshot = { cpu_percent: number, ram_used_percent: number, ram_used_mb: number, ram_total_mb: number, vram_available: boolean, vram_used_percent: number | null, vram_used_mb: number | null, vram_total_mb: number | null, };

@@ -10,6 +10,7 @@ import { AppError } from "@/shared/types/app-error";
 import { runResumeRecalculation } from "./resumeRecalculation";
 import { aiService } from "@/features/ai/services/aiService";
 import { useAiOperation } from "@/features/ai/viewmodel/useAiOperation";
+import { useAiRailStatusStore } from "@/features/ai/viewmodel/ai-rail-status-store";
 import { isAiNotConfiguredError } from "@/features/ai/model/ai-not-configured";
 
 /** Pile d'annulation/rétablissement bornée : au-delà, les plus anciens états sont perdus. */
@@ -174,7 +175,10 @@ export function useResumeEditor(initial: ResumeWorkspace) {
       setError(null);
       return "corrected";
     } catch (caught) {
-      if (mounted.current) setError(errorMessage(caught));
+      if (mounted.current) {
+        setError(errorMessage(caught));
+        useAiRailStatusStore.getState().setLastOperationFailed(true);
+      }
       return "failed";
     } finally {
       aiOperation.finish(id);

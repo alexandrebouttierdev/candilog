@@ -5,6 +5,7 @@ import {
   type AiOperationKind,
 } from "./ai-operation-store";
 import { AiNotConfiguredError } from "../model/ai-not-configured";
+import { useAiRailStatusStore } from "./ai-rail-status-store";
 import { useAiRequiredStore } from "./ai-required-store";
 
 export function useAiOperation() {
@@ -59,6 +60,7 @@ export function useAiOperation() {
     }
     const id = generation_id();
     ownedIdRef.current = id;
+    useAiRailStatusStore.getState().setLastOperationFailed(false);
     useAiOperationStore.getState().begin({
       id,
       kind,

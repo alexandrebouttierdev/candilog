@@ -1,7 +1,9 @@
 //! Construction et lancement de l'application Tauri.
 
 use crate::app::state::AppState;
-use crate::features::ai::presentation::{commands as ai, local_commands as local_ai};
+use crate::features::ai::presentation::{
+    commands as ai, local_commands as local_ai, system_commands as system_resources,
+};
 use crate::features::analytics::presentation::commands as analytics;
 use crate::features::applications::presentation::commands as applications;
 use crate::features::companies::presentation::commands as companies;
@@ -106,6 +108,7 @@ pub fn run() {
             local_ai::remove_local_ai_model,
             local_ai::benchmark_local_ai_model,
             local_ai::test_local_ai_model,
+            system_resources::system_resource_snapshot,
             settings::settings_load,
             settings::settings_save,
             settings::settings_clear_api_key,

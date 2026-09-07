@@ -9,6 +9,7 @@ import type {
 import { aiService } from "@/features/ai/services/aiService";
 import type { AiExecution } from "@/features/ai/model/types";
 import { useAiOperation } from "@/features/ai/viewmodel/useAiOperation";
+import { useAiRailStatusStore } from "@/features/ai/viewmodel/ai-rail-status-store";
 import { isAiNotConfiguredError } from "@/features/ai/model/ai-not-configured";
 import { AppError } from "@/shared/types/app-error";
 import {
@@ -131,6 +132,7 @@ export function ProfileImportModal({
           ? caught.message
           : "L'analyse du CV n'a pas pu être terminée.",
       );
+      useAiRailStatusStore.getState().setLastOperationFailed(true);
       setPhase("error");
     } finally {
       finish(id);
