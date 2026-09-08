@@ -7,7 +7,7 @@ import type { AtsAnalysis, ContentRelevance, MatchScore, StructuredListing } fro
 export type CoverLetter = { id: string, name: string, company: string | null, job_title: string | null, recipient: string | null, recipient_address: string | null, job_reference: string | null, tone: string, length: string, content: string, created_at: string, };
 
 /**
- * Content d'une lettre à exporter en PDF (enregistrée ou encore à l'écran).
+ * Contenu d'une lettre à exporter en PDF (enregistrée ou encore à l'écran).
  */
 export type CoverLetterExport = { name: string, company: string | null, job_title: string | null, recipient: string | null, recipient_address: string | null, job_reference: string | null, content: string, };
 

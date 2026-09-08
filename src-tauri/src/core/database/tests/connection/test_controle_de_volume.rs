@@ -1,5 +1,7 @@
 use super::*;
 use crate::core::database::helpers::connection;
+use crate::features::analytics::domain::AnalyticsRepository;
+use crate::features::analytics::infrastructure::SqliteAnalyticsRepository;
 use crate::features::applications::domain::{ApplicationFilter, ApplicationRepository};
 use crate::features::applications::infrastructure::SqliteApplicationRepository;
 use crate::features::companies::domain::{CompanyFilter, CompanyRepository};
@@ -110,6 +112,19 @@ fn controle_de_volume_pagination_et_indexes() {
         .unwrap();
     assert_eq!(resumes.total, 1);
     assert_eq!(resumes.items[0].name, "CV-09999");
+
+    // Les agrégats du tableau de bord balaient la table entière : `substr(sent_date, 1, 10)`
+    // y protège les bases héritées, dont la date porte parfois une heure, au prix de
+    // l'index `idx_applications_date`. Le coût est mesuré ici plutôt que supposé.
+    let analytics = SqliteAnalyticsRepository::new(pool.clone());
+    let start = std::time::Instant::now();
+    let metrics = analytics.metrics(Some("2026-01-01")).unwrap();
+    let duration = start.elapsed();
+    assert_eq!(metrics.applications, 10_000);
+    assert!(
+        duration < std::time::Duration::from_secs(2),
+        "indicateurs calculés en {duration:?} sur 10 000 candidatures"
+    );
 
     let conn = connection(&pool).unwrap();
     for (sql, expected_index) in [

@@ -215,7 +215,7 @@ impl CoverLetterPdf {
         let octets = document
             .with_pages(vec![page])
             .save(&PdfSaveOptions::default(), &mut avertissements);
-        Ok(Some(octets))
+        Ok(Some(super::compress(octets)?))
     }
 }
 

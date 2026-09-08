@@ -54,7 +54,7 @@ fn la_photo_est_inscrite_dans_son_cadre_sans_deformation() {
     assert!((largeur / hauteur - 0.5).abs() < 0.001);
 }
 
-/// Count d'images XObject embarquées dans le PDF.
+/// Nombre d'images XObject embarquées dans le PDF.
 fn images(document: &lopdf::Document) -> usize {
     document
         .objects

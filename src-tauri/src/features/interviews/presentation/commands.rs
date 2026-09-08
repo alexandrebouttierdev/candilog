@@ -7,7 +7,7 @@ use crate::features::interviews::domain::{Interview, NewInterview};
 use std::sync::Arc;
 use tauri::State;
 
-/// List les entretiens d'une plage de dates, bornes incluses.
+/// Liste les entretiens d'une plage de dates, bornes incluses.
 #[tauri::command(rename_all = "snake_case")]
 pub async fn interviews_list_between(
     state: State<'_, AppState>,

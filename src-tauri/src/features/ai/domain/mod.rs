@@ -1,4 +1,4 @@
-//! Contracts et modèles de l'assistance IA.
+//! Contrats et modèles de l'assistance IA.
 
 mod config;
 mod cover_letter;

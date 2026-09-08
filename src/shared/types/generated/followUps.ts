@@ -17,7 +17,7 @@ application_id: string,
  */
 application_job_title: string | null, 
 /**
- * Name de l'entreprise, aplati depuis la jointure.
+ * Nom de l'entreprise, aplati depuis la jointure.
  */
 company_name: string | null, 
 /**
@@ -27,7 +27,7 @@ follow_up_date: string,
 /**
  * Channel de relance.
  *
- * Text libre en base, sans contrainte `CHECK` : l'interface propose quatre canaux
+ * Texte libre en base, sans contrainte `CHECK` : l'interface propose quatre canaux
  * courants, mais les lignes héritées peuvent en porter d'autres.
  */
 type: string, 

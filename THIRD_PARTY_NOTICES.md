@@ -5,7 +5,11 @@ et [`NOTICE`](./NOTICE)). Les composants ci-dessous conservent leurs propres lic
 licence de Candilog ne remplace pas.
 
 Ce fichier accompagne les binaires publiés : il est embarqué dans le paquet aux côtés de
-`LICENSE` et `NOTICE` (`src-tauri/tauri.conf.json`, section `bundle.resources`).
+`LICENSE`, de `NOTICE` et du texte intégral des licences des composants redistribués
+(`src-tauri/tauri.conf.json`, section `bundle.resources`). Dans un paquet installé, ces
+textes vivent à côté de l'exécutable — sous `/usr/lib/Candilog/licenses/` sur Linux. Les
+chemins cités ci-dessous sont ceux du dépôt ; le nom entre parenthèses est celui du fichier
+livré.
 
 ---
 
@@ -18,15 +22,17 @@ Candilog ; leurs licences exigent que la mention de copyright et le texte les ac
 
 Copyright © 2017 IBM Corp. with Reserved Font Name "Plex".
 Licence **SIL Open Font License 1.1** — texte intégral :
-[`src-tauri/assets/fonts/ibm-plex/LICENSE.txt`](./src-tauri/assets/fonts/ibm-plex/LICENSE.txt).
+[`src-tauri/assets/fonts/ibm-plex/LICENSE.txt`](./src-tauri/assets/fonts/ibm-plex/LICENSE.txt),
+livré dans le paquet sous `licenses/ibm-plex-OFL-1.1.txt`.
 
 Utilisation : composition des CV et des lettres exportés en PDF (`src-tauri/src/infrastructure/pdf/`)
 et de leur aperçu à l'écran, qui doit rester fidèle à la page imprimée.
 
 ### Material Symbols Rounded
 
-Copyright © Google LLC. Licence **Apache License 2.0** —
-<https://www.apache.org/licenses/LICENSE-2.0>.
+Copyright © Google LLC. Licence **Apache License 2.0** — texte intégral :
+[`src-tauri/assets/licenses/material-symbols-Apache-2.0.txt`](./src-tauri/assets/licenses/material-symbols-Apache-2.0.txt),
+livré dans le paquet sous `licenses/material-symbols-Apache-2.0.txt`.
 
 Utilisation : icônes de l'interface. Le fichier embarqué
 (`src/shared/ui/material-symbols-rounded.woff2`) est une **sous-police** dérivée de la
@@ -49,7 +55,8 @@ Provenance et nature de la modification locale :
 ### llama.cpp / llama-cpp-2 0.1.156
 
 Copyright © 2023–2026 The ggml authors. Licence **MIT** — texte intégral :
-[`src-tauri/assets/licenses/llama.cpp-LICENSE`](./src-tauri/assets/licenses/llama.cpp-LICENSE).
+[`src-tauri/assets/licenses/llama.cpp-LICENSE`](./src-tauri/assets/licenses/llama.cpp-LICENSE),
+livré dans le paquet sous `licenses/llama.cpp-LICENSE`.
 
 Utilisation : exécution dans le processus Candilog des modèles GGUF de l'IA locale
 (Ministral et Qwen2.5). Le runtime est compilé et lié au paquet ; l'utilisateur n'installe

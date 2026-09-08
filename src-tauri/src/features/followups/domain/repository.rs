@@ -6,13 +6,13 @@ use uuid::Uuid;
 
 /// Accès aux relances.
 pub trait FollowUpRepository: Send + Sync {
-    /// List toutes les relances, par date décroissante.
+    /// Liste toutes les relances, par date décroissante.
     ///
     /// # Errors
     /// Retourne `AppError::Database` si la requête échoue.
     fn list(&self) -> AppResult<Vec<FollowUp>>;
 
-    /// List les relances d'une plage de dates, bornes incluses.
+    /// Liste les relances d'une plage de dates, bornes incluses.
     ///
     /// # Errors
     /// Retourne `AppError::Database` si la requête échoue.

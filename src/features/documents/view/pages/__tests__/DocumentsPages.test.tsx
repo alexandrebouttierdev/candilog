@@ -39,8 +39,7 @@ beforeEach(() => {
 });
 
 describe("bibliothèque de CV paginée", () => {
-  it("recherche et change de page côté backend sans charger la liste exhaustive", async () => {
-    const exhaustive = vi.spyOn(documentsService, "listResume").mockResolvedValue([]);
+  it("recherche et change de page côté backend", async () => {
     const paged = vi.spyOn(documentsService, "listResumePage").mockImplementation(({ page, page_size, search }) => Promise.resolve({
       items: [{ id: `${search || "cv"}-${page}`, name: `${search || "CV"} page ${page}`, created_at: "2026-08-30T00:00:00Z" }],
       total: search ? 1 : 9,
@@ -59,16 +58,15 @@ describe("bibliothèque de CV paginée", () => {
     const search = screen.getByPlaceholderText("Rechercher une version…");
     await userEvent.type(search, "cible");
     await waitFor(() => expect(paged).toHaveBeenCalledWith({ page: 1, page_size: 8, search: "cible" }));
-    expect(exhaustive).not.toHaveBeenCalled();
+    // La commande exhaustive n'existe plus : la pagination en base est le seul chemin de
+    // chargement de la bibliothèque, et `commandes-ipc.test.ts` verrouille l'inventaire.
+    expect(documentsService).not.toHaveProperty("listResume");
   });
 });
 
 describe("analyse explicite d'un CV sélectionné", () => {
-  it("sélectionne le PDF sans analyser puis transmet son chemin au clic dédié", async () => {
-    vi.spyOn(aiService, "selectResumeFile").mockResolvedValue({
-      path: "/tmp/cv.pdf",
-      name: "cv.pdf",
-    });
+  it("sélectionne le PDF sans analyser puis lance l'analyse au clic dédié", async () => {
+    vi.spyOn(aiService, "selectResumeFile").mockResolvedValue({ name: "cv.pdf" });
     const analyze = vi.spyOn(aiService, "analyzeResume").mockResolvedValue({
       output: {
         resume: { resume: "Profil", experiences: [], skills: [], education: [] },
@@ -105,10 +103,10 @@ describe("analyse explicite d'un CV sélectionné", () => {
     await userEvent.click(screen.getByRole("button", { name: "Analyser le CV" }));
 
     await waitFor(() => expect(analyze).toHaveBeenCalledOnce());
-    expect(analyze.mock.calls[0]?.[0]).toMatchObject({
-      job_offer: "Une offre",
-      file_path: "/tmp/cv.pdf",
-    });
+    // Le chemin ne traverse plus l'IPC : le fichier analysé est celui que Rust a retenu
+    // au moment du choix dans le dialogue natif.
+    expect(analyze.mock.calls[0]?.[0]).toMatchObject({ job_offer: "Une offre" });
+    expect(analyze.mock.calls[0]?.[0]).not.toHaveProperty("file_path");
     expect(analyze.mock.calls[0]?.[0].generation_id).toEqual(expect.any(String));
     expect(
       await screen.findByText("Analysé en 18,4 s · 1 024 tokens"),
@@ -116,10 +114,7 @@ describe("analyse explicite d'un CV sélectionné", () => {
   });
 
   it("masque le formulaire pendant l'analyse puis le restaure après un arrêt réel", async () => {
-    vi.spyOn(aiService, "selectResumeFile").mockResolvedValue({
-      path: "/tmp/cv.pdf",
-      name: "cv.pdf",
-    });
+    vi.spyOn(aiService, "selectResumeFile").mockResolvedValue({ name: "cv.pdf" });
     let resolveAnalysis: ((value: ReturnType<typeof aiExecution<{
       resume: { resume: string; experiences: never[]; skills: never[]; education: never[] };
       job_offer: { title: string; skills: never[]; soft_skills: never[]; experience: null; keywords: never[] };
@@ -169,7 +164,7 @@ describe("analyse explicite d'un CV sélectionné", () => {
   });
 
   it("restaure le formulaire et conserve le fichier après une erreur", async () => {
-    vi.spyOn(aiService, "selectResumeFile").mockResolvedValue({ path: "/tmp/cv.pdf", name: "cv.pdf" });
+    vi.spyOn(aiService, "selectResumeFile").mockResolvedValue({ name: "cv.pdf" });
     vi.spyOn(aiService, "analyzeResume").mockRejectedValue(
       new AppError({ code: "PROVIDER_ERROR", message: "Le fournisseur ne répond pas." }),
     );
@@ -190,7 +185,6 @@ describe("échecs d'enregistrement", () => {
   /// (nom trop long, contenu invalide, erreur SQLite) laissait l'écran strictement
   /// inchangé, et l'utilisateur croyait son document enregistré alors qu'il était perdu.
   it("signale le refus de duplication d'une version de CV", async () => {
-    vi.spyOn(documentsService, "listResume").mockResolvedValue([]);
     vi.spyOn(documentsService, "listResumePage").mockResolvedValue({
       items: [{ id: "cv-1", name: "CV Produit", created_at: "2026-08-30T00:00:00Z" }],
       total: 1,

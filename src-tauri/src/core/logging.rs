@@ -10,8 +10,63 @@ use crate::core::config::AppPaths;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
-/// Count de fichiers de journal conservés, le courant compris.
+/// Nombre de fichiers de journal conservés, le courant compris.
 const JOURNAUX_CONSERVES: usize = 5;
+
+/// Plafond d'écriture d'un fichier de journal, en octets (8 Mio).
+///
+/// La rotation a lieu au démarrage : une session qui dure des semaines, ou qu'on relance
+/// avec `RUST_LOG=debug`, alimentait sinon un fichier que rien ne bornait. Huit mégaoctets
+/// tiennent largement une session de diagnostic tout en restant joignables à un
+/// signalement.
+const MAX_LOG_BYTES: u64 = 8 * 1024 * 1024;
+
+/// Ligne déposée à la place de la suite du journal une fois le plafond atteint.
+const LIMIT_NOTICE: &[u8] =
+    b"[journal] plafond de 8 Mio atteint : la suite de cette session n'est pas enregistree.\n";
+
+/// Fichier de journal qui cesse d'écrire au-delà de [`MAX_LOG_BYTES`].
+///
+/// Se taire est ici préférable à échouer : perdre la fin d'un journal n'empêche pas
+/// l'application de fonctionner, alors qu'une erreur d'écriture remontée à chaque trace
+/// remplirait la sortie standard de bruit.
+struct BoundedLogWriter {
+    file: std::fs::File,
+    written: u64,
+    saturated: bool,
+}
+
+impl BoundedLogWriter {
+    fn new(file: std::fs::File) -> Self {
+        let written = file.metadata().map(|metadata| metadata.len()).unwrap_or(0);
+        Self {
+            file,
+            written,
+            saturated: false,
+        }
+    }
+}
+
+impl std::io::Write for BoundedLogWriter {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        if self.saturated {
+            return Ok(buf.len());
+        }
+        if self.written >= MAX_LOG_BYTES {
+            self.saturated = true;
+            self.file.write_all(LIMIT_NOTICE)?;
+            return Ok(buf.len());
+        }
+        let remaining = MAX_LOG_BYTES.saturating_sub(self.written) as usize;
+        let written = self.file.write(&buf[..buf.len().min(remaining)])?;
+        self.written = self.written.saturating_add(written as u64);
+        Ok(written)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        self.file.flush()
+    }
+}
 
 /// Guard de vidage du journal fichier. À conserver vivante jusqu'à l'arrêt du programme :
 /// l'écriture étant tamponnée dans un fil dédié, la relâcher trop tôt perd les dernières
@@ -41,7 +96,7 @@ pub fn init() -> GuardJournal {
         return GuardJournal(None);
     };
 
-    let (ecriture, guard) = tracing_appender::non_blocking(file);
+    let (ecriture, guard) = tracing_appender::non_blocking(BoundedLogWriter::new(file));
     tracing_subscriber::registry()
         .with(filter())
         .with(tracing_subscriber::fmt::layer())
@@ -96,6 +151,8 @@ pub fn cloturer_session() {
 }
 
 /// Ouvre `candilog.log` sous le dossier de données, après avoir fait tourner les précédents.
+///
+/// L'écriture passe ensuite par [`BoundedLogWriter`], qui en plafonne la taille.
 fn ouvrir_file() -> Option<std::fs::File> {
     let paths = AppPaths::discover().ok()?;
     let journal = paths.data_dir.join("candilog.log");

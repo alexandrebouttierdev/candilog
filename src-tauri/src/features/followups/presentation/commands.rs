@@ -7,7 +7,7 @@ use crate::features::followups::domain::{FollowUp, NewFollowUp};
 use std::sync::Arc;
 use tauri::State;
 
-/// List les relances d'une plage de dates, bornes incluses.
+/// Liste les relances d'une plage de dates, bornes incluses.
 #[tauri::command(rename_all = "snake_case")]
 pub async fn follow_ups_list_between(
     state: State<'_, AppState>,

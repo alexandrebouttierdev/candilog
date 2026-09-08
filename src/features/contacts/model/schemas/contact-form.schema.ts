@@ -33,8 +33,8 @@ export const contactFormSchema = z.object({
   notes: textFacultatif,
 });
 
-/** Values validées, telles qu'envoyées au backend. */
+/** Valeurs validées, telles qu'envoyées au backend. */
 export type ContactFormValues = z.output<typeof contactFormSchema>;
 
-/** Values saisies, avant transformation — ce que manipule React Hook Form. */
+/** Valeurs saisies, avant transformation — ce que manipule React Hook Form. */
 export type ContactFormInput = z.input<typeof contactFormSchema>;

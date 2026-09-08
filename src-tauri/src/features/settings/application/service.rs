@@ -141,7 +141,7 @@ impl<R: SettingsRepository, C: SecretStoreContract> SettingsService<R, C> {
         LlmGenerator::test(provider.as_ref()).await
     }
 
-    /// List les modèles exposés par le fournisseur du formulaire.
+    /// Liste les modèles exposés par le fournisseur du formulaire.
     ///
     /// # Errors
     /// Retourne l'erreur du fournisseur ou de validation.

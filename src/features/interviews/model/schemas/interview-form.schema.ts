@@ -46,8 +46,8 @@ export const interviewFormSchema = z
     minutes: values.minutes,
   }));
 
-/** Values validées, telles qu'envoyées au backend. */
+/** Valeurs validées, telles qu'envoyées au backend. */
 export type InterviewFormValues = z.output<typeof interviewFormSchema>;
 
-/** Values saisies, avant transformation — ce que manipule React Hook Form. */
+/** Valeurs saisies, avant transformation — ce que manipule React Hook Form. */
 export type InterviewFormInput = z.input<typeof interviewFormSchema>;

@@ -311,13 +311,16 @@ pub struct ImportedResumeAnalysis {
     pub analysis: AtsAnalysis,
 }
 
+/// Demande d'analyse d'un CV déjà choisi par `ai_select_resume_file`.
+///
+/// Aucun chemin : le fichier analysé est celui que l'utilisateur a désigné dans le dialogue
+/// natif, retenu côté Rust. Le frontend ne peut donc pas faire lire un autre document.
 #[derive(Debug, Clone, Deserialize, TS)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "ai.ts")]
 pub struct ResumeAnalysisRequest {
     pub generation_id: String,
     pub job_offer: String,
-    pub file_path: String,
 }
 
 #[derive(Debug, Clone, Deserialize, TS)]
@@ -338,11 +341,14 @@ pub struct AiExecution<T> {
 }
 
 /// PDF choisi par l'utilisateur avant le lancement explicite de son analyse.
+///
+/// Seul le nom traverse l'IPC : il sert à confirmer le fichier à l'écran. Le chemin reste
+/// en Rust (`AiService::remember_selected_resume`), car un chemin qui fait l'aller-retour par
+/// le frontend redevient une entrée non fiable (`docs/CODE_RULES.md` §10).
 #[derive(Debug, Clone, Serialize, TS)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "ai.ts")]
 pub struct SelectedResumeFile {
-    pub path: String,
     pub name: String,
 }
 
@@ -397,16 +403,32 @@ mod tests {
         );
     }
 
+    /// La demande d'analyse ne transporte plus de chemin : le fichier lu est celui que
+    /// l'utilisateur a désigné dans le dialogue natif, retenu côté Rust. Un `file_path`
+    /// renvoyé par le frontend serait une entrée non fiable désignant n'importe quel PDF du
+    /// disque (`docs/CODE_RULES.md` §10).
     #[test]
-    fn une_analyse_de_cv_transporte_le_chemin_selectionne() {
+    fn une_analyse_de_cv_ne_transporte_aucun_chemin() {
         let request: ResumeAnalysisRequest = serde_json::from_value(serde_json::json!({
             "generation_id": "generation-1",
             "job_offer": "Offre",
-            "file_path": "/tmp/cv.pdf"
+            "file_path": "/etc/passwd.pdf"
         }))
         .unwrap();
 
-        assert_eq!(request.file_path, "/tmp/cv.pdf");
+        assert_eq!(request.generation_id, "generation-1");
+        assert_eq!(request.job_offer, "Offre");
+        // Le champ surnuméraire est ignoré : rien dans la structure ne peut le porter.
+        assert_eq!(
+            serde_json::to_value(serde_json::json!({
+                "generation_id": request.generation_id,
+                "job_offer": request.job_offer
+            }))
+            .unwrap()
+            .as_object()
+            .map(serde_json::Map::len),
+            Some(2)
+        );
     }
 
     /// Une analyse enregistrée avant la fermeture du contrat portait `score`, `suggestions`

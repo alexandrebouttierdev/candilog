@@ -22,7 +22,7 @@ const LEGACY_DATA_DIR: &str = "com.candilog.desktop";
 /// Nom du fichier de base, commun aux deux emplacements.
 const DATABASE_FILE: &str = "candilog.sqlite";
 
-/// Paths persistants utilisés par Candilog.
+/// Chemins persistants utilisés par Candilog.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AppPaths {
     /// Dossier de données de l'application.

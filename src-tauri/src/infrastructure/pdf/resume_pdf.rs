@@ -353,11 +353,10 @@ impl ResumePdf {
 
         let bytes = if save {
             let page = PdfPage::new(Mm(A4.width_mm), Mm(A4.height_mm), plan.ops);
-            Some(
-                document
-                    .with_pages(vec![page])
-                    .save(&PdfSaveOptions::default(), &mut avertissements),
-            )
+            let raw = document
+                .with_pages(vec![page])
+                .save(&PdfSaveOptions::default(), &mut avertissements);
+            Some(super::compress(raw)?)
         } else {
             None
         };

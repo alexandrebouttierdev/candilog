@@ -104,7 +104,7 @@ export function useContactsViewModel() {
     setPage(1);
   }, []);
 
-  /** Count de critères actifs, hors recherche libre, pour la pastille du bouton Filtres. */
+  /** Nombre de critères actifs, hors recherche libre, pour la pastille du bouton Filtres. */
   const filtersActifs = tracking_role ? 1 : 0;
 
   const items: Contact[] = list.data?.items ?? [];

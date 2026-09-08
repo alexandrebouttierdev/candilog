@@ -16,7 +16,10 @@ fn cv_est_restitue_avec_son_json_et_son_resume() {
             content: serde_json::json!({"cv":{"summary":"Bonjour"}}),
         })
         .unwrap();
-    assert_eq!(repo.list().unwrap()[0].name, "CV Produit");
+    assert_eq!(
+        repo.list_page(1, 8, "").unwrap().items[0].name,
+        "CV Produit"
+    );
     assert_eq!(
         repo.get(saved.id).unwrap().content["cv"]["summary"],
         "Bonjour"
@@ -39,11 +42,11 @@ fn lettre_est_enregistree_et_supprimee() {
             content: "Madame, Monsieur…".into(),
         })
         .unwrap();
-    assert_eq!(repo.list().unwrap(), vec![saved.clone()]);
+    assert_eq!(repo.list_page(1, 8, "").unwrap().items, vec![saved.clone()]);
     assert_eq!(saved.recipient.as_deref(), Some("Service recrutement"));
     assert_eq!(saved.job_reference.as_deref(), Some("FS-2026-114"));
     repo.delete(saved.id).unwrap();
-    assert!(repo.list().unwrap().is_empty());
+    assert!(repo.list_page(1, 8, "").unwrap().items.is_empty());
 }
 
 #[test]

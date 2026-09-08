@@ -42,26 +42,6 @@ impl ResumeRepository for SqliteResumeRepository {
         })
     }
 
-    fn list(&self) -> AppResult<Vec<ResumeSummary>> {
-        let conn = connection(&self.pool)?;
-        let mut query = conn
-            .prepare(
-                "SELECT id, name, created_at FROM resume_versions ORDER BY created_at DESC, rowid DESC",
-            )
-            .map_err(|e| translate_error(e, "versions de CV"))?;
-        let rows = query
-            .query_map([], |row| {
-                Ok(ResumeSummary {
-                    id: uuid_column(row, 0)?,
-                    name: row.get(1)?,
-                    created_at: row.get(2)?,
-                })
-            })
-            .map_err(|e| translate_error(e, "versions de CV"))?;
-        rows.collect::<Result<Vec<_>, _>>()
-            .map_err(|e| translate_error(e, "versions de CV"))
-    }
-
     fn list_page(&self, page: u64, page_size: u64, search: &str) -> AppResult<Page<ResumeSummary>> {
         let conn = connection(&self.pool)?;
         let pattern = like_contains(search);
@@ -193,16 +173,6 @@ impl CoverLetterRepository for SqliteCoverLetterRepository {
             content: input.content.clone(),
             created_at,
         })
-    }
-
-    fn list(&self) -> AppResult<Vec<CoverLetter>> {
-        let conn = connection(&self.pool)?;
-        let mut query = conn.prepare(&format!("SELECT {COVER_LETTER_COLUMNS} FROM cover_letters ORDER BY created_at DESC, rowid DESC")).map_err(|e| translate_error(e, "lettres de motivation"))?;
-        let rows = query
-            .query_map([], cover_letter_row)
-            .map_err(|e| translate_error(e, "lettres de motivation"))?;
-        rows.collect::<Result<Vec<_>, _>>()
-            .map_err(|e| translate_error(e, "lettres de motivation"))
     }
 
     fn list_page(&self, page: u64, page_size: u64, search: &str) -> AppResult<Page<CoverLetter>> {

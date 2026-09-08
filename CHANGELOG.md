@@ -26,8 +26,15 @@ la première.
 - Calendrier des entretiens et des relances.
 - Profil professionnel, génération de CV et de lettres de motivation en PDF A4 d'une page,
   analyse ATS déterministe.
-- Fournisseurs IA au choix : Ollama (local), Claude, OpenAI, Gemini, Mistral, DeepSeek ou
-  point de terminaison personnalisé. La clé API vit dans le coffre du système.
+- IA locale embarquée : moteur d'inférence llama.cpp lié au binaire, quatre profils de
+  modèles GGUF installables depuis les réglages, téléchargés depuis Hugging Face et vérifiés
+  par empreinte SHA-256 avant usage. Aucun serveur ni outil externe à installer.
+- Autres fournisseurs IA au choix : Ollama (local), Claude, OpenAI, Gemini, Mistral,
+  DeepSeek ou point de terminaison personnalisé. La clé API vit dans le coffre du système.
 - Sauvegarde et restauration de la base, avec retour arrière en cas d'échec.
 - Mise à jour assistée depuis les GitHub Releases : empreinte SHA-256 vérifiée avant
   l'ouverture de l'installateur, jamais d'installation silencieuse.
+- Attestation de provenance Sigstore sur chaque binaire publié, vérifiable par
+  `gh attestation verify`.
+- Licences des composants redistribués (polices IBM Plex, Material Symbols, llama.cpp)
+  livrées avec chaque paquet, sous `licenses/`.

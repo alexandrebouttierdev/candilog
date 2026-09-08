@@ -218,9 +218,31 @@ async fn check_url(
     if response.status() == reqwest::StatusCode::NOT_FOUND {
         return Ok(None);
     }
+    if let Some(error) = status_error(response.status()) {
+        return Err(error);
+    }
     let response = response.error_for_status()?;
     let text = response.text().await?;
     parse_response(&text, current)
+}
+
+/// Traduit les statuts que l'API GitHub renvoie sans que rien ne soit cassé chez l'utilisateur.
+///
+/// Sans dépôt privé ni jeton, le seul refus attendu est le quota : GitHub répond `403` (ou
+/// `429`) à une adresse IP qui a trop interrogé l'API. Le message générique d'erreur réseau
+/// envoyait alors chercher une panne de connexion inexistante.
+#[must_use]
+fn status_error(status: reqwest::StatusCode) -> Option<AppError> {
+    match status {
+        reqwest::StatusCode::FORBIDDEN | reqwest::StatusCode::TOO_MANY_REQUESTS => {
+            Some(AppError::Provider(
+                "GitHub limite temporairement les vérifications de mise à jour depuis votre \
+                 connexion. Réessayez dans quelques minutes."
+                    .into(),
+            ))
+        }
+        _ => None,
+    }
 }
 
 /// Décode la réponse de l'API GitHub et la compare à la version locale, hors réseau.
@@ -333,7 +355,7 @@ fn lire_os_release_ids() -> Vec<String> {
     ids
 }
 
-/// Size maximale acceptée pour un installeur natif (256 MiB).
+/// Taille maximale acceptée pour un installeur natif (256 Mio).
 pub const MAX_UPDATE_BYTES: u64 = 256 * 1024 * 1024;
 
 /// Vérifie que la taille d'un installeur ne dépasse pas la limite autorisée.
@@ -453,21 +475,32 @@ pub async fn download_installeur(
         .open(&path)
         .await
         .map_err(|error| {
-            AppError::Validation(format!(
-                "L'installeur n'a pas pu être créé dans le dossier Téléchargements : {error}"
-            ))
+            // Le détail système est en anglais et parle en numéros (« os error 13 ») : il
+            // part au journal, où il sert au diagnostic (`docs/CODE_RULES.md` §1, §13).
+            tracing::error!(%error, "création de l'installeur impossible");
+            AppError::Validation(
+                "L'installeur n'a pas pu être créé dans le dossier Téléchargements. Vérifiez \
+                 vos droits d'écriture et l'espace disque disponible."
+                    .into(),
+            )
         })?;
     if let Err(error) = file.write_all(&paquet).await {
         drop(file);
         let _ = tokio::fs::remove_file(&path).await;
-        return Err(AppError::Validation(format!(
-            "L'installeur n'a pas pu être écrit dans le dossier Téléchargements : {error}"
-        )));
+        tracing::error!(%error, "écriture de l'installeur impossible");
+        return Err(AppError::Validation(
+            "L'installeur n'a pas pu être écrit dans le dossier Téléchargements. Vérifiez \
+             l'espace disque disponible."
+                .into(),
+        ));
     }
     file.sync_all().await.map_err(|error| {
-        AppError::Validation(format!(
-            "L'installeur n'a pas pu être enregistré sur le disque : {error}"
-        ))
+        tracing::error!(%error, "enregistrement de l'installeur impossible");
+        AppError::Validation(
+            "L'installeur n'a pas pu être enregistré sur le disque. Vérifiez l'espace disque \
+             disponible."
+                .into(),
+        )
     })?;
     on_progress(100);
     tracing::info!(path = %path.display(), "installeur téléchargé et vérifié");
@@ -487,7 +520,12 @@ pub async fn download_installeur(
 /// Retourne une erreur si le lanceur système refuse de démarrer.
 pub fn ouvrir_file(path: &Path) -> AppResult<()> {
     tauri_plugin_opener::open_path(path, None::<&str>).map_err(|error| {
-        AppError::Validation(format!("Lancement de l'installeur impossible : {error}"))
+        tracing::error!(%error, "lancement de l'installeur refusé par le système");
+        AppError::Validation(
+            "Le système n'a pas pu ouvrir l'installeur. Lancez-le depuis votre dossier \
+             Téléchargements."
+                .into(),
+        )
     })
 }
 
@@ -496,8 +534,12 @@ pub fn ouvrir_file(path: &Path) -> AppResult<()> {
 /// # Errors
 /// Retourne une erreur si le lanceur système refuse de démarrer.
 pub fn ouvrir_page(url: &str) -> AppResult<()> {
-    tauri_plugin_opener::open_url(url, None::<&str>)
-        .map_err(|error| AppError::Validation(format!("Ouverture de la page impossible : {error}")))
+    tauri_plugin_opener::open_url(url, None::<&str>).map_err(|error| {
+        tracing::error!(%error, "ouverture de la page de release refusée par le système");
+        AppError::Validation(
+            "Le système n'a pas pu ouvrir la page des versions dans votre navigateur.".into(),
+        )
+    })
 }
 
 /// Version locale, lue depuis le manifeste Cargo.
@@ -505,8 +547,10 @@ pub fn ouvrir_page(url: &str) -> AppResult<()> {
 /// # Errors
 /// Retourne une erreur si le numéro de version du manifeste n'est pas semver.
 pub fn version_locale() -> AppResult<Version> {
-    Version::parse(env!("CARGO_PKG_VERSION"))
-        .map_err(|error| AppError::Validation(format!("Version locale illisible : {error}")))
+    Version::parse(env!("CARGO_PKG_VERSION")).map_err(|error| {
+        tracing::error!(%error, version = env!("CARGO_PKG_VERSION"), "version locale illisible");
+        AppError::Validation("La version installée de Candilog est illisible.".into())
+    })
 }
 
 #[cfg(test)]
@@ -832,6 +876,39 @@ e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  candilog-ubunt
 
     /// Une release sans `SHA256SUMS`, ou dont le fichier n'a pas de ligne pour l'asset,
     /// ne permet aucune vérification : l'installateur ne doit alors pas être ouvert.
+    /// Le quota de l'API GitHub est le seul refus attendu d'un dépôt public : il doit se
+    /// distinguer d'une panne réseau, sinon l'écran des mises à jour envoie l'utilisateur
+    /// vérifier une connexion qui fonctionne.
+    #[test]
+    fn le_quota_de_l_api_github_est_annonce_comme_tel() {
+        for status in [
+            reqwest::StatusCode::FORBIDDEN,
+            reqwest::StatusCode::TOO_MANY_REQUESTS,
+        ] {
+            let error = status_error(status).expect("le quota doit produire une erreur");
+            assert!(matches!(error, AppError::Provider(_)), "{error:?}");
+            assert!(
+                error.user_message().contains("Réessayez"),
+                "message sans conduite à tenir : {}",
+                error.user_message()
+            );
+        }
+    }
+
+    /// Les autres statuts restent traités par `error_for_status`, qui produit l'erreur
+    /// réseau générique : ne pas les intercepter ici évite d'inventer un diagnostic.
+    #[test]
+    fn les_autres_statuts_ne_sont_pas_reinterpretes() {
+        for status in [
+            reqwest::StatusCode::OK,
+            reqwest::StatusCode::NOT_FOUND,
+            reqwest::StatusCode::INTERNAL_SERVER_ERROR,
+            reqwest::StatusCode::BAD_GATEWAY,
+        ] {
+            assert!(status_error(status).is_none(), "{status} intercepté");
+        }
+    }
+
     #[test]
     fn une_empreinte_absente_ne_peut_pas_etre_lue() {
         let sommes = "aa".repeat(32) + "  candilog-ubuntu-1.2.3.deb\n";

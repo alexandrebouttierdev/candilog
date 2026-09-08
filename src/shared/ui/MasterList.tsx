@@ -4,7 +4,7 @@ import { cn } from "@/shared/lib/cn";
 import type { IconName } from "./icon-names";
 
 /**
- * List maître d'un écran maître-détail : en-tête compté, éléments, pied paginé.
+ * Liste maître d'un écran maître-détail : en-tête compté, éléments, pied paginé.
  *
  * Géométrie des maquettes Relations : colonne de 37 % de la largeur sur fond surface,
  * en-tête à filet de 13 px / 18 px portant le titre et le compte, éléments dans une

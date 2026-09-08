@@ -74,24 +74,22 @@ pub async fn ai_analyze_resume(
         .await
 }
 
+/// Ouvre le dialogue natif et retient le CV choisi ; seul son nom revient à l'écran.
 #[tauri::command(rename_all = "snake_case")]
-pub async fn ai_select_resume_file(app: AppHandle) -> AppResult<Option<SelectedResumeFile>> {
+pub async fn ai_select_resume_file(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> AppResult<Option<SelectedResumeFile>> {
     let Some(path) = select_source(&app, "Choisir un CV", "Document PDF", &["pdf"])? else {
         return Ok(None);
     };
     let name = path
         .file_name()
         .and_then(|value| value.to_str())
-        .ok_or_else(|| {
-            AppError::Validation("Le nom du fichier sélectionné est invalide.".into())
-        })?;
-    let path_text = path
-        .to_str()
-        .ok_or_else(|| AppError::Validation("Le chemin sélectionné est invalide.".into()))?;
-    Ok(Some(SelectedResumeFile {
-        path: path_text.to_owned(),
-        name: name.to_owned(),
-    }))
+        .ok_or_else(|| AppError::Validation("Le nom du fichier sélectionné est invalide.".into()))?
+        .to_owned();
+    state.ai.remember_selected_resume(path);
+    Ok(Some(SelectedResumeFile { name }))
 }
 
 #[tauri::command(rename_all = "snake_case")]

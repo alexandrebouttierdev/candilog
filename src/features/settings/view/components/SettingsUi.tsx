@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Icon } from "@/shared/ui";
 import type { IconName } from "@/shared/ui/icon-names";
 
-/** Content défilant des écrans Réglages : 22 px / 28 px, comme les maquettes. */
+/** Contenu défilant des écrans Réglages : 22 px / 28 px, comme les maquettes. */
 export function SettingsBody({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-0 flex-1 overflow-y-auto">

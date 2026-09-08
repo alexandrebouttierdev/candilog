@@ -27,10 +27,10 @@ import { AppError } from "@/shared/types/app-error";
 import { PAGE_SIZE } from "@/shared/types/page";
 import { FILTER_VIDE } from "../../model/schemas/application-filter.schema";
 
-/** Densités proposées par le pied de la vue List. */
+/** Densités proposées par le pied de la vue Liste. */
 const DENSITES = [PAGE_SIZE, 25, 50] as const;
 
-/** Écran Tracking → Applications : Kanban ou List, sur le même filtre. */
+/** Écran Suivi → Candidatures : Kanban ou Liste, sur le même filtre. */
 export function ApplicationsPage() {
   const vm = useApplicationsViewModel();
   const [searchParams, setSearchParams] = useSearchParams();

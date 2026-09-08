@@ -132,7 +132,13 @@ tokens_per_second: number | null, };
 
 export type ProfileImportRequest = { generation_id: string, };
 
-export type ResumeAnalysisRequest = { generation_id: string, job_offer: string, file_path: string, };
+/**
+ * Demande d'analyse d'un CV déjà choisi par `ai_select_resume_file`.
+ *
+ * Aucun chemin : le fichier analysé est celui que l'utilisateur a désigné dans le dialogue
+ * natif, retenu côté Rust. Le frontend ne peut donc pas faire lire un autre document.
+ */
+export type ResumeAnalysisRequest = { generation_id: string, job_offer: string, };
 
 export type ResumeGeneration = { resume: GeneratedResume, analysis: AtsAnalysis, job_offer: StructuredListing, profile_score: MatchScore, 
 /**
@@ -145,8 +151,12 @@ export type ResumeGenerationRequest = { generation_id: string, job_offer: string
 
 /**
  * PDF choisi par l'utilisateur avant le lancement explicite de son analyse.
+ *
+ * Seul le nom traverse l'IPC : il sert à confirmer le fichier à l'écran. Le chemin reste
+ * en Rust (`AiService::remember_selected_resume`), car un chemin qui fait l'aller-retour par
+ * le frontend redevient une entrée non fiable (`docs/CODE_RULES.md` §10).
  */
-export type SelectedResumeFile = { path: string, name: string, };
+export type SelectedResumeFile = { name: string, };
 
 export type StructuredListing = { title: string, skills: Array<string>, soft_skills: Array<string>, experience: string | null, keywords: Array<string>, };
 

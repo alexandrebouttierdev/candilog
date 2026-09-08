@@ -63,9 +63,6 @@ impl<C: ResumeRepository, L: CoverLetterRepository> DocumentsService<C, L> {
         })
     }
 
-    pub fn resume_list(&self) -> AppResult<Vec<ResumeSummary>> {
-        self.resume.list()
-    }
     pub fn resume_list_page(
         &self,
         page: u64,
@@ -121,9 +118,6 @@ impl<C: ResumeRepository, L: CoverLetterRepository> DocumentsService<C, L> {
         self.cover_letters.save(&nettoyee)
     }
 
-    pub fn cover_letters_list(&self) -> AppResult<Vec<CoverLetter>> {
-        self.cover_letters.list()
-    }
     pub fn cover_letters_list_page(
         &self,
         page: u64,
@@ -247,7 +241,7 @@ mod tests {
             })
             .unwrap_err();
         assert!(matches!(err, AppError::Validation(_)));
-        assert!(service.resume_list().unwrap().is_empty());
+        assert_eq!(service.resume_list_page(1, 8, "").unwrap().total, 0);
     }
 
     #[test]

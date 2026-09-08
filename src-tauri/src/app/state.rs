@@ -79,7 +79,7 @@ pub struct AppState {
     pub documents: Documents,
     /// Service des entretiens.
     pub interviews: Interviews,
-    /// Analysis et génération de documents.
+    /// Analyse et génération de documents.
     pub ai: Ai,
     /// Fournisseur embarqué Mistral Local.
     pub local_ai: LocalAi,

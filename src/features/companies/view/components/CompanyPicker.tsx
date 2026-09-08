@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { EntityPicker } from "@/shared/ui";
-import { companyService } from "../../services/companyService";
-import { useCompany, useCreateCompany } from "../../viewmodel/useCompany";
+import { useCompany, useCompanySearch, useCreateCompany } from "../../viewmodel/useCompany";
 import { COMPANIES_KEY } from "../../viewmodel/useCompaniesViewModel";
 import { CompanyFormModal } from "./CompanyFormModal";
 
@@ -32,6 +31,7 @@ export function CompanyPicker({
 }) {
   const [aCreer, setACreer] = useState<string | null>(null);
   const selected = useCompany(value).data ?? null;
+  const searchCompanies = useCompanySearch();
   const creation = useCreateCompany();
 
   return (
@@ -48,27 +48,7 @@ export function CompanyPicker({
         onChange={onChange}
         onCreate={setACreer}
         createLabel="Créer"
-        fetchPage={async ({ page, page_size, search }) => {
-          const resultat = await companyService.listPage({
-            page,
-            page_size,
-            filter: {
-              search,
-              sector_id: null,
-              company_type_id: null,
-              company_size: null,
-            },
-          });
-          return {
-            ...resultat,
-            items: resultat.items.map((company) => ({
-              id: company.id,
-              label: company.name,
-              meta:
-                [company.sector_name, company.city].filter(Boolean).join(" · ") || undefined,
-            })),
-          };
-        }}
+        fetchPage={searchCompanies}
       />
 
       <CompanyFormModal

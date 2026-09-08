@@ -6,7 +6,7 @@ use crate::features::contacts::domain::contact::{Contact, NewContact};
 
 /// Accès au réseau de contacts.
 pub trait ContactRepository: Send + Sync {
-    /// List tous les contacts, triés par nom puis prénom.
+    /// Liste tous les contacts, triés par nom puis prénom.
     ///
     /// # Errors
     /// Retourne `AppError::Database` si la requête échoue.

@@ -19,8 +19,12 @@ const LONGUEUR_MAX: usize = 2048;
 /// `http`/`https`, sans hôte, ou si le lanceur système refuse de démarrer.
 pub fn ouvrir_url(url: &str) -> AppResult<()> {
     let valide = valider(url)?;
-    tauri_plugin_opener::open_url(&valide, None::<&str>)
-        .map_err(|error| AppError::Validation(format!("Ouverture du lien impossible : {error}")))
+    tauri_plugin_opener::open_url(&valide, None::<&str>).map_err(|error| {
+        // Le détail système ne dit rien à l'utilisateur et nomme des composants internes :
+        // il reste au journal (`docs/CODE_RULES.md` §13).
+        tracing::error!(%error, "ouverture du lien refusée par le système");
+        AppError::Validation("Le système n'a pas pu ouvrir ce lien dans votre navigateur.".into())
+    })
 }
 
 /// Vérifie qu'une URL est ouvrable, et la renvoie normalisée.

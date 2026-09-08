@@ -32,6 +32,13 @@ pub struct AiService {
     pool: SqlitePool,
     local_ai: Arc<LocalAiService>,
     generations: Mutex<HashMap<String, Arc<CancellationToken>>>,
+    /// Dernier CV choisi dans le dialogue natif, jamais exposé à l'IPC.
+    ///
+    /// L'écran « Analyser » sépare le choix du fichier de son analyse : le chemin devait donc
+    /// survivre entre deux commandes. Le faire transiter par le frontend en aurait fait une
+    /// entrée non fiable, capable de désigner n'importe quel PDF du disque
+    /// (`docs/CODE_RULES.md` §10).
+    selected_resume: Mutex<Option<PathBuf>>,
 }
 
 impl AiService {
@@ -41,7 +48,33 @@ impl AiService {
             pool,
             local_ai,
             generations: Mutex::new(HashMap::new()),
+            selected_resume: Mutex::new(None),
         }
+    }
+
+    /// Retient le CV que l'utilisateur vient de désigner dans le dialogue natif.
+    pub fn remember_selected_resume(&self, path: PathBuf) {
+        *self
+            .selected_resume
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(path);
+    }
+
+    /// Chemin du CV à analyser.
+    ///
+    /// # Errors
+    /// Retourne `Validation` si aucun fichier n'a été choisi : l'analyse ne lit que ce que
+    /// l'utilisateur a explicitement sélectionné.
+    fn selected_resume_path(&self) -> AppResult<PathBuf> {
+        self.selected_resume
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clone()
+            .ok_or_else(|| {
+                AppError::Validation(
+                    "Choisissez le CV PDF à analyser avant de lancer l'analyse.".into(),
+                )
+            })
     }
 
     pub fn cancel(&self, id: &str) {
@@ -442,7 +475,7 @@ impl AiService {
             token: Arc::clone(&token),
         };
         progres(&notifier, &id, "Lecture locale du PDF", None, None);
-        let text = extract_pdf(PathBuf::from(&request.file_path)).await?;
+        let text = extract_pdf(self.selected_resume_path()?).await?;
         validate_source_text(&text, "Le CV")?;
         let provider = self.provider().await?;
         let mut tokens = Some(0_u32);
@@ -1216,11 +1249,7 @@ mod tests {
 
     #[test]
     fn l_ancien_garde_ne_retire_pas_le_token_d_une_generation_reutilisee() {
-        let pool = crate::core::database::open_pool(None).unwrap();
-        let directory = tempfile::tempdir().unwrap();
-        let local_ai =
-            Arc::new(LocalAiService::new(pool.clone(), directory.path().join("models")).unwrap());
-        let service = AiService::new(pool, local_ai);
+        let (service, _directory) = test_service();
         let id = "generation-reutilisee";
         let old_token = service.start(id);
         let old_guard = GenerationEnCours {
@@ -1234,6 +1263,38 @@ mod tests {
         service.cancel(id);
 
         assert!(new_token.is_cancelled());
+    }
+
+    fn test_service() -> (AiService, tempfile::TempDir) {
+        let pool = crate::core::database::open_pool(None).unwrap();
+        let directory = tempfile::tempdir().unwrap();
+        let local_ai =
+            Arc::new(LocalAiService::new(pool.clone(), directory.path().join("models")).unwrap());
+        (AiService::new(pool, local_ai), directory)
+    }
+
+    /// Le chemin analysé ne peut venir que du dialogue natif : sans sélection préalable,
+    /// l'analyse n'a aucun fichier à lire et doit le dire plutôt que d'en deviner un.
+    #[test]
+    fn l_analyse_refuse_de_lire_un_cv_qui_n_a_pas_ete_choisi() {
+        let (service, _directory) = test_service();
+
+        let error = service.selected_resume_path().unwrap_err();
+
+        assert!(matches!(error, AppError::Validation(_)), "{error:?}");
+    }
+
+    #[test]
+    fn le_cv_retenu_est_celui_du_dernier_choix_de_l_utilisateur() {
+        let (service, _directory) = test_service();
+
+        service.remember_selected_resume(PathBuf::from("/tmp/premier.pdf"));
+        service.remember_selected_resume(PathBuf::from("/tmp/second.pdf"));
+
+        assert_eq!(
+            service.selected_resume_path().unwrap(),
+            PathBuf::from("/tmp/second.pdf")
+        );
     }
 
     #[tokio::test]

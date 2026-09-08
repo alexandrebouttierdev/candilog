@@ -13,7 +13,7 @@ id: string,
  */
 company_id: string | null, 
 /**
- * Name de l'entreprise rattachée, aplati depuis la jointure pour l'affichage en liste.
+ * Nom de l'entreprise rattachée, aplati depuis la jointure pour l'affichage en liste.
  *
  * Sans lui, afficher « Nova Digital » sous chaque contact de la liste demanderait une
  * requête par ligne, ou de charger tout le répertoire des entreprises côté React.
@@ -24,7 +24,7 @@ company_name: string | null,
  */
 first_name: string, 
 /**
- * Name (requis).
+ * Nom (requis).
  */
 name: string, 
 /**
@@ -34,7 +34,7 @@ job_title: string | null,
 /**
  * Rôle du contact dans le suivi de candidature — recruteur, manager, référent.
  *
- * Text libre, introduit par la migration 009 pour le champ « Rôle dans le suivi » des
+ * Texte libre, introduit par la migration 009 pour le champ « Rôle dans le suivi » des
  * maquettes. Absent des contacts saisis avant cette migration.
  */
 tracking_role: string | null, 
@@ -76,7 +76,7 @@ company_id: string | null,
  */
 first_name: string, 
 /**
- * Name (requis).
+ * Nom (requis).
  */
 name: string, 
 /**

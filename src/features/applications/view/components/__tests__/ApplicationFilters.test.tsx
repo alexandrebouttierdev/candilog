@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { userWithoutDelay } from "@/shared/lib/test-user";
 import { ApplicationFilters } from "../ApplicationFilters";
 import { FILTER_VIDE } from "../../../model/schemas/application-filter.schema";
 import { referentialService } from "@/features/referentials/services/referentialService";
@@ -45,9 +46,10 @@ describe("filtres de période", () => {
     const onApply = vi.fn();
     renderFilters(onApply);
 
+    const user = userWithoutDelay();
     await openFilters();
-    await userEvent.type(screen.getByLabelText("Début de période"), "31-02-2026");
-    await userEvent.tab();
+    await user.type(screen.getByLabelText("Début de période"), "31-02-2026");
+    await user.tab();
 
     expect(screen.getByText(/Date invalide/)).toBeInTheDocument();
     expect(onApply).not.toHaveBeenCalled();
@@ -57,8 +59,9 @@ describe("filtres de période", () => {
     const onApply = vi.fn();
     renderFilters(onApply);
 
+    const user = userWithoutDelay();
     await openFilters();
-    await userEvent.type(screen.getByLabelText("Début de période"), "01-08-2026");
+    await user.type(screen.getByLabelText("Début de période"), "01-08-2026");
 
     expect(onApply).toHaveBeenCalledWith(
       expect.objectContaining({ start_date: "2026-08-01" }),

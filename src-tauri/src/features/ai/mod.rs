@@ -1,4 +1,4 @@
-//! Analysis et génération assistées par les fournisseurs LLM configurés localement.
+//! Analyse et génération assistées par les fournisseurs LLM configurés localement.
 
 pub mod application;
 pub mod domain;

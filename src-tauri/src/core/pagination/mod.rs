@@ -21,7 +21,7 @@ pub fn clamp_page_size(page_size: u64) -> u64 {
 pub struct Page<T: ts_rs::TS> {
     /// Éléments de la page courante.
     pub items: Vec<T>,
-    /// Count total d'éléments, toutes pages confondues.
+    /// Nombre total d'éléments, toutes pages confondues.
     ///
     /// Les quatre compteurs sont annoncés `number` et non `number | bigint` côté
     /// TypeScript, contrairement à ce que `ts-rs` déduit d'un `u64` : ils comptent des
@@ -34,10 +34,10 @@ pub struct Page<T: ts_rs::TS> {
     /// Numéro de page courant, à partir de 1.
     #[ts(type = "number")]
     pub page: u64,
-    /// Count maximal d'éléments par page.
+    /// Nombre maximal d'éléments par page.
     #[ts(type = "number")]
     pub page_size: u64,
-    /// Count total de pages, au moins 1 même sur une collection vide.
+    /// Nombre total de pages, au moins 1 même sur une collection vide.
     #[ts(type = "number")]
     pub total_pages: u64,
 }

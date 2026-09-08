@@ -1,4 +1,16 @@
 import "@testing-library/jest-dom/vitest";
+import { configure } from "@testing-library/dom";
+
+/**
+ * Délai d'attente des utilitaires asynchrones (`waitFor`, `findBy*`).
+ *
+ * Le défaut de Testing Library est d'une seconde, mesurée en temps réel : une machine
+ * chargée la dépasse sur un rendu qui, lui, est correct. Les échecs qui en résultaient
+ * décrivaient un élément « introuvable » alors qu'il apparaissait juste après. Cinq
+ * secondes restent très en deçà du plafond par test, donc une attente réellement bloquée
+ * échoue toujours.
+ */
+configure({ asyncUtilTimeout: 5_000 });
 
 /**
  * `ResizeObserver` de jsdom.

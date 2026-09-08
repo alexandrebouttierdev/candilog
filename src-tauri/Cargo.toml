@@ -79,6 +79,14 @@ sha2 = "0.10"
 jsonrepair-rs = "0.2.1"
 pdf-extract = "0.12.0"
 printpdf = { version = "0.12.5", default-features = false, features = ["png"] }
+# Compression des flux des PDF produits. `printpdf` 0.12 écrit polices et contenus sans
+# aucun filtre — un CV d'une page pesait 975 ko —, et son propre sous-ensemblage de polices
+# vit derrière la fonctionnalité `text_layout`, inutilisable : elle exige `azul-core 0.0.13`,
+# absent de crates.io. `lopdf` est déjà dans l'arbre (le vendor `pdf-extract` en dépend, et
+# les tests PDF l'utilisaient déjà), donc le déclarer ici ne tire aucune crate
+# supplémentaire. `default-features = false` : les fonctions de polices activées par défaut
+# tirent `ttf-parser`, non maintenu, sans servir ici.
+lopdf = { version = "0.44", default-features = false }
 # Décodage de la photo de profil. Déjà présent dans l'arbre de dépendances — `printpdf`
 # l'utilise —, le déclarer n'ajoute donc aucune crate. Les formats sont restreints à ceux
 # que Candilog accepte : rien ne justifie de lier les décodeurs TIFF, DDS ou HDR.
@@ -96,9 +104,6 @@ encoding_rs = "0.8.35"
 
 [dev-dependencies]
 tempfile = "3"
-# Les tests inspectent uniquement la structure PDF. Les fonctions de polices activées par
-# défaut tirent `ttf-parser`, désormais non maintenu, sans être utilisées ici.
-lopdf = { version = "0.44", default-features = false }
 
 [profile.release]
 lto = "thin"

@@ -37,7 +37,7 @@ fn entree(application_id: Uuid, date: &str) -> NewFollowUp {
     }
 }
 
-/// Status courant d'une candidature.
+/// Statut courant d'une candidature.
 fn status(repo: &SqliteFollowUpRepository, application_id: Uuid) -> String {
     connection(&repo.pool)
         .unwrap()

@@ -76,7 +76,7 @@ pub struct NewCoverLetter {
     pub content: String,
 }
 
-/// Content d'une lettre à exporter en PDF (enregistrée ou encore à l'écran).
+/// Contenu d'une lettre à exporter en PDF (enregistrée ou encore à l'écran).
 #[derive(Debug, Clone, Deserialize, TS)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "documents.ts")]

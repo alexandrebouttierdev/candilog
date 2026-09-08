@@ -17,7 +17,6 @@ export type * from "@/shared/types/generated/documents";
 export const documentsService = {
   /** Texte du presse-papiers : la webview ne sait pas le lire, le natif si. */
   readClipboard: () => ipc<string>("documents_read_clipboard"),
-  listResume: () => ipc<ResumeSummary[]>("documents_resume_list"),
   listResumePage: (params: { page: number; page_size: number; search: string }) =>
     ipc<Page<ResumeSummary>>("documents_resume_list_page", params),
   getResume: (id: string) => ipc<ResumeVersion>("documents_resume_get", { id }),
@@ -35,7 +34,6 @@ export const documentsService = {
     ipc<boolean>("documents_resume_export_pdf", { document }),
   exportCoverLetterPdf: (cover_letter: CoverLetterExport) =>
     ipc<boolean>("documents_cover_letter_export_pdf", { cover_letter }),
-  listCoverLetters: () => ipc<CoverLetter[]>("documents_cover_letters_list"),
   listCoverLettersPage: (params: { page: number; page_size: number; search: string }) =>
     ipc<Page<CoverLetter>>("documents_cover_letters_list_page", params),
   getCoverLetter: (id: string) => ipc<CoverLetter>("documents_cover_letter_get", { id }),

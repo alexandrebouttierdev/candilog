@@ -34,7 +34,7 @@ export function Pager({
   page: number;
   page_size: number;
   total: number;
-  /** Name de ce qui est compté, au pluriel : « candidatures », « entreprises ». */
+  /** Nom de ce qui est compté, au pluriel : « candidatures », « entreprises ». */
   label: string;
   /** Densités proposées ; le sélecteur est masqué si l'appelant n'en gère pas. */
   pageSizes?: readonly number[];

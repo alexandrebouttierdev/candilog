@@ -6,13 +6,13 @@ use uuid::Uuid;
 
 /// Accès aux entretiens.
 pub trait InterviewRepository: Send + Sync {
-    /// List tous les entretiens, par date croissante.
+    /// Liste tous les entretiens, par date croissante.
     ///
     /// # Errors
     /// Retourne `AppError::Database` si la requête échoue.
     fn list(&self) -> AppResult<Vec<Interview>>;
 
-    /// List les entretiens d'une plage de dates, bornes incluses.
+    /// Liste les entretiens d'une plage de dates, bornes incluses.
     ///
     /// # Errors
     /// Retourne `AppError::Database` si la requête échoue.

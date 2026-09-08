@@ -20,8 +20,12 @@ candilog.fr, projet Next.js autonome.
 - Calendrier des entretiens et des relances.
 - Profil professionnel, génération de CV et de lettres de motivation en PDF A4 une page,
   analyse ATS déterministe.
-- Fournisseurs IA au choix : Ollama (local), Claude, OpenAI, Gemini, Mistral, DeepSeek ou
-  point de terminaison personnalisé. La clé API vit dans le coffre du système.
+- **IA locale embarquée** : un moteur d'inférence (llama.cpp) est intégré à l'application.
+  Vous installez depuis les réglages le modèle adapté à votre machine — Candilog le
+  télécharge une fois depuis Hugging Face, vérifie son empreinte, et tout se passe ensuite
+  hors ligne. Aucun serveur ni outil à installer vous-même.
+- Autres fournisseurs IA au choix : Ollama (local), Claude, OpenAI, Gemini, Mistral,
+  DeepSeek ou point de terminaison personnalisé. La clé API vit dans le coffre du système.
 - Sauvegarde et restauration de la base, mise à jour assistée depuis les GitHub Releases.
 
 ## Installer
@@ -93,21 +97,25 @@ L'installation reste votre geste : aucune mise à jour silencieuse.
 
 ## Vos données
 
-Tout vit sur votre machine. Rien n'est envoyé nulle part, sauf deux cas que vous déclenchez
-vous-même : la recherche de mise à jour ci-dessus, et les appels au fournisseur IA que vous
-avez configuré. Il n'y a ni télémétrie, ni statistiques d'usage, ni rapport d'erreur
-automatique.
+Tout vit sur votre machine. Rien n'est envoyé nulle part, sauf trois cas que vous
+déclenchez vous-même : la recherche de mise à jour ci-dessus, les appels au fournisseur IA
+distant que vous avez configuré, et le téléchargement d'un modèle d'IA locale depuis
+Hugging Face. Ce dernier est une descente de fichier : Candilog demande un modèle, il
+n'envoie rien de vos données. Il n'y a ni télémétrie, ni statistiques d'usage, ni rapport
+d'erreur automatique.
 
 | Quoi | Où |
 | --- | --- |
 | Base, journaux, exports | Linux `~/.local/share/fr.candilog.desktop/` · Windows `%APPDATA%\fr.candilog.desktop\` · macOS `~/Library/Application Support/fr.candilog.desktop/` |
+| Modèles de l'IA locale | Sous-dossier `ai/models/` du dossier ci-dessus, de 0,5 à 8,2 Go selon le profil installé. Supprimables depuis *Réglages → IA* |
 | Clé API du fournisseur IA | Trousseau du système (`fr.candilog.desktop`), jamais dans la base ni dans les journaux |
 | CV, lettres, sauvegardes, CSV exportés | À l'emplacement que vous choisissez dans la fenêtre d'enregistrement |
 
 Ce qui part chez un fournisseur IA **distant** quand vous lancez une génération : le texte
 de l'offre, et les éléments de votre profil nécessaires à l'opération (identité,
-expériences, formations, compétences) ou le texte du CV que vous importez. Avec **Ollama**,
-le fournisseur par défaut, rien ne quitte la machine.
+expériences, formations, compétences) ou le texte du CV que vous importez. Avec l'**IA
+locale** embarquée comme avec **Ollama**, rien de tout cela ne quitte la machine : le modèle
+tourne sur votre machine, avec l'accélération disponible lorsqu'elle est prise en charge.
 
 *Réglages → Sauvegardes* exporte l'intégralité de la base en un fichier, et efface vos
 données à la demande. La désinstallation du paquet ne supprime ni le dossier de données ni

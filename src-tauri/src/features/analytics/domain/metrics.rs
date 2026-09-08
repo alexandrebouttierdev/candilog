@@ -10,7 +10,7 @@ use serde::Serialize;
 pub struct Step {
     /// Libellé de l'étape.
     pub label: String,
-    /// Count de candidatures ayant atteint l'étape.
+    /// Nombre de candidatures ayant atteint l'étape.
     #[ts(type = "number")]
     pub count: u64,
     /// Part du total, en pourcentage entier.
@@ -18,14 +18,14 @@ pub struct Step {
     pub percentage: u8,
 }
 
-/// Count de candidatures envoyées sur une semaine.
+/// Nombre de candidatures envoyées sur une semaine.
 #[derive(Debug, Clone, Serialize, ts_rs::TS)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "analytics.ts")]
 pub struct ActivityWeek {
     /// Début de la fenêtre glissante de sept jours (`AAAA-MM-JJ`).
     pub start: String,
-    /// Count de candidatures envoyées cette semaine-là.
+    /// Nombre de candidatures envoyées cette semaine-là.
     #[ts(type = "number")]
     pub count: u64,
 }
@@ -39,7 +39,7 @@ pub struct ToFollowUp {
     pub id: uuid::Uuid,
     /// Intitulé du poste.
     pub job_title: String,
-    /// Name de l'entreprise.
+    /// Nom de l'entreprise.
     pub company_name: Option<String>,
     /// Date d'envoi (`AAAA-MM-JJ`).
     pub sent_date: String,
@@ -110,7 +110,7 @@ pub struct UpcomingItem {
     pub date: String,
     /// Intitulé du poste concerné.
     pub job_title: Option<String>,
-    /// Name de l'entreprise concernée.
+    /// Nom de l'entreprise concernée.
     pub company_name: Option<String>,
     /// Format d'entretien ou canal de relance.
     pub detail: String,

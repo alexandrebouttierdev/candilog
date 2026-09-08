@@ -64,7 +64,7 @@ impl ProfileRepository for SqliteProfileRepository {
 #[serde(default)]
 struct StoredProfile {
     personal: StoredIdentity,
-    /// Name du fichier photo, ajouté par Candilog Desktop. Absent des bases héritées.
+    /// Nom du fichier photo, ajouté par Candilog Desktop. Absent des bases héritées.
     photo: Option<String>,
     experiences: Vec<ExperienceStored>,
     skills: Vec<SkillStored>,

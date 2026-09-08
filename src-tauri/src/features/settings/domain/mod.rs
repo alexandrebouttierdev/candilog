@@ -1,4 +1,4 @@
-//! Contracts des réglages persistés.
+//! Contrats des réglages persistés.
 
 mod repository;
 mod settings;

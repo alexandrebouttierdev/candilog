@@ -21,7 +21,7 @@ export interface RouteDef {
   readonly path: string;
   /** Libellé de l'onglet contextuel. */
   readonly label: string;
-  /** Name d'icône Material Symbols (cf. `docs/DESIGN.md` §6). */
+  /** Nom d'icône Material Symbols (cf. `docs/DESIGN.md` §6). */
   readonly icon: IconName;
 }
 

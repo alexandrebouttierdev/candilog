@@ -11,20 +11,20 @@ pub struct Contact {
     pub id: uuid::Uuid,
     /// Id de l'entreprise rattachée, s'il existe.
     pub company_id: Option<uuid::Uuid>,
-    /// Name de l'entreprise rattachée, aplati depuis la jointure pour l'affichage en liste.
+    /// Nom de l'entreprise rattachée, aplati depuis la jointure pour l'affichage en liste.
     ///
     /// Sans lui, afficher « Nova Digital » sous chaque contact de la liste demanderait une
     /// requête par ligne, ou de charger tout le répertoire des entreprises côté React.
     pub company_name: Option<String>,
     /// Prénom (requis).
     pub first_name: String,
-    /// Name (requis).
+    /// Nom (requis).
     pub name: String,
     /// JobTitle occupé, s'il est renseigné.
     pub job_title: Option<String>,
     /// Rôle du contact dans le suivi de candidature — recruteur, manager, référent.
     ///
-    /// Text libre, introduit par la migration 009 pour le champ « Rôle dans le suivi » des
+    /// Texte libre, introduit par la migration 009 pour le champ « Rôle dans le suivi » des
     /// maquettes. Absent des contacts saisis avant cette migration.
     pub tracking_role: Option<String>,
     /// Address e-mail, si renseignée.
@@ -50,7 +50,7 @@ pub struct NewContact {
     pub company_id: Option<uuid::Uuid>,
     /// Prénom (requis).
     pub first_name: String,
-    /// Name (requis).
+    /// Nom (requis).
     pub name: String,
     /// JobTitle occupé.
     pub job_title: Option<String>,

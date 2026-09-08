@@ -173,8 +173,10 @@ pub fn validate_profile_input(profile: &Profile) -> AppResult<()> {
 /// # Errors
 /// Retourne une erreur fournisseur si la sérialisation dépasse la limite.
 pub fn validate_structured_size(value: &impl Serialize) -> AppResult<()> {
-    let serialized = serde_json::to_string(value)
-        .map_err(|error| AppError::Provider(format!("Réponse IA illisible : {error}")))?;
+    let serialized = serde_json::to_string(value).map_err(|error| {
+        tracing::warn!(%error, "réponse IA illisible");
+        AppError::Provider("La réponse du modèle est illisible.".into())
+    })?;
     if serialized.chars().count() > MAX_STRUCTURED_CHARS {
         Err(output_error("la réponse structurée"))
     } else {
@@ -326,8 +328,10 @@ impl ValidateAiOutput for Profile {
                 return Err(output_error(label));
             }
         }
-        let serialized = serde_json::to_value(self)
-            .map_err(|error| AppError::Provider(format!("Réponse IA illisible : {error}")))?;
+        let serialized = serde_json::to_value(self).map_err(|error| {
+            tracing::warn!(%error, "réponse IA illisible");
+            AppError::Provider("La réponse du modèle est illisible.".into())
+        })?;
         validate_json_strings(&serialized)?;
         // Le format des dates n'est pas vérifié ici : un modèle local écrit « Oct. 2025 »
         // ou « aujourd'hui » aussi souvent que « 2025-10 », et refuser la réponse entière

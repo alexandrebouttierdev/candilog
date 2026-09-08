@@ -22,7 +22,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' asset: http://asset.localhost data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' ipc: http://ipc.localhost"
+      "csp": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' ipc: http://ipc.localhost"
     }
   },
   "bundle": {
@@ -50,7 +50,9 @@
       "../LICENSE": "LICENSE",
       "../NOTICE": "NOTICE",
       "../THIRD_PARTY_NOTICES.md": "THIRD_PARTY_NOTICES.md",
-      "assets/licenses/llama.cpp-LICENSE": "licenses/llama.cpp-LICENSE"
+      "assets/licenses/llama.cpp-LICENSE": "licenses/llama.cpp-LICENSE",
+      "assets/fonts/ibm-plex/LICENSE.txt": "licenses/ibm-plex-OFL-1.1.txt",
+      "assets/licenses/material-symbols-Apache-2.0.txt": "licenses/material-symbols-Apache-2.0.txt"
     },
     "licenseFile": "../LICENSE"
   }

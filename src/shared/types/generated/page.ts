@@ -9,7 +9,7 @@ export type Page<T> = {
  */
 items: Array<T>, 
 /**
- * Count total d'éléments, toutes pages confondues.
+ * Nombre total d'éléments, toutes pages confondues.
  *
  * Les quatre compteurs sont annoncés `number` et non `number | bigint` côté
  * TypeScript, contrairement à ce que `ts-rs` déduit d'un `u64` : ils comptent des
@@ -24,10 +24,10 @@ total: number,
  */
 page: number, 
 /**
- * Count maximal d'éléments par page.
+ * Nombre maximal d'éléments par page.
  */
 page_size: number, 
 /**
- * Count total de pages, au moins 1 même sur une collection vide.
+ * Nombre total de pages, au moins 1 même sur une collection vide.
  */
 total_pages: number, };

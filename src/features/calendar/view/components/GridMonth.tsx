@@ -5,7 +5,7 @@ import { Icon } from "@/shared/ui";
 import type { Tone } from "@/shared/ui";
 import { cn } from "@/shared/lib/cn";
 
-/** Count d'événements affichés par case avant le repli « +N ». */
+/** Nombre d'événements affichés par case avant le repli « +N ». */
 const MAX_PAR_CELL = 3;
 
 /**

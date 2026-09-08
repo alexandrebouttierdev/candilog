@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { userWithoutDelay } from "@/shared/lib/test-user";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { ApplicationFormModal } from "../ApplicationFormModal";
@@ -64,7 +65,7 @@ async function ouvrirCreationRapide(user: ReturnType<typeof userEvent.setup>) {
 
 describe("Nouvelle candidature — création rapide d'entreprise", () => {
   it("crée l'entreprise sans quitter le formulaire et la sélectionne", async () => {
-    const user = userEvent.setup();
+    const user = userWithoutDelay();
     const creer = vi.spyOn(companyService, "create").mockResolvedValue(entreprise("Nova Digital"));
     vi.spyOn(companyService, "get").mockResolvedValue(entreprise("Nova Digital"));
 
@@ -100,7 +101,7 @@ describe("Nouvelle candidature — création rapide d'entreprise", () => {
   });
 
   it("conserve les deux formulaires quand le backend refuse la création", async () => {
-    const user = userEvent.setup();
+    const user = userWithoutDelay();
     vi.spyOn(companyService, "create").mockRejectedValue(
       new AppError({ code: "VALIDATION_ERROR", message: "Cette entreprise existe déjà" }),
     );
@@ -132,7 +133,7 @@ describe("Nouvelle candidature — création rapide d'entreprise", () => {
   });
 
   it("abandonne proprement la création annulée", async () => {
-    const user = userEvent.setup();
+    const user = userWithoutDelay();
     const creer = vi.spyOn(companyService, "create");
 
     render(
@@ -159,7 +160,7 @@ describe("Nouvelle candidature — création rapide d'entreprise", () => {
 
 describe("Nouvelle candidature — garde-fous de la création rapide", () => {
   it("refuse une entreprise sans nom sans appeler le backend", async () => {
-    const user = userEvent.setup();
+    const user = userWithoutDelay();
     const creer = vi.spyOn(companyService, "create");
 
     render(
@@ -183,7 +184,7 @@ describe("Nouvelle candidature — garde-fous de la création rapide", () => {
   });
 
   it("ne crée pas deux fois l'entreprise sur un double clic", async () => {
-    const user = userEvent.setup();
+    const user = userWithoutDelay();
     let resoudre: ((company: Company) => void) | undefined;
     const creer = vi.spyOn(companyService, "create").mockReturnValue(
       new Promise<Company>((resolve) => {
@@ -215,7 +216,7 @@ describe("Nouvelle candidature — garde-fous de la création rapide", () => {
   });
 
   it("ne referme que la modale du dessus quand on appuie sur Échap", async () => {
-    const user = userEvent.setup();
+    const user = userWithoutDelay();
     const fermer = vi.fn();
 
     render(

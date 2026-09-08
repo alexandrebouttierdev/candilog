@@ -2,7 +2,7 @@
 import type { Application } from "./applications";
 
 /**
- * Count de candidatures envoyées sur une semaine.
+ * Nombre de candidatures envoyées sur une semaine.
  */
 export type ActivityWeek = { 
 /**
@@ -10,7 +10,7 @@ export type ActivityWeek = {
  */
 start: string, 
 /**
- * Count de candidatures envoyées cette semaine-là.
+ * Nombre de candidatures envoyées cette semaine-là.
  */
 count: number, };
 
@@ -144,7 +144,7 @@ export type Step = {
  */
 label: string, 
 /**
- * Count de candidatures ayant atteint l'étape.
+ * Nombre de candidatures ayant atteint l'étape.
  */
 count: number, 
 /**
@@ -165,7 +165,7 @@ id: string,
  */
 job_title: string, 
 /**
- * Name de l'entreprise.
+ * Nom de l'entreprise.
  */
 company_name: string | null, 
 /**
@@ -198,7 +198,7 @@ date: string,
  */
 job_title: string | null, 
 /**
- * Name de l'entreprise concernée.
+ * Nom de l'entreprise concernée.
  */
 company_name: string | null, 
 /**

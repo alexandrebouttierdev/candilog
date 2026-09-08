@@ -45,7 +45,7 @@ pub async fn settings_test_connection(
     state.settings.test_connection(llm, api_key).await
 }
 
-/// List les modèles du fournisseur décrit par le formulaire.
+/// Liste les modèles du fournisseur décrit par le formulaire.
 #[tauri::command(rename_all = "snake_case")]
 pub async fn settings_list_models(
     state: State<'_, AppState>,

@@ -120,7 +120,7 @@ const Pages: Record<string, React.ReactElement> = {
   "/settings/about": <AboutPage />,
 };
 
-/** Paths dont la page n'est plus un jalon. */
+/** Chemins dont la page n'est plus un jalon. */
 export const MIGRATED_PATHS = Object.keys(Pages);
 
 const screenRoutes: RouteObject[] = Sections.flatMap((section) =>

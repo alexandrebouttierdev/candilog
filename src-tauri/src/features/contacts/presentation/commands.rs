@@ -8,7 +8,7 @@ use crate::features::contacts::domain::{Contact, ContactUpdate, NewContact};
 use std::sync::Arc;
 use tauri::State;
 
-/// List tous les contacts.
+/// Liste tous les contacts.
 #[tauri::command(rename_all = "snake_case")]
 pub async fn contacts_list(state: State<'_, AppState>) -> AppResult<Vec<Contact>> {
     let service = Arc::clone(&state.contacts);

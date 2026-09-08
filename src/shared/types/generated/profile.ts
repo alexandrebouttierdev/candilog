@@ -76,7 +76,7 @@ export type Language = { name: string, level: string, };
  */
 export type Profile = { identity: Identity, 
 /**
- * Name du fichier de la photo dans le dossier de données, jamais un chemin absolu.
+ * Nom du fichier de la photo dans le dossier de données, jamais un chemin absolu.
  *
  * Hors du formulaire : `profile_save` ne peut pas y toucher, seules les commandes
  * dédiées la posent ou la retirent. Un écran qui n'affiche pas la photo ne risque donc

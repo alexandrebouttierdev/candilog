@@ -9,7 +9,10 @@ const MAX_PDF_BYTES: u64 = 10 * 1024 * 1024;
 pub async fn extract_pdf(path: PathBuf) -> AppResult<String> {
     tauri::async_runtime::spawn_blocking(move || extract(&path))
         .await
-        .map_err(|e| AppError::Validation(format!("Lecture du PDF interrompue : {e}")))?
+        .map_err(|error| {
+            tracing::error!(%error, "lecture du PDF interrompue");
+            AppError::Validation("La lecture du PDF a été interrompue.".into())
+        })?
 }
 
 fn extract(path: &Path) -> AppResult<String> {
@@ -28,8 +31,16 @@ fn extract(path: &Path) -> AppResult<String> {
             "Le fichier sélectionné n'est pas un PDF valide".into(),
         ));
     }
-    let text = pdf_extract::extract_text_from_mem(&bytes)
-        .map_err(|e| AppError::Validation(format!("PDF illisible : {e}")))?;
+    let text = pdf_extract::extract_text_from_mem(&bytes).map_err(|error| {
+        // Le détail vient de la bibliothèque d'extraction, en anglais : il sert au
+        // diagnostic, pas à l'utilisateur (`docs/CODE_RULES.md` §13).
+        tracing::warn!(%error, "extraction du texte du PDF impossible");
+        AppError::Validation(
+            "Ce PDF n'a pas pu être lu. Exportez-le à nouveau depuis votre traitement de \
+                 texte, ou choisissez un autre fichier."
+                .into(),
+        )
+    })?;
     if text.trim().is_empty() {
         return Err(AppError::Validation(
             "PDF sans texte exploitable — les documents scannés ne sont pas supportés".into(),

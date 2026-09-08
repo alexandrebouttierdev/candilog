@@ -54,7 +54,7 @@ describe("AiNavigationGuard", () => {
 
     act(() => { resolveStop?.(); });
     await waitFor(() => expect(router.state.location.pathname).toBe("/next"));
-    expect(screen.getByText("Écran suivant")).toBeInTheDocument();
+    expect(await screen.findByText("Écran suivant")).toBeInTheDocument();
   });
 
   it("interdit Annuler et Échap pendant l'arrêt", async () => {

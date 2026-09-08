@@ -17,7 +17,7 @@ application_id: string,
  */
 application_job_title: string | null, 
 /**
- * Name de l'entreprise, aplati depuis la jointure.
+ * Nom de l'entreprise, aplati depuis la jointure.
  */
 company_name: string | null, 
 /**
@@ -25,7 +25,7 @@ company_name: string | null,
  */
 contact_id: string | null, 
 /**
- * Name complet de l'interlocuteur, aplati depuis la jointure.
+ * Nom complet de l'interlocuteur, aplati depuis la jointure.
  */
 contact_name: string | null, 
 /**
@@ -49,7 +49,7 @@ notes: string | null,
  */
 minutes: string | null, 
 /**
- * Analysis `IA` du compte rendu, si elle a été produite.
+ * Analyse `IA` du compte rendu, si elle a été produite.
  */
 analysis_ai: InterviewAnalysis | null, 
 /**
@@ -62,7 +62,7 @@ created_at: string,
 updated_at: string, };
 
 /**
- * Analysis `IA` du compte rendu d'un entretien.
+ * Analyse `IA` du compte rendu d'un entretien.
  *
  * Persistée en `TEXT` `JSON` sur l'entretien. Définie ici plutôt que dans la feature `ia` :
  * c'est un champ de l'entretien, et la faire vivre ailleurs obligerait `entretiens` à

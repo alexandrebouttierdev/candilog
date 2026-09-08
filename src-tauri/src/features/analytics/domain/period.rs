@@ -41,7 +41,7 @@ impl Period {
         )
     }
 
-    /// Count de semaines représentées par le graphique d'activité.
+    /// Nombre de semaines représentées par le graphique d'activité.
     ///
     /// La vue « Tout » reste bornée à un an : au-delà, des barres hebdomadaires de quelques
     /// pixels ne seraient plus lisibles. Les indicateurs, eux, portent bien sur tout

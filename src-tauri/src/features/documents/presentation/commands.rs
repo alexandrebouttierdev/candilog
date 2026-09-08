@@ -25,11 +25,6 @@ pub async fn documents_read_clipboard(app: AppHandle) -> AppResult<String> {
 }
 
 #[tauri::command(rename_all = "snake_case")]
-pub async fn documents_resume_list(state: State<'_, AppState>) -> AppResult<Vec<ResumeSummary>> {
-    let service = state.documents.clone();
-    blocking::execute(move || service.resume_list()).await
-}
-#[tauri::command(rename_all = "snake_case")]
 pub async fn documents_resume_list_page(
     state: State<'_, AppState>,
     page: u64,
@@ -192,13 +187,6 @@ pub async fn documents_cover_letter_export_pdf(
         Ok(true)
     })
     .await
-}
-#[tauri::command(rename_all = "snake_case")]
-pub async fn documents_cover_letters_list(
-    state: State<'_, AppState>,
-) -> AppResult<Vec<CoverLetter>> {
-    let service = state.documents.clone();
-    blocking::execute(move || service.cover_letters_list()).await
 }
 #[tauri::command(rename_all = "snake_case")]
 pub async fn documents_cover_letters_list_page(

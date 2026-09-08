@@ -31,6 +31,12 @@ fn percentage(part: u64, total: u64) -> u8 {
     ((part.min(total) as f64 / total as f64) * 100.0).round() as u8
 }
 
+// `substr(<colonne>, 1, 10)` encadre chaque date comparée : les bases héritées de
+// l'application Iced stockent parfois une date d'envoi horodatée, et une comparaison brute
+// y rangerait « 2026-08-01T09:00Z » après « 2026-08-01 ». Le prix est un balayage de table
+// au lieu de `idx_applications_date` ; le contrôle de volume
+// (`core::database::tests::connection::test_controle_de_volume`) le mesure à 10 000
+// candidatures et vérifie qu'il reste sous la seconde.
 impl AnalyticsRepository for SqliteAnalyticsRepository {
     fn metrics(&self, from: Option<&str>) -> AppResult<Metrics> {
         let conn = connection(&self.pool)?;

@@ -35,7 +35,8 @@ GitHub Release **publique** lorsque le tag `v<version>` n'existe pas encore. Un
 `workflow_dispatch` permet aussi un lancement manuel.
 
 Le job `quality` exécute d'abord lint, tests et build frontend, puis formatage, Clippy,
-tests Rust et `cargo-deny`. Les jobs de build dépendent explicitement de ce contrôle et ne
+tests Rust, `cargo-deny` et le scénario de bout en bout des documents en mode rejeu
+(`CANDILOG_E2E=1`, sans appel au fournisseur IA). Les jobs de build dépendent explicitement de ce contrôle et ne
 peuvent donc produire aucun paquet s'il échoue. Toutes les actions tierces sont référencées
 par leur SHA complet ; les droits d'écriture sur le dépôt et l'OIDC sont réservés au seul
 job `publish`.
@@ -55,9 +56,13 @@ publie pas, et `tauri build` sortait en erreur si `linuxdeploy` échouait, ce qu
 échouer le job `build` et sauter la publication entière. Une cible non publiée n'a pas à
 pouvoir annuler une release.
 
-Chaque paquet embarque `LICENSE`, `NOTICE` et `THIRD_PARTY_NOTICES.md`
-(`bundle.resources`) : la PolyForm impose de transmettre ses termes et sa mention à qui
-reçoit une copie du logiciel, et les polices redistribuées ont la même exigence.
+Chaque paquet embarque `LICENSE`, `NOTICE`, `THIRD_PARTY_NOTICES.md` et, sous
+`licenses/`, le texte intégral des licences des composants redistribués : OFL 1.1 des
+polices IBM Plex, Apache-2.0 de Material Symbols, MIT de llama.cpp (`bundle.resources`).
+La PolyForm impose de transmettre ses termes et sa mention à qui reçoit une copie du
+logiciel ; l'OFL et l'Apache-2.0 exigent en plus que **leur** texte accompagne l'œuvre
+redistribuée. Un renvoi vers un chemin du dépôt ne suffit pas : la personne qui installe un
+paquet n'a pas le dépôt. La vérification est à l'étape 4 de la procédure de release.
 
 Chaque asset est publié sous deux noms :
 
@@ -156,4 +161,6 @@ dernière version publiée.
    plateforme, et présence de `SHA256SUMS` — sans lui, la mise à jour in-app refusera
    d'ouvrir l'installateur.
 4. Installer au moins un paquet sur une machine propre et vérifier que
-   `/usr/lib/Candilog/LICENSE`, `NOTICE` et `THIRD_PARTY_NOTICES.md` y figurent.
+   `/usr/lib/Candilog/LICENSE`, `NOTICE`, `THIRD_PARTY_NOTICES.md` et les trois fichiers de
+   `/usr/lib/Candilog/licenses/` (`ibm-plex-OFL-1.1.txt`, `material-symbols-Apache-2.0.txt`,
+   `llama.cpp-LICENSE`) y figurent.

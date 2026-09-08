@@ -174,7 +174,9 @@ le formatage Rust, `npm run build` couvre le typage TypeScript.
 `prepare_workspace`, `ResumePdf`, `CoverLetterPdf` — pour les profils fictifs de
 `src-tauri/tests/fixtures/profiles/`, et dépose ses artefacts dans `test-output/`
 (profil source, génération, poste de travail, PDF). Il est **ignoré** tant que
-`CANDILOG_E2E` est absent : aucune suite standard ne déclenche d'appel payant.
+`CANDILOG_E2E` est absent : aucune suite standard ne déclenche d'appel payant. Le mode
+rejeu, lui, ne demande ni réseau ni fournisseur : le job `quality` du workflow de release
+le rejoue à chaque publication (`CANDILOG_E2E=1`, sans `CANDILOG_E2E_LIVE`).
 
 ```bash
 # Rejeu : la génération enregistrée est relue, seuls la composition et l'export sont rejoués.

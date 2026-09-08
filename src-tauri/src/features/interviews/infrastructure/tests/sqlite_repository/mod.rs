@@ -41,7 +41,7 @@ fn entree(application_id: Uuid, date: &str) -> NewInterview {
     }
 }
 
-/// Status courant d'une candidature.
+/// Statut courant d'une candidature.
 fn status(repo: &SqliteInterviewRepository, application_id: Uuid) -> String {
     connection(&repo.pool)
         .unwrap()
@@ -53,7 +53,7 @@ fn status(repo: &SqliteInterviewRepository, application_id: Uuid) -> String {
         .unwrap()
 }
 
-/// Count d'étapes enregistrées dans l'historique de statut.
+/// Nombre d'étapes enregistrées dans l'historique de statut.
 fn steps(repo: &SqliteInterviewRepository, application_id: Uuid) -> i64 {
     connection(&repo.pool)
         .unwrap()

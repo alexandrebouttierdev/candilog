@@ -353,7 +353,7 @@ export function useApplicationsViewModel() {
     setKanbanPage: useCallback((status: ApplicationStatus, nextPage: number) => {
       setKanbanPages((current) => ({ ...current, [status]: nextPage }));
     }, []),
-    /** Change la densité de la vue List et revient à la première page. */
+    /** Change la densité de la vue Liste et revient à la première page. */
     setPageSize: useCallback((size: number) => {
       setSizePage(size);
       setPage(1);

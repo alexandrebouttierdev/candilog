@@ -18,7 +18,7 @@ impl<R: InterviewRepository> InterviewService<R> {
         Self { repo }
     }
 
-    /// List tous les entretiens.
+    /// Liste tous les entretiens.
     ///
     /// # Errors
     /// Propage l'erreur du dépôt.
@@ -26,7 +26,7 @@ impl<R: InterviewRepository> InterviewService<R> {
         self.repo.list()
     }
 
-    /// List les entretiens d'une plage de dates, bornes incluses.
+    /// Liste les entretiens d'une plage de dates, bornes incluses.
     ///
     /// # Errors
     /// Propage l'erreur du dépôt.

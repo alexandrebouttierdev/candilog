@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { companyService } from "../services/companyService";
 import type { Company, NewCompany } from "../services/companyService";
@@ -19,6 +20,47 @@ export function useCompany(id: string | null) {
     queryFn: () => companyService.get(id as string),
     enabled: id !== null,
   });
+}
+
+/**
+ * Page du répertoire pour un sélecteur d'entreprise.
+ *
+ * La recherche, le tri et la pagination restent en base : le sélecteur ne reçoit qu'une
+ * page, déjà réduite au terme saisi. La vue n'appelle donc pas le service elle-même
+ * (`docs/CODE_RULES.md` §4) et n'a pas à connaître la forme du filtre côté Rust.
+ */
+export function useCompanySearch() {
+  return useCallback(
+    async ({
+      page,
+      page_size,
+      search,
+    }: {
+      page: number;
+      page_size: number;
+      search: string;
+    }) => {
+      const result = await companyService.listPage({
+        page,
+        page_size,
+        filter: {
+          search,
+          sector_id: null,
+          company_type_id: null,
+          company_size: null,
+        },
+      });
+      return {
+        ...result,
+        items: result.items.map((company) => ({
+          id: company.id,
+          label: company.name,
+          meta: [company.sector_name, company.city].filter(Boolean).join(" · ") || undefined,
+        })),
+      };
+    },
+    [],
+  );
 }
 
 /**

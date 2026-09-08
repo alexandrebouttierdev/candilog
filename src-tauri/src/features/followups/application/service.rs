@@ -16,7 +16,7 @@ impl<R: FollowUpRepository> FollowUpService<R> {
         Self { repo }
     }
 
-    /// List toutes les relances.
+    /// Liste toutes les relances.
     ///
     /// # Errors
     /// Propage l'erreur du dépôt.
@@ -24,7 +24,7 @@ impl<R: FollowUpRepository> FollowUpService<R> {
         self.repo.list()
     }
 
-    /// List les relances d'une plage de dates, bornes incluses.
+    /// Liste les relances d'une plage de dates, bornes incluses.
     ///
     /// # Errors
     /// Propage l'erreur du dépôt.

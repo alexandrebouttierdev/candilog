@@ -67,7 +67,6 @@ export function ResumeAnalysisPage() {
       const execution = await aiService.analyzeResume({
         generation_id: id,
         job_offer,
-        file_path: selectedFile.path,
       });
       if (!isCurrent(id)) return;
       timer.stop();

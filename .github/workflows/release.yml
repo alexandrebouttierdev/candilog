@@ -113,6 +113,16 @@ jobs:
           cargo test --manifest-path src-tauri/Cargo.toml --locked --all-targets
           cargo deny --manifest-path src-tauri/Cargo.toml check
 
+      # Le scénario de bout en bout des documents est derrière une variable d'environnement
+      # parce qu'il écrit des artefacts ; il ne demande ni modèle, ni réseau, ni affichage,
+      # et couvre la seule chaîne que les tests unitaires ne parcourent pas d'un bout à
+      # l'autre : profil → génération → composition → PDF. Le laisser hors CI revenait à ne
+      # jamais l'exécuter (`docs/DEVELOPMENT.md`).
+      - name: Vérifier la chaîne complète des documents
+        env:
+          CANDILOG_E2E: "1"
+        run: cargo test --manifest-path src-tauri/Cargo.toml --locked --test e2e_documents
+
   build:
     needs: [prepare, quality]
     if: needs.prepare.outputs.should_release == 'true'

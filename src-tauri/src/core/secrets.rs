@@ -19,10 +19,31 @@ const LEGACY_SERVICE: &str = "com.alexandrebouttier.candilog";
 #[derive(Debug, Clone, Default)]
 pub struct SecretStore;
 
+/// Message unique pour un trousseau système hors d'atteinte.
+fn unavailable_store() -> AppError {
+    AppError::Provider(
+        "Le trousseau du système est indisponible : Candilog ne peut pas y lire ni y écrire \
+         la clé du fournisseur IA."
+            .into(),
+    )
+}
+
+/// Message unique pour une lecture refusée par le trousseau.
+fn read_error(error: &keyring::Error) -> AppError {
+    tracing::error!(%error, "lecture du coffre de secrets impossible");
+    AppError::Provider(
+        "La clé du fournisseur IA n'a pas pu être lue dans le trousseau du système.".into(),
+    )
+}
+
 impl SecretStore {
     fn entry_for(service: &str) -> AppResult<keyring::Entry> {
-        keyring::Entry::new(service, KEY_NAME)
-            .map_err(|e| AppError::Provider(format!("Coffre de secrets indisponible : {e}")))
+        keyring::Entry::new(service, KEY_NAME).map_err(|error| {
+            // L'erreur du trousseau est en anglais et nomme le service système : elle part
+            // au journal, jamais à l'écran (`docs/CODE_RULES.md` §1, §13).
+            tracing::error!(%error, "coffre de secrets indisponible");
+            unavailable_store()
+        })
     }
 
     fn entry() -> AppResult<keyring::Entry> {
@@ -66,14 +87,10 @@ impl SecretStore {
                 match Self::entry()?.get_password() {
                     Ok(secret) => Ok(Some(secret)),
                     Err(keyring::Error::NoEntry) => Ok(None),
-                    Err(e) => Err(AppError::Provider(format!(
-                        "Lecture du coffre de secrets impossible : {e}"
-                    ))),
+                    Err(error) => Err(read_error(&error)),
                 }
             }
-            Err(e) => Err(AppError::Provider(format!(
-                "Lecture du coffre de secrets impossible : {e}"
-            ))),
+            Err(error) => Err(read_error(&error)),
         }
     }
 
@@ -84,16 +101,20 @@ impl SecretStore {
     pub fn store_api_key(&self, secret: Option<&str>) -> AppResult<()> {
         let entry = Self::entry()?;
         match secret.filter(|value| !value.trim().is_empty()) {
-            Some(secret) => entry.set_password(secret).map_err(|e| {
-                AppError::Provider(format!(
-                    "Écriture dans le coffre de secrets impossible : {e}"
-                ))
+            Some(secret) => entry.set_password(secret).map_err(|error| {
+                tracing::error!(%error, "écriture dans le coffre de secrets impossible");
+                AppError::Provider(
+                    "La clé n'a pas pu être enregistrée dans le trousseau du système.".into(),
+                )
             }),
             None => match entry.delete_credential() {
                 Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
-                Err(e) => Err(AppError::Provider(format!(
-                    "Suppression du secret impossible : {e}"
-                ))),
+                Err(error) => {
+                    tracing::error!(%error, "suppression du secret impossible");
+                    Err(AppError::Provider(
+                        "La clé n'a pas pu être retirée du trousseau du système.".into(),
+                    ))
+                }
             },
         }
     }

@@ -17,7 +17,7 @@ impl<R: ContactRepository> ContactService<R> {
         Self { repo }
     }
 
-    /// List tous les contacts.
+    /// Liste tous les contacts.
     ///
     /// # Errors
     /// Propage l'erreur du dépôt.

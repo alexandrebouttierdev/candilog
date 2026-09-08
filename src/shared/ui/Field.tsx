@@ -35,7 +35,7 @@ export function TextArea({
 }
 
 /**
- * List déroulante.
+ * Liste déroulante.
  *
  * Le chevron natif est remplacé par l'icône `expand_more` des maquettes : celui de la
  * plateforme varie d'un système à l'autre et casse l'alignement de la barre de filtres.

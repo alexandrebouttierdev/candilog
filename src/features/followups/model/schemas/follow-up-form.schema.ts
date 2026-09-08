@@ -22,8 +22,8 @@ export const followUpFormSchema = z.object({
   notes: textFacultatif,
 });
 
-/** Values validées, telles qu'envoyées au backend. */
+/** Valeurs validées, telles qu'envoyées au backend. */
 export type FollowUpFormValues = z.output<typeof followUpFormSchema>;
 
-/** Values saisies, avant transformation — ce que manipule React Hook Form. */
+/** Valeurs saisies, avant transformation — ce que manipule React Hook Form. */
 export type FollowUpFormInput = z.input<typeof followUpFormSchema>;

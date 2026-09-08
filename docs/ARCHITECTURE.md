@@ -91,11 +91,13 @@ couche `presentation` de la feature concernée :
 | `local-ai://download-error` | `features/ai` — erreur typée et message français |
 
 L'écran « Analyser » sépare strictement le choix du PDF du traitement :
-`ai_select_resume_file` ouvre le dialogue natif et retourne le nom et le chemin validé,
-puis seule l'action explicite « Analyser le CV » appelle `ai_analyze_resume`. Le chemin est
-revalidé en Rust avant lecture. L'import du profil conserve un sélecteur intégré à sa
-commande ; son premier événement n'est émis qu'une fois le fichier choisi afin de ne jamais
-annoncer une analyse qui n'a pas commencé.
+`ai_select_resume_file` ouvre le dialogue natif, **retient le chemin validé dans
+`AiService`** et ne retourne que le nom du fichier ; seule l'action explicite « Analyser le
+CV » appelle ensuite `ai_analyze_resume`, qui relit ce chemin côté Rust. Aucun chemin ne
+traverse l'IPC dans l'autre sens : un chemin renvoyé par le frontend redeviendrait une
+entrée non fiable, capable de désigner n'importe quel PDF du disque. L'import du profil
+conserve un sélecteur intégré à sa commande ; son premier événement n'est émis qu'une fois
+le fichier choisi afin de ne jamais annoncer une analyse qui n'a pas commencé.
 
 Le cycle de vie des traitements IA est coordonné dans `features/ai/viewmodel`. La coque
 `AppShell` porte l'unique garde React Router : analyse de CV, génération de CV, lettre et

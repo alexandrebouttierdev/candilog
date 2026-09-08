@@ -1,25 +1,12 @@
-import { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { settingsService } from "@/features/settings/services/settingsService";
-import { SETTINGS_KEY } from "@/features/settings/viewmodel/useSettingsViewModel";
-import { useAiRequiredStore } from "../../viewmodel/ai-required-store";
+import { useAiConfigSync } from "../../viewmodel/useAiConfigSync";
 
 /**
- * Maintient le garde-fou IA aligné sur les réglages chargés.
+ * Monte la synchronisation du garde-fou IA, une fois, dans la coque.
  *
- * Monté une fois dans la coque : toute mutation des réglages invalide `SETTINGS_KEY` et
- * rafraîchit automatiquement l'état synchrone lu par `useAiOperation`.
+ * Composant sans rendu : il n'existe que pour rattacher `useAiConfigSync` au cycle de vie
+ * de l'application.
  */
 export function AiConfigBridge() {
-  const setLlm = useAiRequiredStore((state) => state.setLlm);
-  const query = useQuery({
-    queryKey: SETTINGS_KEY,
-    queryFn: settingsService.load,
-  });
-
-  useEffect(() => {
-    setLlm(query.data?.llm ?? null);
-  }, [query.data?.llm, setLlm]);
-
+  useAiConfigSync();
   return null;
 }

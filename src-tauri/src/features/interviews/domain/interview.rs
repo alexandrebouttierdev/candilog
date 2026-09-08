@@ -43,7 +43,7 @@ impl std::fmt::Display for InterviewType {
     }
 }
 
-/// Analysis `IA` du compte rendu d'un entretien.
+/// Analyse `IA` du compte rendu d'un entretien.
 ///
 /// Persistée en `TEXT` `JSON` sur l'entretien. Définie ici plutôt que dans la feature `ia` :
 /// c'est un champ de l'entretien, et la faire vivre ailleurs obligerait `entretiens` à
@@ -73,11 +73,11 @@ pub struct Interview {
     pub application_id: uuid::Uuid,
     /// Intitulé du poste, aplati depuis la jointure — ce que le calendrier affiche.
     pub application_job_title: Option<String>,
-    /// Name de l'entreprise, aplati depuis la jointure.
+    /// Nom de l'entreprise, aplati depuis la jointure.
     pub company_name: Option<String>,
     /// Id du contact lié, s'il existe.
     pub contact_id: Option<uuid::Uuid>,
-    /// Name complet de l'interlocuteur, aplati depuis la jointure.
+    /// Nom complet de l'interlocuteur, aplati depuis la jointure.
     pub contact_name: Option<String>,
     /// Date et heure de l'entretien (ISO 8601).
     pub interview_date: String,
@@ -91,7 +91,7 @@ pub struct Interview {
     pub notes: Option<String>,
     /// Report rendu rédigé après l'entretien.
     pub minutes: Option<String>,
-    /// Analysis `IA` du compte rendu, si elle a été produite.
+    /// Analyse `IA` du compte rendu, si elle a été produite.
     #[serde(default)]
     pub analysis_ai: Option<InterviewAnalysis>,
     /// Date de création (ISO 8601).
