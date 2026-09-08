@@ -31,7 +31,8 @@ le futur qui porte la boucle, attente comprise.
 
 Elle ne remplace pas la reprise de `generate_json`, qui vise un tout autre défaut : une
 réponse HTTP valide dont le corps n'est pas le JSON attendu. Les deux se cumulent —
-transport d'abord, forme de la réponse ensuite.
+transport d'abord, forme de la réponse ensuite. L'import de profil en ajoute une troisième,
+qui porte sur le contenu et non sur la forme (voir « Sorties du modèle »).
 
 ## Mistral Local
 
@@ -185,6 +186,18 @@ Lors d'un import de profil, les dates recopiées librement par les petits modèl
 Une date avec une année est ramenée à `AAAA-MM` ou `AAAA`, une fin « en cours » marque le
 poste comme actuel et un fragment inexploitable est vidé. Une variation de format ne fait
 donc plus perdre toute une analyse de CV ; les autres bornes de sortie restent inchangées.
+
+Le gabarit envoyé au modèle **décrit** chaque valeur attendue (« prénom du candidat ») au
+lieu de la laisser vide. Un gabarit rempli de `""` était recopié tel quel par les petits
+modèles : `llama3.2:1b` renvoyait le squelette intact et l'import échouait faute de données.
+Les libellés comptent plusieurs mots exprès — recopiés faute d'information, ils ne figurent
+dans aucun CV et le recadrage les écarte.
+
+Une extraction qui ne rapporte ni identité, ni expérience, ni compétence relance **un**
+second appel, en disant au modèle ce qui manquait à sa réponse. Ce défaut-là échappe à la
+reprise de `generate_json` : le gabarit recopié et `{}` sont du JSON valide. Si le second
+essai ne donne rien non plus, l'erreur désigne le modèle et invite à en choisir un plus
+grand, au lieu de laisser croire que le CV est en cause.
 
 Le profil extrait est ensuite recadré sur le CV par `ground_imported_profile` : tout texte
 qui n'apparaît pas dans le passage réellement soumis au modèle est effacé, et les entrées
