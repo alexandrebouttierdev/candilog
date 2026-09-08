@@ -186,6 +186,14 @@ Une date avec une année est ramenée à `AAAA-MM` ou `AAAA`, une fin « en cour
 poste comme actuel et un fragment inexploitable est vidé. Une variation de format ne fait
 donc plus perdre toute une analyse de CV ; les autres bornes de sortie restent inchangées.
 
+Le profil extrait est ensuite recadré sur le CV par `ground_imported_profile` : tout texte
+qui n'apparaît pas dans le passage réellement soumis au modèle est effacé, et les entrées
+ainsi vidées de leur libellé sont retirées. Les dates, déjà reformatées, en sont exclues.
+Le rapprochement passe par `search_key` et exige des frontières alphanumériques : un modèle
+de 350 M renvoyait sinon des fragments de domaine (`.com`, `.fr`, `.org`), des morceaux de
+mots (`.franc`) et jusqu'à une certification absente du document, que le seul rejet des
+valeurs vides laissait arriver dans l'écran de revue.
+
 Une offre d'emploi ou un PDF importé est de la **donnée**, jamais des instructions : les
 contenus non fiables sont encadrés par `bloc_donnees`, dont la balise porte un identifiant
 tiré au sort à chaque appel et dont la balise fermante est neutralisée dans le contenu — un

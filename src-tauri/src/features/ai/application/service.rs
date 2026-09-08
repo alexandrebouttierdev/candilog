@@ -629,6 +629,9 @@ impl AiService {
             }
         };
         normalize_profile_dates(&mut profile);
+        // Recadré sur le texte réellement soumis au modèle, et non sur le CV entier : ce
+        // qu'il n'a pas reçu, il n'a pas pu le recopier.
+        ground_imported_profile(&analysis_text, &mut profile);
         nettoyer_profile(&mut profile);
         if profile.identity.first_name.trim().is_empty()
             && profile.identity.name.trim().is_empty()
@@ -1205,6 +1208,60 @@ mod tests {
         fn validate_ai_output(&self) -> AppResult<()> {
             Ok(())
         }
+    }
+
+    /// Réponse réellement renvoyée par `maternion/lfm2.5:350m` sur le CV analysé, et texte
+    /// du CV tel que le lecteur PDF le restitue. L'écran de revue affichait ces fragments.
+    #[test]
+    fn l_import_ecarte_les_fragments_inventes_par_un_petit_modele_local() {
+        const CV: &str = "Alexandre Bouttier\n\n\
+Technicien Supérieur Systèmes et Réseaux (TSSR) · Recherche contrat de professionnalisation\n\n\
+Admis en formation TSSR à l'ENI de Chartres-de-Bretagne\n\n\
+alexandrebouttier@gmail.com Saint-Jacques-de-la-Lande (35)\n\n\
+linkedin.com/in/alexandrebouttier ↗ alexandrebouttier.fr ↗\n\n\
+Projet professionnel · Technicien Supérieur Systèmes et Réseaux : admis en formation TSSR\n\
+à l'ENI ; autoformation et mise en pratique sur un serveur VPS\n\n\
+Oct. 2025 – Sept. 2026\n\n\
+Supervision applicative (Sentry) Git / GitLab · CI/CD\n\n\
+Projet personnel · entretienmx.fr ↗· OVH · Ubuntu Server\n\n\
+Français · langue maternelle\n\n\
+Anglais · lecture courante de documentation technique\n";
+        const REPONSE: &str = r#"{"identite":{"prenom":"Alexandre","nom":"Bouttier",
+"email":"alexandrebouttier@gmail.com","telephone":null,"ville":"Chartres-de-Bretagne",
+"titre":"Technicien Supérieur Systèmes et Réseaux",
+"resume":"Recherche contrat de professionnalisation",
+"linkedin":"linkedin.com/in/alexandrebouttier","github":null,"siteWeb":null},
+"experiences":[{"intitule":"Projet professionnel","entreprise":"ENI",
+"lieu":".chartres-de-bretagne","start_date":".2025","end_date":".2026",
+"posteActuel":false,"description":""}],
+"competences":[{"nom":"Supervision applicative (Sentry)"}],
+"formations":[],
+"langues":[{"nom":".franc","niveau":"Bac"},{"nom":".anglais","niveau":"Anglais"}],
+"projets":[{"nom":"Supervision applicative (Sentry)","url":".github","technologies":""}],
+"certifications":[{"nom":".enf","organisme":".chartres-de-bretagne","date":".2025","url":"."}]}"#;
+
+        let mut profile: Profile = serde_json::from_str(REPONSE).unwrap();
+        normalize_profile_dates(&mut profile);
+        ground_imported_profile(CV, &mut profile);
+        nettoyer_profile(&mut profile);
+
+        // Le CV ne comporte ni langue exploitable dans cette réponse ni certification :
+        // les entrées vidées disparaissent au lieu de s'afficher en champs vides.
+        assert!(profile.languages.is_empty());
+        assert!(profile.certifications.is_empty());
+        // Les faits réellement présents dans le CV sont conservés.
+        assert_eq!(profile.identity.first_name, "Alexandre");
+        assert_eq!(profile.identity.name, "Bouttier");
+        assert_eq!(
+            profile.identity.linkedin.as_deref(),
+            Some("linkedin.com/in/alexandrebouttier")
+        );
+        assert_eq!(profile.experiences.len(), 1);
+        assert_eq!(profile.experiences[0].company, "ENI");
+        assert_eq!(profile.experiences[0].location, None);
+        assert_eq!(profile.skills[0].name, "Supervision applicative (Sentry)");
+        assert_eq!(profile.projects.len(), 1);
+        assert_eq!(profile.projects[0].url, None);
     }
 
     #[test]
