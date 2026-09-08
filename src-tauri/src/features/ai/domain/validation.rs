@@ -329,35 +329,10 @@ impl ValidateAiOutput for Profile {
         let serialized = serde_json::to_value(self)
             .map_err(|error| AppError::Provider(format!("Réponse IA illisible : {error}")))?;
         validate_json_strings(&serialized)?;
-        let experience_dates = self.experiences.iter().flat_map(|experience| {
-            [
-                Some(experience.start_date.as_str()),
-                experience.end_date.as_deref(),
-            ]
-            .into_iter()
-            .flatten()
-        });
-        let education_dates = self.education.iter().flat_map(|education| {
-            [
-                education.start_date.as_deref(),
-                education.end_date.as_deref(),
-            ]
-            .into_iter()
-            .flatten()
-        });
-        let certification_dates = self
-            .certifications
-            .iter()
-            .filter_map(|certification| certification.date.as_deref());
-        for date in experience_dates
-            .chain(education_dates)
-            .chain(certification_dates)
-            .filter(|date| !date.trim().is_empty())
-        {
-            if !valid_year_or_month(date) {
-                return Err(output_error("les dates du profil"));
-            }
-        }
+        // Le format des dates n'est pas vérifié ici : un modèle local écrit « Oct. 2025 »
+        // ou « aujourd'hui » aussi souvent que « 2025-10 », et refuser la réponse entière
+        // perdait toute l'analyse. `normalize_profile_dates` les ramène au format attendu
+        // après le parsing ; leur longueur reste bornée par `validate_json_strings`.
         Ok(())
     }
 }
@@ -381,22 +356,6 @@ fn validate_json_strings(value: &serde_json::Value) -> AppResult<()> {
     }
 }
 
-fn valid_year_or_month(value: &str) -> bool {
-    let bytes = value.as_bytes();
-    match bytes {
-        [a, b, c, d] => [a, b, c, d].iter().all(|byte| byte.is_ascii_digit()),
-        [a, b, c, d, b'-', m1, m2] => {
-            [a, b, c, d, m1, m2]
-                .iter()
-                .all(|byte| byte.is_ascii_digit())
-                && value[5..]
-                    .parse::<u8>()
-                    .is_ok_and(|month| (1..=12).contains(&month))
-        }
-        _ => false,
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -405,7 +364,7 @@ mod tests {
         AtsAnalysis, AtsRecommendation, AtsRecommendationSection, CoverLetterRequest,
         GeneratedExperience, GeneratedResume,
     };
-    use crate::features::profile::domain::{Profile, Skill};
+    use crate::features::profile::domain::{Certification, Education, Experience, Profile, Skill};
 
     #[test]
     fn contexte_de_lettre_trop_long_est_refuse() {
@@ -531,6 +490,39 @@ mod tests {
             analysis.validate_ai_output(),
             Err(AppError::Provider(_))
         ));
+    }
+
+    /// Un modèle local rend « Oct. 2025 », « 12/2023 » ou « aujourd'hui » aussi souvent
+    /// qu'un « 2025-10 » : refuser la réponse entière perdait une analyse de plusieurs
+    /// minutes, sous un message parlant de limite dépassée alors que rien ne dépassait
+    /// quoi que ce soit. Le format des dates se rattrape après coup
+    /// (`normalize_profile_dates`), il n'est pas une frontière de sécurité.
+    #[test]
+    fn une_date_hors_format_ne_fait_plus_echouer_l_import() {
+        let profile = Profile {
+            experiences: vec![Experience {
+                title: "Développeur".into(),
+                company: "Linaïa".into(),
+                start_date: "Juil. 2019".into(),
+                end_date: Some("aujourd'hui".into()),
+                ..Experience::default()
+            }],
+            education: vec![Education {
+                degree: "Master".into(),
+                school: "ENI".into(),
+                start_date: Some("en".into()),
+                end_date: Some("sept".into()),
+                ..Education::default()
+            }],
+            certifications: vec![Certification {
+                name: "AWS".into(),
+                date: Some("12/2023".into()),
+                ..Certification::default()
+            }],
+            ..Profile::default()
+        };
+
+        assert!(profile.validate_ai_output().is_ok());
     }
 
     #[test]

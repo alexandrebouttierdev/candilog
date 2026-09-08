@@ -523,7 +523,14 @@ impl AiService {
         let text = match extract_pdf(path).await {
             Ok(text) => text,
             Err(error) => {
-                emit_import(&notifier, &id, None, "Lecture du fichier impossible", None, None);
+                emit_import(
+                    &notifier,
+                    &id,
+                    None,
+                    "Lecture du fichier impossible",
+                    None,
+                    None,
+                );
                 return Err(error);
             }
         };
@@ -588,13 +595,21 @@ impl AiService {
                 return Err(error);
             }
         };
+        normalize_profile_dates(&mut profile);
         nettoyer_profile(&mut profile);
         if profile.identity.first_name.trim().is_empty()
             && profile.identity.name.trim().is_empty()
             && profile.experiences.is_empty()
             && profile.skills.is_empty()
         {
-            emit_import(&notifier, &id, None, "Aucune donnée exploitable", tokens, None);
+            emit_import(
+                &notifier,
+                &id,
+                None,
+                "Aucune donnée exploitable",
+                tokens,
+                None,
+            );
             return Err(AppError::Provider(
                 "Aucune donnée de profil exploitable n'a été trouvée dans le CV".into(),
             ));

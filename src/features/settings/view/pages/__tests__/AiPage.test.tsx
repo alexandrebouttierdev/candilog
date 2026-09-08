@@ -76,6 +76,34 @@ describe("écran Intelligence artificielle", () => {
     expect(openExternal).toHaveBeenCalledWith("https://www.canirun.ai/");
   });
 
+  it("enregistre le nouveau modèle Ollama choisi", async () => {
+    const initial = reglages({
+      provider: "ollama",
+      api_key_configured: false,
+      endpoint: "http://localhost:11434",
+      model: "LiquidAI/lfm2.5-1.2b-instruct:latest",
+    });
+    vi.spyOn(settingsService, "load").mockResolvedValue(initial);
+    const listModels = vi.spyOn(settingsService, "listModels").mockResolvedValue([
+      "LiquidAI/lfm2.5-1.2b-instruct:latest",
+      "maternion/lfm2.5:350m",
+    ]);
+    const save = vi.spyOn(settingsService, "save").mockResolvedValue(initial);
+
+    render(<AiPage />, { wrapper });
+    await userEvent.click(await screen.findByRole("button", { name: "Actualiser" }));
+    await waitFor(() => expect(listModels).toHaveBeenCalledOnce());
+    await userEvent.selectOptions(
+      await screen.findByLabelText(/^Modèle/),
+      "maternion/lfm2.5:350m",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+    await waitFor(() => expect(save).toHaveBeenCalledOnce());
+    expect(save.mock.calls[0]?.[0].llm.model).toBe("maternion/lfm2.5:350m");
+    expect(save.mock.calls[0]?.[1]).toBeNull();
+  });
+
   it("annonce l'état du fournisseur sans attendre un test", async () => {
     render(<AiPage />, { wrapper });
 

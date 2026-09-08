@@ -173,11 +173,18 @@ mémoire unifiée ; ailleurs elle vient d'un cache rempli lors de
 ## Sorties du modèle
 
 `AiService` porte le parsing d'offre et de CV, la génération, l'ATS, le grounding et les
-lettres. La chaîne est toujours **parse → validate → grounding** : le JSON brut du modèle
-n'est jamais utilisé tel quel, il est réparé si besoin (`jsonrepair-rs`), désérialisé,
+lettres. La chaîne est toujours **parse → validate → use** : le JSON brut du modèle
+n'est jamais utilisé tel quel, il est réparé si besoin (`jsonrepair-rs`), désérialisé et
 borné (`domain/validation.rs` : `MAX_SOURCE_CHARS`, `MAX_CONTEXT_CHARS`,
-`MAX_STRUCTURED_CHARS`, `MAX_ITEMS`, `MAX_ITEM_CHARS`) puis recadré sur les faits réels
-par `ground_generated_resume`, `ground_imported_resume` et `ground_extracted_listing`.
+`MAX_STRUCTURED_CHARS`, `MAX_ITEMS`, `MAX_ITEM_CHARS`). Les documents générés sont ensuite
+recadrés sur les faits réels par `ground_generated_resume`, `ground_imported_resume` et
+`ground_extracted_listing`.
+
+Lors d'un import de profil, les dates recopiées librement par les petits modèles locaux
+(`Juil. 2019`, `12/2023`, `aujourd'hui`) sont normalisées après la validation de taille.
+Une date avec une année est ramenée à `AAAA-MM` ou `AAAA`, une fin « en cours » marque le
+poste comme actuel et un fragment inexploitable est vidé. Une variation de format ne fait
+donc plus perdre toute une analyse de CV ; les autres bornes de sortie restent inchangées.
 
 Une offre d'emploi ou un PDF importé est de la **donnée**, jamais des instructions : les
 contenus non fiables sont encadrés par `bloc_donnees`, dont la balise porte un identifiant

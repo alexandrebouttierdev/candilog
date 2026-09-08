@@ -5,6 +5,7 @@ mod cover_letter;
 mod local_ai;
 mod models;
 mod normalization;
+mod profile_dates;
 mod scoring;
 mod system_resources;
 mod validation;
@@ -14,6 +15,7 @@ pub use config::*;
 pub use cover_letter::*;
 pub use local_ai::*;
 pub use models::*;
+pub use profile_dates::normalize_profile_dates;
 pub use scoring::{
     ground_content_recommendations, ground_extracted_listing, ground_generated_resume,
     ground_imported_resume, profile_content_catalog, profile_score, score_resume_imported,

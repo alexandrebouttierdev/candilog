@@ -54,6 +54,8 @@ pub fn load_config_avec(
 mod tests {
     use super::*;
     use crate::core::database::{open_pool, run_local_migrations};
+    use crate::features::settings::domain::{AppSettings, SettingsRepository};
+    use crate::features::settings::infrastructure::SqliteSettingsRepository;
 
     fn pool() -> SqlitePool {
         let pool = open_pool(None).unwrap();
@@ -62,17 +64,12 @@ mod tests {
     }
 
     #[test]
-    fn une_base_neuve_retombe_sur_ollama_local() {
-        let config = load_config(&pool()).unwrap();
-        assert_eq!(
-            config.provider,
-            crate::features::ai::domain::ProviderKind::Ollama
-        );
-        assert_eq!(config.model, "");
+    fn une_base_neuve_demande_de_choisir_un_modele_ollama() {
+        assert!(matches!(load_config(&pool()), Err(AppError::Provider(_))));
     }
 
     #[test]
-    fn un_json_vide_n_est_pas_une_erreur() {
+    fn un_json_vide_demande_de_choisir_un_modele_ollama() {
         let pool = pool();
         connection(&pool)
             .unwrap()
@@ -81,10 +78,7 @@ mod tests {
                 [],
             )
             .unwrap();
-        assert_eq!(
-            load_config(&pool).unwrap().provider,
-            crate::features::ai::domain::ProviderKind::Ollama
-        );
+        assert!(matches!(load_config(&pool), Err(AppError::Provider(_))));
     }
 
     /// Chaîne complète du bogue signalé : la grille des réglages vide `llm.model` en
@@ -102,6 +96,25 @@ mod tests {
             .unwrap();
         let config = load_config(&pool).expect("Mistral Local doit rester utilisable");
         assert_eq!(config.provider, ProviderKind::MistralLocal);
+    }
+
+    /// `AiService::provider` relit cette configuration avant chaque opération. Le second
+    /// enregistrement doit donc remplacer le modèle, sans conserver une instance Ollama
+    /// construite avec la valeur précédente.
+    #[test]
+    fn le_dernier_modele_ollama_enregistre_est_relu() {
+        let pool = pool();
+        let repository = SqliteSettingsRepository::new(pool.clone());
+        let mut settings = AppSettings::default();
+        settings.llm.model = "LiquidAI/lfm2.5-1.2b-instruct:latest".into();
+        repository.upsert(&settings).unwrap();
+
+        settings.llm.model = "maternion/lfm2.5:350m".into();
+        repository.upsert(&settings).unwrap();
+
+        let config = load_config(&pool).unwrap();
+        assert_eq!(config.provider, ProviderKind::Ollama);
+        assert_eq!(config.model, "maternion/lfm2.5:350m");
     }
 
     struct CoffreFixe(Option<String>);

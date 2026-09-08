@@ -511,8 +511,7 @@ impl LocalAiService {
     fn clear_cancelled_download(&self) -> AppResult<()> {
         self.update_settings(|settings| {
             settings.local_ai.last_error = None;
-            settings.local_ai.installation_status = if settings.local_ai.active_model_id.is_some()
-            {
+            settings.local_ai.installation_status = if settings.local_ai.active_model_id.is_some() {
                 LocalAiInstallationStatus::Installed
             } else {
                 LocalAiInstallationStatus::NotInstalled
