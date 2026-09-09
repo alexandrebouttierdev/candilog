@@ -17,7 +17,7 @@ pub use cover_letter::*;
 pub use local_ai::*;
 pub use models::*;
 pub use profile_dates::normalize_profile_dates;
-pub use profile_grounding::ground_imported_profile;
+pub use profile_grounding::{completer_contacts_vides, completer_formations_manquantes, ground_imported_profile};
 pub use scoring::{
     ground_content_recommendations, ground_extracted_listing, ground_generated_resume,
     ground_imported_resume, profile_content_catalog, profile_score, score_resume_imported,
