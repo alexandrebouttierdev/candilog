@@ -657,6 +657,8 @@ impl AiService {
             // Recadré sur le texte réellement soumis au modèle, et non sur le CV entier : ce
             // qu'il n'a pas reçu, il n'a pas pu le recopier.
             ground_imported_profile(&analysis_text, &mut candidat);
+            completer_contacts_vides(&analysis_text, &mut candidat);
+            completer_formations_manquantes(&analysis_text, &mut candidat);
             nettoyer_profile(&mut candidat);
             if !profil_vide(&candidat) {
                 extrait = Some(candidat);
