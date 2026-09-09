@@ -14,12 +14,13 @@ Nécessite Poppler (`pdftotext`) et un Ollama local avec
 
 ```sh
 cd src-tauri
-cargo run --example cv_import_baseline -- nom-de-passe
+CANDILOG_CV_DIR=/chemin/local/des-pdf cargo run --example cv_import_baseline -- nom-de-passe
 ```
 
-Le premier argument est le nom du dossier de sortie, sous
-`CV_TESTS/.benchmark/` (hors dépôt). Défaut : `run`.
-Le mapping attendu est `CV_TESTS/.benchmark/mapping.json`.
+`CANDILOG_CV_DIR` est le dossier local des PDF, hors dépôt. Le premier argument
+est le nom du dossier de sortie, sous `$CANDILOG_CV_DIR/.benchmark/` (ou
+`CANDILOG_CV_BENCH` si tu le fixes). Défaut : `run`.
+Le mapping attendu est `mapping.json` dans ce dossier de bench.
 
 ## Ce qui est mesuré
 

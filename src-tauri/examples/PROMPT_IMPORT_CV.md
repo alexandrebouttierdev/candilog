@@ -6,7 +6,7 @@ Ce prompt est le brief complet. N’importe qui peut s’en servir pour continue
 
 Ne repars pas de zéro, et n’annule pas le code déjà gardé sans un benchmark qui le bat.
 
-Branche locale `OPTIMISATION_IMPORT_CV`, commit `e8b81d5` (prompt de mission ajouté ensuite). Pas de push.
+Le code gardé est sur la branche d’optimisation d’import. Ne le revert pas sans un benchmark qui le bat.
 
 Le code produit contient déjà :
 
@@ -23,7 +23,7 @@ src-tauri/examples/cv_import_baseline.rs
 
 Note courte : `src-tauri/examples/cv_import_baseline.md`.
 
-Référence actuelle, sur les 30 PDF de `/home/alex/Documents/CV_TESTS`, modèle `LiquidAI/lfm2.5-1.2b-instruct:latest` :
+Référence actuelle, sur les 30 PDF de `CANDILOG_CV_DIR`, modèle `LiquidAI/lfm2.5-1.2b-instruct:latest` :
 
 ```text
 Score moyen : 78,0 / 100
@@ -86,7 +86,7 @@ via **Ollama local**.
 Le corpus de test contient environ **30 CV réels au format PDF** et se trouve ici :
 
 ```text
-/home/alex/Documents/CV_TESTS
+CANDILOG_CV_DIR
 ```
 
 Tu dois utiliser directement les fichiers présents dans ce dossier.
@@ -429,7 +429,7 @@ La vérité finale reste :
 Les CV sont présents dans :
 
 ```text
-/home/alex/Documents/CV_TESTS
+CANDILOG_CV_DIR
 ```
 
 Commence par inventorier automatiquement ce dossier.
@@ -469,7 +469,7 @@ Ne modifie jamais :
 - mise en page ;
 - contenu.
 
-Aucune anonymisation.
+Aucune anonymisation des PDF locaux. Le dépôt public, lui, ne reçoit ni PDF, ni mapping, ni donnée personnelle : seulement des identifiants `CV-001`…
 
 Aucun remplacement.
 
@@ -505,7 +505,7 @@ Tu peux utiliser les vraies données contenues dans les CV pour :
 - détecter les hallucinations ;
 - analyser précisément les erreurs.
 
-Il n’est pas nécessaire d’anonymiser ces données pour le benchmark.
+Il n’est pas nécessaire d’anonymiser ces données pour l’analyse locale. Ne les écris pas dans un fichier versionné.
 
 ---
 
@@ -533,7 +533,9 @@ Ne remplace jamais silencieusement ce modèle par :
 - Gemini ;
 - un autre modèle.
 
-Ne commit pas accidentellement les PDF dans le repository Candilog.
+Ne commit pas les PDF, le mapping, les sorties brutes, ni aucune donnée personnelle dans le dépôt public.
+
+Les CV restent sur la machine de la personne qui mesure. Un rapport versionné n’utilise que des identifiants anonymes (`CV-001`…), jamais un nom, un e-mail, un téléphone ou une adresse.
 
 ---
 
@@ -1247,7 +1249,7 @@ CV très dense
 Mais toute version candidate sérieuse doit obligatoirement être testée sur :
 
 ```text
-TOUS les PDF de /home/alex/Documents/CV_TESTS
+TOUS les PDF du dossier `CANDILOG_CV_DIR`
 ```
 
 ---
@@ -1529,8 +1531,6 @@ Ne fais aucun refactor massif sans rapport avec la mission.
 
 # Git
 
-L’état gardé est déjà commité localement sur `OPTIMISATION_IMPORT_CV` (`e8b81d5`). Pas de push.
-
 Avant de commencer :
 
 ```bash
@@ -1548,7 +1548,7 @@ git diff
 Ne commit pas accidentellement les CV présents dans :
 
 ```text
-/home/alex/Documents/CV_TESTS
+CANDILOG_CV_DIR
 ```
 
 Si tu réalises des commits, les messages de commit doivent être **en français**.
@@ -1780,7 +1780,7 @@ Ne modifie jamais artificiellement les CV pour augmenter les scores.
 Utilise les fichiers originaux présents dans :
 
 ```text
-/home/alex/Documents/CV_TESTS
+CANDILOG_CV_DIR
 ```
 
 Procède continuellement ainsi :

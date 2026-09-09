@@ -22,12 +22,24 @@ const MODEL: &str = "LiquidAI/lfm2.5-1.2b-instruct:latest";
 const ENDPOINT: &str = "http://localhost:11434";
 const TEMPERATURE: f32 = 0.7;
 const ANALYSIS_CHARS: usize = 12_000;
-const MAPPING: &str = "/home/alex/Documents/CV_TESTS/.benchmark/mapping.json";
-const BENCH: &str = "/home/alex/Documents/CV_TESTS/.benchmark";
+
+fn require_dir(name: &str) -> PathBuf {
+    let raw = std::env::var(name).unwrap_or_default();
+    if raw.is_empty() {
+        eprintln!("{name} manquant : dossier local, hors dépôt");
+        std::process::exit(1);
+    }
+    PathBuf::from(raw)
+}
 
 #[tokio::main]
 async fn main() {
-    let bench = PathBuf::from(BENCH);
+    let cv_dir = require_dir("CANDILOG_CV_DIR");
+    let bench = std::env::var("CANDILOG_CV_BENCH")
+        .ok()
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from)
+        .unwrap_or_else(|| cv_dir.join(".benchmark"));
     let out_name = std::env::args().nth(1).unwrap_or_else(|| "run".to_owned());
     if out_name.is_empty()
         || out_name.contains('/')
@@ -47,7 +59,7 @@ async fn main() {
     let iteration = 0_u32;
     let label = out_name.clone();
 
-    let mapping = match load_mapping() {
+    let mapping = match load_mapping(&bench.join("mapping.json")) {
         Ok(mapping) => mapping,
         Err(error) => {
             eprintln!("mapping: {error}");
@@ -149,7 +161,7 @@ async fn main() {
         }
         eprintln!("{cv_id} start");
 
-        let path = PathBuf::from("/home/alex/Documents/CV_TESTS").join(filename);
+        let path = cv_dir.join(filename);
         let wall = Instant::now();
         let progress = Arc::new(Mutex::new(Progress::default()));
         let progress_cb = Arc::clone(&progress);
@@ -255,8 +267,8 @@ struct Progress {
     llm_calls: Vec<serde_json::Value>,
 }
 
-fn load_mapping() -> Result<Vec<(String, String)>, String> {
-    let raw = std::fs::read_to_string(MAPPING).map_err(|error| error.to_string())?;
+fn load_mapping(path: &Path) -> Result<Vec<(String, String)>, String> {
+    let raw = std::fs::read_to_string(path).map_err(|error| error.to_string())?;
     let value: serde_json::Value = serde_json::from_str(&raw).map_err(|error| error.to_string())?;
     let object = value
         .get("mapping")
