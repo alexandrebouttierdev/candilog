@@ -1,4 +1,4 @@
-Prompt de mission, à jour : `PROMPT_IMPORT_CV.md`.
+Brief complet pour continuer : `PROMPT_IMPORT_CV.md`.
 
 # Baseline d'import CV
 
