@@ -1,3 +1,5 @@
+Prompt de mission, à jour : `PROMPT_IMPORT_CV.md`.
+
 # Baseline d'import CV
 
 Runner local pour mesurer l'import de profil, sans écraser le profil de l'utilisateur.
