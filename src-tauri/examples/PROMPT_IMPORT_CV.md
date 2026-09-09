@@ -83,6 +83,11 @@ LiquidAI/lfm2.5-1.2b-instruct:latest
 
 via **Ollama local**.
 
+Le runner peut viser un autre modèle Ollama avec `CANDILOG_CV_MODEL`
+(`CANDILOG_OLLAMA_URL`, `CANDILOG_CV_TEMPERATURE` en option).
+Le score 78,0 / 44,3 s est celui du modèle par défaut. Un autre modèle
+a sa propre référence : indique toujours le nom du modèle à côté du score.
+
 Le corpus de test contient environ **30 CV réels au format PDF** et se trouve ici :
 
 ```text

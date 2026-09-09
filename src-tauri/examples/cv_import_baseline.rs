@@ -18,10 +18,28 @@ use candilog_lib::features::profile::domain::ImportProfilePreview;
 use candilog_lib::features::settings::domain::{AppSettings, SettingsRepository};
 use candilog_lib::features::settings::infrastructure::SqliteSettingsRepository;
 
-const MODEL: &str = "LiquidAI/lfm2.5-1.2b-instruct:latest";
-const ENDPOINT: &str = "http://localhost:11434";
-const TEMPERATURE: f32 = 0.7;
+const DEFAULT_MODEL: &str = "LiquidAI/lfm2.5-1.2b-instruct:latest";
+const DEFAULT_ENDPOINT: &str = "http://localhost:11434";
+const DEFAULT_TEMPERATURE: f32 = 0.7;
 const ANALYSIS_CHARS: usize = 12_000;
+
+fn env_or(name: &str, default: &str) -> String {
+    std::env::var(name)
+        .ok()
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or_else(|| default.to_owned())
+}
+
+fn temperature_from_env() -> f32 {
+    let raw = std::env::var("CANDILOG_CV_TEMPERATURE").unwrap_or_default();
+    if raw.trim().is_empty() {
+        return DEFAULT_TEMPERATURE;
+    }
+    raw.trim().parse().unwrap_or_else(|_| {
+        eprintln!("CANDILOG_CV_TEMPERATURE invalide: {raw}");
+        std::process::exit(1);
+    })
+}
 
 fn require_dir(name: &str) -> PathBuf {
     let raw = std::env::var(name).unwrap_or_default();
@@ -83,12 +101,15 @@ async fn main() {
         eprintln!("migrations: {error}");
         std::process::exit(1);
     }
+    let model = env_or("CANDILOG_CV_MODEL", DEFAULT_MODEL);
+    let endpoint = env_or("CANDILOG_OLLAMA_URL", DEFAULT_ENDPOINT);
+    let requested_temperature = temperature_from_env();
     let mut settings = AppSettings::default();
     settings.llm.provider = ProviderKind::Ollama;
-    settings.llm.model = MODEL.to_owned();
-    settings.llm.endpoint = Some(ENDPOINT.to_owned());
+    settings.llm.model = model.clone();
+    settings.llm.endpoint = Some(endpoint.clone());
     settings.llm.api_key = None;
-    settings.llm.temperature = TEMPERATURE;
+    settings.llm.temperature = requested_temperature;
     if let Err(error) = SqliteSettingsRepository::new(pool.clone()).upsert(&settings) {
         eprintln!("settings upsert: {error}");
         std::process::exit(1);
@@ -100,13 +121,16 @@ async fn main() {
             std::process::exit(1);
         }
     };
-    if loaded.provider != ProviderKind::Ollama || loaded.model != MODEL || loaded.endpoint_effectif() != ENDPOINT {
-        eprintln!("bench settings do not match the requested Ollama baseline");
+    if loaded.provider != ProviderKind::Ollama
+        || loaded.model != model
+        || loaded.endpoint_effectif() != endpoint
+    {
+        eprintln!("bench settings do not match the requested Ollama model");
         std::process::exit(1);
     }
     let temperature = loaded.temperature;
-    if (temperature - 0.7).abs() > 0.001 {
-        eprintln!("refusing run: loaded temperature is {temperature}, expected 0.7");
+    if (temperature - requested_temperature).abs() > 0.001 {
+        eprintln!("refusing run: loaded temperature is {temperature}, expected {requested_temperature}");
         std::process::exit(1);
     }
     let local_ai = match LocalAiService::new(pool.clone(), models_dir) {
@@ -130,6 +154,8 @@ async fn main() {
     let state = Arc::new(Mutex::new(RunState {
         mapping_len: mapping.len(),
         temperature,
+        model: model.clone(),
+        endpoint: endpoint.clone(),
         items: items.clone(),
         current: None,
         started: Instant::now(),
@@ -143,7 +169,7 @@ async fn main() {
     eprintln!(
         "{label} start n={} model={} temperature={} provider=ollama",
         mapping.len(),
-        MODEL,
+        model,
         temperature
     );
 
@@ -226,7 +252,7 @@ async fn main() {
         append_progress(&progress_path, &item);
 
         items.push(item);
-        if let Err(error) = save_results(&results_path, temperature, iteration, label, &items) {
+        if let Err(error) = save_results(&results_path, &model, &endpoint, temperature, iteration, label, &items) {
             eprintln!("results write: {error}");
             std::process::exit(1);
         }
@@ -254,6 +280,8 @@ struct Current {
 struct RunState {
     mapping_len: usize,
     temperature: f32,
+    model: String,
+    endpoint: String,
     items: Vec<serde_json::Value>,
     current: Option<Current>,
     started: Instant,
@@ -303,6 +331,8 @@ fn load_existing_items(path: &Path) -> Vec<serde_json::Value> {
 
 fn save_results(
     path: &Path,
+    model: &str,
+    endpoint: &str,
     temperature: f32,
     iteration: u32,
     label: &str,
@@ -314,8 +344,8 @@ fn save_results(
         "label": label,
         "pipeline": "AiService::import_profile",
         "provider": "ollama",
-        "model": MODEL,
-        "endpoint": ENDPOINT,
+        "model": model,
+        "endpoint": endpoint,
         "temperature": temperature,
         "temperature_note": "App default written on the throwaway settings row and sent as Ollama options.temperature. Model card default 0.1 is overridden by that request option.",
         "http_timeout_s": 1800,
@@ -855,13 +885,13 @@ fn spawn_heartbeat(state: Arc<Mutex<RunState>>, journal: PathBuf) {
 fn rewrite_journal(path: &Path, state: &RunState) {
     let summary = summarize(&state.items);
     let mut body = String::new();
-    body.push_str("# Iteration 16 — fictional few-shot\n\n");
-    body.push_str("Change: one call, invite_import baseline text plus one short fictional few-shot on the user message, temperature 0.7. Layout extraction unchanged. Grounding, contact fill and formation salvage stay on the truncated layout text.\n");
+    body.push_str("# Import CV benchmark\n\n");
+    body.push_str("Change: current product pipeline. Layout extraction, grounding, contact fill and formation salvage. Model comes from CANDILOG_CV_MODEL.\n");
     body.push_str(if state.finished { "Status: finished\n" } else { "Status: running\n" });
     body.push_str("Pipeline: `AiService::import_profile` (extract, truncate 12000, Ollama, parse/repair, validate, dates, ground). `profile_apply_import` not called.\n");
-    body.push_str(&format!("Model: `{MODEL}`\n"));
+    body.push_str(&format!("Model: `{}`\n", state.model));
     body.push_str("Provider: ollama\n");
-    body.push_str(&format!("Endpoint: `{ENDPOINT}`\n"));
+    body.push_str(&format!("Endpoint: `{}`\n", state.endpoint));
     body.push_str(&format!("Temperature used: {} (settings row + Ollama options.temperature; model card default 0.1 overridden)\n", state.temperature));
     body.push_str("Database: throwaway sqlite under `.benchmark/bench.sqlite` (migrations + settings + empty profile). User daily DB untouched.\n");
     body.push_str("Score: heuristic baseline vs Candilog-extracted PDF text. Not human ground truth.\n");

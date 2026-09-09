@@ -9,18 +9,27 @@ le corpus et le mapping restent hors du dépôt.
 
 ## Lancer
 
-Nécessite Poppler (`pdftotext`) et un Ollama local avec
-`LiquidAI/lfm2.5-1.2b-instruct:latest` sur `http://localhost:11434`.
+Nécessite Poppler (`pdftotext`) et un Ollama local.
+Le modèle par défaut est `LiquidAI/lfm2.5-1.2b-instruct:latest`
+sur `http://localhost:11434`. Les scores déjà publiés concernent ce modèle seulement.
 
 ```sh
 cd src-tauri
-CANDILOG_CV_DIR=/chemin/local/des-pdf cargo run --example cv_import_baseline -- nom-de-passe
+CANDILOG_CV_DIR=/chemin/local/des-pdf \
+CANDILOG_CV_MODEL=autre-modele:latest \
+cargo run --example cv_import_baseline -- nom-de-passe
 ```
 
-`CANDILOG_CV_DIR` est le dossier local des PDF, hors dépôt. Le premier argument
-est le nom du dossier de sortie, sous `$CANDILOG_CV_DIR/.benchmark/` (ou
-`CANDILOG_CV_BENCH` si tu le fixes). Défaut : `run`.
+- `CANDILOG_CV_DIR` : dossier local des PDF, hors dépôt. Obligatoire.
+- `CANDILOG_CV_MODEL` : modèle Ollama. Défaut : `LiquidAI/lfm2.5-1.2b-instruct:latest`.
+- `CANDILOG_OLLAMA_URL` : endpoint. Défaut : `http://localhost:11434`.
+- `CANDILOG_CV_TEMPERATURE` : défaut `0.7`.
+- `CANDILOG_CV_BENCH` : dossier de sortie. Défaut : `$CANDILOG_CV_DIR/.benchmark`.
+
+Le premier argument est le nom du dossier de sortie. Défaut : `run`.
 Le mapping attendu est `mapping.json` dans ce dossier de bench.
+Un autre modèle doit être installé dans Ollama, et son score ne se compare pas
+à 78,0 sans le redire dans le rapport.
 
 ## Ce qui est mesuré
 
