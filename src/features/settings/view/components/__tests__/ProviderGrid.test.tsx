@@ -6,41 +6,41 @@ import { FOURNISSEURS, FOURNISSEURS_AUTRES } from "../../../model/providers";
 
 describe("grille des fournisseurs", () => {
   it("propose tous les fournisseurs comme un groupe de boutons radio", () => {
-    render(<ProviderGrid value="ollama" onChange={() => undefined} />);
+    render(<ProviderGrid value="openai" onChange={() => undefined} />);
     expect(screen.getByRole("radiogroup", { name: "Fournisseur IA" })).toBeInTheDocument();
     expect(screen.getAllByRole("radio")).toHaveLength(FOURNISSEURS.length);
-    expect(screen.getByRole("radio", { name: /Ollama/ })).toHaveAttribute("aria-checked", "true");
-    expect(screen.getByRole("radio", { name: "OpenAI" })).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByRole("radio", { name: /OpenAI/ })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("radio", { name: "Mistral" })).toHaveAttribute("aria-checked", "false");
     for (const fournisseur of FOURNISSEURS) {
       const radio = screen.getByRole("radio", { name: fournisseur.label });
       expect(within(radio).getByText(fournisseur.label)).toBeInTheDocument();
-      expect(within(radio).queryByRole("img")).not.toBeInTheDocument();
     }
   });
 
   it("permet de restreindre la liste aux autres fournisseurs", () => {
     render(
-      <ProviderGrid value="ollama" onChange={() => undefined} items={FOURNISSEURS_AUTRES} />,
+      <ProviderGrid value="openai" onChange={() => undefined} items={FOURNISSEURS_AUTRES} />,
     );
     expect(screen.getAllByRole("radio")).toHaveLength(FOURNISSEURS_AUTRES.length);
     expect(screen.queryByRole("radio", { name: "IA locale Candilog" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("radio", { name: "Ollama" })).not.toBeInTheDocument();
   });
 
   it("signale le fournisseur choisi et notifie le changement", async () => {
     const onChange = vi.fn();
-    render(<ProviderGrid value="ollama" onChange={onChange} />);
+    render(<ProviderGrid value="openai" onChange={onChange} />);
     await userEvent.click(screen.getByRole("radio", { name: /Claude/ }));
     expect(onChange).toHaveBeenCalledWith("claude");
   });
 
   it("marque la tuile choisie autrement que par la seule couleur", () => {
-    render(<ProviderGrid value="ollama" onChange={() => undefined} />);
+    render(<ProviderGrid value="openai" onChange={() => undefined} />);
 
     expect(
-      within(screen.getByRole("radio", { name: "Ollama" })).getByText("check_circle"),
+      within(screen.getByRole("radio", { name: "OpenAI" })).getByText("check_circle"),
     ).toBeInTheDocument();
     expect(
-      within(screen.getByRole("radio", { name: "OpenAI" })).queryByText("check_circle"),
+      within(screen.getByRole("radio", { name: "Mistral" })).queryByText("check_circle"),
     ).not.toBeInTheDocument();
   });
 
@@ -51,21 +51,22 @@ describe("grille des fournisseurs", () => {
   });
 
   it("présente l'IA locale Candilog comme le choix recommandé", () => {
-    render(<ProviderGrid value="ollama" onChange={() => undefined} />);
+    render(<ProviderGrid value="openai" onChange={() => undefined} />);
 
     expect(
       within(screen.getByRole("radio", { name: "IA locale Candilog" })).getByText("Recommandé"),
     ).toBeInTheDocument();
-    expect(within(screen.getByRole("radio", { name: "Ollama" })).getByText("Votre installation ou Ollama Cloud")).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("radio", { name: "Personnalisé" })).getByText(
+        "Compatible OpenAI, Ollama local, LM Studio, etc.",
+      ),
+    ).toBeInTheDocument();
   });
 
-  it("affiche l'icône générique smart_toy sur la tuile IA locale Candilog", () => {
-    const { container } = render(<ProviderGrid value="ollama" onChange={() => undefined} />);
+  it("affiche le logo Candilog sur la tuile IA locale", () => {
+    render(<ProviderGrid value="openai" onChange={() => undefined} />);
     const tuile = screen.getByRole("radio", { name: "IA locale Candilog" });
 
-    expect(tuile.querySelector('[data-provider-logo="mistral"]')).toBeNull();
-    expect(tuile.querySelector('[data-provider-logo="qwen"]')).toBeNull();
-    expect(container.querySelectorAll('[data-provider-logo="qwen"]')).toHaveLength(0);
-    expect(within(tuile).getByText("smart_toy")).toBeInTheDocument();
+    expect(tuile.querySelector("img")).not.toBeNull();
   });
 });

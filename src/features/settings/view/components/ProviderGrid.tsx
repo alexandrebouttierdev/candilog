@@ -1,11 +1,9 @@
 import { cn } from "@/shared/lib/cn";
-import {
-  FOURNISSEURS,
-  idProvider,
-  type FournisseurOption,
-} from "../../model/providers";
+import { FOURNISSEURS, defFournisseur, idProvider, type FournisseurOption } from "../../model/providers";
 import type { ProviderKind } from "@/shared/types/generated/settings";
 import type { ManagedModelPublisher } from "@/shared/types/generated/ai";
+
+export { defFournisseur };
 import { Icon, Tag } from "@/shared/ui";
 import logoOllama from "@/assets/providers/ollama.svg";
 import logoClaude from "@/assets/providers/claude.svg";
@@ -15,6 +13,7 @@ import logoMistral from "@/assets/providers/mistralai.svg";
 import logoDeepseek from "@/assets/providers/deepseek.svg";
 import logoCustom from "@/assets/providers/custom.svg";
 import logoLuth from "@/assets/providers/luth.svg";
+import logoCandilogLocal from "@/assets/providers/ollamacandilog.png";
 
 const LOGOS: Record<
   Exclude<FournisseurOption["id"], "candilog_local">,
@@ -42,14 +41,29 @@ export function logoManagedPublisher(publisher: ManagedModelPublisher) {
   return MANAGED_PUBLISHER_LOGOS[publisher];
 }
 
-export function logoFournisseur(id: FournisseurOption["id"]) {
-  if (id === "candilog_local") return null;
-  return LOGOS[id];
+/** Logo d'éditeur pour les modèles du catalogue Ollama géré. */
+export function ManagedPublisherLogo({
+  publisher,
+  className,
+}: {
+  publisher: ManagedModelPublisher;
+  className?: string;
+}) {
+  const logo = logoManagedPublisher(publisher);
+  return (
+    <img
+      src={logo.src}
+      alt=""
+      className={cn("size-5 shrink-0 object-contain", logo.mono && "dark:invert", className)}
+    />
+  );
 }
 
-export function defFournisseur(provider: ProviderKind): FournisseurOption {
-  const id = idProvider(provider);
-  return FOURNISSEURS.find((item) => item.id === id) ?? FOURNISSEURS[0]!;
+export const LOGO_CANDILOG_LOCAL = { src: logoCandilogLocal, mono: false };
+
+export function logoFournisseur(id: FournisseurOption["id"]) {
+  if (id === "candilog_local") return LOGO_CANDILOG_LOCAL;
+  return LOGOS[id];
 }
 
 export function ProviderGrid({
@@ -71,7 +85,7 @@ export function ProviderGrid({
     >
       {items.map((fournisseur) => {
         const selected = fournisseur.id === actif;
-        const logo = fournisseur.id === "candilog_local" ? null : LOGOS[fournisseur.id];
+        const logo = logoFournisseur(fournisseur.id);
         return (
           <button
             key={fournisseur.id}

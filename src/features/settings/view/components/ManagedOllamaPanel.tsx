@@ -8,7 +8,7 @@ import type {
 import { cn } from "@/shared/lib/cn";
 import { Button, ConfirmDialog, ErrorBanner, Icon, Skeleton, StatusPill, Tag } from "@/shared/ui";
 import type { Tone } from "@/shared/ui";
-import { logoManagedPublisher } from "./ProviderGrid";
+import { ManagedPublisherLogo } from "./ProviderGrid";
 import { SettingsCard } from "./SettingsUi";
 import { isManagedOllamaBusy } from "../../model/etatManagedOllama";
 import type { ManagedOllamaViewModel } from "../../viewmodel/useManagedOllamaViewModel";
@@ -191,8 +191,6 @@ function ModelCard({
 }) {
   const fit = MACHINE_FIT[model.machine_fit];
   const canInstall = !model.installed && model.machine_fit !== "insufficient_memory";
-  const publisherLogo = logoManagedPublisher(model.definition.publisher);
-
   return (
     <article
       className={cn(
@@ -206,13 +204,7 @@ function ModelCard({
             className="mt-0.5 flex size-8 flex-none items-center justify-center rounded-control bg-surface shadow-[inset_0_0_0_1px_var(--color-line)]"
             aria-hidden="true"
           >
-            <img
-              src={publisherLogo.src}
-              alt=""
-              width={20}
-              height={20}
-              className={cn("size-5", publisherLogo.mono && "dark:invert")}
-            />
+            <ManagedPublisherLogo publisher={model.definition.publisher} />
           </span>
           <div className="min-w-0">
             <p className="text-label font-mid text-ink-muted">{model.definition.publisher_label}</p>

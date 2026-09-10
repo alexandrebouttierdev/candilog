@@ -63,6 +63,11 @@ const BackupsPage = lazy(() =>
     default: m.BackupsPage,
   })),
 );
+const CustomisationPage = lazy(() =>
+  import("@/features/settings/view/pages/CustomisationPage").then((m) => ({
+    default: m.CustomisationPage,
+  })),
+);
 const UpdatesPage = lazy(() =>
   import("@/features/settings/view/pages/UpdatesPage").then((m) => ({
     default: m.UpdatesPage,
@@ -116,6 +121,7 @@ const Pages: Record<string, React.ReactElement> = {
   "/documents/analyze": <ResumeAnalysisPage />,
   "/settings/ai": <AiPage />,
   "/settings/backups": <BackupsPage />,
+  "/settings/customization": <CustomisationPage />,
   "/settings/updates": <UpdatesPage />,
   "/settings/about": <AboutPage />,
 };

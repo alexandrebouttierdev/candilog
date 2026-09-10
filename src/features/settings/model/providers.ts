@@ -23,14 +23,30 @@ export const FOURNISSEURS: readonly FournisseurOption[] = [
     hint: "Modèles gérés localement",
     recommended: true,
   },
-  { id: "ollama", label: "Ollama", hint: "Votre installation ou Ollama Cloud" },
-  { id: "claude", label: "Claude", hint: "Anthropic" },
+  { id: "mistral", label: "Mistral", hint: "Europe" },
   { id: "openai", label: "OpenAI", hint: "GPT" },
   { id: "gemini", label: "Gemini", hint: "Google" },
-  { id: "mistral", label: "Mistral", hint: "Europe" },
+  { id: "claude", label: "Claude", hint: "Anthropic" },
   { id: "deepseek", label: "DeepSeek", hint: "API" },
-  { id: "custom", label: "Personnalisé", hint: "Compatible OpenAI" },
+  {
+    id: "custom",
+    label: "Personnalisé",
+    hint: "Compatible OpenAI, Ollama local, LM Studio, etc.",
+  },
 ];
+
+/** Fournisseur historique — conservé pour les bases déjà configurées, absent de la grille. */
+export const FOURNISSEUR_OLLAMA: FournisseurOption = {
+  id: "ollama",
+  label: "Ollama",
+  hint: "Votre installation ou Ollama Cloud",
+};
+
+export function defFournisseur(provider: ProviderKind): FournisseurOption {
+  const id = idProvider(provider);
+  if (id === "ollama") return FOURNISSEUR_OLLAMA;
+  return FOURNISSEURS.find((item) => item.id === id) ?? FOURNISSEURS[0]!;
+}
 
 /** Fournisseurs distants — sans l'IA locale Candilog gérée par Ollama. */
 export const FOURNISSEURS_AUTRES: readonly FournisseurOption[] = FOURNISSEURS.filter(

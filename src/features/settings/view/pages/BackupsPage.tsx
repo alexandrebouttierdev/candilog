@@ -12,7 +12,7 @@ export function BackupsPage() {
       <ContextBarAccessory>
         <ContextNote>Candilog · données locales</ContextNote>
       </ContextBarAccessory>
-      <PageHeader icon="save" title="Sauvegardes" subtitle="Export, restauration et maintenance" />
+      <PageHeader icon="save" title="Données" subtitle="Export, restauration et maintenance" />
       <SettingsBody>
         <SettingsHero
           kicker="Vos données"

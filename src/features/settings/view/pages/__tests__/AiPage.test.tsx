@@ -75,7 +75,7 @@ describe("écran Intelligence artificielle", () => {
 
     render(<AiPage />, { wrapper });
 
-    await userEvent.click(await screen.findByRole("tab", { name: "Autres fournisseurs/modèles" }));
+    await userEvent.click(await screen.findByRole("tab", { name: "IA online/personnalisé" }));
     expect(await screen.findByText("Modèle local : aucune clé, aucune connexion")).toBeInTheDocument();
     expect(screen.queryByLabelText(/^Clé API/)).not.toBeInTheDocument();
 
@@ -98,7 +98,7 @@ describe("écran Intelligence artificielle", () => {
     const save = vi.spyOn(settingsService, "save").mockResolvedValue(initial);
 
     render(<AiPage />, { wrapper });
-    await userEvent.click(await screen.findByRole("tab", { name: "Autres fournisseurs/modèles" }));
+    await userEvent.click(await screen.findByRole("tab", { name: "IA online/personnalisé" }));
     await userEvent.click(await screen.findByRole("button", { name: "Actualiser" }));
     await waitFor(() => expect(listModels).toHaveBeenCalledOnce());
     await userEvent.selectOptions(
@@ -117,11 +117,11 @@ describe("écran Intelligence artificielle", () => {
 
     expect(await screen.findByText("Configuré")).toBeInTheDocument();
     expect(screen.getByText("gpt-4o")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("tab", { name: "Autres fournisseurs/modèles" }));
+    await userEvent.click(screen.getByRole("tab", { name: "IA online/personnalisé" }));
     expect(screen.getByText("Fournisseur")).toBeInTheDocument();
     expect(screen.getByText("Configuration")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("tab", { name: "Réglages" }));
-    expect(screen.getByText("Apparence")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /IA locale/ })).toBeInTheDocument();
+    expect(screen.getByText("Gratuit")).toBeInTheDocument();
   });
 
   it("place le bandeau IA locale au-dessus des onglets", async () => {
@@ -135,7 +135,7 @@ describe("écran Intelligence artificielle", () => {
     expect(screen.getByText("Non configuré")).toBeInTheDocument();
 
     const hero = container.querySelector("section");
-    const onglets = screen.getByRole("tab", { name: "Modèles locaux" });
+    const onglets = screen.getByRole("tab", { name: /IA locale/ });
     expect(hero).not.toBeNull();
     expect(
       Boolean(hero && onglets.compareDocumentPosition(hero) & Node.DOCUMENT_POSITION_PRECEDING),
@@ -202,7 +202,7 @@ describe("écran Intelligence artificielle", () => {
   it("n'affiche jamais la clé API en clair", async () => {
     render(<AiPage />, { wrapper });
 
-    await userEvent.click(await screen.findByRole("tab", { name: "Autres fournisseurs/modèles" }));
+    await userEvent.click(await screen.findByRole("tab", { name: "IA online/personnalisé" }));
     const champ = await screen.findByLabelText(/^Clé API/);
     expect(champ).toHaveAttribute("type", "password");
     expect(champ).toHaveValue("");

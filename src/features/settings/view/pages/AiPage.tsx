@@ -2,7 +2,7 @@ import { useState, type KeyboardEvent, type ReactNode } from "react";
 import { ContextBarAccessory, ContextNote } from "@/app/layout/ContextBar";
 import { AiBenchmarkModal } from "@/features/ai/view/components/AiBenchmarkModal";
 import { AppError } from "@/shared/types/app-error";
-import type { AnalysisMode, LlmForm, Settings, ThemePref } from "@/shared/types/generated/settings";
+import type { AnalysisMode, LlmForm, Settings } from "@/shared/types/generated/settings";
 import {
   Button,
   ErrorBanner,
@@ -12,17 +12,14 @@ import {
   SegmentedControl,
   Select,
   Skeleton,
+  Tag,
   TextInput,
 } from "@/shared/ui";
 import { openExternal } from "@/shared/services/external-link";
 import { settingsService } from "../../services/settingsService";
 import { useSettingsViewModel } from "../../viewmodel/useSettingsViewModel";
-import { applyTheme, useUiStore } from "@/shared/lib/ui-store";
 import {
-  completionSoundEnabled,
-  setCompletionSoundEnabled,
-} from "@/shared/lib/completion-sound";
-import {
+  defFournisseur,
   endpointDefaut,
   FOURNISSEURS_AUTRES,
   idProvider,
@@ -31,12 +28,7 @@ import {
   type FournisseurOption,
 } from "../../model/providers";
 import { useAiRailStatusStore } from "@/features/ai/viewmodel/ai-rail-status-store";
-import {
-  ProviderGrid,
-  defFournisseur,
-  logoFournisseur,
-  logoManagedPublisher,
-} from "../components/ProviderGrid";
+import { ProviderGrid, logoFournisseur } from "../components/ProviderGrid";
 import { AiHero } from "../components/AiHero";
 import { ManagedOllamaPanel } from "../components/ManagedOllamaPanel";
 import { SettingsBody, SettingsCard } from "../components/SettingsUi";
@@ -54,37 +46,21 @@ const MODES: Array<{ value: AnalysisMode; label: string }> = [
   { value: "advanced", label: "Avancé" },
 ];
 
-const THEMES: Array<{ value: ThemePref; label: string }> = [
-  { value: "light", label: "Clair" },
-  { value: "dark", label: "Sombre" },
-  { value: "system", label: "Système" },
-];
+type AiTab = "local" | "providers";
 
-const SONS = [
-  { value: "on", label: "Activé" },
-  { value: "off", label: "Désactivé" },
-] as const;
-
-type AiTab = "local" | "providers" | "preferences";
-
-const TABS: Array<{ id: AiTab; label: string }> = [
-  { id: "local", label: "Modèles locaux" },
-  { id: "providers", label: "Autres fournisseurs/modèles" },
-  { id: "preferences", label: "Réglages" },
+const TABS: Array<{ id: AiTab; label: string; badge?: string }> = [
+  { id: "local", label: "IA locale", badge: "Gratuit" },
+  { id: "providers", label: "IA online/personnalisé" },
 ];
 
 /** Intelligence artificielle : fournisseur, modèle, comportement et apparence. */
 export function AiPage() {
   const vm = useSettingsViewModel();
-  const setTheme = useUiStore((state) => state.setTheme);
   const [tab, setTab] = useState<AiTab>("local");
   const [draft, setDraft] = useState<Settings | null>(null);
   const [apiKeyDraft, setApiKeyDraft] = useState("");
   const [models, setModels] = useState<string[]>([]);
   const [test, setTestState] = useState<TestConnexion>("idle");
-  const [son, setSon] = useState<"on" | "off">(() =>
-    completionSoundEnabled() ? "on" : "off",
-  );
   const [testMessage, setTestMessage] = useState<string | null>(null);
   const [benchmarkOpen, setBenchmarkOpen] = useState(false);
   const [benchmarkModelLabel, setBenchmarkModelLabel] = useState("");
@@ -165,12 +141,7 @@ export function AiPage() {
 
   const fournisseur = llm ? defFournisseur(llm.provider) : null;
   const managedActive = managedVm.status?.active_model ?? null;
-  const logo =
-    isCandilogLocal && managedActive
-      ? logoManagedPublisher(managedActive.publisher)
-      : fournisseur
-        ? logoFournisseur(fournisseur.id)
-        : null;
+  const logo = fournisseur ? logoFournisseur(fournisseur.id) : null;
   const managedModelLabel = managedActive?.display_name ?? "";
 
   const ouvrirBenchmark = (label: string) => {
@@ -201,7 +172,7 @@ export function AiPage() {
         title="Intelligence artificielle"
         subtitle="Le moteur reste sous votre contrôle"
         primary={
-          tab === "preferences" || tab === "providers" ? (
+          tab === "providers" ? (
             <Button
               variant="primary"
               icon={vm.isSaving ? "progress_activity" : "save"}
@@ -399,37 +370,6 @@ export function AiPage() {
               </div>
             ) : null}
 
-            {tab === "preferences" ? (
-              <SettingsCard icon="palette" title="Apparence">
-                <div className="flex flex-wrap gap-x-8 gap-y-4">
-                  <div>
-                    <ControlLabel>Thème</ControlLabel>
-                    <SegmentedControl
-                      label="Thème"
-                      value={form.theme}
-                      onChange={(theme) => {
-                        setDraft({ ...form, theme });
-                        setTheme(theme);
-                        applyTheme(theme);
-                      }}
-                      options={THEMES}
-                    />
-                  </div>
-                  <div>
-                    <ControlLabel>Son de fin de traitement</ControlLabel>
-                    <SegmentedControl
-                      label="Son de fin de traitement"
-                      value={son}
-                      onChange={(valeur) => {
-                        setSon(valeur);
-                        setCompletionSoundEnabled(valeur === "on");
-                      }}
-                      options={SONS}
-                    />
-                  </div>
-                </div>
-              </SettingsCard>
-            ) : null}
           </div>
         </SettingsBody>
       )}
@@ -477,7 +417,10 @@ function AiTabs({ active, onChange }: { active: AiTab; onChange: (tab: AiTab) =>
               selected ? "bg-accent-tint text-accent" : "text-ink-muted hover:bg-neutral-tint",
             )}
           >
-            {item.label}
+            <span className="flex items-center gap-1.5">
+              {item.label}
+              {item.badge ? <Tag className="py-0">{item.badge}</Tag> : null}
+            </span>
           </button>
         );
       })}

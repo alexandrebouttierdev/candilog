@@ -267,9 +267,9 @@ et fixtures associées).
 
 ## Interface IA
 
-L'écran Réglages → IA comporte trois onglets : **Modèles locaux** (catalogue Ollama géré),
-**Autres fournisseurs/modèles** (grille distante) et **Réglages**
-(thème, son). Le sélecteur rapide global (`AiQuickSelector` dans la barre supérieure)
+L'écran Paramètres → Intelligence artificielle comporte deux onglets : **IA locale**
+(catalogue Ollama géré) et **IA online/personnalisé** (grille distante). Thème et son
+vivent dans **Paramètres → Customisation**. Le sélecteur rapide global (`AiQuickSelector` dans la barre supérieure)
 synchronise le fournisseur actif avec les paramètres persistés.
 
 ## Cache

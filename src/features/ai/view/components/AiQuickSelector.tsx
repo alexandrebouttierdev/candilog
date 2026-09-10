@@ -18,10 +18,10 @@ import {
   versProvider,
   type FournisseurOption,
 } from "@/features/settings/model/providers";
+import { defFournisseur } from "@/features/settings/model/providers";
 import {
-  defFournisseur,
   logoFournisseur,
-  logoManagedPublisher,
+  ManagedPublisherLogo,
 } from "@/features/settings/view/components/ProviderGrid";
 import { settingsService } from "@/features/settings/services/settingsService";
 import {
@@ -111,12 +111,7 @@ export function AiQuickSelector() {
     return etatIa(llm, "idle");
   }, [activeProviderId, llm, managed.data]);
 
-  const logo =
-    activeProviderId === "candilog_local" && managed.data?.active_model
-      ? logoManagedPublisher(managed.data.active_model.publisher)
-      : activeProviderId
-        ? logoFournisseur(activeProviderId)
-        : null;
+  const logo = activeProviderId ? logoFournisseur(activeProviderId) : null;
 
   const selectProvider = async (id: FournisseurOption["id"]) => {
     if (!settings.data) return;
@@ -215,7 +210,7 @@ export function AiQuickSelector() {
                         provider: versProvider(item.id),
                       })
                     : false;
-              const logoItem = item.id === "candilog_local" ? null : logoFournisseur(item.id);
+              const logoItem = logoFournisseur(item.id);
               return (
                 <button
                   key={item.id}
@@ -310,19 +305,28 @@ function ModelColumn({
               disabled={!item.installed && item.machine_fit === "insufficient_memory"}
               onClick={() => onSelectManaged(item.definition.id, item.installed)}
               className={cn(
-                "flex w-full items-center justify-between gap-2 rounded-button px-2 py-2 text-left",
+                "flex w-full items-center gap-2 rounded-button px-2 py-2 text-left",
                 item.active ? "bg-accent-tint" : "hover:bg-fill-hover",
               )}
             >
-              <span className="min-w-0">
+              <span className="flex size-6 flex-none items-center justify-center rounded-control bg-surface">
+                <ManagedPublisherLogo
+                  publisher={item.definition.publisher}
+                  className="size-3.5"
+                />
+              </span>
+              <span className="min-w-0 flex-1">
                 <span className="block truncate text-label font-mid text-ink">
                   {item.definition.display_name}
                 </span>
-                <span className="block text-meta text-ink-faint">
-                  {item.installed ? "Installé" : "Télécharger"}
+                <span className="block truncate text-meta text-ink-faint">
+                  {item.definition.publisher_label}
+                  {item.installed ? " · Installé" : " · Télécharger"}
                 </span>
               </span>
-              {item.active ? <Icon name="check" size={16} className="text-accent" /> : null}
+              {item.active ? (
+                <Icon name="check" size={16} className="flex-none text-accent" />
+              ) : null}
             </button>
           </li>
         ))}
