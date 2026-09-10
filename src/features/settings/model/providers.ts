@@ -3,7 +3,6 @@ import type { ProviderKind } from "@/shared/types/generated/settings";
 export interface FournisseurOption {
   readonly id:
     | "candilog_local"
-    | "mistral_local"
     | "ollama"
     | "claude"
     | "openai"
@@ -24,11 +23,6 @@ export const FOURNISSEURS: readonly FournisseurOption[] = [
     hint: "Modèles gérés localement",
     recommended: true,
   },
-  {
-    id: "mistral_local",
-    label: "Mistral Local (llama.cpp)",
-    hint: "Directement dans Candilog",
-  },
   { id: "ollama", label: "Ollama", hint: "Votre installation ou Ollama Cloud" },
   { id: "claude", label: "Claude", hint: "Anthropic" },
   { id: "openai", label: "OpenAI", hint: "GPT" },
@@ -38,7 +32,7 @@ export const FOURNISSEURS: readonly FournisseurOption[] = [
   { id: "custom", label: "Personnalisé", hint: "Compatible OpenAI" },
 ];
 
-/** Fournisseurs distants et llama.cpp — sans l'IA locale Candilog gérée par Ollama. */
+/** Fournisseurs distants — sans l'IA locale Candilog gérée par Ollama. */
 export const FOURNISSEURS_AUTRES: readonly FournisseurOption[] = FOURNISSEURS.filter(
   (item) => item.id !== "candilog_local",
 );
@@ -58,7 +52,6 @@ export function versProvider(id: FournisseurOption["id"]): ProviderKind {
 export function endpointDefaut(id: FournisseurOption["id"]): string | null {
   switch (id) {
     case "candilog_local":
-    case "mistral_local":
       return null;
     case "ollama":
       return "http://localhost:11434";

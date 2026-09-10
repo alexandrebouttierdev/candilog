@@ -1,4 +1,4 @@
-//! Lecture légère CPU/RAM/VRAM pour le rail — sans initialiser llama.cpp.
+//! Lecture légère CPU/RAM/VRAM pour le rail — sans démarrer le runtime Ollama.
 
 use std::sync::Mutex;
 

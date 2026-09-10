@@ -20,10 +20,10 @@ candilog.fr, projet Next.js autonome.
 - Calendrier des entretiens et des relances.
 - Profil professionnel, génération de CV et de lettres de motivation en PDF A4 une page,
   analyse ATS déterministe.
-- **IA locale embarquée** : un moteur d'inférence (llama.cpp) est intégré à l'application.
-  Vous installez depuis les réglages le modèle adapté à votre machine — Candilog le
-  télécharge une fois depuis Hugging Face, vérifie son empreinte, et tout se passe ensuite
-  hors ligne. Aucun serveur ni outil à installer vous-même.
+- **IA locale Candilog** : un runtime Ollama privé est géré par l'application. Vous
+  installez depuis les réglages le modèle adapté à votre machine — Candilog télécharge le
+  binaire Ollama officiel et les poids une fois, puis tout se passe hors ligne. Aucune
+  installation Ollama séparée n'est requise pour ce mode.
 - Autres fournisseurs IA au choix : Ollama (local), Claude, OpenAI, Gemini, Mistral,
   DeepSeek ou point de terminaison personnalisé. La clé API vit dans le coffre du système.
 - Sauvegarde et restauration de la base, mise à jour assistée depuis les GitHub Releases.

@@ -11,7 +11,7 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use candilog_lib::core::database::{open_pool, run_local_migrations};
 use candilog_lib::core::errors::AppError;
 use candilog_lib::features::ai::application::{
-    AiService, LocalAiService, ManagedOllamaPaths, ManagedOllamaService,
+    AiService, ManagedOllamaPaths, ManagedOllamaService,
 };
 use candilog_lib::features::ai::domain::{ProfileImportRequest, ProviderKind};
 use candilog_lib::features::ai::infrastructure::{extract_pdf, load_config};
@@ -139,13 +139,6 @@ async fn main() {
         );
         std::process::exit(1);
     }
-    let local_ai = match LocalAiService::new(pool.clone(), models_dir.clone()) {
-        Ok(service) => Arc::new(service),
-        Err(error) => {
-            eprintln!("local ai service: {error}");
-            std::process::exit(1);
-        }
-    };
     let managed = Arc::new(ManagedOllamaService::new(
         pool.clone(),
         ManagedOllamaPaths {
@@ -154,7 +147,7 @@ async fn main() {
             downloads_dir: models_dir.join("managed/downloads"),
         },
     ));
-    let service = AiService::new(pool, local_ai, managed);
+    let service = AiService::new(pool, managed);
 
     let results_path = out_dir.join("results.json");
     let journal_path = out_dir.join("journal.md");

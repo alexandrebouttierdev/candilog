@@ -55,9 +55,9 @@ export function iaEstConfiguree(llm: LlmForm): boolean {
 export function manquants(llm: LlmForm): string[] {
   const id = idProvider(llm.provider);
   // L'IA locale Candilog et Mistral Local ne se décrivent pas par `llm.model` seul :
-  // leurs artefacts actifs vivent dans `managed_ollama` ou `local_ai`. L'écran dédié
+  // leurs artefacts actifs vivent dans `managed_ollama`. L'écran dédié
   // signale l'absence d'installation ; le backend refuse l'inférence sans modèle actif.
-  if (id === "candilog_local" || id === "mistral_local") return [];
+  if (id === "candilog_local") return [];
   const manques: string[] = [];
   if (llm.model.trim().length === 0) manques.push("le modèle");
   // Ollama tourne en local et fonctionne sans clé ; un endpoint compatible OpenAI peut

@@ -5,7 +5,7 @@ Toute l'IA vit dans `src-tauri/src/features/ai/`. Le frontend n'envoie que des D
 
 ## Fournisseurs
 
-L'**IA locale Candilog** (`candilog_local`), Mistral Local, Ollama, Claude, OpenAI, Gemini,
+L'**IA locale Candilog** (`candilog_local`), Ollama, Claude, OpenAI, Gemini,
 Mistral, DeepSeek et un point de terminaison personnalisé implémentent `LlmGenerator`. Le
 choix, le modèle, la température et le mode d'analyse sont persistés dans les paramètres ;
 la clé API vit dans le coffre du système (`core::secrets`), jamais dans SQLite ni dans les
@@ -42,142 +42,27 @@ réponse HTTP valide dont le corps n'est pas le JSON attendu. Les deux se cumule
 transport d'abord, forme de la réponse ensuite. L'import de profil en ajoute une troisième,
 qui porte sur le contenu et non sur la forme (voir « Sorties du modèle »).
 
-## Mistral Local
+## IA locale Candilog (détails)
 
-Mistral Local est un provider distinct d'Ollama. `MistralLocalProvider` adapte le runtime
-embarqué llama.cpp à `LlmGenerator` ; aucun autre service n'appelle llama.cpp directement.
-Il ne lance ni serveur, ni processus, ni CLI. Le modèle est chargé par `mmap` à la première
-requête, réutilisé entre les requêtes, remplacé sous verrou (jamais deux modèles chargés),
-libéré à la fermeture de la fenêtre principale et rendu au système après cinq minutes sans
-inférence — une surveillance installée au démarrage appelle `release_idle_model` chaque
-minute. Sans elle, un import de CV immobiliserait les poids jusqu'à la fermeture.
+`candilog_local` est le seul fournisseur dont le modèle actif ne vit pas dans `llm.model` :
+il est désigné par `managed_ollama.active_model_id`. L'écran de réglages affiche
+`ManagedOllamaPanel` au lieu d'un champ « Modèle ». Les garde-fous de configuration
+(`LlmConfig::est_configure`, `manquants` / `iaEstConfiguree`) l'exemptent donc du champ
+« modèle » ; l'exiger rendait le fournisseur inutilisable dès que la grille le sélectionnait.
 
-Mistral Local est le seul fournisseur dont le modèle ne vient pas de `llm.model` : son
-artefact est désigné par `local_ai.active_model_id`, et l'écran de réglages affiche
-`MistralLocalPanel` au lieu d'un champ « Modèle ». Les deux garde-fous de configuration
-l'exemptent donc du champ « modèle » : `LlmConfig::est_configure` côté Rust et
-`manquants` (`src/features/settings/model/etatIa.ts`) côté interface, ce dernier pilotant
-`AiRequiredModal` via `useAiRequiredStore`. L'exiger rendait le fournisseur inutilisable dès
-que la grille le sélectionnait, puisqu'elle vide ce champ. Les deux gardes doivent rester
-d'accord : n'en corriger qu'un déplace le blocage d'une couche à l'autre. Un modèle absent
-est signalé plus précisément en aval, par `LocalAiService::provider` (« Installez l'IA
-locale avant de l'utiliser »).
+Le catalogue des modèles, les pulls, l'activation et le benchmark utilisateur passent par
+`ManagedOllamaService` (`domain/managed_ollama.rs`). Les commandes IPC dédiées sont
+`get_managed_ollama_status`, `install_managed_ollama_model`, `cancel_managed_ollama_download`,
+`remove_managed_ollama_model` et `activate_managed_ollama_model`. Le téléchargement publie
+`managed-ollama://download-progress`, `managed-ollama://download-completed` et
+`managed-ollama://download-error`.
 
-`domain/local_ai.rs::ModelRegistry` est l'unique source des artefacts. Quatre entrées sont
-verrouillées sur un commit et un SHA-256 : trois GGUF officiels Mistral, plus un Qwen2.5
-0.5B Instruct Q4_K_M (dépôt officiel Qwen).
-
-| Profil UI | Famille | Dépôt / fichier Q4_K_M | Révision | Octets | SHA-256 |
-| --- | --- | --- | --- | ---: | --- |
-| Ultra léger | Qwen | `Qwen/Qwen2.5-0.5B-Instruct-GGUF` / `qwen2.5-0.5b-instruct-q4_k_m.gguf` | `9217f5db79a29953eb74d5343926648285ec7e67` | 491 400 032 | `74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db` |
-| Léger | Mistral | `mistralai/Ministral-3-3B-Instruct-2512-GGUF` / `Ministral-3-3B-Instruct-2512-Q4_K_M.gguf` | `eb599d408350ea2bb60452cb86be7c7b2fc28227` | 2 147 023 008 | `9ed150d4367e68df0ac8e1540f6ddc65b42d0ee26378329d1ecbca60f93fc5f8` |
-| Équilibré | Mistral | `mistralai/Ministral-3-8B-Instruct-2512-GGUF` / `Ministral-3-8B-Instruct-2512-Q4_K_M.gguf` | `0102285ad796bd99af90f58de616092e5630e970` | 5 198 911 904 | `33e7a72cf5e6e2cfc2f2847075acc013d68bba023e35310cef86b5cf8fdca761` |
-| Qualité | Mistral | `mistralai/Ministral-3-14B-Instruct-2512-GGUF` / `Ministral-3-14B-Instruct-2512-Q4_K_M.gguf` | `74fac473c43357d7fb2671713608183cc72496d0` | 8 239 593 024 | `824e0f3373e69b84f2cae46fdcb9bd1ebc6ab3bfc7acc125d818b7b8178cc613` |
-
-La sélection teste Qualité, Équilibré, Léger puis Ultra léger. L'écran de réglages affiche pour chaque profil le poids disque, la RAM et la VRAM recommandées, et le nombre de cœurs (`recommended_*` du registre). Les seuils nominaux sont
-24/16/8/4 Gio de RAM ou de mémoire unifiée et 12/8/4/2 Gio de VRAM. Elle exige en plus
-que l'artefact et ses buffers tiennent dans 68 % de la RAM (Apple compris) ou 80 % de la
-VRAM, que la mémoire actuellement disponible suffise et, en CPU, que 8/6/4/2 cœurs
-physiques soient présents. Un modèle seulement chargeable est `NotRecommended` et n'est
-jamais choisi automatiquement. Sur Apple Silicon, RAM et VRAM ne sont jamais additionnées.
-
-Le downloader n'accepte comme source initiale que `https://huggingface.co`, limite les
-redirections aux domaines de distribution Hugging Face, vérifie l'espace disque avec une
-réserve de 512 Mio, écrit le flux dans `.part`, reprend avec HTTP Range et ne publie le
-`.gguf` par renommage qu'après contrôle de la taille et du SHA-256. Une empreinte est aussi
-recontrôlée avant le premier chargement de chaque session.
-
-Le contexte normal est 8 192 tokens (16 384 réservé techniquement) ; le lot
-d'inférence (`n_batch`) reste à 512 pour limiter la RAM allouée lors d'un import de CV.
-L'invite est donc **décodée par lots** de cette taille (`lots_de_decodage`), les logits
-n'étant demandés que sur l'ultime jeton. Ce découpage n'est pas une optimisation :
-`llama_context::decode` impose `n_tokens_all <= n_batch` et abandonne le processus par
-`GGML_ASSERT` au-delà. Décoder une invite d'un seul bloc faisait donc planter Candilog pour
-tout texte dépassant 512 jetons — c'est-à-dire n'importe quel CV, le plafond de 12 000
-caractères en produisant plusieurs milliers. Le contrôle de longueur en tête d'inférence
-borne le **contexte** (cache KV), jamais la taille d'un appel à `decode` : les deux limites
-sont distinctes et doivent être tenues séparément.
-
-L'échantillonnage ne doit **jamais** accepter le jeton lui-même : `llama_sampler_sample`
-appelle déjà `llama_sampler_accept`. Un second appel faisait avancer la grammaire JSON de
-deux pas par jeton ; ses piles d'analyse se vidaient, et l'appel suivant abandonnait le
-processus sur `GGML_ASSERT(!stacks.empty())`. Le défaut ne touchait que les générations
-sous grammaire (`json: true`) — donc l'import de CV, jamais le benchmark.
-
-Ces deux pièges ont la même signature : un `abort()` de llama.cpp, que Rust ne peut ni
-intercepter, ni convertir en `Err`, ni journaliser. Seule une inférence réelle les révèle,
-d'où le scénario `tests/e2e_local_ai.rs` (`CANDILOG_E2E_LOCAL_AI=1`), qui couvre la
-génération sous grammaire, le texte libre et l'annulation.
-
-### Annulation, plafond et progression
-
-Une génération locale s'exécute dans un `spawn_blocking`, que Tokio **ne sait pas
-interrompre** : abandonner le futur rend la main à l'interface pendant que les cœurs
-continuent de calculer. `MistralLocalRuntime` expose donc un jeton d'annulation, consulté
-entre chaque lot de préremplissage et à chaque jeton produit ; `AiService::cancel` le
-déclenche en plus du jeton du futur.
-
-Le plafond de sortie dépend de la nature de la réponse : `MAX_OUTPUT_TOKENS` (4 096) en
-texte libre, `MAX_JSON_OUTPUT_TOKENS` (3 072) pour une sortie structurée. Ce second chiffre
-est mesuré, pas estimé : tokenisés avec le modèle, les profils de `tests/fixtures/profiles/`
-pèsent 336 à 1 928 jetons, et le cas volontairement trop long pour une page A4 en pèse
-2 634. Une assertion `const` interdit d'abaisser le plafond sous cette valeur — le tronquer
-produirait un JSON invalide, soit un échec là où l'on avait un résultat lent.
-
-Pendant l'analyse d'un CV, `cancel_avec_progression` réveille l'appelant chaque seconde et
-publie l'étape « Analyse du CV… N tokens · X tokens/s · T s » et le débit dans
-`tokens_per_second`. À 2,6 tokens/s sur un portable
-quadricœur, une analyse dure une douzaine de minutes : sans ce battement, rien ne distingue
-une génération lente d'un blocage. Le message reste vide pour ne pas gonfler le journal
-d'import ; seul `step` (et les compteurs) est remplacé. Un fournisseur distant ne publie
-aucun débit temps réel : l'interface affiche alors tokens + temps écoulé, et estime le
-débit (tokens/elapsed) dès que des tokens sont connus.
-
-### Garde-fou mémoire
-
-Sous Linux, une allocation excessive n'échoue pas : le noyau l'accorde puis tue le processus
-(OOM killer). Ce `SIGKILL` n'est ni interceptable, ni journalisable — filtrer `out of memory`
-dans les erreurs de llama.cpp ne protège donc de rien. La seule défense est de refuser
-l'inférence **avant** de réserver la mémoire.
-
-`domain/local_ai.rs::local_ai_memory_shortfall_mb` compare la RAM réellement disponible au
-besoin du modèle augmenté de `LOCAL_AI_SYSTEM_MARGIN_MB` (768 Mio laissés au système, à la
-fenêtre WebKit et au reste de Candilog). `MistralLocalRuntime::generate` l'évalue à chaque
-inférence et remonte une erreur chiffrée (« il manque environ N Mo ») plutôt que de laisser
-le noyau trancher. Un modèle déjà chargé occupe déjà la RAM mesurée : ses poids ne sont pas
-recomptés, sinon le garde-fou refuserait toute inférence après le premier chargement.
-
-Cette vérification est distincte de la compatibilité affichée à l'installation
-(`ensure_supported`), qui n'est évaluée qu'une fois : la mémoire disponible, elle, varie
-pendant la session.
-
-Chaque inférence est encadrée de deux lignes de journal portant l'empreinte résidente du
-processus et la RAM disponible. Après un arrêt brutal, cet encadrement est la seule trace
-montrant qu'une inférence était en cours. En complément, `core/logging.rs` dépose un
-marqueur `candilog.session` au démarrage et le retire en sortie normale : un marqueur
-survivant au lancement suivant signale une session tuée sans un mot dans le journal.
-
-Après installation, un prompt synthétique sans donnée utilisateur mesure
-chargement, tokens/s et mémoire du processus. Les paliers sont excellent (> 20), bon (10–20), acceptable (5–10) et trop lent
-(< 5). Dans ce dernier cas, l'interface propose le profil inférieur mais ne le télécharge
-qu'après confirmation. Un ancien modèle n'est proposé à la suppression qu'après validation
-du nouveau.
-
-Les paquets macOS ARM64 utilisent Metal ; macOS Intel retombe sur le CPU. Les paquets Linux
-et Windows du workflow de release activent Vulkan, avec fallback CPU. Le feature flag
-`local-ai-cuda` permet une variante CUDA bâtie sur un runner équipé du toolkit ; la release
-publique courante ne produit pas encore cet artefact NVIDIA séparé.
-
-Les commandes `detect_local_ai_hardware`, `get_local_ai_recommendation`,
-`get_local_ai_status`, `install_local_ai_model`, `cancel_local_ai_download`,
-`remove_local_ai_model`, `benchmark_local_ai_model` et `test_local_ai_model` restent minces.
-Le téléchargement publie `local-ai://download-progress`, `local-ai://download-completed` et
-`local-ai://download-error` ; aucun polling n'est utilisé.
+Les anciens réglages `mistral_local` (llama.cpp) sont migrés automatiquement vers
+`candilog_local` au chargement ; le bloc `local_ai` est ignoré. Les fichiers `.gguf` restent
+sur le disque mais ne sont plus gérés.
 
 La commande `system_resource_snapshot` alimente le rail (CPU %, RAM %, VRAM %). Elle
-s'appuie sur `sysinfo` sans réchauffer llama.cpp. Sur Apple Silicon la VRAM reflète la
-mémoire unifiée ; ailleurs elle vient d'un cache rempli lors de
-`detect_local_ai_hardware` (indisponible tant que la détection n'a pas tourné).
+s'appuie sur `sysinfo` sans démarrer le runtime Ollama.
 
 ## Sorties du modèle
 
@@ -371,8 +256,8 @@ installé) lance `run_user_cv_benchmark`. Le PDF de référence et sa ground tru
 déterministe contre la ground truth. Aucune donnée utilisateur n'est persistée ; le profil
 extrait est jeté après calcul du score.
 
-Le benchmark fonctionne avec **tout fournisseur configuré** (IA locale Candilog, Mistral
-Local, Ollama externe, cloud). Les providers distants affichent un avertissement : le CV de
+Le benchmark fonctionne avec **tout fournisseur configuré** (IA locale Candilog, Ollama
+externe, cloud). Les providers distants affichent un avertissement : le CV de
 référence sera envoyé au service configuré. Le score (0–100), la qualité qualitative, les
 métriques de durée et le détail par catégorie sont renvoyés dans `UserBenchmarkResult`.
 L'annulation réutilise `ai_cancel` et le `generation_id` de la session.
@@ -383,7 +268,7 @@ et fixtures associées).
 ## Interface IA
 
 L'écran Réglages → IA comporte trois onglets : **Modèles locaux** (catalogue Ollama géré),
-**Autres fournisseurs/modèles** (grille distante + Mistral Local llama.cpp) et **Réglages**
+**Autres fournisseurs/modèles** (grille distante) et **Réglages**
 (thème, son). Le sélecteur rapide global (`AiQuickSelector` dans la barre supérieure)
 synchronise le fournisseur actif avec les paramètres persistés.
 

@@ -12,25 +12,6 @@ import { openExternal } from "@/shared/services/external-link";
 
 vi.mock("@/shared/services/external-link", () => ({ openExternal: vi.fn() }));
 
-vi.mock("../../../viewmodel/useLocalAiViewModel", () => ({
-  useLocalAiViewModel: () => ({
-    state: "not_configured",
-    recommendation: null,
-    status: { state: "not_configured", active_model: null, installed_models: [], backend: null, benchmark: null, last_error: null },
-    progress: null,
-    error: null,
-    testResult: null,
-    isRemoving: false,
-    isTesting: false,
-    install: vi.fn(),
-    cancel: vi.fn(),
-    remove: vi.fn(),
-    benchmark: vi.fn(),
-    test: vi.fn(),
-    reevaluate: vi.fn(),
-  }),
-}));
-
 vi.mock("../../../viewmodel/useManagedOllamaViewModel", () => ({
   useManagedOllamaViewModel: () => ({
     runtimeState: "not_installed",
@@ -145,14 +126,13 @@ describe("écran Intelligence artificielle", () => {
 
   it("place le bandeau IA locale au-dessus des onglets", async () => {
     vi.spyOn(settingsService, "load").mockResolvedValue(
-      reglages({ provider: "mistral_local", model: "", api_key_configured: false, endpoint: "" }),
+      reglages({ provider: "candilog_local", model: "", api_key_configured: false, endpoint: "" }),
     );
 
     const { container } = render(<AiPage />, { wrapper });
 
     expect(await screen.findByRole("button", { name: "Tester l'IA" })).toBeInTheDocument();
     expect(screen.getByText("Non configuré")).toBeInTheDocument();
-    expect(screen.getByText("Aucun modèle")).toBeInTheDocument();
 
     const hero = container.querySelector("section");
     const onglets = screen.getByRole("tab", { name: "Modèles locaux" });

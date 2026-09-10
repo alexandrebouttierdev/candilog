@@ -2,7 +2,6 @@
 
 mod config;
 mod cover_letter;
-mod local_ai;
 mod managed_ollama;
 mod models;
 mod normalization;
@@ -16,7 +15,6 @@ mod validation;
 pub use crate::core::utils::text::search_key;
 pub use config::*;
 pub use cover_letter::*;
-pub use local_ai::*;
 pub use managed_ollama::*;
 pub use models::*;
 pub use profile_dates::normalize_profile_dates;

@@ -21,7 +21,6 @@ pub enum AnalysisMode {
 pub enum ProviderKind {
     /// IA locale Candilog via runtime Ollama privé géré par l'application.
     CandilogLocal,
-    MistralLocal,
     Ollama,
     Claude,
     #[serde(rename = "openai", alias = "open_ai", alias = "OpenAI")]
@@ -75,7 +74,7 @@ impl LlmConfig {
     #[must_use]
     pub fn endpoint_effectif(&self) -> &str {
         self.endpoint.as_deref().unwrap_or(match self.provider {
-            ProviderKind::CandilogLocal | ProviderKind::MistralLocal => "",
+            ProviderKind::CandilogLocal => "",
             ProviderKind::Ollama => "http://localhost:11434",
             ProviderKind::Claude => "https://api.anthropic.com",
             ProviderKind::Gemini => "https://generativelanguage.googleapis.com",
@@ -88,12 +87,7 @@ impl LlmConfig {
     #[must_use]
     pub fn est_configure(&self) -> bool {
         match self.provider {
-            // Mistral Local ne se décrit pas par `llm.model` : son artefact est désigné par
-            // `local_ai.active_model_id`, et l'écran de réglages n'offre aucun champ pour
-            // saisir un nom de modèle. Exiger ce champ rendait le fournisseur inutilisable
-            // dès que la grille le sélectionnait, puisqu'elle le vide.
             ProviderKind::CandilogLocal => true,
-            ProviderKind::MistralLocal => true,
             ProviderKind::Ollama => {
                 !self.model.trim().is_empty() && !self.endpoint_effectif().trim().is_empty()
             }
@@ -130,13 +124,9 @@ mod tests {
         }
     }
 
-    /// Mistral Local ne tire pas son modèle de `llm.model` mais de
-    /// `local_ai.active_model_id` : la grille des fournisseurs vide donc ce champ, et
-    /// l'écran n'offre aucun moyen de le remplir. L'exiger rendait le fournisseur
-    /// inutilisable dès le premier enregistrement.
     #[test]
-    fn mistral_local_reste_configure_sans_nom_de_modele() {
-        assert!(config(ProviderKind::MistralLocal, "").est_configure());
+    fn candilog_local_reste_configure_sans_nom_de_modele() {
+        assert!(config(ProviderKind::CandilogLocal, "").est_configure());
     }
 
     #[test]

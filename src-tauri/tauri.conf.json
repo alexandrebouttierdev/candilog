@@ -50,7 +50,6 @@
       "../LICENSE": "LICENSE",
       "../NOTICE": "NOTICE",
       "../THIRD_PARTY_NOTICES.md": "THIRD_PARTY_NOTICES.md",
-      "assets/licenses/llama.cpp-LICENSE": "licenses/llama.cpp-LICENSE",
       "assets/fonts/ibm-plex/LICENSE.txt": "licenses/ibm-plex-OFL-1.1.txt",
       "assets/licenses/material-symbols-Apache-2.0.txt": "licenses/material-symbols-Apache-2.0.txt"
     },

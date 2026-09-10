@@ -10,7 +10,6 @@ import type { LlmForm, Settings } from "@/shared/types/generated/settings";
 import { AppError } from "@/shared/types/app-error";
 import { iaEstConfiguree, etatIa } from "@/features/settings/model/etatIa";
 import { etatManagedOllama } from "@/features/settings/model/etatManagedOllama";
-import { etatLocalIa } from "@/features/settings/model/etatLocalIa";
 import {
   FOURNISSEURS,
   endpointDefaut,
@@ -22,16 +21,14 @@ import {
 import {
   defFournisseur,
   logoFournisseur,
-  logoIaLocale,
+  logoManagedPublisher,
 } from "@/features/settings/view/components/ProviderGrid";
 import { settingsService } from "@/features/settings/services/settingsService";
 import {
   managedOllamaService,
   MANAGED_OLLAMA_KEY,
 } from "@/features/settings/services/managedOllamaService";
-import { localAiService } from "@/features/settings/services/localAiService";
 import { SETTINGS_KEY } from "@/features/settings/viewmodel/useSettingsViewModel";
-import { LOCAL_AI_KEY } from "@/features/settings/viewmodel/useLocalAiViewModel";
 
 const DOT: Record<Tone, string> = {
   success: "bg-success",
@@ -63,17 +60,6 @@ export function AiQuickSelector() {
   const managed = useQuery({
     queryKey: MANAGED_OLLAMA_KEY,
     queryFn: managedOllamaService.status,
-  });
-  const localAi = useQuery({
-    queryKey: LOCAL_AI_KEY,
-    queryFn: async () => {
-      const [recommendation, status] = await Promise.all([
-        localAiService.recommendation(),
-        localAiService.status(),
-      ]);
-      return { recommendation, status };
-    },
-    enabled: activeProviderId === "mistral_local" || focusedProvider === "mistral_local",
   });
 
   const saveSettings = useMutation({
@@ -110,11 +96,8 @@ export function AiQuickSelector() {
     if (activeProviderId === "candilog_local") {
       return managed.data?.active_model?.display_name ?? "";
     }
-    if (activeProviderId === "mistral_local") {
-      return localAi.data?.status.active_model?.display_name.replace(" Instruct", "") ?? "";
-    }
     return llm.model.trim();
-  }, [activeProviderId, llm, localAi.data, managed.data]);
+  }, [activeProviderId, llm, managed.data]);
 
   const fournisseur = llm ? defFournisseur(llm.provider) : FOURNISSEURS[0]!;
 
@@ -125,20 +108,12 @@ export function AiQuickSelector() {
     if (activeProviderId === "candilog_local") {
       return etatManagedOllama(managed.data ?? null, null);
     }
-    if (activeProviderId === "mistral_local") {
-      return etatLocalIa(
-        localAi.data?.status.state ?? "not_configured",
-        localAi.data?.status.active_model ?? null,
-        null,
-        localAi.data?.status.last_error ?? null,
-      );
-    }
     return etatIa(llm, "idle");
-  }, [activeProviderId, llm, localAi.data, managed.data]);
+  }, [activeProviderId, llm, managed.data]);
 
   const logo =
-    activeProviderId === "candilog_local" || activeProviderId === "mistral_local"
-      ? logoIaLocale(localAi.data?.status.active_model?.family)
+    activeProviderId === "candilog_local" && managed.data?.active_model
+      ? logoManagedPublisher(managed.data.active_model.publisher)
       : activeProviderId
         ? logoFournisseur(activeProviderId)
         : null;
@@ -234,18 +209,13 @@ export function AiQuickSelector() {
               const itemConfigured =
                 item.id === "candilog_local"
                   ? Boolean(managed.data?.active_model)
-                  : item.id === "mistral_local"
-                    ? Boolean(localAi.data?.status.active_model)
-                    : settings.data
-                      ? iaEstConfiguree({
-                          ...settings.data.llm,
-                          provider: versProvider(item.id),
-                        })
-                      : false;
-              const logoItem =
-                item.id === "candilog_local" || item.id === "mistral_local"
-                  ? null
-                  : logoFournisseur(item.id);
+                  : settings.data
+                    ? iaEstConfiguree({
+                        ...settings.data.llm,
+                        provider: versProvider(item.id),
+                      })
+                    : false;
+              const logoItem = item.id === "candilog_local" ? null : logoFournisseur(item.id);
               return (
                 <button
                   key={item.id}
@@ -291,7 +261,6 @@ export function AiQuickSelector() {
               providerId={columnProvider}
               llm={llm}
               managed={managed.data}
-              localStatus={localAi.data?.status ?? null}
               onSelectManaged={selectManagedModel}
               onConfigure={() => {
                 setOpen(false);
@@ -317,7 +286,6 @@ function ModelColumn({
   providerId,
   llm,
   managed,
-  localStatus,
   onSelectManaged,
   onConfigure,
   onSelectRemote,
@@ -325,7 +293,6 @@ function ModelColumn({
   providerId: FournisseurOption["id"];
   llm: LlmForm | undefined;
   managed: Awaited<ReturnType<typeof managedOllamaService.status>> | undefined;
-  localStatus: Awaited<ReturnType<typeof localAiService.status>> | null;
   onSelectManaged: (id: ManagedModelId, installed: boolean) => void;
   onConfigure: () => void;
   onSelectRemote: (model: string) => Promise<void>;
@@ -356,47 +323,6 @@ function ModelColumn({
                 </span>
               </span>
               {item.active ? <Icon name="check" size={16} className="text-accent" /> : null}
-            </button>
-          </li>
-        ))}
-      </ul>
-    );
-  }
-
-  if (providerId === "mistral_local") {
-    const installed = localStatus?.installed_models ?? [];
-    if (installed.length === 0) {
-      return (
-        <div className="px-2 py-3">
-          <p className="text-note text-ink-muted">Aucun modèle llama.cpp installé.</p>
-          <button
-            type="button"
-            onClick={onConfigure}
-            className="mt-2 text-label font-semibold text-accent"
-          >
-            Configurer
-          </button>
-        </div>
-      );
-    }
-    return (
-      <ul className="flex flex-col gap-1">
-        {installed.map((model) => (
-          <li key={model.id}>
-            <button
-              type="button"
-              onClick={onConfigure}
-              className={cn(
-                "flex w-full items-center justify-between gap-2 rounded-button px-2 py-2 text-left hover:bg-fill-hover",
-                localStatus?.active_model?.id === model.id ? "bg-accent-tint" : "",
-              )}
-            >
-              <span className="truncate text-label font-mid text-ink">
-                {model.display_name.replace(" Instruct", "")}
-              </span>
-              {localStatus?.active_model?.id === model.id ? (
-                <Icon name="check" size={16} className="text-accent" />
-              ) : null}
             </button>
           </li>
         ))}

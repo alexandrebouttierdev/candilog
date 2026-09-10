@@ -10,44 +10,15 @@ Installer, lancer, régénérer, valider. Les règles de code sont dans
 | Node.js | LTS | la CI utilise `node-version: lts/*` |
 | Rust | 1.91 | `rust-version` de `src-tauri/Cargo.toml` |
 | Cargo | fourni par la toolchain Rust | — |
-| Clang + libclang | version fournie par le système | génération des bindings de `llama.cpp` par `bindgen` |
-| CMake | 3.21+ | compilation du runtime llama.cpp embarqué |
-
 Dépendances système Linux (liste appliquée par le workflow de release sur Ubuntu 22.04 ;
 adapter les noms de paquets à la distribution) :
 
 ```
-clang  cmake  libwebkit2gtk-4.1-dev  libappindicator3-dev  librsvg2-dev  patchelf  xdg-utils
-libvulkan-dev  glslc
+libwebkit2gtk-4.1-dev  libappindicator3-dev  librsvg2-dev  patchelf  xdg-utils
 ```
-
-Sur Fedora, `llama-cpp-sys-2` a besoin du pilote Clang en plus de `libclang` : installer
-uniquement `clang-libs` laisse les en-têtes présents sur le disque, mais empêche `bindgen`
-de découvrir leur chemin. Pour corriger ou compléter une installation de développement :
-
-```bash
-sudo dnf install clang cmake
-```
-
-Sur Ubuntu / Debian, l'équivalent est :
-
-```bash
-sudo apt install clang libclang-dev cmake build-essential
-```
-
-Sur macOS, les Command Line Tools de Xcode fournissent Clang pour Intel comme pour Apple
-Silicon ; CMake reste à installer séparément. Sous Windows, installer les outils C++ MSVC,
-LLVM/Clang et CMake. Ces outils servent à **construire** Candilog : les installateurs
-publiés n'imposent ni Clang ni CMake sur la machine de l'utilisateur.
 
 Sur macOS et Windows, suivre les prérequis Tauri 2 officiels (Xcode Command Line Tools,
-Microsoft C++ Build Tools et WebView2). Le build de release Windows installe le SDK Vulkan
-sur le runner ; ce SDK est un prérequis de **compilation**, jamais de la machine utilisateur.
-
-Le runtime local est lié au paquet par `llama-cpp-2 = 0.1.156`. Metal est sélectionné par
-la cible macOS ARM64. Les builds Linux/Windows du workflow passent
-`--features local-ai-vulkan`. Une variante NVIDIA peut être construite sur un runner CUDA
-avec `--features local-ai-cuda` ; ne pas activer ce flag sur un runner sans toolkit.
+Microsoft C++ Build Tools et WebView2).
 
 Le paquet macOS cible macOS 11.0 au minimum. Cette borne, déclarée dans
 `tauri.conf.json`, couvre les API requises par le runtime natif et reste cohérente avec
@@ -198,28 +169,6 @@ CANDILOG_E2E=1 CANDILOG_E2E_LIVE=1 CANDILOG_E2E_OFFER=/chemin/offre.txt   cargo 
 Un profil dont le contenu dépasse réellement la page A4 a pour résultat correct un **refus**
 d'export : il porte alors un `profile-NN.expected.json` à côté de sa fixture. Le scénario
 échoue aussi bien si l'export refuse à tort que s'il accepte ce qu'il aurait dû refuser.
-
-## Scénario de bout en bout de l'IA locale
-
-`src-tauri/tests/e2e_local_ai.rs` demande une vraie inférence au runtime llama.cpp embarqué,
-sous grammaire JSON puis en texte libre. Il est **ignoré** tant que `CANDILOG_E2E_LOCAL_AI`
-est absent, et suppose le modèle Léger installé.
-
-Un mauvais usage de llama.cpp — invite décodée d'un bloc au-delà de `n_batch`, jeton accepté
-deux fois sous grammaire — ne remonte pas une `Err` : il déclenche un `GGML_ASSERT` qui
-appelle `abort()`. Le processus meurt avant toute assertion Rust, et aucun test unitaire ne
-peut l'observer. Ce scénario est le seul filet contre cette classe de défauts.
-
-```bash
-CANDILOG_E2E_LOCAL_AI=1 cargo test --manifest-path src-tauri/Cargo.toml --locked --test e2e_local_ai -- --nocapture
-```
-
-| Variable | Rôle | Défaut |
-| --- | --- | --- |
-| `CANDILOG_E2E_LOCAL_AI` | active le scénario | absent → ignoré |
-| `CANDILOG_E2E_LOCAL_AI_MODEL` | chemin du `.gguf` | modèle du dossier de développement |
-
-Comptez une à deux minutes : le chargement du modèle domine le temps d'exécution.
 
 ## Contrôle visuel des feuilles A4
 

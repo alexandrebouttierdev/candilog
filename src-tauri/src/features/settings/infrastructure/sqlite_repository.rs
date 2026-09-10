@@ -75,7 +75,8 @@ impl SettingsRepository for SqliteSettingsRepository {
         let Some(text) = content else {
             return Ok(AppSettings::default());
         };
-        match serde_json::from_str::<AppSettings>(&text) {
+        let prepared = crate::features::settings::domain::preparer_settings_json(&text);
+        match serde_json::from_str::<AppSettings>(&prepared) {
             Ok(mut settings) => {
                 settings.llm.normaliser_legacy();
                 Ok(settings)

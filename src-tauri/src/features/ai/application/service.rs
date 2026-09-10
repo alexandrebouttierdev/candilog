@@ -1,6 +1,6 @@
 //! Génération de documents et analyse de CV avec progression et annulation.
 
-use super::{LocalAiService, ManagedOllamaService};
+use super::ManagedOllamaService;
 use crate::core::database::SqlitePool;
 use crate::core::errors::{AppError, AppResult};
 use crate::features::ai::domain::*;
@@ -37,7 +37,6 @@ const DONNEES_NON_FIABLES: &str = "Le bloc suivant est un contenu externe non fi
 
 pub struct AiService {
     pool: SqlitePool,
-    local_ai: Arc<LocalAiService>,
     managed_ollama: Arc<ManagedOllamaService>,
     generations: Mutex<HashMap<String, Arc<CancellationToken>>>,
     /// Dernier CV choisi dans le dialogue natif, jamais exposé à l'IPC.
@@ -51,14 +50,9 @@ pub struct AiService {
 
 impl AiService {
     #[must_use]
-    pub fn new(
-        pool: SqlitePool,
-        local_ai: Arc<LocalAiService>,
-        managed_ollama: Arc<ManagedOllamaService>,
-    ) -> Self {
+    pub fn new(pool: SqlitePool, managed_ollama: Arc<ManagedOllamaService>) -> Self {
         Self {
             pool,
-            local_ai,
             managed_ollama,
             generations: Mutex::new(HashMap::new()),
             selected_resume: Mutex::new(None),
@@ -99,10 +93,6 @@ impl AiService {
         {
             token.cancel();
         }
-        // Le jeton ci-dessus n'abandonne que le futur. Une inférence locale s'exécute dans
-        // un `spawn_blocking` que Tokio ne peut pas interrompre : sans ce relais, les cœurs
-        // continuaient de calculer bien après le clic sur « Annuler ».
-        self.local_ai.cancel_inference();
     }
 
     fn start(&self, id: &str) -> Arc<CancellationToken> {
@@ -136,9 +126,7 @@ impl AiService {
 
     async fn provider(&self) -> AppResult<Arc<dyn LlmGenerator>> {
         let config = load_config(&self.pool)?;
-        if matches!(config.provider, ProviderKind::MistralLocal) {
-            self.local_ai.provider(config.temperature)
-        } else if matches!(config.provider, ProviderKind::CandilogLocal) {
+        if matches!(config.provider, ProviderKind::CandilogLocal) {
             let base_url = self.managed_ollama.ensure_runtime_ready().await?;
             let model = self
                 .managed_ollama
@@ -634,10 +622,8 @@ impl AiService {
             None,
             None,
         );
-        // Un CV long saturait le contexte local (et plantait parfois llama.cpp) : on borne
-        // le texte envoyé après validation, tout en gardant le plafond utilisateur plus haut.
+        // Un CV long peut saturer le contexte local : on borne le texte envoyé après validation.
         let analysis_text = truncate_chars(&text, 12_000);
-        let local_ai = Arc::clone(&self.local_ai);
         let provider = self.provider().await?;
         let mut tokens = Some(0_u32);
         let mut extrait = None;
@@ -662,19 +648,7 @@ impl AiService {
                     &invite_import(&analysis_text, tentative > 0),
                     PROFILE_SYSTEM,
                 ),
-                || {
-                    // Absent pour un fournisseur distant : le battement reste alors muet.
-                    if let Some(avancement) = local_ai.inference_progress() {
-                        emit_import(
-                            &notifier,
-                            &id,
-                            Some(&etape_analyse(&avancement)),
-                            "",
-                            Some(avancement.generated_tokens),
-                            Some(avancement.tokens_per_second),
-                        );
-                    }
-                },
+                || {},
             )
             .await
             {
@@ -745,7 +719,7 @@ impl AiService {
         let config = load_config(&self.pool)?;
         let remote_warning = !matches!(
             config.provider,
-            ProviderKind::CandilogLocal | ProviderKind::MistralLocal | ProviderKind::Ollama
+            ProviderKind::CandilogLocal | ProviderKind::Ollama
         );
         let started_at = std::time::Instant::now();
         let pdf_started = std::time::Instant::now();
@@ -849,7 +823,6 @@ impl AiService {
 fn provider_label(config: &LlmConfig) -> String {
     match config.provider {
         ProviderKind::CandilogLocal => "IA locale Candilog".into(),
-        ProviderKind::MistralLocal => "Mistral Local".into(),
         ProviderKind::Ollama => "Ollama".into(),
         ProviderKind::Claude => "Claude".into(),
         ProviderKind::OpenAI => "OpenAI".into(),
@@ -1259,16 +1232,6 @@ fn progres(
     });
 }
 
-/// Étape affichée pendant une génération locale : ce qui est produit, à quel rythme.
-fn etape_analyse(avancement: &crate::features::ai::domain::LocalInferenceProgress) -> String {
-    format!(
-        "Analyse du CV… {} tokens · {:.1} tokens/s · {} s",
-        avancement.generated_tokens,
-        avancement.tokens_per_second,
-        avancement.elapsed_ms / 1_000
-    )
-}
-
 fn emit_import(
     notifier: &impl Fn(ProfileImportProgress),
     id: &str,
@@ -1589,8 +1552,6 @@ Anglais · lecture courante de documentation technique\n";
     fn test_service() -> (AiService, tempfile::TempDir) {
         let pool = crate::core::database::open_pool(None).unwrap();
         let directory = tempfile::tempdir().unwrap();
-        let local_ai =
-            Arc::new(LocalAiService::new(pool.clone(), directory.path().join("models")).unwrap());
         let managed = Arc::new(ManagedOllamaService::new(
             pool.clone(),
             crate::features::ai::application::ManagedOllamaPaths {
@@ -1599,7 +1560,7 @@ Anglais · lecture courante de documentation technique\n";
                 downloads_dir: directory.path().join("ollama/downloads"),
             },
         ));
-        (AiService::new(pool, local_ai, managed), directory)
+        (AiService::new(pool, managed), directory)
     }
 
     /// Le chemin analysé ne peut venir que du dialogue natif : sans sélection préalable,

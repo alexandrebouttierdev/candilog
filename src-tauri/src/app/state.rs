@@ -4,9 +4,7 @@ use crate::core::config::AppPaths;
 use crate::core::database::{open_pool, run_local_migrations, validate_database_file, SqlitePool};
 use crate::core::errors::AppResult;
 use crate::core::secrets::SecretStore;
-use crate::features::ai::application::{
-    AiService, LocalAiService, ManagedOllamaPaths, ManagedOllamaService,
-};
+use crate::features::ai::application::{AiService, ManagedOllamaPaths, ManagedOllamaService};
 use crate::features::analytics::application::AnalyticsService;
 use crate::features::analytics::infrastructure::SqliteAnalyticsRepository;
 use crate::features::applications::application::ApplicationService;
@@ -46,8 +44,6 @@ pub type Documents = Arc<DocumentsService<SqliteResumeRepository, SqliteCoverLet
 pub type Interviews = Arc<InterviewService<SqliteInterviewRepository>>;
 /// Orchestrateur des traitements IA et de leur annulation.
 pub type Ai = Arc<AiService>;
-/// Installation, runtime et cycle de vie de Mistral Local.
-pub type LocalAi = Arc<LocalAiService>;
 /// Runtime Ollama privé géré par Candilog.
 pub type ManagedOllama = Arc<ManagedOllamaService>;
 /// Réglages, coffre, sauvegardes et mises à jour.
@@ -60,68 +56,34 @@ pub type FollowUps = Arc<FollowUpService<SqliteFollowUpRepository>>;
 pub type Referentials = Arc<ReferentialService<SqliteReferentialRepository>>;
 
 /// Dépendances partagées par toutes les commandes.
-///
-/// Un unique exemplaire est construit au démarrage puis confié à Tauri via `manage` : les
-/// commandes le reçoivent en `State<'_, AppState>` et ne recréent jamais ni connexion, ni
-/// dépôt, ni client HTTP (docs/ARCHITECTURE.md).
-///
-/// Les services sont derrière `Arc` parce qu'une commande `async` doit s'approprier ce
-/// qu'elle déplace vers `spawn_blocking` : elle ne peut pas y emprunter l'état, dont la
-/// durée de vie est liée à l'appel.
-///
-/// D'autres services s'ajoutent au fil des tranches de migration.
 pub struct AppState {
-    /// Service du tableau de bord et des analyses.
     pub analytics: Analytics,
-    /// Service des candidatures.
     pub applications: Applications,
-    /// Service des entreprises.
     pub companies: Companies,
-    /// Service des contacts du réseau.
     pub contacts: Contacts,
-    /// Bibliothèques locales de CV et lettres.
     pub documents: Documents,
-    /// Service des entretiens.
     pub interviews: Interviews,
-    /// Analyse et génération de documents.
     pub ai: Ai,
-    /// Fournisseur embarqué Mistral Local.
-    pub local_ai: LocalAi,
-    /// Runtime Ollama privé Candilog.
     pub managed_ollama: ManagedOllama,
-    /// Réglages applicatifs et maintenance.
     pub settings: SettingsHandle,
-    /// Service du profil professionnel.
     pub profile: Profile,
-    /// Service des relances.
     pub followups: FollowUps,
-    /// Service des quatre référentiels métier.
     pub referentials: Referentials,
-    /// Pool `SQLite` local.
     pub sqlite: SqlitePool,
-    /// Path du fichier de base, nécessaire à l'export et à la restauration de sauvegarde.
     pub db_path: PathBuf,
 }
 
 impl AppState {
-    /// Construit l'état sur le fichier de données de l'utilisateur et applique les migrations.
-    ///
-    /// # Errors
-    /// Retourne `AppError::Database` si le pool ne peut pas être ouvert ou si une migration
-    /// échoue, et `AppError::Validation` si le dossier de données est introuvable.
     pub fn persistent() -> AppResult<Self> {
         let paths = AppPaths::discover()?;
         validate_database_file(&paths.database)?;
         let pool = open_pool(Some(&paths.database))?;
         run_local_migrations(&pool)?;
-        // Le fichier de base n'existe pas encore au moment où les chemins sont résolus :
-        // ses permissions ne peuvent être restreintes qu'une fois la base ouverte.
         paths.securiser();
         Self::sur_pool(
             pool,
             paths.database,
             paths.photos_dir,
-            paths.local_ai_models_dir,
             ManagedOllamaPaths {
                 runtime_root: paths.managed_ollama_runtime_dir,
                 models_dir: paths.managed_ollama_models_dir,
@@ -130,53 +92,31 @@ impl AppState {
         )
     }
 
-    /// Construit l'état sur une base **en mémoire**, réservé aux tests.
-    ///
-    /// # Errors
-    /// Retourne `AppError::Database` si le pool `SQLite` ne peut pas être initialisé.
     pub fn in_memory() -> AppResult<Self> {
         let pool = open_pool(None)?;
         run_local_migrations(&pool)?;
-        // Dossier de photos propre à l'instance : deux états en mémoire ne doivent pas se
-        // marcher dessus, et rien ne subsiste entre deux exécutions de la suite.
         let photos_dir =
             std::env::temp_dir().join(format!("candilog-photos-{}", uuid::Uuid::new_v4()));
-        let local_ai_models_dir =
-            std::env::temp_dir().join(format!("candilog-local-ai-models-{}", uuid::Uuid::new_v4()));
-        let managed_paths = ManagedOllamaPaths {
-            runtime_root: local_ai_models_dir
-                .parent()
-                .unwrap_or(&local_ai_models_dir)
-                .join("ollama/runtime"),
-            models_dir: local_ai_models_dir
-                .parent()
-                .unwrap_or(&local_ai_models_dir)
-                .join("ollama/models"),
-            downloads_dir: local_ai_models_dir
-                .parent()
-                .unwrap_or(&local_ai_models_dir)
-                .join("ollama/downloads"),
-        };
+        let managed_root =
+            std::env::temp_dir().join(format!("candilog-managed-ollama-{}", uuid::Uuid::new_v4()));
         Self::sur_pool(
             pool,
             PathBuf::new(),
             photos_dir,
-            local_ai_models_dir,
-            managed_paths,
+            ManagedOllamaPaths {
+                runtime_root: managed_root.join("runtime"),
+                models_dir: managed_root.join("models"),
+                downloads_dir: managed_root.join("downloads"),
+            },
         )
     }
 
-    /// Assemble dépôts et services autour d'un pool déjà migré.
     fn sur_pool(
         pool: SqlitePool,
         db_path: PathBuf,
         photos_dir: PathBuf,
-        local_ai_models_dir: PathBuf,
         managed_paths: ManagedOllamaPaths,
     ) -> AppResult<Self> {
-        // Les référentiels sont semés par `init_schema.sql` : aucune étape d'amorçage n'est
-        // nécessaire ici, et les listes sont donc identiques d'une installation à l'autre.
-        let local_ai = Arc::new(LocalAiService::new(pool.clone(), local_ai_models_dir)?);
         let managed_ollama = Arc::new(ManagedOllamaService::new(pool.clone(), managed_paths));
         Ok(Self {
             analytics: Arc::new(AnalyticsService::new(SqliteAnalyticsRepository::new(
@@ -198,12 +138,7 @@ impl AppState {
             interviews: Arc::new(InterviewService::new(SqliteInterviewRepository::new(
                 pool.clone(),
             ))),
-            ai: Arc::new(AiService::new(
-                pool.clone(),
-                Arc::clone(&local_ai),
-                Arc::clone(&managed_ollama),
-            )),
-            local_ai,
+            ai: Arc::new(AiService::new(pool.clone(), Arc::clone(&managed_ollama))),
             managed_ollama,
             settings: Arc::new(SettingsService::new(
                 SqliteSettingsRepository::new(pool.clone()),

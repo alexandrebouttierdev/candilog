@@ -35,17 +35,14 @@ import {
   ProviderGrid,
   defFournisseur,
   logoFournisseur,
-  logoIaLocale,
+  logoManagedPublisher,
 } from "../components/ProviderGrid";
 import { AiHero } from "../components/AiHero";
-import { MistralLocalPanel } from "../components/MistralLocalPanel";
 import { ManagedOllamaPanel } from "../components/ManagedOllamaPanel";
 import { SettingsBody, SettingsCard } from "../components/SettingsUi";
 import { cn } from "@/shared/lib/cn";
 import { etatIa, type TestConnexion } from "../../model/etatIa";
-import { etatLocalIa, isLocalAiBusy } from "../../model/etatLocalIa";
 import { etatManagedOllama } from "../../model/etatManagedOllama";
-import { useLocalAiViewModel } from "../../viewmodel/useLocalAiViewModel";
 import { useManagedOllamaViewModel } from "../../viewmodel/useManagedOllamaViewModel";
 import { managedOllamaService } from "../../services/managedOllamaService";
 import type { ManagedModelStatus } from "@/shared/types/generated/ai";
@@ -95,9 +92,7 @@ export function AiPage() {
   const llm = form?.llm;
   const providerId = llm ? idProvider(llm.provider) : null;
   const isCandilogLocal = providerId === "candilog_local";
-  const isMistralLocal = providerId === "mistral_local";
   const managedVm = useManagedOllamaViewModel(() => setDraft(null));
-  const localVm = useLocalAiViewModel(() => setDraft(null), { enabled: isMistralLocal });
 
   const setTest = (value: TestConnexion) => {
     setTestState(value);
@@ -169,16 +164,13 @@ export function AiPage() {
   };
 
   const fournisseur = llm ? defFournisseur(llm.provider) : null;
-  const localActive = localVm.status?.active_model ?? null;
   const managedActive = managedVm.status?.active_model ?? null;
-  const logo = isCandilogLocal
-    ? null
-    : isMistralLocal
-      ? logoIaLocale(localActive?.family)
+  const logo =
+    isCandilogLocal && managedActive
+      ? logoManagedPublisher(managedActive.publisher)
       : fournisseur
         ? logoFournisseur(fournisseur.id)
         : null;
-  const localModelLabel = localActive ? localActive.display_name.replace(" Instruct", "") : "";
   const managedModelLabel = managedActive?.display_name ?? "";
 
   const ouvrirBenchmark = (label: string) => {
@@ -193,11 +185,7 @@ export function AiPage() {
     }
     ouvrirBenchmark(model.definition.display_name);
   };
-  const noteModele = isCandilogLocal
-    ? managedModelLabel
-    : isMistralLocal
-      ? localModelLabel
-      : (llm?.model ?? "");
+  const noteModele = isCandilogLocal ? managedModelLabel : (llm?.model ?? "");
 
   return (
     <div className="flex h-full flex-col">
@@ -258,20 +246,6 @@ export function AiPage() {
                 testDisabled={!managedActive}
                 onTest={() => ouvrirBenchmark(managedModelLabel || "IA locale")}
               />
-            ) : isMistralLocal ? (
-              <AiHero
-                logo={logo}
-                label={fournisseur.label}
-                model={localModelLabel}
-                etat={etatLocalIa(localVm.state, localActive, localVm.testResult, localVm.error)}
-                testMessage={null}
-                testLabel="Tester l'IA"
-                busy={localVm.isTesting || isLocalAiBusy(localVm.state)}
-                testDisabled={
-                  !localActive || isLocalAiBusy(localVm.state) || localVm.state === "detecting_hardware"
-                }
-                onTest={() => localVm.test()}
-              />
             ) : (
               <AiHero
                 logo={logo}
@@ -300,10 +274,7 @@ export function AiPage() {
                   />
                 </SettingsCard>
 
-                {isMistralLocal ? (
-                  <MistralLocalPanel vm={localVm} />
-                ) : (
-                  <div className="grid gap-4 min-[900px]:grid-cols-2 min-[900px]:items-start">
+                <div className="grid gap-4 min-[900px]:grid-cols-2 min-[900px]:items-start">
                     <SettingsCard icon="tune" title="Configuration">
                       <div className="flex flex-col gap-3.5">
                         <div className="flex max-w-[380px] items-end gap-2">
@@ -425,7 +396,6 @@ export function AiPage() {
                       </div>
                     </SettingsCard>
                   </div>
-                )}
               </div>
             ) : null}
 
