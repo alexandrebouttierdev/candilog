@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { cn } from "@/shared/lib/cn";
 import { Button, IconButton } from "@/shared/ui";
 import { iaEstConfiguree } from "@/features/settings/model/etatIa";
 import { idProvider } from "@/features/settings/model/providers";
@@ -14,7 +15,7 @@ import { AiBenchmarkModal } from "@/features/ai/view/components/AiBenchmarkModal
 import { AiQuickSelector } from "@/features/ai/view/components/AiQuickSelector";
 
 /** En-tête IA global : sélecteur rapide, benchmark et accès aux réglages. */
-export function AiGlobalHeader() {
+export function AiGlobalHeader({ shellBrand = false }: { shellBrand?: boolean }) {
   const navigate = useNavigate();
   const [benchmarkOpen, setBenchmarkOpen] = useState(false);
 
@@ -43,11 +44,15 @@ export function AiGlobalHeader() {
 
   return (
     <>
-      <AiQuickSelector />
+      <AiQuickSelector shellBrand={shellBrand} />
       <Button
         variant="secondary"
         icon="bolt"
         disabled={!canBenchmark}
+        className={cn(
+          shellBrand &&
+            "shell-brand-control disabled:border-white/15 disabled:bg-white/5 disabled:text-white/40",
+        )}
         onClick={() => setBenchmarkOpen(true)}
       >
         Tester
@@ -55,6 +60,10 @@ export function AiGlobalHeader() {
       <IconButton
         icon="settings"
         label="Réglages Intelligence artificielle"
+        className={cn(
+          shellBrand &&
+            "shell-brand-control disabled:border-white/15 disabled:bg-white/5 disabled:text-white/40",
+        )}
         onClick={() => {
           void navigate("/settings/ai");
         }}

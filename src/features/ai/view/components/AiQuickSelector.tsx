@@ -43,7 +43,7 @@ function providerStatusTone(configured: boolean): Tone {
 }
 
 /** Sélecteur rapide global : fournisseur + modèle, synchronisé avec les réglages. */
-export function AiQuickSelector() {
+export function AiQuickSelector({ shellBrand = false }: { shellBrand?: boolean }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const root = useRef<HTMLDivElement>(null);
@@ -162,9 +162,11 @@ export function AiQuickSelector() {
         aria-label={`Fournisseur IA : ${triggerLabel}`}
         onClick={() => setOpen((value) => !value)}
         className={cn(
-          "inline-flex h-control max-w-[min(42vw,18rem)] items-center gap-1.5 rounded-button border border-control-strong bg-fill px-2.5",
-          "text-item font-medium text-ink transition-colors duration-hover hover:bg-fill-hover",
-          "focus-visible:outline-1 focus-visible:outline-accent-focus",
+          "inline-flex h-control max-w-[min(42vw,18rem)] items-center gap-1.5 rounded-button border px-2.5",
+          "text-item font-medium transition-colors duration-hover",
+          shellBrand
+            ? "shell-brand-control focus-visible:outline-1 focus-visible:outline-rail-focus"
+            : "border-control-strong bg-fill text-ink hover:bg-fill-hover focus-visible:outline-1 focus-visible:outline-accent-focus",
         )}
       >
         <span className="relative flex size-5 flex-none items-center justify-center">
@@ -177,18 +179,27 @@ export function AiQuickSelector() {
               className={cn("size-4 object-contain", logo.mono && "dark:invert")}
             />
           ) : (
-            <Icon name="smart_toy" size={16} className="text-ink-muted" />
+            <Icon
+              name="smart_toy"
+              size={16}
+              className={shellBrand ? "text-rail-ink" : "text-ink-muted"}
+            />
           )}
           <span
             aria-hidden
             className={cn(
-              "absolute -right-0.5 -bottom-0.5 size-1.5 rounded-full ring-2 ring-page",
+              "absolute -right-0.5 -bottom-0.5 size-1.5 rounded-full ring-2",
+              shellBrand ? "ring-rail-item-active-border" : "ring-page",
               DOT[globalEtat.tone],
             )}
           />
         </span>
         <span className="min-w-0 truncate">{triggerLabel}</span>
-        <Icon name="expand_more" size={15} className="flex-none text-ink-faint" />
+        <Icon
+          name="expand_more"
+          size={15}
+          className={cn("flex-none", shellBrand ? "text-rail-ink" : "text-ink-faint")}
+        />
       </button>
 
       {open ? (

@@ -71,3 +71,20 @@ export function applyTheme(theme: ThemePref): void {
     root.setAttribute("data-theme", theme);
   }
 }
+
+/** Thème sombre effectif (préférence explicite ou `prefers-color-scheme`). */
+export function themeIsDark(theme: ThemePref): boolean {
+  return (
+    theme === "dark" ||
+    (theme === "system" &&
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches)
+  );
+}
+
+/** Coque rail + topbar en bleu Candilog (mode clair uniquement). */
+export function useShellBrand(): boolean {
+  const theme = useUiStore((state) => state.theme);
+  return !themeIsDark(theme);
+}

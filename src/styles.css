@@ -40,12 +40,19 @@
   --candilog-text-on-accent: #ffffff;
   --candilog-fill: rgb(15 18 32 / 0.04);
   --candilog-fill-hover: rgb(15 18 32 / 0.08);
-  --candilog-glass-rail: rgb(255 255 255 / 0.78);
-  --candilog-glass-rail-border: rgb(15 18 32 / 0.08);
-  --candilog-glass-subnav: rgb(247 248 250 / 0.72);
-  --candilog-glass-subnav-border: rgb(15 18 32 / 0.07);
-  --candilog-glass-topbar: rgb(255 255 255 / 0.76);
-  --candilog-glass-topbar-border: rgb(15 18 32 / 0.08);
+  --candilog-glass-rail: linear-gradient(180deg, #5263eb 0%, #4555d8 100%);
+  --candilog-glass-rail-border: #3d4fd4;
+  --candilog-rail-ink: rgb(255 255 255 / 0.76);
+  --candilog-rail-ink-hover: #ffffff;
+  --candilog-rail-item-hover: rgb(255 255 255 / 0.1);
+  --candilog-rail-item-active-bg: rgb(255 255 255 / 0.16);
+  --candilog-rail-item-active-border: rgb(255 255 255 / 0.38);
+  --candilog-rail-divider: rgb(255 255 255 / 0.22);
+  --candilog-rail-focus: rgb(255 255 255 / 0.72);
+  --candilog-glass-subnav: #f3f5fd;
+  --candilog-glass-subnav-border: rgb(79 95 232 / 0.1);
+  --candilog-glass-topbar: var(--candilog-glass-rail);
+  --candilog-glass-topbar-border: var(--candilog-glass-rail-border);
   --candilog-glass-inspector: rgb(255 255 255 / 0.8);
   --candilog-glass-inspector-border: rgb(15 18 32 / 0.08);
   --candilog-glass-popover: rgb(255 255 255 / 0.94);
@@ -288,6 +295,13 @@
   --color-checkbox: var(--candilog-border-checkbox);
   --color-on-accent-border: var(--candilog-border-on-accent);
   --color-glass-rail: var(--candilog-glass-rail-border);
+  --color-rail-ink: var(--candilog-rail-ink);
+  --color-rail-ink-hover: var(--candilog-rail-ink-hover);
+  --color-rail-item-hover: var(--candilog-rail-item-hover);
+  --color-rail-item-active-bg: var(--candilog-rail-item-active-bg);
+  --color-rail-item-active-border: var(--candilog-rail-item-active-border);
+  --color-rail-divider: var(--candilog-rail-divider);
+  --color-rail-focus: var(--candilog-rail-focus);
   --color-glass-subnav: var(--candilog-glass-subnav-border);
   --color-glass-topbar: var(--candilog-glass-topbar-border);
   --color-glass-inspector: var(--candilog-glass-inspector-border);
@@ -821,6 +835,38 @@
 
   .glass-rail {
     background: var(--candilog-glass-rail);
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) .glass-rail,
+    :root:not([data-theme="dark"]) .glass-topbar,
+    :root:not([data-theme="dark"]) .glass-subnav {
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+  }
+
+  :root[data-theme="light"] .glass-rail,
+  :root[data-theme="light"] .glass-topbar,
+  :root[data-theme="light"] .glass-subnav {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .shell-brand-control {
+    border-color: var(--candilog-rail-item-active-border);
+    background: var(--candilog-rail-item-hover);
+    color: var(--candilog-rail-ink-hover);
+  }
+
+  .shell-brand-control:hover:not(:disabled) {
+    background: var(--candilog-rail-item-active-bg);
+  }
+
+  .shell-brand-control:disabled {
+    border-color: rgb(255 255 255 / 0.18);
+    background: rgb(255 255 255 / 0.06);
+    color: rgb(255 255 255 / 0.45);
   }
 
   .glass-subnav {

@@ -1,6 +1,6 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { Sections, sectionForPath } from "@/app/router/routes";
-import { applyTheme, useUiStore } from "@/shared/lib/ui-store";
+import { applyTheme, useShellBrand, useUiStore } from "@/shared/lib/ui-store";
 import type { ThemePref } from "@/shared/types/generated/settings";
 import { settingsService } from "@/features/settings/services/settingsService";
 import { Icon } from "@/shared/ui/Icon";
@@ -12,28 +12,33 @@ import logoCandilogDark from "@/assets/logo-candilog-dark.svg";
 export function NavRail() {
   const { pathname } = useLocation();
   const active = sectionForPath(pathname);
-  const theme = useUiStore((state) => state.theme);
   const setTheme = useUiStore((state) => state.setTheme);
-  const sombre =
-    theme === "dark" ||
-    (theme === "system" &&
-      typeof window !== "undefined" &&
-      typeof window.matchMedia === "function" &&
-      window.matchMedia("(prefers-color-scheme: dark)").matches);
+  const railBrand = useShellBrand();
+  const sombre = !railBrand;
 
   return (
     <nav
       aria-label="Navigation principale"
       className="glass-rail relative z-20 flex w-rail flex-none flex-col items-center overflow-visible border-r border-glass-rail pt-3 pb-2.5"
     >
-      <img
-        src={sombre ? logoCandilogDark : logoCandilog}
-        alt="Candilog"
-        width={36}
-        height={36}
-        className="mb-3 size-9"
+      <span
+        className={cn(
+          "mb-3 flex size-9 items-center justify-center",
+          railBrand && "rounded-tile bg-white/95 p-1 shadow-sm",
+        )}
+      >
+        <img
+          src={sombre ? logoCandilogDark : logoCandilog}
+          alt="Candilog"
+          width={36}
+          height={36}
+          className={cn(railBrand ? "size-7" : "size-9")}
+        />
+      </span>
+      <span
+        aria-hidden
+        className={cn("mb-2.5 h-px w-6", railBrand ? "bg-rail-divider" : "bg-line")}
       />
-      <span aria-hidden className="mb-2.5 h-px w-6 bg-line" />
       <div className="flex min-h-0 flex-1 flex-col gap-1 self-stretch overflow-visible px-[13px]">
         {Sections.map((section) => {
           const isActive = section.key === active.key;
@@ -47,10 +52,16 @@ export function NavRail() {
                 className={cn(
                   "flex h-9 w-[42px] flex-none items-center justify-center rounded-tile",
                   "transition-colors duration-hover ease-in-out",
-                  "focus-visible:outline-1 focus-visible:outline-accent-focus",
+                  railBrand
+                    ? "focus-visible:outline-1 focus-visible:outline-rail-focus"
+                    : "focus-visible:outline-1 focus-visible:outline-accent-focus",
                   isActive
-                    ? "border border-accent-border bg-accent-tint text-accent-hover"
-                    : "text-ink-subtle hover:bg-surface-hover hover:text-ink-muted",
+                    ? railBrand
+                      ? "border border-rail-item-active-border bg-rail-item-active-bg text-rail-ink-hover"
+                      : "border border-accent-border bg-accent-tint text-accent-hover"
+                    : railBrand
+                      ? "text-rail-ink hover:bg-rail-item-hover hover:text-rail-ink-hover"
+                      : "text-ink-subtle hover:bg-surface-hover hover:text-ink-muted",
                 )}
               >
                 <Icon name={section.icon} size={20} />
@@ -77,7 +88,12 @@ export function NavRail() {
               /* Revue navigateur sans backend : le thème reste en session. */
             });
         }}
-        className="mt-1 flex h-9 w-[42px] flex-none items-center justify-center rounded-tile text-ink-subtle transition-colors duration-hover hover:bg-surface-hover hover:text-ink-muted"
+        className={cn(
+          "mt-1 flex h-9 w-[42px] flex-none items-center justify-center rounded-tile transition-colors duration-hover",
+          railBrand
+            ? "text-rail-ink hover:bg-rail-item-hover hover:text-rail-ink-hover"
+            : "text-ink-subtle hover:bg-surface-hover hover:text-ink-muted",
+        )}
       >
         <Icon name={sombre ? "dark_mode" : "light_mode"} size={20} />
       </button>
