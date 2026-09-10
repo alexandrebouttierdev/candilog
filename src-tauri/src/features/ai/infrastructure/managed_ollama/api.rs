@@ -41,7 +41,7 @@ impl ManagedOllamaApi {
         tag: &str,
         model_id: ManagedModelId,
         cancel: &CancellationToken,
-        on_progress: impl Fn(ManagedOllamaDownloadProgress),
+        on_progress: &impl Fn(ManagedOllamaDownloadProgress),
     ) -> AppResult<()> {
         let response = self
             .client
@@ -57,23 +57,22 @@ impl ManagedOllamaApi {
             )));
         }
         let mut stream = response.bytes_stream();
+        let mut buffer = String::new();
         while let Some(chunk) = stream.next().await {
             if cancel.is_cancelled() {
                 return Err(AppError::Cancelled);
             }
             let chunk = chunk.map_err(transport_error)?;
-            if let Ok(event) = serde_json::from_slice::<PullEvent>(&chunk) {
-                let downloaded = event.completed.unwrap_or(0);
-                let total = event.total.unwrap_or(0);
-                on_progress(ManagedOllamaDownloadProgress {
-                    kind: ManagedDownloadKind::Model,
-                    model_id: Some(model_id),
-                    state: ManagedRuntimeState::Downloading,
-                    downloaded_bytes: downloaded,
-                    total_bytes: total,
-                    progress: percent(downloaded, total),
-                    label: format!("Téléchargement du modèle {tag}"),
-                });
+            buffer.push_str(&String::from_utf8_lossy(&chunk));
+            for event in drain_pull_events(&mut buffer) {
+                if let Some(progress) = pull_event_progress(&event, tag, model_id) {
+                    on_progress(progress);
+                }
+            }
+        }
+        for event in drain_pull_events(&mut buffer) {
+            if let Some(progress) = pull_event_progress(&event, tag, model_id) {
+                on_progress(progress);
             }
         }
         Ok(())
@@ -144,6 +143,140 @@ struct TagModel {
 
 #[derive(Debug, Deserialize)]
 struct PullEvent {
+    status: Option<String>,
     completed: Option<u64>,
     total: Option<u64>,
+}
+
+fn drain_pull_events(buffer: &mut String) -> Vec<PullEvent> {
+    let mut events = Vec::new();
+    while let Some(newline) = buffer.find('\n') {
+        let line = buffer[..newline].trim().to_owned();
+        buffer.drain(..newline + 1);
+        if line.is_empty() {
+            continue;
+        }
+        if let Ok(event) = serde_json::from_str::<PullEvent>(&line) {
+            events.push(event);
+        }
+    }
+    events
+}
+
+fn pull_status_label(status: &str) -> String {
+    match status {
+        "pulling manifest" => "Récupération du manifeste…".into(),
+        "verifying sha256 digest" => "Vérification de l'intégrité…".into(),
+        "writing manifest" => "Enregistrement du manifeste…".into(),
+        "removing any unused layers" => "Nettoyage des fichiers inutilisés…".into(),
+        "success" => "Téléchargement terminé".into(),
+        other if other.starts_with("downloading") => "Téléchargement en cours…".into(),
+        other if other.starts_with("pulling") => "Récupération en cours…".into(),
+        _ => "Téléchargement en cours…".into(),
+    }
+}
+
+fn pull_event_progress(
+    event: &PullEvent,
+    _tag: &str,
+    model_id: ManagedModelId,
+) -> Option<ManagedOllamaDownloadProgress> {
+    let label = event
+        .status
+        .as_deref()
+        .filter(|status| !status.is_empty())
+        .map(pull_status_label)
+        .unwrap_or_else(|| "Téléchargement en cours…".into());
+    if let Some(total) = event.total.filter(|value| *value > 0) {
+        let downloaded = event.completed.unwrap_or(0);
+        return Some(ManagedOllamaDownloadProgress {
+            kind: ManagedDownloadKind::Model,
+            model_id: Some(model_id),
+            state: ManagedRuntimeState::Downloading,
+            downloaded_bytes: downloaded,
+            total_bytes: total,
+            progress: percent(downloaded, total),
+            label,
+        });
+    }
+    if event.status.is_some() {
+        return Some(ManagedOllamaDownloadProgress {
+            kind: ManagedDownloadKind::Model,
+            model_id: Some(model_id),
+            state: ManagedRuntimeState::Downloading,
+            downloaded_bytes: 0,
+            total_bytes: 0,
+            progress: 0,
+            label,
+        });
+    }
+    None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn drain_pull_events_gere_les_lignes_fragmentees() {
+        let mut buffer = String::from(
+            "{\"status\":\"downloading\",\"completed\":10,\"total\":100}\n{\"status\":\"downloading\",\"completed\":",
+        );
+        let first = drain_pull_events(&mut buffer);
+        assert_eq!(first.len(), 1);
+        assert_eq!(first[0].completed, Some(10));
+
+        buffer.push_str("50,\"total\":100}\n");
+        let second = drain_pull_events(&mut buffer);
+        assert_eq!(second.len(), 1);
+        assert_eq!(second[0].completed, Some(50));
+        assert!(buffer.is_empty());
+    }
+
+    #[test]
+    fn pull_event_progress_expose_les_etapes_sans_octets() {
+        let event = PullEvent {
+            status: Some("pulling manifest".into()),
+            completed: None,
+            total: None,
+        };
+        let progress = pull_event_progress(
+            &event,
+            "lfm2.5:ultra-light",
+            ManagedModelId::Lfm25UltraLight,
+        )
+        .expect("progression manifeste");
+        assert_eq!(progress.progress, 0);
+        assert_eq!(progress.label, "Récupération du manifeste…");
+    }
+
+    #[test]
+    fn pull_status_label_traduit_les_etapes_connues() {
+        assert_eq!(pull_status_label("pulling manifest"), "Récupération du manifeste…");
+        assert_eq!(
+            pull_status_label("downloading sha256:abc"),
+            "Téléchargement en cours…"
+        );
+        assert_eq!(
+            pull_status_label("verifying sha256 digest"),
+            "Vérification de l'intégrité…"
+        );
+    }
+
+    #[test]
+    fn pull_event_progress_accepte_total_sans_completed() {
+        let event = PullEvent {
+            status: Some("downloading".into()),
+            completed: None,
+            total: Some(1_000),
+        };
+        let progress = pull_event_progress(
+            &event,
+            "lfm2.5:ultra-light",
+            ManagedModelId::Lfm25UltraLight,
+        )
+        .expect("progression téléchargement");
+        assert_eq!(progress.downloaded_bytes, 0);
+        assert_eq!(progress.total_bytes, 1_000);
+    }
 }

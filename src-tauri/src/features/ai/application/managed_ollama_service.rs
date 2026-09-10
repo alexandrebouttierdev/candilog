@@ -3,9 +3,10 @@
 use crate::core::database::SqlitePool;
 use crate::core::errors::{AppError, AppResult};
 use crate::features::ai::domain::{
-    evaluate_machine_fit, InstallManagedModelRequest, ManagedModelDefinition, ManagedModelId,
-    ManagedModelRegistry, ManagedModelStatus, ManagedOllamaDownloadProgress, ManagedOllamaStatus,
-    ManagedRuntimeState, StoredBenchmarkResult, UserBenchmarkSummary,
+    evaluate_machine_fit, InstallManagedModelRequest, ManagedDownloadKind,
+    ManagedModelDefinition, ManagedModelId, ManagedModelRegistry, ManagedModelStatus,
+    ManagedOllamaDownloadProgress, ManagedOllamaStatus, ManagedRuntimeState,
+    StoredBenchmarkResult, UserBenchmarkSummary,
 };
 use crate::features::ai::infrastructure::{
     require_runtime_artifact, ManagedOllamaApi, ManagedOllamaProcess, RuntimeInstaller,
@@ -85,42 +86,90 @@ impl ManagedOllamaService {
     }
 
     pub async fn ensure_runtime_ready(&self) -> AppResult<String> {
+        self.ensure_runtime_ready_with_progress(None, &|_| {}).await
+    }
+
+    async fn ensure_runtime_ready_with_progress<F>(
+        &self,
+        cancel: Option<&CancellationToken>,
+        on_progress: &F,
+    ) -> AppResult<String>
+    where
+        F: Fn(ManagedOllamaDownloadProgress),
+    {
         let artifact = require_runtime_artifact()?;
         let version_dir = self.paths.runtime_root.join(artifact.version);
         let executable = version_dir.join("ollama");
         if !executable.exists() {
             let installer = RuntimeInstaller::new()?;
-            let cancel = CancellationToken::new();
+            let local_cancel = CancellationToken::new();
+            let active_cancel = cancel.unwrap_or(&local_cancel);
             installer
                 .install(
                     &artifact,
                     &version_dir,
                     &self.paths.downloads_dir,
-                    &cancel,
-                    |_| {},
+                    active_cancel,
+                    on_progress,
                 )
                 .await?;
             self.persist_runtime_state(ManagedRuntimeState::Ready, Some(artifact.version), None)?;
         }
-        let port = {
-            let mut guard = self.process.lock().map_err(lock_err)?;
-            if guard.is_none() {
-                *guard = Some(ManagedOllamaProcess::new(
-                    executable,
-                    self.paths.models_dir.clone(),
-                ));
-            }
-            guard
-                .as_mut()
-                .ok_or_else(|| AppError::Provider("Moteur local indisponible.".into()))?
-                .ensure_running()?
-        };
+        if cancel.is_some() {
+            on_progress(ManagedOllamaDownloadProgress {
+                kind: ManagedDownloadKind::Runtime,
+                model_id: None,
+                state: ManagedRuntimeState::Starting,
+                downloaded_bytes: 0,
+                total_bytes: 0,
+                progress: 0,
+                label: "Démarrage du moteur…".into(),
+            });
+        }
+        let port = self.start_managed_process(&executable, cancel).await?;
         self.persist_runtime_state(
             ManagedRuntimeState::Ready,
             Some(artifact.version),
             Some(port),
         )?;
         Ok(format!("http://127.0.0.1:{port}"))
+    }
+
+    async fn start_managed_process(
+        &self,
+        executable: &std::path::Path,
+        cancel: Option<&CancellationToken>,
+    ) -> AppResult<u16> {
+        let process = self.process.clone();
+        let executable = executable.to_path_buf();
+        let models_dir = self.paths.models_dir.clone();
+        let wait_cancel = cancel.cloned().unwrap_or_else(CancellationToken::new);
+        let start_work = tokio::task::spawn_blocking(move || {
+            let mut guard = process.lock().map_err(lock_err)?;
+            if guard.is_none() {
+                *guard = Some(ManagedOllamaProcess::new(executable, models_dir));
+            }
+            guard
+                .as_mut()
+                .ok_or_else(|| AppError::Provider("Moteur local indisponible.".into()))?
+                .ensure_running(Some(&wait_cancel))
+        });
+        if let Some(cancel) = cancel {
+            let cancel = cancel.clone();
+            tokio::select! {
+                result = start_work => result.map_err(join_err)?,
+                () = cancel.cancelled() => {
+                    if let Ok(guard) = self.process.lock() {
+                        if let Some(process) = guard.as_ref() {
+                            let _ = process.stop();
+                        }
+                    }
+                    Err(AppError::Cancelled)
+                }
+            }
+        } else {
+            start_work.await.map_err(join_err)?
+        }
     }
 
     pub async fn install_model(
@@ -137,18 +186,27 @@ impl ManagedOllamaService {
         }
         let cancel = CancellationToken::new();
         *self.download.lock().map_err(lock_err)? = Some((request.model_id, cancel.clone()));
-        let base_url = self.ensure_runtime_ready().await?;
+        let base_url = match self
+            .ensure_runtime_ready_with_progress(Some(&cancel), &on_progress)
+            .await
+        {
+            Ok(base_url) => base_url,
+            Err(error) => {
+                *self.download.lock().map_err(lock_err)? = None;
+                return Err(error);
+            }
+        };
         let api = ManagedOllamaApi::new(base_url)?;
-        let result = api
+        let pull_result = api
             .pull_model(
                 &definition.ollama_tag,
                 request.model_id,
                 &cancel,
-                on_progress,
+                &on_progress,
             )
             .await;
         *self.download.lock().map_err(lock_err)? = None;
-        result?;
+        pull_result?;
         let mut settings = self.settings()?;
         if !settings
             .managed_ollama
@@ -168,7 +226,7 @@ impl ManagedOllamaService {
     }
 
     pub fn cancel_download(&self) -> AppResult<()> {
-        if let Some((_, token)) = self.download.lock().map_err(lock_err)?.take() {
+        if let Some((_, token)) = self.download.lock().map_err(lock_err)?.as_ref() {
             token.cancel();
         }
         Ok(())
@@ -275,4 +333,9 @@ impl ManagedOllamaService {
 
 fn lock_err<T>(_: std::sync::PoisonError<T>) -> AppError {
     AppError::Provider("État interne du moteur local corrompu.".into())
+}
+
+fn join_err(error: tokio::task::JoinError) -> AppError {
+    tracing::error!(%error, "tâche Ollama gérée interrompue");
+    AppError::Provider("L'opération sur le moteur local a été interrompue.".into())
 }

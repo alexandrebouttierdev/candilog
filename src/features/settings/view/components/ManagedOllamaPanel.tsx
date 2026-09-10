@@ -132,21 +132,30 @@ function Installation({
 }) {
   const titles: Partial<Record<ManagedRuntimeState, string>> = {
     downloading: "Téléchargement en cours",
-    installing: "Installation du runtime",
+    installing: "Extraction du moteur",
     starting: "Démarrage du moteur local",
     updating: "Mise à jour du runtime",
   };
   const title = titles[runtimeState] ?? "Préparation de l'IA locale";
   const percentage = progress?.progress ?? 0;
+  const statusLabel =
+    progress?.label ??
+    (runtimeState === "installing"
+      ? "Extraction du moteur…"
+      : runtimeState === "starting"
+        ? "Démarrage du moteur…"
+        : "Préparation du téléchargement…");
+  const showDeterminate =
+    runtimeState === "downloading" && progress !== null && progress.total_bytes > 0;
 
   return (
     <SettingsCard icon="progress_activity" title={title}>
       <div role="status" aria-live="polite" className="space-y-3">
         <div className="flex items-start gap-3">
           <Icon name="progress_activity" size={20} className="mt-0.5 flex-none animate-spin text-accent" />
-          <p className="text-body text-ink-muted">{progress?.label ?? "Traitement en cours…"}</p>
+          <p className="text-body text-ink-muted">{statusLabel}</p>
         </div>
-        {progress ? (
+        {showDeterminate && progress ? (
           <>
             <div className="h-2 overflow-hidden rounded-full bg-fill">
               <div
@@ -162,9 +171,21 @@ function Installation({
             </div>
           </>
         ) : (
-          <Skeleton className="h-2 w-full rounded-full" />
+          <>
+            <div className="h-2 overflow-hidden rounded-full bg-fill">
+              <div className="import-indeterminate h-full w-1/3 rounded-full bg-accent" />
+            </div>
+            {runtimeState === "installing" ? (
+              <p className="text-note leading-relaxed text-ink-muted">
+                Décompression de l&apos;archive Ollama (~2&nbsp;Go). La première installation peut
+                prendre plusieurs minutes selon votre disque.
+              </p>
+            ) : null}
+          </>
         )}
-        {runtimeState === "downloading" ? (
+        {runtimeState === "downloading" ||
+        runtimeState === "installing" ||
+        runtimeState === "starting" ? (
           <Button className="mt-1" icon="close" onClick={onCancel}>
             Annuler
           </Button>

@@ -37,7 +37,7 @@ impl RuntimeInstaller {
         runtime_version_dir: &Path,
         downloads_dir: &Path,
         cancel: &CancellationToken,
-        on_progress: impl Fn(ManagedOllamaDownloadProgress),
+        on_progress: &impl Fn(ManagedOllamaDownloadProgress),
     ) -> AppResult<PathBuf> {
         fs::create_dir_all(downloads_dir).map_err(map_io)?;
         fs::create_dir_all(runtime_version_dir).map_err(map_io)?;
@@ -76,25 +76,39 @@ impl RuntimeInstaller {
             state: ManagedRuntimeState::Installing,
             downloaded_bytes: 0,
             total_bytes: 0,
-            progress: 100,
-            label: "Configuration…".into(),
+            progress: 0,
+            label: "Extraction du moteur…".into(),
         });
 
-        fs::create_dir_all(&temp_dir).map_err(map_io)?;
-        extract_tgz(&archive_path, &temp_dir)?;
-        let extracted = temp_dir.join(artifact.executable);
-        if !extracted.exists() {
-            return Err(AppError::Provider(
-                "L'archive Ollama ne contient pas l'exécutable attendu.".into(),
-            ));
+        let archive_for_extract = archive_path.clone();
+        let temp_for_extract = temp_dir.clone();
+        let executable_for_install = executable.clone();
+        let executable_in_archive = artifact.executable.to_owned();
+        let cancel_wait = cancel.clone();
+        let extract_result = tokio::select! {
+            result = tokio::task::spawn_blocking(move || {
+                extract_runtime_archive(
+                    &archive_for_extract,
+                    &temp_for_extract,
+                    &executable_for_install,
+                    &executable_in_archive,
+                )
+            }) => result.map_err(|error| {
+                tracing::error!(%error, "tâche d'extraction Ollama interrompue");
+                AppError::Provider("L'extraction du moteur local a été interrompue.".into())
+            })?,
+            () = cancel_wait.cancelled() => {
+                let _ = fs::remove_dir_all(&temp_dir);
+                return Err(AppError::Cancelled);
+            }
+        };
+
+        if cancel.is_cancelled() {
+            let _ = fs::remove_dir_all(&temp_dir);
+            return Err(AppError::Cancelled);
         }
-        fs::rename(&extracted, &executable).map_err(map_io)?;
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            fs::set_permissions(&executable, fs::Permissions::from_mode(0o700)).map_err(map_io)?;
-        }
-        let _ = fs::remove_dir_all(&temp_dir);
+
+        extract_result?;
         Ok(executable)
     }
 
@@ -148,6 +162,30 @@ impl RuntimeInstaller {
         fs::rename(part_path, final_path).map_err(map_io)?;
         Ok(())
     }
+}
+
+fn extract_runtime_archive(
+    archive_path: &Path,
+    temp_dir: &Path,
+    executable: &Path,
+    executable_in_archive: &str,
+) -> AppResult<()> {
+    fs::create_dir_all(temp_dir).map_err(map_io)?;
+    extract_tgz(archive_path, temp_dir)?;
+    let extracted = temp_dir.join(executable_in_archive);
+    if !extracted.exists() {
+        return Err(AppError::Provider(
+            "L'archive Ollama ne contient pas l'exécutable attendu.".into(),
+        ));
+    }
+    fs::rename(&extracted, executable).map_err(map_io)?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(executable, fs::Permissions::from_mode(0o700)).map_err(map_io)?;
+    }
+    let _ = fs::remove_dir_all(temp_dir);
+    Ok(())
 }
 
 fn extract_tgz(archive_path: &Path, destination: &Path) -> AppResult<()> {

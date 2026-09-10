@@ -7,6 +7,7 @@ use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
 use std::time::Duration;
+use tokio_util::sync::CancellationToken;
 
 pub struct ManagedOllamaProcess {
     child: Mutex<Option<Child>>,
@@ -25,7 +26,10 @@ impl ManagedOllamaProcess {
         }
     }
 
-    pub fn ensure_running(&self) -> AppResult<u16> {
+    pub fn ensure_running(&self, cancel: Option<&CancellationToken>) -> AppResult<u16> {
+        if cancel.map(CancellationToken::is_cancelled).unwrap_or(false) {
+            return Err(AppError::Cancelled);
+        }
         if let Some(port) = *self.port.lock().map_err(lock_err)? {
             if self.health_check(port) {
                 return Ok(port);
@@ -47,6 +51,10 @@ impl ManagedOllamaProcess {
         *self.child.lock().map_err(lock_err)? = Some(child);
         *self.port.lock().map_err(lock_err)? = Some(port);
         for _ in 0..60 {
+            if cancel.map(CancellationToken::is_cancelled).unwrap_or(false) {
+                self.stop()?;
+                return Err(AppError::Cancelled);
+            }
             if self.health_check(port) {
                 return Ok(port);
             }

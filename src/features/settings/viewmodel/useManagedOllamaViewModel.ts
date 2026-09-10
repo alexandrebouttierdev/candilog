@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   ManagedModelId,
   ManagedOllamaDownloadProgress,
+  ManagedOllamaStatus,
   ManagedRuntimeState,
 } from "@/shared/types/generated/ai";
 import { AppError } from "@/shared/types/app-error";
@@ -66,8 +67,21 @@ export function useManagedOllamaViewModel(
 
   const install = useMutation({
     mutationFn: async (modelId: ManagedModelId) => {
+      const status = queryClient.getQueryData<ManagedOllamaStatus>(MANAGED_OLLAMA_KEY);
+      const model = status?.models.find((entry) => entry.definition.id === modelId);
       setTransientState("downloading");
       setEventError(null);
+      setProgress({
+        kind: "model",
+        model_id: modelId,
+        state: "downloading",
+        downloaded_bytes: 0,
+        total_bytes: model?.definition.approximate_download_bytes ?? 0,
+        progress: 0,
+        label: model
+          ? `Téléchargement de ${model.definition.display_name}…`
+          : "Préparation du téléchargement…",
+      });
       return managedOllamaService.install({ model_id: modelId });
     },
     onSuccess: (status) => {
