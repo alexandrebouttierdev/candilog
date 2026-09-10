@@ -122,9 +122,9 @@ mod tests {
     }
 
     #[test]
-    fn sans_ligne_retourne_ollama_par_defaut() {
+    fn sans_ligne_retourne_candilog_local_par_defaut() {
         let settings = repo().get().unwrap();
-        assert_eq!(settings.llm.provider, ProviderKind::Ollama);
+        assert_eq!(settings.llm.provider, ProviderKind::CandilogLocal);
         assert_eq!(settings.language, "fr");
     }
 
@@ -157,7 +157,7 @@ mod tests {
             .unwrap();
         }
         let settings = SqliteSettingsRepository::new(pool).get().unwrap();
-        assert_eq!(settings.llm.provider, ProviderKind::Ollama);
+        assert_eq!(settings.llm.provider, ProviderKind::CandilogLocal);
     }
 
     #[test]

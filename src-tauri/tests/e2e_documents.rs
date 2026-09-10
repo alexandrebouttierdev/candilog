@@ -113,10 +113,20 @@ fn seeded_pool(profile: &Profile) -> SqlitePool {
 fn ai_service(pool: SqlitePool) -> Result<AiService, String> {
     let models_dir =
         std::env::temp_dir().join(format!("candilog-e2e-local-ai-{}", uuid::Uuid::new_v4()));
-    let local_ai = LocalAiService::new(pool.clone(), models_dir)
+    let local_ai = LocalAiService::new(pool.clone(), models_dir.clone())
         .map(Arc::new)
         .map_err(|error| error.to_string())?;
-    Ok(AiService::new(pool, local_ai))
+    let managed = Arc::new(
+        candilog_lib::features::ai::application::ManagedOllamaService::new(
+            pool.clone(),
+            candilog_lib::features::ai::application::ManagedOllamaPaths {
+                runtime_root: models_dir.join("../ollama/runtime"),
+                models_dir: models_dir.join("../ollama/models"),
+                downloads_dir: models_dir.join("../ollama/downloads"),
+            },
+        ),
+    );
+    Ok(AiService::new(pool, local_ai, managed))
 }
 
 /// Un cas de test : le profil source et le dossier où déposer ses artefacts.

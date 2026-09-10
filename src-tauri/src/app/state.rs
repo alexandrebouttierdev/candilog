@@ -4,7 +4,9 @@ use crate::core::config::AppPaths;
 use crate::core::database::{open_pool, run_local_migrations, validate_database_file, SqlitePool};
 use crate::core::errors::AppResult;
 use crate::core::secrets::SecretStore;
-use crate::features::ai::application::{AiService, LocalAiService};
+use crate::features::ai::application::{
+    AiService, LocalAiService, ManagedOllamaPaths, ManagedOllamaService,
+};
 use crate::features::analytics::application::AnalyticsService;
 use crate::features::analytics::infrastructure::SqliteAnalyticsRepository;
 use crate::features::applications::application::ApplicationService;
@@ -46,6 +48,8 @@ pub type Interviews = Arc<InterviewService<SqliteInterviewRepository>>;
 pub type Ai = Arc<AiService>;
 /// Installation, runtime et cycle de vie de Mistral Local.
 pub type LocalAi = Arc<LocalAiService>;
+/// Runtime Ollama privé géré par Candilog.
+pub type ManagedOllama = Arc<ManagedOllamaService>;
 /// Réglages, coffre, sauvegardes et mises à jour.
 pub type SettingsHandle = Arc<SettingsService<SqliteSettingsRepository, SecretStore>>;
 /// Service du profil professionnel.
@@ -83,6 +87,8 @@ pub struct AppState {
     pub ai: Ai,
     /// Fournisseur embarqué Mistral Local.
     pub local_ai: LocalAi,
+    /// Runtime Ollama privé Candilog.
+    pub managed_ollama: ManagedOllama,
     /// Réglages applicatifs et maintenance.
     pub settings: SettingsHandle,
     /// Service du profil professionnel.
@@ -116,6 +122,11 @@ impl AppState {
             paths.database,
             paths.photos_dir,
             paths.local_ai_models_dir,
+            ManagedOllamaPaths {
+                runtime_root: paths.managed_ollama_runtime_dir,
+                models_dir: paths.managed_ollama_models_dir,
+                downloads_dir: paths.managed_ollama_downloads_dir,
+            },
         )
     }
 
@@ -132,7 +143,27 @@ impl AppState {
             std::env::temp_dir().join(format!("candilog-photos-{}", uuid::Uuid::new_v4()));
         let local_ai_models_dir =
             std::env::temp_dir().join(format!("candilog-local-ai-models-{}", uuid::Uuid::new_v4()));
-        Self::sur_pool(pool, PathBuf::new(), photos_dir, local_ai_models_dir)
+        let managed_paths = ManagedOllamaPaths {
+            runtime_root: local_ai_models_dir
+                .parent()
+                .unwrap_or(&local_ai_models_dir)
+                .join("ollama/runtime"),
+            models_dir: local_ai_models_dir
+                .parent()
+                .unwrap_or(&local_ai_models_dir)
+                .join("ollama/models"),
+            downloads_dir: local_ai_models_dir
+                .parent()
+                .unwrap_or(&local_ai_models_dir)
+                .join("ollama/downloads"),
+        };
+        Self::sur_pool(
+            pool,
+            PathBuf::new(),
+            photos_dir,
+            local_ai_models_dir,
+            managed_paths,
+        )
     }
 
     /// Assemble dépôts et services autour d'un pool déjà migré.
@@ -141,10 +172,12 @@ impl AppState {
         db_path: PathBuf,
         photos_dir: PathBuf,
         local_ai_models_dir: PathBuf,
+        managed_paths: ManagedOllamaPaths,
     ) -> AppResult<Self> {
         // Les référentiels sont semés par `init_schema.sql` : aucune étape d'amorçage n'est
         // nécessaire ici, et les listes sont donc identiques d'une installation à l'autre.
         let local_ai = Arc::new(LocalAiService::new(pool.clone(), local_ai_models_dir)?);
+        let managed_ollama = Arc::new(ManagedOllamaService::new(pool.clone(), managed_paths));
         Ok(Self {
             analytics: Arc::new(AnalyticsService::new(SqliteAnalyticsRepository::new(
                 pool.clone(),
@@ -165,8 +198,13 @@ impl AppState {
             interviews: Arc::new(InterviewService::new(SqliteInterviewRepository::new(
                 pool.clone(),
             ))),
-            ai: Arc::new(AiService::new(pool.clone(), Arc::clone(&local_ai))),
+            ai: Arc::new(AiService::new(
+                pool.clone(),
+                Arc::clone(&local_ai),
+                Arc::clone(&managed_ollama),
+            )),
             local_ai,
+            managed_ollama,
             settings: Arc::new(SettingsService::new(
                 SqliteSettingsRepository::new(pool.clone()),
                 SecretStore,

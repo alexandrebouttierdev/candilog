@@ -5,10 +5,19 @@ Toute l'IA vit dans `src-tauri/src/features/ai/`. Le frontend n'envoie que des D
 
 ## Fournisseurs
 
-Mistral Local, Ollama, Claude, OpenAI, Gemini, Mistral, DeepSeek et un point de terminaison
-personnalisé implémentent `LlmGenerator`. Le choix, le modèle, la
-température et le mode d'analyse sont persistés dans les paramètres ; la clé API vit dans
-le coffre du système (`core::secrets`), jamais dans SQLite ni dans les journaux.
+L'**IA locale Candilog** (`candilog_local`), Mistral Local, Ollama, Claude, OpenAI, Gemini,
+Mistral, DeepSeek et un point de terminaison personnalisé implémentent `LlmGenerator`. Le
+choix, le modèle, la température et le mode d'analyse sont persistés dans les paramètres ;
+la clé API vit dans le coffre du système (`core::secrets`), jamais dans SQLite ni dans les
+journaux.
+
+L'IA locale Candilog est le **fournisseur par défaut** sur une installation neuve. Elle
+délègue l'inférence à un runtime Ollama privé géré par l'application : binaire officiel
+téléchargé et vérifié (SHA-256), processus isolé sur `127.0.0.1` à partir du port 11435,
+répertoire de modèles séparé de l'Ollama utilisateur (`:11434`). Le catalogue, les pulls,
+l'activation et le benchmark utilisateur passent par `ManagedOllamaService` ; l'adaptateur
+HTTP Ollama existant est réutilisé avec l'endpoint local du processus géré. Windows n'est
+pas encore supporté (archive `.zip` non extraite).
 
 HTTPS obligatoire hors Ollama, adresses privées refusées pour un point de terminaison
 distant, réponse plafonnée à 5 Mio, PDF source plafonné à 10 Mio.
@@ -22,10 +31,9 @@ appels déjà aboutis. Une erreur de configuration (`4xx` : clé refusée, modè
 n'est **jamais** reprise — la retenter ne ferait que retarder le message que l'utilisateur
 doit lire.
 
-Ollama tourne sur la machine : une connexion impossible y renvoie un message qui le nomme
-et renvoie aux réglages, pas le « Vérifiez votre réseau » des erreurs HTTP. C'est le
-fournisseur par défaut, donc le premier écueil d'une installation neuve où Ollama n'est pas
-encore installé. La reprise vit dans l'adaptateur de transport (`infrastructure/provider.rs`),
+Ollama externe tourne sur la machine de l'utilisateur : une connexion impossible y renvoie un
+message qui le nomme et renvoie aux réglages, pas le « Vérifiez votre réseau » des erreurs
+HTTP. La reprise vit dans l'adaptateur de transport (`infrastructure/provider.rs`),
 donc tous les appels en bénéficient, et l'annulation reste immédiate : `ai_cancel` abandonne
 le futur qui porte la boucle, attente comprise.
 
@@ -352,6 +360,32 @@ utilisent le même cycle de vie : l'arrêt invalide d'abord l'identifiant pour i
 réponse tardive, désabonne la progression, arrête le chronomètre, puis appelle `ai_cancel`.
 La coque bloque une navigation interne tant que ce traitement est actif et ne la poursuit
 qu'après confirmation et transmission de l'arrêt au backend.
+
+## Benchmark utilisateur (`CV_BENCHMARK.pdf`)
+
+Le bouton **Tester** (en-tête global, héros des réglages IA, carte de chaque modèle local
+installé) lance `run_user_cv_benchmark`. Le PDF de référence et sa ground truth
+(`resources/CV_BENCHMARK.pdf`, `resources/CV_BENCHMARK.expected.json`) sont embarqués dans
+`src-tauri/resources/`. Le pipeline est **identique** à un import de profil réel
+(`import_profile` en dry-run) : extraction PDF, invite, post-traitements, scoring
+déterministe contre la ground truth. Aucune donnée utilisateur n'est persistée ; le profil
+extrait est jeté après calcul du score.
+
+Le benchmark fonctionne avec **tout fournisseur configuré** (IA locale Candilog, Mistral
+Local, Ollama externe, cloud). Les providers distants affichent un avertissement : le CV de
+référence sera envoyé au service configuré. Le score (0–100), la qualité qualitative, les
+métriques de durée et le détail par catégorie sont renvoyés dans `UserBenchmarkResult`.
+L'annulation réutilise `ai_cancel` et le `generation_id` de la session.
+
+Ce test ne remplace pas le benchmark multi-CV de développement (`examples/cv_import_baseline.rs`
+et fixtures associées).
+
+## Interface IA
+
+L'écran Réglages → IA comporte trois onglets : **Modèles locaux** (catalogue Ollama géré),
+**Autres fournisseurs/modèles** (grille distante + Mistral Local llama.cpp) et **Réglages**
+(thème, son). Le sélecteur rapide global (`AiQuickSelector` dans la barre supérieure)
+synchronise le fournisseur actif avec les paramètres persistés.
 
 ## Cache
 

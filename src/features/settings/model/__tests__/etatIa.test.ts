@@ -81,6 +81,14 @@ describe("iaEstConfiguree", () => {
       ),
     ).toBe(true);
   });
+
+  it("accepte l'IA locale Candilog sans nom de modèle dans llm.model", () => {
+    expect(
+      iaEstConfiguree(
+        llm({ provider: "candilog_local", model: "", endpoint: null, api_key_configured: false }),
+      ),
+    ).toBe(true);
+  });
 });
 
 describe("manquants", () => {
@@ -88,6 +96,14 @@ describe("manquants", () => {
     expect(
       manquants(
         llm({ provider: "mistral_local", model: "", endpoint: null, api_key_configured: false }),
+      ),
+    ).toEqual([]);
+  });
+
+  it("ne réclame aucun champ pour l'IA locale Candilog", () => {
+    expect(
+      manquants(
+        llm({ provider: "candilog_local", model: "", endpoint: null, api_key_configured: false }),
       ),
     ).toEqual([]);
   });

@@ -138,8 +138,8 @@ impl LlmGenerator for ProviderHttp {
         json: bool,
     ) -> AppResult<GenerationOutput> {
         match self.config.provider {
-            ProviderKind::MistralLocal => Err(AppError::Provider(
-                "Le runtime Mistral Local n'est pas initialisé.".into(),
+            ProviderKind::MistralLocal | ProviderKind::CandilogLocal => Err(AppError::Provider(
+                "Le runtime local n'est pas initialisé.".into(),
             )),
             ProviderKind::Ollama => self.ollama(prompt, system, json).await,
             ProviderKind::Claude => self.claude(prompt, system).await,
@@ -157,8 +157,8 @@ impl LlmGenerator for ProviderHttp {
 
     async fn list_models(&self) -> AppResult<Vec<String>> {
         match self.config.provider {
-            ProviderKind::MistralLocal => Err(AppError::Provider(
-                "Le runtime Mistral Local n'est pas initialisé.".into(),
+            ProviderKind::MistralLocal | ProviderKind::CandilogLocal => Err(AppError::Provider(
+                "Le runtime local n'est pas initialisé.".into(),
             )),
             ProviderKind::Ollama => self.models_ollama().await,
             ProviderKind::Claude => self.models_claude().await,

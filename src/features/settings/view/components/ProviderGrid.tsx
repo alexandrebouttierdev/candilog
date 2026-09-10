@@ -5,7 +5,7 @@ import {
   type FournisseurOption,
 } from "../../model/providers";
 import type { ProviderKind } from "@/shared/types/generated/settings";
-import type { LocalModelFamily } from "@/shared/types/generated/ai";
+import type { LocalModelFamily, ManagedModelPublisher } from "@/shared/types/generated/ai";
 import { Icon, Tag } from "@/shared/ui";
 import logoOllama from "@/assets/providers/ollama.svg";
 import logoClaude from "@/assets/providers/claude.svg";
@@ -15,8 +15,12 @@ import logoMistral from "@/assets/providers/mistralai.svg";
 import logoQwen from "@/assets/providers/qwen.svg";
 import logoDeepseek from "@/assets/providers/deepseek.svg";
 import logoCustom from "@/assets/providers/custom.svg";
+import logoLuth from "@/assets/providers/luth.svg";
 
-const LOGOS: Record<Exclude<FournisseurOption["id"], "mistral_local">, { src: string; mono: boolean }> = {
+const LOGOS: Record<
+  Exclude<FournisseurOption["id"], "candilog_local" | "mistral_local">,
+  { src: string; mono: boolean }
+> = {
   ollama: { src: logoOllama, mono: true },
   claude: { src: logoClaude, mono: false },
   openai: { src: logoOpenai, mono: true },
@@ -35,8 +39,21 @@ export const LOCAL_FAMILY_LOGOS: Record<
   qwen: { src: logoQwen, label: "Qwen", mono: false },
 };
 
+/** Logos des éditeurs du catalogue Ollama géré — propriété `publisher`, jamais le nom affiché. */
+export const MANAGED_PUBLISHER_LOGOS: Record<
+  ManagedModelPublisher,
+  { src: string; label: string; mono: boolean }
+> = {
+  liquid: { src: logoLuth, label: "Liquid", mono: false },
+  mistral: { src: logoMistral, label: "Mistral", mono: false },
+};
+
+export function logoManagedPublisher(publisher: ManagedModelPublisher) {
+  return MANAGED_PUBLISHER_LOGOS[publisher];
+}
+
 export function logoFournisseur(id: FournisseurOption["id"]) {
-  if (id === "mistral_local") return null;
+  if (id === "candilog_local" || id === "mistral_local") return null;
   return LOGOS[id];
 }
 
@@ -71,9 +88,11 @@ export function defFournisseur(provider: ProviderKind): FournisseurOption {
 export function ProviderGrid({
   value,
   onChange,
+  items = FOURNISSEURS,
 }: {
   value: ProviderKind;
   onChange: (id: FournisseurOption["id"]) => void;
+  items?: readonly FournisseurOption[];
 }) {
   const actif = idProvider(value);
 
@@ -83,10 +102,12 @@ export function ProviderGrid({
       aria-label="Fournisseur IA"
       className="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(112px,1fr))]"
     >
-      {FOURNISSEURS.map((fournisseur) => {
+      {items.map((fournisseur) => {
         const selected = fournisseur.id === actif;
         const logo =
-          fournisseur.id === "mistral_local" ? null : LOGOS[fournisseur.id];
+          fournisseur.id === "candilog_local" || fournisseur.id === "mistral_local"
+            ? null
+            : LOGOS[fournisseur.id];
         return (
           <button
             key={fournisseur.id}

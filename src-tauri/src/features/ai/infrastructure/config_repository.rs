@@ -32,7 +32,7 @@ pub fn load_config_avec(
     // Ollama n'interroge pas le trousseau : CI et tests n'ont souvent aucun service de secrets.
     if !matches!(
         config.provider,
-        ProviderKind::Ollama | ProviderKind::MistralLocal
+        ProviderKind::Ollama | ProviderKind::MistralLocal | ProviderKind::CandilogLocal
     ) && config
         .api_key
         .as_deref()
@@ -106,6 +106,8 @@ mod tests {
         let pool = pool();
         let repository = SqliteSettingsRepository::new(pool.clone());
         let mut settings = AppSettings::default();
+        settings.llm.provider = ProviderKind::Ollama;
+        settings.llm.endpoint = Some("http://localhost:11434".into());
         settings.llm.model = "LiquidAI/lfm2.5-1.2b-instruct:latest".into();
         repository.upsert(&settings).unwrap();
 

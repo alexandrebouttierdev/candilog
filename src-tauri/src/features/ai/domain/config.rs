@@ -19,6 +19,8 @@ pub enum AnalysisMode {
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "settings.ts")]
 pub enum ProviderKind {
+    /// IA locale Candilog via runtime Ollama privé géré par l'application.
+    CandilogLocal,
     MistralLocal,
     Ollama,
     Claude,
@@ -46,9 +48,9 @@ pub struct LlmConfig {
 impl Default for LlmConfig {
     fn default() -> Self {
         Self {
-            provider: ProviderKind::Ollama,
+            provider: ProviderKind::CandilogLocal,
             api_key: None,
-            endpoint: Some("http://localhost:11434".into()),
+            endpoint: None,
             model: String::new(),
             temperature: 0.7,
             mode: AnalysisMode::Auto,
@@ -73,7 +75,7 @@ impl LlmConfig {
     #[must_use]
     pub fn endpoint_effectif(&self) -> &str {
         self.endpoint.as_deref().unwrap_or(match self.provider {
-            ProviderKind::MistralLocal => "",
+            ProviderKind::CandilogLocal | ProviderKind::MistralLocal => "",
             ProviderKind::Ollama => "http://localhost:11434",
             ProviderKind::Claude => "https://api.anthropic.com",
             ProviderKind::Gemini => "https://generativelanguage.googleapis.com",
@@ -90,6 +92,7 @@ impl LlmConfig {
             // `local_ai.active_model_id`, et l'écran de réglages n'offre aucun champ pour
             // saisir un nom de modèle. Exiger ce champ rendait le fournisseur inutilisable
             // dès que la grille le sélectionnait, puisqu'elle le vide.
+            ProviderKind::CandilogLocal => true,
             ProviderKind::MistralLocal => true,
             ProviderKind::Ollama => {
                 !self.model.trim().is_empty() && !self.endpoint_effectif().trim().is_empty()

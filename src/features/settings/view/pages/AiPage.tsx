@@ -1,5 +1,6 @@
-import { useState, type ReactNode } from "react";
+import { useState, type KeyboardEvent, type ReactNode } from "react";
 import { ContextBarAccessory, ContextNote } from "@/app/layout/ContextBar";
+import { AiBenchmarkModal } from "@/features/ai/view/components/AiBenchmarkModal";
 import { AppError } from "@/shared/types/app-error";
 import type { AnalysisMode, LlmForm, Settings, ThemePref } from "@/shared/types/generated/settings";
 import {
@@ -23,6 +24,7 @@ import {
 } from "@/shared/lib/completion-sound";
 import {
   endpointDefaut,
+  FOURNISSEURS_AUTRES,
   idProvider,
   modelDefaut,
   versProvider,
@@ -37,11 +39,16 @@ import {
 } from "../components/ProviderGrid";
 import { AiHero } from "../components/AiHero";
 import { MistralLocalPanel } from "../components/MistralLocalPanel";
+import { ManagedOllamaPanel } from "../components/ManagedOllamaPanel";
 import { SettingsBody, SettingsCard } from "../components/SettingsUi";
 import { cn } from "@/shared/lib/cn";
 import { etatIa, type TestConnexion } from "../../model/etatIa";
 import { etatLocalIa, isLocalAiBusy } from "../../model/etatLocalIa";
+import { etatManagedOllama } from "../../model/etatManagedOllama";
 import { useLocalAiViewModel } from "../../viewmodel/useLocalAiViewModel";
+import { useManagedOllamaViewModel } from "../../viewmodel/useManagedOllamaViewModel";
+import { managedOllamaService } from "../../services/managedOllamaService";
+import type { ManagedModelStatus } from "@/shared/types/generated/ai";
 
 const MODES: Array<{ value: AnalysisMode; label: string }> = [
   { value: "auto", label: "Auto" },
@@ -61,23 +68,35 @@ const SONS = [
   { value: "off", label: "Désactivé" },
 ] as const;
 
+type AiTab = "local" | "providers" | "preferences";
+
+const TABS: Array<{ id: AiTab; label: string }> = [
+  { id: "local", label: "Modèles locaux" },
+  { id: "providers", label: "Autres fournisseurs/modèles" },
+  { id: "preferences", label: "Réglages" },
+];
+
 /** Intelligence artificielle : fournisseur, modèle, comportement et apparence. */
 export function AiPage() {
   const vm = useSettingsViewModel();
   const setTheme = useUiStore((state) => state.setTheme);
+  const [tab, setTab] = useState<AiTab>("local");
   const [draft, setDraft] = useState<Settings | null>(null);
   const [apiKeyDraft, setApiKeyDraft] = useState("");
   const [models, setModels] = useState<string[]>([]);
   const [test, setTestState] = useState<TestConnexion>("idle");
-  // Préférence locale, appliquée immédiatement : elle ne passe pas par le brouillon des
-  // réglages puisqu'elle n'est pas enregistrée en base.
   const [son, setSon] = useState<"on" | "off">(() =>
     completionSoundEnabled() ? "on" : "off",
   );
   const [testMessage, setTestMessage] = useState<string | null>(null);
+  const [benchmarkOpen, setBenchmarkOpen] = useState(false);
+  const [benchmarkModelLabel, setBenchmarkModelLabel] = useState("");
   const form = draft ?? vm.data ?? null;
   const llm = form?.llm;
-  const isMistralLocal = llm ? idProvider(llm.provider) === "mistral_local" : false;
+  const providerId = llm ? idProvider(llm.provider) : null;
+  const isCandilogLocal = providerId === "candilog_local";
+  const isMistralLocal = providerId === "mistral_local";
+  const managedVm = useManagedOllamaViewModel(() => setDraft(null));
   const localVm = useLocalAiViewModel(() => setDraft(null), { enabled: isMistralLocal });
 
   const setTest = (value: TestConnexion) => {
@@ -127,8 +146,6 @@ export function AiPage() {
     try {
       const list = await settingsService.listModels(llm, apiKeyDraft.trim() || null);
       setModels(list);
-      // Ne pas imposer le premier modèle de la liste : le champ reste vide tant que
-      // l'utilisateur n'a pas choisi, et on efface seulement un modèle devenu invalide.
       if (llm.model.trim().length > 0 && list.length > 0 && !list.includes(llm.model)) {
         patchLlm({ model: "" });
       }
@@ -153,15 +170,34 @@ export function AiPage() {
 
   const fournisseur = llm ? defFournisseur(llm.provider) : null;
   const localActive = localVm.status?.active_model ?? null;
-  const logo = isMistralLocal
-    ? logoIaLocale(localActive?.family)
-    : fournisseur
-      ? logoFournisseur(fournisseur.id)
-      : null;
-  const localModelLabel = localActive
-    ? localActive.display_name.replace(" Instruct", "")
-    : "";
-  const noteModele = isMistralLocal ? localModelLabel : (llm?.model ?? "");
+  const managedActive = managedVm.status?.active_model ?? null;
+  const logo = isCandilogLocal
+    ? null
+    : isMistralLocal
+      ? logoIaLocale(localActive?.family)
+      : fournisseur
+        ? logoFournisseur(fournisseur.id)
+        : null;
+  const localModelLabel = localActive ? localActive.display_name.replace(" Instruct", "") : "";
+  const managedModelLabel = managedActive?.display_name ?? "";
+
+  const ouvrirBenchmark = (label: string) => {
+    setBenchmarkModelLabel(label);
+    setBenchmarkOpen(true);
+  };
+
+  const testerModeleLocal = async (model: ManagedModelStatus) => {
+    if (!model.installed) return;
+    if (!model.active) {
+      await managedOllamaService.activate(model.definition.id);
+    }
+    ouvrirBenchmark(model.definition.display_name);
+  };
+  const noteModele = isCandilogLocal
+    ? managedModelLabel
+    : isMistralLocal
+      ? localModelLabel
+      : (llm?.model ?? "");
 
   return (
     <div className="flex h-full flex-col">
@@ -177,14 +213,16 @@ export function AiPage() {
         title="Intelligence artificielle"
         subtitle="Le moteur reste sous votre contrôle"
         primary={
-          <Button
-            variant="primary"
-            icon={vm.isSaving ? "progress_activity" : "save"}
-            disabled={!form || vm.isSaving}
-            onClick={() => void save()}
-          >
-            {vm.isSaving ? "Enregistrement…" : "Enregistrer"}
-          </Button>
+          tab === "preferences" || tab === "providers" ? (
+            <Button
+              variant="primary"
+              icon={vm.isSaving ? "progress_activity" : "save"}
+              disabled={!form || vm.isSaving}
+              onClick={() => void save()}
+            >
+              {vm.isSaving ? "Enregistrement…" : "Enregistrer"}
+            </Button>
+          ) : null
         }
       />
 
@@ -201,18 +239,26 @@ export function AiPage() {
           role="status"
           aria-label="Chargement des réglages"
         >
-          {/* Même gabarit que l'écran chargé : bandeau, fournisseurs, puis les deux
-              colonnes de réglages — sinon la mise en page saute à l'arrivée des données. */}
           <Skeleton className="h-[82px] w-full rounded-card" />
           <Skeleton className="h-[136px] w-full rounded-card" />
           <Skeleton className="h-60 w-full rounded-card" />
         </div>
       ) : (
         <SettingsBody>
-          {/* Colonne bornée : au-delà, un champ « Endpoint » s'étirait sur 600 px et la
-              grille de fournisseurs devenait un alignement de logos perdus. */}
           <div className="flex min-w-0 max-w-[1000px] flex-col gap-4">
-            {isMistralLocal ? (
+            {isCandilogLocal ? (
+              <AiHero
+                logo={logo}
+                label={fournisseur.label}
+                model={managedModelLabel}
+                etat={etatManagedOllama(managedVm.status, managedVm.error)}
+                testMessage={null}
+                testLabel="Tester l'IA"
+                busy={managedVm.isInstalling}
+                testDisabled={!managedActive}
+                onTest={() => ouvrirBenchmark(managedModelLabel || "IA locale")}
+              />
+            ) : isMistralLocal ? (
               <AiHero
                 logo={logo}
                 label={fournisseur.label}
@@ -222,9 +268,7 @@ export function AiPage() {
                 testLabel="Tester l'IA"
                 busy={localVm.isTesting || isLocalAiBusy(localVm.state)}
                 testDisabled={
-                  !localActive ||
-                  isLocalAiBusy(localVm.state) ||
-                  localVm.state === "detecting_hardware"
+                  !localActive || isLocalAiBusy(localVm.state) || localVm.state === "detecting_hardware"
                 }
                 onTest={() => localVm.test()}
               />
@@ -240,184 +284,241 @@ export function AiPage() {
               />
             )}
 
-            <SettingsCard icon="hub" title="Fournisseur">
-              <ProviderGrid value={llm.provider} onChange={choisirFournisseur} />
-            </SettingsCard>
+            <AiTabs active={tab} onChange={setTab} />
 
-            {isMistralLocal ? (
-              <MistralLocalPanel vm={localVm} />
-            ) : (
-            <div className="grid gap-4 min-[900px]:grid-cols-2 min-[900px]:items-start">
-              <SettingsCard icon="tune" title="Configuration">
-                <div className="flex flex-col gap-3.5">
-                  <div className="flex max-w-[380px] items-end gap-2">
-                    <FormField label="Modèle" required className="flex-1">
-                      {(props) =>
-                        models.length > 0 ? (
-                          <Select {...props} value={llm.model} onChange={(event) => patchLlm({ model: event.target.value })}>
-                            {models.map((model) => (
-                              <option key={model} value={model}>
-                                {model}
-                              </option>
-                            ))}
-                          </Select>
-                        ) : (
-                          <TextInput
-                            {...props}
-                            value={llm.model}
-                            onChange={(event) => patchLlm({ model: event.target.value })}
-                          />
-                        )
-                      }
-                    </FormField>
-                    <Button variant="secondary" icon="refresh" onClick={() => void actualiserModels()}>
-                      Actualiser
-                    </Button>
-                  </div>
-                  <FormField
-                    label="Endpoint"
-                    required={idProvider(llm.provider) === "custom"}
-                    className="max-w-[380px]"
-                  >
-                    {(props) => (
-                      <TextInput
-                        {...props}
-                        value={llm.endpoint ?? ""}
-                        onChange={(event) => patchLlm({ endpoint: event.target.value || null })}
-                      />
-                    )}
-                  </FormField>
-                  {idProvider(llm.provider) !== "ollama" ? (
-                    <FormField
-                      label="Clé API"
-                      required={idProvider(llm.provider) !== "custom"}
-                      className="max-w-[380px]"
-                      help={
-                        llm.api_key_configured
-                          ? "Une clé est configurée dans le coffre système. Saisissez-en une nouvelle uniquement pour la remplacer."
-                          : "Stockée dans le coffre système, jamais renvoyée à l'interface ni écrite dans la base."
-                      }
-                    >
-                      {(props) => (
-                        <div className="flex items-center gap-2">
-                          <TextInput
-                            {...props}
-                            type="password"
-                            autoComplete="new-password"
-                            value={apiKeyDraft}
-                            placeholder={llm.api_key_configured ? "Clé configurée" : "Saisir la clé API"}
-                            onChange={(event) => {
-                              setApiKeyDraft(event.target.value);
-                              setTest("idle");
-                            }}
-                          />
-                          {llm.api_key_configured ? (
-                            <Button
-                              variant="ghost"
-                              icon="delete"
-                              disabled={vm.isClearingApiKey}
-                              onClick={() => void clearApiKey()}
-                            >
-                              Supprimer
-                            </Button>
-                          ) : null}
+            {tab === "local" ? (
+              <ManagedOllamaPanel vm={managedVm} onTestModel={(model) => void testerModeleLocal(model)} />
+            ) : null}
+
+            {tab === "providers" ? (
+              <div className="flex flex-col gap-4">
+                <SettingsCard icon="hub" title="Fournisseur">
+                  <ProviderGrid
+                    value={llm.provider}
+                    onChange={choisirFournisseur}
+                    items={FOURNISSEURS_AUTRES}
+                  />
+                </SettingsCard>
+
+                {isMistralLocal ? (
+                  <MistralLocalPanel vm={localVm} />
+                ) : (
+                  <div className="grid gap-4 min-[900px]:grid-cols-2 min-[900px]:items-start">
+                    <SettingsCard icon="tune" title="Configuration">
+                      <div className="flex flex-col gap-3.5">
+                        <div className="flex max-w-[380px] items-end gap-2">
+                          <FormField label="Modèle" required className="flex-1">
+                            {(props) =>
+                              models.length > 0 ? (
+                                <Select
+                                  {...props}
+                                  value={llm.model}
+                                  onChange={(event) => patchLlm({ model: event.target.value })}
+                                >
+                                  {models.map((model) => (
+                                    <option key={model} value={model}>
+                                      {model}
+                                    </option>
+                                  ))}
+                                </Select>
+                              ) : (
+                                <TextInput
+                                  {...props}
+                                  value={llm.model}
+                                  onChange={(event) => patchLlm({ model: event.target.value })}
+                                />
+                              )
+                            }
+                          </FormField>
+                          <Button variant="secondary" icon="refresh" onClick={() => void actualiserModels()}>
+                            Actualiser
+                          </Button>
                         </div>
-                      )}
-                    </FormField>
-                  ) : (
-                    // Ollama tourne en local, sans clé : la case vide qu'aurait laissée
-                    // « Clé API » devient une aide concrète, pas un silence.
-                    <div className="max-w-[380px] rounded-field border border-line bg-fill px-3 py-2.5">
-                      <p className="flex items-center gap-1.5 text-label font-mid text-ink">
-                        <Icon name="info" size={14} className="flex-none text-ink-faint" />
-                        Modèle local : aucune clé, aucune connexion
-                      </p>
-                      <p className="mt-1 text-meta leading-relaxed text-ink-muted">
-                        Besoin d'aide pour choisir un modèle compatible avec votre machine ?{" "}
-                        <button
-                          type="button"
-                          onClick={() => void openExternal("https://www.canirun.ai/")}
-                          className="text-accent underline-offset-2 hover:underline"
+                        <FormField
+                          label="Endpoint"
+                          required={idProvider(llm.provider) === "custom"}
+                          className="max-w-[380px]"
                         >
-                          canirun.ai
-                        </button>
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </SettingsCard>
+                          {(props) => (
+                            <TextInput
+                              {...props}
+                              value={llm.endpoint ?? ""}
+                              onChange={(event) => patchLlm({ endpoint: event.target.value || null })}
+                            />
+                          )}
+                        </FormField>
+                        {idProvider(llm.provider) !== "ollama" ? (
+                          <FormField
+                            label="Clé API"
+                            required={idProvider(llm.provider) !== "custom"}
+                            className="max-w-[380px]"
+                            help={
+                              llm.api_key_configured
+                                ? "Une clé est configurée dans le coffre système. Saisissez-en une nouvelle uniquement pour la remplacer."
+                                : "Stockée dans le coffre système, jamais renvoyée à l'interface ni écrite dans la base."
+                            }
+                          >
+                            {(props) => (
+                              <div className="flex items-center gap-2">
+                                <TextInput
+                                  {...props}
+                                  type="password"
+                                  autoComplete="new-password"
+                                  value={apiKeyDraft}
+                                  placeholder={llm.api_key_configured ? "Clé configurée" : "Saisir la clé API"}
+                                  onChange={(event) => {
+                                    setApiKeyDraft(event.target.value);
+                                    setTest("idle");
+                                  }}
+                                />
+                                {llm.api_key_configured ? (
+                                  <Button
+                                    variant="ghost"
+                                    icon="delete"
+                                    disabled={vm.isClearingApiKey}
+                                    onClick={() => void clearApiKey()}
+                                  >
+                                    Supprimer
+                                  </Button>
+                                ) : null}
+                              </div>
+                            )}
+                          </FormField>
+                        ) : (
+                          <div className="max-w-[380px] rounded-field border border-line bg-fill px-3 py-2.5">
+                            <p className="flex items-center gap-1.5 text-label font-mid text-ink">
+                              <Icon name="info" size={14} className="flex-none text-ink-faint" />
+                              Modèle local : aucune clé, aucune connexion
+                            </p>
+                            <p className="mt-1 text-meta leading-relaxed text-ink-muted">
+                              Besoin d'aide pour choisir un modèle compatible avec votre machine ?{" "}
+                              <button
+                                type="button"
+                                onClick={() => void openExternal("https://www.canirun.ai/")}
+                                className="text-accent underline-offset-2 hover:underline"
+                              >
+                                canirun.ai
+                              </button>
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </SettingsCard>
 
-              <div className="flex min-w-0 flex-col gap-4">
-                <SettingsCard icon="bolt" title="Génération">
-                  <div className="flex flex-col gap-4">
-                    <div>
-                      <ControlLabel>Mode d'analyse</ControlLabel>
-                      {/* Conteneur flex : sans lui, le groupe s'étirerait sur toute la
-                          colonne et traînerait une piste vide à droite des options. */}
-                      <div className="flex">
-                        <SegmentedControl
-                          label="Mode d'analyse"
-                          value={llm.mode}
-                          onChange={(mode) => patchLlm({ mode })}
-                          options={MODES}
+                    <SettingsCard icon="bolt" title="Génération">
+                      <div className="flex flex-col gap-4">
+                        <div>
+                          <ControlLabel>Mode d'analyse</ControlLabel>
+                          <div className="flex">
+                            <SegmentedControl
+                              label="Mode d'analyse"
+                              value={llm.mode}
+                              onChange={(mode) => patchLlm({ mode })}
+                              options={MODES}
+                            />
+                          </div>
+                        </div>
+                        <Temperature
+                          value={llm.temperature}
+                          onChange={(temperature) => patchLlm({ temperature })}
                         />
                       </div>
-                    </div>
-                    <Temperature value={llm.temperature} onChange={(temperature) => patchLlm({ temperature })} />
+                    </SettingsCard>
                   </div>
-                </SettingsCard>
-
-                <SettingsCard icon="palette" title="Apparence">
-                  <div className="flex flex-wrap gap-x-8 gap-y-4">
-                    <div>
-                      <ControlLabel>Thème</ControlLabel>
-                      <SegmentedControl
-                        label="Thème"
-                        value={form.theme}
-                        onChange={(theme) => {
-                          setDraft({ ...form, theme });
-                          setTheme(theme);
-                          applyTheme(theme);
-                        }}
-                        options={THEMES}
-                      />
-                    </div>
-                    <div>
-                      <ControlLabel>Son de fin de traitement</ControlLabel>
-                      <SegmentedControl
-                        label="Son de fin de traitement"
-                        value={son}
-                        onChange={(valeur) => {
-                          setSon(valeur);
-                          setCompletionSoundEnabled(valeur === "on");
-                        }}
-                        options={SONS}
-                      />
-                    </div>
-                  </div>
-                </SettingsCard>
+                )}
               </div>
-            </div>
-            )}
+            ) : null}
+
+            {tab === "preferences" ? (
+              <SettingsCard icon="palette" title="Apparence">
+                <div className="flex flex-wrap gap-x-8 gap-y-4">
+                  <div>
+                    <ControlLabel>Thème</ControlLabel>
+                    <SegmentedControl
+                      label="Thème"
+                      value={form.theme}
+                      onChange={(theme) => {
+                        setDraft({ ...form, theme });
+                        setTheme(theme);
+                        applyTheme(theme);
+                      }}
+                      options={THEMES}
+                    />
+                  </div>
+                  <div>
+                    <ControlLabel>Son de fin de traitement</ControlLabel>
+                    <SegmentedControl
+                      label="Son de fin de traitement"
+                      value={son}
+                      onChange={(valeur) => {
+                        setSon(valeur);
+                        setCompletionSoundEnabled(valeur === "on");
+                      }}
+                      options={SONS}
+                    />
+                  </div>
+                </div>
+              </SettingsCard>
+            ) : null}
           </div>
         </SettingsBody>
       )}
+      <AiBenchmarkModal
+        open={benchmarkOpen}
+        onClose={() => setBenchmarkOpen(false)}
+        modelLabel={benchmarkModelLabel || managedModelLabel || "IA locale"}
+      />
     </div>
   );
 }
 
-/** Libellé de contrôle, aligné sur celui de `FormField` : même écran, même graisse. */
+function AiTabs({ active, onChange }: { active: AiTab; onChange: (tab: AiTab) => void }) {
+  const naviguer = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    let prochain = index;
+    if (event.key === "ArrowRight") prochain = (index + 1) % TABS.length;
+    else if (event.key === "ArrowLeft") prochain = (index - 1 + TABS.length) % TABS.length;
+    else if (event.key === "Home") prochain = 0;
+    else if (event.key === "End") prochain = TABS.length - 1;
+    else return;
+    event.preventDefault();
+    const suivant = TABS[prochain];
+    if (!suivant) return;
+    onChange(suivant.id);
+    document.getElementById(`ai-tab-${suivant.id}`)?.focus();
+  };
+
+  return (
+    <div role="tablist" aria-label="Sections Intelligence artificielle" className="flex gap-[3px]">
+      {TABS.map((item, index) => {
+        const selected = active === item.id;
+        return (
+          <button
+            key={item.id}
+            id={`ai-tab-${item.id}`}
+            type="button"
+            role="tab"
+            aria-selected={selected}
+            aria-controls={`ai-panel-${item.id}`}
+            tabIndex={selected ? 0 : -1}
+            onClick={() => onChange(item.id)}
+            onKeyDown={(event) => naviguer(event, index)}
+            className={cn(
+              "flex h-tab flex-none items-center rounded-button px-3 text-body font-medium",
+              selected ? "bg-accent-tint text-accent" : "text-ink-muted hover:bg-neutral-tint",
+            )}
+          >
+            {item.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function ControlLabel({ children }: { children: ReactNode }) {
   return <p className="mb-1.5 text-label font-mid text-ink-muted">{children}</p>;
 }
 
-/**
- * Température : piste remplie jusqu'à la valeur, valeur en mono, bornes nommées.
- *
- * Le curseur natif nu ne disait ni où l'on était sur l'échelle, ni ce que « 0 » ou « 2 »
- * signifiaient. La piste est peinte par un dégradé calculé, faute de pseudo-élément de
- * remplissage standard.
- */
 function Temperature({ value, onChange }: { value: number; onChange: (value: number) => void }) {
   const part = Math.round((value / 2) * 100);
 
@@ -458,4 +559,3 @@ function Temperature({ value, onChange }: { value: number; onChange: (value: num
     </div>
   );
 }
-

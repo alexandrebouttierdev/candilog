@@ -7,7 +7,6 @@ import { Icon } from "@/shared/ui/Icon";
 import { cn } from "@/shared/lib/cn";
 import logoCandilog from "@/assets/logo-candilog.svg";
 import logoCandilogDark from "@/assets/logo-candilog-dark.svg";
-import { AiProviderRailWidget } from "./AiProviderRailWidget";
 
 /** Rail compact : items 42×36, tooltip immédiat. */
 export function NavRail() {
@@ -63,7 +62,6 @@ export function NavRail() {
           );
         })}
       </div>
-      <AiProviderRailWidget />
       <button
         type="button"
         title={sombre ? "Passer en thème clair" : "Passer en thème sombre"}

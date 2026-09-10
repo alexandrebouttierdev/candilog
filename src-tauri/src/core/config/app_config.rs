@@ -39,6 +39,11 @@ pub struct AppPaths {
     pub local_ai_models_dir: PathBuf,
     pub local_ai_metadata_dir: PathBuf,
     pub local_ai_cache_dir: PathBuf,
+    pub managed_ollama_dir: PathBuf,
+    pub managed_ollama_runtime_dir: PathBuf,
+    pub managed_ollama_models_dir: PathBuf,
+    pub managed_ollama_downloads_dir: PathBuf,
+    pub managed_ollama_state_dir: PathBuf,
 }
 
 impl AppPaths {
@@ -89,6 +94,11 @@ impl AppPaths {
         let local_ai_models_dir = local_ai_dir.join("models");
         let local_ai_metadata_dir = local_ai_dir.join("metadata");
         let local_ai_cache_dir = local_ai_dir.join("cache");
+        let managed_ollama_dir = local_ai_dir.join("ollama");
+        let managed_ollama_runtime_dir = managed_ollama_dir.join("runtime");
+        let managed_ollama_models_dir = managed_ollama_dir.join("models");
+        let managed_ollama_downloads_dir = managed_ollama_dir.join("downloads");
+        let managed_ollama_state_dir = managed_ollama_dir.join("state");
         // `Validation` et non `Database` : à ce stade aucune base n'a été ouverte. La
         // variante `Database` affichait « Le fichier de données de Candilog est illisible ou
         // endommagé » à quelqu'un dont le disque est plein ou le dossier en lecture seule —
@@ -101,6 +111,10 @@ impl AppPaths {
             .and_then(|()| std::fs::create_dir_all(&local_ai_models_dir))
             .and_then(|()| std::fs::create_dir_all(&local_ai_metadata_dir))
             .and_then(|()| std::fs::create_dir_all(&local_ai_cache_dir))
+            .and_then(|()| std::fs::create_dir_all(&managed_ollama_runtime_dir))
+            .and_then(|()| std::fs::create_dir_all(&managed_ollama_models_dir))
+            .and_then(|()| std::fs::create_dir_all(&managed_ollama_downloads_dir))
+            .and_then(|()| std::fs::create_dir_all(&managed_ollama_state_dir))
             .map_err(|error| {
             // L'erreur système est en anglais et parle en numéros (« os error 13 ») : elle
             // part au journal, où elle sert au diagnostic, et non à l'écran (§1, §13).
@@ -121,6 +135,11 @@ impl AppPaths {
             local_ai_models_dir,
             local_ai_metadata_dir,
             local_ai_cache_dir,
+            managed_ollama_dir,
+            managed_ollama_runtime_dir,
+            managed_ollama_models_dir,
+            managed_ollama_downloads_dir,
+            managed_ollama_state_dir,
         })
     }
 
@@ -209,14 +228,24 @@ impl AppPaths {
     /// Construit des chemins isolés, notamment pour les tests.
     #[must_use]
     pub fn in_directory(data_dir: PathBuf) -> Self {
+        let local_ai_dir = data_dir.join("ai");
+        let managed_ollama_dir = local_ai_dir.join("ollama");
+        let local_ai_models_dir = local_ai_dir.join("models");
+        let local_ai_metadata_dir = local_ai_dir.join("metadata");
+        let local_ai_cache_dir = local_ai_dir.join("cache");
         Self {
             database: data_dir.join(DATABASE_FILE),
             exports_dir: data_dir.join("exports"),
             photos_dir: data_dir.join("photos"),
-            local_ai_dir: data_dir.join("ai"),
-            local_ai_models_dir: data_dir.join("ai/models"),
-            local_ai_metadata_dir: data_dir.join("ai/metadata"),
-            local_ai_cache_dir: data_dir.join("ai/cache"),
+            local_ai_dir,
+            local_ai_models_dir,
+            local_ai_metadata_dir,
+            local_ai_cache_dir,
+            managed_ollama_dir: managed_ollama_dir.clone(),
+            managed_ollama_runtime_dir: managed_ollama_dir.join("runtime"),
+            managed_ollama_models_dir: managed_ollama_dir.join("models"),
+            managed_ollama_downloads_dir: managed_ollama_dir.join("downloads"),
+            managed_ollama_state_dir: managed_ollama_dir.join("state"),
             data_dir,
         }
     }

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ProviderGrid } from "../ProviderGrid";
-import { FOURNISSEURS } from "../../../model/providers";
+import { FOURNISSEURS, FOURNISSEURS_AUTRES } from "../../../model/providers";
 
 describe("grille des fournisseurs", () => {
   it("propose tous les fournisseurs comme un groupe de boutons radio", () => {
@@ -11,13 +11,19 @@ describe("grille des fournisseurs", () => {
     expect(screen.getAllByRole("radio")).toHaveLength(FOURNISSEURS.length);
     expect(screen.getByRole("radio", { name: /Ollama/ })).toHaveAttribute("aria-checked", "true");
     expect(screen.getByRole("radio", { name: "OpenAI" })).toHaveAttribute("aria-checked", "false");
-    // Le logo est décoratif : la tuile porte déjà le nom en clair et en `aria-label`, un
-    // `alt` le ferait annoncer une troisième fois.
     for (const fournisseur of FOURNISSEURS) {
       const radio = screen.getByRole("radio", { name: fournisseur.label });
       expect(within(radio).getByText(fournisseur.label)).toBeInTheDocument();
       expect(within(radio).queryByRole("img")).not.toBeInTheDocument();
     }
+  });
+
+  it("permet de restreindre la liste aux autres fournisseurs", () => {
+    render(
+      <ProviderGrid value="ollama" onChange={() => undefined} items={FOURNISSEURS_AUTRES} />,
+    );
+    expect(screen.getAllByRole("radio")).toHaveLength(FOURNISSEURS_AUTRES.length);
+    expect(screen.queryByRole("radio", { name: "IA locale Candilog" })).not.toBeInTheDocument();
   });
 
   it("signale le fournisseur choisi et notifie le changement", async () => {
@@ -27,9 +33,6 @@ describe("grille des fournisseurs", () => {
     expect(onChange).toHaveBeenCalledWith("claude");
   });
 
-  // La grille borde et remplit déjà les huit tuiles : la sélection ne se distinguait que
-  // par un fond teinté à 10 % et une bordure à 22 % d'opacité en thème sombre. Un repère
-  // non chromatique reste lisible dans les deux thèmes, et sans distinguer les couleurs.
   it("marque la tuile choisie autrement que par la seule couleur", () => {
     render(<ProviderGrid value="ollama" onChange={() => undefined} />);
 
@@ -41,28 +44,24 @@ describe("grille des fournisseurs", () => {
     ).not.toBeInTheDocument();
   });
 
-  // Le fournisseur local sélectionne l'artefact adapté à la machine : le nommer d'après une
-  // seule famille de modèles devient faux dès qu'une autre peut être retenue.
-  it("nomme le fournisseur local « IA locale », jamais d'après un modèle", () => {
-    render(<ProviderGrid value="mistral_local" onChange={() => undefined} />);
+  it("nomme le fournisseur Candilog « IA locale Candilog »", () => {
+    render(<ProviderGrid value="candilog_local" onChange={() => undefined} />);
 
-    expect(screen.getByRole("radio", { name: "IA locale" })).toBeInTheDocument();
-    expect(screen.queryByText("Mistral Local")).not.toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "IA locale Candilog" })).toBeInTheDocument();
   });
 
-  it("présente l'IA locale comme le choix recommandé sans confondre Ollama", () => {
+  it("présente l'IA locale Candilog comme le choix recommandé", () => {
     render(<ProviderGrid value="ollama" onChange={() => undefined} />);
 
-    expect(within(screen.getByRole("radio", { name: "IA locale" })).getByText("Recommandé")).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("radio", { name: "IA locale Candilog" })).getByText("Recommandé"),
+    ).toBeInTheDocument();
     expect(within(screen.getByRole("radio", { name: "Ollama" })).getByText("Votre installation ou Ollama Cloud")).toBeInTheDocument();
   });
 
-  // L'IA locale retient Mistral ou Qwen selon la machine : la tuile fournisseur reste
-  // générique (`smart_toy`). Les logos de famille n'apparaissent que quand un modèle
-  // est actif (AiHero / rail), jamais en pile sur la carte.
-  it("affiche l'icône générique smart_toy sur la tuile IA locale, sans badge de famille", () => {
+  it("affiche l'icône générique smart_toy sur la tuile IA locale Candilog", () => {
     const { container } = render(<ProviderGrid value="ollama" onChange={() => undefined} />);
-    const tuile = screen.getByRole("radio", { name: "IA locale" });
+    const tuile = screen.getByRole("radio", { name: "IA locale Candilog" });
 
     expect(tuile.querySelector('[data-provider-logo="mistral"]')).toBeNull();
     expect(tuile.querySelector('[data-provider-logo="qwen"]')).toBeNull();

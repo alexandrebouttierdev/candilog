@@ -1,6 +1,8 @@
 //! Modèle persisté (JSON Iced) et DTO IPC camelCase.
 
-use crate::features::ai::domain::{AnalysisMode, LlmConfig, LocalAiSettings, ProviderKind};
+use crate::features::ai::domain::{
+    AnalysisMode, LlmConfig, LocalAiSettings, ManagedOllamaSettings, ProviderKind,
+};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
@@ -22,6 +24,8 @@ pub struct AppSettings {
     #[serde(default)]
     pub local_ai: LocalAiSettings,
     #[serde(default)]
+    pub managed_ollama: ManagedOllamaSettings,
+    #[serde(default)]
     pub theme: ThemePref,
     #[serde(default = "language_fr")]
     pub language: String,
@@ -36,6 +40,7 @@ impl Default for AppSettings {
         Self {
             llm: LlmConfig::default(),
             local_ai: LocalAiSettings::default(),
+            managed_ollama: ManagedOllamaSettings::default(),
             theme: ThemePref::System,
             language: language_fr(),
         }
@@ -86,6 +91,7 @@ impl From<Settings> for AppSettings {
         Self {
             llm: LlmConfig::from(value.llm),
             local_ai: LocalAiSettings::default(),
+            managed_ollama: ManagedOllamaSettings::default(),
             theme: value.theme,
             language: value.language,
         }

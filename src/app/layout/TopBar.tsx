@@ -1,6 +1,7 @@
 import { useLocation } from "react-router-dom";
 import { sectionForPath } from "@/app/router/routes";
 import { Icon } from "@/shared/ui/Icon";
+import { AiGlobalHeader } from "./AiGlobalHeader";
 
 /** Topbar 46 px : titre centré, actions contextuelles à droite. */
 export function TopBar({ slotRef }: { slotRef: (node: HTMLElement | null) => void }) {
@@ -17,10 +18,10 @@ export function TopBar({ slotRef }: { slotRef: (node: HTMLElement | null) => voi
         <Icon name={route.icon} size={17} className="flex-none text-ink-disabled" />
         <h1 className="truncate text-section text-ink">{route.label}</h1>
       </div>
-      <div
-        ref={slotRef}
-        className="col-start-3 row-start-1 flex min-w-0 items-center justify-end justify-self-end gap-2"
-      />
+      <div className="col-start-3 row-start-1 flex min-w-0 items-center justify-end justify-self-end gap-2">
+        <AiGlobalHeader />
+        <div ref={slotRef} className="flex min-w-0 items-center gap-2" />
+      </div>
     </header>
   );
 }

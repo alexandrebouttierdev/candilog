@@ -2,7 +2,8 @@
 
 use crate::app::state::AppState;
 use crate::features::ai::presentation::{
-    commands as ai, local_commands as local_ai, system_commands as system_resources,
+    commands as ai, local_commands as local_ai, managed_ollama_commands as managed_ollama,
+    system_commands as system_resources,
 };
 use crate::features::analytics::presentation::commands as analytics;
 use crate::features::applications::presentation::commands as applications;
@@ -44,7 +45,9 @@ pub fn run() {
         })
         .on_window_event(|window, event| {
             if window.label() == "main" && matches!(event, tauri::WindowEvent::Destroyed) {
-                window.state::<AppState>().local_ai.shutdown();
+                let state = window.state::<AppState>();
+                state.local_ai.shutdown();
+                state.managed_ollama.shutdown();
             }
         })
         .invoke_handler(tauri::generate_handler![
@@ -106,6 +109,12 @@ pub fn run() {
             local_ai::remove_local_ai_model,
             local_ai::benchmark_local_ai_model,
             local_ai::test_local_ai_model,
+            managed_ollama::get_managed_ollama_status,
+            managed_ollama::install_managed_ollama_model,
+            managed_ollama::cancel_managed_ollama_download,
+            managed_ollama::remove_managed_ollama_model,
+            managed_ollama::activate_managed_ollama_model,
+            managed_ollama::run_user_cv_benchmark,
             system_resources::system_resource_snapshot,
             settings::settings_load,
             settings::settings_save,

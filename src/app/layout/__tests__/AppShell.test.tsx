@@ -101,9 +101,11 @@ describe("rail de navigation", () => {
 describe("barre supérieure", () => {
   it("affiche le titre de l'écran actif", () => {
     render(
-      <MemoryRouter initialEntries={["/tracking/calendar"]}>
-        <TopBar slotRef={() => {}} />
-      </MemoryRouter>,
+      <QueryWrapper>
+        <MemoryRouter initialEntries={["/tracking/calendar"]}>
+          <TopBar slotRef={() => {}} />
+        </MemoryRouter>
+      </QueryWrapper>,
     );
     expect(screen.getByRole("heading", { name: "Calendrier" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Rechercher ou exécuter" })).not.toBeInTheDocument();
@@ -111,9 +113,11 @@ describe("barre supérieure", () => {
 
   it("garde le titre au centre indépendamment du libellé", () => {
     render(
-      <MemoryRouter initialEntries={["/settings/ai"]}>
-        <TopBar slotRef={() => {}} />
-      </MemoryRouter>,
+      <QueryWrapper>
+        <MemoryRouter initialEntries={["/settings/ai"]}>
+          <TopBar slotRef={() => {}} />
+        </MemoryRouter>
+      </QueryWrapper>,
     );
     const header = screen.getByRole("banner");
     const title = screen.getByRole("heading", { name: "Intelligence artificielle" });

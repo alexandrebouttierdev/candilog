@@ -90,7 +90,6 @@ fn est_recopie(source: &str, value: &str) -> bool {
     value.chars().any(char::is_alphanumeric) && contains_search_term(source, value)
 }
 
-
 /// Complète l'email et le téléphone vides à partir du texte déjà soumis au modèle.
 ///
 /// Le recadrage n'ajoute rien : un petit modèle laisse souvent ces deux champs vides
@@ -159,16 +158,16 @@ fn jeton_email_plausible(value: &str) -> bool {
     let domaine = parts.next().unwrap_or("");
     parts.next().is_none()
         && !local.is_empty()
-        && local.chars().any(|caractere| caractere.is_ascii_alphabetic())
-        && domaine.contains('.')
-        && domaine
-            .chars()
-            .all(|caractere| caractere.is_ascii_alphanumeric() || matches!(caractere, '.' | '-' | '_'))
         && local
             .chars()
-            .all(|caractere| {
-                caractere.is_ascii_alphanumeric() || matches!(caractere, '.' | '_' | '%' | '+' | '-')
-            })
+            .any(|caractere| caractere.is_ascii_alphabetic())
+        && domaine.contains('.')
+        && domaine.chars().all(|caractere| {
+            caractere.is_ascii_alphanumeric() || matches!(caractere, '.' | '-' | '_')
+        })
+        && local.chars().all(|caractere| {
+            caractere.is_ascii_alphanumeric() || matches!(caractere, '.' | '_' | '%' | '+' | '-')
+        })
         && !domaine.rsplit('.').next().is_some_and(|tld| {
             matches!(
                 tld.to_ascii_lowercase().as_str(),
@@ -226,7 +225,9 @@ fn est_label(octet: u8) -> bool {
 
 fn local_ok(local: &str) -> bool {
     !local.is_empty()
-        && local.chars().any(|caractere| caractere.is_ascii_alphabetic())
+        && local
+            .chars()
+            .any(|caractere| caractere.is_ascii_alphabetic())
         && !local.starts_with('.')
         && !local.ends_with('.')
         && !local.contains("..")
@@ -508,10 +509,10 @@ fn lire_groupes_bornes(
 }
 
 fn dans_un_email(source: &str, debut: usize, fin: usize) -> bool {
-    source.get(debut..fin).is_some_and(|extrait| extrait.contains('@'))
+    source
+        .get(debut..fin)
+        .is_some_and(|extrait| extrait.contains('@'))
 }
-
-
 
 /// Ajoute une formation manquante après le recadrage, sans second appel au modèle.
 ///
@@ -638,7 +639,12 @@ fn occurrences_diplome(source: &str) -> Vec<OccurrenceDiplome> {
     occurrences
 }
 
-fn retenir_indice(source: &str, debut: usize, fin: usize, occurrences: &mut Vec<OccurrenceDiplome>) {
+fn retenir_indice(
+    source: &str,
+    debut: usize,
+    fin: usize,
+    occurrences: &mut Vec<OccurrenceDiplome>,
+) {
     let Some(brut) = source.get(debut..fin) else {
         return;
     };
@@ -664,7 +670,8 @@ fn indice_deja_couvert(profile: &Profile, couverts: &mut [bool], indice: &str) -
         if couverts.get(index).copied().unwrap_or(false) {
             continue;
         }
-        if contient_indice(&formation.degree, indice) || contient_indice(&formation.school, indice) {
+        if contient_indice(&formation.degree, indice) || contient_indice(&formation.school, indice)
+        {
             couverts[index] = true;
             return true;
         }
@@ -710,7 +717,11 @@ fn formation_unique(
             }
             let jetons = jetons_diplome(fragment);
             if jetons.iter().any(|jeton| jeton == &occurrence.indice) {
-                if jetons.iter().filter(|jeton| INDICES_DIPLOME.contains(&jeton.as_str())).count() == 1
+                if jetons
+                    .iter()
+                    .filter(|jeton| INDICES_DIPLOME.contains(&jeton.as_str()))
+                    .count()
+                    == 1
                     && fragment.split_whitespace().count() <= 8
                     && !phrase_narrative(fragment)
                 {
@@ -793,7 +804,10 @@ fn fenetre_occurrence(
             fin = fin.max((apres_debut + apres.len()).min(suivante.unwrap_or(source.len())));
         }
     }
-    (debut.min(occurrence.debut), fin.max(occurrence.fin).min(source.len()))
+    (
+        debut.min(occurrence.debut),
+        fin.max(occurrence.fin).min(source.len()),
+    )
 }
 
 fn occurrences_dans(occurrences: &[OccurrenceDiplome], debut: usize, fin: usize) -> bool {
@@ -818,7 +832,12 @@ fn fragments_formation(ligne: &str) -> Vec<&str> {
         let mut suivant = Vec::new();
         for morceau in morceaux {
             if morceau.contains(separateur) {
-                suivant.extend(morceau.split(separateur).map(str::trim).filter(|part| !part.is_empty()));
+                suivant.extend(
+                    morceau
+                        .split(separateur)
+                        .map(str::trim)
+                        .filter(|part| !part.is_empty()),
+                );
             } else {
                 suivant.push(morceau);
             }
@@ -861,7 +880,9 @@ fn a_marqueur_ecole(fragment: &str) -> bool {
         "campus",
         "school",
     ];
-    jetons.iter().any(|jeton| MARQUEURS.contains(&jeton.as_str()))
+    jetons
+        .iter()
+        .any(|jeton| MARQUEURS.contains(&jeton.as_str()))
 }
 
 fn est_entete_formation(ligne: &str) -> bool {
@@ -869,9 +890,23 @@ fn est_entete_formation(ligne: &str) -> bool {
     if jetons.len() > 3 {
         return false;
     }
-    const ENTETES: [&str; 6] = ["formation", "formations", "education", "etudes", "diplomes", "scolarite"];
-    jetons.iter().all(|jeton| ENTETES.contains(&jeton.as_str()) || jeton == "diplôme" || jeton == "diplome")
-        && jetons.iter().any(|jeton| ENTETES.contains(&jeton.as_str()) || jeton == "diplômes" || jeton == "diplome" || jeton == "diplôme")
+    const ENTETES: [&str; 6] = [
+        "formation",
+        "formations",
+        "education",
+        "etudes",
+        "diplomes",
+        "scolarite",
+    ];
+    jetons
+        .iter()
+        .all(|jeton| ENTETES.contains(&jeton.as_str()) || jeton == "diplôme" || jeton == "diplome")
+        && jetons.iter().any(|jeton| {
+            ENTETES.contains(&jeton.as_str())
+                || jeton == "diplômes"
+                || jeton == "diplome"
+                || jeton == "diplôme"
+        })
 }
 
 fn ligne_contenant(source: &str, offset: usize) -> Option<&str> {
@@ -885,7 +920,9 @@ fn ligne_contenant(source: &str, offset: usize) -> Option<&str> {
 fn contexte_lignes(source: &str, offset: usize, rayon: usize) -> String {
     let lignes: Vec<&str> = source.lines().collect();
     let index = lignes.iter().position(|ligne| {
-        source.find(ligne).is_some_and(|debut| offset >= debut && offset < debut + ligne.len())
+        source
+            .find(ligne)
+            .is_some_and(|debut| offset >= debut && offset < debut + ligne.len())
     });
     let Some(index) = index else {
         return String::new();
@@ -896,23 +933,30 @@ fn contexte_lignes(source: &str, offset: usize, rayon: usize) -> String {
 }
 
 fn ligne_precedente(source: &str, offset: usize) -> Option<&str> {
-    let lignes: Vec<&str> = source.lines().filter(|ligne| !ligne.trim().is_empty()).collect();
+    let lignes: Vec<&str> = source
+        .lines()
+        .filter(|ligne| !ligne.trim().is_empty())
+        .collect();
     let index = lignes.iter().position(|ligne| {
-        source.find(*ligne).is_some_and(|debut| offset >= debut && offset < debut + ligne.len())
+        source
+            .find(*ligne)
+            .is_some_and(|debut| offset >= debut && offset < debut + ligne.len())
     })?;
     index.checked_sub(1).map(|index| lignes[index])
 }
 
 fn ligne_suivante(source: &str, offset: usize) -> Option<&str> {
-    let lignes: Vec<&str> = source.lines().filter(|ligne| !ligne.trim().is_empty()).collect();
+    let lignes: Vec<&str> = source
+        .lines()
+        .filter(|ligne| !ligne.trim().is_empty())
+        .collect();
     let index = lignes.iter().position(|ligne| {
-        source.find(*ligne).is_some_and(|debut| offset >= debut && offset < debut + ligne.len())
+        source
+            .find(*ligne)
+            .is_some_and(|debut| offset >= debut && offset < debut + ligne.len())
     })?;
     lignes.get(index + 1).copied()
 }
-
-
-
 
 #[cfg(test)]
 mod tests {
@@ -1173,7 +1217,10 @@ Anglais · lecture courante de documentation technique\n";
 
         completer_contacts_vides(source, &mut profile);
 
-        assert_eq!(profile.identity.phone.as_deref(), Some("0033 6 12 34 56 78"));
+        assert_eq!(
+            profile.identity.phone.as_deref(),
+            Some("0033 6 12 34 56 78")
+        );
         assert_eq!(profile.identity.email, "maya.rossi@example.io");
     }
 
@@ -1297,7 +1344,13 @@ J'ai suivi un master puis une autre voie, voir Orion Institut et Pétale École.
         completer_formations_manquantes(source, &mut profile);
 
         assert_eq!(profile.education.len(), 2);
-        assert!(profile.education.iter().any(|formation| formation.degree == "Licence Histoire"));
-        assert!(profile.education.iter().any(|formation| formation.degree == "Master Informatique"));
+        assert!(profile
+            .education
+            .iter()
+            .any(|formation| formation.degree == "Licence Histoire"));
+        assert!(profile
+            .education
+            .iter()
+            .any(|formation| formation.degree == "Master Informatique"));
     }
 }

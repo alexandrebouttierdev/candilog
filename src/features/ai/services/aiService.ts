@@ -2,6 +2,7 @@ import { playCompletionSound } from "@/shared/lib/completion-sound";
 import { ipc } from "@/shared/services/ipc";
 import type { AiExecution, ImportedResumeAnalysis, LanguageCorrectionRequest, LanguageCorrectionResult, ListingAnalysis, ResumeAnalysisRequest, ResumeGenerationRequest, ProfileImportRequest, CoverLetterRequest, ResumeGeneration, SelectedResumeFile } from "../model/types";
 import type { ImportProfilePreview } from "@/shared/types/generated/profile";
+import type { UserBenchmarkResult } from "@/shared/types/generated/ai";
 
 /**
  * Signale la fin d'un traitement IA.
@@ -38,6 +39,11 @@ export const aiService = {
       throw error;
     });
   },
+  runUserBenchmark: (generationId: string) =>
+    announce(
+      ipc<UserBenchmarkResult>("run_user_cv_benchmark", { generation_id: generationId }),
+      generationId,
+    ),
 };
 
 export function generation_id(): string { return crypto.randomUUID(); }
