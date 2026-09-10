@@ -280,6 +280,11 @@ export function AiPage() {
                           label="Endpoint"
                           required={idProvider(llm.provider) === "custom"}
                           className="max-w-[380px]"
+                          help={
+                            idProvider(llm.provider) === "custom"
+                              ? "Ollama local ou LM Studio : http://localhost:11434 (HTTP, sans /v1)."
+                              : undefined
+                          }
                         >
                           {(props) => (
                             <TextInput

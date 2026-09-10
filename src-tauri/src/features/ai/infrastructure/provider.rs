@@ -80,8 +80,30 @@ pub trait LlmGenerator: Send + Sync {
     async fn list_models(&self) -> AppResult<Vec<String>>;
 }
 
+fn autorise_endpoint_local(provider: &ProviderKind) -> bool {
+    matches!(provider, ProviderKind::Ollama | ProviderKind::Custom(_))
+}
+
+fn utilise_api_openai_compatible(provider: &ProviderKind) -> bool {
+    matches!(
+        provider,
+        ProviderKind::OpenAI
+            | ProviderKind::Mistral
+            | ProviderKind::DeepSeek
+            | ProviderKind::Custom(_)
+    )
+}
+
+fn endpoint_normalise(config: &LlmConfig) -> String {
+    let mut endpoint = config.endpoint_effectif().trim_end_matches('/').to_owned();
+    if utilise_api_openai_compatible(&config.provider) && endpoint.ends_with("/v1") {
+        endpoint.truncate(endpoint.len() - 3);
+    }
+    endpoint
+}
+
 pub async fn build_provider(config: &LlmConfig) -> AppResult<Arc<dyn LlmGenerator>> {
-    let endpoint = config.endpoint_effectif().trim_end_matches('/').to_owned();
+    let endpoint = endpoint_normalise(config);
     let url = url::Url::parse(&endpoint)
         .map_err(|_| AppError::Validation("Endpoint IA invalide".into()))?;
     let host = url
@@ -93,7 +115,7 @@ pub async fn build_provider(config: &LlmConfig) -> AppResult<Arc<dyn LlmGenerato
         .timeout(std::time::Duration::from_secs(60 * 30))
         .redirect(reqwest::redirect::Policy::none())
         .user_agent(concat!("Candilog/", env!("CARGO_PKG_VERSION")));
-    if !matches!(config.provider, ProviderKind::Ollama) {
+    if !autorise_endpoint_local(&config.provider) {
         if url.scheme() != "https" {
             return Err(AppError::Validation(
                 "Un endpoint IA distant doit utiliser HTTPS".into(),
@@ -180,6 +202,14 @@ impl ProviderHttp {
         {
             return AppError::Provider(format!(
                 "Ollama ne répond pas sur {}. Démarrez-le, ou choisissez un autre fournisseur dans Réglages → Intelligence artificielle.",
+                self.endpoint
+            ));
+        }
+        if matches!(self.config.provider, ProviderKind::Custom(_))
+            && (error.is_connect() || error.is_timeout())
+        {
+            return AppError::Provider(format!(
+                "Le serveur IA local ne répond pas sur {}. Vérifiez qu'il est démarré et que l'endpoint est correct (HTTP, sans /v1).",
                 self.endpoint
             ));
         }
@@ -622,6 +652,56 @@ mod tests {
         assert_eq!(segment_url("gemini-2.5-flash"), "gemini-2.5-flash");
         assert_eq!(segment_url("../../v1/autre"), "..%2F..%2Fv1%2Fautre");
         assert_eq!(segment_url("modele?cle=1#x"), "modele%3Fcle%3D1%23x");
+    }
+
+    #[test]
+    fn endpoint_normalise_retire_le_suffixe_v1() {
+        let config = LlmConfig {
+            provider: ProviderKind::Custom("custom".into()),
+            api_key: None,
+            endpoint: Some("http://localhost:11434/v1/".into()),
+            model: "llama3.2".into(),
+            temperature: 0.7,
+            mode: AnalysisMode::default(),
+        };
+        assert_eq!(endpoint_normalise(&config), "http://localhost:11434");
+    }
+
+    #[tokio::test]
+    async fn custom_peut_cibler_localhost_en_http() {
+        assert!(
+            build_provider(&LlmConfig {
+                provider: ProviderKind::Custom("custom".into()),
+                api_key: Some("ollama".into()),
+                endpoint: Some("http://localhost:11434".into()),
+                model: "llama3.2".into(),
+                temperature: 0.7,
+                mode: AnalysisMode::default(),
+            })
+            .await
+            .is_ok()
+        );
+    }
+
+    #[tokio::test]
+    async fn openai_refuse_localhost() {
+        let resultat = build_provider(&LlmConfig {
+            provider: ProviderKind::OpenAI,
+            api_key: Some("sk-test".into()),
+            endpoint: Some("https://localhost:11434/v1".into()),
+            model: "gpt-4o-mini".into(),
+            temperature: 0.7,
+            mode: AnalysisMode::default(),
+        })
+        .await;
+
+        match resultat {
+            Err(AppError::Validation(message)) => {
+                assert!(message.contains("réseau local"));
+            }
+            Err(_) => panic!("une adresse locale doit être refusée en validation"),
+            Ok(_) => panic!("OpenAI ne doit pas viser le réseau local"),
+        }
     }
 
     #[test]
