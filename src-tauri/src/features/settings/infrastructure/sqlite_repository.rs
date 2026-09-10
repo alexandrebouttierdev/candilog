@@ -75,7 +75,8 @@ impl SettingsRepository for SqliteSettingsRepository {
         let Some(text) = content else {
             return Ok(AppSettings::default());
         };
-        match serde_json::from_str::<AppSettings>(&text) {
+        let prepared = crate::features::settings::domain::preparer_settings_json(&text);
+        match serde_json::from_str::<AppSettings>(&prepared) {
             Ok(mut settings) => {
                 settings.llm.normaliser_legacy();
                 Ok(settings)
@@ -122,9 +123,9 @@ mod tests {
     }
 
     #[test]
-    fn sans_ligne_retourne_ollama_par_defaut() {
+    fn sans_ligne_retourne_candilog_local_par_defaut() {
         let settings = repo().get().unwrap();
-        assert_eq!(settings.llm.provider, ProviderKind::Ollama);
+        assert_eq!(settings.llm.provider, ProviderKind::CandilogLocal);
         assert_eq!(settings.language, "fr");
     }
 
@@ -157,7 +158,7 @@ mod tests {
             .unwrap();
         }
         let settings = SqliteSettingsRepository::new(pool).get().unwrap();
-        assert_eq!(settings.llm.provider, ProviderKind::Ollama);
+        assert_eq!(settings.llm.provider, ProviderKind::CandilogLocal);
     }
 
     #[test]

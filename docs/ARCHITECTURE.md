@@ -25,8 +25,8 @@ Vue React → ViewModel (hook) → service frontend → invoke
   sauvegardes, mises à jour, coffre à secrets, validation partagée.
 - `src-tauri/src/features/` : domaines métier (`domain`, `application`, `infrastructure`,
   `presentation`). L'IA vit dans `features/ai/` (prompts, providers HTTP, extraction PDF,
-  scoring ATS). Mistral Local suit `commande → LocalAiService → ModelDownloader / runtime`
-  et n'expose jamais llama.cpp au reste de l'application.
+  scoring ATS). L'IA locale Candilog suit `commande → ManagedOllamaService → runtime Ollama`
+  et réutilise l'adaptateur HTTP Ollama existant.
 - `src-tauri/src/infrastructure/` : PDF d'export (CV et lettres).
 - `src-tauri/migrations/` : schéma SQLite embarqué (`init_schema.sql`, `PRAGMA user_version`).
 

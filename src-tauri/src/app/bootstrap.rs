@@ -2,7 +2,7 @@
 
 use crate::app::state::AppState;
 use crate::features::ai::presentation::{
-    commands as ai, local_commands as local_ai, system_commands as system_resources,
+    commands as ai, managed_ollama_commands as managed_ollama, system_commands as system_resources,
 };
 use crate::features::analytics::presentation::commands as analytics;
 use crate::features::applications::presentation::commands as applications;
@@ -16,11 +16,6 @@ use crate::features::referentials::presentation::commands as referentials;
 use crate::features::settings::presentation::commands as settings;
 use tauri::Manager;
 
-/// Démarre Candilog : journal, état applicatif, plugins, commandes.
-///
-/// Sans base de données lisible il n'y a rien à afficher : l'application s'arrête en
-/// journalisant la cause plutôt que d'ouvrir une fenêtre vide dont l'utilisateur ne pourrait
-/// rien tirer. C'est le seul point du programme où un arrêt est le bon comportement.
 pub fn run() {
     let _guard = crate::core::logging::init();
 
@@ -38,13 +33,10 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .manage(state)
-        .setup(|app| {
-            surveiller_inactivite_du_modele_local(app.handle());
-            Ok(())
-        })
         .on_window_event(|window, event| {
             if window.label() == "main" && matches!(event, tauri::WindowEvent::Destroyed) {
-                window.state::<AppState>().local_ai.shutdown();
+                let state = window.state::<AppState>();
+                state.managed_ollama.shutdown();
             }
         })
         .invoke_handler(tauri::generate_handler![
@@ -98,14 +90,12 @@ pub fn run() {
             ai::ai_select_resume_file,
             ai::ai_import_profile,
             ai::ai_cancel,
-            local_ai::detect_local_ai_hardware,
-            local_ai::get_local_ai_recommendation,
-            local_ai::get_local_ai_status,
-            local_ai::install_local_ai_model,
-            local_ai::cancel_local_ai_download,
-            local_ai::remove_local_ai_model,
-            local_ai::benchmark_local_ai_model,
-            local_ai::test_local_ai_model,
+            managed_ollama::get_managed_ollama_status,
+            managed_ollama::install_managed_ollama_model,
+            managed_ollama::cancel_managed_ollama_download,
+            managed_ollama::remove_managed_ollama_model,
+            managed_ollama::activate_managed_ollama_model,
+            managed_ollama::run_user_cv_benchmark,
             system_resources::system_resource_snapshot,
             settings::settings_load,
             settings::settings_save,
@@ -135,26 +125,12 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
     {
-        // `run` n'échoue qu'à l'initialisation du moteur de rendu système : rien que
-        // l'application puisse corriger, mais la cause doit rester dans le journal.
         tracing::error!(%error, "démarrage de la fenêtre impossible");
         std::process::exit(1);
     }
-    // Sortie normale de la boucle d'événements : la session est close, le marqueur retiré.
-    // Un arrêt brutal ne passe jamais ici, et c'est précisément ce qui le rend détectable.
     crate::core::logging::cloturer_session();
 }
 
-/// Annonce à l'utilisateur que l'application ne peut pas démarrer.
-///
-/// Lancée depuis un menu d'applications — le cas normal après installation d'un paquet —,
-/// Candilog n'a pas de terminal : un message sur la sortie standard n'était vu par
-/// personne, et un dossier de données inaccessible ou une base d'une génération abandonnée
-/// se manifestaient par une fenêtre qui ne s'ouvre pas, sans un mot d'explication.
-///
-/// Le dialogue passe par `rfd` et non par `tauri-plugin-dialog` : à ce stade il n'y a ni
-/// runtime Tauri, ni `AppHandle`. Le message reste écrit sur la sortie standard pour le
-/// lancement en console, et l'échec du dialogue lui-même n'empêche pas l'arrêt.
 fn signaler_demarrage_impossible(message: &str) {
     eprintln!("Candilog n'a pas pu ouvrir ses données : {message}");
     rfd::MessageDialog::new()
@@ -163,20 +139,4 @@ fn signaler_demarrage_impossible(message: &str) {
         .set_description(message)
         .set_buttons(rfd::MessageButtons::Ok)
         .show();
-}
-
-/// Rend au système les poids d'un modèle local laissé inactif.
-///
-/// Sans cette surveillance, un import de CV immobilise plusieurs gigaoctets jusqu'à la
-/// fermeture de l'application — de quoi faire désigner Candilog comme victime par l'OOM
-/// killer bien après la fin de l'inférence.
-fn surveiller_inactivite_du_modele_local(app: &tauri::AppHandle) {
-    const PERIODE: std::time::Duration = std::time::Duration::from_secs(60);
-    let app = app.clone();
-    tauri::async_runtime::spawn(async move {
-        loop {
-            tokio::time::sleep(PERIODE).await;
-            app.state::<AppState>().local_ai.release_idle_model();
-        }
-    });
 }

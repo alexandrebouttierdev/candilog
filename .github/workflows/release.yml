@@ -137,11 +137,11 @@ jobs:
             rust_targets: aarch64-apple-darwin,x86_64-apple-darwin
             bundles: macos
           - platform: windows-latest
-            args: --features local-ai-vulkan
+            args: ""
             rust_targets: ""
             bundles: windows
           - platform: ubuntu-22.04
-            args: --features local-ai-vulkan
+            args: ""
             rust_targets: ""
             bundles: linux
 
@@ -155,20 +155,11 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            clang \
-            cmake \
             libwebkit2gtk-4.1-dev \
             libappindicator3-dev \
             librsvg2-dev \
             patchelf \
-            libvulkan-dev \
-            glslc \
             xdg-utils
-
-      - name: Installer le SDK de compilation Vulkan (Windows)
-        if: matrix.platform == 'windows-latest'
-        shell: pwsh
-        run: choco install vulkan-sdk --no-progress -y
 
       - name: Installer Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4

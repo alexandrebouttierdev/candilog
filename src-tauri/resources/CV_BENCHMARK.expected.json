@@ -1,0 +1,90 @@
+{
+  "benchmark_version": 1,
+  "profile": {
+    "identity": {
+      "first_name": "Thomas",
+      "name": "Candilog",
+      "email": "thomas.candilog.dev@gmail.com",
+      "phone": "0618425791",
+      "city": "Rennes",
+      "title": "Développeur Full-Stack JavaScript / TypeScript",
+      "linkedin": "linkedin.com/in/thomascandilogdev",
+      "github": "github.com/thomascandilogdev",
+      "website": "portfolio.thomas-candilog.dev"
+    },
+    "experiences": [
+      {
+        "title": "Senior Full-Stack Developer",
+        "company": "AlthéaRH",
+        "location": "Rennes",
+        "start_date": "01/2023",
+        "end_date": null,
+        "current": true
+      },
+      {
+        "title": "Full-Stack Developer",
+        "company": "Kivora Commerce",
+        "location": "Nantes",
+        "start_date": "06/2020",
+        "end_date": "12/2022",
+        "current": false
+      },
+      {
+        "title": "Frontend Developer",
+        "company": "Nexelio Digital",
+        "location": "Rennes",
+        "start_date": "09/2018",
+        "end_date": "05/2020",
+        "current": false
+      },
+      {
+        "title": "Développeur Web Junior",
+        "company": "Studio Velmora",
+        "location": "Rennes",
+        "start_date": "09/2016",
+        "end_date": "08/2018",
+        "current": false
+      }
+    ],
+    "skills": [
+      { "name": "React" },
+      { "name": "TypeScript" },
+      { "name": "Node.js" },
+      { "name": "PostgreSQL" },
+      { "name": "Next.js" },
+      { "name": "NestJS" },
+      { "name": "Docker" },
+      { "name": "Git" }
+    ],
+    "education": [
+      {
+        "degree": "Titre professionnel Développeur logiciel (Bac+2)",
+        "school": "AFPA Rennes",
+        "start_date": "",
+        "end_date": "2018"
+      },
+      {
+        "degree": "BTS SIO option SLAM",
+        "school": "Lycée Victor et Hélène Basch",
+        "start_date": "",
+        "end_date": "2016"
+      }
+    ],
+    "languages": [
+      { "name": "Français", "level": "Langue maternelle" },
+      { "name": "Anglais", "level": "B2 professionnel" },
+      { "name": "Espagnol", "level": "A2" }
+    ],
+    "projects": [
+      {
+        "name": "Candiscore",
+        "description": "Application desktop de suivi de candidatures et d'analyse de CV"
+      }
+    ],
+    "certifications": [
+      { "name": "AWS Certified Cloud Practitioner", "issuer": "AWS", "date": "2024" },
+      { "name": "Scrum Foundation Professional Certificate", "issuer": "", "date": "2023" },
+      { "name": "TOEIC 865/990", "issuer": "", "date": "2022" }
+    ]
+  }
+}

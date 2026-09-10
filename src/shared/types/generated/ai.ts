@@ -32,7 +32,10 @@ export type AtsRecommendation = { section: AtsRecommendationSection, item_index:
  */
 export type AtsRecommendationSection = "profile" | "experience";
 
-export type BenchmarkRating = "excellent" | "good" | "acceptable" | "too_slow";
+/**
+ * Catégories de score utilisateur pour l'affichage.
+ */
+export type BenchmarkQualityLabel = "weak" | "average" | "fair" | "good" | "very_good" | "excellent";
 
 export type ContentRelevance = "very_relevant" | "relevant" | "secondary";
 
@@ -46,9 +49,7 @@ export type GeneratedResume = { resume: string, experiences: Array<GeneratedExpe
 
 export type ImportedResumeAnalysis = { resume: GeneratedResume, job_offer: StructuredListing, score: MatchScore, analysis: AtsAnalysis, };
 
-export type InstallLocalAiRequest = { model_id: LocalModelId, };
-
-export type InstalledLocalModel = { model_id: LocalModelId, profile: LocalModelProfile, revision: string, checksum: string, model_path: string, backend: LocalAiBackend, benchmark: LocalAiBenchmark | null, };
+export type InstallManagedModelRequest = { model_id: ManagedModelId, };
 
 /**
  * Champ textuel isolé pour une relecture linguistique. L'identifiant est opaque pour le
@@ -62,58 +63,36 @@ export type LanguageCorrectionResult = { fields: Array<LanguageCorrectionField>,
 
 export type ListingAnalysis = { job_offer: StructuredListing, score: MatchScore, };
 
-export type LocalAiBackend = "metal" | "cuda" | "vulkan" | "cpu";
+export type MachineFit = "recommended" | "compatible" | "may_be_slow" | "insufficient_memory";
 
-export type LocalAiBenchmark = { load_time_ms: number, tokens_per_second: number, memory_used_mb: number, generated_tokens: number, rating: BenchmarkRating, measured_at: string, };
+export type ManagedDownloadKind = "runtime" | "model";
 
-export type LocalAiDownloadCompleted = { model_id: LocalModelId, };
+export type ManagedModelCategory = "ultra_light" | "light" | "balanced" | "powerful" | "max_quality";
 
-export type LocalAiDownloadError = { model_id: LocalModelId, code: string, message: string, };
+export type ManagedModelDefinition = { id: ManagedModelId, category: ManagedModelCategory, publisher: ManagedModelPublisher, publisher_label: string, display_name: string, description: string, 
+/**
+ * Tag Ollama utilisé pour pull et inférence.
+ */
+ollama_tag: string, approximate_download_bytes: number, recommended_ram_gb: number, };
 
-export type LocalAiDownloadProgress = { model_id: LocalModelId, state: LocalAiState, downloaded_bytes: number, total_bytes: number, bytes_per_second: number, progress: number, };
-
-export type LocalAiHardware = { os: string, architecture: string, cpu: string, cpu_model: string, logical_cores: number, physical_cores: number | null, total_ram_mb: number, available_ram_mb: number, gpus: Array<LocalGpuInfo>, apple_silicon: boolean, soc_model: string | null, unified_memory_mb: number, metal: boolean, cuda: boolean, vulkan: boolean, };
-
-export type LocalAiInstallationStatus = "not_installed" | "downloading" | "verifying" | "installing" | "benchmarking" | "installed" | "error";
-
-export type LocalAiRecommendation = { hardware: LocalAiHardware, selected_model: LocalModelDefinition | null, backend: LocalAiBackend, evaluations: Array<LocalModelEvaluation>, reason: string, };
-
-export type LocalAiSettings = { selected_profile: LocalModelProfile | null, active_model_id: LocalModelId | null, installation_status: LocalAiInstallationStatus, installed_models: Array<InstalledLocalModel>, last_error: string | null, };
-
-export type LocalAiState = "not_configured" | "detecting_hardware" | "recommendation_ready" | "downloading" | "verifying" | "installing" | "benchmarking" | "ready" | "error";
-
-export type LocalAiStatus = { state: LocalAiState, active_model: LocalModelDefinition | null, installed_models: Array<LocalModelDefinition>, backend: LocalAiBackend | null, benchmark: LocalAiBenchmark | null, last_error: string | null, };
-
-export type LocalGpuInfo = { name: string, vendor: string, total_vram_mb: number, available_vram_mb: number, backend: LocalAiBackend | null, };
+export type ManagedModelId = "lfm25350m" | "lfm25_ultra_light" | "ministral3_light" | "ministral3_balanced" | "ministral3_powerful" | "mistral_small_quality";
 
 /**
- * Avancement d'une génération locale, publié pendant l'attente.
+ * Éditeur du modèle Ollama — pilote le logo affiché sur les cartes du catalogue local.
  */
-export type LocalInferenceProgress = { generated_tokens: number, elapsed_ms: number, tokens_per_second: number, };
+export type ManagedModelPublisher = "liquid" | "mistral";
 
-export type LocalModelDefinition = { id: LocalModelId, profile: LocalModelProfile, family: LocalModelFamily, display_name: string, repository: string, filename: string, local_filename: string, revision: string, sha256: string, download_size_bytes: number, estimated_ram_mb: number, recommended_ram_mb: number, recommended_vram_mb: number, 
-/**
- * Nombre de cœurs physiques minimum pour un usage confortable en CPU.
- */
-recommended_cores: number, context_size: number, quantization: string, runtime: string, };
+export type ManagedModelStatus = { definition: ManagedModelDefinition, installed: boolean, active: boolean, machine_fit: MachineFit, recommended: boolean, last_benchmark: UserBenchmarkSummary | null, };
 
-export type LocalModelEvaluation = { model: LocalModelDefinition, compatibility: ModelCompatibility, reason: string, };
+export type ManagedOllamaDownloadProgress = { kind: ManagedDownloadKind, model_id: ManagedModelId | null, state: ManagedRuntimeState, downloaded_bytes: number, total_bytes: number, progress: number, label: string, };
 
-/**
- * Famille d'un artefact local.
- *
- * Portée par une propriété et non déduite du nom affiché : l'interface choisit son logo
- * dessus, et une comparaison de chaîne casserait au premier renommage.
- */
-export type LocalModelFamily = "mistral" | "qwen";
+export type ManagedOllamaSettings = { active_model_id: ManagedModelId | null, installed_model_tags: Array<string>, runtime_state: ManagedRuntimeState, runtime_port: number | null, runtime_version: string | null, benchmark_history: Array<StoredBenchmarkResult>, last_error: string | null, };
 
-export type LocalModelId = "qwen25_ultra_light" | "ministral3_light" | "ministral3_balanced" | "ministral3_quality";
+export type ManagedOllamaStatus = { runtime_state: ManagedRuntimeState, runtime_version: string | null, port: number | null, models_disk_bytes: number, active_model: ManagedModelDefinition | null, models: Array<ManagedModelStatus>, last_error: string | null, };
 
-export type LocalModelProfile = "ultra_light" | "light" | "balanced" | "quality";
+export type ManagedRuntimeState = "not_installed" | "downloading" | "installing" | "starting" | "ready" | "stopping" | "stopped" | "updating" | "error";
 
 export type MatchScore = { total: number, skills: number | null, experience: number | null, ats: number | null, present: Array<string>, missing: Array<string>, };
-
-export type ModelCompatibility = "optimal" | "supported" | "not_recommended" | "unsupported";
 
 /**
  * Progression d'analyse de CV : étape connue et ligne de journal, sans pourcentage.
@@ -158,9 +137,19 @@ export type ResumeGenerationRequest = { generation_id: string, job_offer: string
  */
 export type SelectedResumeFile = { name: string, };
 
+export type StoredBenchmarkResult = { provider: string, model: string, benchmark_version: number, score: number, total_ms: number, measured_at: string, };
+
 export type StructuredListing = { title: string, skills: Array<string>, soft_skills: Array<string>, experience: string | null, keywords: Array<string>, };
 
 /**
  * Charge CPU, RAM et VRAM (ou mémoire unifiée) à un instant donné.
  */
 export type SystemResourceSnapshot = { cpu_percent: number, ram_used_percent: number, ram_used_mb: number, ram_total_mb: number, vram_available: boolean, vram_used_percent: number | null, vram_used_mb: number | null, vram_total_mb: number | null, };
+
+export type UserBenchmarkCategoryScore = { label: string, score: number, max_score: number, };
+
+export type UserBenchmarkMetrics = { total_ms: number, pdf_extract_ms: number, preprocess_ms: number, llm_ms: number, parse_ms: number, llm_calls: number, tokens_input: number | null, tokens_output: number | null, tokens_per_second: number | null, };
+
+export type UserBenchmarkResult = { score: number, quality: BenchmarkQualityLabel, metrics: UserBenchmarkMetrics, categories: Array<UserBenchmarkCategoryScore>, hallucination_count: number, benchmark_version: number, provider_label: string, model_label: string, remote_warning: boolean, };
+
+export type UserBenchmarkSummary = { score: number, total_ms: number, benchmark_version: number, measured_at: string, };

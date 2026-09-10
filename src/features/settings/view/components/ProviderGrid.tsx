@@ -1,22 +1,24 @@
 import { cn } from "@/shared/lib/cn";
-import {
-  FOURNISSEURS,
-  idProvider,
-  type FournisseurOption,
-} from "../../model/providers";
+import { FOURNISSEURS, defFournisseur, idProvider, type FournisseurOption } from "../../model/providers";
 import type { ProviderKind } from "@/shared/types/generated/settings";
-import type { LocalModelFamily } from "@/shared/types/generated/ai";
+import type { ManagedModelPublisher } from "@/shared/types/generated/ai";
+
+export { defFournisseur };
 import { Icon, Tag } from "@/shared/ui";
 import logoOllama from "@/assets/providers/ollama.svg";
 import logoClaude from "@/assets/providers/claude.svg";
 import logoOpenai from "@/assets/providers/openai.svg";
 import logoGemini from "@/assets/providers/googlegemini.svg";
 import logoMistral from "@/assets/providers/mistralai.svg";
-import logoQwen from "@/assets/providers/qwen.svg";
 import logoDeepseek from "@/assets/providers/deepseek.svg";
 import logoCustom from "@/assets/providers/custom.svg";
+import logoLuth from "@/assets/providers/luth.svg";
+import logoCandilogLocal from "@/assets/providers/ollamacandilog.png";
 
-const LOGOS: Record<Exclude<FournisseurOption["id"], "mistral_local">, { src: string; mono: boolean }> = {
+const LOGOS: Record<
+  Exclude<FournisseurOption["id"], "candilog_local">,
+  { src: string; mono: boolean }
+> = {
   ollama: { src: logoOllama, mono: true },
   claude: { src: logoClaude, mono: false },
   openai: { src: logoOpenai, mono: true },
@@ -26,54 +28,52 @@ const LOGOS: Record<Exclude<FournisseurOption["id"], "mistral_local">, { src: st
   custom: { src: logoCustom, mono: true },
 };
 
-/** Logos des familles d'artefacts locaux — propriété `family`, jamais le nom affiché. */
-export const LOCAL_FAMILY_LOGOS: Record<
-  LocalModelFamily,
+/** Logos des éditeurs du catalogue Ollama géré — propriété `publisher`, jamais le nom affiché. */
+export const MANAGED_PUBLISHER_LOGOS: Record<
+  ManagedModelPublisher,
   { src: string; label: string; mono: boolean }
 > = {
+  liquid: { src: logoLuth, label: "Liquid", mono: false },
   mistral: { src: logoMistral, label: "Mistral", mono: false },
-  qwen: { src: logoQwen, label: "Qwen", mono: false },
 };
 
+export function logoManagedPublisher(publisher: ManagedModelPublisher) {
+  return MANAGED_PUBLISHER_LOGOS[publisher];
+}
+
+/** Logo d'éditeur pour les modèles du catalogue Ollama géré. */
+export function ManagedPublisherLogo({
+  publisher,
+  className,
+}: {
+  publisher: ManagedModelPublisher;
+  className?: string;
+}) {
+  const logo = logoManagedPublisher(publisher);
+  return (
+    <img
+      src={logo.src}
+      alt=""
+      className={cn("size-5 shrink-0 object-contain", logo.mono && "dark:invert", className)}
+    />
+  );
+}
+
+export const LOGO_CANDILOG_LOCAL = { src: logoCandilogLocal, mono: false };
+
 export function logoFournisseur(id: FournisseurOption["id"]) {
-  if (id === "mistral_local") return null;
+  if (id === "candilog_local") return LOGO_CANDILOG_LOCAL;
   return LOGOS[id];
 }
 
-/**
- * Logo à afficher pour l'IA locale : famille active si connue, sinon générique (`null`
- * → `smart_toy` côté UI). Pas de pile Mistral+Qwen.
- */
-export function logoIaLocale(family: LocalModelFamily | null | undefined) {
-  return family ? LOCAL_FAMILY_LOGOS[family] : null;
-}
-
-export function defFournisseur(provider: ProviderKind): FournisseurOption {
-  const id = idProvider(provider);
-  return FOURNISSEURS.find((item) => item.id === id) ?? FOURNISSEURS[0]!;
-}
-
-/**
- * Tuiles de fournisseur : logo, nom, et sélection portée par la tuile elle-même.
- *
- * Une tuile bordée dit qu'elle se clique ; l'ancienne grille sans filet laissait sept logos
- * de 18 px flotter sur toute la largeur et ne se distinguait d'une légende que par le
- * curseur.
- *
- * La sélection ne peut pas se contenter du couple `accent-border` / `accent-tint` employé
- * par les listes : celles-ci laissent leurs items non choisis en `border-transparent`, si
- * bien que le filet accent surgit du néant. Ici les huit tuiles sont déjà bordées et
- * remplies — un filet à 28 % d'opacité (22 % en sombre) et un fond à 10 % ne changeaient
- * que la teinte, à valeur presque constante, et le choix se devinait à peine. La tuile
- * choisie porte donc un filet accent **plein**, la teinte haute, et une pastille de
- * validation : un repère qui survit aux deux thèmes et à une vision des couleurs atypique.
- */
 export function ProviderGrid({
   value,
   onChange,
+  items = FOURNISSEURS,
 }: {
   value: ProviderKind;
   onChange: (id: FournisseurOption["id"]) => void;
+  items?: readonly FournisseurOption[];
 }) {
   const actif = idProvider(value);
 
@@ -83,10 +83,9 @@ export function ProviderGrid({
       aria-label="Fournisseur IA"
       className="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(112px,1fr))]"
     >
-      {FOURNISSEURS.map((fournisseur) => {
+      {items.map((fournisseur) => {
         const selected = fournisseur.id === actif;
-        const logo =
-          fournisseur.id === "mistral_local" ? null : LOGOS[fournisseur.id];
+        const logo = logoFournisseur(fournisseur.id);
         return (
           <button
             key={fournisseur.id}
@@ -112,9 +111,7 @@ export function ProviderGrid({
                 className="absolute right-1.5 top-1.5 text-accent"
               />
             ) : null}
-            <span
-              className="relative flex size-9 flex-none items-center justify-center rounded-control bg-surface"
-            >
+            <span className="relative flex size-9 flex-none items-center justify-center rounded-control bg-surface">
               {logo ? (
                 <img
                   src={logo.src}
@@ -124,11 +121,15 @@ export function ProviderGrid({
                   className={cn("size-5", logo.mono && "dark:invert")}
                 />
               ) : (
-                // IA locale : icône générique tant qu'aucune famille n'est active ailleurs.
                 <Icon name="smart_toy" size={20} className="text-ink-muted" />
               )}
             </span>
-            <span className={cn("w-full truncate text-center text-label font-mid", selected ? "text-accent" : "text-ink-muted")}>
+            <span
+              className={cn(
+                "w-full truncate text-center text-label font-mid",
+                selected ? "text-accent" : "text-ink-muted",
+              )}
+            >
               {fournisseur.label}
             </span>
             <span className="min-h-8 text-center text-meta leading-tight text-ink-faint">

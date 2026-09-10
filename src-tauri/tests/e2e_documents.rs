@@ -27,7 +27,7 @@
 
 use candilog_lib::core::database::helpers::connection;
 use candilog_lib::core::database::{open_pool, run_local_migrations, SqlitePool};
-use candilog_lib::features::ai::application::{AiService, LocalAiService};
+use candilog_lib::features::ai::application::AiService;
 use candilog_lib::features::ai::domain::{
     profile_content_catalog, profile_score, AtsAnalysis, AtsContentRecommendation,
     ContentRelevance, CoverLetterRequest, GeneratedEducation, GeneratedExperience, GeneratedResume,
@@ -111,12 +111,21 @@ fn seeded_pool(profile: &Profile) -> SqlitePool {
 }
 
 fn ai_service(pool: SqlitePool) -> Result<AiService, String> {
-    let models_dir =
-        std::env::temp_dir().join(format!("candilog-e2e-local-ai-{}", uuid::Uuid::new_v4()));
-    let local_ai = LocalAiService::new(pool.clone(), models_dir)
-        .map(Arc::new)
-        .map_err(|error| error.to_string())?;
-    Ok(AiService::new(pool, local_ai))
+    let managed_root = std::env::temp_dir().join(format!(
+        "candilog-e2e-managed-ollama-{}",
+        uuid::Uuid::new_v4()
+    ));
+    let managed = Arc::new(
+        candilog_lib::features::ai::application::ManagedOllamaService::new(
+            pool.clone(),
+            candilog_lib::features::ai::application::ManagedOllamaPaths {
+                runtime_root: managed_root.join("runtime"),
+                models_dir: managed_root.join("models"),
+                downloads_dir: managed_root.join("downloads"),
+            },
+        ),
+    );
+    Ok(AiService::new(pool, managed))
 }
 
 /// Un cas de test : le profil source et le dossier où déposer ses artefacts.

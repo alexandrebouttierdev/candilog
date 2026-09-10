@@ -13,13 +13,6 @@ license = "PolyForm-Noncommercial-1.0.0"
 name = "candilog_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
-[features]
-default = []
-# Les paquets GPU sont construits avec le backend correspondant dans le binaire : ces
-# options sont destinées au packaging/CI, jamais à une installation SDK chez l'utilisateur.
-local-ai-cuda = ["llama-cpp-2/cuda"]
-local-ai-vulkan = ["llama-cpp-2/vulkan"]
-
 [build-dependencies]
 tauri-build = { version = "2.6", features = [] }
 
@@ -68,7 +61,7 @@ dirs = "5"
 url = "2"
 unicode-normalization = "0.1"
 unicode-segmentation = "1"
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream", "blocking"] }
 async-trait = "0.1"
 keyring = "4.1.5"
 semver = "1"
@@ -96,11 +89,10 @@ image = { version = "0.25", default-features = false, features = ["jpeg", "png",
 # réimplémenter.
 base64 = "0.22"
 ts-rs = { version = "12", features = ["serde-compat", "uuid-impl", "chrono-impl", "no-serde-warnings"] }
-# Runtime d'inférence embarqué : le modèle GGUF est chargé directement dans Candilog,
-# sans serveur, CLI ni installation utilisateur. La crate lie une révision synchronisée de
-# llama.cpp ; Metal est activé automatiquement par la crate sur Apple Silicon.
-llama-cpp-2 = { version = "=0.1.156", default-features = false, features = ["common"] }
 encoding_rs = "0.8.35"
+# Extraction de l'archive Ollama (tgz) lors de l'installation du runtime géré.
+flate2 = "1"
+tar = "0.4"
 
 [dev-dependencies]
 tempfile = "3"

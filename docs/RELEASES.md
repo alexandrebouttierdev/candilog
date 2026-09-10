@@ -58,7 +58,7 @@ pouvoir annuler une release.
 
 Chaque paquet embarque `LICENSE`, `NOTICE`, `THIRD_PARTY_NOTICES.md` et, sous
 `licenses/`, le texte intégral des licences des composants redistribués : OFL 1.1 des
-polices IBM Plex, Apache-2.0 de Material Symbols, MIT de llama.cpp (`bundle.resources`).
+polices IBM Plex et Apache-2.0 de Material Symbols (`bundle.resources`).
 La PolyForm impose de transmettre ses termes et sa mention à qui reçoit une copie du
 logiciel ; l'OFL et l'Apache-2.0 exigent en plus que **leur** texte accompagne l'œuvre
 redistribuée. Un renvoi vers un chemin du dépôt ne suffit pas : la personne qui installe un
@@ -162,5 +162,5 @@ dernière version publiée.
    d'ouvrir l'installateur.
 4. Installer au moins un paquet sur une machine propre et vérifier que
    `/usr/lib/Candilog/LICENSE`, `NOTICE`, `THIRD_PARTY_NOTICES.md` et les trois fichiers de
-   `/usr/lib/Candilog/licenses/` (`ibm-plex-OFL-1.1.txt`, `material-symbols-Apache-2.0.txt`,
-   `llama.cpp-LICENSE`) y figurent.
+   `/usr/lib/Candilog/licenses/` (`ibm-plex-OFL-1.1.txt`, `material-symbols-Apache-2.0.txt`)
+   y figurent.

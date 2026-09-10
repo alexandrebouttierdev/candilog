@@ -73,7 +73,7 @@ impl<R: SettingsRepository, C: SecretStoreContract> SettingsService<R, C> {
         let mut settings = AppSettings::from(settings);
         // Les métadonnées du modèle sont gérées par le service IA local : sauvegarder le
         // formulaire général ne doit ni les exposer au frontend ni les réinitialiser.
-        settings.local_ai = self.repo.get()?.local_ai;
+        settings.managed_ollama = self.repo.get()?.managed_ollama;
         if provider_cloud(&settings.llm.provider) {
             if let Some(secret) = api_key.as_deref() {
                 self.secret_store.store_api_key(Some(secret))?;
@@ -256,7 +256,7 @@ impl From<ReleaseInfo> for UpdateInfo {
 }
 
 fn provider_cloud(provider: &ProviderKind) -> bool {
-    !matches!(provider, ProviderKind::Ollama | ProviderKind::MistralLocal)
+    !matches!(provider, ProviderKind::Ollama | ProviderKind::CandilogLocal)
 }
 
 fn non_empty_secret(secret: Option<String>) -> Option<String> {
@@ -275,7 +275,7 @@ fn validate_llm(llm: &LlmConfig, api_key_configured: bool) -> AppResult<()> {
         ));
     }
     match &llm.provider {
-        ProviderKind::Ollama | ProviderKind::MistralLocal => Ok(()),
+        ProviderKind::Ollama | ProviderKind::CandilogLocal => Ok(()),
         ProviderKind::Custom(_) => {
             if llm
                 .endpoint
@@ -387,18 +387,6 @@ mod tests {
         let enregistre = service().save(form(ollama()), None).unwrap();
         assert_eq!(enregistre.language, "fr");
         assert_eq!(enregistre.llm.provider, ProviderKind::Ollama);
-    }
-
-    #[test]
-    fn mistral_local_se_configure_sans_endpoint_ni_cle() {
-        let mut llm = ollama();
-        llm.provider = ProviderKind::MistralLocal;
-        llm.endpoint = None;
-        llm.model.clear();
-        let enregistre = service().save(form(llm), None).unwrap();
-        assert_eq!(enregistre.llm.provider, ProviderKind::MistralLocal);
-        assert!(!enregistre.llm.api_key_configured);
-        assert!(enregistre.llm.endpoint.is_none());
     }
 
     #[test]

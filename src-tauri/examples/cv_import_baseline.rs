@@ -1,4 +1,3 @@
-
 //! Runner local du baseline d'import CV.
 //! Appelle AiService::import_profile sur une base SQLite jetable.
 //! N'applique jamais l'import et ne journalise aucune donnee personnelle.
@@ -11,7 +10,9 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use candilog_lib::core::database::{open_pool, run_local_migrations};
 use candilog_lib::core::errors::AppError;
-use candilog_lib::features::ai::application::{AiService, LocalAiService};
+use candilog_lib::features::ai::application::{
+    AiService, ManagedOllamaPaths, ManagedOllamaService,
+};
 use candilog_lib::features::ai::domain::{ProfileImportRequest, ProviderKind};
 use candilog_lib::features::ai::infrastructure::{extract_pdf, load_config};
 use candilog_lib::features::profile::domain::ImportProfilePreview;
@@ -73,7 +74,10 @@ async fn main() {
         eprintln!("output directory: {error}");
         std::process::exit(1);
     }
-    let _ = std::fs::set_permissions(&raw_dir, std::os::unix::fs::PermissionsExt::from_mode(0o700));
+    let _ = std::fs::set_permissions(
+        &raw_dir,
+        std::os::unix::fs::PermissionsExt::from_mode(0o700),
+    );
     let iteration = 0_u32;
     let label = out_name.clone();
 
@@ -130,17 +134,20 @@ async fn main() {
     }
     let temperature = loaded.temperature;
     if (temperature - requested_temperature).abs() > 0.001 {
-        eprintln!("refusing run: loaded temperature is {temperature}, expected {requested_temperature}");
+        eprintln!(
+            "refusing run: loaded temperature is {temperature}, expected {requested_temperature}"
+        );
         std::process::exit(1);
     }
-    let local_ai = match LocalAiService::new(pool.clone(), models_dir) {
-        Ok(service) => Arc::new(service),
-        Err(error) => {
-            eprintln!("local ai service: {error}");
-            std::process::exit(1);
-        }
-    };
-    let service = AiService::new(pool, local_ai);
+    let managed = Arc::new(ManagedOllamaService::new(
+        pool.clone(),
+        ManagedOllamaPaths {
+            runtime_root: models_dir.join("managed/runtime"),
+            models_dir: models_dir.join("managed/models"),
+            downloads_dir: models_dir.join("managed/downloads"),
+        },
+    ));
+    let service = AiService::new(pool, managed);
 
     let results_path = out_dir.join("results.json");
     let journal_path = out_dir.join("journal.md");
@@ -148,7 +155,11 @@ async fn main() {
     let mut items = load_existing_items(&results_path);
     let done: std::collections::BTreeSet<String> = items
         .iter()
-        .filter_map(|item| item.get("cv_id").and_then(|v| v.as_str()).map(str::to_owned))
+        .filter_map(|item| {
+            item.get("cv_id")
+                .and_then(|v| v.as_str())
+                .map(str::to_owned)
+        })
         .collect();
 
     let state = Arc::new(Mutex::new(RunState {
@@ -158,7 +169,6 @@ async fn main() {
         endpoint: endpoint.clone(),
         items: items.clone(),
         current: None,
-        started: Instant::now(),
         finished: false,
     }));
     spawn_heartbeat(Arc::clone(&state), journal_path.clone());
@@ -239,7 +249,14 @@ async fn main() {
                     &progress.llm_calls,
                 )
             }
-            Err(error) => item_err(cv_id, duration_ms, progress.tokens, &error, progress.last_label, &progress.llm_calls),
+            Err(error) => item_err(
+                cv_id,
+                duration_ms,
+                progress.tokens,
+                &error,
+                progress.last_label,
+                &progress.llm_calls,
+            ),
         };
 
         let status = if item.get("ok").and_then(|v| v.as_bool()) == Some(true) {
@@ -247,12 +264,23 @@ async fn main() {
         } else {
             "fail"
         };
-        let category = item.get("error_category").and_then(|v| v.as_str()).unwrap_or("-");
+        let category = item
+            .get("error_category")
+            .and_then(|v| v.as_str())
+            .unwrap_or("-");
         eprintln!("{cv_id} {status} duration_ms={duration_ms} category={category}");
         append_progress(&progress_path, &item);
 
         items.push(item);
-        if let Err(error) = save_results(&results_path, &model, &endpoint, temperature, iteration, label, &items) {
+        if let Err(error) = save_results(
+            &results_path,
+            &model,
+            &endpoint,
+            temperature,
+            iteration,
+            &label,
+            &items,
+        ) {
             eprintln!("results write: {error}");
             std::process::exit(1);
         }
@@ -284,7 +312,6 @@ struct RunState {
     endpoint: String,
     items: Vec<serde_json::Value>,
     current: Option<Current>,
-    started: Instant,
     finished: bool,
 }
 
@@ -326,7 +353,11 @@ fn load_existing_items(path: &Path) -> Vec<serde_json::Value> {
     let Ok(value) = serde_json::from_str::<serde_json::Value>(&raw) else {
         return Vec::new();
     };
-    value.get("items").and_then(|v| v.as_array()).cloned().unwrap_or_default()
+    value
+        .get("items")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default()
 }
 
 fn save_results(
@@ -519,7 +550,10 @@ fn identity_present(preview: &ImportProfilePreview, id: &str) -> bool {
 
 fn write_raw(dir: &Path, cv_id: &str, preview: &ImportProfilePreview) -> std::io::Result<()> {
     if !cv_id.starts_with("CV-") || cv_id.contains('/') || cv_id.contains('.') {
-        return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "bad cv id"));
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "bad cv id",
+        ));
     }
     let path = dir.join(format!("{cv_id}.json"));
     let body = serde_json::to_vec_pretty(preview).map_err(io_err)?;
@@ -534,8 +568,16 @@ fn score_heuristic(full_text: &str, preview: &ImportProfilePreview) -> serde_jso
     let source_phone = first_phone_digits(&analysis);
     let extracted_email = identity_value(preview, "email");
     let extracted_phone = identity_value(preview, "phone");
-    let email_grounded = email_matches(extracted_email.as_deref(), source_email.as_deref(), &analysis);
-    let phone_grounded = phone_matches(extracted_phone.as_deref(), source_phone.as_deref(), &analysis);
+    let email_grounded = email_matches(
+        extracted_email.as_deref(),
+        source_email.as_deref(),
+        &analysis,
+    );
+    let phone_grounded = phone_matches(
+        extracted_phone.as_deref(),
+        source_phone.as_deref(),
+        &analysis,
+    );
     let date_spans = count_year_ranges(&analysis);
     let diploma_hints = count_diploma_hints(&analysis);
     let language_hints = count_language_hints(&analysis);
@@ -550,14 +592,24 @@ fn score_heuristic(full_text: &str, preview: &ImportProfilePreview) -> serde_jso
     let experience_points = proximity_points(experience, date_spans, 30.0);
     let formation_points = proximity_points(formation, diploma_hints, 20.0);
     let skill_points = if skill_section {
-        if skills > 0 { 15.0 } else { 0.0 }
+        if skills > 0 {
+            15.0
+        } else {
+            0.0
+        }
     } else if skills == 0 {
         10.0
     } else {
         12.0
     };
     let language_points = proximity_points(languages, language_hints, 10.0);
-    let score = (email_points + phone_points + experience_points + formation_points + skill_points + language_points).round() as u32;
+    let score = (email_points
+        + phone_points
+        + experience_points
+        + formation_points
+        + skill_points
+        + language_points)
+        .round() as u32;
 
     serde_json::json!({
         "score": score,
@@ -631,8 +683,12 @@ fn is_email(value: &str) -> bool {
     parts.next().is_none()
         && !local.is_empty()
         && domain.contains('.')
-        && domain.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_'))
-        && local.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '%' | '+' | '-'))
+        && domain
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_'))
+        && local
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '%' | '+' | '-'))
 }
 
 fn email_matches(extracted: Option<&str>, source: Option<&str>, analysis: &str) -> bool {
@@ -668,7 +724,9 @@ fn first_phone_digits(text: &str) -> Option<String> {
                     digits.push(c);
                     consumed += 1;
                     i += 1;
-                } else if matches!(c, ' ' | '.' | '-' | '/' | '(' | ')' | '\u{00a0}') && !digits.is_empty() {
+                } else if matches!(c, ' ' | '.' | '-' | '/' | '(' | ')' | '\u{00a0}')
+                    && !digits.is_empty()
+                {
                     consumed += 1;
                     i += 1;
                 } else {
@@ -732,7 +790,8 @@ fn looks_like_range(chars: &[char], mut index: usize) -> bool {
     let mut skipped = 0usize;
     while index < chars.len() && skipped < 16 {
         let c = chars[index];
-        if c.is_whitespace() || matches!(c, '-' | '–' | '—' | '/' | '|' | '·' | '•' | 'à' | ':') {
+        if c.is_whitespace() || matches!(c, '-' | '–' | '—' | '/' | '|' | '·' | '•' | 'à' | ':')
+        {
             index += 1;
             skipped += 1;
             continue;
@@ -743,7 +802,9 @@ fn looks_like_range(chars: &[char], mut index: usize) -> bool {
         return true;
     }
     let rest: String = chars[index..].iter().take(16).collect();
-    const PRESENT: &[&str] = &["aujourd", "présent", "present", "current", "en cours", "now", "actuel"];
+    const PRESENT: &[&str] = &[
+        "aujourd", "présent", "present", "current", "en cours", "now", "actuel",
+    ];
     PRESENT.iter().any(|word| rest.starts_with(word))
 }
 
@@ -752,27 +813,67 @@ fn parse_year(chars: &[char]) -> Option<u32> {
         return None;
     }
     let year: u32 = chars[..4].iter().collect::<String>().parse().ok()?;
-    if (1970..=2035).contains(&year) { Some(year) } else { None }
+    if (1970..=2035).contains(&year) {
+        Some(year)
+    } else {
+        None
+    }
 }
 
 fn count_diploma_hints(text: &str) -> usize {
     let lower = text.to_lowercase();
-    let padded = format!(" {} ", lower.replace(['\n', '\t', '/', ',', ';', ':', '(', ')', '[', ']'], " "));
+    let padded = format!(
+        " {} ",
+        lower.replace(['\n', '\t', '/', ',', ';', ':', '(', ')', '[', ']'], " ")
+    );
     let tokens: Vec<&str> = padded.split_whitespace().collect();
     const HINTS: &[&str] = &[
-        "baccalauréat", "baccalaureat", "master", "licence", "bachelor", "doctorat", "phd", "mba",
-        "dut", "bts", "deug", "deust", "ingénieur", "ingenieur", "msc", "maîtrise", "maitrise",
-        "diplôme", "diplome",
+        "baccalauréat",
+        "baccalaureat",
+        "master",
+        "licence",
+        "bachelor",
+        "doctorat",
+        "phd",
+        "mba",
+        "dut",
+        "bts",
+        "deug",
+        "deust",
+        "ingénieur",
+        "ingenieur",
+        "msc",
+        "maîtrise",
+        "maitrise",
+        "diplôme",
+        "diplome",
     ];
     let seen = HINTS
         .iter()
-        .filter(|hint| tokens.iter().any(|token| token.trim_matches(|c: char| !c.is_alphanumeric()) == **hint))
+        .filter(|hint| {
+            tokens
+                .iter()
+                .any(|token| token.trim_matches(|c: char| !c.is_alphanumeric()) == **hint)
+        })
         .count();
     let repeats = tokens
         .iter()
         .filter(|token| {
             let t = token.trim_matches(|c: char| !c.is_alphanumeric());
-            matches!(t, "master" | "licence" | "bachelor" | "bts" | "dut" | "mba" | "doctorat" | "phd" | "ingénieur" | "ingenieur" | "msc")
+            matches!(
+                t,
+                "master"
+                    | "licence"
+                    | "bachelor"
+                    | "bts"
+                    | "dut"
+                    | "mba"
+                    | "doctorat"
+                    | "phd"
+                    | "ingénieur"
+                    | "ingenieur"
+                    | "msc"
+            )
         })
         .count();
     repeats.max(seen.min(6))
@@ -806,14 +907,25 @@ fn count_language_hints(text: &str) -> usize {
         &["hindi"],
         &["catalan"],
     ];
-    GROUPS.iter().filter(|group| group.iter().any(|name| tokens.contains(*name))).count()
+    GROUPS
+        .iter()
+        .filter(|group| group.iter().any(|name| tokens.contains(*name)))
+        .count()
 }
 
 fn has_skill_section(text: &str) -> bool {
     let lower = text.to_lowercase();
-    ["compétences", "competences", "skills", "savoir-faire", "savoir faire", "technologies", "outils"]
-        .iter()
-        .any(|needle| lower.contains(needle))
+    [
+        "compétences",
+        "competences",
+        "skills",
+        "savoir-faire",
+        "savoir faire",
+        "technologies",
+        "outils",
+    ]
+    .iter()
+    .any(|needle| lower.contains(needle))
 }
 
 fn safe_progress_label(message: &str) -> Option<String> {
@@ -835,7 +947,8 @@ fn safe_progress_label(message: &str) -> Option<String> {
         "Nouvel essai d'analyse…",
         "Préparation de la revue…",
     ];
-    if SAFE.contains(&message) || message.ends_with("détectée") || message.ends_with("détectées") {
+    if SAFE.contains(&message) || message.ends_with("détectée") || message.ends_with("détectées")
+    {
         Some(message.to_owned())
     } else {
         None
@@ -845,10 +958,19 @@ fn safe_progress_label(message: &str) -> Option<String> {
 fn append_progress(path: &Path, item: &serde_json::Value) {
     let id = item.get("cv_id").and_then(|v| v.as_str()).unwrap_or("CV-?");
     let ok = item.get("ok").and_then(|v| v.as_bool()).unwrap_or(false);
-    let duration = item.get("duration_ms").and_then(|v| v.as_u64()).unwrap_or(0);
-    let exp = item.pointer("/counts/experience").and_then(|v| v.as_u64()).unwrap_or(0);
+    let duration = item
+        .get("duration_ms")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(0);
+    let exp = item
+        .pointer("/counts/experience")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(0);
     let score = item.pointer("/heuristic/score").and_then(|v| v.as_u64());
-    let category = item.get("error_category").and_then(|v| v.as_str()).unwrap_or("-");
+    let category = item
+        .get("error_category")
+        .and_then(|v| v.as_str())
+        .unwrap_or("-");
     let line = if ok {
         format!(
             "{} {id} ok duration_ms={duration} exp={exp} heuristic={}\n",
@@ -856,9 +978,16 @@ fn append_progress(path: &Path, item: &serde_json::Value) {
             fmt_u64(score)
         )
     } else {
-        format!("{now} {id} fail duration_ms={duration} category={category}\n", now = now_label())
+        format!(
+            "{now} {id} fail duration_ms={duration} category={category}\n",
+            now = now_label()
+        )
     };
-    if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open(path) {
+    if let Ok(mut file) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+    {
         use std::io::Write;
         let _ = file.write_all(line.as_bytes());
     }
@@ -887,24 +1016,42 @@ fn rewrite_journal(path: &Path, state: &RunState) {
     let mut body = String::new();
     body.push_str("# Import CV benchmark\n\n");
     body.push_str("Change: current product pipeline. Layout extraction, grounding, contact fill and formation salvage. Model comes from CANDILOG_CV_MODEL.\n");
-    body.push_str(if state.finished { "Status: finished\n" } else { "Status: running\n" });
+    body.push_str(if state.finished {
+        "Status: finished\n"
+    } else {
+        "Status: running\n"
+    });
     body.push_str("Pipeline: `AiService::import_profile` (extract, truncate 12000, Ollama, parse/repair, validate, dates, ground). `profile_apply_import` not called.\n");
     body.push_str(&format!("Model: `{}`\n", state.model));
     body.push_str("Provider: ollama\n");
     body.push_str(&format!("Endpoint: `{}`\n", state.endpoint));
     body.push_str(&format!("Temperature used: {} (settings row + Ollama options.temperature; model card default 0.1 overridden)\n", state.temperature));
     body.push_str("Database: throwaway sqlite under `.benchmark/bench.sqlite` (migrations + settings + empty profile). User daily DB untouched.\n");
-    body.push_str("Score: heuristic baseline vs Candilog-extracted PDF text. Not human ground truth.\n");
+    body.push_str(
+        "Score: heuristic baseline vs Candilog-extracted PDF text. Not human ground truth.\n",
+    );
     body.push_str(&format!("Updated: {}\n\n", now_label()));
     body.push_str("## Summary\n\n");
     body.push_str(&format!("- Mapped PDFs: {}\n", state.mapping_len));
     body.push_str(&format!("- Processed: {}\n", summary.n));
     body.push_str(&format!("- Successes: {}\n", summary.ok));
     body.push_str(&format!("- Failures: {}\n", summary.fail));
-    body.push_str(&format!("- Mean duration ms: {}\n", fmt_opt(summary.mean_ms)));
-    body.push_str(&format!("- Median duration ms: {}\n", fmt_opt(summary.median_ms)));
-    body.push_str(&format!("- Mean heuristic score /100: {}\n", fmt_opt(summary.mean_score)));
-    body.push_str(&format!("- Median heuristic score /100: {}\n", fmt_opt(summary.median_score)));
+    body.push_str(&format!(
+        "- Mean duration ms: {}\n",
+        fmt_opt(summary.mean_ms)
+    ));
+    body.push_str(&format!(
+        "- Median duration ms: {}\n",
+        fmt_opt(summary.median_ms)
+    ));
+    body.push_str(&format!(
+        "- Mean heuristic score /100: {}\n",
+        fmt_opt(summary.mean_score)
+    ));
+    body.push_str(&format!(
+        "- Median heuristic score /100: {}\n",
+        fmt_opt(summary.median_score)
+    ));
     if summary.categories.is_empty() {
         body.push_str("- Error categories: none\n");
     } else {
@@ -914,29 +1061,57 @@ fn rewrite_journal(path: &Path, state: &RunState) {
         }
     }
     if let Some(current) = &state.current {
-        body.push_str(&format!("\nCurrent: {} running for {} s\n", current.cv_id, current.started.elapsed().as_secs()));
+        body.push_str(&format!(
+            "\nCurrent: {} running for {} s\n",
+            current.cv_id,
+            current.started.elapsed().as_secs()
+        ));
     }
     body.push_str("\n## Log\n\n");
     for item in &state.items {
         let id = item.get("cv_id").and_then(|v| v.as_str()).unwrap_or("CV-?");
         let ok = item.get("ok").and_then(|v| v.as_bool()).unwrap_or(false);
-        let duration = item.get("duration_ms").and_then(|v| v.as_u64()).unwrap_or(0);
+        let duration = item
+            .get("duration_ms")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0);
         let tokens = item.get("tokens").and_then(|v| v.as_u64());
-        let exp = item.pointer("/counts/experience").and_then(|v| v.as_u64()).unwrap_or(0);
-        let edu = item.pointer("/counts/formation").and_then(|v| v.as_u64()).unwrap_or(0);
-        let skill = item.pointer("/counts/skill").and_then(|v| v.as_u64()).unwrap_or(0);
-        let lang = item.pointer("/counts/language").and_then(|v| v.as_u64()).unwrap_or(0);
+        let exp = item
+            .pointer("/counts/experience")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0);
+        let edu = item
+            .pointer("/counts/formation")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0);
+        let skill = item
+            .pointer("/counts/skill")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0);
+        let lang = item
+            .pointer("/counts/language")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0);
         let score = item.pointer("/heuristic/score").and_then(|v| v.as_u64());
         if ok {
-            let calls = item.get("llm_call_count").and_then(|v| v.as_u64()).unwrap_or(0);
+            let calls = item
+                .get("llm_call_count")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(0);
             body.push_str(&format!(
                 "- {id} ok duration_ms={duration} tokens={} exp={exp} formation={edu} skill={skill} language={lang} heuristic={} llm_calls={calls}\n",
                 fmt_u64(tokens),
                 fmt_u64(score)
             ));
         } else {
-            let code = item.get("error_code").and_then(|v| v.as_str()).unwrap_or("-");
-            let category = item.get("error_category").and_then(|v| v.as_str()).unwrap_or("-");
+            let code = item
+                .get("error_code")
+                .and_then(|v| v.as_str())
+                .unwrap_or("-");
+            let category = item
+                .get("error_category")
+                .and_then(|v| v.as_str())
+                .unwrap_or("-");
             body.push_str(&format!(
                 "- {id} fail duration_ms={duration} tokens={} error={code}/{category}\n",
                 fmt_u64(tokens)
@@ -944,7 +1119,11 @@ fn rewrite_journal(path: &Path, state: &RunState) {
         }
     }
     if let Some(current) = &state.current {
-        body.push_str(&format!("- {} running {}s\n", current.cv_id, current.started.elapsed().as_secs()));
+        body.push_str(&format!(
+            "- {} running {}s\n",
+            current.cv_id,
+            current.started.elapsed().as_secs()
+        ));
     }
     let tmp = path.with_extension("md.tmp");
     if std::fs::write(&tmp, body).is_ok() {
@@ -965,7 +1144,10 @@ struct Summary {
 
 fn summarize(items: &[serde_json::Value]) -> Summary {
     let n = items.len();
-    let ok = items.iter().filter(|i| i.get("ok").and_then(|v| v.as_bool()) == Some(true)).count();
+    let ok = items
+        .iter()
+        .filter(|i| i.get("ok").and_then(|v| v.as_bool()) == Some(true))
+        .count();
     let mut categories = BTreeMap::new();
     for item in items {
         if item.get("ok").and_then(|v| v.as_bool()) == Some(false) {
@@ -974,8 +1156,14 @@ fn summarize(items: &[serde_json::Value]) -> Summary {
             }
         }
     }
-    let durations: Vec<u64> = items.iter().filter_map(|i| i.get("duration_ms").and_then(|v| v.as_u64())).collect();
-    let scores: Vec<u64> = items.iter().filter_map(|i| i.pointer("/heuristic/score").and_then(|v| v.as_u64())).collect();
+    let durations: Vec<u64> = items
+        .iter()
+        .filter_map(|i| i.get("duration_ms").and_then(|v| v.as_u64()))
+        .collect();
+    let scores: Vec<u64> = items
+        .iter()
+        .filter_map(|i| i.pointer("/heuristic/score").and_then(|v| v.as_u64()))
+        .collect();
     Summary {
         n,
         ok,
@@ -989,11 +1177,17 @@ fn summarize(items: &[serde_json::Value]) -> Summary {
 }
 
 fn mean(values: &[u64]) -> Option<u64> {
-    if values.is_empty() { None } else { Some(values.iter().sum::<u64>() / values.len() as u64) }
+    if values.is_empty() {
+        None
+    } else {
+        Some(values.iter().sum::<u64>() / values.len() as u64)
+    }
 }
 
 fn median(values: &[u64]) -> Option<u64> {
-    if values.is_empty() { return None; }
+    if values.is_empty() {
+        return None;
+    }
     let mut sorted = values.to_vec();
     sorted.sort_unstable();
     Some(sorted[sorted.len() / 2])
@@ -1008,7 +1202,10 @@ fn fmt_u64(value: Option<u64>) -> String {
 }
 
 fn now_label() -> String {
-    let secs = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+    let secs = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
     let local = secs + 2 * 3600;
     let day = local / 86400;
     let rem = local % 86400;

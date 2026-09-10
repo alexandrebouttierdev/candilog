@@ -71,23 +71,20 @@ describe("iaEstConfiguree", () => {
     expect(iaEstConfiguree(llm({ api_key_configured: false }))).toBe(false);
   });
 
-  // La grille des fournisseurs vide `model` en sélectionnant Mistral Local, et l'écran
-  // affiche MistralLocalPanel au lieu d'un champ « Modèle » : ce champ ne peut donc jamais
-  // être rempli. L'exiger affichait AiRequiredModal après un enregistrement pourtant réussi.
-  it("accepte Mistral Local sans nom de modèle, qu'il ne stocke pas dans llm.model", () => {
+  it("accepte l'IA locale Candilog sans nom de modèle dans llm.model", () => {
     expect(
       iaEstConfiguree(
-        llm({ provider: "mistral_local", model: "", endpoint: null, api_key_configured: false }),
+        llm({ provider: "candilog_local", model: "", endpoint: null, api_key_configured: false }),
       ),
     ).toBe(true);
   });
 });
 
 describe("manquants", () => {
-  it("ne réclame aucun champ pour Mistral Local", () => {
+  it("ne réclame aucun champ pour l'IA locale Candilog", () => {
     expect(
       manquants(
-        llm({ provider: "mistral_local", model: "", endpoint: null, api_key_configured: false }),
+        llm({ provider: "candilog_local", model: "", endpoint: null, api_key_configured: false }),
       ),
     ).toEqual([]);
   });

@@ -2,7 +2,7 @@ import type { ProviderKind } from "@/shared/types/generated/settings";
 
 export interface FournisseurOption {
   readonly id:
-    | "mistral_local"
+    | "candilog_local"
     | "ollama"
     | "claude"
     | "openai"
@@ -18,22 +18,40 @@ export interface FournisseurOption {
 /** Grille des fournisseurs, jamais un menu déroulant. */
 export const FOURNISSEURS: readonly FournisseurOption[] = [
   {
-    id: "mistral_local",
-    // Le fournisseur retient l'artefact adapté à la machine : le nommer d'après une seule
-    // famille de modèles serait faux dès qu'une autre peut être sélectionnée. L'identifiant
-    // `mistral_local` reste celui du contrat IPC, que l'interface n'expose pas.
-    label: "IA locale",
-    hint: "Directement dans Candilog",
+    id: "candilog_local",
+    label: "IA locale Candilog",
+    hint: "Modèles gérés localement",
     recommended: true,
   },
-  { id: "ollama", label: "Ollama", hint: "Votre installation ou Ollama Cloud" },
-  { id: "claude", label: "Claude", hint: "Anthropic" },
+  { id: "mistral", label: "Mistral", hint: "Europe" },
   { id: "openai", label: "OpenAI", hint: "GPT" },
   { id: "gemini", label: "Gemini", hint: "Google" },
-  { id: "mistral", label: "Mistral", hint: "Europe" },
+  { id: "claude", label: "Claude", hint: "Anthropic" },
   { id: "deepseek", label: "DeepSeek", hint: "API" },
-  { id: "custom", label: "Personnalisé", hint: "Compatible OpenAI" },
+  {
+    id: "custom",
+    label: "Personnalisé",
+    hint: "Compatible OpenAI, Ollama local, LM Studio, etc.",
+  },
 ];
+
+/** Fournisseur historique — conservé pour les bases déjà configurées, absent de la grille. */
+export const FOURNISSEUR_OLLAMA: FournisseurOption = {
+  id: "ollama",
+  label: "Ollama",
+  hint: "Votre installation ou Ollama Cloud",
+};
+
+export function defFournisseur(provider: ProviderKind): FournisseurOption {
+  const id = idProvider(provider);
+  if (id === "ollama") return FOURNISSEUR_OLLAMA;
+  return FOURNISSEURS.find((item) => item.id === id) ?? FOURNISSEURS[0]!;
+}
+
+/** Fournisseurs distants — sans l'IA locale Candilog gérée par Ollama. */
+export const FOURNISSEURS_AUTRES: readonly FournisseurOption[] = FOURNISSEURS.filter(
+  (item) => item.id !== "candilog_local",
+);
 
 export function estPersonnalise(provider: ProviderKind): provider is { custom: string } {
   return typeof provider === "object" && provider !== null && "custom" in provider;
@@ -49,7 +67,7 @@ export function versProvider(id: FournisseurOption["id"]): ProviderKind {
 
 export function endpointDefaut(id: FournisseurOption["id"]): string | null {
   switch (id) {
-    case "mistral_local":
+    case "candilog_local":
       return null;
     case "ollama":
       return "http://localhost:11434";

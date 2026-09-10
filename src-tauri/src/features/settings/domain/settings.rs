@@ -1,6 +1,6 @@
 //! Modèle persisté (JSON Iced) et DTO IPC camelCase.
 
-use crate::features::ai::domain::{AnalysisMode, LlmConfig, LocalAiSettings, ProviderKind};
+use crate::features::ai::domain::{AnalysisMode, LlmConfig, ManagedOllamaSettings, ProviderKind};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
@@ -20,7 +20,7 @@ pub enum ThemePref {
 pub struct AppSettings {
     pub llm: LlmConfig,
     #[serde(default)]
-    pub local_ai: LocalAiSettings,
+    pub managed_ollama: ManagedOllamaSettings,
     #[serde(default)]
     pub theme: ThemePref,
     #[serde(default = "language_fr")]
@@ -31,11 +31,33 @@ fn language_fr() -> String {
     "fr".into()
 }
 
+/// Migre les anciens réglages (`mistral_local`, bloc `local_ai`) avant désérialisation.
+#[must_use]
+pub fn preparer_settings_json(text: &str) -> String {
+    let Ok(mut value) = serde_json::from_str::<serde_json::Value>(text) else {
+        return text.to_string();
+    };
+    if let Some(object) = value.as_object_mut() {
+        object.remove("local_ai");
+        if let Some(llm) = object
+            .get_mut("llm")
+            .and_then(|entry| entry.as_object_mut())
+        {
+            if llm.get("provider") == Some(&serde_json::Value::String("mistral_local".into())) {
+                llm.insert("provider".into(), serde_json::json!("candilog_local"));
+                llm.insert("model".into(), serde_json::json!(""));
+                llm.insert("endpoint".into(), serde_json::Value::Null);
+            }
+        }
+    }
+    serde_json::to_string(&value).unwrap_or_else(|_| text.to_string())
+}
+
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
             llm: LlmConfig::default(),
-            local_ai: LocalAiSettings::default(),
+            managed_ollama: ManagedOllamaSettings::default(),
             theme: ThemePref::System,
             language: language_fr(),
         }
@@ -85,7 +107,7 @@ impl From<Settings> for AppSettings {
     fn from(value: Settings) -> Self {
         Self {
             llm: LlmConfig::from(value.llm),
-            local_ai: LocalAiSettings::default(),
+            managed_ollama: ManagedOllamaSettings::default(),
             theme: value.theme,
             language: value.language,
         }

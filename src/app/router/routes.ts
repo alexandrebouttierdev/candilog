@@ -93,12 +93,13 @@ export const Sections: readonly SectionDef[] = [
   },
   {
     key: "reglages",
-    short_label: "Réglages",
-    long_label: "Intelligence artificielle et maintenance",
+    short_label: "Paramètres",
+    long_label: "Paramètres",
     icon: "tune",
     routes: [
       { path: "/settings/ai", label: "Intelligence artificielle", icon: "smart_toy" },
-      { path: "/settings/backups", label: "Sauvegardes", icon: "save" },
+      { path: "/settings/backups", label: "Données", icon: "save" },
+      { path: "/settings/customization", label: "Customisation", icon: "palette" },
       { path: "/settings/updates", label: "Mises à jour", icon: "system_update" },
       { path: "/settings/about", label: "À propos", icon: "info" },
     ],

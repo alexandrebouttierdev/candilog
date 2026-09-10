@@ -54,11 +54,10 @@ export function iaEstConfiguree(llm: LlmForm): boolean {
 /** Champs indispensables encore vides, dans l'ordre où l'écran les présente. */
 export function manquants(llm: LlmForm): string[] {
   const id = idProvider(llm.provider);
-  // Mistral Local ne se décrit pas par `llm.model` : son artefact est désigné par
-  // `local_ai.active_model_id`, et l'écran affiche MistralLocalPanel au lieu d'un champ
-  // « Modèle ». Rien à réclamer ici — l'absence d'artefact installé est signalée par
-  // l'écran dédié, et refusée côté Rust par `LocalAiService::provider`.
-  if (id === "mistral_local") return [];
+  // L'IA locale Candilog et Mistral Local ne se décrivent pas par `llm.model` seul :
+  // leurs artefacts actifs vivent dans `managed_ollama`. L'écran dédié
+  // signale l'absence d'installation ; le backend refuse l'inférence sans modèle actif.
+  if (id === "candilog_local") return [];
   const manques: string[] = [];
   if (llm.model.trim().length === 0) manques.push("le modèle");
   // Ollama tourne en local et fonctionne sans clé ; un endpoint compatible OpenAI peut
