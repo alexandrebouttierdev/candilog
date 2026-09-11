@@ -265,6 +265,25 @@ describe("ProfileImportModal", () => {
     });
   });
 
+  it("conserve le défilement interne de la revue malgré les bandeaux méthode", async () => {
+    vi.mocked(aiService.importProfile).mockResolvedValue(execution());
+
+    render(<ProfileImportModal open busy={false} onClose={vi.fn()} onApply={vi.fn()} />);
+    await userEvent.click(screen.getByRole("button", { name: /Choisir et analyser un CV PDF/ }));
+
+    expect(await screen.findByText("Méthode utilisée : Vision")).toBeInTheDocument();
+    const form = document.querySelector("form");
+    expect(form).not.toBeNull();
+    expect(form!.className).toMatch(/min-h-0/);
+    expect(form!.className).toMatch(/flex-1/);
+    // Le parent doit relayer la hauteur contrainte du corps flush, pas croître librement.
+    expect(form!.parentElement!.className).toMatch(/min-h-0/);
+    expect(form!.parentElement!.className).toMatch(/flex-1/);
+    expect(form!.parentElement!.className).toMatch(/overflow-hidden/);
+    expect(form!.parentElement!.className).not.toMatch(/space-y-4/);
+    expect(form!.querySelectorAll(".overflow-y-auto").length).toBeGreaterThanOrEqual(2);
+  });
+
   it("désactive Vision et force Texte si le modèle est text-only", async () => {
     vi.mocked(aiService.activeModelCapabilities).mockResolvedValue({
       vision: false,
