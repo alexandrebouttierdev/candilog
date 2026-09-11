@@ -25,6 +25,7 @@ const TRANSFERABLE_CREDIT: u8 = 40;
 /// Données structurées génériques — pas de branche `if skill == "react"`.
 const TRANSFER_FAMILIES: &[&[&str]] = &[
     &["react", "angular", "vue", "svelte", "ember"],
+    &["ci/cd", "cicd", "gitlab ci", "github actions", "integration continue", "intégration continue", "pipelines"],
     &["excel", "calc", "google sheets", "sheets", "numbers", "libreoffice calc"],
     &["word", "writer", "google docs", "pages", "libreoffice writer"],
     &["salesforce", "hubspot", "dynamics 365", "pipedrive", "zoho crm"],
@@ -250,24 +251,28 @@ fn score_against_offer(
         _ => None,
     };
 
-    // Proximité métier en bonus (0–WEIGHT_OCCUPATION pts), pas en moyenne :
-    // sinon un titre partiellement proche tire vers le bas un match compétences parfait.
-    let core = weighted_total(&[
-        (skills, WEIGHT_SKILLS),
-        (experience, WEIGHT_EXPERIENCE),
-        (soft, WEIGHT_SOFT),
-        (ats, WEIGHT_ATS),
-    ]);
-    // Bonus métier proportionnel à la couverture compétences : un titre proche
-    // ne doit pas masquer des absences dures (ex. Java manquant).
+    // Noyau = compétences + expérience uniquement.
+    // Soft / ATS / proximité métier sont des BONUS (jamais une moyenne avec des 0
+    // qui écrasent un profil partiellement aligné vers ~17/100).
+    let core = weighted_total(&[(skills, WEIGHT_SKILLS), (experience, WEIGHT_EXPERIENCE)]);
     let skills_factor = u32::from(skills.unwrap_or(0));
-    let bonus = occupation
+    let occupation_bonus = occupation
         .map(|score| {
             let raw = u32::from(score) * u32::from(WEIGHT_OCCUPATION) / 100;
             ((raw * skills_factor) / 100).min(u32::from(WEIGHT_OCCUPATION)) as u8
         })
         .unwrap_or(0);
-    let total = core.saturating_add(bonus).min(100);
+    let soft_bonus = soft
+        .map(|score| (u32::from(score) * u32::from(WEIGHT_SOFT) / 100) as u8)
+        .unwrap_or(0);
+    let ats_bonus = ats
+        .map(|score| (u32::from(score) * u32::from(WEIGHT_ATS) / 100) as u8)
+        .unwrap_or(0);
+    let total = core
+        .saturating_add(occupation_bonus)
+        .saturating_add(soft_bonus)
+        .saturating_add(ats_bonus)
+        .min(100);
 
     MatchScore {
         total,
@@ -386,9 +391,22 @@ fn soft_match_score(evidence: &str, soft_skills: &[String]) -> Option<u8> {
     }
     let hits = soft_skills
         .iter()
-        .filter(|skill| contains_term(evidence, skill))
+        .filter(|skill| soft_skill_couverte(evidence, skill))
         .count();
     percentage(hits, soft_skills.len())
+}
+
+fn soft_skill_couverte(evidence: &str, skill: &str) -> bool {
+    if contains_term(evidence, skill) {
+        return true;
+    }
+    // « qualité logicielle » : tous les tokens significatifs (≥4) présents.
+    let key = search_key(skill);
+    let tokens: Vec<&str> = key
+        .split_whitespace()
+        .filter(|t| t.len() >= 4)
+        .collect();
+    !tokens.is_empty() && tokens.iter().all(|t| contains_search_term(evidence, t))
 }
 
 /// Évite de compter deux fois une exigence déjà listée en compétence.
@@ -740,13 +758,40 @@ fn infer_annees_from_parts(resume: &GeneratedResume, source: Option<&str>) -> Op
         resume
             .experiences
             .iter()
-            .map(|e| e.description.as_str())
+            .map(|e| format!("{} {}", e.title, e.description))
             .collect::<Vec<_>>()
             .join(" "),
         source.unwrap_or_default()
     );
-    let n = first_entier(&blob);
-    (n > 0).then_some(n)
+    let from_ans = first_entier(&blob);
+    if from_ans > 0 {
+        return Some(from_ans);
+    }
+    annees_depuis_plage(&blob)
+}
+
+/// « Juil. 2019 – Oct. 2025 » → 6 ans (approximation par années civiles).
+fn annees_depuis_plage(blob: &str) -> Option<usize> {
+    let key = crate::core::utils::text::search_key(blob);
+    let years: Vec<i32> = key
+        .split_whitespace()
+        .filter_map(|mot| {
+            let digits: String = mot.chars().filter(|c| c.is_ascii_digit()).collect();
+            if digits.len() == 4 {
+                digits.parse().ok()
+            } else {
+                None
+            }
+        })
+        .filter(|y| (1980..=2100).contains(y))
+        .collect();
+    if years.len() < 2 {
+        return None;
+    }
+    let min = *years.iter().min()?;
+    let max = *years.iter().max()?;
+    let span = (max - min).max(0) as usize;
+    (span > 0).then_some(span)
 }
 
 /// Correspondance par mot : `"go"` ne match pas `"ongoing"`.
@@ -1253,8 +1298,8 @@ mod tests {
         let score = score_resume_imported(&resume, &offre(vec!["Rust", "Go"], vec!["cli"], None));
         assert_eq!(score.skills, Some(50));
         assert_eq!(score.ats, Some(0));
-        // WEIGHT_SKILLS=35, WEIGHT_ATS=10 → (50*35)/45 ≈ 39
-        assert_eq!(score.total, 39);
+        // Soft/ATS en bonus seulement : noyau = skills 50 → total 50
+        assert_eq!(score.total, 50);
     }
 
     #[test]
@@ -1369,7 +1414,73 @@ Pratiques Agile, intégration continue, code review
     /// Régression du score ~9/100 : expérience à 0 + titre vide.
     
     /// JSON parsé volontairement pauvre + texte PDF → le score lit le PDF.
+    
+    /// Régression score ~17 : commentaire LLM aligné mais soft/ATS à 0 + skills partiels
+    /// ne doivent plus écraser le total (noyau compétences+expérience + bonus).
     #[test]
+    fn cas_open_commentaire_aligne_score_pas_ecrase() {
+        let resume = GeneratedResume {
+            resume: "Développeur fullstack JavaScript / TypeScript avec 6 ans d'expérience.".into(),
+            experiences: vec![GeneratedExperience {
+                title: "Développeur Fullstack JavaScript".into(),
+                company: "Linaïa".into(),
+                description: "React Node NestJS CI/CD Agile code review. Refonte Angular vers React. Juil. 2019 – Oct. 2025.".into(),
+            }],
+            skills: vec![
+                "JavaScript".into(),
+                "TypeScript".into(),
+                "React".into(),
+                "Node.js".into(),
+                "Angular".into(),
+                "CI/CD".into(),
+                "Agile".into(),
+                "Code review".into(),
+            ],
+            education: vec![],
+        };
+        let source = "Développeur fullstack 6 ans. React Angular Node CI/CD GitLab CI Agile Code review TMA.";
+        let offre = StructuredListing {
+            title: "Concepteur Développeur Full stack F/H".into(),
+            skills: vec![
+                "Java".into(),
+                "Angular".into(),
+                "CI/CD".into(),
+                "tests unitaires".into(),
+                "Agile".into(),
+                "Code review".into(),
+                "IA".into(),
+            ],
+            soft_skills: vec![
+                "Qualité logicielle".into(),
+                "Sensibilité IA".into(),
+                "Réunions MOA".into(),
+            ],
+            experience: Some("3 ans".into()),
+            keywords: vec![
+                "lignes directrices UX".into(),
+                "manuels d'usage".into(),
+                "cadrage MOA".into(),
+            ],
+        };
+        let score = score_resume_imported_with_source(&resume, &offre, Some(source));
+        assert!(
+            score.experience.unwrap_or(0) >= 100,
+            "6 ans ≥ 3: {:?}",
+            score.experience
+        );
+        assert!(score.missing.iter().any(|s| s == "Java"));
+        assert!(
+            score.total >= 45 && score.total <= 85,
+            "attendu 45–85 (plus de ~17), obtenu {} skills={:?} ats={:?} present={:?} missing={:?}",
+            score.total,
+            score.skills,
+            score.ats,
+            score.present,
+            score.missing
+        );
+    }
+
+#[test]
     fn score_avec_texte_pdf_source_meme_si_json_pauvre() {
         let resume = GeneratedResume {
             resume: "Développeur".into(),
@@ -1480,8 +1591,8 @@ Pratiques Agile, intégration continue, code review
             score.missing
         );
         assert!(
-            score.total >= 45 && score.total <= 80,
-            "attendu 45–80 pour ce CV réel, obtenu {} skills={:?} ats={:?} present={:?} missing={:?}",
+            score.total >= 45 && score.total <= 90,
+            "attendu 45–90 pour ce CV réel, obtenu {} skills={:?} ats={:?} present={:?} missing={:?}",
             score.total,
             score.skills,
             score.ats,
@@ -1563,8 +1674,8 @@ Pratiques Agile, intégration continue, code review
 
         let score = profile_score(&profile, &offre);
         assert!(
-            score.total >= 40 && score.total <= 70,
-            "attendu 40–70 pour Open, obtenu {}",
+            score.total >= 40 && score.total <= 85,
+            "attendu 40–85 pour Open, obtenu {}",
             score.total
         );
         assert!(score.present.iter().any(|s| s == "React"));

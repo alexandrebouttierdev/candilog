@@ -8,6 +8,8 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
 
 ### Modifié
 
+- Score ATS : soft skills / mots-clés / proximité métier en **bonus** (plus en moyenne avec des 0 qui écrasaient vers ~17/100) ; équivalence CI/CD ↔ GitLab CI / intégration continue ; années aussi déduites des plages de dates.
+
 - Score ATS multi-métiers : matching exact / transférable (familles d'outils génériques),
   corpus candidat élargi (projets, certifications, langues), proximité métier en bonus,
   mots-clés dédupliqués des compétences, prompts offre / recommandations plus stricts
