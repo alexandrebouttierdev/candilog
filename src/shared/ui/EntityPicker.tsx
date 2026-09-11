@@ -123,13 +123,13 @@ export function EntityPicker({
           onFocus={(event) => {
             setOpen(true);
             // La sélection reste lisible ; le texte est présélectionné pour que la première
-            // frappe la remplace entièrement, comme dans un champ de search natif.
+            // frappe la remplace entièrement, comme dans un champ de recherche natif.
             event.currentTarget.select();
           }}
           onChange={(event) => {
             setDraft(event.target.value);
             // Toute nouvelle search ramène en première page : rester en page 2 après
-            // avoir restreint la search afficherait une liste vide alors que des
+            // avoir restreint la recherche afficherait une liste vide alors que des
             // résultats existent. Fait ici plutôt que dans un effet sur la valeur
             // retardée, qui provoquerait un rendu en cascade.
             setPage(1);
@@ -159,7 +159,7 @@ export function EntityPicker({
           ) : results.isError ? (
             // Un échec de la commande n'est pas une absence de résultat : annoncer « Aucun
             // résultat » inviterait à créer un doublon d'une entité déjà enregistrée.
-            <p className="px-3 py-3 text-meta text-danger">La search a échoué.</p>
+            <p className="px-3 py-3 text-meta text-danger">La recherche a échoué.</p>
           ) : items.length === 0 ? (
             <p className="px-3 py-3 text-meta text-ink-faint">
               {emptyHelp ?? "Aucun résultat."}
