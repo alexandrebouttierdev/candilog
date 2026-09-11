@@ -1463,6 +1463,7 @@ async fn run_profile_pipeline(
         };
         tokens = add_tokens(tokens, appel);
         normalize_profile_dates(&mut candidat);
+        completer_descriptions_depuis_libelles(&mut candidat);
         if vision {
             // En Vision, le texte PDF n'est qu'un complément partiel : on y recadre
             // identité et libellés courts, mais on conserve les descriptions lues sur

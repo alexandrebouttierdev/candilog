@@ -199,7 +199,7 @@ pub struct Profile {
     pub education: Vec<Education>,
     #[serde(default, alias = "langues")]
     pub languages: Vec<Language>,
-    #[serde(default, alias = "projets")]
+    #[serde(default, alias = "projets", deserialize_with = "projects_lenient")]
     pub projects: Vec<Project>,
     #[serde(default)]
     pub certifications: Vec<Certification>,
@@ -277,25 +277,105 @@ fn skill_from_value(value: serde_json::Value) -> Option<Skill> {
             description: None,
         }),
         serde_json::Value::Object(map) => {
-            let name = map
-                .get("name")
-                .or_else(|| map.get("nom"))
-                .map(|item| text_from_value(item.clone()))?;
+            let name = map_get_text(&map, &["name", "nom", "label", "competence", "skill"])?;
             if name.trim().is_empty() {
                 return None;
             }
-            let description = map.get("description").and_then(|item| {
-                let text = text_from_value(item.clone());
-                if text.trim().is_empty() {
-                    None
-                } else {
-                    Some(text)
-                }
-            });
+            let description = map_get_text(
+                &map,
+                &[
+                    "description",
+                    "detail",
+                    "details",
+                    "precision",
+                    "précision",
+                    "desc",
+                    "commentaire",
+                    "comment",
+                    "niveau_detail",
+                ],
+            );
             Some(Skill { name, description })
         }
         _ => None,
     }
+}
+
+fn projects_lenient<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Vec<Project>, D::Error> {
+    let value = serde_json::Value::deserialize(deserializer)?;
+    Ok(match value {
+        serde_json::Value::Array(items) => items
+            .into_iter()
+            .filter_map(project_from_value)
+            .collect(),
+        serde_json::Value::String(name) if !name.trim().is_empty() => vec![Project {
+            name,
+            description: None,
+            url: None,
+            technologies: None,
+        }],
+        _ => Vec::new(),
+    })
+}
+
+fn project_from_value(value: serde_json::Value) -> Option<Project> {
+    match value {
+        serde_json::Value::String(name) if !name.trim().is_empty() => Some(Project {
+            name,
+            description: None,
+            url: None,
+            technologies: None,
+        }),
+        serde_json::Value::Object(map) => {
+            let name = map_get_text(&map, &["name", "nom", "title", "titre", "label"])?;
+            if name.trim().is_empty() {
+                return None;
+            }
+            let description = map_get_text(
+                &map,
+                &[
+                    "description",
+                    "detail",
+                    "details",
+                    "desc",
+                    "resume",
+                    "résumé",
+                    "commentaire",
+                    "summary",
+                ],
+            );
+            let url = map_get_text(&map, &["url", "lien", "link"]);
+            let technologies = map_get_text(
+                &map,
+                &["technologies", "techno", "stack", "tech", "outils"],
+            );
+            Some(Project {
+                name,
+                description,
+                url,
+                technologies,
+            })
+        }
+        _ => None,
+    }
+}
+
+/// Lit la première clé présente (comparaison insensible à la casse).
+fn map_get_text(
+    map: &serde_json::Map<String, serde_json::Value>,
+    keys: &[&str],
+) -> Option<String> {
+    for wanted in keys {
+        for (key, value) in map {
+            if key.eq_ignore_ascii_case(wanted) {
+                let text = text_from_value(value.clone());
+                if !text.trim().is_empty() {
+                    return Some(text);
+                }
+            }
+        }
+    }
+    None
 }
 
 fn interest_from_value(value: serde_json::Value) -> Option<Interest> {
@@ -361,5 +441,45 @@ fn text_from_value(value: serde_json::Value) -> String {
             .collect::<Vec<_>>()
             .join(" — "),
         serde_json::Value::Null => String::new(),
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn lit_la_description_d_une_competence_sous_une_cle_alternative() {
+        let profile: Profile = serde_json::from_str(
+            r#"{"competences":[{"nom":"Rust","detail":"async Tokio et axum"}]}"#,
+        )
+        .unwrap();
+        assert_eq!(profile.skills[0].name, "Rust");
+        assert_eq!(
+            profile.skills[0].description.as_deref(),
+            Some("async Tokio et axum")
+        );
+    }
+
+    #[test]
+    fn lit_la_description_d_un_projet_sous_une_cle_alternative() {
+        let profile: Profile = serde_json::from_str(
+            r#"{"projets":[{"nom":"Candilog","resume":"Suivi de candidatures desktop"}]}"#,
+        )
+        .unwrap();
+        assert_eq!(profile.projects[0].name, "Candilog");
+        assert_eq!(
+            profile.projects[0].description.as_deref(),
+            Some("Suivi de candidatures desktop")
+        );
+    }
+
+    #[test]
+    fn accepte_un_projet_ecrit_comme_une_chaine() {
+        let profile: Profile =
+            serde_json::from_str(r#"{"projets":["Portfolio perso"]}"#).unwrap();
+        assert_eq!(profile.projects[0].name, "Portfolio perso");
+        assert!(profile.projects[0].description.is_none());
     }
 }

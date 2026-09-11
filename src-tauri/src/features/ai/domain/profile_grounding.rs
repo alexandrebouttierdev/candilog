@@ -198,6 +198,67 @@ fn est_recopie(source: &str, value: &str) -> bool {
     value.chars().any(char::is_alphanumeric) && contains_search_term(source, value)
 }
 
+/// Sépare une description collée dans le libellé (compétences et projets).
+///
+/// Les petits modèles mettent souvent « Rust — async Tokio » ou « Candilog : app desktop »
+/// dans un seul champ `nom`. Sans cette découpe, le grounding échoue sur le libellé
+/// complet (absent tel quel du CV) et la description n'existe jamais en propre.
+pub fn completer_descriptions_depuis_libelles(profile: &mut Profile) {
+    for skill in &mut profile.skills {
+        separer_description_du_libelle(&mut skill.name, &mut skill.description);
+    }
+    for project in &mut profile.projects {
+        separer_description_du_libelle(&mut project.name, &mut project.description);
+    }
+}
+
+fn separer_description_du_libelle(name: &mut String, description: &mut Option<String>) {
+    if description
+        .as_deref()
+        .is_some_and(|texte| !texte.trim().is_empty())
+    {
+        return;
+    }
+    let Some((libelle, detail)) = couper_libelle_et_description(name) else {
+        return;
+    };
+    *name = libelle;
+    *description = Some(detail);
+}
+
+fn couper_libelle_et_description(complet: &str) -> Option<(String, String)> {
+    let complet = complet.trim();
+    for sep in [" — ", " – ", " - ", " : ", ": "] {
+        if let Some((gauche, droite)) = complet.split_once(sep) {
+            let gauche = gauche.trim();
+            let droite = droite.trim();
+            if libelle_court_ok(gauche) && description_ok(droite) {
+                return Some((gauche.to_owned(), droite.to_owned()));
+            }
+        }
+    }
+    if let Some(open) = complet.rfind('(') {
+        if complet.ends_with(')') && open > 0 {
+            let gauche = complet[..open].trim();
+            let droite = complet[open + 1..complet.len() - 1].trim();
+            if libelle_court_ok(gauche) && description_ok(droite) {
+                return Some((gauche.to_owned(), droite.to_owned()));
+            }
+        }
+    }
+    None
+}
+
+fn libelle_court_ok(valeur: &str) -> bool {
+    let len = valeur.chars().count();
+    (1..=60).contains(&len) && valeur.chars().any(char::is_alphanumeric)
+}
+
+fn description_ok(valeur: &str) -> bool {
+    let len = valeur.chars().count();
+    len >= 8 && valeur.chars().any(char::is_alphanumeric)
+}
+
 /// Complète prénom et nom quand l'un des deux (ou les deux) est vide.
 ///
 /// Un petit modèle met souvent le nom complet dans un seul champ. On découpe sur le
@@ -1384,6 +1445,63 @@ Mise en place de pipelines CI/CD";
         // Prénom et nom lus sur l'image restent, même si le PDF complémentaire est pauvre.
         assert_eq!(profile.identity.first_name, "Thomas");
         assert_eq!(profile.identity.name, "Candilog");
+    }
+
+    #[test]
+    fn separe_une_description_collee_dans_le_libelle() {
+        let mut profile = Profile {
+            skills: vec![Skill {
+                name: "Rust — async Tokio et axum".into(),
+                description: None,
+            }],
+            projects: vec![Project {
+                name: "Candilog : suivi de candidatures desktop".into(),
+                description: None,
+                url: None,
+                technologies: None,
+            }],
+            ..Profile::default()
+        };
+        completer_descriptions_depuis_libelles(&mut profile);
+        assert_eq!(profile.skills[0].name, "Rust");
+        assert_eq!(
+            profile.skills[0].description.as_deref(),
+            Some("async Tokio et axum")
+        );
+        assert_eq!(profile.projects[0].name, "Candilog");
+        assert_eq!(
+            profile.projects[0].description.as_deref(),
+            Some("suivi de candidatures desktop")
+        );
+    }
+
+    #[test]
+    fn l_import_conserve_les_descriptions_de_competences_et_de_projets() {
+        const CV: &str = "Camille Martin\nCompétences\nRust — async Tokio et axum\nProjets\nCandilog\nSuivi de candidatures desktop avec Tauri";
+        let mut profile = Profile {
+            skills: vec![Skill {
+                name: "Rust — async Tokio et axum".into(),
+                description: None,
+            }],
+            projects: vec![Project {
+                name: "Candilog".into(),
+                description: Some("Suivi de candidatures desktop avec Tauri".into()),
+                url: None,
+                technologies: None,
+            }],
+            ..Profile::default()
+        };
+        completer_descriptions_depuis_libelles(&mut profile);
+        ground_imported_profile(CV, &mut profile);
+        assert_eq!(profile.skills[0].name, "Rust");
+        assert_eq!(
+            profile.skills[0].description.as_deref(),
+            Some("async Tokio et axum")
+        );
+        assert_eq!(
+            profile.projects[0].description.as_deref(),
+            Some("Suivi de candidatures desktop avec Tauri")
+        );
     }
 
     #[test]

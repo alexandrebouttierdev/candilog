@@ -8,6 +8,10 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
 
 ### Modifié
 
+- Import CV : descriptions de compétences et de projets mieux récupérées (clés
+  alternatives `detail` / `resume`, projets en chaîne, séparation d'une description
+  collée dans le libellé avant le recadrage sur le texte du CV).
+
 - Réglages IA / Configuration : liste de modèles compacte avec logo du fournisseur ;
   bouton « Tester » (benchmark) à côté de « Tester la connexion », désactivé sans modèle.
 
