@@ -8,6 +8,13 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
 
 ### Modifié
 
+- Score ATS multi-métiers : matching exact / transférable (familles d'outils génériques),
+  corpus candidat élargi (projets, certifications, langues), proximité métier en bonus,
+  mots-clés dédupliqués des compétences, prompts offre / recommandations plus stricts
+  (exigences vs contexte entreprise, pas d'invention). Tests Open + multi-domaines.
+
+- Analyse de CV : padding horizontal autour du nom de fichier ; marge sous « Offre ciblée ».
+
 - Import CV : descriptions de compétences et de projets mieux récupérées (clés
   alternatives `detail` / `resume`, projets en chaîne, séparation d'une description
   collée dans le libellé avant le recadrage sur le texte du CV).

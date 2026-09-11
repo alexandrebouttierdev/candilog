@@ -18,9 +18,19 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tokio_util::sync::CancellationToken;
 
-const JOB_OFFER_SYSTEM: &str = r#"Extrais une offre d'emploi en JSON. Recopie uniquement les informations présentes, sans traduire ni inventer. Réponds exactement avec les clés {"titre":"","competences":[],"savoirEtre":[],"experience":null,"motsCles":[]}. Réponds uniquement en JSON."#;
+const JOB_OFFER_SYSTEM: &str = r#"Extrais une offre d'emploi en JSON. Recopie uniquement les informations présentes, sans traduire ni inventer.
+Ne mélange pas le contexte entreprise (stack utilisée en interne, clients, présentation) avec les exigences du poste.
+"competences" = outils, technos, métiers, diplômes, permis, certifications EXIGÉS pour le poste (pas la stack de l'entreprise hors profil recherché).
+"savoirEtre" = soft skills demandés.
+"experience" = durée ou niveau d'expérience demandé, sinon null.
+"motsCles" = missions, responsabilités et mots-clés ATS utiles, sans dupliquer les compétences déjà listées.
+Réponds exactement avec les clés {"titre":"","competences":[],"savoirEtre":[],"experience":null,"motsCles":[]}. Réponds uniquement en JSON."#;
 const RESUME_SYSTEM: &str = r#"Adapte le socle d'un CV à une offre en JSON. Reformule uniquement les faits du profil, sans ajouter compétence, entreprise, diplôme ou expérience. Conserve toutes les expériences et formations. Laisse toujours competences vide : les contenus optionnels seront choisis ensuite par l'utilisateur. Réponds avec {"resume":"","experiences":[{"intitule":"","entreprise":"","description":""}],"competences":[],"formations":[{"diplome":"","etablissement":""}]}. JSON uniquement."#;
-const ATS_SYSTEM: &str = r#"Compare le CV et l'offre fournis. Réponds en français, uniquement en JSON : {"recap":"","recommendations":[{"section":"profile","item_index":null,"original_text":"","proposed_text":""}],"content_recommendations":[{"item_id":"","reason":"","relevance":"very_relevant"}]}. "section" vaut "profile" ou "experience". Pour "experience", "item_index" est l'indice (à partir de 0) de l'expérience du CV concernée ; laisse "item_index" à null pour "profile". "original_text" doit reprendre exactement un texte présent dans le CV fourni, "proposed_text" est la reformulation proposée. Pour content_recommendations, sélectionne au maximum 8 identifiants du tableau contenu_profil, dans l'ordre de priorité. relevance vaut "very_relevant", "relevant" ou "secondary". Privilégie la cohérence et la valeur pour le recruteur, pas la répétition de mots-clés. Ne renvoie pas tout le catalogue. N'invente aucun fait ni identifiant absent du CV, de l'offre ou du catalogue."#;
+const ATS_SYSTEM: &str = r#"Compare le CV et l'offre fournis. Réponds en français, uniquement en JSON : {"recap":"","recommendations":[{"section":"profile","item_index":null,"original_text":"","proposed_text":""}],"content_recommendations":[{"item_id":"","reason":"","relevance":"very_relevant"}]}.
+Types d'action implicites : highlight_existing (mettre en avant un élément déjà présent), rewrite (reformuler un texte existant), missing_requirement (signaler une exigence absente SANS inventer de compétence), structure, keyword, clarify, remove_irrelevant.
+"section" vaut "profile" ou "experience". Pour "experience", "item_index" est l'indice (à partir de 0) de l'expérience du CV concernée ; laisse "item_index" à null pour "profile".
+"original_text" doit reprendre exactement un texte présent dans le CV fourni, "proposed_text" est la reformulation proposée — uniquement à partir de faits déjà présents dans le CV. N'invente jamais une compétence, un diplôme, une expérience ou un outil absent du CV.
+Pour content_recommendations, sélectionne au maximum 8 identifiants du tableau contenu_profil, dans l'ordre de priorité. relevance vaut "very_relevant", "relevant" ou "secondary". Associe chaque recommandation à un élément important de l'offre et à une preuve dans le CV. Privilégie highlight_existing et rewrite. Ne renvoie pas tout le catalogue. N'invente aucun fait ni identifiant absent du CV, de l'offre ou du catalogue."#;
 const COVER_LETTER_SYSTEM: &str = r#"Tu prépares le plan d'une lettre de motivation française.
 
 Réponds uniquement en JSON : {"selected_fact_ids":[],"motivation_keywords":[]}.

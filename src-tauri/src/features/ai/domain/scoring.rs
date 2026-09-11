@@ -7,12 +7,41 @@ use chrono::Datelike;
 use serde::Serialize;
 use std::collections::HashSet;
 
-/// Pondération du score de compétences dans le total profil.
-const WEIGHT_SKILLS: u16 = 40;
-/// Pondération des années d'expérience dans le total profil.
-const WEIGHT_EXPERIENCE: u16 = 40;
-/// Pondération des mots-clés ATS dans le total profil.
-const WEIGHT_ATS: u16 = 20;
+/// Pondération de base des compétences (ajustée dynamiquement).
+const WEIGHT_SKILLS: u16 = 35;
+/// Pondération de la proximité métier (titres).
+const WEIGHT_OCCUPATION: u16 = 20;
+/// Pondération des années d'expérience.
+const WEIGHT_EXPERIENCE: u16 = 25;
+/// Pondération des savoir-être.
+const WEIGHT_SOFT: u16 = 10;
+/// Pondération des mots-clés / missions (hors compétences déjà comptées).
+const WEIGHT_ATS: u16 = 10;
+
+/// Crédit partiel pour une compétence transférable (même famille d'outils).
+const TRANSFERABLE_CREDIT: u8 = 40;
+
+/// Familles multi-domaines d'équivalence / transfert.
+/// Données structurées génériques — pas de branche `if skill == "react"`.
+const TRANSFER_FAMILIES: &[&[&str]] = &[
+    &["react", "angular", "vue", "svelte", "ember"],
+    &["excel", "calc", "google sheets", "sheets", "numbers", "libreoffice calc"],
+    &["word", "writer", "google docs", "pages", "libreoffice writer"],
+    &["salesforce", "hubspot", "dynamics 365", "pipedrive", "zoho crm"],
+    &["sap", "odoo", "microsoft dynamics", "oracle ebs"],
+    &["autocad", "solidworks", "catia", "revit", "archicad"],
+    &["photoshop", "gimp", "affinity photo", "lightroom"],
+    &["figma", "sketch", "adobe xd", "penpot"],
+    &["quickbooks", "sage", "xero", "ciel"],
+    &["power bi", "tableau", "looker", "qlik"],
+];
+
+/// Mots trop génériques pour servir de token de proximité métier.
+const TITLE_STOPWORDS: &[&str] = &[
+    "de", "du", "des", "la", "le", "les", "un", "une", "et", "en", "au", "aux", "a",
+    "the", "and", "or", "of", "in", "for", "to", "junior", "senior", "confirme",
+    "confirmee", "experimente", "experimentee", "h", "f", "hf", "fh",
+];
 
 /// Entrée compacte transmise au modèle : l'identifiant est la seule valeur qu'une
 /// recommandation de contenu peut ensuite cibler.
@@ -106,61 +135,8 @@ pub fn profile_score(profile: &Profile, job_offer: &StructuredListing) -> MatchS
         .map(|skill| skill.name.as_str())
         .filter(|name| !search_key(name).is_empty())
         .collect();
-    let offer_skills = deduplicate_labels(&job_offer.skills);
-    let (present, missing): (Vec<_>, Vec<_>) = offer_skills
-        .iter()
-        .cloned()
-        .partition(|skill| skill_couverte(&names, skill));
-    let skills = percentage(present.len(), offer_skills.len());
-    let text = search_key(&format!(
-        "{} {} {}",
-        profile.identity.title.as_deref().unwrap_or_default(),
-        profile.identity.resume.as_deref().unwrap_or_default(),
-        profile
-            .experiences
-            .iter()
-            .map(|e| format!(
-                "{} {}",
-                e.title,
-                e.description.as_deref().unwrap_or_default()
-            ))
-            .collect::<Vec<_>>()
-            .join(" ")
-    ));
-    let keywords = deduplicate_labels(&job_offer.keywords);
-    let key = keywords.iter().filter(|m| contains_term(&text, m)).count();
-    let ats = percentage(key, keywords.len());
-    let requis = job_offer.experience.as_deref().map_or(0, first_entier);
-    let current = chrono::Utc::now().year();
-    let annees: usize = profile
-        .experiences
-        .iter()
-        .filter_map(|e| {
-            year(&e.start_date).map(|start| {
-                (year(e.end_date.as_deref().unwrap_or_default()).unwrap_or(current) - start).max(0)
-                    as usize
-            })
-        })
-        .sum();
-    let experience = (requis > 0).then(|| {
-        annees
-            .saturating_mul(100)
-            .checked_div(requis)
-            .map_or(0, |value| value.min(100) as u8)
-    });
-    let total = weighted_total(&[
-        (skills, WEIGHT_SKILLS),
-        (experience, WEIGHT_EXPERIENCE),
-        (ats, WEIGHT_ATS),
-    ]);
-    MatchScore {
-        total,
-        skills,
-        experience,
-        ats,
-        present,
-        missing,
-    }
+    let evidence = candidate_evidence(profile);
+    score_against_offer(&names, &evidence, profile_title(profile), annees_experience(profile), job_offer)
 }
 
 /// Une compétence de l'offre est couverte dès qu'une compétence du candidat la contient
@@ -189,24 +165,314 @@ pub fn score_resume_imported(
         .map(String::as_str)
         .filter(|name| !search_key(name).is_empty())
         .collect();
+    let evidence = resume_text(resume);
+    score_against_offer(&names, &evidence, "", 0, job_offer)
+}
+
+/// Score déterministe partagé (profil complet ou CV importé).
+fn score_against_offer(
+    skill_names: &[&str],
+    evidence: &str,
+    title: &str,
+    annees: usize,
+    job_offer: &StructuredListing,
+) -> MatchScore {
     let offer_skills = deduplicate_labels(&job_offer.skills);
-    let (present, missing): (Vec<_>, Vec<_>) = offer_skills
-        .iter()
-        .cloned()
-        .partition(|skill| skill_couverte(&names, skill));
-    let skills = percentage(present.len(), offer_skills.len());
-    let text = resume_text(resume);
-    let keywords = deduplicate_labels(&job_offer.keywords);
-    let key = keywords.iter().filter(|m| contains_term(&text, m)).count();
-    let ats = percentage(key, keywords.len());
+    let soft_skills = deduplicate_labels(&job_offer.soft_skills);
+    let keywords = keywords_hors_competences(&job_offer.keywords, &offer_skills);
+
+    let mut present = Vec::new();
+    let mut missing = Vec::new();
+    let mut credit = 0_u32;
+    for skill in &offer_skills {
+        match match_requirement(skill_names, evidence, skill) {
+            RequirementMatch::Exact => {
+                present.push(skill.clone());
+                credit += 100;
+            }
+            RequirementMatch::Transferable => {
+                present.push(skill.clone());
+                credit += u32::from(TRANSFERABLE_CREDIT);
+            }
+            RequirementMatch::Missing => missing.push(skill.clone()),
+        }
+    }
+    let skills = (!offer_skills.is_empty()).then(|| {
+        (credit.saturating_add(offer_skills.len() as u32 / 2) / offer_skills.len() as u32).min(100) as u8
+    });
+
+    let occupation = occupation_proximity(title, &job_offer.title);
+
+    let soft = soft_match_score(evidence, &soft_skills);
+
+    let key_hits = keywords.iter().filter(|m| contains_term(evidence, m)).count();
+    let ats = percentage(key_hits, keywords.len());
+
+    let requis = job_offer.experience.as_deref().map_or(0, first_entier);
+    let experience = (requis > 0).then(|| {
+        annees
+            .saturating_mul(100)
+            .checked_div(requis)
+            .map_or(0, |value| value.min(100) as u8)
+    });
+
+    // Proximité métier en bonus (0–WEIGHT_OCCUPATION pts), pas en moyenne :
+    // sinon un titre partiellement proche tire vers le bas un match compétences parfait.
+    let core = weighted_total(&[
+        (skills, WEIGHT_SKILLS),
+        (experience, WEIGHT_EXPERIENCE),
+        (soft, WEIGHT_SOFT),
+        (ats, WEIGHT_ATS),
+    ]);
+    // Bonus métier proportionnel à la couverture compétences : un titre proche
+    // ne doit pas masquer des absences dures (ex. Java manquant).
+    let skills_factor = u32::from(skills.unwrap_or(0));
+    let bonus = occupation
+        .map(|score| {
+            let raw = u32::from(score) * u32::from(WEIGHT_OCCUPATION) / 100;
+            ((raw * skills_factor) / 100).min(u32::from(WEIGHT_OCCUPATION)) as u8
+        })
+        .unwrap_or(0);
+    let total = core.saturating_add(bonus).min(100);
+
     MatchScore {
-        total: weighted_total(&[(skills, WEIGHT_SKILLS), (ats, WEIGHT_ATS)]),
+        total,
         skills,
-        experience: None,
+        experience,
         ats,
         present,
         missing,
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum RequirementMatch {
+    Exact,
+    Transferable,
+    Missing,
+}
+
+fn match_requirement(skill_names: &[&str], evidence: &str, required: &str) -> RequirementMatch {
+    if skill_couverte(skill_names, required) || contains_term(evidence, required) {
+        return RequirementMatch::Exact;
+    }
+    if transferable_requirement(skill_names, evidence, required) {
+        return RequirementMatch::Transferable;
+    }
+    RequirementMatch::Missing
+}
+
+/// Transfert via familles multi-domaines (tableurs, CRM, frameworks front, etc.).
+fn transferable_requirement(skill_names: &[&str], evidence: &str, required: &str) -> bool {
+    let required_key = search_key(required);
+    if required_key.is_empty() {
+        return false;
+    }
+    for family in TRANSFER_FAMILIES {
+        let in_family = family.iter().any(|member| search_key(member) == required_key
+            || contains_search_term(required, member)
+            || contains_search_term(member, required));
+        if !in_family {
+            continue;
+        }
+        for member in *family {
+            let member_key = search_key(member);
+            if member_key.is_empty() || member_key == required_key {
+                continue;
+            }
+            if skill_couverte(skill_names, member) || contains_term(evidence, member) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+fn occupation_proximity(candidate_title: &str, offer_title: &str) -> Option<u8> {
+    let left = significant_tokens(candidate_title);
+    let right = significant_tokens(offer_title);
+    if left.is_empty() || right.is_empty() {
+        return None;
+    }
+    let overlap = tokens_overlap(&left, &right);
+    // Pas de signal de proximité : on n'inclut pas la dimension (évite de tirer
+    // le total vers 0 quand l'offre a un titre générique du type « Poste »).
+    if overlap == 0 {
+        return None;
+    }
+    let denom = left.len().max(right.len());
+    Some(((overlap * 100) / denom).min(100) as u8)
+}
+
+fn significant_tokens(value: &str) -> Vec<String> {
+    search_key(value)
+        .split_whitespace()
+        .filter(|token| token.len() >= 3)
+        .filter(|token| !TITLE_STOPWORDS.contains(token))
+        .map(|token| stem_titre(token.to_owned()))
+        .collect()
+}
+
+/// Rapproche les variantes de genre FR courantes (développeur / développeuse).
+fn stem_titre(token: String) -> String {
+    for suffix in ["euse", "eure", "rice", "iere", "ier"] {
+        if let Some(stem) = token.strip_suffix(suffix) {
+            if stem.len() >= 4 {
+                return stem.to_owned();
+            }
+        }
+    }
+    // développeur → developp (strip eur)
+    for suffix in ["eur", "aux", "ais", "ait"] {
+        if let Some(stem) = token.strip_suffix(suffix) {
+            if stem.len() >= 4 {
+                return stem.to_owned();
+            }
+        }
+    }
+    token
+}
+
+fn tokens_overlap(left: &[String], right: &[String]) -> usize {
+    left.iter()
+        .filter(|token| {
+            right.iter().any(|other| {
+                *token == other
+                    || (token.len() >= 5
+                        && other.len() >= 5
+                        && (other.starts_with(token.as_str()) || token.starts_with(other.as_str())))
+            })
+        })
+        .count()
+}
+
+fn soft_match_score(evidence: &str, soft_skills: &[String]) -> Option<u8> {
+    if soft_skills.is_empty() {
+        return None;
+    }
+    let hits = soft_skills
+        .iter()
+        .filter(|skill| contains_term(evidence, skill))
+        .count();
+    percentage(hits, soft_skills.len())
+}
+
+/// Évite de compter deux fois une exigence déjà listée en compétence.
+fn keywords_hors_competences(keywords: &[String], skills: &[String]) -> Vec<String> {
+    deduplicate_labels(keywords)
+        .into_iter()
+        .filter(|keyword| {
+            let key = search_key(keyword);
+            !key.is_empty()
+                && !skills.iter().any(|skill| {
+                    search_key(skill) == key
+                        || contains_search_term(skill, keyword)
+                        || contains_search_term(keyword, skill)
+                })
+        })
+        .collect()
+}
+
+fn profile_title(profile: &Profile) -> &str {
+    profile.identity.title.as_deref().unwrap_or_default()
+}
+
+fn annees_experience(profile: &Profile) -> usize {
+    let current = chrono::Utc::now().year();
+    profile
+        .experiences
+        .iter()
+        .filter_map(|e| {
+            year(&e.start_date).map(|start| {
+                (year(e.end_date.as_deref().unwrap_or_default()).unwrap_or(current) - start).max(0)
+                    as usize
+            })
+        })
+        .sum()
+}
+
+/// Corpus candidat : compétences, projets, certifications, langues, expériences, titre.
+fn candidate_evidence(profile: &Profile) -> String {
+    let skills = profile
+        .skills
+        .iter()
+        .map(|s| {
+            format!(
+                "{} {}",
+                s.name,
+                s.description.as_deref().unwrap_or_default()
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(" ");
+    let experiences = profile
+        .experiences
+        .iter()
+        .map(|e| {
+            format!(
+                "{} {} {}",
+                e.title,
+                e.company,
+                e.description.as_deref().unwrap_or_default()
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(" ");
+    let projects = profile
+        .projects
+        .iter()
+        .map(|p| {
+            format!(
+                "{} {} {}",
+                p.name,
+                p.technologies.as_deref().unwrap_or_default(),
+                p.description.as_deref().unwrap_or_default()
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(" ");
+    let certifications = profile
+        .certifications
+        .iter()
+        .map(|c| {
+            format!(
+                "{} {}",
+                c.name,
+                c.issuer.as_deref().unwrap_or_default()
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(" ");
+    let languages = profile
+        .languages
+        .iter()
+        .map(|l| format!("{} {}", l.name, l.level))
+        .collect::<Vec<_>>()
+        .join(" ");
+    let education = profile
+        .education
+        .iter()
+        .map(|e| {
+            format!(
+                "{} {} {}",
+                e.degree,
+                e.school,
+                e.description.as_deref().unwrap_or_default()
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(" ");
+    search_key(&format!(
+        "{} {} {} {} {} {} {} {}",
+        profile.identity.title.as_deref().unwrap_or_default(),
+        profile.identity.resume.as_deref().unwrap_or_default(),
+        skills,
+        experiences,
+        projects,
+        certifications,
+        languages,
+        education
+    ))
 }
 
 /// Retire du CV généré les faits absents du profil source.
@@ -825,7 +1091,8 @@ mod tests {
         let score = score_resume_imported(&resume, &offre(vec!["Rust", "Go"], vec!["cli"], None));
         assert_eq!(score.skills, Some(50));
         assert_eq!(score.ats, Some(0));
-        assert_eq!(score.total, 33);
+        // WEIGHT_SKILLS=35, WEIGHT_ATS=10 → (50*35)/45 ≈ 39
+        assert_eq!(score.total, 39);
     }
 
     #[test]
@@ -886,4 +1153,172 @@ mod tests {
             "12 ans exigés doivent noter plus sévèrement que 2 ans ({stricte:?} / {souple:?})"
         );
     }
+
+    /// Cas Open : profil full-stack JS/TS/React/Node vs offre Angular/Java —
+    /// score intermédiaire (pas 1/100), sans plancher artificiel.
+    #[test]
+    fn cas_open_score_intermediaire() {
+        let mut profile = profile_rust();
+        profile.identity.title = Some("Développeur Full Stack".into());
+        profile.identity.resume = Some(
+            "Développement d'applications web, tests et livraison continue.".into(),
+        );
+        profile.skills = vec![
+            Skill { name: "JavaScript".into(), description: Some("ES6+".into()) },
+            Skill { name: "TypeScript".into(), description: None },
+            Skill { name: "React".into(), description: Some("hooks, SPA".into()) },
+            Skill { name: "Node.js".into(), description: None },
+            Skill { name: "PostgreSQL".into(), description: None },
+        ];
+        profile.experiences = vec![Experience {
+            title: "Développeur Full Stack".into(),
+            company: "Nova".into(),
+            location: None,
+            start_date: "2019-01".into(),
+            end_date: None,
+            current: true,
+            description: Some(
+                "Conception d'APIs, interfaces React, tests et CI/CD.".into(),
+            ),
+        }];
+
+        let offre = StructuredListing {
+            title: "Développeur Full Stack".into(),
+            skills: vec![
+                "Angular".into(),
+                "Java".into(),
+                "Spring".into(),
+                "React".into(),
+                "Node.js".into(),
+                "TypeScript".into(),
+                "Docker".into(),
+                "Kubernetes".into(),
+            ],
+            soft_skills: vec!["Autonomie".into(), "Esprit d'équipe".into()],
+            experience: Some("3 ans".into()),
+            keywords: vec![
+                "tests".into(),
+                "CI/CD".into(),
+                "API".into(),
+                "React".into(), // doublon compétence → ignoré côté ATS
+            ],
+        };
+
+        let score = profile_score(&profile, &offre);
+        assert!(
+            score.total >= 40 && score.total <= 70,
+            "attendu 40–70 pour Open, obtenu {}",
+            score.total
+        );
+        assert!(score.present.iter().any(|s| s == "React"));
+        assert!(score.present.iter().any(|s| s == "Angular"), "Angular transférable via famille front");
+        assert!(score.missing.iter().any(|s| s == "Java"), "Java reste absent (pas JavaScript)");
+        assert!(score.skills.unwrap_or(0) >= 40);
+        assert_eq!(score.experience, Some(100));
+    }
+
+    #[test]
+    fn comptable_excel_couvre_calc_par_transfert() {
+        let mut profile = profile_rust();
+        profile.identity.title = Some("Comptable".into());
+        profile.skills = vec![Skill {
+            name: "Excel".into(),
+            description: Some("Tableaux croisés".into()),
+        }];
+        let score = profile_score(
+            &profile,
+            &StructuredListing {
+                title: "Comptable".into(),
+                skills: vec!["LibreOffice Calc".into()],
+                soft_skills: vec![],
+                experience: None,
+                keywords: vec![],
+            },
+        );
+        assert_eq!(score.missing, Vec::<String>::new());
+        assert_eq!(score.present, vec!["LibreOffice Calc"]);
+        assert_eq!(score.skills, Some(40)); // crédit transférable
+    }
+
+    #[test]
+    fn infirmiere_sans_ide_reste_penalisee() {
+        let mut profile = profile_rust();
+        profile.identity.title = Some("Aide-soignante".into());
+        profile.skills = vec![Skill {
+            name: "Soins de base".into(),
+            description: None,
+        }];
+        profile.certifications = vec![];
+        let score = profile_score(
+            &profile,
+            &StructuredListing {
+                title: "Infirmière IDE".into(),
+                skills: vec!["Diplôme IDE".into(), "IDE".into()],
+                soft_skills: vec![],
+                experience: Some("2 ans".into()),
+                keywords: vec!["soins".into()],
+            },
+        );
+        assert!(!score.missing.is_empty());
+        assert!(score.skills.unwrap_or(100) < 50);
+    }
+
+    #[test]
+    fn evidence_dans_un_projet_compte_comme_competence() {
+        let mut profile = profile_rust();
+        profile.skills = vec![];
+        profile.projects = vec![crate::features::profile::domain::Project {
+            name: "Dashboard interne".into(),
+            description: Some("Stack React et PostgreSQL".into()),
+            url: None,
+            technologies: Some("React, PostgreSQL".into()),
+        }];
+        let score = profile_score(&profile, &offre(vec!["React", "PostgreSQL"], vec![], None));
+        assert_eq!(score.missing, Vec::<String>::new());
+        assert_eq!(score.skills, Some(100));
+    }
+
+    #[test]
+    fn mots_cles_deja_en_competences_ne_sont_pas_recomptes() {
+        let mut profile = profile_rust();
+        profile.skills = vec![Skill {
+            name: "Rust".into(),
+            description: None,
+        }];
+        let score = profile_score(
+            &profile,
+            &offre(vec!["Rust"], vec!["Rust", "CLI"], None),
+        );
+        // ATS ne voit que CLI (Rust dédupliqué) — présence de CLI dans le résumé
+        assert!(score.ats.is_some());
+    }
+
+    #[test]
+    fn proximite_metier_eleve_le_total() {
+        let mut profile = profile_rust();
+        profile.identity.title = Some("Développeuse Rust systèmes".into());
+        // Compétences partielles : le bonus de proximité peut monter le total.
+        let proche = profile_score(
+            &profile,
+            &StructuredListing {
+                title: "Développeur Rust".into(),
+                skills: vec!["Rust".into(), "Go".into()],
+                soft_skills: vec![],
+                experience: None,
+                keywords: vec![],
+            },
+        );
+        let loin = profile_score(
+            &profile,
+            &StructuredListing {
+                title: "Comptable clients".into(),
+                skills: vec!["Rust".into(), "Go".into()],
+                soft_skills: vec![],
+                experience: None,
+                keywords: vec![],
+            },
+        );
+        assert!(proche.total > loin.total, "{} vs {}", proche.total, loin.total);
+    }
+
 }

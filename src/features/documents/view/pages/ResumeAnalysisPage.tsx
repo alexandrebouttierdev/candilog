@@ -63,7 +63,7 @@ export function ResumeAnalysisPage() {
                           : "Choisir un fichier"}
                     </span>
                     {vm.selectedFile ? (
-                      <span className="font-mono text-meta text-accent">{vm.selectedFile.name}</span>
+                      <span className="max-w-full truncate rounded-button bg-surface px-2.5 py-1 font-mono text-meta text-accent">{vm.selectedFile.name}</span>
                     ) : null}
                     <span className="text-meta text-ink-muted">PDF uniquement · 10 Mo maximum</span>
                   </button>

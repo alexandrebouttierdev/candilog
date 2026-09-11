@@ -109,7 +109,7 @@ export function ChampOffre({
   };
 
   return (
-    <FormField label={label} required={required} help={help}>
+    <FormField label={label} required={required} help={help} className="gap-1 [&>label]:mb-2.5">
       {(props) => (
         <div className="flex flex-col gap-1.5">
           <TextArea
