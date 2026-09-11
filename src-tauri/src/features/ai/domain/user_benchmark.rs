@@ -180,9 +180,10 @@ fn score_education(
     actual: &[crate::features::profile::domain::Education],
 ) -> UserBenchmarkCategoryScore {
     let max = 20_u32;
-    let score = list_overlap_score(expected, actual, |item| {
-        format!("{}|{}", normalize(&item.degree), normalize(&item.school))
-    });
+    // Exactitude `diplôme|école` trop sévère pour un petit modèle local : « BTS SIO » /
+    // « AFPA » / « Lycée Basch » doivent encore scorer quand l'import affiche bien les
+    // formations.
+    let score = list_pair_overlap_score(expected, actual, education_items_match);
     UserBenchmarkCategoryScore {
         label: "Formations".into(),
         score: ((score * max as f64).round() as u32).min(max),
@@ -261,6 +262,84 @@ where
         .filter(|value| actual_keys.iter().any(|actual| actual == *value))
         .count();
     matched as f64 / expected_keys.len() as f64
+}
+
+/// Proportion d'attendus pour lesquels au moins un extrait satisfait `matches`.
+fn list_pair_overlap_score<T, F>(expected: &[T], actual: &[T], matches: F) -> f64
+where
+    F: Fn(&T, &T) -> bool,
+{
+    if expected.is_empty() {
+        return if actual.is_empty() { 1.0 } else { 0.5 };
+    }
+    let matched = expected
+        .iter()
+        .filter(|attendu| actual.iter().any(|extrait| matches(attendu, extrait)))
+        .count();
+    matched as f64 / expected.len() as f64
+}
+
+/// Une formation attendue est reconnue si diplôme et école se recoupent suffisamment,
+/// même paraphrasés ou partiellement collés dans un seul champ par un petit modèle.
+fn education_items_match(
+    expected: &crate::features::profile::domain::Education,
+    actual: &crate::features::profile::domain::Education,
+) -> bool {
+    let degree_hit = soft_text_match(&expected.degree, &actual.degree)
+        || soft_text_match(&expected.degree, &actual.school);
+    let school_hit = soft_text_match(&expected.school, &actual.school)
+        || soft_text_match(&expected.school, &actual.degree);
+
+    if expected.degree.trim().is_empty() {
+        return school_hit;
+    }
+    if expected.school.trim().is_empty() {
+        return degree_hit;
+    }
+    if degree_hit && school_hit {
+        return true;
+    }
+    // Diplôme reconnu et école absente côté extrait : on compte quand même (cas fréquent
+    // en Texte local), sans exiger les deux champs remplis.
+    degree_hit && actual.school.trim().is_empty()
+}
+
+fn soft_text_match(expected: &str, actual: &str) -> bool {
+    let expected = expected.trim();
+    let actual = actual.trim();
+    if expected.is_empty() || actual.is_empty() {
+        return false;
+    }
+    if similar(expected, actual) {
+        return true;
+    }
+    let expected_tokens = significant_tokens(expected);
+    let actual_tokens = significant_tokens(actual);
+    if expected_tokens.is_empty() || actual_tokens.is_empty() {
+        return false;
+    }
+    let (shorter, longer) = if expected_tokens.len() <= actual_tokens.len() {
+        (&expected_tokens, &actual_tokens)
+    } else {
+        (&actual_tokens, &expected_tokens)
+    };
+    // Tous les jetons significatifs du plus court figurent dans le plus long.
+    shorter
+        .iter()
+        .all(|token| longer.iter().any(|other| other == token))
+}
+
+const EDUCATION_STOPWORDS: &[&str] = &[
+    "de", "du", "des", "la", "le", "les", "et", "en", "au", "aux", "option", "opts", "d", "l",
+];
+
+fn significant_tokens(value: &str) -> Vec<String> {
+    normalize(value)
+        .split(|caractere: char| !caractere.is_alphanumeric())
+        .filter(|jeton| jeton.chars().count() >= 2)
+        .filter(|jeton| !EDUCATION_STOPWORDS.contains(jeton))
+        .map(str::to_owned)
+        .collect()
 }
 
 fn field_match(expected: &str, actual: &str) -> bool {
@@ -406,7 +485,7 @@ mod tests {
     fn ground_truth_chargeable() {
         let truth = load_ground_truth();
         assert!(truth.is_ok(), "{}", truth.err().unwrap_or_default());
-        assert_eq!(truth.unwrap().benchmark_version, 2);
+        assert_eq!(truth.unwrap().benchmark_version, 3);
     }
 
     /// Régression : en installation, `CARGO_MANIFEST_DIR` pointe vers la machine de build,
@@ -426,6 +505,66 @@ mod tests {
             "le fichier matérialisé doit être un PDF"
         );
         assert_eq!(bytes.as_slice(), BENCHMARK_PDF_BYTES);
+    }
+
+    #[test]
+    fn les_formations_paraphrasees_scorent_malgre_une_egalite_imparfaite() {
+        let expected = Profile {
+            education: vec![
+                Education {
+                    degree: "Titre professionnel Développeur logiciel (Bac+2)".into(),
+                    school: "AFPA Rennes".into(),
+                    ..Education::default()
+                },
+                Education {
+                    degree: "BTS SIO option SLAM".into(),
+                    school: "Lycée Victor et Hélène Basch".into(),
+                    ..Education::default()
+                },
+            ],
+            ..Profile::default()
+        };
+        // Typique d'un petit modèle Texte : libellés raccourcis, école parfois omise.
+        let actual = Profile {
+            education: vec![
+                Education {
+                    degree: "Titre professionnel Développeur logiciel".into(),
+                    school: "AFPA".into(),
+                    ..Education::default()
+                },
+                Education {
+                    degree: "BTS SIO".into(),
+                    school: String::new(),
+                    ..Education::default()
+                },
+            ],
+            ..Profile::default()
+        };
+        let score = score_extracted_profile(&expected, &actual);
+        let formations = score
+            .categories
+            .iter()
+            .find(|category| category.label == "Formations")
+            .expect("catégorie formations");
+        assert_eq!(
+            formations.score, formations.max_score,
+            "les formations reconnues à l'import ne doivent plus donner 0/20"
+        );
+    }
+
+    #[test]
+    fn une_ecole_raccourcie_reste_associee_au_diplome() {
+        let expected = Education {
+            degree: "BTS SIO option SLAM".into(),
+            school: "Lycée Victor et Hélène Basch".into(),
+            ..Education::default()
+        };
+        let actual = Education {
+            degree: "BTS SIO option SLAM".into(),
+            school: "Lycée Basch".into(),
+            ..Education::default()
+        };
+        assert!(education_items_match(&expected, &actual));
     }
 
     #[test]

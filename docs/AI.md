@@ -320,6 +320,9 @@ Le benchmark fonctionne avec **tout fournisseur configuré** (IA locale Candilog
 externe, cloud). Les providers distants affichent un avertissement : le CV de
 référence sera envoyé au service configuré. Le score (0–100), la qualité qualitative, les
 métriques de durée et le détail par catégorie sont renvoyés dans `UserBenchmarkResult`.
+Le score **Formations** rapproche diplôme et école par similarité (et jetons
+significatifs) : un libellé raccourci ou une école omise par un petit modèle Texte ne
+donne plus 0/20 quand les formations sont bien présentes à l'import.
 L'annulation réutilise `ai_cancel` et le `generation_id` de la session.
 
 Ce test ne remplace pas le benchmark multi-CV de développement (`examples/cv_import_baseline.rs`
