@@ -868,12 +868,10 @@ impl AiService {
         request: UserBenchmarkRequest,
     ) -> AppResult<UserBenchmarkResult> {
         let ground_truth = load_ground_truth().map_err(AppError::Provider)?;
-        let pdf_path = benchmark_pdf_path();
-        if !pdf_path.exists() {
-            return Err(AppError::Provider(
-                "Le CV de référence du benchmark est introuvable.".into(),
-            ));
-        }
+        let pdf_path = benchmark_pdf_path().map_err(|error| {
+            tracing::error!(%error, "matérialisation du CV de benchmark impossible");
+            AppError::Provider("Le CV de référence du benchmark est introuvable.".into())
+        })?;
         let config = load_config(&self.pool)?;
         let remote_warning = !matches!(
             config.provider,
