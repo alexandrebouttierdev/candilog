@@ -89,6 +89,7 @@ pub fn run() {
             ai::ai_analyze_resume,
             ai::ai_select_resume_file,
             ai::ai_import_profile,
+            ai::ai_active_model_capabilities,
             ai::ai_cancel,
             managed_ollama::get_managed_ollama_status,
             managed_ollama::install_managed_ollama_model,

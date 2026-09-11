@@ -149,6 +149,11 @@ function BenchmarkSession({
                 ? `${result.metrics.tokens_per_second.toLocaleString("fr-FR", { maximumFractionDigits: 1 })} tokens/s`
                 : "N/A"}
             </span>
+            <span className="text-ink-muted">Méthode</span>
+            <span className="text-right text-ink">
+              {result.method_used === "vision" ? "Vision" : "Texte"}
+              {result.fallback_used ? " (repli)" : ""}
+            </span>
           </div>
           <ul className="flex flex-col gap-1 border-t border-line-soft pt-3 text-note">
             {result.categories.map((cat) => (

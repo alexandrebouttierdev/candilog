@@ -18,6 +18,7 @@ export { useAiRequiredStore } from "./viewmodel/ai-required-store";
 export { aiService } from "./services/aiService";
 export {
   cancelAiOperation,
+  fetchActiveModelCapabilities,
   importProfileFromResume,
   runUserBenchmark,
 } from "./viewmodel/importProfile";
@@ -26,8 +27,11 @@ export type {
   AiExecution,
   AiProgress,
   AtsRecommendationSection,
+  CvAnalysisMethod,
+  CvAnalysisMethodUsed,
   GeneratedResume,
   ImportedResumeAnalysis,
+  ProfileImportAnalysis,
   ProfileImportProgress,
   ResumeGeneration,
   SelectedResumeFile,

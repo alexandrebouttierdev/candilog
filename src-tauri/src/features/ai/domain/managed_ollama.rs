@@ -249,6 +249,9 @@ pub struct UserBenchmarkResult {
     pub provider_label: String,
     pub model_label: String,
     pub remote_warning: bool,
+    /// Pipeline réellement exécuté pour ce run.
+    pub method_used: super::CvAnalysisMethodUsed,
+    pub fallback_used: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]

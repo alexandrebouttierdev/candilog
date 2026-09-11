@@ -58,6 +58,13 @@ pub fn score_extracted_profile(expected: &Profile, actual: &Profile) -> Benchmar
     }
 }
 
+/// Méthode d'analyse réellement exécutée lors d'un benchmark.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BenchmarkAnalysisOutcome {
+    pub method_used: crate::features::ai::domain::CvAnalysisMethodUsed,
+    pub fallback_used: bool,
+}
+
 #[must_use]
 pub fn build_benchmark_result(
     expected_version: u32,
@@ -66,6 +73,7 @@ pub fn build_benchmark_result(
     provider_label: String,
     model_label: String,
     remote_warning: bool,
+    analysis: BenchmarkAnalysisOutcome,
 ) -> UserBenchmarkResult {
     UserBenchmarkResult {
         score: score.total,
@@ -77,6 +85,8 @@ pub fn build_benchmark_result(
         provider_label,
         model_label,
         remote_warning,
+        method_used: analysis.method_used,
+        fallback_used: analysis.fallback_used,
     }
 }
 

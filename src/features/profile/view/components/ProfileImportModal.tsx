@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type {
@@ -8,6 +8,8 @@ import type {
 } from "@/shared/types/generated/profile";
 import {
   type AiExecution,
+  type CvAnalysisMethod,
+  fetchActiveModelCapabilities,
   importProfileFromResume,
   isAiNotConfiguredError,
   useAiOperation,
@@ -43,6 +45,8 @@ import { ImportReviewForm } from "./ImportReviewForm";
 
 type Phase = "pick" | "picking" | "analyze" | "review" | "error" | "done";
 
+const METHOD_STORAGE_KEY = "candilog.cv-analysis-method";
+
 /** Import d'un CV : analyse sans écriture, puis revue obligatoire. */
 export function ProfileImportModal({
   open,
@@ -70,7 +74,34 @@ export function ProfileImportModal({
   const [pendingRequest, setPendingRequest] =
     useState<ImportProfileRequest | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [method, setMethod] = useState<CvAnalysisMethod>(readStoredMethod);
+  const [visionAvailable, setVisionAvailable] = useState(true);
+  const [fallbackUsed, setFallbackUsed] = useState(false);
+  const [methodUsed, setMethodUsed] = useState<CvAnalysisMethod | null>(null);
   const progress = useProfileImportProgress(stopping ? null : (operation?.id ?? null));
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    void fetchActiveModelCapabilities()
+      .then((caps) => {
+        if (cancelled) return;
+        setVisionAvailable(caps.vision);
+        if (!caps.vision) {
+          setMethod("text");
+        } else if (readStoredMethod() === "vision") {
+          setMethod("vision");
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        // Sans métadonnées, on laisse le choix utilisateur ; le backend basculera si besoin.
+        setVisionAvailable(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   // Le sélecteur de fichier natif est ouvert par la commande Rust : le clic ne déclenche
   // rien d'autre. L'analyse ne commence qu'au premier événement de progression, émis une
@@ -92,6 +123,12 @@ export function ProfileImportModal({
   useWatch({ control: form.control });
   const marked = countMarked(form.getValues());
 
+  const chooseMethod = (next: CvAnalysisMethod) => {
+    if (next === "vision" && !visionAvailable) return;
+    setMethod(next);
+    writeStoredMethod(next);
+  };
+
   const analyze = async () => {
     let id: string;
     try {
@@ -109,19 +146,23 @@ export function ProfileImportModal({
     setRequestedAt(Date.now());
     setPhase("picking");
     setError(null);
+    setFallbackUsed(false);
+    setMethodUsed(null);
     try {
-      const next = await importProfileFromResume(id);
+      const next = await importProfileFromResume(id, method);
       if (!isCurrent(id)) return;
       if (next === null) {
         setPhase("pick");
         return;
       }
-      setPreview(next.output);
-      form.reset(previewToFormValues(next.output));
+      setPreview(next.output.preview);
+      form.reset(previewToFormValues(next.output.preview));
       setMetrics({
         elapsed_ms: next.elapsed_ms,
         tokens_used: next.tokens_used,
       });
+      setFallbackUsed(next.output.fallback_used);
+      setMethodUsed(next.output.method_used);
       setPhase("review");
     } catch (caught) {
       if (!isCurrent(id)) return;
@@ -231,7 +272,15 @@ export function ProfileImportModal({
         width={view === "review" ? "880px" : "720px"}
       >
         {view === "pick" || view === "picking" ? (
-          <PickFile waiting={view === "picking"} onChoose={() => void analyze()} />
+          <div className="space-y-4 pt-3">
+            <AnalysisMethodPicker
+              method={method}
+              visionAvailable={visionAvailable}
+              disabled={view === "picking"}
+              onChange={chooseMethod}
+            />
+            <PickFile waiting={view === "picking"} onChoose={() => void analyze()} />
+          </div>
         ) : null}
         {view === "analyze" ? (
           <div className="space-y-4">
@@ -265,14 +314,27 @@ export function ProfileImportModal({
           </div>
         ) : null}
         {view === "review" && preview ? (
-          <ImportReviewForm
-            preview={preview}
-            entries={progress.entries}
-            formId={formId}
-            form={form}
-            formError={formError}
-            onSubmit={(values) => void apply(values)}
-          />
+          <div className="space-y-4">
+            {fallbackUsed ? (
+              <p className="rounded-button border border-line bg-surface-alt px-3 py-2 text-note text-ink">
+                L'analyse visuelle a échoué. Candilog a poursuivi automatiquement avec
+                l'analyse du texte.
+              </p>
+            ) : null}
+            {methodUsed ? (
+              <p className="text-meta text-ink-faint">
+                Méthode utilisée : {methodUsed === "vision" ? "Vision" : "Texte"}
+              </p>
+            ) : null}
+            <ImportReviewForm
+              preview={preview}
+              entries={progress.entries}
+              formId={formId}
+              form={form}
+              formError={formError}
+              onSubmit={(values) => void apply(values)}
+            />
+          </div>
         ) : null}
         {view === "done" && result ? (
           <ImportDonePanel result={result} totalMs={totalMs} aiMetrics={metrics} />
@@ -297,6 +359,60 @@ export function ProfileImportModal({
   );
 }
 
+function AnalysisMethodPicker({
+  method,
+  visionAvailable,
+  disabled,
+  onChange,
+}: {
+  method: CvAnalysisMethod;
+  visionAvailable: boolean;
+  disabled: boolean;
+  onChange: (method: CvAnalysisMethod) => void;
+}) {
+  return (
+    <fieldset className="space-y-2" disabled={disabled}>
+      <legend className="text-label font-semibold text-ink">Méthode d'analyse</legend>
+      <label className="flex cursor-pointer gap-3 rounded-button border border-line px-3 py-2.5 has-[:disabled]:cursor-default">
+        <input
+          type="radio"
+          name="cv-analysis-method"
+          className="mt-1"
+          checked={method === "vision"}
+          disabled={!visionAvailable}
+          onChange={() => onChange("vision")}
+        />
+        <span className="min-w-0">
+          <span className="block text-body font-medium text-ink">Vision — recommandé</span>
+          <span className="block text-meta text-ink-muted">
+            Analyse directement la mise en page du CV avec le modèle multimodal.
+          </span>
+          {!visionAvailable ? (
+            <span className="mt-1 block text-meta text-ink-faint">
+              Ce modèle ne prend pas en charge l'analyse visuelle. Le mode Texte sera utilisé.
+            </span>
+          ) : null}
+        </span>
+      </label>
+      <label className="flex cursor-pointer gap-3 rounded-button border border-line px-3 py-2.5">
+        <input
+          type="radio"
+          name="cv-analysis-method"
+          className="mt-1"
+          checked={method === "text"}
+          onChange={() => onChange("text")}
+        />
+        <span className="min-w-0">
+          <span className="block text-body font-medium text-ink">Texte</span>
+          <span className="block text-meta text-ink-muted">
+            Extrait d'abord le contenu du PDF puis l'analyse avec le modèle.
+          </span>
+        </span>
+      </label>
+    </fieldset>
+  );
+}
+
 function PickFile({
   waiting,
   onChoose,
@@ -305,28 +421,26 @@ function PickFile({
   onChoose: () => void;
 }) {
   return (
-    <div className="pt-3">
-      <button
-        type="button"
-        disabled={waiting}
-        onClick={onChoose}
-        className="flex w-full flex-col items-center gap-2 rounded-card border border-dashed border-line px-6 py-6 text-center disabled:cursor-default"
-      >
-        <Icon
-          name="upload_file"
-          size={22}
-          className="text-ink-faint"
-        />
-        <span className="text-body font-medium text-ink">
-          {waiting ? "Sélection du fichier…" : "Choisir et analyser un CV PDF"}
-        </span>
-        <span className="text-meta text-ink-muted">
-          {waiting
-            ? "La fenêtre de sélection de votre système est ouverte : l'analyse démarrera une fois le CV choisi."
-            : "Lecture locale · 10 Mo maximum"}
-        </span>
-      </button>
-    </div>
+    <button
+      type="button"
+      disabled={waiting}
+      onClick={onChoose}
+      className="flex w-full flex-col items-center gap-2 rounded-card border border-dashed border-line px-6 py-6 text-center disabled:cursor-default"
+    >
+      <Icon
+        name="upload_file"
+        size={22}
+        className="text-ink-faint"
+      />
+      <span className="text-body font-medium text-ink">
+        {waiting ? "Sélection du fichier…" : "Choisir et analyser un CV PDF"}
+      </span>
+      <span className="text-meta text-ink-muted">
+        {waiting
+          ? "La fenêtre de sélection de votre système est ouverte : l'analyse démarrera une fois le CV choisi."
+          : "Lecture locale · 10 Mo maximum"}
+      </span>
+    </button>
   );
 }
 
@@ -366,4 +480,22 @@ function emptyPreview(): ImportProfilePreview {
       certifications: 0,
     },
   };
+}
+
+function readStoredMethod(): CvAnalysisMethod {
+  try {
+    const raw = localStorage.getItem(METHOD_STORAGE_KEY);
+    if (raw === "text" || raw === "vision") return raw;
+  } catch {
+    // localStorage indisponible (tests) : Vision par défaut.
+  }
+  return "vision";
+}
+
+function writeStoredMethod(method: CvAnalysisMethod) {
+  try {
+    localStorage.setItem(METHOD_STORAGE_KEY, method);
+  } catch {
+    // Ignoré : la préférence reste en mémoire pour la session.
+  }
 }

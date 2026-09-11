@@ -72,12 +72,34 @@ pub struct GenerationOutput {
     pub tokens: Option<u32>,
 }
 
+/// Image destinée à un appel multimodal (octets bruts, encodés en base64 par l'adaptateur).
+#[derive(Debug, Clone)]
+pub struct VisionImage {
+    pub mime: &'static str,
+    pub bytes: Vec<u8>,
+}
+
 #[async_trait]
 pub trait LlmGenerator: Send + Sync {
     async fn generate(&self, prompt: &str, system: &str, json: bool)
         -> AppResult<GenerationOutput>;
+
+    /// Génération multimodale : le prompt texte accompagne une ou plusieurs images.
+    async fn generate_vision(
+        &self,
+        prompt: &str,
+        system: &str,
+        images: &[VisionImage],
+        json: bool,
+    ) -> AppResult<GenerationOutput>;
+
     async fn test(&self) -> AppResult<()>;
     async fn list_models(&self) -> AppResult<Vec<String>>;
+
+    /// Capacités rapportées par le runtime (Ollama `/api/show`), si disponibles.
+    async fn reported_capabilities(&self) -> AppResult<Option<Vec<String>>> {
+        Ok(None)
+    }
 }
 
 fn autorise_endpoint_local(provider: &ProviderKind) -> bool {
@@ -158,13 +180,44 @@ impl LlmGenerator for ProviderHttp {
             ProviderKind::CandilogLocal => Err(AppError::Provider(
                 "Le runtime local n'est pas initialisé.".into(),
             )),
-            ProviderKind::Ollama => self.ollama(prompt, system, json).await,
-            ProviderKind::Claude => self.claude(prompt, system).await,
-            ProviderKind::Gemini => self.gemini(prompt, system, json).await,
+            ProviderKind::Ollama => self.ollama(prompt, system, json, &[]).await,
+            ProviderKind::Claude => self.claude(prompt, system, &[]).await,
+            ProviderKind::Gemini => self.gemini(prompt, system, json, &[]).await,
             ProviderKind::OpenAI
             | ProviderKind::Mistral
             | ProviderKind::DeepSeek
-            | ProviderKind::Custom(_) => self.openai(prompt, system, json).await,
+            | ProviderKind::Custom(_) => self.openai(prompt, system, json, &[]).await,
+        }
+    }
+
+    async fn generate_vision(
+        &self,
+        prompt: &str,
+        system: &str,
+        images: &[VisionImage],
+        json: bool,
+    ) -> AppResult<GenerationOutput> {
+        if images.is_empty() {
+            return Err(AppError::Validation(
+                "Aucune image n'a été fournie pour l'analyse visuelle.".into(),
+            ));
+        }
+        tracing::info!(
+            provider = ?self.config.provider,
+            pages = images.len(),
+            "requête Vision envoyée au fournisseur"
+        );
+        match self.config.provider {
+            ProviderKind::CandilogLocal => Err(AppError::Provider(
+                "Le runtime local n'est pas initialisé.".into(),
+            )),
+            ProviderKind::Ollama => self.ollama(prompt, system, json, images).await,
+            ProviderKind::Claude => self.claude(prompt, system, images).await,
+            ProviderKind::Gemini => self.gemini(prompt, system, json, images).await,
+            ProviderKind::OpenAI
+            | ProviderKind::Mistral
+            | ProviderKind::DeepSeek
+            | ProviderKind::Custom(_) => self.openai(prompt, system, json, images).await,
         }
     }
 
@@ -184,6 +237,14 @@ impl LlmGenerator for ProviderHttp {
             | ProviderKind::Mistral
             | ProviderKind::DeepSeek
             | ProviderKind::Custom(_) => self.models_openai().await,
+        }
+    }
+
+    async fn reported_capabilities(&self) -> AppResult<Option<Vec<String>>> {
+        if matches!(self.config.provider, ProviderKind::Ollama) {
+            self.ollama_capabilities().await.map(Some)
+        } else {
+            Ok(None)
         }
     }
 }
@@ -258,8 +319,32 @@ impl ProviderHttp {
         }
     }
 
-    async fn ollama(&self, prompt: &str, system: &str, json: bool) -> AppResult<GenerationOutput> {
-        let body = serde_json::json!({"model":self.config.model,"messages":[{"role":"system","content":system},{"role":"user","content":prompt}],"stream":false,"format":if json { serde_json::json!("json") } else { serde_json::Value::Null },"options":{"temperature":self.config.temperature}});
+    async fn ollama(
+        &self,
+        prompt: &str,
+        system: &str,
+        json: bool,
+        images: &[VisionImage],
+    ) -> AppResult<GenerationOutput> {
+        let mut user = serde_json::json!({"role":"user","content":prompt});
+        if !images.is_empty() {
+            user["images"] = serde_json::Value::Array(
+                images
+                    .iter()
+                    .map(|image| serde_json::Value::String(base64_image(image)))
+                    .collect(),
+            );
+        }
+        let body = serde_json::json!({
+            "model": self.config.model,
+            "messages": [
+                {"role":"system","content":system},
+                user
+            ],
+            "stream": false,
+            "format": if json { serde_json::json!("json") } else { serde_json::Value::Null },
+            "options": {"temperature": self.config.temperature}
+        });
         let response = self
             .envoyer(|| {
                 self.client
@@ -275,8 +360,35 @@ impl ProviderHttp {
         })
     }
 
-    async fn openai(&self, prompt: &str, system: &str, json: bool) -> AppResult<GenerationOutput> {
-        let mut body = serde_json::json!({"model":self.config.model,"messages":[{"role":"system","content":system},{"role":"user","content":prompt}],"temperature":self.config.temperature});
+    async fn openai(
+        &self,
+        prompt: &str,
+        system: &str,
+        json: bool,
+        images: &[VisionImage],
+    ) -> AppResult<GenerationOutput> {
+        let user_content = if images.is_empty() {
+            serde_json::json!(prompt)
+        } else {
+            let mut parts = vec![serde_json::json!({"type":"text","text":prompt})];
+            for image in images {
+                parts.push(serde_json::json!({
+                    "type": "image_url",
+                    "image_url": {
+                        "url": format!("data:{};base64,{}", image.mime, base64_image(image))
+                    }
+                }));
+            }
+            serde_json::Value::Array(parts)
+        };
+        let mut body = serde_json::json!({
+            "model": self.config.model,
+            "messages": [
+                {"role":"system","content":system},
+                {"role":"user","content":user_content}
+            ],
+            "temperature": self.config.temperature
+        });
         if json {
             body["response_format"] = serde_json::json!({"type":"json_object"});
         }
@@ -296,8 +408,32 @@ impl ProviderHttp {
         })
     }
 
-    async fn claude(&self, prompt: &str, system: &str) -> AppResult<GenerationOutput> {
-        let body = serde_json::json!({"model":self.config.model,"max_tokens":4096,"system":system,"messages":[{"role":"user","content":prompt}],"temperature":self.config.temperature});
+    async fn claude(
+        &self,
+        prompt: &str,
+        system: &str,
+        images: &[VisionImage],
+    ) -> AppResult<GenerationOutput> {
+        let mut content = Vec::new();
+        for image in images {
+            let media_type = image.mime;
+            content.push(serde_json::json!({
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": media_type,
+                    "data": base64_image(image)
+                }
+            }));
+        }
+        content.push(serde_json::json!({"type":"text","text":prompt}));
+        let body = serde_json::json!({
+            "model": self.config.model,
+            "max_tokens": 4096,
+            "system": system,
+            "messages": [{"role":"user","content":content}],
+            "temperature": self.config.temperature
+        });
         let response = self
             .envoyer(|| {
                 self.client
@@ -318,8 +454,31 @@ impl ProviderHttp {
         })
     }
 
-    async fn gemini(&self, prompt: &str, system: &str, json: bool) -> AppResult<GenerationOutput> {
-        let body = serde_json::json!({"contents":[{"parts":[{"text":prompt}]}],"systemInstruction":{"parts":[{"text":system}]},"generationConfig":{"temperature":self.config.temperature,"responseMimeType":if json {"application/json"} else {"text/plain"}}});
+    async fn gemini(
+        &self,
+        prompt: &str,
+        system: &str,
+        json: bool,
+        images: &[VisionImage],
+    ) -> AppResult<GenerationOutput> {
+        let mut parts = Vec::new();
+        for image in images {
+            parts.push(serde_json::json!({
+                "inline_data": {
+                    "mime_type": image.mime,
+                    "data": base64_image(image)
+                }
+            }));
+        }
+        parts.push(serde_json::json!({"text": prompt}));
+        let body = serde_json::json!({
+            "contents": [{"parts": parts}],
+            "systemInstruction": {"parts": [{"text": system}]},
+            "generationConfig": {
+                "temperature": self.config.temperature,
+                "responseMimeType": if json { "application/json" } else { "text/plain" }
+            }
+        });
         let response = self
             .envoyer(|| {
                 self.client
@@ -341,6 +500,27 @@ impl ProviderHttp {
             text,
             tokens: total_tokens(&value),
         })
+    }
+
+    async fn ollama_capabilities(&self) -> AppResult<Vec<String>> {
+        let body = serde_json::json!({"name": self.config.model});
+        let response = self
+            .envoyer(|| {
+                self.client
+                    .post(format!("{}/api/show", self.endpoint))
+                    .json(&body)
+            })
+            .await?;
+        let value: serde_json::Value = json_limite(response).await?;
+        let mut caps = Vec::new();
+        if let Some(array) = value.get("capabilities").and_then(|v| v.as_array()) {
+            for item in array {
+                if let Some(text) = item.as_str() {
+                    caps.push(text.to_owned());
+                }
+            }
+        }
+        Ok(caps)
     }
 
     async fn models_ollama(&self) -> AppResult<Vec<String>> {
@@ -420,6 +600,11 @@ impl ProviderHttp {
             })
             .collect())
     }
+}
+
+fn base64_image(image: &VisionImage) -> String {
+    use base64::Engine as _;
+    base64::engine::general_purpose::STANDARD.encode(&image.bytes)
 }
 
 fn text(value: &serde_json::Value, pointer: &str) -> AppResult<String> {

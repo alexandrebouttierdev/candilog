@@ -1,7 +1,22 @@
 import { playCompletionSound } from "@/shared/lib/completion-sound";
 import { ipc } from "@/shared/services/ipc";
-import type { AiExecution, ImportedResumeAnalysis, LanguageCorrectionRequest, LanguageCorrectionResult, ListingAnalysis, ResumeAnalysisRequest, ResumeGenerationRequest, ProfileImportRequest, CoverLetterRequest, ResumeGeneration, SelectedResumeFile } from "../model/types";
-import type { ImportProfilePreview } from "@/shared/types/generated/profile";
+import type {
+  AiExecution,
+  ImportedResumeAnalysis,
+  LanguageCorrectionRequest,
+  LanguageCorrectionResult,
+  ListingAnalysis,
+  ResumeAnalysisRequest,
+  ResumeGenerationRequest,
+  ProfileImportRequest,
+  ProfileImportAnalysis,
+  CoverLetterRequest,
+  ResumeGeneration,
+  SelectedResumeFile,
+  ActiveModelCapabilities,
+  CvAnalysisMethod,
+  UserBenchmarkRequest,
+} from "../model/types";
 import type { UserBenchmarkResult } from "@/shared/types/generated/ai";
 
 /**
@@ -31,7 +46,9 @@ export const aiService = {
   correctFrench: (request: LanguageCorrectionRequest) => announce(ipc<AiExecution<LanguageCorrectionResult>>("ai_correct_french", { request }), request.generation_id),
   selectResumeFile: () => ipc<SelectedResumeFile | null>("ai_select_resume_file"),
   analyzeResume: (request: ResumeAnalysisRequest) => announce(ipc<AiExecution<ImportedResumeAnalysis>>("ai_analyze_resume", { request }), request.generation_id),
-  importProfile: (request: ProfileImportRequest) => announce(ipc<AiExecution<ImportProfilePreview> | null>("ai_import_profile", { request }), request.generation_id),
+  importProfile: (request: ProfileImportRequest) =>
+    announce(ipc<AiExecution<ProfileImportAnalysis> | null>("ai_import_profile", { request }), request.generation_id),
+  activeModelCapabilities: () => ipc<ActiveModelCapabilities>("ai_active_model_capabilities"),
   cancel: (generation_id: string) => {
     cancelledGenerations.add(generation_id);
     return ipc<void>("ai_cancel", { generation_id }).catch((error: unknown) => {
@@ -39,11 +56,13 @@ export const aiService = {
       throw error;
     });
   },
-  runUserBenchmark: (generationId: string) =>
+  runUserBenchmark: (request: UserBenchmarkRequest) =>
     announce(
-      ipc<UserBenchmarkResult>("run_user_cv_benchmark", { generation_id: generationId }),
-      generationId,
+      ipc<UserBenchmarkResult>("run_user_cv_benchmark", { request }),
+      request.generation_id,
     ),
 };
+
+export type { CvAnalysisMethod };
 
 export function generation_id(): string { return crypto.randomUUID(); }

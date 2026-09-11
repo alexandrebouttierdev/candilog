@@ -4,7 +4,7 @@ use crate::app::state::AppState;
 use crate::core::errors::AppResult;
 use crate::features::ai::domain::{
     InstallManagedModelRequest, ManagedModelDefinition, ManagedModelId, ManagedOllamaStatus,
-    UserBenchmarkResult,
+    UserBenchmarkRequest, UserBenchmarkResult,
 };
 use tauri::{AppHandle, Emitter, State};
 
@@ -57,7 +57,7 @@ pub fn activate_managed_ollama_model(
 #[tauri::command(rename_all = "snake_case")]
 pub async fn run_user_cv_benchmark(
     state: State<'_, AppState>,
-    generation_id: String,
+    request: UserBenchmarkRequest,
 ) -> AppResult<UserBenchmarkResult> {
-    state.ai.run_user_cv_benchmark(generation_id).await
+    state.ai.run_user_cv_benchmark(request).await
 }
