@@ -6,6 +6,7 @@ import type {
   MachineFit,
 } from "@/shared/types/generated/ai";
 import { cn } from "@/shared/lib/cn";
+import { formatDuration } from "@/shared/lib/duration";
 import { Button, ConfirmDialog, ErrorBanner, Icon, Skeleton, StatusPill, Tag } from "@/shared/ui";
 import type { Tone } from "@/shared/ui";
 import { ManagedPublisherLogo } from "./ProviderGrid";
@@ -275,7 +276,7 @@ function ModelCard({
             <Icon name="bolt" size={14} className="flex-none text-ink-subtle" />
             <span>
               Dernier test : {model.last_benchmark.score}&nbsp;/&nbsp;100 ·{" "}
-              {formatSeconds(model.last_benchmark.total_ms)}
+              {formatDuration(model.last_benchmark.total_ms)}
             </span>
           </p>
         ) : null}
@@ -336,6 +337,3 @@ function formatBytes(bytes: number): string {
   return `${(bytes / 1_000_000_000).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} Go`;
 }
 
-function formatSeconds(ms: number): string {
-  return `${(ms / 1000).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} s`;
-}
