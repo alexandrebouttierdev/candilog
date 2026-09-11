@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cancelAiOperation, runUserBenchmark } from "../../viewmodel/importProfile";
 import type { UserBenchmarkResult } from "@/shared/types/generated/ai";
 import { ModalHost } from "@/shared/ui";
@@ -27,6 +27,7 @@ export function AiBenchmarkModal({
   modelLabel: string;
 }) {
   const [session, setSession] = useState(0);
+  const [busy, setBusy] = useState(false);
 
   return (
     <ModalHost
@@ -35,7 +36,7 @@ export function AiBenchmarkModal({
       title="Tester l'IA"
       onClose={onClose}
       cancelLabel="Fermer"
-      busy={false}
+      busy={busy}
     >
       {open ? (
         <BenchmarkSession
@@ -43,6 +44,7 @@ export function AiBenchmarkModal({
           modelLabel={modelLabel}
           onClose={onClose}
           onRetest={() => setSession((value) => value + 1)}
+          onBusyChange={setBusy}
         />
       ) : null}
     </ModalHost>
@@ -53,40 +55,70 @@ function BenchmarkSession({
   modelLabel,
   onClose,
   onRetest,
+  onBusyChange,
 }: {
   modelLabel: string;
   onClose: () => void;
   onRetest: () => void;
+  onBusyChange: (busy: boolean) => void;
 }) {
   const [phase, setPhase] = useState<"running" | "done" | "error">("running");
   const [elapsedMs, setElapsedMs] = useState(0);
   const [result, setResult] = useState<UserBenchmarkResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [generationId] = useState(() => crypto.randomUUID());
   const [attempt, setAttempt] = useState(0);
+  const onCloseRef = useRef(onClose);
+  const generationIdRef = useRef<string | null>(null);
 
   useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    onBusyChange(phase === "running");
+  }, [onBusyChange, phase]);
+
+  useEffect(() => {
+    // Nouvel id à chaque lancement. Ne pas dépendre de `onClose` : les parents passent
+    // souvent `() => setOpen(false)`, recréé à chaque rendu — ça relançait le test avec
+    // le même id, `start` annulait la génération en cours, et le catch fermait la modale.
+    const generationId = crypto.randomUUID();
+    generationIdRef.current = generationId;
+    let active = true;
     const started = Date.now();
-    const timer = setInterval(() => setElapsedMs(Date.now() - started), 200);
+    const timer = setInterval(() => {
+      if (active) setElapsedMs(Date.now() - started);
+    }, 200);
     void runUserBenchmark(generationId)
       .then((payload) => {
+        if (!active) return;
         setResult(payload);
         setPhase("done");
       })
       .catch((err: unknown) => {
+        if (!active) return;
+        // Arrêter ferme déjà la modale ; un cancel de cleanup ne doit pas la refermer.
         if (err instanceof AppError && err.code === "cancelled") {
-          onClose();
           return;
         }
         setError(err instanceof AppError ? err.message : "Le test a échoué.");
         setPhase("error");
       })
       .finally(() => clearInterval(timer));
-    return () => clearInterval(timer);
-  }, [attempt, generationId, onClose]);
+    return () => {
+      active = false;
+      clearInterval(timer);
+      void cancelAiOperation(generationId);
+    };
+  }, [attempt]);
 
   const stop = () => {
-    void cancelAiOperation(generationId).finally(onClose);
+    const id = generationIdRef.current;
+    if (id) {
+      void cancelAiOperation(id).finally(() => onCloseRef.current());
+    } else {
+      onCloseRef.current();
+    }
   };
 
   return (
@@ -96,6 +128,10 @@ function BenchmarkSession({
           <p className="text-body text-ink-muted">Analyse du CV de référence ({modelLabel})…</p>
           <p className="text-note text-ink-faint">
             Temps écoulé : {formatSeconds(elapsedMs)}
+          </p>
+          <p className="text-note text-ink-faint">
+            Sur un modèle local, comptez souvent 1 à 3 minutes — la fenêtre reste ouverte
+            jusqu&apos;à la fin (utilisez Arrêter pour annuler).
           </p>
           <button
             type="button"

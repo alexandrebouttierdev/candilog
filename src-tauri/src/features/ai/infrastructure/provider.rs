@@ -241,10 +241,15 @@ impl LlmGenerator for ProviderHttp {
     }
 
     async fn reported_capabilities(&self) -> AppResult<Option<Vec<String>>> {
-        if matches!(self.config.provider, ProviderKind::Ollama) {
-            self.ollama_capabilities().await.map(Some)
-        } else {
-            Ok(None)
+        match self.config.provider {
+            ProviderKind::Ollama => self.ollama_capabilities().await.map(Some),
+            // Un endpoint Custom pointe souvent vers Ollama (`:11434`). Si `/api/show`
+            // répond, on s'y fie plutôt que d'envoyer des images à un modèle texte-only.
+            ProviderKind::Custom(_) => match self.ollama_capabilities().await {
+                Ok(caps) => Ok(Some(caps)),
+                Err(_) => Ok(None),
+            },
+            _ => Ok(None),
         }
     }
 }

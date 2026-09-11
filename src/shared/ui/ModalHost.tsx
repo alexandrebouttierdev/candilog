@@ -70,7 +70,14 @@ export function ModalHost({
   const body = useRef<HTMLDivElement>(null);
   const profondeur = useContext(ProfondeurModale);
 
-  useDismissable({ open, onDismiss: onClose, ...(onSubmit ? { onSubmit } : {}) });
+  // Pendant un traitement long (ex. benchmark IA), Échap ne doit pas fermer la modale :
+  // cela annulait la génération en cours et donnait l'impression que le test « ne marche pas ».
+  useDismissable({
+    open,
+    onDismiss: onClose,
+    dismissDisabled: busy,
+    ...(onSubmit ? { onSubmit } : {}),
+  });
 
   // Le focus doit entrer dans la modale à l'ouverture, sinon la tabulation continue de
   // parcourir l'arrière-plan atténué, invisible mais toujours atteignable au clavier.
@@ -116,7 +123,7 @@ export function ModalHost({
               <p className="mt-[3px] truncate text-note text-ink-faint">{subtitle}</p>
             ) : null}
           </div>
-          <IconButton icon="close" label="Fermer" onClick={onClose} />
+          <IconButton icon="close" label="Fermer" onClick={onClose} disabled={busy} />
         </header>
 
         <div
@@ -143,7 +150,7 @@ export function ModalHost({
           ) : (
             <div className="flex-1" />
           )}
-          <Button variant="secondary" size="dialog" onClick={onClose}>
+          <Button variant="secondary" size="dialog" onClick={onClose} disabled={busy}>
             {cancelLabel}
           </Button>
           {onSubmit ? (

@@ -92,8 +92,11 @@ L'import de profil (`ai_import_profile`) propose deux méthodes :
 | **Texte** | PDF → extraction Rust (`pdftotext -layout` / flux) → modèle texte → JSON |
 
 La capacité Vision est déterminée pour le **modèle réellement sélectionné** (métadonnées
-Ollama `/api/show` si disponibles, sinon catalogue Candilog et familles connues). Ministral 3
-du catalogue local est Vision ; LFM2.5 ne l'est pas.
+Ollama `/api/show` si disponibles — y compris via un endpoint Custom qui répond à
+`/api/show` — sinon catalogue Candilog et familles connues). Ministral 3 du catalogue
+local est Vision ; LFM2.5 ne l'est pas. **Gemma 3** : les variantes `4b` et plus sont
+Vision ; `gemma3:1b` et `270m` sont texte-only (un envoi d'images provoque un HTTP 400
+chez Ollama).
 
 Comportement :
 
