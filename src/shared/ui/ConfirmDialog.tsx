@@ -51,13 +51,13 @@ export function ConfirmDialog({
         role="alertdialog"
         aria-modal="true"
         aria-label={title}
-        className="w-[440px] max-w-full overflow-hidden rounded-[14px] border border-line bg-surface shadow-e3"
+        className="w-[440px] max-w-full overflow-hidden rounded-overlay border border-line bg-surface shadow-overlay"
       >
         <div className="px-[22px] pt-[22px] pb-[18px]">
-          <span className="mb-3.5 flex size-[38px] items-center justify-center rounded-[11px] bg-danger-tint text-danger">
+          <span className="mb-3.5 flex size-[38px] items-center justify-center rounded-tile bg-danger-tint text-danger">
             <Icon name="warning" size={21} />
           </span>
-          <h2 className="mb-2 text-[16.5px] font-strong tracking-[-0.015em] text-ink">{title}</h2>
+          <h2 className="mb-2 text-heading tracking-[-0.015em] text-ink">{title}</h2>
           <p className="mb-3.5 text-body leading-[1.6] text-pretty text-ink-muted">{description}</p>
           {note ? (
             <p className="flex items-center gap-2.5 rounded-tile border border-line bg-page px-[13px] py-[11px] text-label leading-normal text-ink-muted">

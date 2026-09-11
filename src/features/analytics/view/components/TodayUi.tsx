@@ -421,9 +421,11 @@ export function TodoRows({
 export function RecentRows({
   applications,
   onOpen,
+  onCreate,
 }: {
   applications: readonly Application[];
   onOpen: (id: string) => void;
+  onCreate?: () => void;
 }) {
   if (applications.length === 0) {
     return (
@@ -433,6 +435,17 @@ export function RecentRows({
         title="Aucune candidature récente"
         description="Les dernières candidatures enregistrées apparaîtront ici."
         className="py-5"
+        action={
+          onCreate ? (
+            <button
+              type="button"
+              onClick={onCreate}
+              className="text-label font-medium text-accent-text hover:text-accent-hover"
+            >
+              Nouvelle candidature
+            </button>
+          ) : undefined
+        }
       />
     );
   }

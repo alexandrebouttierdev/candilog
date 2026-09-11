@@ -117,6 +117,11 @@ export function ResumeLibraryPage() {
                 icon="search"
                 title="Aucun résultat"
                 description="Aucune version ne correspond à cette recherche."
+                action={
+                  <Button icon="filter_alt_off" onClick={() => vm.updateSearch("")}>
+                    Tout effacer
+                  </Button>
+                }
               />
             ) : (
               <EmptyState

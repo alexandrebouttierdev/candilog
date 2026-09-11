@@ -155,7 +155,7 @@ Noms d’icônes des sections : `src/app/router/routes.ts`. Logo produit : `src/
 - Un contrôle dit ce qu’il fait. Le toast reprend le même verbe (« Entreprise enregistrée »).
 - Erreur : ce qui s’est passé + comment continuer (`ErrorBanner` + Réessayer). Pas d’excuse.
 - Vide : titre court + une phrase + une action.
-- Dates affichées hors champ : « 02 août » / « 02 août 2026 » (`versDateLongue`). Saisie : **`JJ-MM-AAAA`** (`DateInput`, `FORMAT_DATE`). Heure : `HH:MM` (`TimeInput`).
+- Dates affichées hors champ : « 02 août » / « 02 août 2026 » (`toLongDate`). Saisie : **`JJ-MM-AAAA`** (`DateInput`, `FORMAT_DATE`). Heure : `HH:MM` (`TimeInput`).
 - L’utilisateur n’a pas à connaître Tauri, React, SQLite, le coffre, l’IPC.
 
 ---
@@ -164,7 +164,7 @@ Noms d’icônes des sections : `src/app/router/routes.ts`. Logo produit : `src/
 
 ```
 ┌──────┬──────────────────────────────────────────────┐
-│ Rail │ Topbar (titre de section)                    │
+│ Rail │ Topbar (accessoires / IA)                   │
 │ 68px │──────────────────────────────────────────────│
 │      │ SubNav 186px │  main  (#contenu)             │
 │      │ (si >1 route)│                               │
@@ -172,9 +172,9 @@ Noms d’icônes des sections : `src/app/router/routes.ts`. Logo produit : `src/
 ```
 
 - `AppShell` : `h-screen overflow-hidden`, glass sur rail / topbar / sous-nav (`glass-rail`, `glass-topbar`, `glass-subnav`).
-- `NavRail` : 7 sections, `⌘1`…`⌘7`, tooltip = `long_label`, item actif en teinte accent. Au-dessus du toggle thème : widget fournisseur IA (logo ou `smart_toy`, pastille d’état, clic → `/settings/ai`) et mini-compteurs CPU / RAM / VRAM.
+- `NavRail` : 7 sections, tooltip = `long_label`, item actif en teinte accent. Pas de raccourcis clavier de navigation (cf. §4).
 - `SubNav` : eyebrow = `short_label` uppercase ; item 30 px ; actif `bg-accent-tint-12 text-accent-text-soft`.
-- `TopBar` : titre de section. Accessoire **à droite** via `ContextBarAccessory` (note, ou recherche **seulement** si l’écran n’a pas de FilterBar).
+- `TopBar` : accessoires à droite via `ContextBarAccessory` (sélecteur IA `AiQuickSelector`, note, ou recherche **seulement** si l’écran n’a pas de FilterBar). Le titre de section vit dans le `PageHeader` de l’écran, pas dans la topbar.
 
 Le workspace (`main`) est un **outil plein cadre** : header d’écran + contenu, sans padding de page type site web (sauf Réglages, voir §10).
 
@@ -197,7 +197,7 @@ contenu (Kanban/table ou MasterList + fiche)
   automatique selon la densité ; au-delà de 6 options, chaque groupe affiche
   « Voir plus » / « Voir moins ».
 - Un critère = un `ActiveFilterChip` « Champ · Valeur ».
-- `filtersActifs` **exclut** la recherche libre (pastille du bouton Filtres).
+- `activeFilterCount` **exclut** la recherche libre (pastille du bouton Filtres).
 - La recherche et les filtres sont des **paramètres de requête backend**, jamais un `.filter()` sur la page affichée.
 - Action primaire (« Nouvelle », « Nouveau contact ») **dans** `FilterBar.actions`, pas dans le `PageHeader`.
 - Vide + critères : « Aucun résultat » + bouton Tout effacer.
@@ -249,7 +249,7 @@ Références : `ApplicationFilters`, `CompanyFilters`, `ContactFilters`.
 - `ActionCard` : **une action** (export, rechercher une MAJ) — pas une grille de bénéfices produit.
 - `SettingsHero` : écrans de **maintenance** (version, sauvegarde), pas un slogan.
 - À propos : identité (logo + nom + version) + faits (`InspectorRow`) + auteur. **Pas** de hero, **pas** de pile technique.
-- IA : colonne bornée à 1000 px, blocs sur `bg-surface` — bandeau fournisseur `AiHero` (logo, nom, modèle, état, test), **aussi pour l’IA locale** (icône générique `smart_toy` tant qu’aucune famille n’est active, sinon logo Mistral ou Qwen selon `family`, libellé « Tester l’IA », état dérivé du cycle local), puis les `SettingsCard` `Fournisseur`, `Configuration`, `Génération`, `Apparence`. Champs plafonnés à 380 px : un « Endpoint » de 600 px de large ne se lit pas mieux. L’état distant vient de `model/etatIa.ts` et existe **avant** tout test manuel ; la clé API n’est jamais rendue en clair. Le fournisseur local s’appelle **« IA locale »** dans l’interface, jamais d’après une famille de modèles : il retient l’artefact adapté à la machine. Sa tuile porte l’icône générique `smart_toy` (pas de pile Mistral+Qwen) — Qwen n’est jamais une carte fournisseur. Le logo du modèle actif vient de la propriété `family` renvoyée par le backend — jamais d’une recherche de sous-chaîne dans le nom affiché. La liste **Profils disponibles** reprend les `evaluations` du backend (`compatibility` + `reason`) : un profil `unsupported` est étiqueté « Incompatible » et son installation est désactivée. Le profil **Ultra léger** (Qwen) affiche un bandeau informatif « Mode ultra léger », jamais une alerte d'erreur. Un benchmark `too_slow` avertit **toujours**, y compris sur le plus petit profil où aucun repli n’existe : l’avertissement dépend du fait mesuré, pas de la disponibilité d’une solution. Enfin, le résultat de « Tester l’IA » est un message fixe : la prose du modèle n’est pas un état — interrogé sur « l’assistance locale », il annonçait qu’une « équipe d’assistance » était opérationnelle. La `ProviderGrid` échappe au couple `accent-border` / `accent-tint` des listes : ses huit tuiles étant toutes bordées et remplies, ce couple ne produisait qu'un écart de contraste de 1,20:1 en clair et 1,09:1 en sombre entre la tuile choisie et ses voisines — invisible. Elle emploie donc un filet accent plein, `bg-accent-tint-12`, et une pastille `check_circle` : un repère non chromatique, seul garant que le choix reste lisible dans les deux thèmes et sans distinguer les couleurs.
+- IA : colonne bornée à 1000 px, blocs sur `bg-surface` — bandeau fournisseur `AiHero` (logo, nom, modèle, état, test), **aussi pour l’IA locale** (icône générique `smart_toy` tant qu’aucune famille n’est active, sinon logo Mistral ou Qwen selon `family`, libellé « Tester l’IA », état dérivé du cycle local), puis les `SettingsCard` `Fournisseur`, `Configuration`, `Génération`. L’apparence (thème) vit dans **Personnalisation**. Champs plafonnés à 380 px : un « Endpoint » de 600 px de large ne se lit pas mieux. L’état distant vient de `model/aiStatus.ts` (`aiStatus`) et existe **avant** tout test manuel ; la clé API n’est jamais rendue en clair. Le fournisseur local s’appelle **« IA locale »** dans l’interface, jamais d’après une famille de modèles : il retient l’artefact adapté à la machine. Sa tuile porte l’icône générique `smart_toy` (pas de pile Mistral+Qwen) — Qwen n’est jamais une carte fournisseur. Le logo du modèle actif vient de la propriété `family` renvoyée par le backend — jamais d’une recherche de sous-chaîne dans le nom affiché. La liste **Profils disponibles** reprend les `evaluations` du backend (`compatibility` + `reason`) : un profil `unsupported` est étiqueté « Incompatible » et son installation est désactivée. Le profil **Ultra léger** (Qwen) affiche un bandeau informatif « Mode ultra léger », jamais une alerte d'erreur. Un benchmark `too_slow` avertit **toujours**, y compris sur le plus petit profil où aucun repli n’existe : l’avertissement dépend du fait mesuré, pas de la disponibilité d’une solution. Enfin, le résultat de « Tester l’IA » est un message fixe : la prose du modèle n’est pas un état — interrogé sur « l’assistance locale », il annonçait qu’une « équipe d’assistance » était opérationnelle. La `ProviderGrid` échappe au couple `accent-border` / `accent-tint` des listes : ses huit tuiles étant toutes bordées et remplies, ce couple ne produisait qu'un écart de contraste de 1,20:1 en clair et 1,09:1 en sombre entre la tuile choisie et ses voisines — invisible. Elle emploie donc un filet accent plein, `bg-accent-tint-12`, et une pastille `check_circle` : un repère non chromatique, seul garant que le choix reste lisible dans les deux thèmes et sans distinguer les couleurs.
 - Mises à jour : colonne bornée à 760 px, une carte de surface unique — vignette d’état, phrase, pastille et action en tête, puis les versions sous un filet, puis la progression. Les notes de version, quand il y en a, forment une `SettingsCard` `Nouveautés`. Rien sur le mécanisme de téléchargement — cela n’aide pas à décider.
 
 ### Formulaires

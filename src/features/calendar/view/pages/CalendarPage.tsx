@@ -22,6 +22,7 @@ import {
   ErrorBanner,
   Icon,
   PageHeader,
+  SegmentedControl,
   Skeleton,
   StatusPill,
 } from "@/shared/ui";
@@ -31,10 +32,10 @@ import type { IconName } from "@/shared/ui/icon-names";
 
 type CalendarView = "mois" | "semaine" | "jour";
 
-const VIEWS: readonly { id: CalendarView; label: string }[] = [
-  { id: "mois", label: "Mois" },
-  { id: "semaine", label: "Semaine" },
-  { id: "jour", label: "Jour" },
+const VIEWS: readonly { value: CalendarView; label: string }[] = [
+  { value: "mois", label: "Mois" },
+  { value: "semaine", label: "Semaine" },
+  { value: "jour", label: "Jour" },
 ];
 
 /** Ce que la page a ouvert : une modale d'entretien, de relance, ou rien. */
@@ -149,26 +150,13 @@ export function CalendarPage() {
           {`${vm.countFollowUps} relance${vm.countFollowUps > 1 ? "s" : ""}`}
         </StatusPill>
 
-        <div
-          role="group"
-          aria-label="Vue du calendrier"
-          className="flex items-center gap-0.5 rounded-button bg-neutral-tint p-0.5"
-        >
-          {VIEWS.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              aria-pressed={view === item.id}
-              onClick={() => setView(item.id)}
-              className={cn(
-                "h-7 rounded-[6px] px-2.5 text-meta font-medium transition-[background-color,color] duration-150",
-                view === item.id ? "bg-surface text-ink" : "text-ink-muted hover:text-ink",
-              )}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl
+          dense
+          label="Vue du calendrier"
+          value={view}
+          options={VIEWS}
+          onChange={setView}
+        />
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col p-6">

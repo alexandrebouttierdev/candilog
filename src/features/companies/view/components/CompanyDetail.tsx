@@ -111,6 +111,9 @@ export function CompanyDetail({
                 icon="work_off"
                 title="Aucune candidature"
                 description="Les candidatures envoyées à cette société apparaîtront ici."
+                action={
+                  <CardLink onClick={onToutVoir}>Ouvrir le suivi</CardLink>
+                }
               />
             ) : (
               applications.map((application) => {

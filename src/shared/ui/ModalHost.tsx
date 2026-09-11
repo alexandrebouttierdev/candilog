@@ -102,14 +102,14 @@ export function ModalHost({
         aria-label={title}
         tabIndex={-1}
         style={{ width, maxWidth: "100%" }}
-        className={`flex max-h-full flex-col overflow-hidden rounded-[14px] border border-line bg-surface shadow-e3${flush ? " h-[min(720px,100%)]" : ""}`}
+        className={`flex max-h-full flex-col overflow-hidden rounded-overlay border border-line bg-surface shadow-overlay${flush ? " h-[min(720px,100%)]" : ""}`}
       >
         <header className="flex flex-none items-start gap-[13px] border-b border-line px-[22px] py-[18px]">
           <span className="flex size-[34px] flex-none items-center justify-center rounded-tile bg-accent-tint text-accent">
             <Icon name={icon} size={19} />
           </span>
           <div className="min-w-0 flex-1">
-            <h2 className="truncate text-[16px] leading-tight font-strong tracking-[-0.015em] text-ink">
+            <h2 className="truncate text-heading leading-tight tracking-[-0.015em] text-ink">
               {title}
             </h2>
             {subtitle ? (
