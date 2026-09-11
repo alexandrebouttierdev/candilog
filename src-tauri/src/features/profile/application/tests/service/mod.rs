@@ -62,6 +62,7 @@ fn profil_complet_atteint_cent() {
         }],
         skills: vec![Skill {
             name: "Rust".into(),
+            description: None,
         }],
         education: vec![Education {
             degree: "Master".into(),
@@ -150,7 +151,10 @@ fn service_avec_competences(noms: Vec<&str>) -> ProfileService<Memoire> {
     let profile = Profile {
         skills: noms
             .into_iter()
-            .map(|name| Skill { name: name.into() })
+            .map(|name| Skill {
+                name: name.into(),
+                description: None,
+            })
             .collect(),
         ..Profile::default()
     };
@@ -204,6 +208,7 @@ fn preview_import_ne_modifie_pas_le_profil() {
         },
         skills: vec![Skill {
             name: "Rust".into(),
+            description: None,
         }],
         ..Profile::default()
     };
@@ -218,6 +223,7 @@ fn preview_import_ne_modifie_pas_le_profil() {
         },
         skills: vec![Skill {
             name: "React".into(),
+            description: None,
         }],
         ..Profile::default()
     };
@@ -240,6 +246,7 @@ fn apply_import_ecrit_une_seule_fois() {
         selected: true,
         value: Skill {
             name: "TypeScript".into(),
+            description: None,
         },
         existing_index: None,
         resolution: ImportResolution::AddAsNew,
@@ -257,6 +264,7 @@ fn apply_import_ne_ecrit_pas_si_la_validation_echoue() {
     let existing = Profile {
         skills: vec![Skill {
             name: "Rust".into(),
+            description: None,
         }],
         ..Profile::default()
     };
@@ -451,6 +459,7 @@ fn reinitialiser_vide_le_profil_et_sa_photo() {
             },
             skills: vec![Skill {
                 name: "Rust".into(),
+                description: None,
             }],
             ..Profile::default()
         })

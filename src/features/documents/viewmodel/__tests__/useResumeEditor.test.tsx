@@ -442,7 +442,7 @@ describe("confirmation d'ajout au profil", () => {
         education: [],
         certifications: [],
         languages: [],
-        skills: [{ name: "Docker" }],
+        skills: [{ name: "Docker", description: null }],
         interests: [],
       },
       completion: 40,

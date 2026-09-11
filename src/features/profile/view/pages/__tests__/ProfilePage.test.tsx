@@ -128,6 +128,21 @@ describe("écran Profil — photo", () => {
   });
 });
 
+describe("écran Profil — onglets d'identité", () => {
+  it("n'expose plus le bouton Modifier le profil", async () => {
+    render(<ProfilePage />, { wrapper });
+    await screen.findByRole("tablist", { name: "Sections du profil" });
+    expect(screen.queryByRole("button", { name: "Modifier le profil" })).not.toBeInTheDocument();
+  });
+
+  it("ouvre la modale Identité depuis l'onglet dédié", async () => {
+    render(<ProfilePage />, { wrapper });
+    await userEvent.click(await screen.findByRole("tab", { name: /Identité/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Modifier" }));
+    expect(await screen.findByRole("dialog", { name: "Identité" })).toBeInTheDocument();
+  });
+});
+
 describe("écran Profil — import de CV", () => {
   it("présente l'import comme action principale et ouvre la revue", async () => {
     render(<ProfilePage />, { wrapper });

@@ -121,7 +121,9 @@ le cherchant par son nom exact.
 résumé facultatif, date de naissance et âge facultatifs, disponibilité et contrats
 recherchés facultatifs) et les listes d'expériences, compétences, formations, langues,
 projets et certifications, le profil porte aussi une liste facultative de **centres
-d'intérêts**. Une base antérieure sans ces clés reste lisible grâce aux défauts Serde.
+d'intérêts**. Les compétences, projets et certifications acceptent une **description
+facultative** (missions, détail ou précision) ; une base antérieure sans ces clés reste
+lisible grâce aux défauts Serde.
 
 ## Photo de profil
 

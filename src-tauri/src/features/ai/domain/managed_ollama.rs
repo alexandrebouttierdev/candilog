@@ -8,7 +8,7 @@ pub const MANAGED_OLLAMA_RUNTIME_VERSION: &str = "0.13.4";
 
 /// Version du benchmark utilisateur `CV_BENCHMARK.pdf` — à incrémenter si le PDF, la ground
 /// truth ou l'algorithme de scoring change de façon incompatible.
-pub const USER_BENCHMARK_VERSION: u32 = 2;
+pub const USER_BENCHMARK_VERSION: u32 = 3;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
 #[serde(rename_all = "snake_case")]

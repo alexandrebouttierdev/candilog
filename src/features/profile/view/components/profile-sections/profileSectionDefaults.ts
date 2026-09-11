@@ -45,8 +45,13 @@ export const experienceDefaults = (items: Experience[]) => ({
   })),
 });
 
-export const skillDefaults = (items: Skill[]) => ({ items: structuredClone(items) });
-export const emptySkill = () => ({ name: "" });
+export const skillDefaults = (items: Skill[]) => ({
+  items: items.map((item) => ({
+    ...item,
+    description: text(item.description),
+  })),
+});
+export const emptySkill = () => ({ name: "", description: "" });
 
 export const interestDefaults = (items: Interest[]) => ({ items: structuredClone(items) });
 export const emptyInterest = () => ({ name: "" });
@@ -82,12 +87,19 @@ export const projectDefaults = (items: Project[]) => ({
   })),
 });
 
-export const emptyCertification = () => ({ name: "", issuer: "", date: "", url: "" });
+export const emptyCertification = () => ({
+  name: "",
+  issuer: "",
+  date: "",
+  url: "",
+  description: "",
+});
 export const certificationDefaults = (items: Certification[]) => ({
   items: items.map((item) => ({
     ...item,
     issuer: text(item.issuer),
     date: text(item.date),
     url: text(item.url),
+    description: text(item.description),
   })),
 });

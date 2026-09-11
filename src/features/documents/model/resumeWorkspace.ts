@@ -31,7 +31,7 @@ export type ResumeField =
   | { type: "project_bullet"; index: number; item: number }
   | { type: "skill"; group: number; item: number }
   | { type: "education"; index: number; field: "degree" | "school" | "location" | "period" | "description" }
-  | { type: "certification"; index: number; field: "name" | "issuer" | "date" }
+  | { type: "certification"; index: number; field: "name" | "issuer" | "date" | "description" }
   | { type: "language"; index: number; field: "name" | "level" };
 
 /** Collection du document qu'une section fermée peut ajouter ou retirer en bloc. */
@@ -436,6 +436,7 @@ function updateCertification(
     case "name": return { ...certification, name: value };
     case "issuer": return { ...certification, issuer: emptyToNull(value) };
     case "date": return { ...certification, date: emptyToNull(value) };
+    case "description": return { ...certification, description: emptyToNull(value) };
   }
 }
 
@@ -612,7 +613,7 @@ function emptyEducation(): ResumeEducationBlock {
 }
 
 function emptyCertification(): ResumeCertificationBlock {
-  return { id: newBlockId(), name: "", issuer: null, date: null };
+  return { id: newBlockId(), name: "", issuer: null, date: null, description: null };
 }
 
 function emptyLanguage(): ResumeLanguageBlock {
@@ -808,7 +809,7 @@ export function workspaceFixture(overrides: Partial<ResumeDocument> = {}): Resum
         description: null,
       },
     ],
-    certifications: [{ id: "cert-1", name: "Certification", issuer: null, date: null }],
+    certifications: [{ id: "cert-1", name: "Certification", issuer: null, date: null, description: null }],
     languages: [{ id: "lang-1", name: "Français", level: "Natif" }],
     ...overrides,
   };

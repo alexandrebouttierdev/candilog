@@ -10,7 +10,27 @@
 //! `ground_imported_resume` le fait déjà pour l'analyse de CV.
 
 use super::normalization::contains_search_term;
-use crate::features::profile::domain::{Education, Profile};
+use crate::features::profile::domain::{Education, Identity, Profile};
+
+/// Options du recadrage : en Vision, le texte PDF n'est qu'un complément partiel — les
+/// descriptions libres et le prénom / nom lus sur les images ne doivent pas être effacés
+/// faute d'y figurer mot pour mot.
+#[derive(Debug, Clone, Copy)]
+pub struct GroundingOptions {
+    /// Recadrer aussi résumé et descriptions (expériences, formations, projets, etc.).
+    pub free_text: bool,
+    /// Recadrer prénom et nom : un PDF complémentaire tronqué les effaçait sinon.
+    pub person_names: bool,
+}
+
+impl Default for GroundingOptions {
+    fn default() -> Self {
+        Self {
+            free_text: true,
+            person_names: true,
+        }
+    }
+}
 
 /// Efface d'un profil importé tout texte absent du CV analysé.
 ///
@@ -18,15 +38,35 @@ use crate::features::profile::domain::{Education, Profile};
 /// format `AAAA-MM`, que le CV n'écrit pas tel quel (« Oct. 2025 »). Les entrées vidées de
 /// leur libellé sont retirées ensuite par le nettoyage par vacuité.
 pub fn ground_imported_profile(source: &str, profile: &mut Profile) {
+    ground_imported_profile_with(source, profile, GroundingOptions::default());
+}
+
+/// Recadrage pour le mode Vision : conserve prénom, nom et descriptions libres des images.
+pub fn ground_imported_profile_keep_free_text(source: &str, profile: &mut Profile) {
+    ground_imported_profile_with(
+        source,
+        profile,
+        GroundingOptions {
+            free_text: false,
+            person_names: false,
+        },
+    );
+}
+
+fn ground_imported_profile_with(source: &str, profile: &mut Profile, options: GroundingOptions) {
     let identity = &mut profile.identity;
-    retenir(source, &mut identity.first_name);
-    retenir(source, &mut identity.name);
+    if options.person_names {
+        retenir(source, &mut identity.first_name);
+        retenir(source, &mut identity.name);
+    }
     retenir(source, &mut identity.email);
     retenir_option(source, &mut identity.phone);
     retenir_option(source, &mut identity.address);
     retenir_option(source, &mut identity.city);
     retenir_option(source, &mut identity.title);
-    retenir_option(source, &mut identity.resume);
+    if options.free_text {
+        retenir_description(source, &mut identity.resume);
+    }
     retenir_option(source, &mut identity.birth_date);
     retenir_option(source, &mut identity.availability);
     retenir_option(source, &mut identity.desired_contracts);
@@ -46,16 +86,23 @@ pub fn ground_imported_profile(source: &str, profile: &mut Profile) {
         retenir(source, &mut experience.title);
         retenir(source, &mut experience.company);
         retenir_option(source, &mut experience.location);
-        retenir_option(source, &mut experience.description);
+        if options.free_text {
+            retenir_description(source, &mut experience.description);
+        }
     }
     for skill in &mut profile.skills {
         retenir(source, &mut skill.name);
+        if options.free_text {
+            retenir_description(source, &mut skill.description);
+        }
     }
     for education in &mut profile.education {
         retenir(source, &mut education.degree);
         retenir(source, &mut education.school);
         retenir_option(source, &mut education.location);
-        retenir_option(source, &mut education.description);
+        if options.free_text {
+            retenir_description(source, &mut education.description);
+        }
     }
     for language in &mut profile.languages {
         retenir(source, &mut language.name);
@@ -63,7 +110,9 @@ pub fn ground_imported_profile(source: &str, profile: &mut Profile) {
     }
     for project in &mut profile.projects {
         retenir(source, &mut project.name);
-        retenir_option(source, &mut project.description);
+        if options.free_text {
+            retenir_description(source, &mut project.description);
+        }
         retenir_option(source, &mut project.url);
         retenir_option(source, &mut project.technologies);
     }
@@ -71,6 +120,9 @@ pub fn ground_imported_profile(source: &str, profile: &mut Profile) {
         retenir(source, &mut certification.name);
         retenir_option(source, &mut certification.issuer);
         retenir_option(source, &mut certification.url);
+        if options.free_text {
+            retenir_description(source, &mut certification.description);
+        }
     }
     for interest in &mut profile.interests {
         retenir(source, &mut interest.name);
@@ -94,6 +146,48 @@ fn retenir_option(source: &str, value: &mut Option<String>) {
     }
 }
 
+/// Conserve les fragments d'une description présents dans le CV.
+///
+/// Une description multi-puces jointe par des sauts de ligne n'apparaît presque jamais
+/// telle quelle dans le texte source (puces `•`, colonnes, reformulations légères). On
+/// retient chaque fragment recopié ; si aucun ne l'est, le champ est vidé.
+fn retenir_description(source: &str, value: &mut Option<String>) {
+    let Some(texte) = value.as_deref() else {
+        return;
+    };
+    if texte.trim().is_empty() {
+        *value = None;
+        return;
+    }
+    if est_recopie(source, texte) {
+        return;
+    }
+    let kept: Vec<String> = decouper_description(texte)
+        .into_iter()
+        .filter(|fragment| est_recopie(source, fragment))
+        .collect();
+    if kept.is_empty() {
+        *value = None;
+    } else {
+        *value = Some(kept.join("\n"));
+    }
+}
+
+fn decouper_description(texte: &str) -> Vec<String> {
+    texte
+        .lines()
+        .flat_map(|ligne| ligne.split(['•', '●', '▪', '◦', '·', ';', '|']))
+        .map(|fragment| {
+            fragment
+                .trim()
+                .trim_start_matches(['-', '–', '—', '*', '·', '•'])
+                .trim()
+                .to_owned()
+        })
+        .filter(|fragment| fragment.chars().any(char::is_alphanumeric))
+        .collect()
+}
+
 /// Une valeur est recopiée si elle porte du texte et apparaît telle quelle dans le CV.
 ///
 /// La recherche exige des frontières alphanumériques : c'est elle qui écarte « .com », que
@@ -102,6 +196,86 @@ fn retenir_option(source: &str, value: &mut Option<String>) {
 /// (« . »), qu'une ponctuation quelconque du CV suffirait sinon à valider.
 fn est_recopie(source: &str, value: &str) -> bool {
     value.chars().any(char::is_alphanumeric) && contains_search_term(source, value)
+}
+
+/// Complète prénom et nom quand l'un des deux (ou les deux) est vide.
+///
+/// Un petit modèle met souvent le nom complet dans un seul champ. On découpe sur le
+/// premier espace. Si les deux restent vides, on tente une ligne d'identité en tête du
+/// texte source — utile après un recadrage Vision qui n'a pas touché aux noms.
+pub fn completer_identite_noms(source: &str, profile: &mut Profile) {
+    decouper_nom_complet(&mut profile.identity);
+    if profile.identity.first_name.trim().is_empty() && profile.identity.name.trim().is_empty() {
+        if let Some((prenom, nom)) = premier_nom_personne(source) {
+            profile.identity.first_name = prenom;
+            profile.identity.name = nom;
+        }
+    }
+}
+
+/// Découpe un nom complet coincé dans `first_name` ou `name`.
+fn decouper_nom_complet(identity: &mut Identity) {
+    let prenom_vide = identity.first_name.trim().is_empty();
+    let nom_vide = identity.name.trim().is_empty();
+    if prenom_vide == nom_vide {
+        return;
+    }
+    let source = if prenom_vide {
+        identity.name.trim()
+    } else {
+        identity.first_name.trim()
+    };
+    let Some((prenom, nom)) = couper_prenom_nom(source) else {
+        return;
+    };
+    identity.first_name = prenom;
+    identity.name = nom;
+}
+
+fn couper_prenom_nom(complet: &str) -> Option<(String, String)> {
+    let mut parts = complet.split_whitespace();
+    let prenom = parts.next()?.to_owned();
+    let reste: Vec<&str> = parts.collect();
+    if reste.is_empty() {
+        return None;
+    }
+    Some((prenom, reste.join(" ")))
+}
+
+/// Première ligne courte qui ressemble à « Prénom Nom », extraite telle quelle.
+fn premier_nom_personne(source: &str) -> Option<(String, String)> {
+    for ligne in source.lines() {
+        let ligne = ligne.trim();
+        if ligne.is_empty()
+            || ligne.contains('@')
+            || ligne.to_ascii_lowercase().contains("http")
+            || ligne.chars().any(|caractere| caractere.is_ascii_digit())
+        {
+            continue;
+        }
+        let mots: Vec<&str> = ligne.split_whitespace().collect();
+        if !(2..=4).contains(&mots.len()) || ligne.chars().count() > 60 {
+            continue;
+        }
+        if !mots.iter().all(|mot| est_jeton_nom(mot)) {
+            continue;
+        }
+        return couper_prenom_nom(ligne);
+    }
+    None
+}
+
+fn est_jeton_nom(valeur: &str) -> bool {
+    let epure = valeur.trim_matches(|caractere: char| {
+        matches!(
+            caractere,
+            ',' | ';' | '.' | ':' | '!' | '?' | '"' | '\'' | '(' | ')'
+        )
+    });
+    !epure.is_empty()
+        && epure
+            .chars()
+            .all(|caractere| caractere.is_alphabetic() || matches!(caractere, '-' | '\'' | '’'))
 }
 
 /// Complète l'email et le téléphone vides à partir du texte déjà soumis au modèle.
@@ -1090,6 +1264,7 @@ Anglais · lecture courante de documentation technique\n";
             },
             skills: vec![Skill {
                 name: "Ubuntu Server".into(),
+                description: None,
             }],
             languages: vec![Language {
                 name: "Français".into(),
@@ -1140,6 +1315,124 @@ Anglais · lecture courante de documentation technique\n";
 
         assert_eq!(profile.experiences[0].start_date, "2025-10");
         assert_eq!(profile.experiences[0].end_date.as_deref(), Some("2026-09"));
+    }
+
+    /// Une description multi-puces n'apparaît pas d'un bloc : on retient chaque fragment
+    /// recopié plutôt que d'effacer toute la mission.
+    #[test]
+    fn conserve_les_fragments_de_description_presents_dans_le_cv() {
+        let source = "\
+Senior Full-Stack Developer — AlthéaRH
+Conception d'applications React et Node.js
+Encadrement d'une équipe de 4 développeurs
+Mise en place de pipelines CI/CD";
+        let mut profile = Profile {
+            experiences: vec![Experience {
+                title: "Senior Full-Stack Developer".into(),
+                company: "AlthéaRH".into(),
+                description: Some(
+                    "Conception d'applications React et Node.js\n\
+                     Encadrement d'une équipe de 4 développeurs\n\
+                     Mission inventée absente du CV"
+                        .into(),
+                ),
+                ..Experience::default()
+            }],
+            ..Profile::default()
+        };
+
+        ground_imported_profile(source, &mut profile);
+
+        let description = profile.experiences[0].description.as_deref().unwrap();
+        assert!(description.contains("Conception d'applications React et Node.js"));
+        assert!(description.contains("Encadrement d'une équipe de 4 développeurs"));
+        assert!(!description.contains("Mission inventée"));
+    }
+
+    #[test]
+    fn conserve_les_descriptions_en_mode_vision_malgre_un_texte_partiel() {
+        let source = "Thomas Candilog\nAlthéaRH\nReact";
+        let mut profile = Profile {
+            experiences: vec![Experience {
+                title: "Senior Full-Stack Developer".into(),
+                company: "AlthéaRH".into(),
+                description: Some("Conception d'applications métier pour les RH".into()),
+                ..Experience::default()
+            }],
+            projects: vec![Project {
+                name: "Candiscore".into(),
+                description: Some("Application desktop de suivi de candidatures".into()),
+                ..Project::default()
+            }],
+            ..Profile::default()
+        };
+
+        profile.identity.first_name = "Thomas".into();
+        profile.identity.name = "Candilog".into();
+        ground_imported_profile_keep_free_text(source, &mut profile);
+
+        assert_eq!(
+            profile.experiences[0].description.as_deref(),
+            Some("Conception d'applications métier pour les RH")
+        );
+        assert_eq!(
+            profile.projects[0].description.as_deref(),
+            Some("Application desktop de suivi de candidatures")
+        );
+        // Le titre absent du texte partiel est bien effacé.
+        assert_eq!(profile.experiences[0].title, "");
+        // Prénom et nom lus sur l'image restent, même si le PDF complémentaire est pauvre.
+        assert_eq!(profile.identity.first_name, "Thomas");
+        assert_eq!(profile.identity.name, "Candilog");
+    }
+
+    #[test]
+    fn decoupe_un_nom_complet_colle_dans_un_seul_champ() {
+        let mut dans_le_nom = Profile {
+            identity: Identity {
+                name: "Alexandre Bouttier".into(),
+                ..Identity::default()
+            },
+            ..Profile::default()
+        };
+        completer_identite_noms("", &mut dans_le_nom);
+        assert_eq!(dans_le_nom.identity.first_name, "Alexandre");
+        assert_eq!(dans_le_nom.identity.name, "Bouttier");
+
+        let mut dans_le_prenom = Profile {
+            identity: Identity {
+                first_name: "Camille Martin".into(),
+                ..Identity::default()
+            },
+            ..Profile::default()
+        };
+        completer_identite_noms("", &mut dans_le_prenom);
+        assert_eq!(dans_le_prenom.identity.first_name, "Camille");
+        assert_eq!(dans_le_prenom.identity.name, "Martin");
+    }
+
+    #[test]
+    fn complete_prenom_et_nom_vides_depuis_le_texte_source() {
+        let source = "Alexandre Bouttier\nTechnicien systèmes\nalexandre@example.fr";
+        let mut profile = identite_vide();
+        completer_identite_noms(source, &mut profile);
+        assert_eq!(profile.identity.first_name, "Alexandre");
+        assert_eq!(profile.identity.name, "Bouttier");
+    }
+
+    #[test]
+    fn ne_decoupe_pas_quand_prenom_et_nom_sont_deja_remplis() {
+        let mut profile = Profile {
+            identity: Identity {
+                first_name: "Alexandre".into(),
+                name: "Bouttier".into(),
+                ..Identity::default()
+            },
+            ..Profile::default()
+        };
+        completer_identite_noms("Autre Personne\n...", &mut profile);
+        assert_eq!(profile.identity.first_name, "Alexandre");
+        assert_eq!(profile.identity.name, "Bouttier");
     }
 
     fn identite_vide() -> Profile {

@@ -21,7 +21,8 @@ pub use managed_ollama::*;
 pub use models::*;
 pub use profile_dates::normalize_profile_dates;
 pub use profile_grounding::{
-    completer_contacts_vides, completer_formations_manquantes, ground_imported_profile,
+    completer_contacts_vides, completer_formations_manquantes, completer_identite_noms,
+    ground_imported_profile, ground_imported_profile_keep_free_text,
 };
 pub use scoring::{
     ground_content_recommendations, ground_extracted_listing, ground_generated_resume,

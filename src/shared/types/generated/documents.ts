@@ -21,7 +21,7 @@ export type NewCoverLetter = { name: string, company: string | null, job_title: 
  */
 export type NewResume = { name: string, content: unknown, };
 
-export type ResumeCertificationBlock = { id: string, name: string, issuer: string | null, date: string | null, };
+export type ResumeCertificationBlock = { id: string, name: string, issuer: string | null, date: string | null, description: string | null, };
 
 export type ResumeContentRecommendation = { id: string, label: string, reason: string, relevance: ContentRelevance, action: ResumeContentRecommendationAction, score_delta: number, layout_after: ResumeLayoutMeasurement, };
 

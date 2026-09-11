@@ -235,6 +235,7 @@ mod tests {
             },
             skills: vec![Skill {
                 name: "Rust".into(),
+                description: None,
             }],
             ..vide()
         };
@@ -251,6 +252,7 @@ mod tests {
                 selected: true,
                 value: Skill {
                     name: "React".into(),
+                    description: None,
                 },
                 existing_index: Some(0),
                 resolution: ImportResolution::KeepExisting,
@@ -349,6 +351,7 @@ mod tests {
                 selected: false,
                 value: Skill {
                     name: "Docker".into(),
+                    description: None,
                 },
                 existing_index: None,
                 resolution: ImportResolution::AddAsNew,

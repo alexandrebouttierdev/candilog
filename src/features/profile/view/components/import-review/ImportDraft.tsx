@@ -29,7 +29,7 @@ export function ImportDraft({
             </CardHeader>
             <div
               className={
-                section === "skills" || section === "interests"
+                section === "interests"
                   ? "flex flex-wrap gap-2 px-[17px] py-3"
                   : "divide-y divide-line"
               }
@@ -64,7 +64,7 @@ function PreviewBlock({
 }) {
   const errors = form.formState.errors;
   const { existing, proposed, allowAdd } = comparisonOf(preview, row);
-  const compact = (row.section === "skills" || row.section === "interests") && !row.conflict;
+  const compact = row.section === "interests" && !row.conflict;
 
   return (
     <article
@@ -162,15 +162,21 @@ function fieldsOf(
         </>
       );
     case "skills":
-      return compact ? (
-        <TextInput
-          aria-label={`Compétence ${row.title}`}
-          {...form.register(`skills.${index}.value.name`)}
-        />
-      ) : (
-        <FormField label="Compétence" error={errors.skills?.[index]?.value?.name?.message}>
-          {(props) => <TextInput {...props} {...form.register(`skills.${index}.value.name`)} />}
-        </FormField>
+      return (
+        <div className="space-y-3">
+          <FormField label="Compétence" error={errors.skills?.[index]?.value?.name?.message}>
+            {(props) => <TextInput {...props} {...form.register(`skills.${index}.value.name`)} />}
+          </FormField>
+          <FormField label="Description">
+            {(props) => (
+              <TextArea
+                {...props}
+                rows={2}
+                {...form.register(`skills.${index}.value.description`)}
+              />
+            )}
+          </FormField>
+        </div>
       );
     case "interests":
       return compact ? (
@@ -227,6 +233,15 @@ function fieldsOf(
           <FormField label="Nom" error={errors.projects?.[index]?.value?.name?.message}>
             {(props) => <TextInput {...props} {...form.register(`projects.${index}.value.name`)} />}
           </FormField>
+          <FormField label="Description">
+            {(props) => (
+              <TextArea
+                {...props}
+                rows={3}
+                {...form.register(`projects.${index}.value.description`)}
+              />
+            )}
+          </FormField>
           <FormField label="Lien">
             {(props) => <TextInput {...props} {...form.register(`projects.${index}.value.url`)} />}
           </FormField>
@@ -238,6 +253,15 @@ function fieldsOf(
           <FormField label="Nom" error={errors.certifications?.[index]?.value?.name?.message}>
             {(props) => (
               <TextInput {...props} {...form.register(`certifications.${index}.value.name`)} />
+            )}
+          </FormField>
+          <FormField label="Description">
+            {(props) => (
+              <TextArea
+                {...props}
+                rows={2}
+                {...form.register(`certifications.${index}.value.description`)}
+              />
             )}
           </FormField>
           <FormField label="Lien">

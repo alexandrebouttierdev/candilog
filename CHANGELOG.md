@@ -8,11 +8,20 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
 
 ### Modifié
 
-- Import de profil depuis un CV : le texte est lu dans l'ordre de mise en page
-  (`pdftotext -layout`, repli sur l'extracteur de flux), puis un e-mail ou un
-  téléphone vide est recopié seulement s'il est déjà dans ce texte, et une
-  formation manquante seulement si le diplôme ou l'établissement est unique et
-  exact. Mesure locale : voir `src-tauri/examples/cv_import_baseline.md` et `src-tauri/examples/PROMPT_IMPORT_CV.md`.
+- Import de profil depuis un CV : dates de fin découpées depuis une plage collée dans
+  `start_date`, descriptions d'expériences / projets / certifications mieux conservées
+  (recadrage par fragments ; en Vision, les textes libres et le prénom / nom lus sur les
+  images ne sont plus effacés par un PDF complémentaire partiel). Un nom complet coincé
+  dans un seul champ est découpé. Compétences et certifications acceptent une description
+  facultative. Mesure locale : voir `src-tauri/examples/cv_import_baseline.md`
+  et `src-tauri/examples/PROMPT_IMPORT_CV.md`.
+
+- Page Profil : sections Identité, Objectif professionnel et Présence en ligne en onglets
+  dédiés (modales séparées). Le bouton « Modifier le profil » et le panneau latéral
+  Identité sont retirés.
+
+- Benchmark « Tester l'IA » : le score Formations accepte les libellés paraphrasés ou
+  partiels (diplôme / école), aligné sur ce que l'import affiche déjà.
 
 - Fournisseur IA NVIDIA remplacé par DeepSeek (API compatible OpenAI,
   `https://api.deepseek.com`, modèle par défaut `deepseek-v4-flash`). Un réglage encore

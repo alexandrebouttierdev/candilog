@@ -101,10 +101,14 @@ export const certificationSchema = z.object({
   issuer: optional,
   date: optional,
   url: urlOptional("Le lien doit commencer par http:// ou https://"),
+  description: optional,
 });
 
 export const skillsSchema = z.array(
-  z.object({ name: z.string().trim().min(1, "Le nom est obligatoire") }),
+  z.object({
+    name: z.string().trim().min(1, "Le nom est obligatoire"),
+    description: optional,
+  }),
 );
 export const interestsSchema = z.array(
   z.object({ name: z.string().trim().min(1, "Le nom est obligatoire") }),

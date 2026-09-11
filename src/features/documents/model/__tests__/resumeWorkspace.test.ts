@@ -142,7 +142,13 @@ describe("opérations fermées sur les listes", () => {
     const withCertification = addSection(base, "certification");
     expect(withCertification.document.certifications).toHaveLength(2);
     const created = withCertification.document.certifications[1];
-    expect(created).toEqual({ id: created?.id, name: "", issuer: null, date: null });
+    expect(created).toEqual({
+      id: created?.id,
+      name: "",
+      issuer: null,
+      date: null,
+      description: null,
+    });
     expect(created?.id).toBeTruthy();
   });
 

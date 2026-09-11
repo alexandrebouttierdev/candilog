@@ -49,6 +49,7 @@ fn document_complet() -> ResumeDocument {
             name: "AWS Certified".into(),
             issuer: Some("Amazon".into()),
             date: Some("2024".into()),
+            description: None,
         }],
         languages: vec![ResumeLanguageBlock {
             id: "lang-1".into(),

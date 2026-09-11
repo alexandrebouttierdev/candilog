@@ -106,7 +106,16 @@ pub fn build_fact_catalog(profile: &Profile) -> Vec<GroundedFact> {
             .map(|(index, skill)| GroundedFact {
                 id: format!("skill:{index}"),
                 kind: GroundedFactKind::Skill,
-                text: skill.name.trim().to_owned(),
+                text: match skill
+                    .description
+                    .as_deref()
+                    .filter(|text| !text.trim().is_empty())
+                {
+                    Some(description) => {
+                        format!("{} : {}", skill.name.trim(), description.trim())
+                    }
+                    None => skill.name.trim().to_owned(),
+                },
             }),
     );
     facts.extend(
@@ -144,19 +153,33 @@ pub fn build_fact_catalog(profile: &Profile) -> Vec<GroundedFact> {
             .map(|(index, certification)| GroundedFact {
                 id: format!("certification:{index}"),
                 kind: GroundedFactKind::Certification,
-                text: match certification
-                    .issuer
-                    .as_deref()
-                    .filter(|text| !text.trim().is_empty())
-                {
-                    Some(issuer) => {
+                text: match (
+                    certification
+                        .description
+                        .as_deref()
+                        .filter(|text| !text.trim().is_empty()),
+                    certification
+                        .issuer
+                        .as_deref()
+                        .filter(|text| !text.trim().is_empty()),
+                ) {
+                    (Some(description), Some(issuer)) => format!(
+                        "{} délivrée par {} : {}",
+                        certification.name.trim(),
+                        issuer.trim(),
+                        description.trim()
+                    ),
+                    (Some(description), None) => {
+                        format!("{} : {}", certification.name.trim(), description.trim())
+                    }
+                    (None, Some(issuer)) => {
                         format!(
                             "{} délivrée par {}",
                             certification.name.trim(),
                             issuer.trim()
                         )
                     }
-                    None => certification.name.trim().to_owned(),
+                    (None, None) => certification.name.trim().to_owned(),
                 },
             }),
     );

@@ -40,6 +40,7 @@ fn profile() -> Profile {
         }],
         skills: vec![Skill {
             name: "Rust".into(),
+            description: None,
         }],
         education: vec![Education {
             degree: "TSSR".into(),
@@ -64,6 +65,7 @@ fn profile() -> Profile {
             issuer: Some("LPI".into()),
             date: Some("2024-02".into()),
             url: None,
+            description: None,
         }],
         interests: vec![],
     }
@@ -129,7 +131,10 @@ fn workspace_avec_offre(offer_skills: Vec<&str>, profile_skills: Vec<&str>) -> R
     let mut source = profile();
     source.skills = profile_skills
         .into_iter()
-        .map(|name| Skill { name: name.into() })
+        .map(|name| Skill {
+            name: name.into(),
+            description: None,
+        })
         .collect();
     let mut generation = generation();
     generation.resume.skills = source

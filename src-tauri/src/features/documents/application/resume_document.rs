@@ -61,6 +61,7 @@ pub fn build(document: &ResumeDocument, photo: Option<Vec<u8>>) -> ResumePdf {
                 name: certification.name.clone(),
                 issuer: certification.issuer.clone(),
                 date: certification.date.clone(),
+                description: certification.description.clone(),
             })
             .collect(),
         languages: document

@@ -36,6 +36,7 @@ const importExperienceSchema = z
 
 const importSkillSchema = z.object({
   name: z.string().trim().min(1, "Le nom est obligatoire"),
+  description: blankToNull,
 });
 
 const importInterestSchema = z.object({
@@ -73,6 +74,7 @@ const importCertificationSchema = z.object({
   issuer: blankToNull,
   date: blankToNull,
   url: importUrl,
+  description: blankToNull,
 });
 
 function willImport(item: { selected: boolean; resolution: string }) {

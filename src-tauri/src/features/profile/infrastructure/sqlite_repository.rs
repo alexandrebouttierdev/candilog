@@ -112,6 +112,7 @@ struct ExperienceStored {
 #[serde(default)]
 struct SkillStored {
     name: String,
+    description: Option<String>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -148,6 +149,7 @@ struct CertificationStored {
     issuer: Option<String>,
     date: Option<String>,
     url: Option<String>,
+    description: Option<String>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -275,7 +277,12 @@ macro_rules! conversion_simple {
     };
 }
 
-conversion_simple!(SkillStored, Skill, name => name);
+conversion_simple!(
+    SkillStored,
+    Skill,
+    name => name,
+    description => description,
+);
 conversion_simple!(
     EducationStored,
     Education,
@@ -302,6 +309,7 @@ conversion_simple!(
     issuer => issuer,
     date => date,
     url => url,
+    description => description,
 );
 conversion_simple!(InterestStored, Interest, name => name);
 
