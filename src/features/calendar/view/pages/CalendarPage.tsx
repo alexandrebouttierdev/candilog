@@ -15,7 +15,6 @@ import { ViewDay, ViewWeek } from "../components/ViewAgenda";
 import { InterviewFormModal } from "@/features/interviews";
 import { FollowUpFormModal, type FollowUp } from "@/features/followups";
 import type { Interview } from "@/features/interviews";
-import { ContextBarAccessory, ContextNote } from "@/app/layout/ContextBar";
 import {
   Button,
   ConfirmDialog,
@@ -103,10 +102,7 @@ export function CalendarPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <ContextBarAccessory>
-        <ContextNote>Entretiens et relances</ContextNote>
-      </ContextBarAccessory>
-      <PageHeader
+<PageHeader
         icon="calendar_month"
         title="Calendrier"
         subtitle="Entretiens et relances"

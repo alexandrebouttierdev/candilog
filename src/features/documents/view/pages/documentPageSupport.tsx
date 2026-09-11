@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import type { AtsRecommendationSection, ResumeGeneration } from "@/features/ai";
 import type { CoverLetter, ResumeWorkspace } from "@/shared/types/generated/documents";
 import { AppError } from "@/shared/types/app-error";
-import { ContextBarAccessory, ContextSearch } from "@/app/layout/ContextBar";
 import { Button, FormField, Icon, TextArea, TextInput } from "@/shared/ui";
 import { useUiStore } from "@/shared/lib/ui-store";
 import type { IconName } from "@/shared/ui/icon-names";
@@ -14,25 +13,13 @@ export function Screen({
   header,
   children,
   padded = true,
-  search,
 }: {
   header: ReactNode;
   children: ReactNode;
   padded?: boolean;
-  search?: { value: string; onChange: (value: string) => void; placeholder: string };
 }) {
   return (
     <div className="flex h-full flex-col">
-      {search ? (
-        <ContextBarAccessory>
-          <ContextSearch
-            value={search.value}
-            placeholder={search.placeholder}
-            onChange={search.onChange}
-            width={230}
-          />
-        </ContextBarAccessory>
-      ) : null}
       {header}
       <div className={padded ? "min-h-0 flex-1 overflow-y-auto p-5 min-[1200px]:p-6" : "flex min-h-0 flex-1 flex-col overflow-hidden"}>
         {children}

@@ -120,6 +120,8 @@ describe("barre supérieure", () => {
     );
     expect(screen.queryByRole("heading", { name: "Calendrier" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Fournisseur IA/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Tester" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Réglages Intelligence artificielle" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Rechercher ou exécuter" })).not.toBeInTheDocument();
   });
 });

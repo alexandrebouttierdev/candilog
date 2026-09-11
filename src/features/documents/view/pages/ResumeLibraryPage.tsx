@@ -15,11 +15,6 @@ export function ResumeLibraryPage() {
   return (
     <Screen
       padded={false}
-      search={{
-        value: vm.search,
-        onChange: vm.updateSearch,
-        placeholder: "Rechercher un document…",
-      }}
       header={
         <PageHeader
           icon="description"

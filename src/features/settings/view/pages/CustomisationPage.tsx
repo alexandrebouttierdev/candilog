@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { ContextBarAccessory, ContextNote } from "@/app/layout/ContextBar";
 import { AppError } from "@/shared/types/app-error";
 import type { Settings, ThemePref } from "@/shared/types/generated/settings";
 import { Button, ErrorBanner, PageHeader, SegmentedControl, Skeleton } from "@/shared/ui";
@@ -40,10 +39,7 @@ export function CustomisationPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <ContextBarAccessory>
-        <ContextNote>Candilog · données locales</ContextNote>
-      </ContextBarAccessory>
-      <PageHeader
+<PageHeader
         icon="palette"
         title="Customisation"
         subtitle="Apparence et retours sonores"

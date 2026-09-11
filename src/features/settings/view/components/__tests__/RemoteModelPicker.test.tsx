@@ -6,25 +6,23 @@ import { RemoteModelPicker } from "../RemoteModelPicker";
 describe("RemoteModelPicker", () => {
   const models = ["gpt-4o", "gpt-4o-mini", "o3-mini"];
 
-  it("présente les modèles comme un groupe de boutons radio", () => {
+  it("présente les modèles comme un groupe de boutons radio avec le logo fournisseur", () => {
     render(
       <RemoteModelPicker
         models={models}
         value="gpt-4o"
         onChange={() => undefined}
         providerLabel="OpenAI"
+        providerId="openai"
       />,
     );
 
     expect(screen.getByRole("radiogroup", { name: "Modèles OpenAI" })).toBeInTheDocument();
     expect(screen.getAllByRole("radio")).toHaveLength(3);
-    expect(screen.getByRole("radio", { name: "gpt-4o" })).toHaveAttribute("aria-checked", "true");
-    expect(
-      within(screen.getByRole("radio", { name: "gpt-4o" })).getByText("Sélectionné"),
-    ).toBeInTheDocument();
-    expect(
-      within(screen.getByRole("radio", { name: "gpt-4o" })).getByText("check_circle"),
-    ).toBeInTheDocument();
+    const selected = screen.getByRole("radio", { name: "gpt-4o" });
+    expect(selected).toHaveAttribute("aria-checked", "true");
+    expect(within(selected).getByText("check_circle")).toBeInTheDocument();
+    expect(selected.querySelector("img")).not.toBeNull();
   });
 
   it("notifie le changement de modèle", async () => {
@@ -35,6 +33,7 @@ describe("RemoteModelPicker", () => {
         value="gpt-4o"
         onChange={onChange}
         providerLabel="OpenAI"
+        providerId="openai"
       />,
     );
 

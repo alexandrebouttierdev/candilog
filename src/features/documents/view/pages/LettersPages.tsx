@@ -38,11 +38,6 @@ export function LettersLibraryPage() {
   return (
     <Screen
       padded={false}
-      search={{
-        value: vm.search,
-        onChange: vm.updateSearch,
-        placeholder: "Rechercher un document…",
-      }}
       header={
         <PageHeader
           icon="mail"
@@ -69,11 +64,23 @@ export function LettersLibraryPage() {
     >
       <div className="flex min-h-0 flex-1">
         <div className="flex w-[36%] min-w-[260px] flex-col border-r border-line bg-surface">
-          <div className="flex items-center justify-between border-b border-line px-5 py-3">
-            <span className="text-section">Bibliothèque</span>
-            <span className="text-label text-ink-faint">
-              {vm.list.data?.total ?? 0} lettre{(vm.list.data?.total ?? 0) > 1 ? "s" : ""}
-            </span>
+          <div className="border-b border-line px-5 pt-4 pb-3">
+            <div className="mb-[11px] flex items-center justify-between">
+              <span className="text-section">Bibliothèque</span>
+              <span className="text-label text-ink-faint">
+                {vm.list.data?.total ?? 0} lettre{(vm.list.data?.total ?? 0) > 1 ? "s" : ""}
+              </span>
+            </div>
+            <label className="flex h-8 items-center gap-2 rounded-button border border-line bg-page px-2.5">
+              <Icon name="search" size={16} className="text-ink-faint" />
+              <input
+                type="search"
+                value={vm.search}
+                onChange={(e) => vm.updateSearch(e.target.value)}
+                placeholder="Rechercher une lettre…"
+                className="min-w-0 flex-1 bg-transparent text-body text-ink outline-none placeholder:text-ink-faint"
+              />
+            </label>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto p-2.5">
             {vm.list.error ? (

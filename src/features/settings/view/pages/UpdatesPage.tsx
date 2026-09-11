@@ -1,4 +1,3 @@
-import { ContextBarAccessory, ContextNote } from "@/app/layout/ContextBar";
 import { Button, Icon, PageHeader, StatusPill } from "@/shared/ui";
 import { cn } from "@/shared/lib/cn";
 import type { UpdateInfo } from "@/shared/types/generated/settings";
@@ -18,10 +17,7 @@ export function UpdatesPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <ContextBarAccessory>
-        <ContextNote>Candilog · données locales</ContextNote>
-      </ContextBarAccessory>
-      <PageHeader
+<PageHeader
         icon="system_update"
         title="Mises à jour"
         subtitle="Candilog ne vérifie rien sans votre demande"

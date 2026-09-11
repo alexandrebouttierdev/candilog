@@ -16,7 +16,6 @@ import {
   isTodayEmpty,
   splitUpcoming,
 } from "../components/TodayUi";
-import { ContextBarAccessory } from "@/app/layout/ContextBar";
 import { AppError } from "@/shared/types/app-error";
 import { Button, ErrorBanner } from "@/shared/ui";
 
@@ -33,21 +32,23 @@ export function DashboardPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <ContextBarAccessory>
-        <span className="hidden text-note text-ink-faint min-[1280px]:inline">
+      <div className="flex flex-none items-center justify-between gap-3 border-b border-line px-[18px] py-3">
+        <span className="text-note text-ink-faint">
           {date.charAt(0).toUpperCase() + date.slice(1)}
         </span>
-        <Button icon="calendar_month" onClick={() => void navigate("/tracking/calendar")}>
-          Calendrier
-        </Button>
-        <Button
-          variant="primary"
-          icon="add"
-          onClick={() => void navigate("/tracking/applications?new=1")}
-        >
-          Nouvelle
-        </Button>
-      </ContextBarAccessory>
+        <div className="flex items-center gap-2">
+          <Button icon="calendar_month" onClick={() => void navigate("/tracking/calendar")}>
+            Calendrier
+          </Button>
+          <Button
+            variant="primary"
+            icon="add"
+            onClick={() => void navigate("/tracking/applications?new=1")}
+          >
+            Nouvelle
+          </Button>
+        </div>
+      </div>
 
       {vm.isLoading ? (
         <TodaySkeleton />

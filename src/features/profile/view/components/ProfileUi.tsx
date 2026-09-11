@@ -43,7 +43,7 @@ export function ProfileTabs({
     <div
       role="tablist"
       aria-label="Sections du profil"
-      className="mt-[18px] flex gap-[3px] overflow-x-auto"
+      className="mt-[18px] flex min-w-0 w-full gap-[3px] overflow-x-auto overscroll-x-contain"
     >
       {(Object.keys(TAB_LABELS) as ProfileTab[]).map((tab) => {
         const meta = TAB_LABELS[tab];

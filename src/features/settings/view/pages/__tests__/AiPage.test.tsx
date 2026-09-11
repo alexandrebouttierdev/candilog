@@ -111,34 +111,28 @@ describe("écran Intelligence artificielle", () => {
     expect(save.mock.calls[0]?.[1]).toBeNull();
   });
 
-  it("annonce l'état du fournisseur sans attendre un test", async () => {
+  it("annonce les sections fournisseur sans bandeau d'état en tête", async () => {
     render(<AiPage />, { wrapper });
 
-    expect(await screen.findByText("Configuré")).toBeInTheDocument();
-    expect(screen.getByText("gpt-4o")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("tab", { name: "IA online/personnalisé" }));
+    await userEvent.click(await screen.findByRole("tab", { name: "IA online/personnalisé" }));
     expect(screen.getByText("Fournisseur")).toBeInTheDocument();
     expect(screen.getByText("Configuration")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Tester la connexion" })).toBeInTheDocument();
+    expect(screen.getByDisplayValue("gpt-4o")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /IA locale/ })).toBeInTheDocument();
     expect(screen.getByText("Gratuit")).toBeInTheDocument();
   });
 
-  it("place le bandeau IA locale au-dessus des onglets", async () => {
+  it("ouvre l'onglet IA locale sans bandeau d'état en tête", async () => {
     vi.spyOn(settingsService, "load").mockResolvedValue(
       reglages({ provider: "candilog_local", model: "", api_key_configured: false, endpoint: "" }),
     );
 
-    const { container } = render(<AiPage />, { wrapper });
+    render(<AiPage />, { wrapper });
 
-    expect(await screen.findByRole("button", { name: "Tester l'IA" })).toBeInTheDocument();
-    expect(screen.getByText("Non configuré")).toBeInTheDocument();
-
-    const hero = container.querySelector("section");
-    const onglets = screen.getByRole("tab", { name: /IA locale/ });
-    expect(hero).not.toBeNull();
-    expect(
-      Boolean(hero && onglets.compareDocumentPosition(hero) & Node.DOCUMENT_POSITION_PRECEDING),
-    ).toBe(true);
+    expect(await screen.findByRole("tab", { name: /IA locale/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Tester l'IA" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Non configuré")).not.toBeInTheDocument();
   });
 
   it("affiche un squelette pendant le chargement des réglages", () => {
@@ -164,38 +158,38 @@ describe("écran Intelligence artificielle", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("signale un fournisseur incomplet et ce qu'il manque", async () => {
+  it("montre le champ clé API à renseigner quand aucune clé n'est configurée", async () => {
     vi.spyOn(settingsService, "load").mockResolvedValue(
       reglages({ api_key_configured: false }),
     );
 
     render(<AiPage />, { wrapper });
+    await userEvent.click(await screen.findByRole("tab", { name: "IA online/personnalisé" }));
 
-    expect(await screen.findByText("Non configuré")).toBeInTheDocument();
-    expect(
-      screen.getByText("Renseignez la clé API pour utiliser l'assistance."),
-    ).toBeInTheDocument();
+    expect(await screen.findByLabelText(/^Clé API/)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Saisir la clé API")).toBeInTheDocument();
   });
 
-  it("passe à « Disponible » quand le test aboutit", async () => {
+  it("confirme la connexion sous Configuration quand le test aboutit", async () => {
     vi.spyOn(settingsService, "testConnection").mockResolvedValue(undefined);
 
     render(<AiPage />, { wrapper });
+    await userEvent.click(await screen.findByRole("tab", { name: "IA online/personnalisé" }));
     await userEvent.click(await screen.findByRole("button", { name: "Tester la connexion" }));
 
-    expect(await screen.findByText("Disponible")).toBeInTheDocument();
+    expect(await screen.findByText("Connexion établie.")).toBeInTheDocument();
   });
 
-  it("affiche l'erreur du test sans envahir l'écran", async () => {
+  it("affiche l'erreur du test sous Configuration", async () => {
     vi.spyOn(settingsService, "testConnection").mockRejectedValue(
       new AppError({ code: "PROVIDER_ERROR", message: "Clé refusée par le fournisseur." }),
     );
 
     render(<AiPage />, { wrapper });
+    await userEvent.click(await screen.findByRole("tab", { name: "IA online/personnalisé" }));
     await userEvent.click(await screen.findByRole("button", { name: "Tester la connexion" }));
 
-    expect(await screen.findByText("Erreur")).toBeInTheDocument();
-    expect(screen.getByText("Clé refusée par le fournisseur.")).toBeInTheDocument();
+    expect(await screen.findByText("Clé refusée par le fournisseur.")).toBeInTheDocument();
   });
 
   it("n'affiche jamais la clé API en clair", async () => {

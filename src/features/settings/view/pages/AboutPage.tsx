@@ -1,5 +1,4 @@
 import { useNavigate } from "react-router-dom";
-import { ContextBarAccessory, ContextNote } from "@/app/layout/ContextBar";
 import { Button, InspectorRow, PageHeader } from "@/shared/ui";
 import logoCandilog from "@/assets/logo-candilog.svg";
 import { useAboutViewModel } from "../../viewmodel/useAboutViewModel";
@@ -15,10 +14,7 @@ export function AboutPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <ContextBarAccessory>
-        <ContextNote>Candilog · données locales</ContextNote>
-      </ContextBarAccessory>
-      <PageHeader icon="info" title="À propos" subtitle="Candilog, un produit indépendant" />
+<PageHeader icon="info" title="À propos" subtitle="Candilog, un produit indépendant" />
       <SettingsBody>
         <div className="mx-auto flex w-full max-w-[720px] flex-col gap-4">
           <div className="flex items-start gap-4 py-1">

@@ -1,4 +1,3 @@
-import { ContextBarAccessory, ContextNote } from "@/app/layout/ContextBar";
 import { Button, ConfirmDialog, PageHeader } from "@/shared/ui";
 import { useBackupsViewModel } from "../../viewmodel/useBackupsViewModel";
 import { ActionCard, SettingsBody, SettingsCard, SettingsHero } from "../components/SettingsUi";
@@ -9,10 +8,7 @@ export function BackupsPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <ContextBarAccessory>
-        <ContextNote>Candilog · données locales</ContextNote>
-      </ContextBarAccessory>
-      <PageHeader icon="save" title="Données" subtitle="Export, restauration et maintenance" />
+<PageHeader icon="save" title="Données" subtitle="Export, restauration et maintenance" />
       <SettingsBody>
         <SettingsHero
           kicker="Vos données"

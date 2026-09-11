@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppError } from "@/shared/types/app-error";
 import type { Identity, Profile } from "@/shared/types/generated/profile";
-import { ContextBarAccessory, ContextNote } from "@/app/layout/ContextBar";
 import {
   Button,
   ConfirmDialog,
@@ -37,9 +36,6 @@ export function ProfilePage() {
 
   return (
     <div className="flex h-full flex-col">
-      <ContextBarAccessory>
-        <ContextNote>Source de vérité de vos documents</ContextNote>
-      </ContextBarAccessory>
       <PageHeader
         icon="account_circle"
         title="Profil professionnel"
@@ -56,14 +52,14 @@ export function ProfilePage() {
         }
       />
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
         {vm.isLoading ? (
           <ProfileSkeleton />
         ) : vm.error || !vm.data ? (
           <div className="p-6"><ErrorBanner message={vm.error instanceof AppError ? vm.error.message : "Le profil n’a pas pu être chargé."} onRetry={vm.reload} /></div>
         ) : (
           <div>
-            <div className="border-b border-line bg-surface px-7 pt-[22px]">
+            <div className="min-w-0 border-b border-line bg-surface px-7 pt-[22px]">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <ProfileIdentity
                   identity={vm.data.profile.identity}

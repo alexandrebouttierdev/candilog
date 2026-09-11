@@ -1,5 +1,4 @@
 import { useState, type KeyboardEvent, type ReactNode } from "react";
-import { ContextBarAccessory, ContextNote } from "@/app/layout/ContextBar";
 import { AiBenchmarkModal, useAiRailStatusStore } from "@/features/ai";
 import { AppError } from "@/shared/types/app-error";
 import type { AnalysisMode, LlmForm, Settings } from "@/shared/types/generated/settings";
@@ -24,14 +23,12 @@ import {
   presetFromLlm,
   type ProviderOption,
 } from "../../model/providers";
-import { ProviderGrid, providerLogo } from "../components/ProviderGrid";
-import { AiHero } from "../components/AiHero";
 import { ManagedOllamaPanel } from "../components/ManagedOllamaPanel";
+import { ProviderGrid } from "../components/ProviderGrid";
 import { RemoteModelPicker } from "../components/RemoteModelPicker";
 import { SettingsBody, SettingsCard } from "../components/SettingsUi";
 import { cn } from "@/shared/lib/cn";
-import { aiStatus, type ConnectionTest } from "../../model/aiStatus";
-import { managedOllamaStatus } from "../../model/managedOllamaStatus";
+import { type ConnectionTest } from "../../model/aiStatus";
 import { useManagedOllamaViewModel } from "../../viewmodel/useManagedOllamaViewModel";
 import type { ManagedModelStatus } from "@/shared/types/generated/ai";
 
@@ -191,7 +188,6 @@ export function AiPage() {
 
   const fournisseur = llm ? getProvider(llm.provider) : null;
   const managedActive = managedVm.status?.active_model ?? null;
-  const logo = fournisseur ? providerLogo(fournisseur.id) : null;
   const managedModelLabel = managedActive?.display_name ?? "";
 
   const ouvrirBenchmark = (label: string) => {
@@ -206,18 +202,10 @@ export function AiPage() {
     }
     ouvrirBenchmark(model.definition.display_name);
   };
-  const noteModele = isCandilogLocal ? managedModelLabel : (llm?.model ?? "");
 
   return (
     <div className="flex h-full flex-col">
-      <ContextBarAccessory>
-        <ContextNote>
-          {fournisseur
-            ? `${fournisseur.label}${noteModele ? ` · ${noteModele}` : ""}`
-            : "Candilog · données locales"}
-        </ContextNote>
-      </ContextBarAccessory>
-      <PageHeader
+<PageHeader
         icon="smart_toy"
         title="Intelligence artificielle"
         subtitle="Le moteur reste sous votre contrôle"
@@ -255,30 +243,6 @@ export function AiPage() {
       ) : (
         <SettingsBody>
           <div className="flex min-w-0 max-w-[1000px] flex-col gap-4">
-            {isCandilogLocal ? (
-              <AiHero
-                logo={logo}
-                label={fournisseur.label}
-                model={managedModelLabel}
-                status={managedOllamaStatus(managedVm.status, managedVm.error)}
-                testMessage={null}
-                testLabel="Tester l'IA"
-                busy={managedVm.isInstalling}
-                testDisabled={!managedActive}
-                onTest={() => ouvrirBenchmark(managedModelLabel || "IA locale")}
-              />
-            ) : (
-              <AiHero
-                logo={logo}
-                label={fournisseur.label}
-                model={llm.model}
-                status={aiStatus(llm, test)}
-                testMessage={test === "error" ? testMessage : null}
-                busy={test === "pending"}
-                onTest={() => void runTest()}
-              />
-            )}
-
             <AiTabs active={tab} onChange={setTab} />
 
             {tab === "local" ? (
@@ -296,8 +260,42 @@ export function AiPage() {
                 </SettingsCard>
 
                 <div className="grid gap-4 min-[900px]:grid-cols-2 min-[900px]:items-start">
-                    <SettingsCard icon="tune" title="Configuration">
+                    <SettingsCard
+                      icon="tune"
+                      title="Configuration"
+                      action={
+                        <>
+                          <Button
+                            icon="wifi"
+                            disabled={test === "pending"}
+                            onClick={() => void runTest()}
+                          >
+                            {test === "pending" ? "Test en cours…" : "Tester la connexion"}
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            icon="bolt"
+                            disabled={!llm.model.trim()}
+                            onClick={() => ouvrirBenchmark(llm.model.trim())}
+                          >
+                            Tester
+                          </Button>
+                        </>
+                      }
+                    >
                       <div className="flex flex-col gap-3.5">
+                        {testMessage ? (
+                          <p
+                            role="status"
+                            className={
+                              test === "error"
+                                ? "text-note leading-relaxed text-danger"
+                                : "text-note leading-relaxed text-success"
+                            }
+                          >
+                            {testMessage}
+                          </p>
+                        ) : null}
                         <div className="flex flex-col gap-2.5">
                           <div className="flex max-w-[380px] items-end gap-2">
                             <FormField label="Modèle" required className="flex-1">
@@ -328,6 +326,7 @@ export function AiPage() {
                               value={llm.model}
                               onChange={(model) => patchLlm({ model })}
                               providerLabel={fournisseur.label}
+                              providerId={idProvider(llm.provider)}
                             />
                           ) : (
                             <p className="text-meta leading-relaxed text-ink-faint">

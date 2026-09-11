@@ -18,12 +18,15 @@ export function SettingsCard({
   icon,
   title,
   hint,
+  action,
   className,
   children,
 }: {
   icon: IconName;
   title: string;
   hint?: string;
+  /** Action alignée à droite du titre (ex. Tester la connexion). */
+  action?: ReactNode;
   className?: string;
   children: ReactNode;
 }) {
@@ -38,6 +41,7 @@ export function SettingsCard({
         <div className="flex items-center gap-2">
           <Icon name={icon} size={17} className="flex-none text-ink-faint" />
           <h2 className="text-item font-semibold text-ink">{title}</h2>
+          {action ? <div className="ml-auto flex flex-none items-center gap-2">{action}</div> : null}
         </div>
         {hint ? <p className="mt-1 ml-[25px] text-label text-ink-faint">{hint}</p> : null}
       </div>

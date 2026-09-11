@@ -8,6 +8,19 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
 
 ### Modifié
 
+- Réglages IA / Configuration : liste de modèles compacte avec logo du fournisseur ;
+  bouton « Tester » (benchmark) à côté de « Tester la connexion », désactivé sans modèle.
+
+- Réglages IA : le bandeau d'état (fournisseur / modèle / Configuré) en tête de page
+  est retiré. « Tester la connexion » est aligné à droite du titre de la carte
+  Configuration.
+
+- Top bar : conserve le sélecteur de modèle, « Tester » et le raccourci réglages IA ;
+  les notes / recherches / autres actions contextuelles (Profil, Analyses, Documents,
+  Aujourd'hui, Réglages, Calendrier) quittent le bandeau. Mes lettres a une recherche
+  in-page alignée sur Mes CV. Les onglets Profil ne forcent plus le scroll horizontal
+  de la page.
+
 - Import de profil depuis un CV : dates de fin découpées depuis une plage collée dans
   `start_date`, descriptions d'expériences / projets / certifications mieux conservées
   (recadrage par fragments ; en Vision, les textes libres et le prénom / nom lus sur les
