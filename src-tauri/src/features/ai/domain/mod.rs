@@ -2,6 +2,7 @@
 
 mod config;
 mod cover_letter;
+mod letter_natural;
 mod cv_analysis;
 mod managed_ollama;
 mod models;
@@ -16,6 +17,7 @@ mod validation;
 pub use crate::core::utils::text::search_key;
 pub use config::*;
 pub use cover_letter::*;
+pub use letter_natural::*;
 pub use cv_analysis::*;
 pub use managed_ollama::*;
 pub use models::*;

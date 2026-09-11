@@ -40,9 +40,10 @@ Règles de sélection :
 1. Choisis uniquement des identifiants présents dans catalogue[].id — aucun autre.
 2. Priorise dans cet ordre : experience, puis summary, puis skill, project, education, certification.
 3. Remplis exactement le nombre de faits demandé par "longueur" : short → 1, medium → 2, long → 3. Ne renvoie jamais une liste vide si le catalogue contient des faits.
-4. Retiens les faits les plus utiles pour le poste et l'entreprise du brief ; écarte le hors-sujet.
+4. Retiens les 2 à 4 faits les plus utiles pour le poste (preuves solides, pas un inventaire d'outils).
 5. motivation_keywords : 0 à 3 termes recopiés caractère pour caractère depuis le brief (poste, entreprise, contexte ou instruction). Aucune paraphrase.
-6. N'écris aucune phrase de lettre. N'invente aucun fait, compétence, entreprise ni diplôme."#;
+6. N'écris aucune phrase de lettre. N'invente aucun fait, compétence, entreprise ni diplôme.
+7. Ignore codes d'annonce, slogans marketing et process RH du contexte."#;
 const COVER_LETTER_ITERATION_SYSTEM: &str = r#"Tu ajustes le plan d'une lettre de motivation déjà rédigée.
 
 Réponds uniquement en JSON : {"selected_fact_ids":[],"motivation_keywords":[]}.
@@ -54,6 +55,22 @@ Règles :
 3. Priorise experience puis summary puis skill / project / education / certification.
 4. motivation_keywords : 0 à 3 termes recopiés exactement depuis le brief ou l'instruction.
 5. N'écris aucune phrase de lettre. N'invente aucune information."#;
+
+const COVER_LETTER_DRAFT_SYSTEM: &str = r#"Tu rédiges une lettre de motivation française naturelle à partir UNIQUEMENT du pack d'évidences et du brief fournis.
+
+Réponds uniquement en JSON : {"letter":"..."}.
+
+Règles :
+1. 3 à 4 paragraphes, environ 180 à 300 mots (hors civilités).
+2. Synthétise les évidences : ne copie pas le CV mot à mot, ne liste pas tous les outils.
+3. Conserve l'intitulé de poste fourni quand il est présent.
+4. N'invente jamais diplôme, permis, certification, outil, durée, mission ou motivation personnelle absents des évidences / du brief.
+5. Si un écart existe (compétence absente), ne l'invente pas et ne le comble pas : omets-le.
+6. Style professionnel, sobre, humain. Évite les clichés : « Fort de mon expérience », « Passionné par », « Je me permets de vous adresser », formules mécaniques.
+7. Ignore codes REC, slogans, process de recrutement et marketing d'entreprise.
+8. Ton = formal | casual | creative : change le style uniquement, jamais les faits.
+9. Si lettre_precedente + instruction sont fournis, ajuste la lettre en respectant les mêmes règles factuelles."#;
+
 const FRENCH_CORRECTION_SYSTEM: &str = r#"Tu es un correcteur professionnel de français. Corrige uniquement l'orthographe, la grammaire, les accords, la ponctuation, les coquilles et les formulations manifestement maladroites. Préserve strictement le sens, les faits, les noms propres, les chiffres, les dates, les coordonnées, les technologies et le niveau de précision. N'ajoute aucune information, ne supprime aucun fait et ne réécris pas un passage déjà correct. Chaque objet reçu contient un id opaque et un texte : renvoie exactement un objet par id, dans le même ordre, avec {"fields":[{"id":"","text":""}]}. Recopie le texte à l'identique si aucune correction n'est nécessaire. JSON uniquement."#;
 const PARSE_RESUME_SYSTEM: &str = r#"Structure le texte brut d'un CV sans traduire, reformuler ni inventer. Recopie toutes les compétences listées (langages, frameworks, devops, méthodes) et les projets avec leur stack. Réponds uniquement en JSON : {"resume":"","experiences":[{"intitule":"","entreprise":"","description":""}],"competences":[],"formations":[{"diplome":"","etablissement":""}]}"#;
 
@@ -463,7 +480,7 @@ impl AiService {
                 "poste": request.job_title,
                 "ton": request.tone.as_deref().unwrap_or("formal"),
                 "longueur": request.length.as_deref().unwrap_or("medium"),
-                "contexte": request.context.as_deref().map(|value| truncate_chars(value, 4_000)),
+                "contexte": request.context.as_deref().map(|value| truncate_chars(&clean_offer_context(value), 4_000)),
                 "instruction": request.instruction,
             })
         }
@@ -484,7 +501,54 @@ impl AiService {
             ),
         )
         .await?;
-        let mut cover_letter = render_grounded_letter(&catalog, &plan, &request)?;
+        let fact_limit = fact_limit_for_request(&request)?;
+        let evidence = resolve_letter_evidence(&catalog, &plan, fact_limit)?;
+        let cleaned_offer = request
+            .context
+            .as_deref()
+            .map(clean_offer_context)
+            .unwrap_or_default();
+        let company = request.company.as_deref().unwrap_or("").trim();
+        let job_title = request.job_title.as_deref().unwrap_or("").trim();
+        let draft_context = serde_json::json!({
+            "evidences": evidence.iter().map(|e| serde_json::json!({
+                "id": e.id,
+                "kind": e.kind,
+                "text": e.text,
+            })).collect::<Vec<_>>(),
+            "entreprise": company,
+            "poste": job_title,
+            "ton": request.tone.as_deref().unwrap_or("formal"),
+            "longueur": request.length.as_deref().unwrap_or("medium"),
+            "contexte_nettoye": truncate_chars(&cleaned_offer, 3_000),
+            "lettre_precedente": request.previous_cover_letter,
+            "instruction": request.instruction,
+        })
+        .to_string();
+        progres(&notifier, &id, "Rédaction", None, tokens);
+        let (draft, draft_tokens) = cancel(
+            &token,
+            generate_json::<CoverLetterDraft>(
+                provider.clone(),
+                &bloc_donnees("brief", &draft_context),
+                COVER_LETTER_DRAFT_SYSTEM,
+            ),
+        )
+        .await?;
+        tokens = add_tokens(tokens, draft_tokens);
+        let mut cover_letter = draft.letter.trim().to_owned();
+        if cover_letter.chars().count() < 80 {
+            // Fallback dégradé si le modèle n'a pas produit de prose.
+            cover_letter = render_grounded_letter(&catalog, &plan, &request)?;
+        } else {
+            cover_letter = ground_cover_letter(
+                &cover_letter,
+                &evidence,
+                company,
+                job_title,
+                &cleaned_offer,
+            );
+        }
         progres(&notifier, &id, "Relecture du français", None, tokens);
         let correction_request = LanguageCorrectionRequest {
             generation_id: id.clone(),
