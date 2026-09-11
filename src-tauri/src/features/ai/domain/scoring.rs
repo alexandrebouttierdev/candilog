@@ -26,6 +26,7 @@ const TRANSFERABLE_CREDIT: u8 = 40;
 const TRANSFER_FAMILIES: &[&[&str]] = &[
     &["react", "angular", "vue", "svelte", "ember"],
     &["ci/cd", "cicd", "gitlab ci", "github actions", "integration continue", "intégration continue", "pipelines"],
+    &["java", "j2ee", "spring", "spring boot", "jakarta ee"],
     &["excel", "calc", "google sheets", "sheets", "numbers", "libreoffice calc"],
     &["word", "writer", "google docs", "pages", "libreoffice writer"],
     &["salesforce", "hubspot", "dynamics 365", "pipedrive", "zoho crm"],
@@ -35,6 +36,37 @@ const TRANSFER_FAMILIES: &[&[&str]] = &[
     &["figma", "sketch", "adobe xd", "penpot"],
     &["quickbooks", "sage", "xero", "ciel"],
     &["power bi", "tableau", "looker", "qlik"],
+];
+
+/// Libellés typiques de savoir-être / méthodes à sortir des compétences dures.
+/// Évite qu'Agile, qualité, MOA, UX… diluent le % compétences (score ~31).
+const SOFT_REQUIREMENT_MARKERS: &[&str] = &[
+    "agile",
+    "scrum",
+    "kanban",
+    "code review",
+    "qualite",
+    "qualite logicielle",
+    "autonomie",
+    "esprit d equipe",
+    "communication",
+    "rigueur",
+    "moa",
+    "moe",
+    "ux",
+    "ui ux",
+    "lignes directrices",
+    "manuel",
+    "manuels",
+    "exploitation",
+    "sensibilite",
+    "methodes et outils ia",
+    "outils ia",
+    "intelligence artificielle",
+    "industrialisation",
+    "cadrage",
+    "reunion",
+    "reunions",
 ];
 
 /// Mots trop génériques pour servir de token de proximité métier.
@@ -208,9 +240,7 @@ fn score_against_offer(
     annees: Option<usize>,
     job_offer: &StructuredListing,
 ) -> MatchScore {
-    let offer_skills = deduplicate_labels(&job_offer.skills);
-    let soft_skills = deduplicate_labels(&job_offer.soft_skills);
-    let keywords = keywords_hors_competences(&job_offer.keywords, &offer_skills);
+    let (offer_skills, soft_skills, keywords) = partition_offer_requirements(job_offer);
 
     let mut present = Vec::new();
     let mut missing = Vec::new();
@@ -407,6 +437,49 @@ fn soft_skill_couverte(evidence: &str, skill: &str) -> bool {
         .filter(|t| t.len() >= 4)
         .collect();
     !tokens.is_empty() && tokens.iter().all(|t| contains_search_term(evidence, t))
+}
+
+
+/// Sépare compétences dures, savoir-être et mots-clés pour éviter la dilution du score.
+fn partition_offer_requirements(
+    job_offer: &StructuredListing,
+) -> (Vec<String>, Vec<String>, Vec<String>) {
+    let mut hard = Vec::new();
+    let mut soft = deduplicate_labels(&job_offer.soft_skills);
+    let mut keywords = deduplicate_labels(&job_offer.keywords);
+
+    for skill in deduplicate_labels(&job_offer.skills) {
+        if looks_like_soft_requirement(&skill) {
+            soft.push(skill);
+        } else {
+            hard.push(skill);
+        }
+    }
+    soft = deduplicate_labels(&soft);
+
+    // Mots-clés trop « soft » ou déjà en hard → hors double compte.
+    keywords.retain(|keyword| {
+        !looks_like_soft_requirement(keyword)
+            && !hard.iter().any(|skill| {
+                search_key(skill) == search_key(keyword)
+                    || contains_search_term(skill, keyword)
+                    || contains_search_term(keyword, skill)
+            })
+    });
+    keywords = keywords_hors_competences(&keywords, &hard);
+
+    (hard, soft, keywords)
+}
+
+fn looks_like_soft_requirement(value: &str) -> bool {
+    let key = search_key(value);
+    if key.is_empty() {
+        return false;
+    }
+    SOFT_REQUIREMENT_MARKERS.iter().any(|marker| {
+        let marker_key = search_key(marker);
+        key == marker_key || key.contains(&marker_key) || marker_key.contains(&key)
+    })
 }
 
 /// Évite de compter deux fois une exigence déjà listée en compétence.
@@ -1417,7 +1490,72 @@ Pratiques Agile, intégration continue, code review
     
     /// Régression score ~17 : commentaire LLM aligné mais soft/ATS à 0 + skills partiels
     /// ne doivent plus écraser le total (noyau compétences+expérience + bonus).
+    
+    /// Agile / qualité / MOA / UX dans `competences` ne doivent pas tirer le score à ~31.
     #[test]
+    fn cas_open_soft_dans_competences_ne_dilue_pas() {
+        let resume = GeneratedResume {
+            resume: "Développeur fullstack JavaScript TypeScript 6 ans Rennes.".into(),
+            experiences: vec![GeneratedExperience {
+                title: "Développeur Fullstack".into(),
+                company: "Linaïa".into(),
+                description: "React Node NestJS Angular refonte CI/CD GitLab CI Agile code review Docker Spring Boot migration. 2019 2025.".into(),
+            }],
+            skills: vec![
+                "JavaScript".into(),
+                "TypeScript".into(),
+                "React".into(),
+                "Node.js".into(),
+                "Angular".into(),
+                "CI/CD".into(),
+                "Docker".into(),
+                "GitLab CI".into(),
+            ],
+            education: vec![],
+        };
+        let source = "Développeur fullstack JavaScript TypeScript 6 ans. React Angular Node NestJS Docker GitLab CI CI/CD Agile Code review. GDS Bretagne Angular vers React. Jour de Match Spring Boot vers Node.js.";
+        let offre = StructuredListing {
+            title: "Concepteur Développeur Full stack F/H".into(),
+            skills: vec![
+                "Java".into(),
+                "Angular".into(),
+                "Pipelines CI/CD".into(),
+                "Sensibilité aux méthodes et outils IA".into(),
+                "Tests unitaires / intégration".into(),
+                "qualité logicielle".into(),
+                "Pratiques Agile".into(),
+                "intégration continue".into(),
+                "code review".into(),
+                "industrialisation".into(),
+                "lignes directrices UX".into(),
+                "réunions de cadrage MOA".into(),
+            ],
+            soft_skills: vec![],
+            experience: None,
+            keywords: vec!["manuels d'usage".into(), "mise en production".into()],
+        };
+        let score = score_resume_imported_with_source(&resume, &offre, Some(source));
+        assert!(
+            score.total >= 45,
+            "attendu ≥45 (plus de ~31), obtenu {} skills={:?} present={:?} missing={:?}",
+            score.total,
+            score.skills,
+            score.present,
+            score.missing
+        );
+        assert!(score.present.iter().any(|s| search_key(s).contains("angular")));
+        // Java peut être manquant ou seulement transférable via Spring Boot — jamais un match JS.
+        assert!(
+            !score.present.iter().any(|s| search_key(s) == "javascript" && search_key(s) == "java"),
+        );
+        assert!(
+            score.skills.unwrap_or(0) >= 40,
+            "compétences dures après reclassement: {:?}",
+            score.skills
+        );
+    }
+
+#[test]
     fn cas_open_commentaire_aligne_score_pas_ecrase() {
         let resume = GeneratedResume {
             resume: "Développeur fullstack JavaScript / TypeScript avec 6 ans d'expérience.".into(),
