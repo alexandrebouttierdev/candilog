@@ -18,6 +18,7 @@ function reglages(theme: Settings["theme"] = "system"): Settings {
       temperature: 0.7,
       mode: "auto",
     },
+    llm_presets: {},
     theme,
     language: "fr",
   };

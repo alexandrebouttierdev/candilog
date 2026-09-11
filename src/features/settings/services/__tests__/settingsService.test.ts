@@ -13,6 +13,7 @@ const settings: Settings = {
     temperature: 0.7,
     mode: "auto",
   },
+  llm_presets: {},
   theme: "system",
   language: "fr",
 };

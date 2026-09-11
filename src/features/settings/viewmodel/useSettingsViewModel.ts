@@ -85,14 +85,24 @@ export function useSettingsViewModel() {
   const clearApiKey = useMutation({
     mutationFn: settingsService.clearApiKey,
     onSuccess: () => {
-      queryClient.setQueryData<Settings>(SETTINGS_KEY, (current) =>
-        current
-          ? {
-              ...current,
-              llm: { ...current.llm, api_key_configured: false },
-            }
-          : current,
-      );
+      queryClient.setQueryData<Settings>(SETTINGS_KEY, (current) => {
+        if (!current) return current;
+        const id =
+          typeof current.llm.provider === "string"
+            ? current.llm.provider
+            : "custom";
+        const preset = current.llm_presets[id];
+        return {
+          ...current,
+          llm: { ...current.llm, api_key_configured: false },
+          llm_presets: preset
+            ? {
+                ...current.llm_presets,
+                [id]: { ...preset, api_key_configured: false },
+              }
+            : current.llm_presets,
+        };
+      });
       notify({ tone: "success", title: "Clé API supprimée" });
     },
     onError: (error: unknown) => {

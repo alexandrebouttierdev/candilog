@@ -223,6 +223,7 @@ impl ManagedOllamaService {
                 .push(definition.ollama_tag.clone());
         }
         settings.managed_ollama.active_model_id = Some(request.model_id);
+        settings.capture_llm_preset();
         settings.llm.provider = crate::features::ai::domain::ProviderKind::CandilogLocal;
         settings.llm.model = definition.ollama_tag.clone();
         settings.managed_ollama.last_error = None;
@@ -271,6 +272,7 @@ impl ManagedOllamaService {
             ));
         }
         settings.managed_ollama.active_model_id = Some(model_id);
+        settings.capture_llm_preset();
         settings.llm.provider = crate::features::ai::domain::ProviderKind::CandilogLocal;
         settings.llm.model = definition.ollama_tag.clone();
         self.save_settings(&settings)?;

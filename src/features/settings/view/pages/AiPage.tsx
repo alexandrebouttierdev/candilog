@@ -18,11 +18,10 @@ import { openExternal } from "@/shared/services/external-link";
 import { useSettingsViewModel } from "../../viewmodel/useSettingsViewModel";
 import {
   getProvider,
-  defaultEndpoint,
   OTHER_PROVIDERS,
   idProvider,
-  defaultModel,
-  toProvider,
+  llmFromPreset,
+  presetFromLlm,
   type ProviderOption,
 } from "../../model/providers";
 import { ProviderGrid, providerLogo } from "../components/ProviderGrid";
@@ -56,6 +55,8 @@ export function AiPage() {
   const [tab, setTab] = useState<AiTab>("local");
   const [draft, setDraft] = useState<Settings | null>(null);
   const [apiKeyDraft, setApiKeyDraft] = useState("");
+  /** Brouillons de clé par fournisseur : basculer ne doit pas écraser la saisie en cours. */
+  const [apiKeyByProvider, setApiKeyByProvider] = useState<Record<string, string>>({});
   const [models, setModels] = useState<string[]>([]);
   const [test, setTestState] = useState<ConnectionTest>("idle");
   const [testMessage, setTestMessage] = useState<string | null>(null);
@@ -81,18 +82,57 @@ export function AiPage() {
   };
 
   const selectProvider = (id: ProviderOption["id"]) => {
-    patchLlm({
-      provider: toProvider(id),
-      endpoint: defaultEndpoint(id),
-      model: defaultModel(id),
+    setDraft((current) => {
+      const base = current ?? vm.data;
+      if (!base) return current;
+      const fromId = idProvider(base.llm.provider);
+      const presets = {
+        ...base.llm_presets,
+        [fromId]: presetFromLlm(base.llm),
+      };
+      return {
+        ...base,
+        llm_presets: presets,
+        llm: llmFromPreset(id, presets[id], {
+          temperature: base.llm.temperature,
+          mode: base.llm.mode,
+        }),
+      };
     });
+    setApiKeyByProvider((keys) => {
+      const fromId = llm ? idProvider(llm.provider) : null;
+      const next = fromId ? { ...keys, [fromId]: apiKeyDraft } : { ...keys };
+      return next;
+    });
+    setApiKeyDraft(() => {
+      const fromId = llm ? idProvider(llm.provider) : null;
+      const nextKeys = fromId
+        ? { ...apiKeyByProvider, [fromId]: apiKeyDraft }
+        : apiKeyByProvider;
+      return nextKeys[id] ?? "";
+    });
+    setModels([]);
+    setTest("idle");
   };
 
   const save = async () => {
     if (!form) return;
-    await vm.save(form, apiKeyDraft.trim() || null);
+    const id = idProvider(form.llm.provider);
+    const toSave: Settings = {
+      ...form,
+      llm_presets: {
+        ...form.llm_presets,
+        [id]: presetFromLlm(form.llm),
+      },
+    };
+    await vm.save(toSave, apiKeyDraft.trim() || null);
     setDraft(null);
     setApiKeyDraft("");
+    setApiKeyByProvider((keys) => {
+      const next = { ...keys };
+      delete next[id];
+      return next;
+    });
   };
 
   const runTest = async () => {
@@ -126,14 +166,27 @@ export function AiPage() {
   const clearApiKey = async () => {
     await vm.clearApiKey();
     setApiKeyDraft("");
-    setDraft((current) =>
-      current
-        ? {
-            ...current,
-            llm: { ...current.llm, api_key_configured: false },
-          }
-        : current,
-    );
+    setApiKeyByProvider((keys) => {
+      if (!llm) return keys;
+      const next = { ...keys };
+      delete next[idProvider(llm.provider)];
+      return next;
+    });
+    setDraft((current) => {
+      const base = current ?? vm.data;
+      if (!base) return current;
+      const id = idProvider(base.llm.provider);
+      return {
+        ...base,
+        llm: { ...base.llm, api_key_configured: false },
+        llm_presets: {
+          ...base.llm_presets,
+          [id]: {
+            ...presetFromLlm({ ...base.llm, api_key_configured: false }),
+          },
+        },
+      };
+    });
   };
 
   const fournisseur = llm ? getProvider(llm.provider) : null;

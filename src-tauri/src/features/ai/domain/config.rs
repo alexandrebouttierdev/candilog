@@ -32,6 +32,23 @@ pub enum ProviderKind {
     Custom(String),
 }
 
+impl ProviderKind {
+    /// Identifiant stable pour le coffre et les presets (une entrée par fournisseur).
+    #[must_use]
+    pub fn storage_id(&self) -> &'static str {
+        match self {
+            Self::CandilogLocal => "candilog_local",
+            Self::Ollama => "ollama",
+            Self::Claude => "claude",
+            Self::OpenAI => "openai",
+            Self::Gemini => "gemini",
+            Self::Mistral => "mistral",
+            Self::DeepSeek => "deepseek",
+            Self::Custom(_) => "custom",
+        }
+    }
+}
+
 /// Champs en snake_case : c'est le JSON persisté par l'application Iced.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LlmConfig {

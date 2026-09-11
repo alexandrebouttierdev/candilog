@@ -8,8 +8,11 @@ Toute l'IA vit dans `src-tauri/src/features/ai/`. Le frontend n'envoie que des D
 L'**IA locale Candilog** (`candilog_local`), Ollama, Claude, OpenAI, Gemini,
 Mistral, DeepSeek et un point de terminaison personnalisé implémentent `LlmGenerator`. Le
 choix, le modèle, la température et le mode d'analyse sont persistés dans les paramètres ;
-la clé API vit dans le coffre du système (`core::secrets`), jamais dans SQLite ni dans les
-journaux.
+**chaque fournisseur conserve sa propre configuration** (endpoint, modèle, température,
+mode) dans `llm_presets`, et sa clé API dans une entrée distincte du coffre système
+(`llm-api-key-openai`, `llm-api-key-mistral`, …) — basculer d'un fournisseur à l'autre
+n'écrase jamais les réglages des autres. La clé n'est jamais écrite dans SQLite ni dans
+les journaux.
 
 L'IA locale Candilog est le **fournisseur par défaut** sur une installation neuve. Elle
 délègue l'inférence à un runtime Ollama privé géré par l'application : binaire officiel

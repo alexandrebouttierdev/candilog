@@ -2,6 +2,7 @@
 
 use crate::features::ai::domain::{AnalysisMode, LlmConfig, ManagedOllamaSettings, ProviderKind};
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use ts_rs::TS;
 
 /// Préférence de thème, identique à l'enum historique.
@@ -15,10 +16,66 @@ pub enum ThemePref {
     System,
 }
 
+/// Empreinte d'un fournisseur sans secret — une entrée par fournisseur dans `llm_presets`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct LlmProviderPreset {
+    pub endpoint: Option<String>,
+    pub model: String,
+    pub temperature: f32,
+    #[serde(default)]
+    pub mode: AnalysisMode,
+}
+
+impl LlmProviderPreset {
+    #[must_use]
+    pub fn from_config(config: &LlmConfig) -> Self {
+        Self {
+            endpoint: config.endpoint.clone(),
+            model: config.model.clone(),
+            temperature: config.temperature,
+            mode: config.mode,
+        }
+    }
+
+    #[must_use]
+    pub fn endpoint_effectif(&self, provider: &ProviderKind) -> String {
+        self.endpoint
+            .clone()
+            .unwrap_or_else(|| default_endpoint(provider).unwrap_or_default())
+    }
+}
+
+/// Forme IPC d'un preset, avec l'état de clé (jamais le secret).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "settings.ts")]
+pub struct LlmProviderPresetForm {
+    pub endpoint: Option<String>,
+    pub model: String,
+    pub temperature: f32,
+    pub mode: AnalysisMode,
+    pub api_key_configured: bool,
+}
+
+impl From<LlmProviderPresetForm> for LlmProviderPreset {
+    fn from(value: LlmProviderPresetForm) -> Self {
+        Self {
+            endpoint: value.endpoint,
+            model: value.model,
+            temperature: value.temperature,
+            mode: value.mode,
+        }
+    }
+}
+
 /// Paramètres complets tels qu'ils sont écrits dans `parametres.data`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AppSettings {
     pub llm: LlmConfig,
+    /// Configurations mémorisées par fournisseur (`openai`, `mistral`, …).
+    #[serde(default)]
+    pub llm_presets: BTreeMap<String, LlmProviderPreset>,
     #[serde(default)]
     pub managed_ollama: ManagedOllamaSettings,
     #[serde(default)]
@@ -29,6 +86,19 @@ pub struct AppSettings {
 
 fn language_fr() -> String {
     "fr".into()
+}
+
+#[must_use]
+pub fn default_endpoint(provider: &ProviderKind) -> Option<String> {
+    match provider {
+        ProviderKind::CandilogLocal => None,
+        ProviderKind::Ollama => Some("http://localhost:11434".into()),
+        ProviderKind::Claude => Some("https://api.anthropic.com".into()),
+        ProviderKind::Gemini => Some("https://generativelanguage.googleapis.com".into()),
+        ProviderKind::Mistral => Some("https://api.mistral.ai".into()),
+        ProviderKind::DeepSeek => Some("https://api.deepseek.com".into()),
+        ProviderKind::OpenAI | ProviderKind::Custom(_) => Some("https://api.openai.com".into()),
+    }
 }
 
 /// Migre les anciens réglages (`mistral_local`, bloc `local_ai`) avant désérialisation.
@@ -57,10 +127,20 @@ impl Default for AppSettings {
     fn default() -> Self {
         Self {
             llm: LlmConfig::default(),
+            llm_presets: BTreeMap::new(),
             managed_ollama: ManagedOllamaSettings::default(),
             theme: ThemePref::System,
             language: language_fr(),
         }
+    }
+}
+
+impl AppSettings {
+    /// Mémorise la configuration active sous l'identifiant de son fournisseur.
+    pub fn capture_llm_preset(&mut self) {
+        let id = self.llm.provider.storage_id().to_string();
+        self.llm_presets
+            .insert(id, LlmProviderPreset::from_config(&self.llm));
     }
 }
 
@@ -70,6 +150,8 @@ impl Default for AppSettings {
 #[ts(export, export_to = "settings.ts")]
 pub struct Settings {
     pub llm: LlmForm,
+    #[serde(default)]
+    pub llm_presets: BTreeMap<String, LlmProviderPresetForm>,
     pub theme: ThemePref,
     pub language: String,
 }
@@ -88,15 +170,36 @@ pub struct LlmForm {
 
 impl From<AppSettings> for Settings {
     fn from(value: AppSettings) -> Self {
-        Self::from_app(value, false)
+        Self::from_app(value, false, &BTreeMap::new())
     }
 }
 
 impl Settings {
     #[must_use]
-    pub fn from_app(value: AppSettings, api_key_configured: bool) -> Self {
+    pub fn from_app(
+        value: AppSettings,
+        api_key_configured: bool,
+        keys_configured: &BTreeMap<String, bool>,
+    ) -> Self {
+        let llm_presets = value
+            .llm_presets
+            .iter()
+            .map(|(id, preset)| {
+                (
+                    id.clone(),
+                    LlmProviderPresetForm {
+                        endpoint: preset.endpoint.clone(),
+                        model: preset.model.clone(),
+                        temperature: preset.temperature,
+                        mode: preset.mode,
+                        api_key_configured: keys_configured.get(id).copied().unwrap_or(false),
+                    },
+                )
+            })
+            .collect();
         Self {
             llm: LlmForm::from_config(value.llm, api_key_configured),
+            llm_presets,
             theme: value.theme,
             language: value.language,
         }
@@ -105,12 +208,19 @@ impl Settings {
 
 impl From<Settings> for AppSettings {
     fn from(value: Settings) -> Self {
-        Self {
+        let mut app = Self {
             llm: LlmConfig::from(value.llm),
+            llm_presets: value
+                .llm_presets
+                .into_iter()
+                .map(|(id, preset)| (id, LlmProviderPreset::from(preset)))
+                .collect(),
             managed_ollama: ManagedOllamaSettings::default(),
             theme: value.theme,
             language: value.language,
-        }
+        };
+        app.capture_llm_preset();
+        app
     }
 }
 

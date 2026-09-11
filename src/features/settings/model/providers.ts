@@ -1,4 +1,9 @@
-import type { ProviderKind } from "@/shared/types/generated/settings";
+import type {
+  AnalysisMode,
+  LlmForm,
+  LlmProviderPresetForm,
+  ProviderKind,
+} from "@/shared/types/generated/settings";
 
 export interface ProviderOption {
   readonly id:
@@ -89,4 +94,31 @@ export function defaultEndpoint(id: ProviderOption["id"]): string | null {
 export function defaultModel(_id: ProviderOption["id"]): string {
   void _id;
   return "";
+}
+
+/** Snapshot d'un formulaire LLM pour le mémoriser sous l'identifiant du fournisseur. */
+export function presetFromLlm(llm: LlmForm): LlmProviderPresetForm {
+  return {
+    endpoint: llm.endpoint,
+    model: llm.model,
+    temperature: llm.temperature,
+    mode: llm.mode,
+    api_key_configured: llm.api_key_configured,
+  };
+}
+
+/** Reconstruit le formulaire d'un fournisseur à partir de son preset, ou des défauts. */
+export function llmFromPreset(
+  id: ProviderOption["id"],
+  preset: LlmProviderPresetForm | undefined,
+  defaults?: { temperature?: number; mode?: AnalysisMode },
+): LlmForm {
+  return {
+    provider: toProvider(id),
+    endpoint: preset?.endpoint ?? defaultEndpoint(id),
+    model: preset?.model ?? defaultModel(id),
+    temperature: preset?.temperature ?? defaults?.temperature ?? 0.7,
+    mode: preset?.mode ?? defaults?.mode ?? "auto",
+    api_key_configured: preset?.api_key_configured ?? false,
+  };
 }
