@@ -136,32 +136,32 @@ export function ResumePaper({
  */
 function ajusterDensite(page: HTMLElement, content: HTMLElement): boolean {
   let index = 1;
-  const appliquer = (position: number) => {
+  const applyDensity = (position: number) => {
     page.style.setProperty("--resume-fs", String(DENSITY_STEPS[position]?.fs ?? 1));
     page.style.setProperty("--resume-sp", String(DENSITY_STEPS[position]?.sp ?? 1));
   };
-  appliquer(index);
+  applyDensity(index);
 
   const dernier = content.lastElementChild;
   if (!dernier) return false;
 
-  const utilise = () => {
+  const fillRatio = () => {
     const cadre = content.getBoundingClientRect();
     const bloc = dernier.getBoundingClientRect();
     if (cadre.height === 0) return 0;
     return (bloc.bottom - cadre.top) / cadre.height;
   };
 
-  while (utilise() > 1.001 && index < DENSITY_STEPS.length - 1) appliquer(++index);
-  while (utilise() < 0.84 && index > 0) {
-    appliquer(index - 1);
-    if (utilise() > 1.001) {
-      appliquer(index);
+  while (fillRatio() > 1.001 && index < DENSITY_STEPS.length - 1) applyDensity(++index);
+  while (fillRatio() < 0.84 && index > 0) {
+    applyDensity(index - 1);
+    if (fillRatio() > 1.001) {
+      applyDensity(index);
       break;
     }
     index--;
   }
-  return utilise() > 1.001;
+  return fillRatio() > 1.001;
 }
 
 function ResumeHeader({

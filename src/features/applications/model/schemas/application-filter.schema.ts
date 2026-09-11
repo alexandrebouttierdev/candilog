@@ -1,12 +1,12 @@
 import { z } from "zod";
-import { FORMAT_DATE, versDateIso } from "@/shared/lib/dates";
+import { FORMAT_DATE, toIsoDate } from "@/shared/lib/dates";
 import { MAX_WEEKLY_HOURS } from "./application-form.schema";
 
 /**
  * Borne de période facultative : vide vaut « pas de borne », sinon la date doit exister.
  *
  * `superRefine` et non `refine` après transformation : il faut distinguer « champ vide »
- * de « date que `versDateIso` a refusée », que la valeur transformée réduit toutes deux à
+ * de « date que `toIsoDate` a refusée », que la valeur transformée réduit toutes deux à
  * `null`.
  */
 function borneFacultative() {
@@ -15,14 +15,14 @@ function borneFacultative() {
     .trim()
     .default("")
     .superRefine((value, ctx) => {
-      if (value !== "" && versDateIso(value) === null) {
+      if (value !== "" && toIsoDate(value) === null) {
         ctx.addIssue({
           code: "custom",
           message: `Date invalide — format attendu ${FORMAT_DATE}.`,
         });
       }
     })
-    .transform((value) => (value === "" ? null : versDateIso(value)));
+    .transform((value) => (value === "" ? null : toIsoDate(value)));
 }
 
 /** Borne d'heures hebdomadaires facultative, saisie au clavier. */

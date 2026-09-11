@@ -1,11 +1,11 @@
 import type { DragEvent } from "react";
 import type { Application } from "@/shared/types/generated/applications";
-import { daysFrom, versDateAffichee } from "@/shared/lib/dates";
+import { daysFrom, toDisplayDate } from "@/shared/lib/dates";
 import { Icon, Tag } from "@/shared/ui";
 import { cn } from "@/shared/lib/cn";
 
 /** Géométrie du fantôme de glisse, calée sur la carte d'origine. */
-export interface ApercuGlisse {
+export interface DragPreview {
   readonly width: number;
   readonly height: number;
   readonly grabX: number;
@@ -41,7 +41,7 @@ export function ApplicationCard({
   dragging?: boolean;
   onSelect?: () => void;
   onToggleSelect?: () => void;
-  onDragStart?: (apercu: ApercuGlisse) => void;
+  onDragStart?: (preview: DragPreview) => void;
   onDragEnd?: () => void;
 }) {
   const days = daysFrom(application.sent_date);
@@ -58,7 +58,7 @@ export function ApplicationCard({
         }
         event.dataTransfer.setData("text/plain", application.id);
         event.dataTransfer.effectAllowed = "move";
-        masquerFantomeNatif(event);
+        hideNativeDragGhost(event);
         const rect = event.currentTarget.getBoundingClientRect();
         onDragStart?.({
           width: rect.width,
@@ -128,7 +128,7 @@ export function ApplicationCard({
             "inline-flex flex-none items-center gap-1 text-eyebrow font-normal tracking-normal",
             days >= 15 ? "text-warning" : "text-ink-faint",
           )}
-          title={`Envoyée le ${versDateAffichee(application.sent_date)}`}
+          title={`Envoyée le ${toDisplayDate(application.sent_date)}`}
         >
           <Icon name={days >= 15 ? "schedule" : "event"} size={13} />
           {days} j
@@ -154,7 +154,7 @@ function initials(value: string): string {
  * curseur : un canvas 1×1 remplace ce cliché. Le Kanban pose ensuite une copie
  * à la taille réelle de la carte.
  */
-function masquerFantomeNatif(event: DragEvent<HTMLElement>): void {
+function hideNativeDragGhost(event: DragEvent<HTMLElement>): void {
   const canvas = document.createElement("canvas");
   canvas.width = 1;
   canvas.height = 1;

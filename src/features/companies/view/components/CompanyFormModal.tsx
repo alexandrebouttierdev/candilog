@@ -12,7 +12,7 @@ import { FormField, ModalHost, Select, TextArea, TextInput } from "@/shared/ui";
 import type { IconName } from "@/shared/ui/icon-names";
 
 /** Valeurs d'un formulaire vierge. */
-const VIDE: CompanyFormInput = {
+const EMPTY_FORM: CompanyFormInput = {
   name: "",
   sector_id: "",
   company_type_id: "",
@@ -64,13 +64,13 @@ export function CompanyFormModal({
 
   const form = useForm<CompanyFormInput, unknown, CompanyFormValues>({
     resolver: zodResolver(companyFormSchema),
-    defaultValues: VIDE,
+    defaultValues: EMPTY_FORM,
   });
 
   // La modale n'est démontée qu'à la fermeture : sans réinitialisation à l'ouverture, elle
   // rouvrirait sur les valeurs de l'entité précédemment éditée.
   useEffect(() => {
-    if (open) form.reset(company ? from(company) : { ...VIDE, name: defaultName });
+    if (open) form.reset(company ? from(company) : { ...EMPTY_FORM, name: defaultName });
   }, [open, company, defaultName, form]);
 
   // L'échec d'enregistrement est déjà annoncé par la mutation appelante. Il est intercepté

@@ -190,7 +190,7 @@ describe("écran Candidatures — panneau de détail", () => {
 
   it("ouvre la fiche demandée par l'URL même si elle est absente de la page courante", async () => {
     const get = vi.spyOn(applicationService, "get").mockResolvedValue(cand("Data Analyst"));
-    render(<ApplicationsPage />, { wrapper: wrapperSur("/candidatures?fiche=Data%20Analyst") });
+    render(<ApplicationsPage />, { wrapper: wrapperSur("/candidatures?id=Data%20Analyst") });
 
     expect(
       await screen.findByRole("complementary", { name: "Data Analyst" }),
@@ -201,7 +201,7 @@ describe("écran Candidatures — panneau de détail", () => {
   it("referme le panneau quand la candidature affichée est supprimée", async () => {
     vi.spyOn(applicationService, "get").mockResolvedValue(cand("Développeur"));
     vi.spyOn(applicationService, "delete").mockResolvedValue(undefined);
-    render(<ApplicationsPage />, { wrapper: wrapperSur("/candidatures?fiche=Développeur") });
+    render(<ApplicationsPage />, { wrapper: wrapperSur("/candidatures?id=Développeur") });
 
     const panneau = await screen.findByRole("complementary", { name: "Développeur" });
     await userEvent.click(within(panneau).getByRole("button", { name: "Supprimer" }));

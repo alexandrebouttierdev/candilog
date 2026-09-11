@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { documentsService, type ResumeVersion } from "../services/documentsService";
+import { documentsService } from "../services/documentsService";
+import type { ResumeVersion } from "@/shared/types/generated/documents";
 import { normalizeResumeWorkspace } from "../model/resumeWorkspace";
 import type { ResumeGeneration } from "@/features/ai";
 import { useUiStore } from "@/shared/lib/ui-store";

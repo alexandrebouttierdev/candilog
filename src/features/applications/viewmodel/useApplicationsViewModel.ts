@@ -2,12 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { applicationService } from "../services/applicationService";
-import type {
-  Application,
+import type { Application,
   ApplicationFilter,
   NewApplication,
-  ApplicationStatus,
-} from "../services/applicationService";
+  ApplicationStatus, } from "@/shared/types/generated/applications";
 import {
   EMPTY_FILTER,
   type ApplicationFilterValues,
@@ -23,7 +21,7 @@ import { Statuses } from "../model/statuses";
 export const APPLICATIONS_KEY = ["candidatures"] as const;
 
 /** Mode d'affichage du suivi. */
-export type TrackingView = "kanban" | "liste";
+export type TrackingView = "kanban" | "list";
 
 const INITIAL_KANBAN_PAGES: Record<ApplicationStatus, number> = {
   EN_ATTENTE: 1,
@@ -54,18 +52,18 @@ export function useApplicationsViewModel() {
   const [descending, setDescending] = useState(true);
 
   // La fiche ouverte vit dans l'URL, pas dans un état local : le Dashboard ouvre une
-  // candidature par `?fiche=<id>`, et le panneau survit ainsi à un rechargement comme à un
+  // candidature par `?id=<uuid>`, et le panneau survit ainsi à un rechargement comme à un
   // retour arrière. Aucune fiche n'est sélectionnée tant que le paramètre est absent.
-  const selected_id = searchParams.get("fiche");
+  const selected_id = searchParams.get("id");
 
   const select = useCallback(
     (id: string | null) => {
       setSearchParams(
-        (actuel) => {
-          const suivant = new URLSearchParams(actuel);
-          if (id === null) suivant.delete("fiche");
-          else suivant.set("fiche", id);
-          return suivant;
+        (current) => {
+          const next = new URLSearchParams(current);
+          if (id === null) next.delete("id");
+          else next.set("id", id);
+          return next;
         },
         { replace: true },
       );
@@ -82,7 +80,7 @@ export function useApplicationsViewModel() {
   const list = useQuery({
     queryKey: [...APPLICATIONS_KEY, "page", { page, page_size: sizePage, filter }],
     queryFn: () => applicationService.listPage({ page, page_size: sizePage, filter }),
-    enabled: view === "liste",
+    enabled: view === "list",
   });
 
   // Une requête par colonne : SQLite applique le statut avant LIMIT/OFFSET, ce qui évite
@@ -285,7 +283,7 @@ export function useApplicationsViewModel() {
   );
 
   const items: Application[] =
-    view === "liste"
+    view === "list"
       ? (list.data?.items ?? [])
       : Array.from(
           new Map(
@@ -304,7 +302,7 @@ export function useApplicationsViewModel() {
       breakdown.data.rejected
     : 0;
 
-  // Un `?fiche=` pointant sur une candidature supprimée ou inconnue ne doit pas laisser
+  // Un `?id=` pointant sur une candidature supprimée ou inconnue ne doit pas laisser
   // l'URL mentir : le paramètre est retiré et l'échec annoncé une seule fois.
   const detailError = detail.error;
   useEffect(() => {

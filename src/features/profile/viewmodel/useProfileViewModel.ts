@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { profileService } from "../services/profileService";
-import type { ImportProfileRequest, Profile, ProfilePayload } from "../services/profileService";
+import type { ImportProfileRequest, Profile, ProfilePayload } from "@/shared/types/generated/profile";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 

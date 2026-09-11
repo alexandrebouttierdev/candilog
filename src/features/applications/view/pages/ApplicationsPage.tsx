@@ -4,7 +4,7 @@ import { useApplicationsViewModel } from "../../viewmodel/useApplicationsViewMod
 import type { Application, ApplicationStatus } from "@/shared/types/generated/applications";
 import { status_meta } from "../../model/statuses";
 import { applicationTypeLabel, weeklyDurationLabel } from "@/features/referentials";
-import { versDateAffichee } from "@/shared/lib/dates";
+import { toDisplayDate } from "@/shared/lib/dates";
 import { ApplicationFormModal } from "../components/ApplicationFormModal";
 import { ApplicationFilters } from "../components/ApplicationFilters";
 import { ApplicationDetail } from "../components/ApplicationDetail";
@@ -28,37 +28,37 @@ import { PAGE_SIZE } from "@/shared/types/page";
 import { EMPTY_FILTER } from "../../model/schemas/application-filter.schema";
 
 /** Densités proposées par le pied de la vue Liste. */
-const DENSITES = [PAGE_SIZE, 25, 50] as const;
+const DENSITIES = [PAGE_SIZE, 25, 50] as const;
 
 /** Écran Suivi → Candidatures : Kanban ou Liste, sur le même filtre. */
 export function ApplicationsPage() {
   const vm = useApplicationsViewModel();
   const [searchParams, setSearchParams] = useSearchParams();
   const [form, setForm] = useState<{
-    ouvert: boolean;
-    cible: Application | null;
-    statut: ApplicationStatus | null;
+    isOpen: boolean;
+    editing: Application | null;
+    status: ApplicationStatus | null;
   }>({
-    ouvert: searchParams.get("nouvelle") === "1",
-    cible: null,
-    statut: null,
+    isOpen: searchParams.get("new") === "1",
+    editing: null,
+    status: null,
   });
-  const [aDelete, setADelete] = useState<string[] | null>(null);
-  const [cochees, setCochees] = useState<Set<string>>(() => new Set());
+  const [pendingDelete, setPendingDelete] = useState<string[] | null>(null);
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(() => new Set());
 
   // Le bouton principal du Dashboard ouvre réellement la création, sans dupliquer le
   // formulaire ni son ViewModel dans une autre feature. Le paramètre reste dans l'URL le
   // temps de la modale, puis est consommé à sa fermeture.
-  const fermerForm = () => {
-    setForm({ ouvert: false, cible: null, statut: null });
-    if (searchParams.get("nouvelle") === "1") {
-      // Seul `nouvelle` est consommé : effacer toute la query effacerait aussi la fiche
+  const closeForm = () => {
+    setForm({ isOpen: false, editing: null, status: null });
+    if (searchParams.get("new") === "1") {
+      // Seul `new` est consommé : effacer toute la query effacerait aussi la fiche
       // ouverte dans le panneau de détail.
       setSearchParams(
-        (actuel) => {
-          const suivant = new URLSearchParams(actuel);
-          suivant.delete("nouvelle");
-          return suivant;
+        (current) => {
+          const next = new URLSearchParams(current);
+          next.delete("new");
+          return next;
         },
         { replace: true },
       );
@@ -70,10 +70,10 @@ export function ApplicationsPage() {
    *
    * Le sélecteur et l'écriture appartiennent entièrement à la commande Rust native.
    */
-  const exporter = async () => {
-    const ids = [...cochees];
+  const exportRows = async () => {
+    const ids = [...checkedIds];
     // Les identifiants cochés suffisent : les combiner au filtre courant exclurait
-    // une ligne sélectionnée puis masquée par une recherche ou un statut.
+    // une ligne sélectionnée puis masquée par une recherche ou un status.
     const filter =
       ids.length > 0
         ? { ...EMPTY_FILTER, sort: vm.sort, descending: vm.descending, search: "", ids }
@@ -81,36 +81,36 @@ export function ApplicationsPage() {
     await vm.exportCsv(filter);
   };
 
-  const basculerCoche = (id: string) => {
-    setCochees((actuel) => {
-      const suivant = new Set(actuel);
-      if (suivant.has(id)) suivant.delete(id);
-      else suivant.add(id);
-      return suivant;
+  const toggleChecked = (id: string) => {
+    setCheckedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
     });
   };
 
   const basculerPage = (ids: readonly string[], checked: boolean) => {
-    setCochees((actuel) => {
-      const suivant = new Set(actuel);
+    setCheckedIds((current) => {
+      const next = new Set(current);
       for (const id of ids) {
-        if (checked) suivant.add(id);
-        else suivant.delete(id);
+        if (checked) next.add(id);
+        else next.delete(id);
       }
-      return suivant;
+      return next;
     });
   };
 
   const suppressionEnCours = useMemo(() => {
-    if (!aDelete || aDelete.length === 0) return null;
+    if (!pendingDelete || pendingDelete.length === 0) return null;
     const unique =
-      aDelete.length === 1
-        ? (vm.selection?.id === aDelete[0]
+      pendingDelete.length === 1
+        ? (vm.selection?.id === pendingDelete[0]
             ? vm.selection
-            : vm.items.find((item) => item.id === aDelete[0]))
+            : vm.items.find((item) => item.id === pendingDelete[0]))
         : undefined;
-    return { ids: aDelete, unique };
-  }, [aDelete, vm.items, vm.selection]);
+    return { ids: pendingDelete, unique };
+  }, [pendingDelete, vm.items, vm.selection]);
 
   const columns: Column<Application, ApplicationSort>[] = [
     {
@@ -174,7 +174,7 @@ export function ApplicationsPage() {
       ),
     },
     {
-      key: "statut",
+      key: "status",
       header: "Statut",
       sort_key: "status",
       grow: 1.1,
@@ -194,12 +194,12 @@ export function ApplicationsPage() {
       grow: 0.7,
       numeric: true,
       render: (row) => (
-        <span className="text-note text-ink-faint">{versDateAffichee(row.sent_date)}</span>
+        <span className="text-note text-ink-faint">{toDisplayDate(row.sent_date)}</span>
       ),
     },
   ];
 
-  const fiche = vm.selection;
+  const detail = vm.selection;
 
   return (
     <div className="flex h-full flex-col">
@@ -219,33 +219,33 @@ export function ApplicationsPage() {
               onChange={vm.setView}
               options={[
                 { value: "kanban", label: "Kanban", icon: "view_kanban" },
-                { value: "liste", label: "Liste", icon: "view_list" },
+                { value: "list", label: "Liste", icon: "view_list" },
               ]}
             />
-            {cochees.size > 0 ? (
+            {checkedIds.size > 0 ? (
               <>
                 <span className="text-note font-semibold text-ink">
-                  {cochees.size} sélectionnée{cochees.size > 1 ? "s" : ""}
+                  {checkedIds.size} sélectionnée{checkedIds.size > 1 ? "s" : ""}
                 </span>
-                <Button variant="ghost" onClick={() => setCochees(new Set())}>
+                <Button variant="ghost" onClick={() => setCheckedIds(new Set())}>
                   Tout désélectionner
                 </Button>
                 <Button
                   variant="danger"
                   icon="delete"
-                  onClick={() => setADelete([...cochees])}
+                  onClick={() => setPendingDelete([...checkedIds])}
                 >
                   Supprimer
                 </Button>
               </>
             ) : null}
-            <Button icon="download" disabled={vm.isExporting} onClick={() => void exporter()}>
+            <Button icon="download" disabled={vm.isExporting} onClick={() => void exportRows()}>
               Exporter
             </Button>
             <Button
               variant="primary"
               icon="add"
-              onClick={() => setForm({ ouvert: true, cible: null, statut: null })}
+              onClick={() => setForm({ isOpen: true, editing: null, status: null })}
             >
               Nouvelle
             </Button>
@@ -298,7 +298,7 @@ export function ApplicationsPage() {
                     <Button
                       variant="primary"
                       icon="add"
-                      onClick={() => setForm({ ouvert: true, cible: null, statut: null })}
+                      onClick={() => setForm({ isOpen: true, editing: null, status: null })}
                     >
                       Nouvelle candidature
                     </Button>
@@ -310,11 +310,11 @@ export function ApplicationsPage() {
             <KanbanBoard
               columns={vm.kanbanColumns}
               selected_id={vm.selected_id}
-              checkedIds={cochees}
+              checkedIds={checkedIds}
               onSelect={vm.select}
-              onToggleSelect={basculerCoche}
+              onToggleSelect={toggleChecked}
               onStatusChange={(id, status) => void vm.changeStatus({ id, status })}
-              onCreate={(statut) => setForm({ ouvert: true, cible: null, statut })}
+              onCreate={(status) => setForm({ isOpen: true, editing: null, status })}
               onPageChange={vm.setKanbanPage}
             />
           ) : (
@@ -328,8 +328,8 @@ export function ApplicationsPage() {
                 onRowClick={(row) => vm.select(row.id)}
                 isSelected={(row) => row.id === vm.selected_id}
                 selection={{
-                  selected: cochees,
-                  onToggle: basculerCoche,
+                  selected: checkedIds,
+                  onToggle: toggleChecked,
                   onTogglePage: basculerPage,
                   rowLabel: "Sélectionner cette candidature",
                   pageLabel: "Sélectionner les candidatures de la page",
@@ -340,7 +340,7 @@ export function ApplicationsPage() {
                     page_size={vm.page_size}
                     total={vm.total}
                     label="candidatures"
-                    pageSizes={DENSITES}
+                    pageSizes={DENSITIES}
                     onPageChange={vm.setPage}
                     onPageSizeChange={vm.setPageSize}
                   />
@@ -350,26 +350,26 @@ export function ApplicationsPage() {
           )}
         </div>
 
-        {fiche ? (
+        {detail ? (
           <ApplicationDetail
-            application={fiche}
+            application={detail}
             onClose={() => vm.select(null)}
-            onEdit={() => setForm({ ouvert: true, cible: fiche, statut: null })}
-            onDelete={() => setADelete([fiche.id])}
-            onStatusChange={(status) => void vm.changeStatus({ id: fiche.id, status })}
+            onEdit={() => setForm({ isOpen: true, editing: detail, status: null })}
+            onDelete={() => setPendingDelete([detail.id])}
+            onStatusChange={(status) => void vm.changeStatus({ id: detail.id, status })}
           />
         ) : null}
       </div>
 
       <ApplicationFormModal
-        open={form.ouvert}
-        application={form.cible}
-        defaultStatus={form.statut}
+        open={form.isOpen}
+        application={form.editing}
+        defaultStatus={form.status}
         busy={vm.isSaving}
-        onClose={fermerForm}
+        onClose={closeForm}
         onSubmit={(values) =>
-          form.cible
-            ? vm.update({ id: form.cible.id, input: values })
+          form.editing
+            ? vm.update({ id: form.editing.id, input: values })
             : vm.create(values)
         }
       />
@@ -390,16 +390,16 @@ export function ApplicationsPage() {
         }
         note="L'entreprise et le contact associés sont conservés."
         busy={vm.isDeleting}
-        onCancel={() => setADelete(null)}
+        onCancel={() => setPendingDelete(null)}
         onConfirm={() => {
-          const ids = aDelete;
-          setADelete(null);
+          const ids = pendingDelete;
+          setPendingDelete(null);
           if (!ids || ids.length === 0) return;
           void (ids.length === 1 ? vm.delete(ids[0]!) : vm.deleteMany(ids)).then(() => {
-            setCochees((actuel) => {
-              const suivant = new Set(actuel);
-              for (const id of ids) suivant.delete(id);
-              return suivant;
+            setCheckedIds((current) => {
+              const next = new Set(current);
+              for (const id of ids) next.delete(id);
+              return next;
             });
           });
         }}

@@ -30,7 +30,7 @@ function pick<T>(current: T | null, value: T): T | null {
 export function CompanyFilters({
   search,
   onSearch,
-  criteres,
+  criteria,
   count,
   total,
   onApply,
@@ -39,7 +39,7 @@ export function CompanyFilters({
 }: {
   search: string;
   onSearch: (value: string) => void;
-  criteres: CompanyCriteria;
+  criteria: CompanyCriteria;
   count: number;
   /** Total renvoyé par SQLite après application du filtre courant. */
   total: number | null;
@@ -63,9 +63,9 @@ export function CompanyFilters({
             <FilterOption
               key={sector.id}
               label={sector.name}
-              selected={criteres.sector_id === sector.id}
+              selected={criteria.sector_id === sector.id}
               onSelect={() =>
-                onApply({ ...criteres, sector_id: pick(criteres.sector_id, sector.id) })
+                onApply({ ...criteria, sector_id: pick(criteria.sector_id, sector.id) })
               }
             />
           ))}
@@ -75,11 +75,11 @@ export function CompanyFilters({
             <FilterOption
               key={type.code}
               label={type.name}
-              selected={criteres.company_type_id === type.code}
+              selected={criteria.company_type_id === type.code}
               onSelect={() =>
                 onApply({
-                  ...criteres,
-                  company_type_id: pick(criteres.company_type_id, type.code),
+                  ...criteria,
+                  company_type_id: pick(criteria.company_type_id, type.code),
                 })
               }
             />
@@ -90,11 +90,11 @@ export function CompanyFilters({
             <FilterOption
               key={size.value}
               label={size.label}
-              selected={criteres.company_size === size.value}
+              selected={criteria.company_size === size.value}
               onSelect={() =>
                 onApply({
-                  ...criteres,
-                  company_size: pick(criteres.company_size, size.value),
+                  ...criteria,
+                  company_size: pick(criteria.company_size, size.value),
                 })
               }
             />
@@ -102,31 +102,31 @@ export function CompanyFilters({
         </FilterGroup>
       </FilterMenu>
 
-      {criteres.sector_id ? (
+      {criteria.sector_id ? (
         <ActiveFilterChip
           field="Secteur"
           value={
-            referentials.data.sectors.find((sector) => sector.id === criteres.sector_id)?.name ??
-            criteres.sector_id
+            referentials.data.sectors.find((sector) => sector.id === criteria.sector_id)?.name ??
+            criteria.sector_id
           }
-          onRemove={() => onApply({ ...criteres, sector_id: null })}
+          onRemove={() => onApply({ ...criteria, sector_id: null })}
         />
       ) : null}
-      {criteres.company_type_id ? (
+      {criteria.company_type_id ? (
         <ActiveFilterChip
           field="Type"
           value={
-            referenceLabel(referentials.data.company_types, criteres.company_type_id) ??
-            criteres.company_type_id
+            referenceLabel(referentials.data.company_types, criteria.company_type_id) ??
+            criteria.company_type_id
           }
-          onRemove={() => onApply({ ...criteres, company_type_id: null })}
+          onRemove={() => onApply({ ...criteria, company_type_id: null })}
         />
       ) : null}
-      {criteres.company_size ? (
+      {criteria.company_size ? (
         <ActiveFilterChip
           field="Taille"
-          value={companySizeLabel(criteres.company_size)}
-          onRemove={() => onApply({ ...criteres, company_size: null })}
+          value={companySizeLabel(criteria.company_size)}
+          onRemove={() => onApply({ ...criteria, company_size: null })}
         />
       ) : null}
       {count > 0 ? <ClearFiltersButton onClick={onReset} /> : null}

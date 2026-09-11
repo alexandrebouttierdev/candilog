@@ -24,11 +24,11 @@ import { AppError } from "@/shared/types/app-error";
 export function CompaniesPage() {
   const vm = useCompaniesViewModel();
   const naviguer = useNavigate();
-  const [form, setForm] = useState<{ ouvert: boolean; cible: Company | null }>({
-    ouvert: false,
-    cible: null,
+  const [form, setForm] = useState<{ isOpen: boolean; editing: Company | null }>({
+    isOpen: false,
+    editing: null,
   });
-  const [aDelete, setADelete] = useState<Company | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Company | null>(null);
   const aucunResultat = Boolean(vm.search) || vm.activeFilterCount > 0;
 
   return (
@@ -42,16 +42,16 @@ export function CompaniesPage() {
       <CompanyFilters
         search={vm.search}
         onSearch={vm.setSearch}
-        criteres={vm.criteres}
+        criteria={vm.criteria}
         count={vm.activeFilterCount}
         total={vm.isLoading ? null : vm.total}
-        onApply={vm.appliquerCriteres}
+        onApply={vm.applyCriteria}
         onReset={vm.resetFilters}
         actions={
           <Button
             variant="primary"
             icon="add"
-            onClick={() => setForm({ ouvert: true, cible: null })}
+            onClick={() => setForm({ isOpen: true, editing: null })}
           >
             Nouvelle entreprise
           </Button>
@@ -138,10 +138,10 @@ export function CompaniesPage() {
           {vm.selection ? (
             <CompanyDetail
               company={vm.selection}
-              applications={vm.applicationsLiees}
+              applications={vm.linkedApplications}
               metrics={vm.companyMetrics}
-              onEdit={() => setForm({ ouvert: true, cible: vm.selection })}
-              onDelete={() => setADelete(vm.selection)}
+              onEdit={() => setForm({ isOpen: true, editing: vm.selection })}
+              onDelete={() => setPendingDelete(vm.selection)}
               onOuvrirApplication={() => void naviguer("/tracking/applications")}
               onToutVoir={() => void naviguer("/tracking/applications")}
             />
@@ -158,28 +158,28 @@ export function CompaniesPage() {
       </div>
 
       <CompanyFormModal
-        open={form.ouvert}
-        company={form.cible}
+        open={form.isOpen}
+        company={form.editing}
         busy={vm.isSaving}
-        onClose={() => setForm({ ouvert: false, cible: null })}
+        onClose={() => setForm({ isOpen: false, editing: null })}
         onSubmit={(values) =>
-          form.cible
-            ? vm.update({ id: form.cible.id, input: values })
+          form.editing
+            ? vm.update({ id: form.editing.id, input: values })
             : vm.create(values)
         }
       />
 
       <ConfirmDialog
-        open={aDelete !== null}
+        open={pendingDelete !== null}
         title="Supprimer cette entreprise ?"
-        description={`« ${aDelete?.name ?? ""} » sera définitivement retirée de votre répertoire. Cette action est irréversible.`}
+        description={`« ${pendingDelete?.name ?? ""} » sera définitivement retirée de votre répertoire. Cette action est irréversible.`}
         note="La suppression est refusée si des candidatures y sont rattachées."
         busy={vm.isDeleting}
-        onCancel={() => setADelete(null)}
+        onCancel={() => setPendingDelete(null)}
         onConfirm={() => {
-          const cible = aDelete;
-          setADelete(null);
-          if (cible) void vm.delete(cible.id);
+          const editing = pendingDelete;
+          setPendingDelete(null);
+          if (editing) void vm.delete(editing.id);
         }}
       />
     </div>

@@ -90,10 +90,10 @@ describe("écran Profil — photo", () => {
 
     render(<ProfilePage />, { wrapper });
 
-    const apercu = await screen.findByRole("img", { name: "Photo de profil" });
-    expect(apercu).toHaveAttribute("src", PHOTO);
-    expect(apercu.className).toContain("rounded-field");
-    expect(apercu.className).not.toContain("rounded-full");
+    const preview = await screen.findByRole("img", { name: "Photo de profil" });
+    expect(preview).toHaveAttribute("src", PHOTO);
+    expect(preview.className).toContain("rounded-field");
+    expect(preview.className).not.toContain("rounded-full");
 
     await userEvent.click(screen.getByRole("button", { name: "Remplacer la photo" }));
 

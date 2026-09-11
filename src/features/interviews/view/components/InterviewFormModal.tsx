@@ -10,7 +10,7 @@ import { INTERVIEW_TYPES } from "../../model/types";
 import type { Interview, NewInterview } from "@/shared/types/generated/interviews";
 import { fetchContactPickerPage } from "@/features/contacts";
 import { ApplicationPicker } from "@/features/applications";
-import { dateFromTimestamp, timeFromTimestamp, versDateAffichee } from "@/shared/lib/dates";
+import { dateFromTimestamp, timeFromTimestamp, toDisplayDate } from "@/shared/lib/dates";
 import {
   DateInput,
   EntityPicker,
@@ -26,7 +26,7 @@ function vide(application_id: string | null, day: string | null): InterviewFormI
   return {
     application_id: application_id ?? "",
     contact_id: "",
-    date: versDateAffichee(day ?? new Date().toISOString().slice(0, 10)),
+    date: toDisplayDate(day ?? new Date().toISOString().slice(0, 10)),
     time: "14:00",
     type: "Visio",
     location: "",

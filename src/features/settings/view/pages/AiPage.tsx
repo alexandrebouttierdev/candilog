@@ -207,7 +207,7 @@ export function AiPage() {
                 logo={logo}
                 label={fournisseur.label}
                 model={managedModelLabel}
-                etat={managedOllamaStatus(managedVm.status, managedVm.error)}
+                status={managedOllamaStatus(managedVm.status, managedVm.error)}
                 testMessage={null}
                 testLabel="Tester l'IA"
                 busy={managedVm.isInstalling}
@@ -219,7 +219,7 @@ export function AiPage() {
                 logo={logo}
                 label={fournisseur.label}
                 model={llm.model}
-                etat={aiStatus(llm, test)}
+                status={aiStatus(llm, test)}
                 testMessage={test === "error" ? testMessage : null}
                 busy={test === "pending"}
                 onTest={() => void runTest()}

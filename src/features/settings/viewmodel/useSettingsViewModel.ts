@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { settingsService } from "../services/settingsService";
-import type { LlmForm, Settings, ThemePref } from "../services/settingsService";
+import type { LlmForm, Settings, ThemePref } from "@/shared/types/generated/settings";
 import { applyTheme, useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 

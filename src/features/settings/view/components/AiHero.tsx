@@ -12,7 +12,7 @@ export function AiHero({
   logo,
   label,
   model,
-  etat,
+  status,
   testMessage,
   testLabel = "Tester la connexion",
   busy,
@@ -23,7 +23,7 @@ export function AiHero({
   logo: { src: string; mono: boolean } | null;
   label: string;
   model: string;
-  etat: AiStatus;
+  status: AiStatus;
   /** Message du dernier échec, affiché sous l'état ; `null` sinon. */
   testMessage: string | null;
   testLabel?: string;
@@ -55,12 +55,12 @@ export function AiHero({
         </p>
       </div>
       <div className="flex flex-none items-center gap-2.5">
-        <StatusPill tone={etat.tone}>{etat.label}</StatusPill>
+        <StatusPill tone={status.tone}>{status.label}</StatusPill>
         <Button icon="wifi" disabled={busy || testDisabled} onClick={onTest}>
           {busy ? "Test en cours…" : testLabel}
         </Button>
       </div>
-      {testMessage ?? etat.hint ? (
+      {testMessage ?? status.hint ? (
         <p
           role="status"
           className={cn(
@@ -68,7 +68,7 @@ export function AiHero({
             testMessage ? "text-danger" : "text-ink-faint",
           )}
         >
-          {testMessage ?? etat.hint}
+          {testMessage ?? status.hint}
         </p>
       ) : null}
     </section>

@@ -89,7 +89,7 @@ export function LetterPaper({
   const modifierFacultatif = (champ: IdentityOptional, valeur: string) => {
     if (identity) poser({ ...identity, [champ]: valeur.trim() === "" ? null : valeur });
   };
-  const valider = () => {
+  const commit = () => {
     const saisie = brouillonRef.current;
     if (saisie) void onSaveIdentity?.(saisie);
   };
@@ -145,7 +145,7 @@ export function LetterPaper({
                   value={firstName}
                   editable={identiteEditable}
                   onChange={(value) => modifier("first_name", value)}
-                  onCommit={valider}
+                  onCommit={commit}
                 />
                 <br />
                 <ResumeEditableText
@@ -154,7 +154,7 @@ export function LetterPaper({
                   value={lastName}
                   editable={identiteEditable}
                   onChange={(value) => modifier("name", value)}
-                  onCommit={valider}
+                  onCommit={commit}
                 />
               </h1>
             ) : (
@@ -168,7 +168,7 @@ export function LetterPaper({
                 value={title ?? ""}
                 editable={identiteEditable}
                 onChange={(value) => modifierFacultatif("title", value)}
-                onCommit={valider}
+                onCommit={commit}
               />
             ) : null}
           </div>
@@ -176,7 +176,7 @@ export function LetterPaper({
             <Coordonnee
               label="Adresse"
               editable={identiteEditable}
-              onCommit={valider}
+              onCommit={commit}
               lignes={[
                 { valeur: address, libelle: "Adresse postale", onChange: (v) => modifierFacultatif("address", v) },
                 { valeur: city, libelle: "Ville", onChange: (v) => modifierFacultatif("city", v) },
@@ -185,13 +185,13 @@ export function LetterPaper({
             <Coordonnee
               label="Téléphone"
               editable={identiteEditable}
-              onCommit={valider}
+              onCommit={commit}
               lignes={[{ valeur: phone, libelle: "Téléphone", onChange: (v) => modifierFacultatif("phone", v) }]}
             />
             <Coordonnee
               label="Courriel"
               editable={identiteEditable}
-              onCommit={valider}
+              onCommit={commit}
               lignes={[{ valeur: email, libelle: "Courriel", onChange: (v) => modifier("email", v) }]}
             />
           </div>
@@ -321,13 +321,13 @@ function Coordonnee({
 }
 
 function ajusterDensite(page: HTMLElement, content: HTMLElement): boolean {
-  const appliquer = (position: number) => {
+  const applyDensity = (position: number) => {
     page.style.setProperty("--letter-fs", String(DENSITY_STEPS[position]?.fs ?? 1));
     page.style.setProperty("--letter-sp", String(DENSITY_STEPS[position]?.sp ?? 1));
   };
   let index = 0;
-  appliquer(index);
+  applyDensity(index);
   const overflows = () => content.scrollHeight - content.clientHeight > 1;
-  while (overflows() && index < DENSITY_STEPS.length - 1) appliquer(++index);
+  while (overflows() && index < DENSITY_STEPS.length - 1) applyDensity(++index);
   return overflows();
 }

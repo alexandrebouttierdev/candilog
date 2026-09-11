@@ -42,8 +42,8 @@ export function monthLabel(year: number, month: number): string {
 
 /** Date `AAAA-MM-JJ` d'un objet `Date`, en heure locale. */
 export function isoLocal(date: Date): string {
-  const deuxChiffres = (value: number) => String(value).padStart(2, "0");
-  return `${date.getFullYear()}-${deuxChiffres(date.getMonth() + 1)}-${deuxChiffres(date.getDate())}`;
+  const twoDigits = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${twoDigits(date.getMonth() + 1)}-${twoDigits(date.getDate())}`;
 }
 
 /** Reconstruit un `Date` local depuis une clé `AAAA-MM-JJ` (sans passer par UTC). */

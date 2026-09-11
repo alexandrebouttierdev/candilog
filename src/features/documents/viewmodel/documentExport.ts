@@ -1,4 +1,4 @@
-import type { CoverLetterExport, ResumeDocument } from "../services/documentsService";
+import type { CoverLetterExport, ResumeDocument } from "@/shared/types/generated/documents";
 import { documentsService } from "../services/documentsService";
 import type { ToastMessage } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";

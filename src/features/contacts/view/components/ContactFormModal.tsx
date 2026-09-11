@@ -11,7 +11,7 @@ import type { Contact, NewContact } from "@/shared/types/generated/contacts";
 import { fetchCompanyPickerPage } from "@/features/companies";
 import { EntityPicker, FormField, ModalHost, Select, TextArea, TextInput } from "@/shared/ui";
 
-const VIDE: ContactFormInput = {
+const EMPTY_FORM: ContactFormInput = {
   first_name: "",
   name: "",
   email: "",
@@ -58,11 +58,11 @@ export function ContactFormModal({
 }) {
   const form = useForm<ContactFormInput, unknown, ContactFormValues>({
     resolver: zodResolver(contactFormSchema),
-    defaultValues: VIDE,
+    defaultValues: EMPTY_FORM,
   });
 
   useEffect(() => {
-    if (open) form.reset(contact ? from(contact) : VIDE);
+    if (open) form.reset(contact ? from(contact) : EMPTY_FORM);
   }, [open, contact, form]);
 
   const save = form.handleSubmit(async (values) => {

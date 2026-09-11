@@ -1,7 +1,12 @@
 import { useCallback, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { companyService } from "../services/companyService";
-import type { Company, CompanyFilter, NewCompany } from "../services/companyService";
+import type {
+  Company,
+  CompanyFilter,
+  CompanySize,
+  NewCompany,
+} from "@/shared/types/generated/companies";
 import {
   applicationService,
   EMPTY_FILTER,
@@ -11,7 +16,6 @@ import { COMPANIES_PAGE_SIZE, PAGE_SIZE } from "@/shared/types/page";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 import { useDebounce } from "@/shared/hooks/useDebounce";
-import type { CompanySize } from "@/shared/types/generated/companies";
 
 /** Root des clés de cache de la feature, pour invalider d'un seul appel. */
 export const COMPANIES_KEY = ["entreprises"] as const;
@@ -29,7 +33,7 @@ export interface CompanyCriteria {
 }
 
 /** Critères vides, état par défaut de l'écran. */
-export const CRITERES_VIDES: CompanyCriteria = {
+export const EMPTY_CRITERIA: CompanyCriteria = {
   sector_id: null,
   company_type_id: null,
   company_size: null,
@@ -54,11 +58,11 @@ export function useCompaniesViewModel() {
   const [page, setPage] = useState(1);
   const [search, setSearchState] = useState("");
   const searchQuery = useDebounce(search);
-  const [criteres, setCriteres] = useState<CompanyCriteria>(CRITERES_VIDES);
+  const [criteria, setCriteria] = useState<CompanyCriteria>(EMPTY_CRITERIA);
   const [selected_id, setSelectedId] = useState<string | null>(null);
 
   /** Filtre tel qu'envoyé au backend : SQLite fait la recherche et la pagination. */
-  const filter: CompanyFilter = { ...criteres, search: searchQuery };
+  const filter: CompanyFilter = { ...criteria, search: searchQuery };
 
   const list = useQuery({
     queryKey: [...COMPANIES_KEY, "page", { page, filter }],
@@ -69,26 +73,26 @@ export function useCompaniesViewModel() {
   // Les maquettes n'affichent jamais la colonne de droite vide : à défaut de sélection
   // explicite, la première fiche de la page est ouverte.
   const selection = items.find((item) => item.id === selected_id) ?? items[0] ?? null;
-  const ficheId = selection?.id ?? null;
+  const detailId = selection?.id ?? null;
 
   // Applications rattachées à la fiche ouverte : les maquettes les affichent sous le
   // bandeau d'identité. Interrogées par le filtre existant plutôt que par une commande
   // dédiée, et seulement quand une fiche est sélectionnée.
-  const liees = useQuery({
-    queryKey: [...COMPANIES_KEY, "candidatures", ficheId],
-    enabled: ficheId !== null,
+  const linked = useQuery({
+    queryKey: [...COMPANIES_KEY, "candidatures", detailId],
+    enabled: detailId !== null,
     queryFn: () =>
       applicationService.listPage({
         page: 1,
         page_size: PAGE_SIZE,
-        filter: applicationsForCompany(ficheId),
+        filter: applicationsForCompany(detailId),
       }),
   });
 
   const breakdown = useQuery({
-    queryKey: [...COMPANIES_KEY, "repartition", ficheId],
-    enabled: ficheId !== null,
-    queryFn: () => applicationService.breakdown(applicationsForCompany(ficheId)),
+    queryKey: [...COMPANIES_KEY, "repartition", detailId],
+    enabled: detailId !== null,
+    queryFn: () => applicationService.breakdown(applicationsForCompany(detailId)),
   });
   const companyMetrics = {
     total:
@@ -156,21 +160,21 @@ export function useCompaniesViewModel() {
     setPage(1);
   }, []);
 
-  const appliquerCriteres = useCallback((values: CompanyCriteria) => {
-    setCriteres(values);
+  const applyCriteria = useCallback((values: CompanyCriteria) => {
+    setCriteria(values);
     setPage(1);
   }, []);
 
   const resetFilters = useCallback(() => {
-    setCriteres(CRITERES_VIDES);
+    setCriteria(EMPTY_CRITERIA);
     setPage(1);
   }, []);
 
   /** Nombre de critères actifs, hors recherche libre, pour la pastille du bouton Filtres. */
   const activeFilterCount = [
-    criteres.sector_id,
-    criteres.company_type_id,
-    criteres.company_size,
+    criteria.sector_id,
+    criteria.company_type_id,
+    criteria.company_size,
   ].filter(Boolean).length;
 
   return {
@@ -180,13 +184,13 @@ export function useCompaniesViewModel() {
     page_size: COMPANIES_PAGE_SIZE,
     search,
     setSearch,
-    criteres,
+    criteria,
     activeFilterCount,
     selection,
     selected_id,
     /** Applications rattachées à la fiche ouverte, page la plus récente. */
-    applicationsLiees: liees.data?.items ?? [],
-    totalApplicationsLiees: liees.data?.total ?? 0,
+    linkedApplications: linked.data?.items ?? [],
+    linkedApplicationsTotal: linked.data?.total ?? 0,
     companyMetrics,
     isLoading: list.isPending,
     error: list.error,
@@ -194,7 +198,7 @@ export function useCompaniesViewModel() {
     isDeleting: suppression.isPending,
 
     setPage,
-    appliquerCriteres,
+    applyCriteria,
     resetFilters,
     select: setSelectedId,
     reload: () => void list.refetch(),

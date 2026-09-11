@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { contactService } from "../services/contactService";
-import type { Contact, NewContact } from "../services/contactService";
+import type { Contact, NewContact } from "@/shared/types/generated/contacts";
 import { PAGE_SIZE } from "@/shared/types/page";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
