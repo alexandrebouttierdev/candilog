@@ -132,10 +132,18 @@ grand, au lieu de laisser croire que le CV est en cause.
 Le profil extrait est ensuite recadré sur le CV par `ground_imported_profile` : tout texte
 qui n'apparaît pas dans le passage réellement soumis au modèle est effacé, et les entrées
 ainsi vidées de leur libellé sont retirées. Les dates, déjà reformatées, en sont exclues.
+Les descriptions multi-puces sont recadrées **fragment par fragment** : une mission
+présente sur le CV n'est plus perdue parce que le modèle a joint plusieurs puces. En mode
+**Vision**, le texte PDF n'est qu'un complément partiel : le recadrage y conserve les
+descriptions libres lues sur les images (`ground_imported_profile_keep_free_text`).
 Le rapprochement passe par `search_key` et exige des frontières alphanumériques : un modèle
 de 350 M renvoyait sinon des fragments de domaine (`.com`, `.fr`, `.org`), des morceaux de
 mots (`.franc`) et jusqu'à une certification absente du document, que le seul rejet des
 valeurs vides laissait arriver dans l'écran de revue.
+
+Les plages de dates collées dans un seul champ (`juin 2020 – décembre 2022`,
+`janvier 2023 – aujourd'hui`) sont découpées avant normalisation : la date de fin n'est
+plus perdue quand le modèle l'écrit dans `start_date`.
 
 Une offre d'emploi ou un PDF importé est de la **donnée**, jamais des instructions : les
 contenus non fiables sont encadrés par `bloc_donnees`, dont la balise porte un identifiant

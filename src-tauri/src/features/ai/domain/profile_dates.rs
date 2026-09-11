@@ -2,9 +2,10 @@
 //!
 //! Le prompt demande `AAAA-MM` ou `AAAA`, et les modèles distants s'y tiennent. Les petits
 //! modèles locaux, eux, recopient le CV : « Juil. 2019 », « 12/2023 », « 2022-03-15 »,
-//! « aujourd'hui », parfois un fragment sans valeur (« en », « sept »). Ces réponses sont
-//! exploitables — l'écran de revue affiche les dates dans un champ libre — à condition de
-//! les ramener au format attendu plutôt que de rejeter toute l'analyse.
+//! « aujourd'hui », parfois une plage entière dans `start_date` (« juin 2020 – déc. 2022 »)
+//! et un fragment sans valeur (« en », « sept »). Ces réponses sont exploitables — l'écran
+//! de revue affiche les dates dans un champ libre — à condition de les ramener au format
+//! attendu plutôt que de rejeter toute l'analyse.
 
 use crate::core::utils::text::search_key;
 use crate::features::profile::domain::Profile;
@@ -72,6 +73,13 @@ const PRESENT_MARKERS: [&str; 8] = [
 /// Mêmes formulations, mais trop courtes pour être cherchées à l'intérieur d'un mot.
 const PRESENT_EXACT: [&str; 3] = ["now", "today", "maintenant"];
 
+/// Séparateurs de plage courants sur un CV. Les tirets ASCII isolés (`2020-06`) ne
+/// figurent pas : seuls les tirets encadrés d'espaces, les tirets typographiques et les
+/// formulations « au / à / to » séparent réellement début et fin.
+const RANGE_SEPARATORS: [&str; 14] = [
+    " – ", " — ", " - ", " –", "– ", " —", "— ", "–", "—", " au ", " à ", " to ", " until ", " / ",
+];
+
 /// Années plausibles dans un CV : au-delà, le nombre à quatre chiffres est autre chose.
 const YEARS: std::ops::RangeInclusive<u32> = 1900..=2100;
 
@@ -81,6 +89,7 @@ const YEARS: std::ops::RangeInclusive<u32> = 1900..=2100;
 /// coûte une nouvelle passe complète du modèle.
 pub fn normalize_profile_dates(profile: &mut Profile) {
     for experience in &mut profile.experiences {
+        decouper_plage_experience(experience);
         experience.start_date = normalize_date(&experience.start_date).unwrap_or_default();
         // « Juil. 2019 – aujourd'hui » décrit un poste occupé : l'information est dans le
         // CV, elle appartient à `current` et non à une date de fin qu'on jetterait.
@@ -94,6 +103,12 @@ pub fn normalize_profile_dates(profile: &mut Profile) {
         }
     }
     for education in &mut profile.education {
+        if education.end_date.is_none() {
+            if let Some((start, end)) = education.start_date.as_deref().and_then(split_date_range) {
+                education.start_date = Some(start);
+                education.end_date = Some(end);
+            }
+        }
         education.start_date = education
             .start_date
             .take()
@@ -110,6 +125,48 @@ pub fn normalize_profile_dates(profile: &mut Profile) {
             .take()
             .and_then(|date| normalize_date(&date));
     }
+}
+
+/// Sépare une plage collée dans `start_date` quand `end_date` est encore vide.
+fn decouper_plage_experience(experience: &mut crate::features::profile::domain::Experience) {
+    if experience.end_date.is_some() {
+        return;
+    }
+    let Some((start, end)) = split_date_range(&experience.start_date) else {
+        return;
+    };
+    experience.start_date = start;
+    experience.end_date = Some(end);
+}
+
+/// Coupe une plage « début – fin » en deux morceaux bruts, sans encore les normaliser.
+fn split_date_range(value: &str) -> Option<(String, String)> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    for separator in RANGE_SEPARATORS {
+        if let Some((left, right)) = trimmed.split_once(separator) {
+            let left = left.trim();
+            let right = right.trim();
+            if left.is_empty() || right.is_empty() {
+                continue;
+            }
+            // Les deux côtés doivent porter une année ou un marqueur « en cours » :
+            // sinon on a coupé un mot composé ou une date ISO.
+            if looks_like_date_side(left) && looks_like_date_side(right) {
+                return Some((left.to_owned(), right.to_owned()));
+            }
+        }
+    }
+    None
+}
+
+fn looks_like_date_side(value: &str) -> bool {
+    is_present(value)
+        || digit_groups(&search_key(value))
+            .iter()
+            .any(|group| group.len() == 4 && group.parse().is_ok_and(|year| YEARS.contains(&year)))
 }
 
 /// Interprète une date écrite librement, `None` si aucune année n'y figure.
@@ -214,10 +271,44 @@ mod tests {
         }
     }
 
-    /// Une plage écrite dans un seul champ : l'année de tête est la seule certitude.
+    /// Une plage collée dans un seul champ est découpée avant normalisation.
     #[test]
-    fn une_plage_d_annees_garde_la_premiere() {
-        assert_eq!(normalize_date("2016 - 2019").as_deref(), Some("2016"));
+    fn une_plage_d_annees_remplit_debut_et_fin() {
+        let mut profile = Profile {
+            experiences: vec![Experience {
+                title: "Dev".into(),
+                company: "Studio".into(),
+                start_date: "2016 - 2019".into(),
+                end_date: None,
+                ..Experience::default()
+            }],
+            ..Profile::default()
+        };
+
+        normalize_profile_dates(&mut profile);
+
+        assert_eq!(profile.experiences[0].start_date, "2016");
+        assert_eq!(profile.experiences[0].end_date.as_deref(), Some("2019"));
+    }
+
+    #[test]
+    fn une_plage_mois_annee_remplit_la_date_de_fin() {
+        let mut profile = Profile {
+            experiences: vec![Experience {
+                title: "Full-Stack Developer".into(),
+                company: "Kivora Commerce".into(),
+                start_date: "juin 2020 – décembre 2022".into(),
+                end_date: None,
+                ..Experience::default()
+            }],
+            ..Profile::default()
+        };
+
+        normalize_profile_dates(&mut profile);
+
+        assert_eq!(profile.experiences[0].start_date, "2020-06");
+        assert_eq!(profile.experiences[0].end_date.as_deref(), Some("2022-12"));
+        assert!(!profile.experiences[0].current);
     }
 
     #[test]
@@ -244,6 +335,27 @@ mod tests {
         normalize_profile_dates(&mut profile);
 
         assert_eq!(profile.experiences[0].start_date, "2019-07");
+        assert_eq!(profile.experiences[0].end_date, None);
+        assert!(profile.experiences[0].current);
+    }
+
+    #[test]
+    fn une_plage_jusqu_a_aujourd_hui_marque_le_poste_actuel() {
+        let mut profile = Profile {
+            experiences: vec![Experience {
+                title: "Senior".into(),
+                company: "AlthéaRH".into(),
+                start_date: "janvier 2023 – aujourd'hui".into(),
+                end_date: None,
+                current: false,
+                ..Experience::default()
+            }],
+            ..Profile::default()
+        };
+
+        normalize_profile_dates(&mut profile);
+
+        assert_eq!(profile.experiences[0].start_date, "2023-01");
         assert_eq!(profile.experiences[0].end_date, None);
         assert!(profile.experiences[0].current);
     }

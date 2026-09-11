@@ -124,7 +124,7 @@ export function ProfilePage() {
                 </ProfilePanel>
                 <ProfilePanel tab="certifications" active={tab === "certifications"}>
                   <SectionCard icon="workspace_premium" title="Certifications" onEdit={() => setSection("certifications")}>
-                    <SimpleList items={vm.data.profile.certifications.map((item) => ({ title: item.name, meta: item.issuer, body: item.date }))} empty="Aucune certification ajoutée" action="Ajouter une certification" onEdit={() => setSection("certifications")} />
+                    <SimpleList items={vm.data.profile.certifications.map((item) => ({ title: item.name, meta: [item.issuer, item.date].filter(Boolean).join(" · ") || null, body: item.description }))} empty="Aucune certification ajoutée" action="Ajouter une certification" onEdit={() => setSection("certifications")} />
                   </SectionCard>
                 </ProfilePanel>
                 <ProfilePanel tab="languages" active={tab === "languages"}>
@@ -246,13 +246,13 @@ function ExperiencesList({ profile, onEdit }: { profile: Profile; onEdit: () => 
 function SkillsList({ profile, onEdit }: { profile: Profile; onEdit: () => void }) {
   if (profile.skills.length === 0) return <Vide icon="psychology" title="Aucune compétence ajoutée" description="Commencez par les savoir-faire les plus importants pour le poste visé." action="Ajouter des compétences" onEdit={onEdit} />;
   return (
-    <ul className="flex flex-wrap gap-[7px] px-[18px] py-[15px]">
+    <ul className="divide-y divide-line">
       {profile.skills.map((item, index) => (
-        <li
-          key={`${item.name}-${index}`}
-          className="rounded-pill bg-neutral-tint px-2.5 py-[5px] text-label font-medium text-ink-muted"
-        >
-          {item.name}
+        <li key={`${item.name}-${index}`} className="px-[18px] py-3.5">
+          <p className="text-item font-semibold text-ink">{item.name}</p>
+          {item.description ? (
+            <p className="mt-1 text-label leading-[1.55] text-ink-muted">{item.description}</p>
+          ) : null}
         </li>
       ))}
     </ul>

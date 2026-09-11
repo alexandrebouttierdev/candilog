@@ -152,6 +152,8 @@ pub struct ResumeCertificationBlock {
     pub name: String,
     pub issuer: Option<String>,
     pub date: Option<String>,
+    #[serde(default)]
+    pub description: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]

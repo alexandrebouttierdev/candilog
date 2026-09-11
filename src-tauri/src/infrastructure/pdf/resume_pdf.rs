@@ -106,6 +106,7 @@ pub struct ResumeCertification {
     pub name: String,
     pub issuer: Option<String>,
     pub date: Option<String>,
+    pub description: Option<String>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -1400,6 +1401,24 @@ impl Plan<'_> {
                 },
                 &line,
             );
+            if let Some(description) = certification
+                .description
+                .as_deref()
+                .map(str::trim)
+                .filter(|text| !text.is_empty())
+            {
+                self.paragraphe(
+                    StyleParagraphe {
+                        x: CONTENT_X,
+                        face: FontFace::Sans(SansWeight::Regular),
+                        size: pt(10.2),
+                        couleur: rgb(BODY.0, BODY.1, BODY.2),
+                        interligne: pt(10.2) * 1.35,
+                        largeur_max: CONTENT_W,
+                    },
+                    description,
+                );
+            }
         }
     }
 

@@ -96,6 +96,9 @@ pub struct Experience {
 pub struct Skill {
     #[serde(default, alias = "nom", deserialize_with = "string_lenient")]
     pub name: String,
+    /// Précision facultative (contexte, outils, niveau déclaré sur le CV).
+    #[serde(default, deserialize_with = "option_string_lenient")]
+    pub description: Option<String>,
 }
 
 /// Education académique ou professionnelle.
@@ -160,6 +163,9 @@ pub struct Certification {
     pub date: Option<String>,
     #[serde(default, deserialize_with = "option_string_lenient")]
     pub url: Option<String>,
+    /// Détail facultatif recopié du CV (périmètre, score, commentaire).
+    #[serde(default, deserialize_with = "option_string_lenient")]
+    pub description: Option<String>,
 }
 
 /// Centre d'intérêt déclaré sur le CV — facultatif.
@@ -243,7 +249,10 @@ fn skills_lenient<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Vec<Skil
     let value = serde_json::Value::deserialize(deserializer)?;
     Ok(match value {
         serde_json::Value::Array(items) => items.into_iter().filter_map(skill_from_value).collect(),
-        serde_json::Value::String(name) if !name.trim().is_empty() => vec![Skill { name }],
+        serde_json::Value::String(name) if !name.trim().is_empty() => vec![Skill {
+            name,
+            description: None,
+        }],
         _ => Vec::new(),
     })
 }
@@ -262,7 +271,31 @@ fn interests_lenient<'de, D: Deserializer<'de>>(
 }
 
 fn skill_from_value(value: serde_json::Value) -> Option<Skill> {
-    named_item(value).map(|name| Skill { name })
+    match value {
+        serde_json::Value::String(name) if !name.trim().is_empty() => Some(Skill {
+            name,
+            description: None,
+        }),
+        serde_json::Value::Object(map) => {
+            let name = map
+                .get("name")
+                .or_else(|| map.get("nom"))
+                .map(|item| text_from_value(item.clone()))?;
+            if name.trim().is_empty() {
+                return None;
+            }
+            let description = map.get("description").and_then(|item| {
+                let text = text_from_value(item.clone());
+                if text.trim().is_empty() {
+                    None
+                } else {
+                    Some(text)
+                }
+            });
+            Some(Skill { name, description })
+        }
+        _ => None,
+    }
 }
 
 fn interest_from_value(value: serde_json::Value) -> Option<Interest> {

@@ -12,12 +12,36 @@
 use super::normalization::contains_search_term;
 use crate::features::profile::domain::{Education, Profile};
 
+/// Options du recadrage : en Vision, le texte PDF n'est qu'un complément partiel — les
+/// descriptions libres viennent du document visuel et ne doivent pas être effacées faute
+/// d'y figurer mot pour mot.
+#[derive(Debug, Clone, Copy)]
+pub struct GroundingOptions {
+    /// Recadrer aussi résumé et descriptions (expériences, formations, projets, etc.).
+    pub free_text: bool,
+}
+
+impl Default for GroundingOptions {
+    fn default() -> Self {
+        Self { free_text: true }
+    }
+}
+
 /// Efface d'un profil importé tout texte absent du CV analysé.
 ///
 /// Les dates ne sont pas concernées : `normalize_profile_dates` les a déjà ramenées au
 /// format `AAAA-MM`, que le CV n'écrit pas tel quel (« Oct. 2025 »). Les entrées vidées de
 /// leur libellé sont retirées ensuite par le nettoyage par vacuité.
 pub fn ground_imported_profile(source: &str, profile: &mut Profile) {
+    ground_imported_profile_with(source, profile, GroundingOptions::default());
+}
+
+/// Recadrage pour le mode Vision : conserve les descriptions libres extraites des images.
+pub fn ground_imported_profile_keep_free_text(source: &str, profile: &mut Profile) {
+    ground_imported_profile_with(source, profile, GroundingOptions { free_text: false });
+}
+
+fn ground_imported_profile_with(source: &str, profile: &mut Profile, options: GroundingOptions) {
     let identity = &mut profile.identity;
     retenir(source, &mut identity.first_name);
     retenir(source, &mut identity.name);
@@ -26,7 +50,9 @@ pub fn ground_imported_profile(source: &str, profile: &mut Profile) {
     retenir_option(source, &mut identity.address);
     retenir_option(source, &mut identity.city);
     retenir_option(source, &mut identity.title);
-    retenir_option(source, &mut identity.resume);
+    if options.free_text {
+        retenir_description(source, &mut identity.resume);
+    }
     retenir_option(source, &mut identity.birth_date);
     retenir_option(source, &mut identity.availability);
     retenir_option(source, &mut identity.desired_contracts);
@@ -46,16 +72,23 @@ pub fn ground_imported_profile(source: &str, profile: &mut Profile) {
         retenir(source, &mut experience.title);
         retenir(source, &mut experience.company);
         retenir_option(source, &mut experience.location);
-        retenir_option(source, &mut experience.description);
+        if options.free_text {
+            retenir_description(source, &mut experience.description);
+        }
     }
     for skill in &mut profile.skills {
         retenir(source, &mut skill.name);
+        if options.free_text {
+            retenir_description(source, &mut skill.description);
+        }
     }
     for education in &mut profile.education {
         retenir(source, &mut education.degree);
         retenir(source, &mut education.school);
         retenir_option(source, &mut education.location);
-        retenir_option(source, &mut education.description);
+        if options.free_text {
+            retenir_description(source, &mut education.description);
+        }
     }
     for language in &mut profile.languages {
         retenir(source, &mut language.name);
@@ -63,7 +96,9 @@ pub fn ground_imported_profile(source: &str, profile: &mut Profile) {
     }
     for project in &mut profile.projects {
         retenir(source, &mut project.name);
-        retenir_option(source, &mut project.description);
+        if options.free_text {
+            retenir_description(source, &mut project.description);
+        }
         retenir_option(source, &mut project.url);
         retenir_option(source, &mut project.technologies);
     }
@@ -71,6 +106,9 @@ pub fn ground_imported_profile(source: &str, profile: &mut Profile) {
         retenir(source, &mut certification.name);
         retenir_option(source, &mut certification.issuer);
         retenir_option(source, &mut certification.url);
+        if options.free_text {
+            retenir_description(source, &mut certification.description);
+        }
     }
     for interest in &mut profile.interests {
         retenir(source, &mut interest.name);
@@ -92,6 +130,50 @@ fn retenir_option(source: &str, value: &mut Option<String>) {
     {
         *value = None;
     }
+}
+
+/// Conserve les fragments d'une description présents dans le CV.
+///
+/// Une description multi-puces jointe par des sauts de ligne n'apparaît presque jamais
+/// telle quelle dans le texte source (puces `•`, colonnes, reformulations légères). On
+/// retient chaque fragment recopié ; si aucun ne l'est, le champ est vidé.
+fn retenir_description(source: &str, value: &mut Option<String>) {
+    let Some(texte) = value.as_deref() else {
+        return;
+    };
+    if texte.trim().is_empty() {
+        *value = None;
+        return;
+    }
+    if est_recopie(source, texte) {
+        return;
+    }
+    let kept: Vec<String> = decouper_description(texte)
+        .into_iter()
+        .filter(|fragment| est_recopie(source, fragment))
+        .collect();
+    if kept.is_empty() {
+        *value = None;
+    } else {
+        *value = Some(kept.join("\n"));
+    }
+}
+
+fn decouper_description(texte: &str) -> Vec<String> {
+    texte
+        .lines()
+        .flat_map(|ligne| {
+            ligne.split(['•', '●', '▪', '◦', '·', ';', '|'])
+        })
+        .map(|fragment| {
+            fragment
+                .trim()
+                .trim_start_matches(['-', '–', '—', '*', '·', '•'])
+                .trim()
+                .to_owned()
+        })
+        .filter(|fragment| fragment.chars().any(char::is_alphanumeric))
+        .collect()
 }
 
 /// Une valeur est recopiée si elle porte du texte et apparaît telle quelle dans le CV.
@@ -1090,6 +1172,7 @@ Anglais · lecture courante de documentation technique\n";
             },
             skills: vec![Skill {
                 name: "Ubuntu Server".into(),
+                description: None,
             }],
             languages: vec![Language {
                 name: "Français".into(),
@@ -1140,6 +1223,70 @@ Anglais · lecture courante de documentation technique\n";
 
         assert_eq!(profile.experiences[0].start_date, "2025-10");
         assert_eq!(profile.experiences[0].end_date.as_deref(), Some("2026-09"));
+    }
+
+    /// Une description multi-puces n'apparaît pas d'un bloc : on retient chaque fragment
+    /// recopié plutôt que d'effacer toute la mission.
+    #[test]
+    fn conserve_les_fragments_de_description_presents_dans_le_cv() {
+        let source = "\
+Senior Full-Stack Developer — AlthéaRH
+Conception d'applications React et Node.js
+Encadrement d'une équipe de 4 développeurs
+Mise en place de pipelines CI/CD";
+        let mut profile = Profile {
+            experiences: vec![Experience {
+                title: "Senior Full-Stack Developer".into(),
+                company: "AlthéaRH".into(),
+                description: Some(
+                    "Conception d'applications React et Node.js\n\
+                     Encadrement d'une équipe de 4 développeurs\n\
+                     Mission inventée absente du CV"
+                        .into(),
+                ),
+                ..Experience::default()
+            }],
+            ..Profile::default()
+        };
+
+        ground_imported_profile(source, &mut profile);
+
+        let description = profile.experiences[0].description.as_deref().unwrap();
+        assert!(description.contains("Conception d'applications React et Node.js"));
+        assert!(description.contains("Encadrement d'une équipe de 4 développeurs"));
+        assert!(!description.contains("Mission inventée"));
+    }
+
+    #[test]
+    fn conserve_les_descriptions_en_mode_vision_malgre_un_texte_partiel() {
+        let source = "Thomas Candilog\nAlthéaRH\nReact";
+        let mut profile = Profile {
+            experiences: vec![Experience {
+                title: "Senior Full-Stack Developer".into(),
+                company: "AlthéaRH".into(),
+                description: Some("Conception d'applications métier pour les RH".into()),
+                ..Experience::default()
+            }],
+            projects: vec![Project {
+                name: "Candiscore".into(),
+                description: Some("Application desktop de suivi de candidatures".into()),
+                ..Project::default()
+            }],
+            ..Profile::default()
+        };
+
+        ground_imported_profile_keep_free_text(source, &mut profile);
+
+        assert_eq!(
+            profile.experiences[0].description.as_deref(),
+            Some("Conception d'applications métier pour les RH")
+        );
+        assert_eq!(
+            profile.projects[0].description.as_deref(),
+            Some("Application desktop de suivi de candidatures")
+        );
+        // Le titre absent du texte partiel est bien effacé.
+        assert_eq!(profile.experiences[0].title, "");
     }
 
     fn identite_vide() -> Profile {

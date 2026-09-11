@@ -67,6 +67,7 @@ fn reinitialiser_le_profil_ne_touche_a_aucune_autre_table() {
             },
             skills: vec![Skill {
                 name: "Rust".into(),
+                description: None,
             }],
             ..Profile::default()
         })

@@ -170,7 +170,7 @@ fn build_profile_library(profile: &Profile) -> Vec<ResumeProfileItem> {
         items.push(ResumeProfileItem {
             id: format!("skill-{index}"),
             label: name.to_owned(),
-            detail: None,
+            detail: trimmed_option(skill.description.as_deref()),
             content: ResumeProfileItemContent::Skill {
                 name: name.to_owned(),
             },
@@ -212,16 +212,19 @@ fn build_profile_library(profile: &Profile) -> Vec<ResumeProfileItem> {
             .as_deref()
             .map(format_month_date)
             .and_then(|value| trimmed_option(Some(&value)));
+        let detail = trimmed_option(certification.issuer.as_deref())
+            .or_else(|| trimmed_option(certification.description.as_deref()));
         items.push(ResumeProfileItem {
             id: id.clone(),
             label: name.to_owned(),
-            detail: trimmed_option(certification.issuer.as_deref()),
+            detail,
             content: ResumeProfileItemContent::Certification {
                 value: ResumeCertificationBlock {
                     id,
                     name: name.to_owned(),
                     issuer: trimmed_option(certification.issuer.as_deref()),
                     date,
+                    description: trimmed_option(certification.description.as_deref()),
                 },
             },
         });
@@ -629,6 +632,10 @@ pub fn validate_document(document: &ResumeDocument) -> AppResult<()> {
             certification.date.as_deref(),
             "La date d'une certification du CV",
         )?;
+        validate_optional_text(
+            certification.description.as_deref(),
+            "La description d'une certification du CV",
+        )?;
     }
     for language in &document.languages {
         validate_required_fields(&[
@@ -699,6 +706,7 @@ fn to_scored_resume(document: &ResumeDocument) -> GeneratedResume {
         visible_text.push(certification.name.clone());
         visible_text.push(certification.issuer.clone().unwrap_or_default());
         visible_text.push(certification.date.clone().unwrap_or_default());
+        visible_text.push(certification.description.clone().unwrap_or_default());
     }
     for language in &document.languages {
         visible_text.push(language.name.clone());

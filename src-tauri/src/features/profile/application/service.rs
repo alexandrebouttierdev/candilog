@@ -231,7 +231,10 @@ impl<R: ProfileRepository> ProfileService<R> {
             .iter()
             .any(|skill| search_key(&skill.name) == search_key(name))
         {
-            profile.skills.push(Skill { name: name.into() });
+            profile.skills.push(Skill {
+                name: name.into(),
+                description: None,
+            });
         }
         self.save(&profile)
     }

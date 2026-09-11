@@ -689,6 +689,19 @@ function CertificationsSection({
                 />
               </>
             ) : null}
+            {certification.description || editable ? (
+              <div className="mt-[calc(2px*var(--resume-sp))] text-[calc(10.2px*var(--resume-fs))] leading-[1.35] text-[var(--resume-body)]">
+                <ResumeEditableText
+                  tag="span"
+                  editable={editable}
+                  label={`Description de certification ${index + 1}`}
+                  value={certification.description ?? ""}
+                  onChange={(value) =>
+                    onChange({ type: "certification", index, field: "description" }, value)
+                  }
+                />
+              </div>
+            ) : null}
           </li>
         ))}
       </ul>

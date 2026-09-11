@@ -440,6 +440,7 @@ mod tests {
             }],
             skills: vec![Skill {
                 name: "Rust".into(),
+                description: None,
             }],
             education: vec![Education {
                 degree: "Master".into(),
@@ -496,12 +497,15 @@ mod tests {
         profile.skills = vec![
             Skill {
                 name: "VMware vSphere 7/8".into(),
+                description: None,
             },
             Skill {
                 name: "Windows Server 2016/2019/2022".into(),
+                description: None,
             },
             Skill {
                 name: "Veeam Backup & Replication".into(),
+                description: None,
             },
         ];
 
@@ -520,6 +524,7 @@ mod tests {
         let mut profile = profile_rust();
         profile.skills = vec![Skill {
             name: "JavaScript".into(),
+            description: None,
         }];
 
         let score = profile_score(&profile, &offre(vec!["Java"], vec![], None));
@@ -569,6 +574,7 @@ mod tests {
         let mut cafe = profile_rust();
         cafe.skills = vec![Skill {
             name: "Café".into(),
+            description: None,
         }];
         let accent = profile_score(&cafe, &offre(vec!["café"], vec![], None));
         assert_eq!(accent.skills, Some(100));
@@ -735,6 +741,7 @@ mod tests {
         let mut profile = profile_rust();
         profile.skills = vec![Skill {
             name: "Google".into(),
+            description: None,
         }];
         let mut resume = GeneratedResume {
             resume: String::new(),
@@ -836,6 +843,7 @@ mod tests {
         let mut profile = profile_rust();
         profile.skills = vec![Skill {
             name: "cafe".into(),
+            description: None,
         }];
 
         let score = profile_score(&profile, &offre(vec!["Café", "cafe", "CAFÉ"], vec![], None));

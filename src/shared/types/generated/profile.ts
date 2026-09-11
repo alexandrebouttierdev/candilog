@@ -3,7 +3,11 @@
 /**
  * Certification obtenue.
  */
-export type Certification = { name: string, issuer: string | null, date: string | null, url: string | null, };
+export type Certification = { name: string, issuer: string | null, date: string | null, url: string | null, 
+/**
+ * Détail facultatif recopié du CV (périmètre, score, commentaire).
+ */
+description: string | null, };
 
 /**
  * Education académique ou professionnelle.
@@ -134,4 +138,8 @@ export type Project = { name: string, description: string | null, url: string | 
 /**
  * Compétence professionnelle.
  */
-export type Skill = { name: string, };
+export type Skill = { name: string, 
+/**
+ * Précision facultative (contexte, outils, niveau déclaré sur le CV).
+ */
+description: string | null, };

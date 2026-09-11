@@ -51,7 +51,7 @@ const preview = (): ImportProfilePreview => ({
   skills: [
     {
       id: "skill-0",
-      proposed: { name: "React" },
+      proposed: { name: "React", description: null },
       existing: null,
       existing_index: null,
       has_conflict: false,
@@ -110,7 +110,7 @@ describe("ImportReviewForm", () => {
     expect(screen.getByText("Aperçu de l'import")).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Titre professionnel" })).toHaveValue("Lead");
     expect(screen.getByLabelText("Poste")).toHaveValue("Développeur Frontend Senior");
-    expect(screen.getByRole("textbox", { name: "Compétence React" })).toHaveValue("React");
+    expect(screen.getByLabelText("Compétence")).toHaveValue("React");
     expect(screen.getAllByText(/similaire existe déjà/).length).toBe(2);
     expect(screen.getAllByRole("radio", { name: /Conserver l'existant/ }).length).toBe(2);
     expect(screen.queryByRole("button", { name: /Corriger/ })).not.toBeInTheDocument();

@@ -369,6 +369,7 @@ mod tests {
             }],
             skills: vec![Skill {
                 name: "React".into(),
+                description: None,
             }],
             education: vec![Education {
                 degree: "Master".into(),

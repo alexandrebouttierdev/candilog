@@ -53,14 +53,38 @@
       }
     ],
     "skills": [
-      { "name": "React" },
-      { "name": "TypeScript" },
-      { "name": "Node.js" },
-      { "name": "PostgreSQL" },
-      { "name": "Next.js" },
-      { "name": "NestJS" },
-      { "name": "Docker" },
-      { "name": "Git" }
+      {
+        "name": "React",
+        "description": null
+      },
+      {
+        "name": "TypeScript",
+        "description": null
+      },
+      {
+        "name": "Node.js",
+        "description": null
+      },
+      {
+        "name": "PostgreSQL",
+        "description": null
+      },
+      {
+        "name": "Next.js",
+        "description": null
+      },
+      {
+        "name": "NestJS",
+        "description": null
+      },
+      {
+        "name": "Docker",
+        "description": null
+      },
+      {
+        "name": "Git",
+        "description": null
+      }
     ],
     "education": [
       {
@@ -77,9 +101,18 @@
       }
     ],
     "languages": [
-      { "name": "Français", "level": "Langue maternelle" },
-      { "name": "Anglais", "level": "B2 professionnel" },
-      { "name": "Espagnol", "level": "A2" }
+      {
+        "name": "Français",
+        "level": "Langue maternelle"
+      },
+      {
+        "name": "Anglais",
+        "level": "B2 professionnel"
+      },
+      {
+        "name": "Espagnol",
+        "level": "A2"
+      }
     ],
     "projects": [
       {
@@ -88,15 +121,38 @@
       }
     ],
     "certifications": [
-      { "name": "AWS Certified Cloud Practitioner", "issuer": "AWS", "date": "2024" },
-      { "name": "Scrum Foundation Professional Certificate", "issuer": "", "date": "2023" },
-      { "name": "TOEIC 865/990", "issuer": "", "date": "2022" }
+      {
+        "name": "AWS Certified Cloud Practitioner",
+        "issuer": "AWS",
+        "date": "2024",
+        "description": null
+      },
+      {
+        "name": "Scrum Foundation Professional Certificate",
+        "issuer": "",
+        "date": "2023",
+        "description": null
+      },
+      {
+        "name": "TOEIC 865/990",
+        "issuer": "",
+        "date": "2022",
+        "description": null
+      }
     ],
     "interests": [
-      { "name": "Open source & veille IA" },
-      { "name": "Photographie urbaine" },
-      { "name": "Course à pied (10 km)" },
-      { "name": "Moto & mécanique" }
+      {
+        "name": "Open source & veille IA"
+      },
+      {
+        "name": "Photographie urbaine"
+      },
+      {
+        "name": "Course à pied (10 km)"
+      },
+      {
+        "name": "Moto & mécanique"
+      }
     ]
   }
 }

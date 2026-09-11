@@ -403,6 +403,7 @@ mod tests {
             skills: (0..101)
                 .map(|index| Skill {
                     name: format!("Compétence {index}"),
+                    description: None,
                 })
                 .collect(),
             ..Profile::default()

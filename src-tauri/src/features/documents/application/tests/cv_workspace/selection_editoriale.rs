@@ -7,6 +7,7 @@ fn profile_with_skill_count(count: usize) -> Profile {
     value.skills = (0..count)
         .map(|index| Skill {
             name: format!("Compétence {index}"),
+            description: None,
         })
         .collect();
     value
@@ -100,6 +101,7 @@ fn impact_ats_d_une_recommandation_est_simule_sur_le_document_courant() {
     let mut profile = profile();
     profile.skills = vec![Skill {
         name: "Active Directory".into(),
+        description: None,
     }];
     let mut generation = generation();
     generation.job_offer.skills = vec!["Active Directory".into()];
@@ -257,6 +259,7 @@ fn un_remplacement_est_propose_sans_modifier_le_document() {
     let mut profile = profile();
     profile.skills = vec![Skill {
         name: "Active Directory".into(),
+        description: None,
     }];
     profile.projects = vec![Project {
         name: "Projet secondaire".into(),
