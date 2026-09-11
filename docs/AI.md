@@ -284,11 +284,15 @@ qu'après confirmation et transmission de l'arrêt au backend.
 
 Le bouton **Tester** (en-tête global, héros des réglages IA, carte de chaque modèle local
 installé) lance `run_user_cv_benchmark`. Le PDF de référence et sa ground truth
-(`resources/CV_BENCHMARK.pdf`, `resources/CV_BENCHMARK.expected.json`) sont embarqués dans
-`src-tauri/resources/`. Le pipeline suit le même orchestrateur que l'import de profil
-(`method` Vision ou Texte, repli éventuel) : prétraitement PDF, invite, post-traitements,
-scoring déterministe contre la ground truth. Aucune donnée utilisateur n'est persistée ; le
-profil extrait est jeté après calcul du score.
+(`src-tauri/resources/CV_BENCHMARK.pdf`, `CV_BENCHMARK.expected.json`) sont **compilés dans
+le binaire** (`include_bytes!` / `include_str!`) : le PDF est ensuite écrit dans un fichier
+temporaire pour les extracteurs. Ils ne figurent pas dans le bundle Tauri
+(`tauri.conf.json` → `bundle.resources`) et ne doivent pas dépendre de `CARGO_MANIFEST_DIR`
+à l'exécution — ce chemin n'existe que sur la machine de build. Le pipeline suit le même
+orchestrateur que l'import de profil (`method` Vision ou Texte, repli éventuel) :
+prétraitement PDF, invite, post-traitements, scoring déterministe contre la ground truth.
+Aucune donnée utilisateur n'est persistée ; le profil extrait est jeté après calcul du
+score.
 
 `UserBenchmarkResult` expose `method_used` et `fallback_used` pour comparer Texte, Vision et
 Vision hybride (images + texte complémentaire) sur un même modèle compatible.
