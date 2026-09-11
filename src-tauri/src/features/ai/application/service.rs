@@ -55,7 +55,15 @@ Règles :
 4. motivation_keywords : 0 à 3 termes recopiés exactement depuis le brief ou l'instruction.
 5. N'écris aucune phrase de lettre. N'invente aucune information."#;
 const FRENCH_CORRECTION_SYSTEM: &str = r#"Tu es un correcteur professionnel de français. Corrige uniquement l'orthographe, la grammaire, les accords, la ponctuation, les coquilles et les formulations manifestement maladroites. Préserve strictement le sens, les faits, les noms propres, les chiffres, les dates, les coordonnées, les technologies et le niveau de précision. N'ajoute aucune information, ne supprime aucun fait et ne réécris pas un passage déjà correct. Chaque objet reçu contient un id opaque et un texte : renvoie exactement un objet par id, dans le même ordre, avec {"fields":[{"id":"","text":""}]}. Recopie le texte à l'identique si aucune correction n'est nécessaire. JSON uniquement."#;
-const PARSE_RESUME_SYSTEM: &str = r#"Structure le texte brut d'un CV sans traduire, reformuler ni inventer. Réponds uniquement en JSON : {"resume":"","experiences":[{"intitule":"","entreprise":"","description":""}],"competences":[],"formations":[{"diplome":"","etablissement":""}]}"#;
+const PARSE_RESUME_SYSTEM: &str = r#"Structure le texte brut d'un CV sans traduire, reformuler ni inventer. Recopie toutes les compétences listées (langages, frameworks, devops, méthodes) et les projets avec leur stack. Réponds uniquement en JSON : {"resume":"","experiences":[{"intitule":"","entreprise":"","description":""}],"competences":[],"formations":[{"diplome":"","etablissement":""}]}"#;
+
+const PARSE_RESUME_SYSTEM_VISION: &str = r#"Structure le CV fourni sans traduire, reformuler ni inventer.
+
+Le document visuel (images des pages) est la source principale. Utilise la mise en page (colonnes, sections COMPÉTENCES / EXPÉRIENCE / PROJETS) pour extraire compétences, méthodes (Agile, CI/CD, code review), stacks et descriptions.
+
+Un texte brut PDF peut être fourni en complément. Liste TOUTES les compétences visibles et les projets avec leur stack (ex. Angular, React, Docker, GitLab CI).
+
+Réponds uniquement en JSON : {"resume":"","experiences":[{"intitule":"","entreprise":"","description":""}],"competences":[],"formations":[{"diplome":"","etablissement":""}]}"#;
 /// Le gabarit décrit chaque valeur attendue au lieu de la laisser vide.
 ///
 /// Un gabarit rempli de `""` était recopié tel quel par les petits modèles locaux :
@@ -543,22 +551,77 @@ impl AiService {
             id: id.clone(),
             token: Arc::clone(&token),
         };
+
+        let path = self.selected_resume_path()?;
         progres(&notifier, &id, "Lecture locale du PDF", None, None);
-        let text = extract_pdf(self.selected_resume_path()?).await?;
+        let text = match try_extract_pdf_text(path.clone()).await? {
+            Some(extracted) if !extracted.trim().is_empty() => extracted,
+            _ => extract_pdf(path.clone()).await?,
+        };
         validate_source_text(&text, "Le CV")?;
+
+        let config = load_config(&self.pool)?;
         let provider = self.provider().await?;
+        let model = effective_model_label(&config, self)?;
+        let reported = provider.reported_capabilities().await.ok().flatten();
+        let capabilities = detect_model_capabilities(&config.provider, &model, reported.as_deref());
+        let plan = resolve_cv_analysis_plan(request.method, capabilities);
+        tracing::info!(
+            primary = ?plan.primary,
+            allow_fallback = plan.allow_text_fallback,
+            vision_capable = capabilities.vision,
+            "plan d'analyse ATS CV résolu"
+        );
+
         let mut tokens = Some(0_u32);
-        progres(&notifier, &id, "Structuration du CV", None, None);
-        let (mut resume, call_tokens): (GeneratedResume, Option<u32>) = cancel(
-            &token,
-            generate_json(
-                provider.clone(),
-                &bloc_donnees("cv", &text),
-                PARSE_RESUME_SYSTEM,
-            ),
-        )
-        .await?;
-        tokens = add_tokens(tokens, call_tokens);
+        let (mut resume, method_used, fallback_used) = match plan.primary {
+            CvAnalysisMethodUsed::Vision => {
+                match self
+                    .parse_resume_via_vision(
+                        path.clone(),
+                        &text,
+                        Arc::clone(&provider),
+                        &token,
+                        &id,
+                        &notifier,
+                    )
+                    .await
+                {
+                    Ok((resume, call_tokens)) => {
+                        tokens = add_tokens(tokens, call_tokens);
+                        (resume, CvAnalysisMethodUsed::Vision, false)
+                    }
+                    Err(AppError::Cancelled) => return Err(AppError::Cancelled),
+                    Err(error) if plan.allow_text_fallback => {
+                        tracing::warn!(
+                            error = %error,
+                            "structuration Vision échouée — repli Texte (analyse ATS)"
+                        );
+                        progres(&notifier, &id, "Repli sur l'analyse Texte…", None, tokens);
+                        let (resume, call_tokens) = self
+                            .parse_resume_via_text(
+                                &text,
+                                Arc::clone(&provider),
+                                &token,
+                                &id,
+                                &notifier,
+                            )
+                            .await?;
+                        tokens = add_tokens(tokens, call_tokens);
+                        (resume, CvAnalysisMethodUsed::Text, true)
+                    }
+                    Err(error) => return Err(error),
+                }
+            }
+            CvAnalysisMethodUsed::Text => {
+                let (resume, call_tokens) = self
+                    .parse_resume_via_text(&text, Arc::clone(&provider), &token, &id, &notifier)
+                    .await?;
+                tokens = add_tokens(tokens, call_tokens);
+                (resume, CvAnalysisMethodUsed::Text, false)
+            }
+        };
+
         ground_imported_resume(&text, &mut resume);
         progres(&notifier, &id, "Analyse de l'offre", None, tokens);
         let (mut job_offer, call_tokens): (StructuredListing, Option<u32>) = cancel(
@@ -572,7 +635,8 @@ impl AiService {
         .await?;
         tokens = add_tokens(tokens, call_tokens);
         ground_extracted_listing(&request.job_offer, &mut job_offer);
-        let score = score_resume_imported(&resume, &job_offer);
+        // Score déterministe sur le PDF brut (pas seulement le JSON LLM).
+        let score = score_resume_imported_with_source(&resume, &job_offer, Some(&text));
         progres(&notifier, &id, "Recommandations ATS", None, tokens);
         let (analysis, call_tokens): (AtsAnalysis, Option<u32>) = cancel(
             &token,
@@ -580,7 +644,13 @@ impl AiService {
                 provider,
                 &bloc_donnees(
                     "analyse",
-                    &serde_json::json!({"cv":resume,"offre":job_offer}).to_string(),
+                    &serde_json::json!({
+                        "cv": resume,
+                        "cv_texte": text,
+                        "offre": job_offer,
+                        "method_used": method_used,
+                    })
+                    .to_string(),
                 ),
                 ATS_SYSTEM,
             ),
@@ -595,9 +665,82 @@ impl AiService {
                 job_offer,
                 score,
                 analysis,
+                method_used,
+                fallback_used,
             },
             tokens,
         ))
+    }
+
+    async fn parse_resume_via_text(
+        &self,
+        text: &str,
+        provider: Arc<dyn LlmGenerator>,
+        token: &CancellationToken,
+        id: &str,
+        notifier: &impl Fn(AiProgress),
+    ) -> AppResult<(GeneratedResume, Option<u32>)> {
+        progres(notifier, id, "Structuration du CV (texte)", None, None);
+        cancel(
+            token,
+            generate_json(
+                provider,
+                &bloc_donnees("cv", text),
+                PARSE_RESUME_SYSTEM,
+            ),
+        )
+        .await
+    }
+
+    async fn parse_resume_via_vision(
+        &self,
+        path: PathBuf,
+        complementary_text: &str,
+        provider: Arc<dyn LlmGenerator>,
+        token: &CancellationToken,
+        id: &str,
+        notifier: &impl Fn(AiProgress),
+    ) -> AppResult<(GeneratedResume, Option<u32>)> {
+        progres(notifier, id, "Conversion du PDF en images…", None, None);
+        let pages = cancel(token, render_pdf_pages(path)).await?;
+        progres(
+            notifier,
+            id,
+            &format!(
+                "Analyse visuelle du CV ({} page{})…",
+                pages.len(),
+                if pages.len() > 1 { "s" } else { "" }
+            ),
+            None,
+            None,
+        );
+        let images: Vec<VisionImage> = pages
+            .into_iter()
+            .map(|page| VisionImage {
+                mime: page.mime,
+                bytes: page.bytes,
+            })
+            .collect();
+        let prompt = format!(
+            "{}
+
+{}",
+            bloc_donnees(
+                "cv_texte_complementaire",
+                &truncate_chars(complementary_text, 12_000)
+            ),
+            "Structure le CV à partir des images fournies."
+        );
+        cancel(
+            token,
+            generate_json_vision::<GeneratedResume>(
+                provider,
+                &prompt,
+                PARSE_RESUME_SYSTEM_VISION,
+                &images,
+            ),
+        )
+        .await
     }
 
     /// Capacités du modèle actuellement configuré (pour l'UI d'import).

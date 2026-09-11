@@ -39,6 +39,8 @@ describe("ViewModel de l'analyse de CV", () => {
         job_offer: { title: "Dev", skills: [], soft_skills: [], experience: null, keywords: [] },
         score: { total: 72, skills: null, experience: null, ats: null, present: [], missing: [] },
         analysis: { recap: "Correct", recommendations: [], content_recommendations: [] },
+        method_used: "text" as const,
+        fallback_used: false,
       },
       elapsed_ms: 18_400,
       tokens_used: 1_024,

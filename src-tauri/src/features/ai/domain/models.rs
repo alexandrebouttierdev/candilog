@@ -309,6 +309,8 @@ pub struct ImportedResumeAnalysis {
     pub job_offer: StructuredListing,
     pub score: MatchScore,
     pub analysis: AtsAnalysis,
+    pub method_used: super::CvAnalysisMethodUsed,
+    pub fallback_used: bool,
 }
 
 /// Demande d'analyse d'un CV déjà choisi par `ai_select_resume_file`.
@@ -321,6 +323,9 @@ pub struct ImportedResumeAnalysis {
 pub struct ResumeAnalysisRequest {
     pub generation_id: String,
     pub job_offer: String,
+    /// Préférence d'analyse. Absente ou `vision` : Vision si le modèle le permet, sinon Texte.
+    #[serde(default)]
+    pub method: super::CvAnalysisMethod,
 }
 
 #[derive(Debug, Clone, Deserialize, TS)]

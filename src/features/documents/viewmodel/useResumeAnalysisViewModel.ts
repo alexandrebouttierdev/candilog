@@ -81,6 +81,7 @@ export function useResumeAnalysisViewModel() {
       const execution = await aiService.analyzeResume({
         generation_id: id,
         job_offer: jobOffer,
+        method: "vision",
       });
       if (!isCurrent(id)) return;
       timer.stop();

@@ -66,7 +66,7 @@ export type GeneratedExperience = { title: string, company: string, description:
 
 export type GeneratedResume = { resume: string, experiences: Array<GeneratedExperience>, skills: Array<string>, education: Array<GeneratedEducation>, };
 
-export type ImportedResumeAnalysis = { resume: GeneratedResume, job_offer: StructuredListing, score: MatchScore, analysis: AtsAnalysis, };
+export type ImportedResumeAnalysis = { resume: GeneratedResume, job_offer: StructuredListing, score: MatchScore, analysis: AtsAnalysis, method_used: CvAnalysisMethodUsed, fallback_used: boolean, };
 
 export type InstallManagedModelRequest = { model_id: ManagedModelId, };
 
@@ -150,7 +150,7 @@ method: CvAnalysisMethod, };
  * Aucun chemin : le fichier analysé est celui que l'utilisateur a désigné dans le dialogue
  * natif, retenu côté Rust. Le frontend ne peut donc pas faire lire un autre document.
  */
-export type ResumeAnalysisRequest = { generation_id: string, job_offer: string, };
+export type ResumeAnalysisRequest = { generation_id: string, job_offer: string, method?: CvAnalysisMethod, };
 
 export type ResumeGeneration = { resume: GeneratedResume, analysis: AtsAnalysis, job_offer: StructuredListing, profile_score: MatchScore, 
 /**

@@ -85,6 +85,8 @@ describe("analyse explicite d'un CV sélectionné", () => {
           missing: [],
         },
         analysis: { recap: "Analyse terminée", recommendations: [], content_recommendations: [] },
+        method_used: "text" as const,
+        fallback_used: false,
       },
       elapsed_ms: 18_400,
       tokens_used: 1_024,
@@ -156,6 +158,8 @@ describe("analyse explicite d'un CV sélectionné", () => {
         job_offer: { title: "Dev", skills: [], soft_skills: [], experience: null, keywords: [] },
         score: { total: 99, skills: null, experience: null, ats: null, present: [], missing: [] },
         analysis: { recap: "Analyse tardive", recommendations: [], content_recommendations: [] },
+        method_used: "text" as const,
+        fallback_used: false,
       }));
       await Promise.resolve();
     });

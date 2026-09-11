@@ -165,21 +165,36 @@ pub fn score_resume_imported(
     resume: &GeneratedResume,
     job_offer: &StructuredListing,
 ) -> MatchScore {
+    score_resume_imported_with_source(resume, job_offer, None)
+}
+
+/// Comme [`score_resume_imported`], en enrichissant l'évidence avec le texte brut du PDF.
+///
+/// Sans ça, un JSON de structuration incomplet (compétences / projets omis) fait chuter
+/// le score vers ~5/100 alors que CI/CD, Agile ou Angular figurent bien dans le PDF.
+#[must_use]
+pub fn score_resume_imported_with_source(
+    resume: &GeneratedResume,
+    job_offer: &StructuredListing,
+    source: Option<&str>,
+) -> MatchScore {
     let names: Vec<&str> = resume
         .skills
         .iter()
         .map(String::as_str)
         .filter(|name| !search_key(name).is_empty())
         .collect();
-    let evidence = resume_text(resume);
-    // GeneratedResume n'a pas de dates structurées : on déduit le titre des expériences
-    // et les années depuis le texte (« 6 ans d'expérience »). Jamais un 0 punitif silencieux
-    // — c'était la cause du score ~9/100 sur Analyse de CV malgré un commentaire cohérent.
+    let evidence = match source {
+        Some(src) if !src.trim().is_empty() => {
+            search_key(&format!("{} {}", resume_text_raw(resume), src))
+        }
+        _ => resume_text(resume),
+    };
     score_against_offer(
         &names,
         &evidence,
         &infer_title_from_resume(resume),
-        infer_annees_from_resume(resume),
+        infer_annees_from_parts(resume, source),
         job_offer,
     )
 }
@@ -675,8 +690,8 @@ fn appears_only_in_company_blurb(source_key: &str, skill: &str) -> bool {
     near_company && !near_requirement
 }
 
-fn resume_text(resume: &GeneratedResume) -> String {
-    search_key(&format!(
+fn resume_text_raw(resume: &GeneratedResume) -> String {
+    format!(
         "{} {} {} {}",
         resume.resume,
         resume.skills.join(" "),
@@ -692,7 +707,11 @@ fn resume_text(resume: &GeneratedResume) -> String {
             .map(|e| format!("{} {}", e.degree, e.school))
             .collect::<Vec<_>>()
             .join(" ")
-    ))
+    )
+}
+
+fn resume_text(resume: &GeneratedResume) -> String {
+    search_key(&resume_text_raw(resume))
 }
 
 /// Titre métier approximatif : premier intitulé d'expérience, sinon début du résumé.
@@ -713,17 +732,18 @@ fn infer_title_from_resume(resume: &GeneratedResume) -> String {
         .join(" ")
 }
 
-/// Années annoncées dans le texte du CV (« 6 ans d'expérience », « Juil. 2019 – Oct. 2025 · 6 ans »).
-fn infer_annees_from_resume(resume: &GeneratedResume) -> Option<usize> {
+/// Années annoncées dans le CV structuré et/ou le texte PDF source.
+fn infer_annees_from_parts(resume: &GeneratedResume, source: Option<&str>) -> Option<usize> {
     let blob = format!(
-        "{} {}",
+        "{} {} {}",
         resume.resume,
         resume
             .experiences
             .iter()
             .map(|e| e.description.as_str())
             .collect::<Vec<_>>()
-            .join(" ")
+            .join(" "),
+        source.unwrap_or_default()
     );
     let n = first_entier(&blob);
     (n > 0).then_some(n)
@@ -1347,7 +1367,50 @@ Pratiques Agile, intégration continue, code review
 
     /// CV réel (Alexandre Bouttier) vs offre Open-like — chemin Analyse de CV importé.
     /// Régression du score ~9/100 : expérience à 0 + titre vide.
+    
+    /// JSON parsé volontairement pauvre + texte PDF → le score lit le PDF.
     #[test]
+    fn score_avec_texte_pdf_source_meme_si_json_pauvre() {
+        let resume = GeneratedResume {
+            resume: "Développeur".into(),
+            experiences: vec![GeneratedExperience {
+                title: "Développeur Fullstack".into(),
+                company: "Linaïa".into(),
+                description: String::new(),
+            }],
+            skills: vec!["JavaScript".into()],
+            education: vec![],
+        };
+        let source = "Développeur fullstack JavaScript / TypeScript avec 6 ans d'expérience. COMPÉTENCES: React Angular Node.js Docker GitLab CI CI/CD Agile Code review. GDS Bretagne refonte Angular vers React. PostgreSQL.";
+        let offre = StructuredListing {
+            title: "Concepteur Développeur Full stack F/H".into(),
+            skills: vec![
+                "Java".into(),
+                "Angular".into(),
+                "React".into(),
+                "CI/CD".into(),
+                "Agile".into(),
+                "Code review".into(),
+            ],
+            soft_skills: vec![],
+            experience: Some("3 ans".into()),
+            keywords: vec![],
+        };
+        let without = score_resume_imported(&resume, &offre);
+        let with = score_resume_imported_with_source(&resume, &offre, Some(source));
+        assert!(
+            with.total > without.total,
+            "PDF source doit remonter le score: with={} without={}",
+            with.total,
+            without.total
+        );
+        assert!(with.present.iter().any(|s| s == "Angular"));
+        assert!(with.present.iter().any(|s| s == "CI/CD"));
+        assert!(with.missing.iter().any(|s| s == "Java"));
+        assert!(with.total >= 40, "obtenu {}", with.total);
+    }
+
+#[test]
     fn cas_open_cv_alexandre_score_intermediaire() {
         let resume = GeneratedResume {
             resume: "Développeur fullstack JavaScript / TypeScript avec 6 ans d'expérience en agence. Mode régie Agile TMA Code review. Docker GitLab CI CI/CD.".into(),

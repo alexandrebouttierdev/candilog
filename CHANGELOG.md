@@ -13,6 +13,8 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
   mots-clés dédupliqués des compétences, prompts offre / recommandations plus stricts
   (exigences vs contexte entreprise, pas d'invention). Tests Open + multi-domaines.
 
+- Analyse de CV : score déterministe enrichi avec le texte PDF brut (plus seulement le JSON LLM) ; mode Vision si le modèle le permet, avec repli Texte.
+
 - Analyse de CV : ne plus scorer l'expérience à 0 quand les dates manquent ;
   déduction du titre et des années depuis le texte ; filtre des compétences
   issues du blurb entreprise (ex. « Expertises reconnues ») hors exigences poste.
