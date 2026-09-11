@@ -132,7 +132,7 @@ export function AiQuickSelector({ shellBrand = false }: { shellBrand?: boolean }
         type="button"
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-label={`Fournisseur IA : ${triggerLabel}`}
+        aria-label={`Fournisseur IA : ${triggerLabel} — ${globalEtat.label}`}
         onClick={() => setOpen((value) => !value)}
         className={cn(
           "inline-flex h-control max-w-[min(42vw,18rem)] items-center gap-1.5 rounded-button border px-2.5",

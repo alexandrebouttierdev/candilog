@@ -108,7 +108,15 @@ export function CompaniesPage() {
                   >
                     Tout effacer
                   </Button>
-                ) : undefined
+                ) : (
+                  <Button
+                    variant="primary"
+                    icon="add"
+                    onClick={() => setForm({ isOpen: true, editing: null })}
+                  >
+                    Nouvelle entreprise
+                  </Button>
+                )
               }
             />
           ) : (
@@ -145,7 +153,7 @@ export function CompaniesPage() {
               onOuvrirApplication={() => void naviguer("/tracking/applications")}
               onToutVoir={() => void naviguer("/tracking/applications")}
             />
-          ) : (
+          ) : vm.items.length > 0 || vm.isLoading ? (
             <div className="flex h-full items-center justify-center">
               <EmptyState
                 icon="ads_click"
@@ -153,7 +161,7 @@ export function CompaniesPage() {
                 description="Choisissez une société dans la liste pour afficher sa fiche."
               />
             </div>
-          )}
+          ) : null}
         </div>
       </div>
 

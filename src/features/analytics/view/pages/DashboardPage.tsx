@@ -141,6 +141,7 @@ function TodayWorkspace({ data }: { data: Dashboard }) {
                 onOpen={(id) =>
                   void navigate(`/tracking/applications?id=${encodeURIComponent(id)}`)
                 }
+                onCreate={() => void navigate("/tracking/applications?new=1")}
               />
             </TodayCard>
             <TodayActivity activity={data.activity} />

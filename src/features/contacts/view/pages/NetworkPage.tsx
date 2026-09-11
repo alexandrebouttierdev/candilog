@@ -103,7 +103,15 @@ export function NetworkPage() {
                   >
                     Tout effacer
                   </Button>
-                ) : undefined
+                ) : (
+                  <Button
+                    variant="primary"
+                    icon="add"
+                    onClick={() => setForm({ isOpen: true, editing: null })}
+                  >
+                    Nouveau contact
+                  </Button>
+                )
               }
             />
           ) : (
@@ -138,7 +146,7 @@ export function NetworkPage() {
               onEdit={() => setForm({ isOpen: true, editing: vm.selection })}
               onDelete={() => setPendingDelete(vm.selection)}
             />
-          ) : (
+          ) : vm.items.length > 0 || vm.isLoading ? (
             <div className="flex h-full items-center justify-center">
               <EmptyState
                 icon="ads_click"
@@ -146,7 +154,7 @@ export function NetworkPage() {
                 description="Choisissez un interlocuteur dans la liste pour afficher sa fiche."
               />
             </div>
-          )}
+          ) : null}
         </div>
       </div>
 

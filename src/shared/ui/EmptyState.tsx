@@ -31,9 +31,10 @@ export function EmptyState({
 }) {
   return (
     <div
+      role="status"
       className={cn(
         "px-[18px] py-6 text-center",
-        bordered && "rounded-[11px] border-[1.5px] border-dashed border-line",
+        bordered && "rounded-tile border-[1.5px] border-dashed border-line",
         className,
       )}
     >

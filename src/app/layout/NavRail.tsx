@@ -24,7 +24,7 @@ export function NavRail() {
       <span
         className={cn(
           "mb-3 flex size-9 items-center justify-center",
-          railBrand && "rounded-tile bg-rail-logo p-1 shadow-sm",
+          railBrand && "rounded-tile bg-rail-logo p-1",
         )}
       >
         <img

@@ -119,6 +119,11 @@ export function LettersLibraryPage() {
                 icon="search"
                 title="Aucun résultat"
                 description="Aucune lettre ne correspond à cette recherche."
+                action={
+                  <Button icon="filter_alt_off" onClick={() => vm.updateSearch("")}>
+                    Tout effacer
+                  </Button>
+                }
               />
             ) : (
               <EmptyState
@@ -180,7 +185,11 @@ export function LettersLibraryPage() {
             {vm.selectedLetter ? (
               <LetterPreview letter={vm.selectedLetter} identity={vm.identity} />
             ) : (
-              <EmptyState icon="draft" title="Sélectionnez une lettre" />
+              <EmptyState
+                icon="draft"
+                title="Sélectionnez une lettre"
+                description="Choisissez une lettre dans la bibliothèque pour l'apercevoir."
+              />
             )}
           </div>
         </div>
