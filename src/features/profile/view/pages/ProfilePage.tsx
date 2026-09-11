@@ -64,7 +64,7 @@ export function ProfilePage() {
         ) : (
           <div>
             <div className="border-b border-line bg-surface px-7 pt-[22px]">
-              <div className="flex flex-wrap items-start gap-4">
+              <div className="flex flex-wrap items-start justify-between gap-4">
                 <ProfileIdentity
                   identity={vm.data.profile.identity}
                   photo={photo}
@@ -81,6 +81,9 @@ export function ProfilePage() {
                     }
                   />
                 </ProfileIdentity>
+                <div className="ml-auto w-[min(100%,20rem)] flex-none">
+                  <ProfileResetCard busy={vm.isResetting} onReset={() => setResetOuvert(true)} />
+                </div>
               </div>
               <ProfileTabs
                 active={tab}
@@ -157,10 +160,6 @@ export function ProfilePage() {
                   />
                 </SectionCard>
               </ProfilePanel>
-
-              <div className="max-w-md">
-                <ProfileResetCard busy={vm.isResetting} onReset={() => setResetOuvert(true)} />
-              </div>
             </div>
           </div>
         )}

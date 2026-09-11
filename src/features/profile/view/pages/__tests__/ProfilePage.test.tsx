@@ -158,6 +158,17 @@ describe("écran Profil — import de CV", () => {
 });
 
 describe("écran Profil — réinitialisation", () => {
+  it("place le bloc de réinitialisation en haut à droite, avant les onglets", async () => {
+    render(<ProfilePage />, { wrapper });
+
+    const reset = await screen.findByRole("button", { name: "Réinitialiser mon profil" });
+    const onglets = screen.getByRole("tablist", { name: "Sections du profil" });
+    const identite = screen.getByRole("heading", { name: "Camille Rivet" });
+
+    expect(identite.compareDocumentPosition(reset) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(reset.compareDocumentPosition(onglets) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("ne réinitialise rien tant que la confirmation n'est pas donnée", async () => {
     const reset = vi.spyOn(profileService, "reset");
 

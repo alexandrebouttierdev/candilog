@@ -18,7 +18,8 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
 
 - Page Profil : sections Identité, Objectif professionnel et Présence en ligne en onglets
   dédiés (modales séparées). Le bouton « Modifier le profil » et le panneau latéral
-  Identité sont retirés.
+  Identité sont retirés. Le bloc « Réinitialiser le profil » est aligné en haut à droite
+  du bandeau, visible quel que soit l'onglet.
 
 - Benchmark « Tester l'IA » : le score Formations accepte les libellés paraphrasés ou
   partiels (diplôme / école), aligné sur ce que l'import affiche déjà.
