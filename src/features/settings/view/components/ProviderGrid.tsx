@@ -100,7 +100,7 @@ export function ProviderGrid({
               "focus-visible:outline-1 focus-visible:outline-accent-focus",
               selected
                 ? "border-accent bg-accent-tint-12"
-                : "border-control bg-fill hover:bg-fill-hover",
+                : "border-control bg-fill hover:border-control-strong hover:bg-fill-hover",
             )}
           >
             {selected ? (
@@ -111,7 +111,7 @@ export function ProviderGrid({
                 className="absolute right-1.5 top-1.5 text-accent"
               />
             ) : null}
-            <span className="relative flex size-9 flex-none items-center justify-center rounded-control bg-surface">
+            <span className="relative flex size-10 flex-none items-center justify-center rounded-tile bg-surface">
               {logo ? (
                 <img
                   src={logo.src}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type {
   ManagedModelCategory,
   ManagedModelStatus,
@@ -216,47 +216,72 @@ function ModelCard({
   return (
     <article
       className={cn(
-        "flex flex-col gap-3 rounded-card border px-4 py-3.5",
-        model.active ? "border-accent bg-accent-tint-12" : "border-line bg-surface",
+        "flex min-h-[248px] flex-col overflow-hidden rounded-card border transition-[background-color,border-color] duration-hover",
+        model.active
+          ? "border-accent bg-accent-tint-12"
+          : "border-line bg-surface hover:border-control-strong",
       )}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex min-w-0 items-start gap-2.5">
-          <span
-            className="mt-0.5 flex size-8 flex-none items-center justify-center rounded-control bg-surface shadow-[inset_0_0_0_1px_var(--color-line)]"
-            aria-hidden="true"
-          >
-            <ManagedPublisherLogo publisher={model.definition.publisher} />
-          </span>
-          <div className="min-w-0">
-            <p className="text-label font-mid text-ink-muted">{model.definition.publisher_label}</p>
-            <p className="mt-0.5 text-eyebrow uppercase text-ink-label">
-              {CATEGORY_LABELS[model.definition.category]}
-            </p>
-            <h3 className="mt-0.5 truncate text-section font-mid text-ink">
-              {model.definition.display_name}
-            </h3>
+      <div className="flex flex-1 flex-col gap-3 px-4 pt-3.5 pb-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex min-w-0 items-start gap-3">
+            <span
+              className={cn(
+                "mt-0.5 flex size-10 flex-none items-center justify-center rounded-tile",
+                model.active ? "bg-surface" : "bg-fill",
+              )}
+              aria-hidden="true"
+            >
+              <ManagedPublisherLogo publisher={model.definition.publisher} className="size-5" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-label font-mid text-ink-muted">{model.definition.publisher_label}</p>
+              <h3 className="mt-0.5 truncate text-item font-semibold text-ink">
+                {model.definition.display_name}
+              </h3>
+              <p className="mt-1 text-eyebrow uppercase text-ink-label">
+                {CATEGORY_LABELS[model.definition.category]}
+              </p>
+            </div>
           </div>
+          {model.active ? (
+            <StatusPill tone="accent" icon="check_circle">
+              Actif
+            </StatusPill>
+          ) : model.recommended ? (
+            <Tag className="flex-none">Recommandé</Tag>
+          ) : null}
         </div>
-        {model.active ? (
-          <StatusPill tone="accent">Actif</StatusPill>
-        ) : model.recommended ? (
-          <Tag>Recommandé</Tag>
+
+        <p className="line-clamp-3 text-note leading-relaxed text-ink-muted">
+          {model.definition.description}
+        </p>
+
+        <div className="mt-auto flex flex-wrap items-center gap-1.5">
+          <MetaChip icon="inventory_2">{formatBytes(model.definition.approximate_download_bytes)}</MetaChip>
+          <MetaChip icon="monitoring">RAM {model.definition.recommended_ram_gb}&nbsp;Go</MetaChip>
+          <StatusPill tone={fit.tone} compact>
+            {fit.label}
+          </StatusPill>
+          {model.installed && !model.active ? (
+            <StatusPill tone="success" compact>
+              Installé
+            </StatusPill>
+          ) : null}
+        </div>
+
+        {model.last_benchmark ? (
+          <p className="flex items-center gap-1.5 text-meta text-ink-faint">
+            <Icon name="bolt" size={14} className="flex-none text-ink-subtle" />
+            <span>
+              Dernier test : {model.last_benchmark.score}&nbsp;/&nbsp;100 ·{" "}
+              {formatSeconds(model.last_benchmark.total_ms)}
+            </span>
+          </p>
         ) : null}
       </div>
-      <p className="text-note leading-relaxed text-ink-muted">{model.definition.description}</p>
-      <div className="flex flex-wrap gap-x-4 gap-y-1 text-meta text-ink-faint">
-        <span>{formatBytes(model.definition.approximate_download_bytes)}</span>
-        <span>RAM reco. {model.definition.recommended_ram_gb} Go</span>
-      </div>
-      <StatusPill tone={fit.tone}>{fit.label}</StatusPill>
-      {model.last_benchmark ? (
-        <p className="text-note text-ink-muted">
-          Dernier test : {model.last_benchmark.score} / 100 ·{" "}
-          {formatSeconds(model.last_benchmark.total_ms)}
-        </p>
-      ) : null}
-      <div className="mt-auto flex flex-wrap gap-2">
+
+      <div className="flex flex-wrap gap-2 border-t border-line-soft bg-surface-alt px-4 py-2.5">
         {!model.installed ? (
           <Button
             variant="primary"
@@ -292,6 +317,15 @@ function ModelCard({
         ) : null}
       </div>
     </article>
+  );
+}
+
+function MetaChip({ icon, children }: { icon: "inventory_2" | "monitoring"; children: ReactNode }) {
+  return (
+    <span className="inline-flex h-5 items-center gap-1 rounded-chip bg-fill px-1.5 text-meta text-ink-muted">
+      <Icon name={icon} size={12} className="flex-none text-ink-faint" />
+      {children}
+    </span>
   );
 }
 
