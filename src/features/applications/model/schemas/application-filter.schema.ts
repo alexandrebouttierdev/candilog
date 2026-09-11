@@ -109,7 +109,7 @@ export type ApplicationFilterValues = z.output<typeof applicationFilterSchema>;
 export type ApplicationFilterInput = z.input<typeof applicationFilterSchema>;
 
 /** Filtre vide, état par défaut de l'écran. */
-export const FILTER_VIDE: ApplicationFilterValues = {
+export const EMPTY_FILTER: ApplicationFilterValues = {
   status: [],
   application_type: [],
   contract_type_code: [],

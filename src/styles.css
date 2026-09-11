@@ -49,6 +49,10 @@
   --candilog-rail-item-active-border: rgb(255 255 255 / 0.38);
   --candilog-rail-divider: rgb(255 255 255 / 0.22);
   --candilog-rail-focus: rgb(255 255 255 / 0.72);
+  --candilog-rail-logo: rgb(255 255 255 / 0.95);
+  --candilog-shell-control-disabled-border: rgb(255 255 255 / 0.15);
+  --candilog-shell-control-disabled-bg: rgb(255 255 255 / 0.05);
+  --candilog-shell-control-disabled-ink: rgb(255 255 255 / 0.4);
   --candilog-glass-subnav: #f3f5fd;
   --candilog-glass-subnav-border: rgb(79 95 232 / 0.1);
   --candilog-glass-topbar: var(--candilog-glass-rail);
@@ -302,6 +306,7 @@
   --color-rail-item-active-border: var(--candilog-rail-item-active-border);
   --color-rail-divider: var(--candilog-rail-divider);
   --color-rail-focus: var(--candilog-rail-focus);
+  --color-rail-logo: var(--candilog-rail-logo);
   --color-glass-subnav: var(--candilog-glass-subnav-border);
   --color-glass-topbar: var(--candilog-glass-topbar-border);
   --color-glass-inspector: var(--candilog-glass-inspector-border);
@@ -864,9 +869,9 @@
   }
 
   .shell-brand-control:disabled {
-    border-color: rgb(255 255 255 / 0.18);
-    background: rgb(255 255 255 / 0.06);
-    color: rgb(255 255 255 / 0.45);
+    border-color: var(--candilog-shell-control-disabled-border);
+    background: var(--candilog-shell-control-disabled-bg);
+    color: var(--candilog-shell-control-disabled-ink);
   }
 
   .glass-subnav {

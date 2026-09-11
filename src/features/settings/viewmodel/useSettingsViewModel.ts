@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { settingsService } from "../services/settingsService";
-import type { Settings } from "../services/settingsService";
+import type { LlmForm, Settings, ThemePref } from "../services/settingsService";
 import { applyTheme, useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 
@@ -11,6 +11,51 @@ function message(error: unknown): string | undefined {
   return error instanceof AppError ? error.message : undefined;
 }
 
+async function loadSettingsAndApplyTheme(
+  setTheme: (theme: ThemePref) => void,
+): Promise<Settings> {
+  const settings = await settingsService.load();
+  setTheme(settings.theme);
+  applyTheme(settings.theme);
+  return settings;
+}
+
+/**
+ * Applique le thème persisté au démarrage, une fois le QueryClient disponible.
+ * À monter dans AppProviders (pas dans App hors provider).
+ */
+export function useBootstrapTheme() {
+  const setTheme = useUiStore((state) => state.setTheme);
+  useQuery({
+    queryKey: SETTINGS_KEY,
+    queryFn: () => loadSettingsAndApplyTheme(setTheme),
+  });
+}
+
+/**
+ * Préférence de thème pour la coque (rail) : mise à jour immédiate + persistance silencieuse.
+ */
+export function useThemePreference() {
+  const queryClient = useQueryClient();
+  const setTheme = useUiStore((state) => state.setTheme);
+  const theme = useUiStore((state) => state.theme);
+
+  const saveTheme = async (next: ThemePref) => {
+    setTheme(next);
+    applyTheme(next);
+    try {
+      const current =
+        queryClient.getQueryData<Settings>(SETTINGS_KEY) ?? (await settingsService.load());
+      const saved = await settingsService.save({ ...current, theme: next }, null);
+      queryClient.setQueryData(SETTINGS_KEY, saved);
+    } catch {
+      /* Revue navigateur sans backend : le thème reste en session. */
+    }
+  };
+
+  return { theme, saveTheme };
+}
+
 /** Chargement et enregistrement des réglages, thème compris. */
 export function useSettingsViewModel() {
   const queryClient = useQueryClient();
@@ -18,12 +63,7 @@ export function useSettingsViewModel() {
   const setTheme = useUiStore((state) => state.setTheme);
   const query = useQuery({
     queryKey: SETTINGS_KEY,
-    queryFn: async () => {
-      const settings = await settingsService.load();
-      setTheme(settings.theme);
-      applyTheme(settings.theme);
-      return settings;
-    },
+    queryFn: () => loadSettingsAndApplyTheme(setTheme),
   });
   const save = useMutation({
     mutationFn: ({ settings, apiKey }: { settings: Settings; apiKey: string | null }) =>
@@ -70,9 +110,13 @@ export function useSettingsViewModel() {
     isLoading: query.isPending,
     isSaving: save.isPending,
     isClearingApiKey: clearApiKey.isPending,
-    recharger: () => void query.refetch(),
+    reload: () => void query.refetch(),
     save: (settings: Settings, apiKey: string | null) =>
       save.mutateAsync({ settings, apiKey }),
     clearApiKey: clearApiKey.mutateAsync,
+    testConnection: (llm: LlmForm, apiKey: string | null) =>
+      settingsService.testConnection(llm, apiKey),
+    listModels: (llm: LlmForm, apiKey: string | null) =>
+      settingsService.listModels(llm, apiKey),
   };
 }

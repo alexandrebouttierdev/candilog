@@ -48,7 +48,7 @@ describe("ViewModel du réseau", () => {
     const { result } = renderHook(() => useContactsViewModel(), { wrapper });
     await waitFor(() => expect(listPage).toHaveBeenCalled());
 
-    act(() => result.current.filtrerParRole("Manager"));
+    act(() => result.current.filterByRole("Manager"));
 
     await waitFor(() =>
       expect(listPage).toHaveBeenLastCalledWith(
@@ -63,11 +63,11 @@ describe("ViewModel du réseau", () => {
     const { result } = renderHook(() => useContactsViewModel(), { wrapper });
     await waitFor(() => expect(result.current.items).toHaveLength(1));
 
-    act(() => result.current.rechercher("camille"));
-    expect(result.current.filtersActifs).toBe(0);
+    act(() => result.current.setSearch("camille"));
+    expect(result.current.activeFilterCount).toBe(0);
 
-    act(() => result.current.filtrerParRole("Recruteur"));
-    expect(result.current.filtersActifs).toBe(1);
+    act(() => result.current.filterByRole("Recruteur"));
+    expect(result.current.activeFilterCount).toBe(1);
   });
 
   it("revient à la première page et ôte le rôle au reset", async () => {
@@ -77,7 +77,7 @@ describe("ViewModel du réseau", () => {
     await waitFor(() => expect(listPage).toHaveBeenCalled());
 
     act(() => result.current.setPage(3));
-    act(() => result.current.filtrerParRole("Manager"));
+    act(() => result.current.filterByRole("Manager"));
     await waitFor(() => expect(result.current.page).toBe(1));
 
     act(() => result.current.setPage(2));

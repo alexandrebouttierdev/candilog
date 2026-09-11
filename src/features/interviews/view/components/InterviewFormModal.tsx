@@ -6,12 +6,12 @@ import {
   type InterviewFormInput,
   type InterviewFormValues,
 } from "../../model/schemas/interview-form.schema";
-import { TYPES_INTERVIEW } from "../../model/types";
-import type { Interview, NewInterview } from "../../services/interviewService";
-import { contactService } from "@/features/contacts/services/contactService";
+import { INTERVIEW_TYPES } from "../../model/types";
+import type { Interview, NewInterview } from "@/shared/types/generated/interviews";
+import { fetchContactPickerPage } from "@/features/contacts";
+import { ApplicationPicker } from "@/features/applications";
 import { dateFromTimestamp, timeFromTimestamp, versDateAffichee } from "@/shared/lib/dates";
 import {
-  ApplicationPicker,
   DateInput,
   EntityPicker,
   FormField,
@@ -152,20 +152,7 @@ export function InterviewFormModal({
                       placeholder="Rechercher un contact…"
                       emptyHelp="Aucun contact trouvé."
                       queryKey={["contacts"]}
-                      fetchPage={async (params) => {
-                        const result = await contactService.listPage({
-                          ...params,
-                          tracking_role: null,
-                        });
-                        return {
-                          ...result,
-                          items: result.items.map((contact) => ({
-                            id: contact.id,
-                            label: `${contact.first_name} ${contact.name}`,
-                            meta: contact.company_name ?? undefined,
-                          })),
-                        };
-                      }}
+                      fetchPage={fetchContactPickerPage}
                       onChange={(id) => field.onChange(id ?? "")}
                     />
                   )}
@@ -201,7 +188,7 @@ export function InterviewFormModal({
             <FormField label="Format">
               {(props) => (
                 <Select {...props} {...form.register("type")}>
-                  {TYPES_INTERVIEW.map((type) => (
+                  {INTERVIEW_TYPES.map((type) => (
                     <option key={type} value={type}>
                       {type}
                     </option>

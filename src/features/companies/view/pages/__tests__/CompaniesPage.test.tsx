@@ -6,10 +6,10 @@ import { MemoryRouter } from "react-router-dom";
 import type { ReactNode } from "react";
 import { CompaniesPage } from "../CompaniesPage";
 import { companyService } from "../../../services/companyService";
-import type { Company } from "../../../services/companyService";
-import { applicationService } from "@/features/applications/services/applicationService";
+import type { Company } from "@/shared/types/generated/companies";
+import { applicationService } from "@/features/applications";
 import { useUiStore } from "@/shared/lib/ui-store";
-import { referentialService } from "@/features/referentials/services/referentialService";
+import { referentialService } from "@/features/referentials";
 import { REFERENTIELS_DE_TEST } from "@/shared/lib/test-utils";
 
 function ent(name: string): Company {

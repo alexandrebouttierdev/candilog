@@ -1,18 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { aiService } from "@/features/ai/services/aiService";
-import type { AiExecution, ResumeGeneration } from "@/features/ai/model/types";
-import { useAiOperation } from "@/features/ai/viewmodel/useAiOperation";
-import { useAiRailStatusStore } from "@/features/ai/viewmodel/ai-rail-status-store";
-import { isAiNotConfiguredError } from "@/features/ai/model/ai-not-configured";
-import { useAiProgress } from "@/features/ai/viewmodel/useAiProgress";
-import { useAiTimer } from "@/features/ai/viewmodel/useAiTimer";
+import {
+  aiService,
+  isAiNotConfiguredError,
+  useAiOperation,
+  useAiProgress,
+  useAiRailStatusStore,
+  useAiTimer,
+  type AiExecution,
+  type ResumeGeneration,
+} from "@/features/ai";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 import type { ResumeWorkspace } from "@/shared/types/generated/documents";
 import { documentsService } from "../services/documentsService";
-
-const RESUME_KEY = ["documents", "cv"] as const;
+import { exportResumePdf } from "./documentExport";
+import { RESUME_KEY } from "./documentKeys";
 
 export interface ResumeGeneratorInitial {
   result: ResumeGeneration | null;
@@ -159,5 +162,7 @@ export function useResumeGeneratorViewModel(initial: ResumeGeneratorInitial) {
     generate,
     stop: stopGeneration,
     saveResume: save.mutateAsync,
+    readClipboard: () => documentsService.readClipboard(),
+    exportPdf: (document: Parameters<typeof exportResumePdf>[0]) => exportResumePdf(document, notify),
   };
 }

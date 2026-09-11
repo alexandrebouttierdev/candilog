@@ -1,12 +1,11 @@
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { aiService } from "@/features/ai/services/aiService";
-import type { AiExecution } from "@/features/ai/model/types";
+import { aiService, type AiExecution } from "@/features/ai";
 import type { ImportProfilePreview } from "@/shared/types/generated/profile";
 import { AppError } from "@/shared/types/app-error";
 import { ProfileImportModal } from "../ProfileImportModal";
-import { useAiOperationStore } from "@/features/ai/viewmodel/ai-operation-store";
+import { useAiOperationStore } from "@/features/ai";
 
 vi.mock("@/features/ai/services/aiService", () => ({
   aiService: { importProfile: vi.fn(), cancel: vi.fn() },

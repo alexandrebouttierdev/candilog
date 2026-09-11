@@ -79,7 +79,7 @@ export function AnalyticsPage() {
                   ? vm.error.message
                   : "Les analyses n’ont pas pu être chargées."
               }
-              onRetry={vm.recharger}
+              onRetry={vm.reload}
             />
           </div>
         ) : (

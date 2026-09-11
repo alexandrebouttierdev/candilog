@@ -1,9 +1,9 @@
 import { cn } from "@/shared/lib/cn";
-import { FOURNISSEURS, defFournisseur, idProvider, type FournisseurOption } from "../../model/providers";
+import { PROVIDERS, getProvider, idProvider, type ProviderOption } from "../../model/providers";
 import type { ProviderKind } from "@/shared/types/generated/settings";
 import type { ManagedModelPublisher } from "@/shared/types/generated/ai";
 
-export { defFournisseur };
+export { getProvider };
 import { Icon, Tag } from "@/shared/ui";
 import logoOllama from "@/assets/providers/ollama.svg";
 import logoClaude from "@/assets/providers/claude.svg";
@@ -16,7 +16,7 @@ import logoLuth from "@/assets/providers/luth.svg";
 import logoCandilogLocal from "@/assets/providers/ollamacandilog.png";
 
 const LOGOS: Record<
-  Exclude<FournisseurOption["id"], "candilog_local">,
+  Exclude<ProviderOption["id"], "candilog_local">,
   { src: string; mono: boolean }
 > = {
   ollama: { src: logoOllama, mono: true },
@@ -61,7 +61,7 @@ export function ManagedPublisherLogo({
 
 export const LOGO_CANDILOG_LOCAL = { src: logoCandilogLocal, mono: false };
 
-export function logoFournisseur(id: FournisseurOption["id"]) {
+export function providerLogo(id: ProviderOption["id"]) {
   if (id === "candilog_local") return LOGO_CANDILOG_LOCAL;
   return LOGOS[id];
 }
@@ -69,11 +69,11 @@ export function logoFournisseur(id: FournisseurOption["id"]) {
 export function ProviderGrid({
   value,
   onChange,
-  items = FOURNISSEURS,
+  items = PROVIDERS,
 }: {
   value: ProviderKind;
-  onChange: (id: FournisseurOption["id"]) => void;
-  items?: readonly FournisseurOption[];
+  onChange: (id: ProviderOption["id"]) => void;
+  items?: readonly ProviderOption[];
 }) {
   const actif = idProvider(value);
 
@@ -85,7 +85,7 @@ export function ProviderGrid({
     >
       {items.map((fournisseur) => {
         const selected = fournisseur.id === actif;
-        const logo = logoFournisseur(fournisseur.id);
+        const logo = providerLogo(fournisseur.id);
         return (
           <button
             key={fournisseur.id}

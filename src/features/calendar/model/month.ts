@@ -53,7 +53,7 @@ export function dateFromIso(cle: string): Date {
 }
 
 /** Décale une clé ISO d'un nombre de jours, en heure locale. */
-export function decalerDays(cle: string, pas: number): string {
+export function shiftDays(cle: string, pas: number): string {
   const date = dateFromIso(cle);
   date.setDate(date.getDate() + pas);
   return isoLocal(date);
@@ -107,7 +107,7 @@ export function labelWeek(cle: string): string {
  *
  * `mois` est l'index JavaScript, de 0 à 11.
  */
-export function gridDuMonth(year: number, month: number, today = new Date()): GridDay[] {
+export function monthGrid(year: number, month: number, today = new Date()): GridDay[] {
   const first = new Date(year, month, 1);
   // `getDay` place dimanche à 0 ; la semaine des maquettes commence le lundi.
   const decalage = (first.getDay() + 6) % 7;
@@ -128,12 +128,12 @@ export function gridDuMonth(year: number, month: number, today = new Date()): Gr
 
 /** Bounds `AAAA-MM-JJ` de la grille, pour interroger le backend une seule fois. */
 export function gridBounds(year: number, month: number): { from: string; to: string } {
-  const cells = gridDuMonth(year, month);
+  const cells = monthGrid(year, month);
   return { from: cells[0]!.iso, to: cells[41]!.iso };
 }
 
 /** Month précédent ou suivant, en gérant le passage d'année. */
-export function decalerMonth(
+export function shiftMonth(
   year: number,
   month: number,
   pas: number,

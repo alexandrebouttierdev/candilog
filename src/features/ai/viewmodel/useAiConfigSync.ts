@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { settingsService } from "@/features/settings/services/settingsService";
-import { SETTINGS_KEY } from "@/features/settings/viewmodel/useSettingsViewModel";
+import { SETTINGS_KEY, settingsService } from "@/features/settings";
 import { useAiRequiredStore } from "./ai-required-store";
 
 /**

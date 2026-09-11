@@ -17,7 +17,7 @@ const VIDES: Referentials = {
  * Charge les quatre référentiels pour les sélecteurs et les filtres.
  *
  * `staleTime: Infinity` : les listes sont figées par le schéma et ne changent pas pendant
- * la session. Les recharger à chaque ouverture de formulaire serait un aller-retour IPC
+ * la session. Les reload à chaque ouverture de formulaire serait un aller-retour IPC
  * pour un résultat identique.
  */
 export function useReferentials() {

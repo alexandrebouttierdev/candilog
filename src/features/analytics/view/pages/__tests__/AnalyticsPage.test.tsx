@@ -6,8 +6,8 @@ import { MemoryRouter } from "react-router-dom";
 import type { ReactNode } from "react";
 import { AnalyticsPage } from "../AnalyticsPage";
 import { analyticsService } from "../../../services/analyticsService";
-import { applicationService } from "@/features/applications/services/applicationService";
-import { followUpService } from "@/features/followups/services/followUpService";
+import { applicationService } from "@/features/applications";
+import { followUpService } from "@/features/followups";
 import type { Analytics } from "@/shared/types/generated/analytics";
 import type { Application } from "@/shared/types/generated/applications";
 
@@ -115,7 +115,7 @@ describe("écran Analyses — candidatures à relancer", () => {
     const modale = await screen.findByRole("dialog", { name: "Nouvelle relance" });
     expect(modale).toBeInTheDocument();
 
-    // La candidature est déjà choisie : l'utilisateur n'a pas à la rechercher une seconde fois.
+    // La candidature est déjà choisie : l'utilisateur n'a pas à la search une seconde fois.
     await waitFor(() =>
       expect(within(modale).getByLabelText(/^Candidature/)).toHaveValue(
         "Développeur Rust — Nova Digital",

@@ -8,7 +8,7 @@ import { z } from "zod";
  * stockerait `''` au lieu de `NULL` — deux valeurs que `coalesce` et les `LIKE` des
  * requêtes de recherche ne traitent pas de la même façon.
  */
-export const textFacultatif = z
+export const optionalText = z
   .string()
   .trim()
   .transform((value) => (value === "" ? null : value))
@@ -21,7 +21,7 @@ export const textFacultatif = z
  * Reprend la règle appliquée par le backend (`core::utils::validation`) : un champ saisi
  * librement puis ouvert d'un clic ne doit pas pouvoir porter un `javascript:`.
  */
-export const urlFacultative = (message = "Adresse invalide — attendu http:// ou https://") =>
+export const optionalUrl = (message = "Adresse invalide — attendu http:// ou https://") =>
   z
     .string()
     .trim()
@@ -41,7 +41,7 @@ export const urlFacultative = (message = "Adresse invalide — attendu http:// o
     );
 
 /** Id facultatif venant d'un sélecteur : `""` signifie « aucun ». */
-export const idFacultatif = z
+export const optionalId = z
   .string()
   .transform((value) => (value === "" ? null : value))
   .nullable()

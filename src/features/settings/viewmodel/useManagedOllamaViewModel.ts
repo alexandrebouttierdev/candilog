@@ -144,7 +144,8 @@ export function useManagedOllamaViewModel(
     cancel: () => void managedOllamaService.cancel(),
     remove: remove.mutate,
     activate: activate.mutate,
-    recharger: () => void query.refetch(),
+    activateAsync: activate.mutateAsync,
+    reload: () => void query.refetch(),
   };
 }
 

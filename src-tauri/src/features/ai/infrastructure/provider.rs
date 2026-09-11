@@ -669,18 +669,16 @@ mod tests {
 
     #[tokio::test]
     async fn custom_peut_cibler_localhost_en_http() {
-        assert!(
-            build_provider(&LlmConfig {
-                provider: ProviderKind::Custom("custom".into()),
-                api_key: Some("ollama".into()),
-                endpoint: Some("http://localhost:11434".into()),
-                model: "llama3.2".into(),
-                temperature: 0.7,
-                mode: AnalysisMode::default(),
-            })
-            .await
-            .is_ok()
-        );
+        assert!(build_provider(&LlmConfig {
+            provider: ProviderKind::Custom("custom".into()),
+            api_key: Some("ollama".into()),
+            endpoint: Some("http://localhost:11434".into()),
+            model: "llama3.2".into(),
+            temperature: 0.7,
+            mode: AnalysisMode::default(),
+        })
+        .await
+        .is_ok());
     }
 
     #[tokio::test]

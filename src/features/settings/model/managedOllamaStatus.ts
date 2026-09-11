@@ -1,5 +1,5 @@
 import type { ManagedOllamaStatus, ManagedRuntimeState } from "@/shared/types/generated/ai";
-import type { EtatIa } from "./etatIa";
+import type { AiStatus } from "./aiStatus";
 
 export function isManagedOllamaBusy(state: ManagedRuntimeState): boolean {
   return (
@@ -11,11 +11,11 @@ export function isManagedOllamaBusy(state: ManagedRuntimeState): boolean {
   );
 }
 
-/** État du bandeau IA pour l'Ollama géré Candilog (même vocabulaire que `etatIa`). */
-export function etatManagedOllama(
+/** État du bandeau IA pour l'Ollama géré Candilog (même vocabulaire que `aiStatus`). */
+export function managedOllamaStatus(
   status: ManagedOllamaStatus | null,
   error: string | null,
-): EtatIa {
+): AiStatus {
   if (!status) {
     return { label: "Chargement…", tone: "neutral", hint: null };
   }

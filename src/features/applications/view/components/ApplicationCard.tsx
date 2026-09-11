@@ -1,5 +1,5 @@
 import type { DragEvent } from "react";
-import type { Application } from "../../services/applicationService";
+import type { Application } from "@/shared/types/generated/applications";
 import { daysFrom, versDateAffichee } from "@/shared/lib/dates";
 import { Icon, Tag } from "@/shared/ui";
 import { cn } from "@/shared/lib/cn";

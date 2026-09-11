@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useBlocker, type BlockerFunction } from "react-router-dom";
-import { useAiOperationStore, type AiOperationKind } from "@/features/ai/viewmodel/ai-operation-store";
+import { useAiOperationStore, type AiOperationKind } from "@/features/ai";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { ConfirmDialog } from "@/shared/ui";
 

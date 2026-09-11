@@ -1,6 +1,32 @@
-export { AiPage } from "./view/pages/AiPage";
-export { BackupsPage } from "./view/pages/BackupsPage";
-export { CustomisationPage } from "./view/pages/CustomisationPage";
-export { UpdatesPage } from "./view/pages/UpdatesPage";
-export { AboutPage } from "./view/pages/AboutPage";
-export { useSettingsViewModel, SETTINGS_KEY } from "./viewmodel/useSettingsViewModel";
+export { isAiConfigured, aiStatus, type AiStatus, type ConnectionTest } from "./model/aiStatus";
+export { managedOllamaStatus, isManagedOllamaBusy } from "./model/managedOllamaStatus";
+export {
+  PROVIDERS,
+  OLLAMA_PROVIDER,
+  OTHER_PROVIDERS,
+  defaultEndpoint,
+  defaultModel,
+  isCustomProvider,
+  getProvider,
+  idProvider,
+  toProvider,
+  type ProviderOption,
+} from "./model/providers";
+export {
+  ManagedPublisherLogo,
+  ProviderGrid,
+  logoManagedPublisher,
+  providerLogo,
+} from "./view/components/ProviderGrid";
+export { settingsService } from "./services/settingsService";
+export { managedOllamaService, MANAGED_OLLAMA_KEY } from "./services/managedOllamaService";
+
+export {
+  useSettingsViewModel,
+  useBootstrapTheme,
+  useThemePreference,
+  SETTINGS_KEY,
+} from "./viewmodel/useSettingsViewModel";
+export { useAboutViewModel } from "./viewmodel/useAboutViewModel";
+export { useManagedOllamaViewModel } from "./viewmodel/useManagedOllamaViewModel";
+export type { ManagedOllamaViewModel } from "./viewmodel/useManagedOllamaViewModel";

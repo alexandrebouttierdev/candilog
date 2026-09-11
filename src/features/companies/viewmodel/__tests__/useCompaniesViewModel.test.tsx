@@ -7,7 +7,7 @@ import { companyService } from "../../services/companyService";
 import type { Company } from "../../services/companyService";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
-import { applicationService } from "@/features/applications/services/applicationService";
+import { applicationService } from "@/features/applications";
 import { COMPANIES_PAGE_SIZE } from "@/shared/types/page";
 
 /** Entreprise minimale, pour n'écrire que ce que chaque test observe. */
@@ -116,7 +116,7 @@ describe("ViewModel des entreprises", () => {
     const { result } = renderHook(() => useCompaniesViewModel(), { wrapper });
     await waitFor(() => expect(listPage).toHaveBeenCalled());
 
-    act(() => result.current.rechercher("nova"));
+    act(() => result.current.setSearch("nova"));
 
     await waitFor(() => expect(listPage.mock.lastCall?.[0].filter.search).toBe("nova"));
   });
@@ -134,7 +134,7 @@ describe("ViewModel des entreprises", () => {
     act(() => result.current.setPage(3));
     await waitFor(() => expect(result.current.page).toBe(3));
 
-    act(() => result.current.rechercher("nova"));
+    act(() => result.current.setSearch("nova"));
 
     await waitFor(() => expect(result.current.page).toBe(1));
   });
@@ -171,7 +171,7 @@ describe("ViewModel des entreprises", () => {
     const { result } = renderHook(() => useCompaniesViewModel(), { wrapper });
     await waitFor(() => expect(result.current.items).toHaveLength(1));
 
-    act(() => result.current.selectionner("Nova Digital"));
+    act(() => result.current.select("Nova Digital"));
     await act(async () => {
       await result.current.delete("Nova Digital");
     });
@@ -219,8 +219,8 @@ describe("ViewModel des entreprises", () => {
     const { result } = renderHook(() => useCompaniesViewModel(), { wrapper });
     await waitFor(() => expect(result.current.items).toHaveLength(1));
 
-    act(() => result.current.rechercher("nova"));
-    expect(result.current.filtersActifs).toBe(0);
+    act(() => result.current.setSearch("nova"));
+    expect(result.current.activeFilterCount).toBe(0);
 
     // Type et taille sont deux axes distincts : les cumuler donne bien deux critères.
     act(() =>
@@ -230,7 +230,7 @@ describe("ViewModel des entreprises", () => {
         company_size: "PME",
       }),
     );
-    expect(result.current.filtersActifs).toBe(2);
+    expect(result.current.activeFilterCount).toBe(2);
   });
 
   it("transmet les critères au backend plutôt que de filtrer en mémoire", async () => {

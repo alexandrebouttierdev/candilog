@@ -3,10 +3,9 @@
 use crate::core::database::SqlitePool;
 use crate::core::errors::{AppError, AppResult};
 use crate::features::ai::domain::{
-    evaluate_machine_fit, InstallManagedModelRequest, ManagedDownloadKind,
-    ManagedModelDefinition, ManagedModelId, ManagedModelRegistry, ManagedModelStatus,
-    ManagedOllamaDownloadProgress, ManagedOllamaStatus, ManagedRuntimeState,
-    StoredBenchmarkResult, UserBenchmarkSummary,
+    evaluate_machine_fit, InstallManagedModelRequest, ManagedDownloadKind, ManagedModelDefinition,
+    ManagedModelId, ManagedModelRegistry, ManagedModelStatus, ManagedOllamaDownloadProgress,
+    ManagedOllamaStatus, ManagedRuntimeState, StoredBenchmarkResult, UserBenchmarkSummary,
 };
 use crate::features::ai::infrastructure::{
     require_runtime_artifact, ManagedOllamaApi, ManagedOllamaProcess, RuntimeInstaller,

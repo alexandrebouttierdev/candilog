@@ -2,7 +2,7 @@
 
 use crate::core::errors::{AppError, AppResult};
 use crate::core::utils::text::search_key;
-use crate::core::utils::validation::validate_optional_http_url;
+use crate::core::utils::validation::{is_valid_email, validate_optional_http_url};
 use crate::features::profile::domain::{
     apply_decisions, build_preview, normaliser, nouveau_nom_fichier, Identity,
     ImportProfilePreview, ImportProfileRequest, ImportProfileResult, Profile, ProfilePayload,
@@ -120,6 +120,25 @@ impl<R: ProfileRepository> ProfileService<R> {
             ))),
             // Fichier disparu — sauvegarde restaurée, ménage manuel : le profil s'affiche
             // sans photo plutôt que d'échouer entièrement.
+            Err(error) => {
+                tracing::warn!(%error, "photo de profil absente du dossier de données");
+                Ok(None)
+            }
+        }
+    }
+
+    /// Bytes bruts de la photo, pour le rendu PDF.
+    ///
+    /// Fichier disparu : retourne `None` plutôt qu'une erreur, comme [`Self::photo_data_url`].
+    ///
+    /// # Errors
+    /// `AppError::Database` si le profil ne peut pas être lu.
+    pub fn photo_bytes(&self) -> AppResult<Option<Vec<u8>>> {
+        let Some(chemin) = self.photo_path()? else {
+            return Ok(None);
+        };
+        match std::fs::read(&chemin) {
+            Ok(bytes) => Ok(Some(bytes)),
             Err(error) => {
                 tracing::warn!(%error, "photo de profil absente du dossier de données");
                 Ok(None)
@@ -291,7 +310,7 @@ fn identity_complete(identity: &Identity) -> bool {
 
 fn valider(profile: &Profile) -> AppResult<()> {
     let email = profile.identity.email.trim();
-    if !email.is_empty() && !email_valide(email) {
+    if !email.is_empty() && !is_valid_email(email) {
         return Err(AppError::Validation("L'adresse e-mail est invalide".into()));
     }
     validate_optional_http_url(profile.identity.linkedin.as_deref(), "Le profil LinkedIn")?;
@@ -366,15 +385,6 @@ fn valider(profile: &Profile) -> AppResult<()> {
         validate_optional_http_url(certification.url.as_deref(), "Le lien de la certification")?;
     }
     Ok(())
-}
-
-fn email_valide(email: &str) -> bool {
-    email.split_once('@').is_some_and(|(local, domaine)| {
-        !local.is_empty()
-            && domaine.contains('.')
-            && !domaine.starts_with('.')
-            && !domaine.ends_with('.')
-    })
 }
 
 #[cfg(test)]

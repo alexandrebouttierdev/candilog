@@ -31,6 +31,7 @@ impl<R: InterviewRepository> InterviewService<R> {
     /// # Errors
     /// Propage l'erreur du dépôt.
     pub fn list_between(&self, from: &str, to: &str) -> AppResult<Vec<Interview>> {
+        Self::validate_range(from, to)?;
         self.repo.list_between(from, to)
     }
 
@@ -66,6 +67,33 @@ impl<R: InterviewRepository> InterviewService<R> {
     /// `AppError::NotFound` si l'identifiant est inconnu.
     pub fn save_analysis(&self, id: Uuid, analysis: &InterviewAnalysis) -> AppResult<()> {
         self.repo.save_analysis(id, analysis)
+    }
+
+    /// Valide une plage calendaire reçue de l'IPC (`from ≤ to`).
+    ///
+    /// Le calendrier envoie `AAAA-MM-JJTHH:MM:SS` sans fuseau ; le formulaire d'entretien
+    /// envoie du RFC 3339. Les deux formes sont acceptées.
+    fn validate_range(from: &str, to: &str) -> AppResult<()> {
+        let from_dt = Self::parse_bound(from, "début")?;
+        let to_dt = Self::parse_bound(to, "fin")?;
+        if from_dt > to_dt {
+            return Err(AppError::Validation(
+                "La date de début doit précéder la date de fin".into(),
+            ));
+        }
+        Ok(())
+    }
+
+    fn parse_bound(value: &str, label: &str) -> AppResult<chrono::DateTime<chrono::FixedOffset>> {
+        if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(value) {
+            return Ok(dt);
+        }
+        if let Ok(naive) = chrono::NaiveDateTime::parse_from_str(value, "%Y-%m-%dT%H:%M:%S") {
+            return Ok(naive.and_utc().fixed_offset());
+        }
+        Err(AppError::Validation(format!(
+            "La date de {label} de la plage est invalide"
+        )))
     }
 
     /// Règles de validation d'un entretien.

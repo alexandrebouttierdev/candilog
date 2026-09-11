@@ -5,11 +5,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useResumeEditor } from "../useResumeEditor";
 import { workspaceFixture } from "../../model/resumeWorkspace";
 import { documentsService } from "../../services/documentsService";
-import { profileService } from "@/features/profile/services/profileService";
+import { profileService } from "@/features/profile";
 import type { ResumeProposal, ResumeWorkspace } from "@/shared/types/generated/documents";
 import { AppError } from "@/shared/types/app-error";
-import { aiService } from "@/features/ai/services/aiService";
-import { useAiOperationStore } from "@/features/ai/viewmodel/ai-operation-store";
+import { aiService, useAiOperationStore } from "@/features/ai";
 
 function wrapper({ children }: { children: ReactNode }) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });

@@ -2,19 +2,15 @@
 
 use crate::app::state::AppState;
 use crate::core::clipboard;
-use crate::core::errors::{AppError, AppResult};
-use crate::core::files::{atomic_write, select_save_target};
+use crate::core::errors::AppResult;
+use crate::core::files::select_save_target;
 use crate::core::pagination::Page;
 use crate::core::utils::blocking;
 use crate::features::ai::domain::ResumeGeneration;
-use crate::features::documents::application::{
-    apply_proposal, build, build_cover_letter, prepare_workspace, recalculate, reject_proposal,
-};
 use crate::features::documents::domain::{
     CoverLetter, CoverLetterExport, NewCoverLetter, NewResume, ResumeDocument, ResumeSummary,
     ResumeVersion, ResumeWorkspace,
 };
-use std::sync::Arc;
 use tauri::{AppHandle, State};
 use uuid::Uuid;
 
@@ -63,15 +59,8 @@ pub async fn documents_resume_prepare(
     state: State<'_, AppState>,
     generation: ResumeGeneration,
 ) -> AppResult<ResumeWorkspace> {
-    let profile = Arc::clone(&state.profile);
-    blocking::execute(move || {
-        let payload = profile.load()?;
-        let photo = profile
-            .photo_path()?
-            .and_then(|path| std::fs::read(path).ok());
-        prepare_workspace(&payload.profile, generation, photo)
-    })
-    .await
+    let service = state.documents.clone();
+    blocking::execute(move || service.resume_prepare(generation)).await
 }
 
 /// Revalide le document puis recalcule score et propositions après une édition manuelle.
@@ -80,14 +69,8 @@ pub async fn documents_resume_recalculate(
     state: State<'_, AppState>,
     workspace: ResumeWorkspace,
 ) -> AppResult<ResumeWorkspace> {
-    let profile = Arc::clone(&state.profile);
-    blocking::execute(move || {
-        let photo = profile
-            .photo_path()?
-            .and_then(|path| std::fs::read(path).ok());
-        recalculate(workspace, photo)
-    })
-    .await
+    let service = state.documents.clone();
+    blocking::execute(move || service.resume_recalculate(workspace)).await
 }
 
 /// Applique une proposition puis recalcule le poste de travail.
@@ -97,14 +80,8 @@ pub async fn documents_resume_apply_proposal(
     workspace: ResumeWorkspace,
     proposal_id: String,
 ) -> AppResult<ResumeWorkspace> {
-    let profile = Arc::clone(&state.profile);
-    blocking::execute(move || {
-        let photo = profile
-            .photo_path()?
-            .and_then(|path| std::fs::read(path).ok());
-        apply_proposal(workspace, &proposal_id, photo)
-    })
-    .await
+    let service = state.documents.clone();
+    blocking::execute(move || service.resume_apply_proposal(workspace, &proposal_id)).await
 }
 
 /// Refuse une proposition sans modifier le document, puis recalcule le poste de travail.
@@ -114,14 +91,8 @@ pub async fn documents_resume_reject_proposal(
     workspace: ResumeWorkspace,
     proposal_id: String,
 ) -> AppResult<ResumeWorkspace> {
-    let profile = Arc::clone(&state.profile);
-    blocking::execute(move || {
-        let photo = profile
-            .photo_path()?
-            .and_then(|path| std::fs::read(path).ok());
-        reject_proposal(workspace, &proposal_id, photo)
-    })
-    .await
+    let service = state.documents.clone();
+    blocking::execute(move || service.resume_reject_proposal(workspace, &proposal_id)).await
 }
 
 /// Exporte un document CV autonome au chemin choisi dans le sélecteur natif.
@@ -135,20 +106,9 @@ pub async fn documents_resume_export_pdf(
     else {
         return Ok(false);
     };
-    let profile = std::sync::Arc::clone(&state.profile);
+    let service = state.documents.clone();
     blocking::execute(move || {
-        // La photo suit le profil courant, pas la version de CV enregistrée : un CV rouvert
-        // après suppression de la photo s'exporte sans elle, sans laisser de cadre vide.
-        let photo = profile
-            .photo_path()?
-            .and_then(|chemin| std::fs::read(chemin).ok());
-        let bytes = build(&document, photo).render_bytes()?;
-        atomic_write(&cible, "pdf", |temporaire| {
-            std::fs::write(temporaire, &bytes).map_err(|error| {
-                tracing::error!(%error, "export PDF impossible");
-                AppError::Database(format!("Écriture du PDF impossible : {error}"))
-            })
-        })?;
+        service.resume_export_pdf(&document, &cible)?;
         Ok(true)
     })
     .await
@@ -174,16 +134,9 @@ pub async fn documents_cover_letter_export_pdf(
     else {
         return Ok(false);
     };
-    let profile = Arc::clone(&state.profile);
+    let service = state.documents.clone();
     blocking::execute(move || {
-        let payload = profile.load()?;
-        let bytes = build_cover_letter(&payload.profile, &cover_letter).render_bytes()?;
-        atomic_write(&cible, "pdf", |temporaire| {
-            std::fs::write(temporaire, &bytes).map_err(|error| {
-                tracing::error!(%error, "export PDF de lettre impossible");
-                AppError::Database(format!("Écriture du PDF de lettre impossible : {error}"))
-            })
-        })?;
+        service.cover_letter_export_pdf(&cover_letter, &cible)?;
         Ok(true)
     })
     .await

@@ -25,10 +25,8 @@ pub fn load_config_avec(
             let prepared = crate::features::settings::domain::preparer_settings_json(&raw);
             serde_json::from_str::<SettingsStockes>(&prepared)
         }
-            .map(|p| p.llm)
-            .map_err(|_| {
-                AppError::Provider("Les réglages IA enregistrés sont illisibles".into())
-            })?,
+        .map(|p| p.llm)
+        .map_err(|_| AppError::Provider("Les réglages IA enregistrés sont illisibles".into()))?,
         None => LlmConfig::default(),
     };
     config.normaliser_legacy();

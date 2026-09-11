@@ -1,6 +1,6 @@
 import type { ProviderKind } from "@/shared/types/generated/settings";
 
-export interface FournisseurOption {
+export interface ProviderOption {
   readonly id:
     | "candilog_local"
     | "ollama"
@@ -16,7 +16,7 @@ export interface FournisseurOption {
 }
 
 /** Grille des fournisseurs, jamais un menu déroulant. */
-export const FOURNISSEURS: readonly FournisseurOption[] = [
+export const PROVIDERS: readonly ProviderOption[] = [
   {
     id: "candilog_local",
     label: "IA locale Candilog",
@@ -36,36 +36,36 @@ export const FOURNISSEURS: readonly FournisseurOption[] = [
 ];
 
 /** Fournisseur historique — conservé pour les bases déjà configurées, absent de la grille. */
-export const FOURNISSEUR_OLLAMA: FournisseurOption = {
+export const OLLAMA_PROVIDER: ProviderOption = {
   id: "ollama",
   label: "Ollama",
   hint: "Votre installation ou Ollama Cloud",
 };
 
-export function defFournisseur(provider: ProviderKind): FournisseurOption {
+export function getProvider(provider: ProviderKind): ProviderOption {
   const id = idProvider(provider);
-  if (id === "ollama") return FOURNISSEUR_OLLAMA;
-  return FOURNISSEURS.find((item) => item.id === id) ?? FOURNISSEURS[0]!;
+  if (id === "ollama") return OLLAMA_PROVIDER;
+  return PROVIDERS.find((item) => item.id === id) ?? PROVIDERS[0]!;
 }
 
 /** Fournisseurs distants — sans l'IA locale Candilog gérée par Ollama. */
-export const FOURNISSEURS_AUTRES: readonly FournisseurOption[] = FOURNISSEURS.filter(
+export const OTHER_PROVIDERS: readonly ProviderOption[] = PROVIDERS.filter(
   (item) => item.id !== "candilog_local",
 );
 
-export function estPersonnalise(provider: ProviderKind): provider is { custom: string } {
+export function isCustomProvider(provider: ProviderKind): provider is { custom: string } {
   return typeof provider === "object" && provider !== null && "custom" in provider;
 }
 
-export function idProvider(provider: ProviderKind): FournisseurOption["id"] {
-  return estPersonnalise(provider) ? "custom" : provider;
+export function idProvider(provider: ProviderKind): ProviderOption["id"] {
+  return isCustomProvider(provider) ? "custom" : provider;
 }
 
-export function versProvider(id: FournisseurOption["id"]): ProviderKind {
+export function toProvider(id: ProviderOption["id"]): ProviderKind {
   return id === "custom" ? { custom: "custom" } : id;
 }
 
-export function endpointDefaut(id: FournisseurOption["id"]): string | null {
+export function defaultEndpoint(id: ProviderOption["id"]): string | null {
   switch (id) {
     case "candilog_local":
       return null;
@@ -86,7 +86,7 @@ export function endpointDefaut(id: FournisseurOption["id"]): string | null {
 }
 
 /** Aucun modèle n'est prérempli : l'utilisateur choisit après avoir sélectionné le fournisseur. */
-export function modelDefaut(_id: FournisseurOption["id"]): string {
+export function defaultModel(_id: ProviderOption["id"]): string {
   void _id;
   return "";
 }

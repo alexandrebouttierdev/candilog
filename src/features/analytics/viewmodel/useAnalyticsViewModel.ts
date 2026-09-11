@@ -56,7 +56,7 @@ export function useAnalyticsViewModel() {
     isExporting: exportCsv.isPending,
     error: query.error,
     changePeriod,
-    recharger: () => void query.refetch(),
+    reload: () => void query.refetch(),
     createFollowUp: createFollowUp.mutateAsync,
     exportCsv: exportCsv.mutateAsync,
   };

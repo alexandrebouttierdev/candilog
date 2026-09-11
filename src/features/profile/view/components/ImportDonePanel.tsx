@@ -1,5 +1,5 @@
 import type { ImportProfileResult } from "@/shared/types/generated/profile";
-import type { AiExecution } from "@/features/ai/model/types";
+import type { AiExecution } from "@/features/ai";
 import { Icon, StatCard } from "@/shared/ui";
 import { formatAiSummary, formatDuration } from "@/shared/lib/duration";
 

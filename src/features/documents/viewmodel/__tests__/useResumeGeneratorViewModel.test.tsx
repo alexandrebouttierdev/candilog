@@ -2,14 +2,12 @@ import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { aiService } from "@/features/ai/services/aiService";
-import type { ResumeGeneration } from "@/features/ai/model/types";
+import { aiService, useAiOperationStore, type ResumeGeneration } from "@/features/ai";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 import { documentsService } from "../../services/documentsService";
 import { workspaceFixture } from "../../model/resumeWorkspace";
 import { useResumeGeneratorViewModel } from "../useResumeGeneratorViewModel";
-import { useAiOperationStore } from "@/features/ai/viewmodel/ai-operation-store";
 
 vi.mock("@/features/ai/viewmodel/useAiProgress", () => ({
   useAiProgress: () => null,

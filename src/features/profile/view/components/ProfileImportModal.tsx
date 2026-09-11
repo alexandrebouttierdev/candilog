@@ -6,11 +6,13 @@ import type {
   ImportProfileRequest,
   ImportProfileResult,
 } from "@/shared/types/generated/profile";
-import { aiService } from "@/features/ai/services/aiService";
-import type { AiExecution } from "@/features/ai/model/types";
-import { useAiOperation } from "@/features/ai/viewmodel/useAiOperation";
-import { useAiRailStatusStore } from "@/features/ai/viewmodel/ai-rail-status-store";
-import { isAiNotConfiguredError } from "@/features/ai/model/ai-not-configured";
+import {
+  type AiExecution,
+  importProfileFromResume,
+  isAiNotConfiguredError,
+  useAiOperation,
+  useAiRailStatusStore,
+} from "@/features/ai";
 import { AppError } from "@/shared/types/app-error";
 import {
   Button,
@@ -108,7 +110,7 @@ export function ProfileImportModal({
     setPhase("picking");
     setError(null);
     try {
-      const next = await aiService.importProfile({ generation_id: id });
+      const next = await importProfileFromResume(id);
       if (!isCurrent(id)) return;
       if (next === null) {
         setPhase("pick");

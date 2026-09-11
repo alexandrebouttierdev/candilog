@@ -6,7 +6,7 @@ import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 import { settingsService } from "../../services/settingsService";
 import { useBackupsViewModel } from "../useBackupsViewModel";
-import { onboardingCompleted, markOnboardingCompleted } from "@/features/onboarding/model/onboarding-storage";
+import { onboardingCompleted, markOnboardingCompleted } from "@/features/onboarding";
 
 function setup() {
   const client = new QueryClient({

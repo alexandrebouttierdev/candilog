@@ -1,8 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { KanbanBoard } from "../KanbanBoard";
-import type { Application } from "../../../services/applicationService";
-import type { ApplicationStatus } from "../../../services/applicationService";
+import type { Application, ApplicationStatus } from "@/shared/types/generated/applications";
 import type { Page } from "@/shared/types/page";
 
 function dataTransfer(): DataTransfer {

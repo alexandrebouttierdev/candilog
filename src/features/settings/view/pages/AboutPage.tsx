@@ -1,10 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { ContextBarAccessory, ContextNote } from "@/app/layout/ContextBar";
 import { Button, InspectorRow, PageHeader } from "@/shared/ui";
 import logoCandilog from "@/assets/logo-candilog.svg";
-import { settingsService } from "../../services/settingsService";
-import { A_ABOUT_KEY } from "../../viewmodel/useSettingsViewModel";
+import { useAboutViewModel } from "../../viewmodel/useAboutViewModel";
 import { SettingsBody, SettingsCard } from "../components/SettingsUi";
 import { useUiStore } from "@/shared/lib/ui-store";
 
@@ -12,8 +10,8 @@ import { useUiStore } from "@/shared/lib/ui-store";
 export function AboutPage() {
   const navigate = useNavigate();
   const setOnboarding = useUiStore((state) => state.setOnboarding);
-  const info = useQuery({ queryKey: A_ABOUT_KEY, queryFn: settingsService.about });
-  const version = info.data?.version ?? "…";
+  const about = useAboutViewModel();
+  const version = about.version;
 
   return (
     <div className="flex h-full flex-col">

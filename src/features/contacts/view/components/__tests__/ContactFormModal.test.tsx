@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { companyService } from "@/features/companies/services/companyService";
+import { companyService } from "@/features/companies";
 import { ContactFormModal } from "../ContactFormModal";
 
 function wrapper({ children }: { children: ReactNode }) {

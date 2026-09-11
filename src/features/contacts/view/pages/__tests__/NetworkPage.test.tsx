@@ -6,7 +6,7 @@ import { MemoryRouter } from "react-router-dom";
 import type { ReactNode } from "react";
 import { NetworkPage } from "../NetworkPage";
 import { contactService } from "../../../services/contactService";
-import type { Contact } from "../../../services/contactService";
+import type { Contact } from "@/shared/types/generated/contacts";
 import { useUiStore } from "@/shared/lib/ui-store";
 
 function ct(name: string): Contact {

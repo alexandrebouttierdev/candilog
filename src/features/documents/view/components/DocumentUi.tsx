@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { GeneratedResume, AiProgress } from "@/features/ai/model/types";
+import type { AiProgress, GeneratedResume } from "@/features/ai";
 import { cn } from "@/shared/lib/cn";
 import { formatElapsed, formatTokens, formatTokensPerSecond, resolveTokensPerSecond } from "@/shared/lib/duration";
 import { Icon, IconButton, StatusPill } from "@/shared/ui";

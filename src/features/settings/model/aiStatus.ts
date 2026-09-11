@@ -3,10 +3,10 @@ import type { Tone } from "@/shared/ui";
 import { idProvider } from "./providers";
 
 /** Résultat du dernier test de connexion demandé par l'utilisateur. */
-export type TestConnexion = "idle" | "pending" | "ok" | "error";
+export type ConnectionTest = "idle" | "pending" | "ok" | "error";
 
 /** État affiché par l'écran Intelligence artificielle. */
-export interface EtatIa {
+export interface AiStatus {
   readonly label: string;
   readonly tone: Tone;
   /** Explication courte, affichée sous l'état ; `null` quand l'état se suffit. */
@@ -20,7 +20,7 @@ export interface EtatIa {
  * prime sur la configuration, qui prime sur l'absence de configuration. Sans cette fonction,
  * l'écran ne disait rien tant que personne n'avait cliqué sur « Tester ».
  */
-export function etatIa(llm: LlmForm, test: TestConnexion): EtatIa {
+export function aiStatus(llm: LlmForm, test: ConnectionTest): AiStatus {
   if (test === "pending") {
     return { label: "Connexion en cours", tone: "neutral", hint: null };
   }
@@ -47,7 +47,7 @@ export function etatIa(llm: LlmForm, test: TestConnexion): EtatIa {
 }
 
 /** Indique si un fournisseur et un modèle sont prêts à lancer une action IA. */
-export function iaEstConfiguree(llm: LlmForm): boolean {
+export function isAiConfigured(llm: LlmForm): boolean {
   return manquants(llm).length === 0;
 }
 

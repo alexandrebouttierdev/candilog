@@ -115,7 +115,7 @@ export function useProfileViewModel() {
     isSaving: save.isPending || applyImport.isPending,
     isPhotoBusy: setPhoto.isPending || removePhoto.isPending,
     isResetting: reset.isPending,
-    recharger: () => void query.refetch(),
+    reload: () => void query.refetch(),
     save: save.mutateAsync,
     applyImport: applyImport.mutateAsync,
     setPhoto: setPhoto.mutateAsync,

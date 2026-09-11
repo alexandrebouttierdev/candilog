@@ -33,7 +33,8 @@ vi.mock("../../../viewmodel/useManagedOllamaViewModel", () => ({
     cancel: vi.fn(),
     remove: vi.fn(),
     activate: vi.fn(),
-    recharger: vi.fn(),
+    activateAsync: vi.fn().mockResolvedValue(undefined),
+    reload: vi.fn(),
   }),
 }));
 

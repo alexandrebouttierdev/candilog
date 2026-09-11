@@ -11,8 +11,8 @@ import { ProfileSkillChoiceDialog } from "../components/ProfileSkillChoiceDialog
 import { ResumeAtsPanel } from "../components/ResumeAtsPanel";
 import { ResumePaper } from "../components/ResumePaper";
 import { useProfilePhoto } from "@/features/profile";
-import { AiStopButton } from "@/features/ai/view/components/AiStopButton";
-import { ChampOffre, HeaderBadge, Screen, exportPdf, generationFromNavigation } from "./documentPageSupport";
+import { AiStopButton } from "@/features/ai";
+import { ChampOffre, HeaderBadge, Screen, generationFromNavigation } from "./documentPageSupport";
 
 export function ResumeGeneratorPage() {
   const location = useLocation();
@@ -32,6 +32,7 @@ export function ResumeGeneratorPage() {
           value={vm.jobOffer}
           placeholder="Collez ici l’intitulé, les missions et les compétences recherchées…"
           onChange={vm.setJobOffer}
+          readClipboard={vm.readClipboard}
         />
         {vm.error ? <ErrorBanner title="Génération impossible" message={vm.error} /> : null}
         {vm.operation ? (
@@ -60,6 +61,7 @@ export function ResumeGeneratorPage() {
         onNameChange={vm.setName}
         onSave={vm.saveResume}
         isSaving={vm.isSaving}
+        onExportPdf={vm.exportPdf}
         briefPanel={vm.briefOpen ? briefPanel : null}
         onReopenBrief={vm.openBrief}
         durationBadge={vm.operation === null && vm.metrics !== null ? <GenerationMetrics elapsedMs={vm.metrics.elapsed_ms} tokens={vm.metrics.tokens_used} /> : undefined}
@@ -105,6 +107,7 @@ function ResumeEditorScreen({
   onNameChange,
   onSave,
   isSaving,
+  onExportPdf,
   briefPanel,
   onReopenBrief,
   durationBadge,
@@ -114,6 +117,7 @@ function ResumeEditorScreen({
   onNameChange: (value: string) => void;
   onSave: (workspace: ResumeWorkspace) => Promise<unknown>;
   isSaving: boolean;
+  onExportPdf: (document: ResumeWorkspace["document"]) => Promise<void>;
   briefPanel: ReactNode | null;
   onReopenBrief: () => void;
   durationBadge?: ReactNode;
@@ -163,7 +167,7 @@ function ResumeEditorScreen({
             variant="primary"
             icon="download"
             disabled={overflow || editor.isProofreading || editor.isRecalculating}
-            onClick={() => void exportPdf(editor.workspace.document, notify)}
+            onClick={() => void onExportPdf(editor.workspace.document)}
           >
             Exporter le PDF
           </Button>

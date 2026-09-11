@@ -8,7 +8,7 @@ import {
 import { fireEvent, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { QueryWrapper } from "@/shared/lib/test-utils";
-import { settingsService } from "@/features/settings/services/settingsService";
+import { managedOllamaService, settingsService } from "@/features/settings";
 import type { Settings } from "@/shared/types/generated/settings";
 import { AppShell } from "../AppShell";
 import { NavRail } from "../NavRail";
@@ -42,6 +42,16 @@ function renderShell(children: RouteObject[], initialEntries = ["/"]) {
 beforeEach(() => {
   vi.restoreAllMocks();
   vi.spyOn(settingsService, "load").mockResolvedValue(REGLAGES);
+  vi.spyOn(managedOllamaService, "status").mockResolvedValue({
+    runtime_state: "not_installed",
+    runtime_version: null,
+    port: null,
+    models_disk_bytes: 0,
+    active_model: null,
+    models: [],
+    last_error: null,
+  });
+  vi.spyOn(managedOllamaService, "onProgress").mockResolvedValue(() => undefined);
 });
 
 describe("coque applicative", () => {

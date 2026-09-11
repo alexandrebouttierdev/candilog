@@ -1,6 +1,6 @@
-import type { Company } from "../../services/companyService";
-import type { Application } from "@/features/applications/services/applicationService";
-import { status_meta } from "@/features/applications/model/statuses";
+import type { Application } from "@/shared/types/generated/applications";
+import type { Company } from "@/shared/types/generated/companies";
+import { status_meta } from "@/features/applications";
 import { companySizeLabel } from "@/features/referentials";
 import { versDateLongue } from "@/shared/lib/dates";
 import { openExternal } from "@/shared/services/external-link";

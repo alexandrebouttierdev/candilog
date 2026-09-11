@@ -6,7 +6,7 @@ import {
   type CompanyFormInput,
   type CompanyFormValues,
 } from "../../model/schemas/company-form.schema";
-import type { Company, NewCompany } from "../../services/companyService";
+import type { Company, NewCompany } from "@/shared/types/generated/companies";
 import { CompanySizes, useReferentials } from "@/features/referentials";
 import { FormField, ModalHost, Select, TextArea, TextInput } from "@/shared/ui";
 import type { IconName } from "@/shared/ui/icon-names";

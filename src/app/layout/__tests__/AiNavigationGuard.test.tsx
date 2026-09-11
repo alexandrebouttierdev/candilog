@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Link, Outlet, RouterProvider, createMemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useAiOperationStore, type AiOperationKind } from "@/features/ai/viewmodel/ai-operation-store";
+import { useAiOperationStore, type AiOperationKind } from "@/features/ai";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AiNavigationGuard } from "../AiNavigationGuard";
 

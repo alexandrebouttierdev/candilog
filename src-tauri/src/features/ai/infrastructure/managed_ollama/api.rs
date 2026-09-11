@@ -252,7 +252,10 @@ mod tests {
 
     #[test]
     fn pull_status_label_traduit_les_etapes_connues() {
-        assert_eq!(pull_status_label("pulling manifest"), "Récupération du manifeste…");
+        assert_eq!(
+            pull_status_label("pulling manifest"),
+            "Récupération du manifeste…"
+        );
         assert_eq!(
             pull_status_label("downloading sha256:abc"),
             "Téléchargement en cours…"

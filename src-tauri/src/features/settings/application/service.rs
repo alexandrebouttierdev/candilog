@@ -5,6 +5,7 @@ use crate::core::database::SqlitePool;
 use crate::core::errors::{AppError, AppResult};
 use crate::core::secrets::SecretStoreContract;
 use crate::core::updater::{self, UpdateInfo as ReleaseInfo};
+use crate::core::utils::validation::validate_optional_http_url;
 use crate::features::ai::domain::{LlmConfig, ProviderKind};
 use crate::features::ai::infrastructure::{build_provider, LlmGenerator};
 use crate::features::settings::domain::{
@@ -288,7 +289,7 @@ fn validate_llm(llm: &LlmConfig, api_key_configured: bool) -> AppResult<()> {
                     "Un endpoint est requis pour un fournisseur personnalisé".into(),
                 ))
             } else {
-                Ok(())
+                validate_optional_http_url(llm.endpoint.as_deref(), "L'endpoint")
             }
         }
         ProviderKind::Claude

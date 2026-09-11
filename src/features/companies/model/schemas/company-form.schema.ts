@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { idFacultatif, textFacultatif, urlFacultative } from "@/shared/lib/zod-helpers";
+import { optionalId, optionalText, optionalUrl } from "@/shared/lib/zod-helpers";
 
 /**
  * Formulaire entreprise, création et modification.
@@ -14,13 +14,13 @@ import { idFacultatif, textFacultatif, urlFacultative } from "@/shared/lib/zod-h
  */
 export const companyFormSchema = z.object({
   name: z.string().trim().min(1, "Le nom de l'entreprise est obligatoire"),
-  sector_id: idFacultatif,
-  company_type_id: idFacultatif,
+  sector_id: optionalId,
+  company_type_id: optionalId,
   company_size: z.enum(["MICRO", "TPE", "PME", "ETI", "LARGE", "UNKNOWN"]),
-  website: urlFacultative("Le site web doit commencer par http:// ou https://"),
-  city: textFacultatif,
-  address: textFacultatif,
-  notes: textFacultatif,
+  website: optionalUrl("Le site web doit commencer par http:// ou https://"),
+  city: optionalText,
+  address: optionalText,
+  notes: optionalText,
 });
 
 /** Valeurs validées, telles qu'envoyées au backend. */

@@ -3,5 +3,6 @@ export { useApplicationsViewModel, APPLICATIONS_KEY } from "./viewmodel/useAppli
 export type { Application, NewApplication } from "./services/applicationService";
 export type { ApplicationFilter, ApplicationStatus } from "./services/applicationService";
 export { applicationService } from "./services/applicationService";
-export { FILTER_VIDE } from "./model/schemas/application-filter.schema";
+export { EMPTY_FILTER } from "./model/schemas/application-filter.schema";
 export { status_meta } from "./model/statuses";
+export { ApplicationPicker } from "./view/components/ApplicationPicker";

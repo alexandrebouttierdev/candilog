@@ -13,8 +13,7 @@ import { ResumeGeneratorPage } from "../ResumeGeneratorPage";
 import { ResumeAnalysisPage } from "../ResumeAnalysisPage";
 import { LetterWriterPage } from "../LettersPages";
 import { AppError } from "@/shared/types/app-error";
-import { aiService } from "@/features/ai/services/aiService";
-import { useAiOperationStore } from "@/features/ai/viewmodel/ai-operation-store";
+import { aiService, useAiOperationStore } from "@/features/ai";
 
 const navigateMock = vi.hoisted(() => vi.fn());
 vi.mock("react-router-dom", async () => {

@@ -2,16 +2,16 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ProviderGrid } from "../ProviderGrid";
-import { FOURNISSEURS, FOURNISSEURS_AUTRES } from "../../../model/providers";
+import { PROVIDERS, OTHER_PROVIDERS } from "../../../model/providers";
 
 describe("grille des fournisseurs", () => {
   it("propose tous les fournisseurs comme un groupe de boutons radio", () => {
     render(<ProviderGrid value="openai" onChange={() => undefined} />);
     expect(screen.getByRole("radiogroup", { name: "Fournisseur IA" })).toBeInTheDocument();
-    expect(screen.getAllByRole("radio")).toHaveLength(FOURNISSEURS.length);
+    expect(screen.getAllByRole("radio")).toHaveLength(PROVIDERS.length);
     expect(screen.getByRole("radio", { name: /OpenAI/ })).toHaveAttribute("aria-checked", "true");
     expect(screen.getByRole("radio", { name: "Mistral" })).toHaveAttribute("aria-checked", "false");
-    for (const fournisseur of FOURNISSEURS) {
+    for (const fournisseur of PROVIDERS) {
       const radio = screen.getByRole("radio", { name: fournisseur.label });
       expect(within(radio).getByText(fournisseur.label)).toBeInTheDocument();
     }
@@ -19,9 +19,9 @@ describe("grille des fournisseurs", () => {
 
   it("permet de restreindre la liste aux autres fournisseurs", () => {
     render(
-      <ProviderGrid value="openai" onChange={() => undefined} items={FOURNISSEURS_AUTRES} />,
+      <ProviderGrid value="openai" onChange={() => undefined} items={OTHER_PROVIDERS} />,
     );
-    expect(screen.getAllByRole("radio")).toHaveLength(FOURNISSEURS_AUTRES.length);
+    expect(screen.getAllByRole("radio")).toHaveLength(OTHER_PROVIDERS.length);
     expect(screen.queryByRole("radio", { name: "IA locale Candilog" })).not.toBeInTheDocument();
     expect(screen.queryByRole("radio", { name: "Ollama" })).not.toBeInTheDocument();
   });

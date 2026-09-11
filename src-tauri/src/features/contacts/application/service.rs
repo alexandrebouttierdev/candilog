@@ -2,7 +2,7 @@
 
 use crate::core::errors::{AppError, AppResult};
 use crate::core::pagination::Page;
-use crate::core::utils::validation::validate_optional_http_url;
+use crate::core::utils::validation::{validate_optional_email, validate_optional_http_url};
 use crate::features::contacts::domain::{Contact, ContactRepository, ContactUpdate, NewContact};
 
 /// Service métier des contacts, générique sur le dépôt.
@@ -87,6 +87,7 @@ impl<R: ContactRepository> ContactService<R> {
             ));
         }
         validate_optional_http_url(input.linkedin.as_deref(), "Le profil LinkedIn")?;
+        validate_optional_email(input.email.as_deref(), "L'e-mail")?;
         Ok(())
     }
 }

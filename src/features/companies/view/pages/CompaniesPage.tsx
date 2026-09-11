@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCompaniesViewModel } from "../../viewmodel/useCompaniesViewModel";
-import type { Company } from "../../services/companyService";
+import type { Company } from "@/shared/types/generated/companies";
 import { CompanyFormModal } from "../components/CompanyFormModal";
 import { CompanyDetail } from "../components/CompanyDetail";
 import { CompanyFilters } from "../components/CompanyFilters";
@@ -29,7 +29,7 @@ export function CompaniesPage() {
     cible: null,
   });
   const [aDelete, setADelete] = useState<Company | null>(null);
-  const aucunResultat = Boolean(vm.search) || vm.filtersActifs > 0;
+  const aucunResultat = Boolean(vm.search) || vm.activeFilterCount > 0;
 
   return (
     <div className="flex h-full flex-col">
@@ -41,9 +41,9 @@ export function CompaniesPage() {
 
       <CompanyFilters
         search={vm.search}
-        onSearch={vm.rechercher}
+        onSearch={vm.setSearch}
         criteres={vm.criteres}
-        count={vm.filtersActifs}
+        count={vm.activeFilterCount}
         total={vm.isLoading ? null : vm.total}
         onApply={vm.appliquerCriteres}
         onReset={vm.resetFilters}
@@ -85,7 +85,7 @@ export function CompaniesPage() {
                     ? vm.error.message
                     : "Le répertoire n'a pas pu être chargé."
                 }
-                onRetry={vm.recharger}
+                onRetry={vm.reload}
               />
             </div>
           ) : vm.items.length === 0 ? (
@@ -103,7 +103,7 @@ export function CompaniesPage() {
                     icon="filter_alt_off"
                     onClick={() => {
                       vm.resetFilters();
-                      vm.rechercher("");
+                      vm.setSearch("");
                     }}
                   >
                     Tout effacer
@@ -128,7 +128,7 @@ export function CompaniesPage() {
                   ) : undefined
                 }
                 selected={company.id === vm.selection?.id}
-                onSelect={() => vm.selectionner(company.id)}
+                onSelect={() => vm.select(company.id)}
               />
             ))
           )}

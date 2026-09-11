@@ -10,7 +10,7 @@ import { Button, ConfirmDialog, ErrorBanner, Icon, Skeleton, StatusPill, Tag } f
 import type { Tone } from "@/shared/ui";
 import { ManagedPublisherLogo } from "./ProviderGrid";
 import { SettingsCard } from "./SettingsUi";
-import { isManagedOllamaBusy } from "../../model/etatManagedOllama";
+import { isManagedOllamaBusy } from "../../model/managedOllamaStatus";
 import type { ManagedOllamaViewModel } from "../../viewmodel/useManagedOllamaViewModel";
 
 const CATEGORY_LABELS: Record<ManagedModelCategory, string> = {
@@ -60,7 +60,7 @@ export function ManagedOllamaPanel({
       </SettingsCard>
 
       {vm.error && vm.runtimeState === "error" ? (
-        <ErrorBanner message={vm.error} onRetry={vm.recharger} />
+        <ErrorBanner message={vm.error} onRetry={vm.reload} />
       ) : null}
 
       {busy ? (

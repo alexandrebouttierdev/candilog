@@ -29,6 +29,7 @@ impl<R: FollowUpRepository> FollowUpService<R> {
     /// # Errors
     /// Propage l'erreur du dépôt.
     pub fn list_between(&self, from: &str, to: &str) -> AppResult<Vec<FollowUp>> {
+        Self::validate_range(from, to)?;
         self.repo.list_between(from, to)
     }
 
@@ -57,6 +58,21 @@ impl<R: FollowUpRepository> FollowUpService<R> {
     /// Propage l'erreur du dépôt.
     pub fn delete(&self, id: Uuid) -> AppResult<()> {
         self.repo.delete(id)
+    }
+
+    /// Valide une plage calendaire reçue de l'IPC (`AAAA-MM-JJ`, `from ≤ to`).
+    fn validate_range(from: &str, to: &str) -> AppResult<()> {
+        let from_d = chrono::NaiveDate::parse_from_str(from, "%Y-%m-%d").map_err(|_| {
+            AppError::Validation("La date de début de la plage est invalide".into())
+        })?;
+        let to_d = chrono::NaiveDate::parse_from_str(to, "%Y-%m-%d")
+            .map_err(|_| AppError::Validation("La date de fin de la plage est invalide".into()))?;
+        if from_d > to_d {
+            return Err(AppError::Validation(
+                "La date de début doit précéder la date de fin".into(),
+            ));
+        }
+        Ok(())
     }
 
     /// Règles de validation d'une relance.
