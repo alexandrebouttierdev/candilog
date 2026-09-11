@@ -77,9 +77,8 @@ pub fn detect_model_capabilities(
             return ModelCapabilities { vision: true };
         }
         // Capacités non vides sans « vision » : le runtime confirme l'absence.
-        if !caps.is_empty()
-            && matches!(provider, ProviderKind::CandilogLocal | ProviderKind::Ollama)
-        {
+        // Valable aussi pour un endpoint Custom qui pointe vers Ollama.
+        if !caps.is_empty() {
             return ModelCapabilities { vision: false };
         }
     }
@@ -119,7 +118,7 @@ pub fn model_name_suggests_vision(provider: &ProviderKind, model: &str) -> bool 
                 || normalized.contains("claude-opus")
                 || normalized.contains("claude-haiku")
         }
-        ProviderKind::Gemini => normalized.contains("gemini") || normalized.contains("gemma"),
+        ProviderKind::Gemini => normalized.contains("gemini"),
         ProviderKind::OpenAI | ProviderKind::Custom(_) => {
             normalized.contains("gpt-4o")
                 || normalized.contains("gpt-4.1")
@@ -168,6 +167,9 @@ fn managed_id_from_partial_tag(tag: &str) -> Option<ManagedModelId> {
 }
 
 fn looks_like_vision_family(model: &str) -> bool {
+    if is_gemma3_multimodal(model) {
+        return true;
+    }
     const MARKERS: &[&str] = &[
         "ministral-3",
         "ministral3",
@@ -180,13 +182,28 @@ fn looks_like_vision_family(model: &str) -> bool {
         "qwen3-vl",
         "llama3.2-vision",
         "llama-3.2-vision",
-        "gemma3",
         "mistral-small3",
         "mistral-large-3",
         "devstral",
         "vision",
     ];
     MARKERS.iter().any(|marker| model.contains(marker))
+}
+
+/// Gemma 3 : 1B et 270M sont texte-only ; 4B+ acceptent les images.
+fn is_gemma3_multimodal(model: &str) -> bool {
+    if !(model.contains("gemma3") || model.contains("gemma-3")) {
+        return false;
+    }
+    let size = model
+        .split_once(':')
+        .map(|(_, rest)| rest.split(['-', '_']).next().unwrap_or(rest))
+        .unwrap_or("");
+    match size {
+        "270m" | "1b" => false,
+        "4b" | "12b" | "27b" | "" | "latest" => true,
+        other => !other.starts_with("1b") && !other.starts_with("270m"),
+    }
 }
 
 /// Nombre maximal de pages envoyées au modèle Vision (CV raisonnables).
@@ -269,5 +286,37 @@ mod tests {
     #[test]
     fn openai_gpt4o_est_vision() {
         assert!(detect_model_capabilities(&ProviderKind::OpenAI, "gpt-4o", None).vision);
+    }
+
+    #[test]
+    fn gemma3_1b_n_est_pas_vision() {
+        // Gemma 3 1B est texte-only ; 4B+ sont multimodaux. L'heuristique « gemma3 »
+        // ne doit pas envoyer d'images à :1b (HTTP 400 côté Ollama).
+        assert!(!detect_model_capabilities(&ProviderKind::Ollama, "gemma3:1b", None).vision);
+        assert!(
+            !detect_model_capabilities(&ProviderKind::Custom("custom".into()), "gemma3:1b", None)
+                .vision
+        );
+        assert!(
+            !detect_model_capabilities(&ProviderKind::Ollama, "gemma3:1b-it-q4_K_M", None).vision
+        );
+    }
+
+    #[test]
+    fn gemma3_4b_et_plus_sont_vision() {
+        assert!(detect_model_capabilities(&ProviderKind::Ollama, "gemma3:4b", None).vision);
+        assert!(detect_model_capabilities(&ProviderKind::Ollama, "gemma3:12b", None).vision);
+        assert!(detect_model_capabilities(&ProviderKind::Ollama, "gemma3:27b", None).vision);
+    }
+
+    #[test]
+    fn capacites_runtime_non_vides_primer_aussi_pour_custom() {
+        // Endpoint custom pointant vers Ollama : si /api/show répond sans vision, on s'y fie.
+        let caps = detect_model_capabilities(
+            &ProviderKind::Custom("custom".into()),
+            "gemma3:4b",
+            Some(&["completion".into()]),
+        );
+        assert!(!caps.vision);
     }
 }
