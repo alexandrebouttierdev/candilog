@@ -204,11 +204,16 @@ pub fn render_grounded_letter(
             selected.push(*fact);
         }
     }
+    // Un petit modèle renvoie parfois un plan vide ou trop court : on complète alors avec
+    // les faits du catalogue dans l'ordre métier, pour éviter une lettre réduite à l'ouverture.
+    fill_selected_facts(&mut selected, &mut seen_ids, catalog, fact_limit);
+    selected.sort_by_key(|fact| fact_kind_priority(fact.kind));
 
     let brief = [
         request.company.as_deref().unwrap_or_default(),
         request.job_title.as_deref().unwrap_or_default(),
         request.context.as_deref().unwrap_or_default(),
+        request.instruction.as_deref().unwrap_or_default(),
     ]
     .join(" ");
     let mut keywords = Vec::new();
@@ -221,7 +226,7 @@ pub fn render_grounded_letter(
         if key.is_empty() || !contains_search_term(&brief, keyword) {
             continue;
         }
-        if seen_keywords.insert(key) && keywords.len() < 5 {
+        if seen_keywords.insert(key) && keywords.len() < 3 {
             keywords.push(keyword.trim());
         }
     }
@@ -236,41 +241,130 @@ pub fn render_grounded_letter(
         .as_deref()
         .filter(|value| !value.trim().is_empty())
         .unwrap_or("ce poste");
-    let mut paragraphs = vec![format!(
-        "Madame, Monsieur,\n\nJe vous adresse ma candidature au poste {} au sein {}.",
-        elider("de", job),
-        elider("de", company)
-    )];
-    paragraphs.extend(selected.into_iter().map(|fact| fact_sentence(fact, tone)));
+    let opening = match tone {
+        "casual" => format!(
+            "Bonjour,\n\nJe candidate au poste {} chez {}.",
+            elider("de", job),
+            company
+        ),
+        "creative" => format!(
+            "Madame, Monsieur,\n\nLe poste {} au sein {} m'intéresse vivement : voici pourquoi mon parcours y répond.",
+            elider("de", job),
+            elider("de", company)
+        ),
+        _ => format!(
+            "Madame, Monsieur,\n\nJe me permets de vous adresser ma candidature pour le poste {} au sein {}.",
+            elider("de", job),
+            elider("de", company)
+        ),
+    };
+    let mut paragraphs = vec![opening];
+    paragraphs.extend(
+        selected
+            .into_iter()
+            .map(|fact| fact_sentence(fact, tone, job, company)),
+    );
     if !keywords.is_empty() {
-        paragraphs.push(format!(
-            "Votre besoin autour {} motive particulièrement ma candidature.",
-            elider("de", &join_french(&keywords))
-        ));
+        paragraphs.push(match tone {
+            "casual" => format!(
+                "Les enjeux autour {} me parlent particulièrement et renforcent mon envie de rejoindre {}.",
+                elider("de", &join_french(&keywords)),
+                company
+            ),
+            "creative" => format!(
+                "C'est surtout autour {} que je souhaite m'investir auprès de {}.",
+                elider("de", &join_french(&keywords)),
+                company
+            ),
+            _ => format!(
+                "Votre besoin autour {} motive particulièrement ma candidature auprès de {}.",
+                elider("de", &join_french(&keywords)),
+                company
+            ),
+        });
     }
     paragraphs.push(match tone {
-        "casual" => "Je serais ravi d'échanger avec vous afin de vous présenter ma démarche et mes motivations.\n\nCordialement,".into(),
-        "creative" => "Je serais heureux de transformer cette candidature en échange concret avec votre équipe.\n\nCordialement,".into(),
-        _ => "Je serais heureux de pouvoir échanger avec vous afin de détailler ma candidature.\n\nVeuillez agréer, Madame, Monsieur, mes salutations distinguées.".into(),
+        "casual" => "Je serais ravi d'échanger pour vous présenter mon parcours plus en détail.\n\nCordialement,".into(),
+        "creative" => "Je serais heureux de poursuivre cette candidature autour d'un échange concret avec votre équipe.\n\nCordialement,".into(),
+        _ => "Je reste à votre disposition pour un entretien afin de détailler ma candidature.\n\nVeuillez agréer, Madame, Monsieur, l'expression de mes salutations distinguées.".into(),
     });
     Ok(paragraphs.join("\n\n"))
 }
 
-fn fact_sentence(fact: &GroundedFact, tone: &str) -> String {
+fn fact_kind_priority(kind: GroundedFactKind) -> u8 {
+    match kind {
+        GroundedFactKind::Experience => 0,
+        GroundedFactKind::Summary => 1,
+        GroundedFactKind::Skill => 2,
+        GroundedFactKind::Project => 3,
+        GroundedFactKind::Education => 4,
+        GroundedFactKind::Certification => 5,
+    }
+}
+
+fn fill_selected_facts<'a>(
+    selected: &mut Vec<&'a GroundedFact>,
+    seen_ids: &mut HashSet<&'a str>,
+    catalog: &'a [GroundedFact],
+    fact_limit: usize,
+) {
+    if selected.len() >= fact_limit || catalog.is_empty() {
+        return;
+    }
+    let mut ranked: Vec<&GroundedFact> = catalog.iter().collect();
+    ranked.sort_by_key(|fact| fact_kind_priority(fact.kind));
+    for fact in ranked {
+        if selected.len() >= fact_limit {
+            break;
+        }
+        if seen_ids.insert(fact.id.as_str()) {
+            selected.push(fact);
+        }
+    }
+}
+
+fn fact_sentence(fact: &GroundedFact, tone: &str, job: &str, company: &str) -> String {
     let text = phrase(&fact.text);
     match (fact.kind, tone) {
-        (GroundedFactKind::Summary, _) => format!("Mon projet professionnel : {text}"),
-        (GroundedFactKind::Experience, "casual" | "creative") => {
-            format!("Mon parcours comprend notamment {text}")
+        (GroundedFactKind::Summary, "casual" | "creative") => {
+            format!("En quelques mots, mon orientation : {text}")
+        }
+        (GroundedFactKind::Summary, _) => {
+            format!("Mon projet professionnel s'inscrit dans cette direction : {text}")
+        }
+        (GroundedFactKind::Experience, "casual") => {
+            format!("De mon côté, j'ai notamment mené {text} — une base utile pour {company}.")
+        }
+        (GroundedFactKind::Experience, "creative") => {
+            format!(
+                "Une expérience me paraît particulièrement pertinente pour le poste {} : {text}",
+                elider("de", job)
+            )
         }
         (GroundedFactKind::Experience, _) => {
-            format!("Mon expérience comprend notamment {text}")
+            format!(
+                "Pour le poste {} chez {}, je peux notamment m'appuyer sur l'expérience suivante : {text}",
+                elider("de", job),
+                company
+            )
         }
-        (GroundedFactKind::Skill, _) => format!("Je peux notamment mobiliser {text}"),
-        (GroundedFactKind::Education, _) => format!("Ma formation inclut {text}"),
-        (GroundedFactKind::Project, _) => format!("J'ai également mené le projet {text}"),
+        (GroundedFactKind::Skill, "casual" | "creative") => {
+            format!("Je mobilise aussi couramment {text}")
+        }
+        (GroundedFactKind::Skill, _) => {
+            format!("Parmi les compétences utiles à ce poste, je maîtrise notamment {text}")
+        }
+        (GroundedFactKind::Education, _) => {
+            format!("Sur le plan de la formation, j'ai suivi {text}")
+        }
+        (GroundedFactKind::Project, "casual" | "creative") => {
+            format!("J'ai également porté le projet {text}")
+        }
+        (GroundedFactKind::Project, _) => {
+            format!("J'ai également conduit le projet {text}")
+        }
         (GroundedFactKind::Certification, _) => {
-            format!("Mon parcours comprend aussi la certification {text}")
+            format!("Je dispose aussi de la certification {text}")
         }
     }
 }
@@ -372,9 +466,23 @@ mod tests {
 
         assert!(!text.contains("Kubernetes"));
         assert!(text.contains("Votre besoin autour d\u{2019}APIs"));
+        assert!(text.contains("auprès de Acme"));
     }
 
-    /// « au poste de Administrateur », « au sein de Astek » : la lettre composait ses
+    /// Un plan vide (petit modèle local) ne doit plus produire une lettre sans faits.
+    #[test]
+    fn un_plan_vide_est_complete_avec_les_faits_du_catalogue() {
+        let plan = CoverLetterPlan::default();
+        let text = render_grounded_letter(&catalog(), &plan, &request()).unwrap();
+
+        assert!(text.contains("Nova"), "{text}");
+        assert!(
+            text.contains("Pour le poste") || text.contains("De mon côté"),
+            "{text}"
+        );
+    }
+
+    /// « pour le poste de Administrateur », « au sein de Astek » : la lettre composait ses
     /// phrases autour de valeurs saisies sans jamais élider la préposition.
     #[test]
     fn la_lettre_elide_la_preposition_devant_une_voyelle() {
@@ -386,7 +494,13 @@ mod tests {
         let text = render_grounded_letter(&catalog(), &plan, &request).unwrap();
 
         assert!(
-            text.contains("au poste d\u{2019}Administrateur syst\u{e8}me au sein d\u{2019}Astek."),
+            text.contains(
+                "pour le poste d\u{2019}Administrateur syst\u{e8}me au sein d\u{2019}Astek."
+            ),
+            "{text}"
+        );
+        assert!(
+            text.contains("Je me permets de vous adresser ma candidature"),
             "{text}"
         );
     }
@@ -410,10 +524,16 @@ mod tests {
         assert!(!text.contains(".."), "point doubl\u{e9} : {text}");
         let phrase = text
             .split("\n\n")
-            .find(|bloc| bloc.starts_with("Mon exp\u{e9}rience"))
+            .find(|bloc| bloc.contains("Technicienne chez Nova"))
             .unwrap();
-        assert!(!phrase.contains('\n'), "phrase coup\u{e9}e : {phrase}");
-        assert!(phrase.ends_with("D\u{e9}ploiement de postes."), "{phrase}");
+        assert!(!phrase.contains('\n'), "phrase coupée : {phrase}");
+        assert!(phrase.ends_with("Déploiement de postes."), "{phrase}");
+        assert!(
+            phrase.starts_with("Pour le poste")
+                || phrase.starts_with("De mon côté")
+                || phrase.starts_with("Une expérience"),
+            "{phrase}"
+        );
     }
 
     #[test]

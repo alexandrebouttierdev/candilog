@@ -20,8 +20,28 @@ use tokio_util::sync::CancellationToken;
 const JOB_OFFER_SYSTEM: &str = r#"Extrais une offre d'emploi en JSON. Recopie uniquement les informations présentes, sans traduire ni inventer. Réponds exactement avec les clés {"titre":"","competences":[],"savoirEtre":[],"experience":null,"motsCles":[]}. Réponds uniquement en JSON."#;
 const RESUME_SYSTEM: &str = r#"Adapte le socle d'un CV à une offre en JSON. Reformule uniquement les faits du profil, sans ajouter compétence, entreprise, diplôme ou expérience. Conserve toutes les expériences et formations. Laisse toujours competences vide : les contenus optionnels seront choisis ensuite par l'utilisateur. Réponds avec {"resume":"","experiences":[{"intitule":"","entreprise":"","description":""}],"competences":[],"formations":[{"diplome":"","etablissement":""}]}. JSON uniquement."#;
 const ATS_SYSTEM: &str = r#"Compare le CV et l'offre fournis. Réponds en français, uniquement en JSON : {"recap":"","recommendations":[{"section":"profile","item_index":null,"original_text":"","proposed_text":""}],"content_recommendations":[{"item_id":"","reason":"","relevance":"very_relevant"}]}. "section" vaut "profile" ou "experience". Pour "experience", "item_index" est l'indice (à partir de 0) de l'expérience du CV concernée ; laisse "item_index" à null pour "profile". "original_text" doit reprendre exactement un texte présent dans le CV fourni, "proposed_text" est la reformulation proposée. Pour content_recommendations, sélectionne au maximum 8 identifiants du tableau contenu_profil, dans l'ordre de priorité. relevance vaut "very_relevant", "relevant" ou "secondary". Privilégie la cohérence et la valeur pour le recruteur, pas la répétition de mots-clés. Ne renvoie pas tout le catalogue. N'invente aucun fait ni identifiant absent du CV, de l'offre ou du catalogue."#;
-const COVER_LETTER_SYSTEM: &str = r#"Sélectionne les faits les plus pertinents pour une lettre de motivation. Réponds uniquement en JSON avec {"selected_fact_ids":[],"motivation_keywords":[]}. Utilise exclusivement des identifiants présents dans le catalogue. Les mots-clés doivent être recopiés exactement depuis le brief. N'écris aucune phrase de lettre et n'invente aucune information."#;
-const COVER_LETTER_ITERATION_SYSTEM: &str = r#"Ajuste la sélection de faits d'une lettre déjà rédigée selon l'instruction. Réponds uniquement en JSON avec {"selected_fact_ids":[],"motivation_keywords":[]}. Pars de la lettre précédente et du catalogue compact : ne change que ce que demande l'instruction. Utilise exclusivement des identifiants du catalogue. Les mots-clés doivent être recopiés exactement depuis le brief ou l'instruction. N'écris aucune phrase de lettre et n'invente aucune information."#;
+const COVER_LETTER_SYSTEM: &str = r#"Tu prépares le plan d'une lettre de motivation française.
+
+Réponds uniquement en JSON : {"selected_fact_ids":[],"motivation_keywords":[]}.
+
+Règles de sélection :
+1. Choisis uniquement des identifiants présents dans catalogue[].id — aucun autre.
+2. Priorise dans cet ordre : experience, puis summary, puis skill, project, education, certification.
+3. Remplis exactement le nombre de faits demandé par "longueur" : short → 1, medium → 2, long → 3. Ne renvoie jamais une liste vide si le catalogue contient des faits.
+4. Retiens les faits les plus utiles pour le poste et l'entreprise du brief ; écarte le hors-sujet.
+5. motivation_keywords : 0 à 3 termes recopiés caractère pour caractère depuis le brief (poste, entreprise, contexte ou instruction). Aucune paraphrase.
+6. N'écris aucune phrase de lettre. N'invente aucun fait, compétence, entreprise ni diplôme."#;
+const COVER_LETTER_ITERATION_SYSTEM: &str = r#"Tu ajustes le plan d'une lettre de motivation déjà rédigée.
+
+Réponds uniquement en JSON : {"selected_fact_ids":[],"motivation_keywords":[]}.
+
+Pars de lettre_precedente et de l'instruction. Ne change que ce que demande l'instruction.
+Règles :
+1. selected_fact_ids : uniquement des identifiants de catalogue[].id.
+2. Respecte "longueur" : short → 1, medium → 2, long → 3 faits au maximum.
+3. Priorise experience puis summary puis skill / project / education / certification.
+4. motivation_keywords : 0 à 3 termes recopiés exactement depuis le brief ou l'instruction.
+5. N'écris aucune phrase de lettre. N'invente aucune information."#;
 const FRENCH_CORRECTION_SYSTEM: &str = r#"Tu es un correcteur professionnel de français. Corrige uniquement l'orthographe, la grammaire, les accords, la ponctuation, les coquilles et les formulations manifestement maladroites. Préserve strictement le sens, les faits, les noms propres, les chiffres, les dates, les coordonnées, les technologies et le niveau de précision. N'ajoute aucune information, ne supprime aucun fait et ne réécris pas un passage déjà correct. Chaque objet reçu contient un id opaque et un texte : renvoie exactement un objet par id, dans le même ordre, avec {"fields":[{"id":"","text":""}]}. Recopie le texte à l'identique si aucune correction n'est nécessaire. JSON uniquement."#;
 const PARSE_RESUME_SYSTEM: &str = r#"Structure le texte brut d'un CV sans traduire, reformuler ni inventer. Réponds uniquement en JSON : {"resume":"","experiences":[{"intitule":"","entreprise":"","description":""}],"competences":[],"formations":[{"diplome":"","etablissement":""}]}"#;
 /// Le gabarit décrit chaque valeur attendue au lieu de la laisser vide.

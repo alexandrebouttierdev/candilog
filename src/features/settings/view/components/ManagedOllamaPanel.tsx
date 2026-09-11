@@ -54,8 +54,9 @@ export function ManagedOllamaPanel({
     <div className="flex flex-col gap-4" data-managed-ollama-state={vm.runtimeState}>
       <SettingsCard icon="info" title="Modèles optimisés pour votre ordinateur">
         <p className="max-w-2xl text-body leading-relaxed text-ink-muted">
-          Nous recommandons automatiquement les modèles compatibles avec votre configuration.
-          Candilog gère le runtime Ollama et les téléchargements pour vous.
+          Nous mettons en avant le modèle le mieux adapté à votre machine — en pratique
+          Ministral&nbsp;3&nbsp;3B dès que la mémoire le permet. Candilog gère le runtime
+          Ollama et les téléchargements pour vous.
         </p>
       </SettingsCard>
 

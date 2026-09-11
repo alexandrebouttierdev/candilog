@@ -3,9 +3,10 @@
 use crate::core::database::SqlitePool;
 use crate::core::errors::{AppError, AppResult};
 use crate::features::ai::domain::{
-    evaluate_machine_fit, InstallManagedModelRequest, ManagedDownloadKind, ManagedModelDefinition,
-    ManagedModelId, ManagedModelRegistry, ManagedModelStatus, ManagedOllamaDownloadProgress,
-    ManagedOllamaStatus, ManagedRuntimeState, StoredBenchmarkResult, UserBenchmarkSummary,
+    evaluate_machine_fit, recommended_model_id, InstallManagedModelRequest, ManagedDownloadKind,
+    ManagedModelDefinition, ManagedModelId, ManagedModelRegistry, ManagedModelStatus,
+    ManagedOllamaDownloadProgress, ManagedOllamaStatus, ManagedRuntimeState, StoredBenchmarkResult,
+    UserBenchmarkSummary,
 };
 use crate::features::ai::infrastructure::{
     require_runtime_artifact, ManagedOllamaApi, ManagedOllamaProcess, RuntimeInstaller,
@@ -44,13 +45,14 @@ impl ManagedOllamaService {
         let settings = self.settings()?.managed_ollama;
         let total_ram_gb = (System::new_all().total_memory() / 1_073_741_824).max(1) as u32;
         let installed_tags = settings.installed_model_tags.clone();
-        let models = ManagedModelRegistry::all()
+        let preferred = recommended_model_id(total_ram_gb);
+        let mut models = ManagedModelRegistry::all()
             .into_iter()
             .map(|definition| {
                 let installed = installed_tags
                     .iter()
                     .any(|tag| tag == &definition.ollama_tag);
-                let (machine_fit, recommended) = evaluate_machine_fit(&definition, total_ram_gb);
+                let (machine_fit, _) = evaluate_machine_fit(&definition, total_ram_gb);
                 let last_benchmark = settings
                     .benchmark_history
                     .iter()
@@ -67,11 +69,13 @@ impl ManagedOllamaService {
                     installed,
                     active: settings.active_model_id == Some(model_id),
                     machine_fit,
-                    recommended,
+                    recommended: preferred == Some(model_id),
                     last_benchmark,
                 }
             })
-            .collect();
+            .collect::<Vec<_>>();
+        // Le modèle recommandé (Ministral 3 3B dès que la RAM le permet) apparaît en premier.
+        models.sort_by_key(|model| (!model.recommended, model.definition.recommended_ram_gb));
         let active_model = settings.active_model_id.and_then(ManagedModelRegistry::get);
         Ok(ManagedOllamaStatus {
             runtime_state: settings.runtime_state,
@@ -219,6 +223,8 @@ impl ManagedOllamaService {
                 .push(definition.ollama_tag.clone());
         }
         settings.managed_ollama.active_model_id = Some(request.model_id);
+        settings.llm.provider = crate::features::ai::domain::ProviderKind::CandilogLocal;
+        settings.llm.model = definition.ollama_tag.clone();
         settings.managed_ollama.last_error = None;
         self.save_settings(&settings)?;
         Ok(())
