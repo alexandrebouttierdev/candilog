@@ -27,6 +27,7 @@ export function AiBenchmarkModal({
   modelLabel: string;
 }) {
   const [session, setSession] = useState(0);
+  const [busy, setBusy] = useState(false);
 
   return (
     <ModalHost
@@ -35,7 +36,7 @@ export function AiBenchmarkModal({
       title="Tester l'IA"
       onClose={onClose}
       cancelLabel="Fermer"
-      busy={false}
+      busy={busy}
     >
       {open ? (
         <BenchmarkSession
@@ -43,6 +44,7 @@ export function AiBenchmarkModal({
           modelLabel={modelLabel}
           onClose={onClose}
           onRetest={() => setSession((value) => value + 1)}
+          onBusyChange={setBusy}
         />
       ) : null}
     </ModalHost>
@@ -53,10 +55,12 @@ function BenchmarkSession({
   modelLabel,
   onClose,
   onRetest,
+  onBusyChange,
 }: {
   modelLabel: string;
   onClose: () => void;
   onRetest: () => void;
+  onBusyChange: (busy: boolean) => void;
 }) {
   const [phase, setPhase] = useState<"running" | "done" | "error">("running");
   const [elapsedMs, setElapsedMs] = useState(0);
@@ -69,6 +73,10 @@ function BenchmarkSession({
   useEffect(() => {
     onCloseRef.current = onClose;
   }, [onClose]);
+
+  useEffect(() => {
+    onBusyChange(phase === "running");
+  }, [onBusyChange, phase]);
 
   useEffect(() => {
     // Nouvel id à chaque lancement. Ne pas dépendre de `onClose` : les parents passent
@@ -120,6 +128,10 @@ function BenchmarkSession({
           <p className="text-body text-ink-muted">Analyse du CV de référence ({modelLabel})…</p>
           <p className="text-note text-ink-faint">
             Temps écoulé : {formatSeconds(elapsedMs)}
+          </p>
+          <p className="text-note text-ink-faint">
+            Sur un modèle local, comptez souvent 1 à 3 minutes — la fenêtre reste ouverte
+            jusqu&apos;à la fin (utilisez Arrêter pour annuler).
           </p>
           <button
             type="button"

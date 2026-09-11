@@ -39,6 +39,12 @@ describe("ModalHost", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
+  it("n'appelle pas onClose sur Échap pendant busy", async () => {
+    const { onClose } = ouvrir({ busy: true });
+    await userEvent.keyboard("{Escape}");
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it("valide sur Ctrl+Entrée", async () => {
     const { onSubmit } = ouvrir();
     await userEvent.keyboard("{Control>}{Enter}{/Control}");
