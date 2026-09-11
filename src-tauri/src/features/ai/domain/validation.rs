@@ -323,6 +323,7 @@ impl ValidateAiOutput for Profile {
             ("les langues du profil", self.languages.len()),
             ("les projets du profil", self.projects.len()),
             ("les certifications du profil", self.certifications.len()),
+            ("les centres d'intérêt du profil", self.interests.len()),
         ] {
             if len > MAX_ITEMS {
                 return Err(output_error(label));

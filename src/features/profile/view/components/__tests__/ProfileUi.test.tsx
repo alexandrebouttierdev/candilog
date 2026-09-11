@@ -10,6 +10,7 @@ const counts = {
   projects: 4,
   certifications: 2,
   languages: 3,
+  interests: 1,
 };
 
 describe("interface du profil", () => {

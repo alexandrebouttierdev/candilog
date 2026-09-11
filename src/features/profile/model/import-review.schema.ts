@@ -38,6 +38,10 @@ const importSkillSchema = z.object({
   name: z.string().trim().min(1, "Le nom est obligatoire"),
 });
 
+const importInterestSchema = z.object({
+  name: z.string().trim().min(1, "Le nom est obligatoire"),
+});
+
 const importEducationSchema = z.object({
   degree: z.string().trim().min(1, "Le diplôme est obligatoire"),
   school: z.string().trim().min(1, "L'établissement est obligatoire"),
@@ -124,6 +128,7 @@ export const importProfileRequestSchema = z.object({
   languages: z.array(listDecision(importLanguageSchema)),
   projects: z.array(listDecision(importProjectSchema)),
   certifications: z.array(listDecision(importCertificationSchema)),
+  interests: z.array(listDecision(importInterestSchema)),
 });
 
 export type ImportProfileFormValues = z.output<typeof importProfileRequestSchema>;
@@ -199,6 +204,13 @@ export function previewToFormValues(preview: ImportProfilePreview): ImportProfil
       existing_index: item.existing_index,
       resolution: defaultResolution(item.has_conflict, true),
     })),
+    interests: preview.interests.map((item) => ({
+      id: item.id,
+      selected: true,
+      value: item.proposed,
+      existing_index: item.existing_index,
+      resolution: defaultResolution(item.has_conflict, true),
+    })),
   };
 }
 
@@ -217,6 +229,7 @@ type SelectionValues = {
   languages?: SelectionItem[];
   projects?: SelectionItem[];
   certifications?: SelectionItem[];
+  interests?: SelectionItem[];
 };
 
 export const IMPORT_SECTIONS = [
@@ -227,6 +240,7 @@ export const IMPORT_SECTIONS = [
   "languages",
   "projects",
   "certifications",
+  "interests",
 ] as const;
 
 export type ImportSection = (typeof IMPORT_SECTIONS)[number];
@@ -265,6 +279,7 @@ const SECTION_ERROR_LABELS: Record<string, string> = {
   languages: "Langues",
   projects: "Projets",
   certifications: "Certifications",
+  interests: "Centres d'intérêts",
 };
 
 /** Premier motif de refus, pour le bandeau plutôt qu'un message générique. */
@@ -309,6 +324,7 @@ export function summarizeImport(
     values.languages ?? [],
     values.projects ?? [],
     values.certifications ?? [],
+    values.interests ?? [],
   ];
   for (const list of lists) {
     for (const item of list) {

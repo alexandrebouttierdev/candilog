@@ -476,6 +476,7 @@ function emptyPreview(): ImportProfilePreview {
     languages: [],
     projects: [],
     certifications: [],
+    interests: [],
     counts: {
       identity: 0,
       experiences: 0,
@@ -484,6 +485,7 @@ function emptyPreview(): ImportProfilePreview {
       languages: 0,
       projects: 0,
       certifications: 0,
+      interests: 0,
     },
   };
 }

@@ -117,6 +117,18 @@ pub fn apply_decisions(
         &mut replaced,
         &mut skipped,
     );
+    apply_list(
+        &mut merged.interests,
+        request.interests.iter().map(|item| ListChoice {
+            selected: item.selected,
+            value: item.value.clone(),
+            existing_index: item.existing_index,
+            resolution: item.resolution,
+        }),
+        &mut added,
+        &mut replaced,
+        &mut skipped,
+    );
 
     Ok((
         merged,
@@ -247,6 +259,7 @@ mod tests {
             languages: vec![],
             projects: vec![],
             certifications: vec![],
+            interests: vec![],
         };
 
         let (merged, result) = apply_decisions(&current, &request).unwrap();
@@ -286,6 +299,7 @@ mod tests {
             languages: vec![],
             projects: vec![],
             certifications: vec![],
+            interests: vec![],
         };
 
         let (merged, result) = apply_decisions(&current, &request).unwrap();
@@ -315,6 +329,7 @@ mod tests {
             languages: vec![],
             projects: vec![],
             certifications: vec![],
+            interests: vec![],
         };
 
         let (merged, result) = apply_decisions(&current, &request).unwrap();
@@ -342,6 +357,7 @@ mod tests {
             languages: vec![],
             projects: vec![],
             certifications: vec![],
+            interests: vec![],
         };
 
         let (merged, result) = apply_decisions(&current, &request).unwrap();
@@ -365,6 +381,7 @@ mod tests {
             languages: vec![],
             projects: vec![],
             certifications: vec![],
+            interests: vec![],
         };
 
         let error = apply_decisions(&vide(), &request).unwrap_err();
@@ -386,6 +403,7 @@ mod tests {
             languages: vec![],
             projects: vec![],
             certifications: vec![],
+            interests: vec![],
         };
 
         let error = apply_decisions(&vide(), &request).unwrap_err();

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::super::{Certification, Education, Experience, Language, Project, Skill};
+use super::super::{Certification, Education, Experience, Interest, Language, Project, Skill};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "snake_case")]
@@ -60,6 +60,7 @@ import_list_types!(
     ImportCertificationDecision,
     Certification
 );
+import_list_types!(ImportInterestItem, ImportInterestDecision, Interest);
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "snake_case")]
@@ -72,6 +73,8 @@ pub struct ImportDetectedCounts {
     pub languages: u32,
     pub projects: u32,
     pub certifications: u32,
+    #[serde(default)]
+    pub interests: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ts_rs::TS)]
@@ -85,6 +88,8 @@ pub struct ImportProfilePreview {
     pub languages: Vec<ImportLanguageItem>,
     pub projects: Vec<ImportProjectItem>,
     pub certifications: Vec<ImportCertificationItem>,
+    #[serde(default)]
+    pub interests: Vec<ImportInterestItem>,
     pub counts: ImportDetectedCounts,
 }
 
@@ -109,6 +114,8 @@ pub struct ImportProfileRequest {
     pub languages: Vec<ImportLanguageDecision>,
     pub projects: Vec<ImportProjectDecision>,
     pub certifications: Vec<ImportCertificationDecision>,
+    #[serde(default)]
+    pub interests: Vec<ImportInterestDecision>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ts_rs::TS)]

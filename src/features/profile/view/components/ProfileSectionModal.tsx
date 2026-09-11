@@ -4,6 +4,7 @@ import { ProfileCertificationsForm } from "./profile-sections/ProfileCertificati
 import { ProfileEducationForm } from "./profile-sections/ProfileEducationForm";
 import { ProfileExperiencesForm } from "./profile-sections/ProfileExperiencesForm";
 import { ProfileIdentityForm } from "./profile-sections/ProfileIdentityForm";
+import { ProfileInterestsForm } from "./profile-sections/ProfileInterestsForm";
 import { ProfileLanguagesForm } from "./profile-sections/ProfileLanguagesForm";
 import { ProfileProjectsForm } from "./profile-sections/ProfileProjectsForm";
 import { ProfileSkillsForm } from "./profile-sections/ProfileSkillsForm";
@@ -16,7 +17,8 @@ export type ProfileSection =
   | "education"
   | "languages"
   | "projects"
-  | "certifications";
+  | "certifications"
+  | "interests";
 
 const META: Record<ProfileSection, { icon: IconName; title: string; subtitle: string }> = {
   identity: { icon: "person", title: "Identité et objectif", subtitle: "Présentez votre projet professionnel" },
@@ -26,6 +28,7 @@ const META: Record<ProfileSection, { icon: IconName; title: string; subtitle: st
   languages: { icon: "translate", title: "Langues", subtitle: "Indiquez votre niveau de pratique" },
   projects: { icon: "rocket_launch", title: "Projets", subtitle: "Valorisez vos réalisations personnelles" },
   certifications: { icon: "workspace_premium", title: "Certifications", subtitle: "Ajoutez vos qualifications reconnues" },
+  interests: { icon: "palette", title: "Centres d'intérêts", subtitle: "Facultatif — hobbies et centres d'intérêts" },
 };
 
 /** Coquille de navigation : chaque section possède son propre formulaire RHF + Zod. */
@@ -71,6 +74,7 @@ export function ProfileSectionModal({
       {section === "languages" ? <ProfileLanguagesForm id={formId} value={profile.languages} onSubmit={(value) => save("languages", value)} /> : null}
       {section === "projects" ? <ProfileProjectsForm id={formId} value={profile.projects} onSubmit={(value) => save("projects", value)} /> : null}
       {section === "certifications" ? <ProfileCertificationsForm id={formId} value={profile.certifications} onSubmit={(value) => save("certifications", value)} /> : null}
+      {section === "interests" ? <ProfileInterestsForm id={formId} value={profile.interests} onSubmit={(value) => save("interests", value)} /> : null}
     </ModalHost>
   );
 }

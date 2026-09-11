@@ -32,11 +32,15 @@ export function ProfileIdentityForm({
         <ProfileField label="Téléphone" type="tel" registration={form.register("phone")} error={message("phone")} />
         <div className="sm:col-span-2"><ProfileField label="Adresse" registration={form.register("address")} error={message("address")} placeholder="14 rue Saint-Melaine" /></div>
         <div className="sm:col-span-2"><ProfileField label="Ville" registration={form.register("city")} error={message("city")} /></div>
+        <ProfileField label="Date de naissance" registration={form.register("birth_date")} error={message("birth_date")} placeholder="14 avril 1992" />
+        <ProfileField label="Âge" registration={form.register("age")} error={message("age")} placeholder="34" />
       </fieldset>
       <fieldset className="grid gap-4 border-t border-line pt-4">
         <legend className="mb-3 text-eyebrow uppercase text-ink-faint">Objectif professionnel</legend>
         <ProfileField label="Titre ou poste visé" registration={form.register("title")} error={message("title")} placeholder="Product designer — mobilité durable" />
-        <ProfileArea label="Présentation" rows={5} registration={form.register("resume")} error={message("resume")} help="En quelques phrases : votre expérience, vos forces et ce que vous recherchez." />
+        <ProfileArea label="Résumé du profil" rows={5} registration={form.register("resume")} error={message("resume")} help="Facultatif. En quelques phrases : votre expérience, vos forces et ce que vous recherchez." />
+        <ProfileField label="Disponibilité" registration={form.register("availability")} error={message("availability")} placeholder="Sous 1 mois" />
+        <ProfileField label="Contrats recherchés" registration={form.register("desired_contracts")} error={message("desired_contracts")} placeholder="CDI, CDD, Freelance" />
       </fieldset>
       <fieldset className="grid gap-4 border-t border-line pt-4 sm:grid-cols-2">
         <legend className="mb-3 text-eyebrow uppercase text-ink-faint sm:col-span-2">Présence en ligne</legend>

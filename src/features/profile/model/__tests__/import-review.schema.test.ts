@@ -42,6 +42,7 @@ const preview = (): ImportProfilePreview => ({
   languages: [],
   projects: [],
   certifications: [],
+  interests: [],
   counts: {
     identity: 1,
     experiences: 1,
@@ -50,7 +51,8 @@ const preview = (): ImportProfilePreview => ({
     languages: 0,
     projects: 0,
     certifications: 0,
-  },
+      interests: 0,
+    },
 });
 
 describe("revue d'import", () => {

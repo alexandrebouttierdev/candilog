@@ -12,7 +12,11 @@ const IDENTITY_FIELDS: &[(&str, &str)] = &[
     ("address", "Adresse"),
     ("city", "Ville"),
     ("title", "Titre professionnel"),
-    ("resume", "Résumé"),
+    ("resume", "Résumé du profil"),
+    ("birth_date", "Date de naissance"),
+    ("age", "Âge"),
+    ("availability", "Disponibilité"),
+    ("desired_contracts", "Contrats recherchés"),
     ("linkedin", "LinkedIn"),
     ("github", "GitHub"),
     ("website", "Site web"),
@@ -104,6 +108,21 @@ pub fn build_preview(current: &Profile, extracted: &Profile) -> ImportProfilePre
         has_conflict: item.has_conflict,
     })
     .collect();
+    let interests: Vec<ImportInterestItem> = list_items(
+        "interest",
+        &extracted.interests,
+        &current.interests,
+        interest_key,
+    )
+    .into_iter()
+    .map(|item| ImportInterestItem {
+        id: item.id,
+        proposed: item.proposed,
+        existing: item.existing,
+        existing_index: item.existing_index,
+        has_conflict: item.has_conflict,
+    })
+    .collect();
     let counts = ImportDetectedCounts {
         identity: identity.len() as u32,
         experiences: experiences.len() as u32,
@@ -112,6 +131,7 @@ pub fn build_preview(current: &Profile, extracted: &Profile) -> ImportProfilePre
         languages: languages.len() as u32,
         projects: projects.len() as u32,
         certifications: certifications.len() as u32,
+        interests: interests.len() as u32,
     };
     ImportProfilePreview {
         identity,
@@ -121,6 +141,7 @@ pub fn build_preview(current: &Profile, extracted: &Profile) -> ImportProfilePre
         languages,
         projects,
         certifications,
+        interests,
         counts,
     }
 }
@@ -158,6 +179,10 @@ pub(super) fn identity_value(identity: &Identity, id: &str) -> Option<String> {
         "city" => identity.city.clone().unwrap_or_default(),
         "title" => identity.title.clone().unwrap_or_default(),
         "resume" => identity.resume.clone().unwrap_or_default(),
+        "birth_date" => identity.birth_date.clone().unwrap_or_default(),
+        "age" => identity.age.map(|age| age.to_string()).unwrap_or_default(),
+        "availability" => identity.availability.clone().unwrap_or_default(),
+        "desired_contracts" => identity.desired_contracts.clone().unwrap_or_default(),
         "linkedin" => identity.linkedin.clone().unwrap_or_default(),
         "github" => identity.github.clone().unwrap_or_default(),
         "website" => identity.website.clone().unwrap_or_default(),
@@ -181,6 +206,25 @@ pub(super) fn set_identity_field(identity: &mut Identity, id: &str, value: &str)
         "city" => identity.city = empty_to_none(trimmed),
         "title" => identity.title = empty_to_none(trimmed),
         "resume" => identity.resume = empty_to_none(trimmed),
+        "birth_date" => identity.birth_date = empty_to_none(trimmed),
+        "age" => {
+            identity.age = if trimmed.is_empty() {
+                None
+            } else {
+                let digits: String = trimmed.chars().filter(|ch| ch.is_ascii_digit()).collect();
+                let parsed = digits.parse::<u8>().map_err(|_| {
+                    AppError::Validation("L'âge doit être un nombre entre 1 et 120".into())
+                })?;
+                if !(1..=120).contains(&parsed) {
+                    return Err(AppError::Validation(
+                        "L'âge doit être un nombre entre 1 et 120".into(),
+                    ));
+                }
+                Some(parsed)
+            };
+        }
+        "availability" => identity.availability = empty_to_none(trimmed),
+        "desired_contracts" => identity.desired_contracts = empty_to_none(trimmed),
         "linkedin" => identity.linkedin = empty_to_none(trimmed),
         "github" => identity.github = empty_to_none(trimmed),
         "website" => identity.website = empty_to_none(trimmed),

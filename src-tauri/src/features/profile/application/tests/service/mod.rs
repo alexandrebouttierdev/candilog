@@ -80,6 +80,7 @@ fn profil_complet_atteint_cent() {
             name: "AWS".into(),
             ..Certification::default()
         }],
+        interests: vec![],
     };
     let service = service(Memoire::default());
 
@@ -190,6 +191,7 @@ fn empty_request() -> ImportProfileRequest {
         languages: vec![],
         projects: vec![],
         certifications: vec![],
+        interests: vec![],
     }
 }
 

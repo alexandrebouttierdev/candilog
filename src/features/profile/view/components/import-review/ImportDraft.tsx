@@ -29,7 +29,7 @@ export function ImportDraft({
             </CardHeader>
             <div
               className={
-                section === "skills"
+                section === "skills" || section === "interests"
                   ? "flex flex-wrap gap-2 px-[17px] py-3"
                   : "divide-y divide-line"
               }
@@ -64,7 +64,7 @@ function PreviewBlock({
 }) {
   const errors = form.formState.errors;
   const { existing, proposed, allowAdd } = comparisonOf(preview, row);
-  const compact = row.section === "skills" && !row.conflict;
+  const compact = (row.section === "skills" || row.section === "interests") && !row.conflict;
 
   return (
     <article
@@ -172,6 +172,22 @@ function fieldsOf(
           {(props) => <TextInput {...props} {...form.register(`skills.${index}.value.name`)} />}
         </FormField>
       );
+    case "interests":
+      return compact ? (
+        <TextInput
+          aria-label={`Centre d'intérêt ${row.title}`}
+          {...form.register(`interests.${index}.value.name`)}
+        />
+      ) : (
+        <FormField
+          label="Centre d'intérêt"
+          error={errors.interests?.[index]?.value?.name?.message}
+        >
+          {(props) => (
+            <TextInput {...props} {...form.register(`interests.${index}.value.name`)} />
+          )}
+        </FormField>
+      );
     case "education":
       return (
         <div className="grid grid-cols-2 gap-2">
@@ -261,6 +277,14 @@ function comparisonOf(
     }
     case "skills": {
       const item = preview.skills[row.index];
+      return {
+        existing: item?.existing ? [item.existing.name] : null,
+        proposed: item ? [item.proposed.name] : [],
+        allowAdd: true,
+      };
+    }
+    case "interests": {
+      const item = preview.interests[row.index];
       return {
         existing: item?.existing ? [item.existing.name] : null,
         proposed: item ? [item.proposed.name] : [],

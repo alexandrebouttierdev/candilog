@@ -24,15 +24,31 @@ export type Identity = { first_name: string, name: string, email: string, phone:
  */
 title: string | null, 
 /**
- * Présentation détaillée du parcours et de l'objectif.
+ * Présentation / résumé du profil CV — facultatif.
  */
-resume: string | null, linkedin: string | null, github: string | null, website: string | null, };
+resume: string | null, 
+/**
+ * Date de naissance telle qu'écrite sur le CV — facultatif.
+ */
+birth_date: string | null, 
+/**
+ * Âge déclaré sur le CV — facultatif, non recalculé automatiquement.
+ */
+age: number | null, 
+/**
+ * Disponibilité (ex. « Sous 1 mois ») — facultatif.
+ */
+availability: string | null, 
+/**
+ * Contrats recherchés (ex. « CDI • Freelance ») — facultatif.
+ */
+desired_contracts: string | null, linkedin: string | null, github: string | null, website: string | null, };
 
 export type ImportCertificationDecision = { id: string, selected: boolean, value: Certification, existing_index: number | null, resolution: ImportResolution, };
 
 export type ImportCertificationItem = { id: string, proposed: Certification, existing: Certification | null, existing_index: number | null, has_conflict: boolean, };
 
-export type ImportDetectedCounts = { identity: number, experiences: number, skills: number, education: number, languages: number, projects: number, certifications: number, };
+export type ImportDetectedCounts = { identity: number, experiences: number, skills: number, education: number, languages: number, projects: number, certifications: number, interests: number, };
 
 export type ImportEducationDecision = { id: string, selected: boolean, value: Education, existing_index: number | null, resolution: ImportResolution, };
 
@@ -42,13 +58,17 @@ export type ImportExperienceDecision = { id: string, selected: boolean, value: E
 
 export type ImportExperienceItem = { id: string, proposed: Experience, existing: Experience | null, existing_index: number | null, has_conflict: boolean, };
 
+export type ImportInterestDecision = { id: string, selected: boolean, value: Interest, existing_index: number | null, resolution: ImportResolution, };
+
+export type ImportInterestItem = { id: string, proposed: Interest, existing: Interest | null, existing_index: number | null, has_conflict: boolean, };
+
 export type ImportLanguageDecision = { id: string, selected: boolean, value: Language, existing_index: number | null, resolution: ImportResolution, };
 
 export type ImportLanguageItem = { id: string, proposed: Language, existing: Language | null, existing_index: number | null, has_conflict: boolean, };
 
-export type ImportProfilePreview = { identity: Array<ImportScalarItem>, experiences: Array<ImportExperienceItem>, skills: Array<ImportSkillItem>, education: Array<ImportEducationItem>, languages: Array<ImportLanguageItem>, projects: Array<ImportProjectItem>, certifications: Array<ImportCertificationItem>, counts: ImportDetectedCounts, };
+export type ImportProfilePreview = { identity: Array<ImportScalarItem>, experiences: Array<ImportExperienceItem>, skills: Array<ImportSkillItem>, education: Array<ImportEducationItem>, languages: Array<ImportLanguageItem>, projects: Array<ImportProjectItem>, certifications: Array<ImportCertificationItem>, interests: Array<ImportInterestItem>, counts: ImportDetectedCounts, };
 
-export type ImportProfileRequest = { identity: Array<ImportScalarDecision>, experiences: Array<ImportExperienceDecision>, skills: Array<ImportSkillDecision>, education: Array<ImportEducationDecision>, languages: Array<ImportLanguageDecision>, projects: Array<ImportProjectDecision>, certifications: Array<ImportCertificationDecision>, };
+export type ImportProfileRequest = { identity: Array<ImportScalarDecision>, experiences: Array<ImportExperienceDecision>, skills: Array<ImportSkillDecision>, education: Array<ImportEducationDecision>, languages: Array<ImportLanguageDecision>, projects: Array<ImportProjectDecision>, certifications: Array<ImportCertificationDecision>, interests: Array<ImportInterestDecision>, };
 
 export type ImportProfileResult = { added: number, replaced: number, skipped: number, };
 
@@ -67,6 +87,11 @@ export type ImportSkillDecision = { id: string, selected: boolean, value: Skill,
 export type ImportSkillItem = { id: string, proposed: Skill, existing: Skill | null, existing_index: number | null, has_conflict: boolean, };
 
 /**
+ * Centre d'intérêt déclaré sur le CV — facultatif.
+ */
+export type Interest = { name: string, };
+
+/**
  * Language parlée et niveau associé.
  */
 export type Language = { name: string, level: string, };
@@ -82,7 +107,7 @@ export type Profile = { identity: Identity,
  * dédiées la posent ou la retirent. Un écran qui n'affiche pas la photo ne risque donc
  * pas de l'effacer en enregistrant le reste du profil.
  */
-photo: string | null, experiences: Array<Experience>, skills: Array<Skill>, education: Array<Education>, languages: Array<Language>, projects: Array<Project>, certifications: Array<Certification>, };
+photo: string | null, experiences: Array<Experience>, skills: Array<Skill>, education: Array<Education>, languages: Array<Language>, projects: Array<Project>, certifications: Array<Certification>, interests: Array<Interest>, };
 
 /**
  * Payload utile de l'écran Profile.

@@ -95,6 +95,7 @@ export function ProfilePage() {
                   projects: vm.data.profile.projects.length,
                   certifications: vm.data.profile.certifications.length,
                   languages: vm.data.profile.languages.length,
+                  interests: vm.data.profile.interests.length,
                 }}
               />
             </div>
@@ -131,6 +132,17 @@ export function ProfilePage() {
                     <SimpleList items={vm.data.profile.languages.map((item) => ({ title: item.name, meta: item.level, body: null }))} empty="Aucune langue ajoutée" action="Ajouter une langue" onEdit={() => setSection("languages")} />
                   </SectionCard>
                 </ProfilePanel>
+                <ProfilePanel tab="interests" active={tab === "interests"}>
+                  <SectionCard icon="palette" title="Centres d'intérêts" actionLabel="Gérer" onEdit={() => setSection("interests")}>
+                    <SkillsLikeList
+                      items={vm.data.profile.interests.map((item) => item.name)}
+                      empty="Aucun centre d'intérêt ajouté"
+                      emptyDescription="Facultatif. Ajoutez vos hobbies et centres d'intérêts pour enrichir le profil."
+                      action="Ajouter des centres d'intérêts"
+                      onEdit={() => setSection("interests")}
+                    />
+                  </SectionCard>
+                </ProfilePanel>
               </div>
 
               <div className="flex max-w-[380px] min-w-0 flex-[1_1_300px] flex-col gap-4">
@@ -155,6 +167,17 @@ export function ProfilePage() {
                     <Row label="Téléphone" value={vm.data.profile.identity.phone} />
                     <Row label="Adresse" value={vm.data.profile.identity.address} />
                     <Row label="Ville" value={vm.data.profile.identity.city} />
+                    <Row label="Date de naissance" value={vm.data.profile.identity.birth_date} />
+                    <Row
+                      label="Âge"
+                      value={
+                        vm.data.profile.identity.age == null
+                          ? null
+                          : String(vm.data.profile.identity.age)
+                      }
+                    />
+                    <Row label="Disponibilité" value={vm.data.profile.identity.availability} />
+                    <Row label="Contrats" value={vm.data.profile.identity.desired_contracts} />
                     <Row label="LinkedIn" value={vm.data.profile.identity.linkedin} />
                     <Row label="GitHub" value={vm.data.profile.identity.github} />
                     <Row label="Site" value={vm.data.profile.identity.website} />
@@ -230,6 +253,44 @@ function SkillsList({ profile, onEdit }: { profile: Profile; onEdit: () => void 
           className="rounded-pill bg-neutral-tint px-2.5 py-[5px] text-label font-medium text-ink-muted"
         >
           {item.name}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function SkillsLikeList({
+  items,
+  empty,
+  emptyDescription,
+  action,
+  onEdit,
+}: {
+  items: string[];
+  empty: string;
+  emptyDescription: string;
+  action: string;
+  onEdit: () => void;
+}) {
+  if (items.length === 0) {
+    return (
+      <Vide
+        icon="palette"
+        title={empty}
+        description={emptyDescription}
+        action={action}
+        onEdit={onEdit}
+      />
+    );
+  }
+  return (
+    <ul className="flex flex-wrap gap-[7px] px-[18px] py-[15px]">
+      {items.map((name, index) => (
+        <li
+          key={`${name}-${index}`}
+          className="rounded-pill bg-neutral-tint px-2.5 py-[5px] text-label font-medium text-ink-muted"
+        >
+          {name}
         </li>
       ))}
     </ul>

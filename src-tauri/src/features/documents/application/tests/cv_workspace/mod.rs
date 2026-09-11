@@ -65,6 +65,7 @@ fn profile() -> Profile {
             date: Some("2024-02".into()),
             url: None,
         }],
+        interests: vec![],
     }
 }
 

@@ -140,10 +140,13 @@ fn score_identity(
         points += 2;
     }
     if field_match(&expected.email, &actual.email) {
-        points += 3;
+        points += 2;
     }
     if phone_match(expected.phone.as_deref(), actual.phone.as_deref()) {
-        points += 3;
+        points += 2;
+    }
+    if optional_field_match(expected.address.as_deref(), actual.address.as_deref()) {
+        points += 2;
     }
     UserBenchmarkCategoryScore {
         label: "Identité".into(),
@@ -162,7 +165,7 @@ fn score_experiences(
             "{}|{}|{}",
             normalize(&item.title),
             normalize(&item.company),
-            normalize(&item.start_date)
+            normalize_date_key(&item.start_date)
         )
     });
     UserBenchmarkCategoryScore {
@@ -267,6 +270,14 @@ fn field_match(expected: &str, actual: &str) -> bool {
         && (expected == actual || actual.contains(&expected) || expected.contains(&actual))
 }
 
+fn optional_field_match(expected: Option<&str>, actual: Option<&str>) -> bool {
+    match (expected, actual) {
+        (None, _) | (Some(""), _) => true,
+        (Some(expected), Some(actual)) => field_match(expected, actual),
+        (Some(_), None) => false,
+    }
+}
+
 fn phone_match(expected: Option<&str>, actual: Option<&str>) -> bool {
     let expected_digits = expected.map(digits_only).unwrap_or_default();
     let actual_digits = actual.map(digits_only).unwrap_or_default();
@@ -291,6 +302,44 @@ fn normalize(value: &str) -> String {
         .replace('ù', "u")
         .replace('ô', "o")
         .replace('ç', "c")
+}
+
+/// Aligné sur `normalize_profile_dates` : « 01/2023 » et « 2023-01 » doivent scorer pareil.
+fn normalize_date_key(value: &str) -> String {
+    let key = normalize(value);
+    let groups: Vec<&str> = key
+        .split(|character: char| !character.is_ascii_digit())
+        .filter(|group| !group.is_empty())
+        .collect();
+    let year_index = groups.iter().position(|group| {
+        group.len() == 4
+            && group
+                .parse::<u32>()
+                .is_ok_and(|year| (1900..=2100).contains(&year))
+    });
+    let Some(year_index) = year_index else {
+        return key;
+    };
+    let year = groups[year_index];
+    let month = groups
+        .get(year_index + 1)
+        .and_then(|group| month_value(group))
+        .or_else(|| {
+            year_index
+                .checked_sub(1)
+                .and_then(|before| month_value(groups[before]))
+        });
+    match month {
+        Some(month) => format!("{year}-{month:02}"),
+        None => year.to_owned(),
+    }
+}
+
+fn month_value(group: &str) -> Option<u32> {
+    (group.len() <= 2)
+        .then(|| group.parse().ok())
+        .flatten()
+        .filter(|month| (1..=12).contains(month))
 }
 
 fn digits_only(value: &str) -> String {
@@ -356,7 +405,7 @@ mod tests {
     fn ground_truth_chargeable() {
         let truth = load_ground_truth();
         assert!(truth.is_ok(), "{}", truth.err().unwrap_or_default());
-        assert_eq!(truth.unwrap().benchmark_version, 1);
+        assert_eq!(truth.unwrap().benchmark_version, 2);
     }
 
     /// Régression : en installation, `CARGO_MANIFEST_DIR` pointe vers la machine de build,
@@ -376,5 +425,54 @@ mod tests {
             "le fichier matérialisé doit être un PDF"
         );
         assert_eq!(bytes.as_slice(), BENCHMARK_PDF_BYTES);
+    }
+
+    #[test]
+    fn les_dates_d_experience_scorent_malgre_les_formats_divergents() {
+        let expected = Profile {
+            experiences: vec![Experience {
+                title: "Senior Full-Stack Developer".into(),
+                company: "AlthéaRH".into(),
+                start_date: "01/2023".into(),
+                ..Experience::default()
+            }],
+            ..Profile::default()
+        };
+        let actual = Profile {
+            experiences: vec![Experience {
+                title: "Senior Full-Stack Developer".into(),
+                company: "AlthéaRH".into(),
+                start_date: "2023-01".into(),
+                ..Experience::default()
+            }],
+            ..Profile::default()
+        };
+        let score = score_extracted_profile(&expected, &actual);
+        let experiences = score
+            .categories
+            .iter()
+            .find(|category| category.label == "Expériences")
+            .expect("catégorie expériences");
+        assert_eq!(experiences.score, experiences.max_score);
+    }
+
+    #[test]
+    fn l_adresse_compte_dans_le_score_identite() {
+        let expected = Profile {
+            identity: Identity {
+                first_name: "Thomas".into(),
+                name: "Candilog".into(),
+                email: "thomas.candilog.dev@gmail.com".into(),
+                phone: Some("0618425791".into()),
+                address: Some("18 rue des Tanneurs, 35000 Rennes".into()),
+                ..Identity::default()
+            },
+            ..Profile::default()
+        };
+        let mut without_address = expected.clone();
+        without_address.identity.address = None;
+        let with = score_extracted_profile(&expected, &expected);
+        let without = score_extracted_profile(&expected, &without_address);
+        assert!(with.total > without.total);
     }
 }
