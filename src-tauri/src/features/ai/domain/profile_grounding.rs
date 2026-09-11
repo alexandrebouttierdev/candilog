@@ -10,20 +10,25 @@
 //! `ground_imported_resume` le fait déjà pour l'analyse de CV.
 
 use super::normalization::contains_search_term;
-use crate::features::profile::domain::{Education, Profile};
+use crate::features::profile::domain::{Education, Identity, Profile};
 
 /// Options du recadrage : en Vision, le texte PDF n'est qu'un complément partiel — les
-/// descriptions libres viennent du document visuel et ne doivent pas être effacées faute
-/// d'y figurer mot pour mot.
+/// descriptions libres et le prénom / nom lus sur les images ne doivent pas être effacés
+/// faute d'y figurer mot pour mot.
 #[derive(Debug, Clone, Copy)]
 pub struct GroundingOptions {
     /// Recadrer aussi résumé et descriptions (expériences, formations, projets, etc.).
     pub free_text: bool,
+    /// Recadrer prénom et nom : un PDF complémentaire tronqué les effaçait sinon.
+    pub person_names: bool,
 }
 
 impl Default for GroundingOptions {
     fn default() -> Self {
-        Self { free_text: true }
+        Self {
+            free_text: true,
+            person_names: true,
+        }
     }
 }
 
@@ -36,15 +41,24 @@ pub fn ground_imported_profile(source: &str, profile: &mut Profile) {
     ground_imported_profile_with(source, profile, GroundingOptions::default());
 }
 
-/// Recadrage pour le mode Vision : conserve les descriptions libres extraites des images.
+/// Recadrage pour le mode Vision : conserve prénom, nom et descriptions libres des images.
 pub fn ground_imported_profile_keep_free_text(source: &str, profile: &mut Profile) {
-    ground_imported_profile_with(source, profile, GroundingOptions { free_text: false });
+    ground_imported_profile_with(
+        source,
+        profile,
+        GroundingOptions {
+            free_text: false,
+            person_names: false,
+        },
+    );
 }
 
 fn ground_imported_profile_with(source: &str, profile: &mut Profile, options: GroundingOptions) {
     let identity = &mut profile.identity;
-    retenir(source, &mut identity.first_name);
-    retenir(source, &mut identity.name);
+    if options.person_names {
+        retenir(source, &mut identity.first_name);
+        retenir(source, &mut identity.name);
+    }
     retenir(source, &mut identity.email);
     retenir_option(source, &mut identity.phone);
     retenir_option(source, &mut identity.address);
@@ -184,6 +198,83 @@ fn decouper_description(texte: &str) -> Vec<String> {
 /// (« . »), qu'une ponctuation quelconque du CV suffirait sinon à valider.
 fn est_recopie(source: &str, value: &str) -> bool {
     value.chars().any(char::is_alphanumeric) && contains_search_term(source, value)
+}
+
+/// Complète prénom et nom quand l'un des deux (ou les deux) est vide.
+///
+/// Un petit modèle met souvent le nom complet dans un seul champ. On découpe sur le
+/// premier espace. Si les deux restent vides, on tente une ligne d'identité en tête du
+/// texte source — utile après un recadrage Vision qui n'a pas touché aux noms.
+pub fn completer_identite_noms(source: &str, profile: &mut Profile) {
+    decouper_nom_complet(&mut profile.identity);
+    if profile.identity.first_name.trim().is_empty() && profile.identity.name.trim().is_empty() {
+        if let Some((prenom, nom)) = premier_nom_personne(source) {
+            profile.identity.first_name = prenom;
+            profile.identity.name = nom;
+        }
+    }
+}
+
+/// Découpe un nom complet coincé dans `first_name` ou `name`.
+fn decouper_nom_complet(identity: &mut Identity) {
+    let prenom_vide = identity.first_name.trim().is_empty();
+    let nom_vide = identity.name.trim().is_empty();
+    if prenom_vide == nom_vide {
+        return;
+    }
+    let source = if prenom_vide {
+        identity.name.trim()
+    } else {
+        identity.first_name.trim()
+    };
+    let Some((prenom, nom)) = couper_prenom_nom(source) else {
+        return;
+    };
+    identity.first_name = prenom;
+    identity.name = nom;
+}
+
+fn couper_prenom_nom(complet: &str) -> Option<(String, String)> {
+    let mut parts = complet.split_whitespace();
+    let prenom = parts.next()?.to_owned();
+    let reste: Vec<&str> = parts.collect();
+    if reste.is_empty() {
+        return None;
+    }
+    Some((prenom, reste.join(" ")))
+}
+
+/// Première ligne courte qui ressemble à « Prénom Nom », extraite telle quelle.
+fn premier_nom_personne(source: &str) -> Option<(String, String)> {
+    for ligne in source.lines() {
+        let ligne = ligne.trim();
+        if ligne.is_empty()
+            || ligne.contains('@')
+            || ligne.to_ascii_lowercase().contains("http")
+            || ligne.chars().any(|caractere| caractere.is_ascii_digit())
+        {
+            continue;
+        }
+        let mots: Vec<&str> = ligne.split_whitespace().collect();
+        if !(2..=4).contains(&mots.len()) || ligne.chars().count() > 60 {
+            continue;
+        }
+        if !mots.iter().all(|mot| est_jeton_nom(mot)) {
+            continue;
+        }
+        return couper_prenom_nom(ligne);
+    }
+    None
+}
+
+fn est_jeton_nom(valeur: &str) -> bool {
+    let epure = valeur.trim_matches(|caractere: char| {
+        matches!(caractere, ',' | ';' | '.' | ':' | '!' | '?' | '"' | '\'' | '(' | ')')
+    });
+    !epure.is_empty()
+        && epure.chars().all(|caractere| {
+            caractere.is_alphabetic() || matches!(caractere, '-' | '\'' | '’')
+        })
 }
 
 /// Complète l'email et le téléphone vides à partir du texte déjà soumis au modèle.
@@ -1275,6 +1366,8 @@ Mise en place de pipelines CI/CD";
             ..Profile::default()
         };
 
+        profile.identity.first_name = "Thomas".into();
+        profile.identity.name = "Candilog".into();
         ground_imported_profile_keep_free_text(source, &mut profile);
 
         assert_eq!(
@@ -1287,6 +1380,58 @@ Mise en place de pipelines CI/CD";
         );
         // Le titre absent du texte partiel est bien effacé.
         assert_eq!(profile.experiences[0].title, "");
+        // Prénom et nom lus sur l'image restent, même si le PDF complémentaire est pauvre.
+        assert_eq!(profile.identity.first_name, "Thomas");
+        assert_eq!(profile.identity.name, "Candilog");
+    }
+
+    #[test]
+    fn decoupe_un_nom_complet_colle_dans_un_seul_champ() {
+        let mut dans_le_nom = Profile {
+            identity: Identity {
+                name: "Alexandre Bouttier".into(),
+                ..Identity::default()
+            },
+            ..Profile::default()
+        };
+        completer_identite_noms("", &mut dans_le_nom);
+        assert_eq!(dans_le_nom.identity.first_name, "Alexandre");
+        assert_eq!(dans_le_nom.identity.name, "Bouttier");
+
+        let mut dans_le_prenom = Profile {
+            identity: Identity {
+                first_name: "Camille Martin".into(),
+                ..Identity::default()
+            },
+            ..Profile::default()
+        };
+        completer_identite_noms("", &mut dans_le_prenom);
+        assert_eq!(dans_le_prenom.identity.first_name, "Camille");
+        assert_eq!(dans_le_prenom.identity.name, "Martin");
+    }
+
+    #[test]
+    fn complete_prenom_et_nom_vides_depuis_le_texte_source() {
+        let source = "Alexandre Bouttier\nTechnicien systèmes\nalexandre@example.fr";
+        let mut profile = identite_vide();
+        completer_identite_noms(source, &mut profile);
+        assert_eq!(profile.identity.first_name, "Alexandre");
+        assert_eq!(profile.identity.name, "Bouttier");
+    }
+
+    #[test]
+    fn ne_decoupe_pas_quand_prenom_et_nom_sont_deja_remplis() {
+        let mut profile = Profile {
+            identity: Identity {
+                first_name: "Alexandre".into(),
+                name: "Bouttier".into(),
+                ..Identity::default()
+            },
+            ..Profile::default()
+        };
+        completer_identite_noms("Autre Personne\n...", &mut profile);
+        assert_eq!(profile.identity.first_name, "Alexandre");
+        assert_eq!(profile.identity.name, "Bouttier");
     }
 
     fn identite_vide() -> Profile {

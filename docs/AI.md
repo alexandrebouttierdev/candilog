@@ -135,7 +135,9 @@ ainsi vidées de leur libellé sont retirées. Les dates, déjà reformatées, e
 Les descriptions multi-puces sont recadrées **fragment par fragment** : une mission
 présente sur le CV n'est plus perdue parce que le modèle a joint plusieurs puces. En mode
 **Vision**, le texte PDF n'est qu'un complément partiel : le recadrage y conserve les
-descriptions libres lues sur les images (`ground_imported_profile_keep_free_text`).
+descriptions libres et le prénom / nom lus sur les images
+(`ground_imported_profile_keep_free_text`). Un nom complet coincé dans un seul champ est
+ensuite découpé (`completer_identite_noms`).
 Le rapprochement passe par `search_key` et exige des frontières alphanumériques : un modèle
 de 350 M renvoyait sinon des fragments de domaine (`.com`, `.fr`, `.org`), des morceaux de
 mots (`.franc`) et jusqu'à une certification absente du document, que le seul rejet des

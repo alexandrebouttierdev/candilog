@@ -5,6 +5,9 @@ import { Button, Icon, IconButton, Skeleton } from "@/shared/ui";
 import type { IconName } from "@/shared/ui/icon-names";
 
 export type ProfileTab =
+  | "identity"
+  | "objective"
+  | "online"
   | "experiences"
   | "skills"
   | "education"
@@ -14,6 +17,9 @@ export type ProfileTab =
   | "interests";
 
 const TAB_LABELS: Record<ProfileTab, { label: string; icon: IconName }> = {
+  identity: { label: "Identité", icon: "badge" },
+  objective: { label: "Objectif professionnel", icon: "target" },
+  online: { label: "Présence en ligne", icon: "link" },
   experiences: { label: "Expériences", icon: "work_history" },
   skills: { label: "Compétences", icon: "psychology" },
   education: { label: "Formations", icon: "school" },
@@ -30,11 +36,15 @@ export function ProfileTabs({
   onChange,
 }: {
   active: ProfileTab;
-  counts: Record<ProfileTab, number>;
+  counts: Record<ProfileTab, number | null>;
   onChange: (tab: ProfileTab) => void;
 }) {
   return (
-    <div role="tablist" aria-label="Sections du profil" className="mt-[18px] flex gap-[3px]">
+    <div
+      role="tablist"
+      aria-label="Sections du profil"
+      className="mt-[18px] flex gap-[3px] overflow-x-auto"
+    >
       {(Object.keys(TAB_LABELS) as ProfileTab[]).map((tab) => {
         const meta = TAB_LABELS[tab];
         const tabs = Object.keys(TAB_LABELS) as ProfileTab[];
@@ -53,6 +63,7 @@ export function ProfileTabs({
           document.getElementById(`profil-tab-${prochainTab}`)?.focus();
         };
         const selected = active === tab;
+        const count = counts[tab];
         return (
           <button
             key={tab}
@@ -71,9 +82,11 @@ export function ProfileTabs({
           >
             <Icon name={meta.icon} size={16} />
             {meta.label}
-            <span className="rounded-tag bg-neutral-tint px-[5px] py-px text-eyebrow font-semibold text-ink-faint">
-              {counts[tab]}
-            </span>
+            {count != null ? (
+              <span className="rounded-tag bg-neutral-tint px-[5px] py-px text-eyebrow font-semibold text-ink-faint">
+                {count}
+              </span>
+            ) : null}
           </button>
         );
       })}

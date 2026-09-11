@@ -1,4 +1,4 @@
-import type { Profile } from "@/shared/types/generated/profile";
+import type { Identity, Profile } from "@/shared/types/generated/profile";
 import { ModalHost } from "@/shared/ui";
 import { ProfileCertificationsForm } from "./profile-sections/ProfileCertificationsForm";
 import { ProfileEducationForm } from "./profile-sections/ProfileEducationForm";
@@ -12,6 +12,8 @@ import type { IconName } from "@/shared/ui/icon-names";
 
 export type ProfileSection =
   | "identity"
+  | "objective"
+  | "online"
   | "experiences"
   | "skills"
   | "education"
@@ -21,7 +23,9 @@ export type ProfileSection =
   | "interests";
 
 const META: Record<ProfileSection, { icon: IconName; title: string; subtitle: string }> = {
-  identity: { icon: "person", title: "Identité et objectif", subtitle: "Présentez votre projet professionnel" },
+  identity: { icon: "badge", title: "Identité", subtitle: "Coordonnées et informations personnelles" },
+  objective: { icon: "target", title: "Objectif professionnel", subtitle: "Titre, résumé et recherche" },
+  online: { icon: "link", title: "Présence en ligne", subtitle: "Liens professionnels" },
   experiences: { icon: "work_history", title: "Expériences", subtitle: "Décrivez les étapes utiles de votre parcours" },
   skills: { icon: "psychology", title: "Compétences", subtitle: "Ajoutez vos savoir-faire principaux" },
   education: { icon: "school", title: "Formations", subtitle: "Diplômes et parcours de formation" },
@@ -30,6 +34,8 @@ const META: Record<ProfileSection, { icon: IconName; title: string; subtitle: st
   certifications: { icon: "workspace_premium", title: "Certifications", subtitle: "Ajoutez vos qualifications reconnues" },
   interests: { icon: "palette", title: "Centres d'intérêts", subtitle: "Facultatif — hobbies et centres d'intérêts" },
 };
+
+const IDENTITY_SECTIONS = new Set<ProfileSection>(["identity", "objective", "online"]);
 
 /** Coquille de navigation : chaque section possède son propre formulaire RHF + Zod. */
 export function ProfileSectionModal({
@@ -47,8 +53,15 @@ export function ProfileSectionModal({
 }) {
   const meta = META[section];
   const formId = `profile-${section}-form`;
-  const save = async <K extends ProfileSection>(key: K, value: Profile[K]) => {
+  const saveList = async <K extends Exclude<ProfileSection, "identity" | "objective" | "online">>(
+    key: K,
+    value: Profile[K],
+  ) => {
     await onSubmit({ ...profile, [key]: value });
+    onClose();
+  };
+  const saveIdentity = async (value: Identity) => {
+    await onSubmit({ ...profile, identity: value });
     onClose();
   };
 
@@ -65,16 +78,23 @@ export function ProfileSectionModal({
         const form = document.getElementById(formId);
         if (form instanceof HTMLFormElement) form.requestSubmit();
       }}
-      width={section === "identity" ? "720px" : "760px"}
+      width={IDENTITY_SECTIONS.has(section) ? "720px" : "760px"}
     >
-      {section === "identity" ? <ProfileIdentityForm id={formId} value={profile.identity} onSubmit={(value) => save("identity", value)} /> : null}
-      {section === "experiences" ? <ProfileExperiencesForm id={formId} value={profile.experiences} onSubmit={(value) => save("experiences", value)} /> : null}
-      {section === "skills" ? <ProfileSkillsForm id={formId} value={profile.skills} onSubmit={(value) => save("skills", value)} /> : null}
-      {section === "education" ? <ProfileEducationForm id={formId} value={profile.education} onSubmit={(value) => save("education", value)} /> : null}
-      {section === "languages" ? <ProfileLanguagesForm id={formId} value={profile.languages} onSubmit={(value) => save("languages", value)} /> : null}
-      {section === "projects" ? <ProfileProjectsForm id={formId} value={profile.projects} onSubmit={(value) => save("projects", value)} /> : null}
-      {section === "certifications" ? <ProfileCertificationsForm id={formId} value={profile.certifications} onSubmit={(value) => save("certifications", value)} /> : null}
-      {section === "interests" ? <ProfileInterestsForm id={formId} value={profile.interests} onSubmit={(value) => save("interests", value)} /> : null}
+      {section === "identity" || section === "objective" || section === "online" ? (
+        <ProfileIdentityForm
+          id={formId}
+          section={section}
+          value={profile.identity}
+          onSubmit={saveIdentity}
+        />
+      ) : null}
+      {section === "experiences" ? <ProfileExperiencesForm id={formId} value={profile.experiences} onSubmit={(value) => saveList("experiences", value)} /> : null}
+      {section === "skills" ? <ProfileSkillsForm id={formId} value={profile.skills} onSubmit={(value) => saveList("skills", value)} /> : null}
+      {section === "education" ? <ProfileEducationForm id={formId} value={profile.education} onSubmit={(value) => saveList("education", value)} /> : null}
+      {section === "languages" ? <ProfileLanguagesForm id={formId} value={profile.languages} onSubmit={(value) => saveList("languages", value)} /> : null}
+      {section === "projects" ? <ProfileProjectsForm id={formId} value={profile.projects} onSubmit={(value) => saveList("projects", value)} /> : null}
+      {section === "certifications" ? <ProfileCertificationsForm id={formId} value={profile.certifications} onSubmit={(value) => saveList("certifications", value)} /> : null}
+      {section === "interests" ? <ProfileInterestsForm id={formId} value={profile.interests} onSubmit={(value) => saveList("interests", value)} /> : null}
     </ModalHost>
   );
 }

@@ -1466,14 +1466,18 @@ async fn run_profile_pipeline(
         if vision {
             // En Vision, le texte PDF n'est qu'un complément partiel : on y recadre
             // identité et libellés courts, mais on conserve les descriptions lues sur
-            // les images (missions, projets, certifications).
+            // les images (missions, projets, certifications) et le prénom / nom.
             if !analysis_text.trim().is_empty() {
                 ground_imported_profile_keep_free_text(analysis_text, &mut candidat);
+                completer_identite_noms(analysis_text, &mut candidat);
                 completer_contacts_vides(analysis_text, &mut candidat);
                 completer_formations_manquantes(analysis_text, &mut candidat);
+            } else {
+                completer_identite_noms("", &mut candidat);
             }
         } else {
             ground_imported_profile(analysis_text, &mut candidat);
+            completer_identite_noms(analysis_text, &mut candidat);
             completer_contacts_vides(analysis_text, &mut candidat);
             completer_formations_manquantes(analysis_text, &mut candidat);
         }

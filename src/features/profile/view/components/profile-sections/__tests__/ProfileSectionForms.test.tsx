@@ -89,6 +89,7 @@ describe("formulaires de sections Profil", () => {
       />,
     );
 
+    expect(screen.getByRole("dialog", { name: "Identité" })).toBeInTheDocument();
     await user.clear(screen.getByLabelText("Téléphone"));
     await user.click(screen.getByRole("button", { name: "Enregistrer" }));
 
@@ -96,6 +97,29 @@ describe("formulaires de sections Profil", () => {
     expect(onSubmit).toHaveBeenCalledWith({
       ...profile,
       identity: { ...profile.identity, phone: null },
+    });
+  });
+
+  it("édite l'objectif sans toucher aux coordonnées", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(
+      <ProfileSectionModal
+        section="objective"
+        profile={profile}
+        busy={false}
+        onClose={vi.fn()}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    await user.type(screen.getByLabelText("Titre ou poste visé"), "Développeur Rust");
+    await user.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit).toHaveBeenCalledWith({
+      ...profile,
+      identity: { ...profile.identity, title: "Développeur Rust" },
     });
   });
 });

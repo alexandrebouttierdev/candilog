@@ -4,6 +4,9 @@ import userEvent from "@testing-library/user-event";
 import { CompletionBar, ProfilePanel, ProfileTabs } from "../ProfileUi";
 
 const counts = {
+  identity: null,
+  objective: null,
+  online: null,
   experiences: 2,
   skills: 5,
   education: 1,
@@ -19,6 +22,9 @@ describe("interface du profil", () => {
     render(<ProfileTabs active="experiences" counts={counts} onChange={onChange} />);
 
     expect(screen.getByRole("tab", { name: /Expériences/ })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: /Identité/ })).toHaveAttribute("aria-selected", "false");
+    expect(screen.getByRole("tab", { name: /Objectif professionnel/ })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Présence en ligne/ })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Compétences/ })).toHaveAttribute("aria-selected", "false");
     await userEvent.click(screen.getByRole("tab", { name: /Compétences/ }));
     expect(onChange).toHaveBeenCalledWith("skills");
@@ -27,6 +33,13 @@ describe("interface du profil", () => {
     await userEvent.keyboard("{ArrowRight}");
     expect(onChange).toHaveBeenLastCalledWith("skills");
     expect(screen.getByRole("tab", { name: /Compétences/ })).toHaveFocus();
+  });
+
+  it("n'affiche pas de compteur sur les onglets d'identité", () => {
+    render(<ProfileTabs active="identity" counts={counts} onChange={vi.fn()} />);
+    const identite = screen.getByRole("tab", { name: /Identité/ });
+    expect(identite.querySelector(".rounded-tag")).toBeNull();
+    expect(screen.getByRole("tab", { name: /Expériences/ }).querySelector(".rounded-tag")).toHaveTextContent("2");
   });
 
   it("ne rend que le panneau actif", () => {
