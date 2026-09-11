@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { optionalText } from "@/shared/lib/zod-helpers";
-import { FORMAT_DATE, versDateIso } from "@/shared/lib/dates";
+import { FORMAT_DATE, toIsoDate } from "@/shared/lib/dates";
 
 /**
  * Form relance, création et modification.
@@ -14,10 +14,10 @@ export const followUpFormSchema = z.object({
     .string()
     .trim()
     .min(1, "La date est obligatoire")
-    .refine((value) => versDateIso(value) !== null, {
+    .refine((value) => toIsoDate(value) !== null, {
       message: `Date invalide — format attendu ${FORMAT_DATE}.`,
     })
-    .transform((value) => versDateIso(value) as string),
+    .transform((value) => toIsoDate(value) as string),
   type: z.string().trim().min(1, "Le canal est obligatoire"),
   notes: optionalText,
 });

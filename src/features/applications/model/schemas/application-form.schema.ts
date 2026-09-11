@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { optionalId, optionalText } from "@/shared/lib/zod-helpers";
-import { FORMAT_DATE, versDateIso } from "@/shared/lib/dates";
+import { FORMAT_DATE, toIsoDate } from "@/shared/lib/dates";
 
 /** Borne haute du volume horaire, alignée sur `MAX_WEEKLY_HOURS` côté Rust. */
 export const MAX_WEEKLY_HOURS = 168;
@@ -62,11 +62,11 @@ export const applicationFormSchema = z
       .string()
       .trim()
       .min(1, "La date d'envoi est obligatoire")
-      .refine((value) => versDateIso(value) !== null, {
+      .refine((value) => toIsoDate(value) !== null, {
         message: `Date invalide — format attendu ${FORMAT_DATE}.`,
       })
       // Transformée dès la validation : le ViewModel et le backend ne manipulent que de l'ISO.
-      .transform((value) => versDateIso(value) as string),
+      .transform((value) => toIsoDate(value) as string),
     job_url: z.string().trim().default(""),
     notes: optionalText,
   })

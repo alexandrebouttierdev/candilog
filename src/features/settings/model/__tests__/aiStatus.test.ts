@@ -20,10 +20,10 @@ describe("aiStatus", () => {
   });
 
   it("réclame la clé API manquante d'un fournisseur distant", () => {
-    const etat = aiStatus(llm({ api_key_configured: false }), "idle");
+    const status = aiStatus(llm({ api_key_configured: false }), "idle");
 
-    expect(etat.label).toBe("Non configuré");
-    expect(etat.hint).toBe("Renseignez la clé API pour utiliser l'assistance.");
+    expect(status.label).toBe("Non configuré");
+    expect(status.hint).toBe("Renseignez la clé API pour utiliser l'assistance.");
   });
 
   it("n'exige aucune clé pour Ollama, qui tourne en local", () => {
@@ -33,19 +33,19 @@ describe("aiStatus", () => {
   });
 
   it("réclame l'endpoint d'un fournisseur personnalisé", () => {
-    const etat = aiStatus(
+    const status = aiStatus(
       llm({ provider: { custom: "custom" }, api_key_configured: false, endpoint: "" }),
       "idle",
     );
 
-    expect(etat.label).toBe("Non configuré");
-    expect(etat.hint).toBe("Renseignez l'endpoint pour utiliser l'assistance.");
+    expect(status.label).toBe("Non configuré");
+    expect(status.hint).toBe("Renseignez l'endpoint pour utiliser l'assistance.");
   });
 
   it("cumule les champs manquants dans un seul message", () => {
-    const etat = aiStatus(llm({ model: "  ", api_key_configured: false }), "idle");
+    const status = aiStatus(llm({ model: "  ", api_key_configured: false }), "idle");
 
-    expect(etat.hint).toBe("Renseignez le modèle et la clé API pour utiliser l'assistance.");
+    expect(status.hint).toBe("Renseignez le modèle et la clé API pour utiliser l'assistance.");
   });
 
   it("laisse le résultat du test primer sur la configuration", () => {

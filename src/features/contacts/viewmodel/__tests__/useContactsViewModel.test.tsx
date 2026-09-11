@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { useContactsViewModel } from "../useContactsViewModel";
 import { contactService } from "../../services/contactService";
-import type { Contact } from "../../services/contactService";
+import type { Contact } from "@/shared/types/generated/contacts";
 import { useUiStore } from "@/shared/lib/ui-store";
 
 function ct(name: string): Contact {

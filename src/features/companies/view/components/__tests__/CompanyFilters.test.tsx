@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CompanyFilters } from "../CompanyFilters";
 import type { CompanyCriteria } from "../../../viewmodel/useCompaniesViewModel";
-import { CRITERES_VIDES } from "../../../viewmodel/useCompaniesViewModel";
+import { EMPTY_CRITERIA } from "../../../viewmodel/useCompaniesViewModel";
 import { referentialService } from "@/features/referentials";
 import { QueryWrapper, REFERENTIELS_DE_TEST } from "@/shared/lib/test-utils";
 
@@ -13,7 +13,7 @@ async function openFilters() {
 
 /** Rend la barre avec ses valeurs par défaut, surchargées au cas par cas. */
 function renderFilters(props: {
-  criteres?: CompanyCriteria;
+  criteria?: CompanyCriteria;
   count?: number;
   total?: number;
   onApply?: (values: CompanyCriteria) => void;
@@ -25,7 +25,7 @@ function renderFilters(props: {
       <CompanyFilters
         search=""
         onSearch={() => {}}
-        criteres={props.criteres ?? CRITERES_VIDES}
+        criteria={props.criteria ?? EMPTY_CRITERIA}
         count={props.count ?? 0}
         total={props.total ?? 0}
         onApply={props.onApply ?? (() => {})}
@@ -67,7 +67,7 @@ describe("barre de filtres des entreprises", () => {
   it("ôte le type actif au second clic et affiche son libellé en chip", async () => {
     const onApply = vi.fn();
     renderFilters({
-      criteres: { ...CRITERES_VIDES, company_type_id: "IT_SERVICES_COMPANY" },
+      criteria: { ...EMPTY_CRITERIA, company_type_id: "IT_SERVICES_COMPANY" },
       count: 1,
       onApply,
     });
@@ -87,7 +87,7 @@ describe("barre de filtres des entreprises", () => {
   it("filtre par taille indépendamment du type", async () => {
     const onApply = vi.fn();
     renderFilters({
-      criteres: { ...CRITERES_VIDES, company_type_id: "IT_SERVICES_COMPANY" },
+      criteria: { ...EMPTY_CRITERIA, company_type_id: "IT_SERVICES_COMPANY" },
       count: 1,
       onApply,
     });
@@ -106,7 +106,7 @@ describe("barre de filtres des entreprises", () => {
   it("efface les critères via Tout effacer", async () => {
     const onReset = vi.fn();
     renderFilters({
-      criteres: { ...CRITERES_VIDES, company_size: "PME" },
+      criteria: { ...EMPTY_CRITERIA, company_size: "PME" },
       count: 1,
       onReset,
     });

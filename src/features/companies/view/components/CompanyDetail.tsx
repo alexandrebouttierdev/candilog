@@ -2,7 +2,7 @@ import type { Application } from "@/shared/types/generated/applications";
 import type { Company } from "@/shared/types/generated/companies";
 import { status_meta } from "@/features/applications";
 import { companySizeLabel } from "@/features/referentials";
-import { versDateLongue } from "@/shared/lib/dates";
+import { toLongDate } from "@/shared/lib/dates";
 import { openExternal } from "@/shared/services/external-link";
 import {
   Card,
@@ -132,7 +132,7 @@ export function CompanyDetail({
                       <span className="mt-px block truncate text-meta text-ink-faint">
                         {application.contract_type_name ?? application.contract_type_code} ·
                         envoyée le{" "}
-                        {versDateLongue(application.sent_date)}
+                        {toLongDate(application.sent_date)}
                       </span>
                     </span>
                     <StatusPill tone={status.tone} compact>
@@ -170,7 +170,7 @@ export function CompanyDetail({
             <Row label="Ville" value={company.city} />
             <Row label="Adresse" value={company.address} />
             <Row label="Site web" value={company.website} url />
-            <Row label="Ajoutée le" value={versDateLongue(company.created_at, true)} />
+            <Row label="Ajoutée le" value={toLongDate(company.created_at, true)} />
           </div>
         </Card>
       </div>

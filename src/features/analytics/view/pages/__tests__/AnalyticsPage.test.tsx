@@ -115,7 +115,7 @@ describe("écran Analyses — candidatures à relancer", () => {
     const modale = await screen.findByRole("dialog", { name: "Nouvelle relance" });
     expect(modale).toBeInTheDocument();
 
-    // La candidature est déjà choisie : l'utilisateur n'a pas à la search une seconde fois.
+    // La candidature est déjà choisie : l'utilisateur n'a pas à la recherche une seconde fois.
     await waitFor(() =>
       expect(within(modale).getByLabelText(/^Candidature/)).toHaveValue(
         "Développeur Rust — Nova Digital",

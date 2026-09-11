@@ -10,7 +10,7 @@ import {
 import { controlClasses } from "./FormField";
 import { Icon } from "./Icon";
 import { cn } from "@/shared/lib/cn";
-import { versDateAffichee, versDateIso } from "@/shared/lib/dates";
+import { toDisplayDate, toIsoDate } from "@/shared/lib/dates";
 import { useDismissable } from "@/shared/hooks/useDismissable";
 import {
   DAYS,
@@ -75,7 +75,7 @@ function useFermeDehors(open: boolean, onClose: () => void) {
 }
 
 function moisDe(saisie: string): { year: number; month: number } {
-  const iso = versDateIso(saisie);
+  const iso = toIsoDate(saisie);
   const date = iso ? dateFromIso(iso) : new Date();
   return { year: date.getFullYear(), month: date.getMonth() };
 }
@@ -97,7 +97,7 @@ export function DateInput({
   const fermer = useCallback(() => setOpen(false), []);
   const root = useFermeDehors(open, fermer);
   const saisie = typeof value === "string" ? value : String(defaultValue ?? "");
-  const choisi = versDateIso(saisie);
+  const choisi = toIsoDate(saisie);
   const [curseur, setCurseur] = useState(() => moisDe(saisie));
   const cells = monthGrid(curseur.year, curseur.month);
 
@@ -175,7 +175,7 @@ export function DateInput({
                 aria-label={labelDay(day.iso)}
                 aria-current={day.iso === choisi ? "date" : undefined}
                 onClick={() => {
-                  emit(onChange, textRef.current, name, versDateAffichee(day.iso));
+                  emit(onChange, textRef.current, name, toDisplayDate(day.iso));
                   fermer();
                 }}
                 className={cn(
@@ -217,9 +217,9 @@ export function TimeInput({
   const root = useFermeDehors(open, fermer);
   const saisie = typeof value === "string" ? value : String(defaultValue ?? "");
   const actuel = heureNative(saisie) || "14:00";
-  const [heures, minutes] = actuel.split(":");
+  const [hours, minutes] = actuel.split(":");
 
-  const appliquer = (h: string, m: string) => {
+  const applyTime = (h: string, m: string) => {
     emit(onChange, textRef.current, name, `${h}:${m}`);
   };
 
@@ -259,8 +259,8 @@ export function TimeInput({
         >
           <select
             aria-label="Heure du jour"
-            value={heures}
-            onChange={(event) => appliquer(event.target.value, minutes ?? "00")}
+            value={hours}
+            onChange={(event) => applyTime(event.target.value, minutes ?? "00")}
             className={controlClasses(false, "h-control min-h-control w-[4.25rem] appearance-none px-2")}
           >
             {Array.from({ length: 24 }, (_, h) => {
@@ -276,7 +276,7 @@ export function TimeInput({
           <select
             aria-label="Minutes"
             value={minutes}
-            onChange={(event) => appliquer(heures ?? "00", event.target.value)}
+            onChange={(event) => applyTime(hours ?? "00", event.target.value)}
             className={controlClasses(false, "h-control min-h-control w-[4.25rem] appearance-none px-2")}
           >
             {Array.from({ length: 60 }, (_, m) => {

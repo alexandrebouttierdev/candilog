@@ -10,8 +10,8 @@
 export const FORMAT_DATE = "JJ-MM-AAAA";
 
 /** Convertit une date `JJ-MM-AAAA` en `AAAA-MM-JJ`, ou `null` si elle n'existe pas. */
-export function versDateIso(saisie: string): string | null {
-  const match = /^(\d{2})-(\d{2})-(\d{4})$/.exec(saisie.trim());
+export function toIsoDate(input: string): string | null {
+  const match = /^(\d{2})-(\d{2})-(\d{4})$/.exec(input.trim());
   if (!match) return null;
   const [, day, month, year] = match;
   const iso = `${year}-${month}-${day}`;
@@ -22,7 +22,7 @@ export function versDateIso(saisie: string): string | null {
 }
 
 /** Convertit une date `AAAA-MM-JJ` en `JJ-MM-AAAA` pour l'affichage. */
-export function versDateAffichee(iso: string): string {
+export function toDisplayDate(iso: string): string {
   const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
   if (!match) return iso;
   const [, year, month, day] = match;
@@ -32,11 +32,11 @@ export function versDateAffichee(iso: string): string {
 /**
  * Date d'affichage des maquettes : « 02 août », « 02 août 2026 » avec l'année.
  *
- * Distincte de `versDateAffichee`, qui reste le format **de saisie** `JJ-MM-AAAA` des
+ * Distincte de `toDisplayDate`, qui reste le format **de saisie** `JJ-MM-AAAA` des
  * champs de formulaire : les maquettes n'écrivent jamais une date en chiffres ailleurs
  * que dans un champ.
  */
-export function versDateLongue(iso: string, avecYear = false): string {
+export function toLongDate(iso: string, withYear = false): string {
   const day = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
   if (!day) return iso;
   const date = new Date(`${day[1]}-${day[2]}-${day[3]}T00:00:00`);
@@ -44,13 +44,13 @@ export function versDateLongue(iso: string, avecYear = false): string {
   return new Intl.DateTimeFormat("fr-FR", {
     day: "2-digit",
     month: "long",
-    ...(avecYear ? { year: "numeric" } : {}),
+    ...(withYear ? { year: "numeric" } : {}),
   }).format(date);
 }
 
 /** Valide une heure `HH:MM` sur 24 heures. */
-export function timeValide(saisie: string): boolean {
-  return /^([01]\d|2[0-3]):[0-5]\d$/.test(saisie.trim());
+export function isValidTime(input: string): boolean {
+  return /^([01]\d|2[0-3]):[0-5]\d$/.test(input.trim());
 }
 
 /**
@@ -59,35 +59,35 @@ export function timeValide(saisie: string): boolean {
  * L'entretien est stocké avec son décalage horaire : sans lui, un entretien saisi à 14 h
  * s'afficherait à 12 h ou 16 h selon le fuseau où la base est relue.
  */
-export function versTimestamp(dateSaisie: string, timeSaisie: string): string | null {
-  const iso = versDateIso(dateSaisie);
-  if (iso === null || !timeValide(timeSaisie)) return null;
+export function toTimestamp(dateInput: string, timeInput: string): string | null {
+  const iso = toIsoDate(dateInput);
+  if (iso === null || !isValidTime(timeInput)) return null;
 
-  const [heures, minutes] = timeSaisie.trim().split(":").map(Number);
+  const [hours, minutes] = timeInput.trim().split(":").map(Number);
   const locale = new Date(
     Number(iso.slice(0, 4)),
     Number(iso.slice(5, 7)) - 1,
     Number(iso.slice(8, 10)),
-    heures,
+    hours,
     minutes,
   );
 
   // `getTimezoneOffset` renvoie des minutes **à retrancher** de l'heure locale pour obtenir
   // UTC : son signe est donc l'inverse de celui du décalage écrit dans l'horodatage.
-  const decalage = -locale.getTimezoneOffset();
-  const signe = decalage >= 0 ? "+" : "-";
-  const absolu = Math.abs(decalage);
-  const deuxChiffres = (value: number) => String(value).padStart(2, "0");
+  const offsetMinutes = -locale.getTimezoneOffset();
+  const sign = offsetMinutes >= 0 ? "+" : "-";
+  const absolute = Math.abs(offsetMinutes);
+  const twoDigits = (value: number) => String(value).padStart(2, "0");
 
   return (
-    `${iso}T${deuxChiffres(heures!)}:${deuxChiffres(minutes!)}:00` +
-    `${signe}${deuxChiffres(Math.floor(absolu / 60))}:${deuxChiffres(absolu % 60)}`
+    `${iso}T${twoDigits(hours!)}:${twoDigits(minutes!)}:00` +
+    `${sign}${twoDigits(Math.floor(absolute / 60))}:${twoDigits(absolute % 60)}`
   );
 }
 
 /** Extracted la date `JJ-MM-AAAA` d'un horodatage. */
 export function dateFromTimestamp(timestamp: string): string {
-  return versDateAffichee(timestamp.slice(0, 10));
+  return toDisplayDate(timestamp.slice(0, 10));
 }
 
 /** Extracted l'heure `HH:MM` d'un horodatage. */

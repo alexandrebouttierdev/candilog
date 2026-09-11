@@ -8,7 +8,7 @@ import {
 } from "../../model/schemas/follow-up-form.schema";
 import { CANAUX_FOLLOW_UP } from "../../model/types";
 import type { FollowUp, NewFollowUp } from "@/shared/types/generated/followUps";
-import { versDateAffichee } from "@/shared/lib/dates";
+import { toDisplayDate } from "@/shared/lib/dates";
 import { ApplicationPicker } from "@/features/applications";
 import {
   DateInput,
@@ -21,7 +21,7 @@ import {
 function vide(application_id: string | null, day: string | null): FollowUpFormInput {
   return {
     application_id: application_id ?? "",
-    follow_up_date: versDateAffichee(day ?? new Date().toISOString().slice(0, 10)),
+    follow_up_date: toDisplayDate(day ?? new Date().toISOString().slice(0, 10)),
     type: "Email",
     notes: "",
   };
@@ -30,7 +30,7 @@ function vide(application_id: string | null, day: string | null): FollowUpFormIn
 function from(follow_up: FollowUp): FollowUpFormInput {
   return {
     application_id: follow_up.application_id,
-    follow_up_date: versDateAffichee(follow_up.follow_up_date),
+    follow_up_date: toDisplayDate(follow_up.follow_up_date),
     type: follow_up.type,
     notes: follow_up.notes ?? "",
   };

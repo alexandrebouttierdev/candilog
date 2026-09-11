@@ -62,47 +62,47 @@ export function EntityPicker({
   /** Root de la clé de cache, propre à l'entité recherchée. */
   queryKey: readonly unknown[];
 }) {
-  const [ouvert, setOuvert] = useState(false);
+  const [isOpen, setOpen] = useState(false);
   // `null` tant que l'utilisateur n'a rien tapé : le champ affiche alors la sélection
   // courante. Sans cette distinction, ouvrir un formulaire prérempli effaçait à l'écran la
   // valeur déjà choisie, puisque le simple focus vidait la saisie.
-  const [saisie, setSaisie] = useState<string | null>(null);
+  const [draft, setDraft] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [selectedOption, setSelectedOption] = useState<EntityOption | null>(null);
-  const recherche = useDebounce(saisie ?? "");
-  const conteneur = useRef<HTMLDivElement>(null);
+  const search = useDebounce(draft ?? "");
+  const container = useRef<HTMLDivElement>(null);
   const listId = useId();
 
-  const resultats = useQuery({
-    queryKey: [...queryKey, "picker", { page, page_size, recherche }],
-    queryFn: () => fetchPage({ page, page_size, search: recherche }),
-    enabled: ouvert,
+  const results = useQuery({
+    queryKey: [...queryKey, "picker", { page, page_size, search }],
+    queryFn: () => fetchPage({ page, page_size, search: search }),
+    enabled: isOpen,
   });
 
   // Un clic ailleurs referme la liste. Sans cela, elle resterait ouverte par-dessus les
   // champs suivants du formulaire, qu'elle rendrait inatteignables à la souris.
   useEffect(() => {
-    if (!ouvert) return;
-    const surClic = (event: MouseEvent) => {
-      if (conteneur.current?.contains(event.target as Node)) return;
-      setOuvert(false);
-      setSaisie(null);
+    if (!isOpen) return;
+    const onOutsideClick = (event: MouseEvent) => {
+      if (container.current?.contains(event.target as Node)) return;
+      setOpen(false);
+      setDraft(null);
     };
-    document.addEventListener("mousedown", surClic);
-    return () => document.removeEventListener("mousedown", surClic);
-  }, [ouvert]);
+    document.addEventListener("mousedown", onOutsideClick);
+    return () => document.removeEventListener("mousedown", onOutsideClick);
+  }, [isOpen]);
 
-  const items = resultats.data?.items ?? [];
+  const items = results.data?.items ?? [];
   /** Libellé de la sélection, éventuellement connu du seul appelant. */
-  const libelleSelection =
+  const selectionLabel =
     (selectedOption?.id === value ? selectedOption.label : selectedLabel) ?? "";
-  // Le texte proposé à la création est la saisie immédiate, pas la valeur retardée : le
+  // Le texte proposé à la création est la draft immédiate, pas la valeur retardée : le
   // bouton doit nommer ce que l'utilisateur voit dans le champ.
-  const aCreer = (saisie ?? "").trim();
-  const creationProposee = onCreate !== undefined && aCreer.length > 0;
+  const toCreate = (draft ?? "").trim();
+  const canCreate = onCreate !== undefined && toCreate.length > 0;
 
   return (
-    <div ref={conteneur} className="relative">
+    <div ref={container} className="relative">
       <div className="relative">
         <Icon
           name="search"
@@ -113,30 +113,30 @@ export function EntityPicker({
           id={id}
           type="text"
           role="combobox"
-          aria-expanded={ouvert}
+          aria-expanded={isOpen}
           aria-controls={listId}
           aria-autocomplete="list"
           aria-invalid={invalid}
           aria-describedby={describedBy}
-          value={saisie ?? libelleSelection}
+          value={draft ?? selectionLabel}
           placeholder={placeholder}
           onFocus={(event) => {
-            setOuvert(true);
+            setOpen(true);
             // La sélection reste lisible ; le texte est présélectionné pour que la première
             // frappe la remplace entièrement, comme dans un champ de recherche natif.
             event.currentTarget.select();
           }}
           onChange={(event) => {
-            setSaisie(event.target.value);
-            // Toute nouvelle recherche ramène en première page : rester en page 2 après
+            setDraft(event.target.value);
+            // Toute nouvelle search ramène en première page : rester en page 2 après
             // avoir restreint la recherche afficherait une liste vide alors que des
             // résultats existent. Fait ici plutôt que dans un effet sur la valeur
             // retardée, qui provoquerait un rendu en cascade.
             setPage(1);
           }}
-          className={controlClasses(invalid, value && !ouvert ? "pr-9 pl-8" : "pl-8")}
+          className={controlClasses(invalid, value && !isOpen ? "pr-9 pl-8" : "pl-8")}
         />
-        {value && !ouvert ? (
+        {value && !isOpen ? (
           <button
             type="button"
             aria-label="Effacer la sélection"
@@ -148,15 +148,15 @@ export function EntityPicker({
         ) : null}
       </div>
 
-      {ouvert ? (
+      {isOpen ? (
         <div
           id={listId}
           role="listbox"
           className="absolute top-full right-0 left-0 z-20 mt-1 overflow-hidden rounded-field border border-line bg-surface shadow-e2"
         >
-          {resultats.isPending ? (
+          {results.isPending ? (
             <p className="px-3 py-3 text-meta text-ink-faint">Recherche…</p>
-          ) : resultats.isError ? (
+          ) : results.isError ? (
             // Un échec de la commande n'est pas une absence de résultat : annoncer « Aucun
             // résultat » inviterait à créer un doublon d'une entité déjà enregistrée.
             <p className="px-3 py-3 text-meta text-danger">La recherche a échoué.</p>
@@ -175,8 +175,8 @@ export function EntityPicker({
                     onClick={() => {
                       setSelectedOption(option);
                       onChange(option.id);
-                      setOuvert(false);
-                      setSaisie(null);
+                      setOpen(false);
+                      setDraft(null);
                     }}
                     className={cn(
                       "flex w-full items-center gap-2 px-3 py-2 text-left transition-colors duration-150",
@@ -200,26 +200,26 @@ export function EntityPicker({
             </ul>
           )}
 
-          {creationProposee && !resultats.isError ? (
+          {canCreate && !results.isError ? (
             <button
               type="button"
               onClick={() => {
-                setOuvert(false);
-                setSaisie(null);
-                onCreate(aCreer);
+                setOpen(false);
+                setDraft(null);
+                onCreate(toCreate);
               }}
               className="flex w-full items-center gap-2 border-t border-line px-3 py-2 text-left text-body text-accent-text transition-colors duration-150 hover:bg-accent-tint"
             >
               <Icon name="add" size={15} className="flex-none" />
-              <span className="min-w-0 flex-1 truncate">{`${createLabel ?? "Créer"} « ${aCreer} »`}</span>
+              <span className="min-w-0 flex-1 truncate">{`${createLabel ?? "Créer"} « ${toCreate} »`}</span>
             </button>
           ) : null}
 
-          {(resultats.data?.total ?? 0) > page_size ? (
+          {(results.data?.total ?? 0) > page_size ? (
             <Pager
               page={page}
               page_size={page_size}
-              total={resultats.data?.total ?? 0}
+              total={results.data?.total ?? 0}
               label="résultats"
               onPageChange={setPage}
             />

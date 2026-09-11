@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { optionalText } from "@/shared/lib/zod-helpers";
-import { FORMAT_DATE, timeValide, versDateIso, versTimestamp } from "@/shared/lib/dates";
+import { FORMAT_DATE, isValidTime, toIsoDate, toTimestamp } from "@/shared/lib/dates";
 
 /**
  * Form entretien, création et modification.
@@ -21,14 +21,14 @@ export const interviewFormSchema = z
       .string()
       .trim()
       .min(1, "La date est obligatoire")
-      .refine((value) => versDateIso(value) !== null, {
+      .refine((value) => toIsoDate(value) !== null, {
         message: `Date invalide — format attendu ${FORMAT_DATE}.`,
       }),
     time: z
       .string()
       .trim()
       .min(1, "L'heure est obligatoire")
-      .refine(timeValide, { message: "Heure invalide — format attendu HH:MM." }),
+      .refine(isValidTime, { message: "Heure invalide — format attendu HH:MM." }),
     type: z.enum(["Présentiel", "Visio", "Téléphonique", "Technique", "RH", "Autre"]),
     location: optionalText,
     notes: optionalText,
@@ -39,7 +39,7 @@ export const interviewFormSchema = z
     contact_id: values.contact_id,
     // `versHorodatage` a déjà été éprouvé par les deux `refine` ci-dessus : la date et
     // l'heure sont valides, la composition ne peut plus échouer.
-    interview_date: versTimestamp(values.date, values.time) as string,
+    interview_date: toTimestamp(values.date, values.time) as string,
     type: values.type,
     location: values.location,
     notes: values.notes,

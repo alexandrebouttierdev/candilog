@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 import { useApplicationsViewModel } from "../useApplicationsViewModel";
 import { EMPTY_FILTER } from "../../model/schemas/application-filter.schema";
 import { applicationService } from "../../services/applicationService";
-import type { Application } from "../../services/applicationService";
+import type { Application } from "@/shared/types/generated/applications";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 

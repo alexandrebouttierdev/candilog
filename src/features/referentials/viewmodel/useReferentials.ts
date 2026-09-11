@@ -1,12 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { referentialService } from "../services/referentialService";
-import type { ReferenceItem, Referentials } from "../services/referentialService";
+import type { ReferenceItem, Referentials } from "@/shared/types/generated/referentials";
 
 /** Clé de cache des référentiels. */
 export const REFERENTIALS_KEY = ["referentiels"] as const;
 
 /** Référentiels vides, servis tant que la requête n'a pas abouti. */
-const VIDES: Referentials = {
+const EMPTY_REFERENTIALS: Referentials = {
   sectors: [],
   professional_domains: [],
   company_types: [],
@@ -27,7 +27,7 @@ export function useReferentials() {
     staleTime: Number.POSITIVE_INFINITY,
   });
 
-  return { ...query, data: query.data ?? VIDES };
+  return { ...query, data: query.data ?? EMPTY_REFERENTIALS };
 }
 
 /**

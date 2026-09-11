@@ -6,7 +6,7 @@ import {
   type ApplicationFormInput,
   type ApplicationFormValues,
 } from "../../model/schemas/application-form.schema";
-import { versDateAffichee } from "@/shared/lib/dates";
+import { toDisplayDate } from "@/shared/lib/dates";
 import { Statuses } from "../../model/statuses";
 import type { Application, NewApplication } from "@/shared/types/generated/applications";
 import { CompanyPicker, useCompany } from "@/features/companies";
@@ -26,7 +26,7 @@ import {
 
 /** Date du jour au format saisi, valeur par défaut du champ « Date d'envoi ». */
 function today(): string {
-  return versDateAffichee(new Date().toISOString().slice(0, 10));
+  return toDisplayDate(new Date().toISOString().slice(0, 10));
 }
 
 function vide(status: ApplicationFormInput["status"] = "EN_ATTENTE"): ApplicationFormInput {
@@ -70,7 +70,7 @@ function from(application: Application): ApplicationFormInput {
     address: application.address ?? "",
     company_type_id: application.company_type_id ?? "",
     status: application.status,
-    sent_date: versDateAffichee(application.sent_date),
+    sent_date: toDisplayDate(application.sent_date),
     job_url: application.job_url ?? "",
     notes: application.notes ?? "",
   };

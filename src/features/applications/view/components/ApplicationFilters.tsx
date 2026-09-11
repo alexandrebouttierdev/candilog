@@ -10,7 +10,7 @@ import {
   useReferentials,
 } from "@/features/referentials";
 import type { ReferenceItem } from "@/features/referentials";
-import { FORMAT_DATE, versDateAffichee, versDateIso } from "@/shared/lib/dates";
+import { FORMAT_DATE, toDisplayDate, toIsoDate } from "@/shared/lib/dates";
 import {
   ActiveFilterChip,
   ClearFiltersButton,
@@ -35,9 +35,9 @@ function toggle<T>(values: readonly T[], value: T): T[] {
 }
 
 function periodValue(start: string | null, end: string | null): string | null {
-  if (start && end) return `${versDateAffichee(start)} → ${versDateAffichee(end)}`;
-  if (start) return `Depuis le ${versDateAffichee(start)}`;
-  if (end) return `Jusqu'au ${versDateAffichee(end)}`;
+  if (start && end) return `${toDisplayDate(start)} → ${toDisplayDate(end)}`;
+  if (start) return `Depuis le ${toDisplayDate(start)}`;
+  if (end) return `Jusqu'au ${toDisplayDate(end)}`;
   return null;
 }
 
@@ -78,13 +78,13 @@ const ERREUR_DATE = `Date invalide — format attendu ${FORMAT_DATE}.`;
 
 function messageDate(raw: string, auBlur: boolean): string | undefined {
   const trimmed = raw.trim();
-  if (trimmed === "" || versDateIso(trimmed) !== null) return undefined;
+  if (trimmed === "" || toIsoDate(trimmed) !== null) return undefined;
   if (auBlur || /^\d{2}-\d{2}-\d{4}$/.test(trimmed)) return ERREUR_DATE;
   return undefined;
 }
 
 function affichee(iso: string | null): string {
-  return iso ? versDateAffichee(iso) : "";
+  return iso ? toDisplayDate(iso) : "";
 }
 
 /** Nombre saisi au clavier, virgule décimale acceptée ; `null` si vide ou invalide. */
@@ -151,7 +151,7 @@ export function ApplicationFilters({
       onApply(patch(filters, { [key]: null }));
       return;
     }
-    const iso = versDateIso(trimmed);
+    const iso = toIsoDate(trimmed);
     if (iso) {
       setError(undefined);
       onApply(patch(filters, { [key]: iso }));

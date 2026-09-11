@@ -2,9 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook, waitFor, act } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { CRITERES_VIDES, useCompaniesViewModel } from "../useCompaniesViewModel";
+import { EMPTY_CRITERIA, useCompaniesViewModel } from "../useCompaniesViewModel";
 import { companyService } from "../../services/companyService";
-import type { Company } from "../../services/companyService";
+import type { Company } from "@/shared/types/generated/companies";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 import { applicationService } from "@/features/applications";
@@ -224,8 +224,8 @@ describe("ViewModel des entreprises", () => {
 
     // Type et taille sont deux axes distincts : les cumuler donne bien deux critères.
     act(() =>
-      result.current.appliquerCriteres({
-        ...CRITERES_VIDES,
+      result.current.applyCriteria({
+        ...EMPTY_CRITERIA,
         company_type_id: "IT_SERVICES_COMPANY",
         company_size: "PME",
       }),
@@ -242,8 +242,8 @@ describe("ViewModel des entreprises", () => {
     await waitFor(() => expect(result.current.items).toHaveLength(1));
 
     act(() =>
-      result.current.appliquerCriteres({
-        ...CRITERES_VIDES,
+      result.current.applyCriteria({
+        ...EMPTY_CRITERIA,
         company_type_id: "IT_SERVICES_COMPANY",
       }),
     );
@@ -261,14 +261,14 @@ describe("ViewModel des entreprises", () => {
 
     act(() => result.current.setPage(3));
     act(() =>
-      result.current.appliquerCriteres({ ...CRITERES_VIDES, company_size: "PME" }),
+      result.current.applyCriteria({ ...EMPTY_CRITERIA, company_size: "PME" }),
     );
     await waitFor(() => expect(result.current.page).toBe(1));
 
     act(() => result.current.setPage(2));
     act(() => result.current.resetFilters());
 
-    expect(result.current.criteres).toEqual(CRITERES_VIDES);
+    expect(result.current.criteria).toEqual(EMPTY_CRITERIA);
     expect(result.current.page).toBe(1);
   });
 });

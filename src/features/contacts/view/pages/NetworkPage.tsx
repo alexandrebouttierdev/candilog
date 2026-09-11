@@ -23,11 +23,11 @@ import { AppError } from "@/shared/types/app-error";
 /** Écran Relations → Réseau : liste maître paginée et fiche détaillée. */
 export function NetworkPage() {
   const vm = useContactsViewModel();
-  const [form, setForm] = useState<{ ouvert: boolean; cible: Contact | null }>({
-    ouvert: false,
-    cible: null,
+  const [form, setForm] = useState<{ isOpen: boolean; editing: Contact | null }>({
+    isOpen: false,
+    editing: null,
   });
-  const [aDelete, setADelete] = useState<Contact | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Contact | null>(null);
   const aucunResultat = Boolean(vm.search) || vm.activeFilterCount > 0;
 
   return (
@@ -46,7 +46,7 @@ export function NetworkPage() {
           <Button
             variant="primary"
             icon="person_add"
-            onClick={() => setForm({ ouvert: true, cible: null })}
+            onClick={() => setForm({ isOpen: true, editing: null })}
           >
             Nouveau contact
           </Button>
@@ -135,8 +135,8 @@ export function NetworkPage() {
           {vm.selection ? (
             <ContactDetail
               contact={vm.selection}
-              onEdit={() => setForm({ ouvert: true, cible: vm.selection })}
-              onDelete={() => setADelete(vm.selection)}
+              onEdit={() => setForm({ isOpen: true, editing: vm.selection })}
+              onDelete={() => setPendingDelete(vm.selection)}
             />
           ) : (
             <div className="flex h-full items-center justify-center">
@@ -151,28 +151,28 @@ export function NetworkPage() {
       </div>
 
       <ContactFormModal
-        open={form.ouvert}
-        contact={form.cible}
+        open={form.isOpen}
+        contact={form.editing}
         busy={vm.isSaving}
-        onClose={() => setForm({ ouvert: false, cible: null })}
+        onClose={() => setForm({ isOpen: false, editing: null })}
         onSubmit={(values) =>
-          form.cible
-            ? vm.update({ id: form.cible.id, input: values })
+          form.editing
+            ? vm.update({ id: form.editing.id, input: values })
             : vm.create(values)
         }
       />
 
       <ConfirmDialog
-        open={aDelete !== null}
+        open={pendingDelete !== null}
         title="Supprimer ce contact ?"
-        description={`« ${aDelete ? `${aDelete.first_name} ${aDelete.name}` : ""} » sera définitivement retiré de votre réseau. Cette action est irréversible.`}
+        description={`« ${pendingDelete ? `${pendingDelete.first_name} ${pendingDelete.name}` : ""} » sera définitivement retiré de votre réseau. Cette action est irréversible.`}
         note="La suppression est refusée si des candidatures ou des entretiens le référencent."
         busy={vm.isDeleting}
-        onCancel={() => setADelete(null)}
+        onCancel={() => setPendingDelete(null)}
         onConfirm={() => {
-          const cible = aDelete;
-          setADelete(null);
-          if (cible) void vm.delete(cible.id);
+          const editing = pendingDelete;
+          setPendingDelete(null);
+          if (editing) void vm.delete(editing.id);
         }}
       />
     </div>

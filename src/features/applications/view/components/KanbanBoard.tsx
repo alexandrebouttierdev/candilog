@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { Application, ApplicationStatus } from "@/shared/types/generated/applications";
 import { Statuses } from "../../model/statuses";
 import { ApplicationCard } from "./ApplicationCard";
-import type { ApercuGlisse } from "./ApplicationCard";
+import type { DragPreview } from "./ApplicationCard";
 import { ColumnPager, IconButton } from "@/shared/ui";
 import { cn } from "@/shared/lib/cn";
 import type { Tone } from "@/shared/ui";
@@ -53,21 +53,21 @@ export function KanbanBoard({
   onCreate: (status: ApplicationStatus) => void;
   onPageChange: (status: ApplicationStatus, page: number) => void;
 }) {
-  const [glissee, setGlissee] = useState<Application | null>(null);
-  const [apercu, setApercu] = useState<ApercuGlisse | null>(null);
-  const [cible, setCible] = useState<ApplicationStatus | null>(null);
+  const [dragged, setDragged] = useState<Application | null>(null);
+  const [preview, setPreview] = useState<DragPreview | null>(null);
+  const [dropTarget, setDropTarget] = useState<ApplicationStatus | null>(null);
 
-  const enGlisse = glissee !== null;
+  const isDragging = dragged !== null;
   useEffect(() => {
-    if (!enGlisse) return;
-    const suivre = (event: DragEvent) => {
-      setApercu((actuel) =>
-        actuel ? { ...actuel, x: event.clientX, y: event.clientY } : actuel,
+    if (!isDragging) return;
+    const followPointer = (event: DragEvent) => {
+      setPreview((current) =>
+        current ? { ...current, x: event.clientX, y: event.clientY } : current,
       );
     };
-    document.addEventListener("dragover", suivre);
-    return () => document.removeEventListener("dragover", suivre);
-  }, [enGlisse]);
+    document.addEventListener("dragover", followPointer);
+    return () => document.removeEventListener("dragover", followPointer);
+  }, [isDragging]);
 
   const applications = Statuses.flatMap((status) => columns[status.value].items);
 
@@ -76,7 +76,7 @@ export function KanbanBoard({
       <div className="grid min-h-full gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr))]">
         {Statuses.map((status) => {
           const column = columns[status.value];
-          const survolee = cible === status.value && glissee?.status !== status.value;
+          const isDropTarget = dropTarget === status.value && dragged?.status !== status.value;
 
           return (
             <section
@@ -86,28 +86,28 @@ export function KanbanBoard({
                 // refuse la cible et le curseur affiche « interdit ».
                 event.preventDefault();
                 event.dataTransfer.dropEffect = "move";
-                setCible(status.value);
+                setDropTarget(status.value);
               }}
               onDragLeave={(event) => {
-                const suivant = event.relatedTarget;
-                if (suivant instanceof Node && event.currentTarget.contains(suivant)) return;
-                setCible((value) => (value === status.value ? null : value));
+                const next = event.relatedTarget;
+                if (next instanceof Node && event.currentTarget.contains(next)) return;
+                setDropTarget((value) => (value === status.value ? null : value));
               }}
               onDrop={(event) => {
                 event.preventDefault();
                 const id = event.dataTransfer.getData("text/plain");
-                const dragged = applications.find((item) => item.id === id);
-                if (dragged && dragged.status !== status.value) {
-                  onStatusChange(dragged.id, status.value);
+                const moved = applications.find((item) => item.id === id);
+                if (moved && moved.status !== status.value) {
+                  onStatusChange(moved.id, status.value);
                 }
-                setGlissee(null);
-                setApercu(null);
-                setCible(null);
+                setDragged(null);
+                setPreview(null);
+                setDropTarget(null);
               }}
               className={cn(
                 "flex min-w-0 flex-col rounded-card border bg-surface-alt",
                 "transition-[border-color,background-color] duration-150",
-                survolee ? "border-accent bg-accent-tint" : "border-line",
+                isDropTarget ? "border-accent bg-accent-tint" : "border-line",
               )}
             >
               <header className="flex flex-none items-center gap-2 border-b border-line px-3.5 py-3">
@@ -144,19 +144,19 @@ export function KanbanBoard({
                       key={application.id}
                       application={application}
                       draggable
-                      dragging={glissee?.id === application.id}
+                      dragging={dragged?.id === application.id}
                       selected={application.id === selected_id}
                       checked={checkedIds.has(application.id)}
                       onSelect={() => onSelect(application.id)}
                       onToggleSelect={() => onToggleSelect(application.id)}
-                      onDragStart={(suivant) => {
-                        setGlissee(application);
-                        setApercu(suivant);
+                      onDragStart={(next) => {
+                        setDragged(application);
+                        setPreview(next);
                       }}
                       onDragEnd={() => {
-                        setGlissee(null);
-                        setApercu(null);
-                        setCible(null);
+                        setDragged(null);
+                        setPreview(null);
+                        setDropTarget(null);
                       }}
                     />
                   ))
@@ -176,17 +176,17 @@ export function KanbanBoard({
           );
         })}
       </div>
-      {glissee && apercu ? (
+      {dragged && preview ? (
         <div
           aria-hidden="true"
           className="pointer-events-none fixed z-50 opacity-90 shadow-e2"
           style={{
-            left: apercu.x - apercu.grabX,
-            top: apercu.y - apercu.grabY,
-            width: apercu.width > 0 ? apercu.width : undefined,
+            left: preview.x - preview.grabX,
+            top: preview.y - preview.grabY,
+            width: preview.width > 0 ? preview.width : undefined,
           }}
         >
-          <ApplicationCard application={glissee} />
+          <ApplicationCard application={dragged} />
         </div>
       ) : null}
     </div>

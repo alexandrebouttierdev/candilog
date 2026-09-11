@@ -5,7 +5,7 @@ import {
   companySizeLabel,
   weeklyDurationLabel,
 } from "@/features/referentials";
-import { daysFrom, versDateAffichee } from "@/shared/lib/dates";
+import { daysFrom, toDisplayDate } from "@/shared/lib/dates";
 import { openExternal } from "@/shared/services/external-link";
 import {
   Button,
@@ -98,7 +98,7 @@ export function ApplicationDetail({
         {application.professional_domain_name ?? "Non renseigné"}
       </InspectorRow>
       <InspectorRow label="Envoyée le">
-        <span className="tabular">{versDateAffichee(application.sent_date)}</span>
+        <span className="tabular">{toDisplayDate(application.sent_date)}</span>
       </InspectorRow>
       <InspectorRow label="Ancienneté">{daysFrom(application.sent_date)} jours</InspectorRow>
       <InspectorRow label="Offre" tone={application.job_url ? "accent" : "muted"}>

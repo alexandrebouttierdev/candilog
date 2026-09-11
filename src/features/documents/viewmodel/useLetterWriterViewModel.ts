@@ -9,7 +9,8 @@ import {
   useAiTimer,
 } from "@/features/ai";
 import { formatAiSummary } from "@/shared/lib/duration";
-import { documentsService, type CoverLetter } from "../services/documentsService";
+import { documentsService } from "../services/documentsService";
+import type { CoverLetter } from "@/shared/types/generated/documents";
 import { applyLetterCorrection, letterCorrectionFields } from "../model/letterMarkup";
 import { PROFILE_KEY, profileService } from "@/features/profile";
 import type { Identity } from "@/shared/types/generated/profile";

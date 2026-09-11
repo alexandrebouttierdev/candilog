@@ -43,7 +43,7 @@ export function DashboardPage() {
         <Button
           variant="primary"
           icon="add"
-          onClick={() => void navigate("/tracking/applications?nouvelle=1")}
+          onClick={() => void navigate("/tracking/applications?new=1")}
         >
           Nouvelle
         </Button>
@@ -76,7 +76,7 @@ function TodayWorkspace({ data }: { data: Dashboard }) {
   if (isTodayEmpty(data)) {
     return (
       <TodayEmpty
-        onCreate={() => void navigate("/tracking/applications?nouvelle=1")}
+        onCreate={() => void navigate("/tracking/applications?new=1")}
         onOpenApplications={() => void navigate("/tracking/applications")}
         onOpenCalendar={() => void navigate("/tracking/calendar")}
       />
@@ -139,7 +139,7 @@ function TodayWorkspace({ data }: { data: Dashboard }) {
               <RecentRows
                 applications={data.recent}
                 onOpen={(id) =>
-                  void navigate(`/tracking/applications?fiche=${encodeURIComponent(id)}`)
+                  void navigate(`/tracking/applications?id=${encodeURIComponent(id)}`)
                 }
               />
             </TodayCard>
