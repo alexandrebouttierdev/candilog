@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { fromInterview, fromFollowUp, groupByDay } from "../event";
-import type { Interview } from "@/features/interviews/services/interviewService";
+import type { Interview } from "@/features/interviews";
 import type { FollowUp } from "@/features/followups/services/followUpService";
 
 function interview(id: string, timestamp: string): Interview {

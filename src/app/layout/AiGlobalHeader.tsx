@@ -1,32 +1,20 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/shared/lib/cn";
 import { Button, IconButton } from "@/shared/ui";
 import { iaEstConfiguree } from "@/features/settings/model/etatIa";
 import { idProvider } from "@/features/settings/model/providers";
-import { settingsService } from "@/features/settings/services/settingsService";
-import {
-  managedOllamaService,
-  MANAGED_OLLAMA_KEY,
-} from "@/features/settings/services/managedOllamaService";
-import { SETTINGS_KEY } from "@/features/settings/viewmodel/useSettingsViewModel";
-import { AiBenchmarkModal } from "@/features/ai/view/components/AiBenchmarkModal";
-import { AiQuickSelector } from "@/features/ai/view/components/AiQuickSelector";
+import { useManagedOllamaViewModel } from "@/features/settings/viewmodel/useManagedOllamaViewModel";
+import { useSettingsViewModel } from "@/features/settings/viewmodel/useSettingsViewModel";
+import { AiBenchmarkModal, AiQuickSelector } from "@/features/ai";
 
 /** En-tête IA global : sélecteur rapide, benchmark et accès aux réglages. */
 export function AiGlobalHeader({ shellBrand = false }: { shellBrand?: boolean }) {
   const navigate = useNavigate();
   const [benchmarkOpen, setBenchmarkOpen] = useState(false);
 
-  const settings = useQuery({
-    queryKey: SETTINGS_KEY,
-    queryFn: settingsService.load,
-  });
-  const managed = useQuery({
-    queryKey: MANAGED_OLLAMA_KEY,
-    queryFn: managedOllamaService.status,
-  });
+  const settings = useSettingsViewModel();
+  const managed = useManagedOllamaViewModel(undefined, { enabled: true });
 
   const llm = settings.data?.llm;
   const providerId = llm ? idProvider(llm.provider) : null;
@@ -34,12 +22,12 @@ export function AiGlobalHeader({ shellBrand = false }: { shellBrand?: boolean })
 
   const modelLabel =
     providerId === "candilog_local"
-      ? (managed.data?.active_model?.display_name ?? "IA locale")
+      ? (managed.status?.active_model?.display_name ?? "IA locale")
       : llm?.model.trim() || "modèle";
 
   const canBenchmark =
     providerId === "candilog_local"
-      ? Boolean(managed.data?.active_model)
+      ? Boolean(managed.status?.active_model)
       : configured && Boolean(llm?.model.trim());
 
   return (
@@ -49,10 +37,7 @@ export function AiGlobalHeader({ shellBrand = false }: { shellBrand?: boolean })
         variant="secondary"
         icon="bolt"
         disabled={!canBenchmark}
-        className={cn(
-          shellBrand &&
-            "shell-brand-control disabled:border-white/15 disabled:bg-white/5 disabled:text-white/40",
-        )}
+        className={cn(shellBrand && "shell-brand-control")}
         onClick={() => setBenchmarkOpen(true)}
       >
         Tester
@@ -60,10 +45,7 @@ export function AiGlobalHeader({ shellBrand = false }: { shellBrand?: boolean })
       <IconButton
         icon="settings"
         label="Réglages Intelligence artificielle"
-        className={cn(
-          shellBrand &&
-            "shell-brand-control disabled:border-white/15 disabled:bg-white/5 disabled:text-white/40",
-        )}
+        className={cn(shellBrand && "shell-brand-control")}
         onClick={() => {
           void navigate("/settings/ai");
         }}

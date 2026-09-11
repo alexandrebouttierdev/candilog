@@ -6,7 +6,7 @@ import type {
   ImportProfileRequest,
   ImportProfileResult,
 } from "@/shared/types/generated/profile";
-import { aiService } from "@/features/ai/services/aiService";
+import { importProfileFromResume } from "@/features/ai/viewmodel/importProfile";
 import type { AiExecution } from "@/features/ai/model/types";
 import { useAiOperation } from "@/features/ai/viewmodel/useAiOperation";
 import { useAiRailStatusStore } from "@/features/ai/viewmodel/ai-rail-status-store";
@@ -108,7 +108,7 @@ export function ProfileImportModal({
     setPhase("picking");
     setError(null);
     try {
-      const next = await aiService.importProfile({ generation_id: id });
+      const next = await importProfileFromResume(id);
       if (!isCurrent(id)) return;
       if (next === null) {
         setPhase("pick");

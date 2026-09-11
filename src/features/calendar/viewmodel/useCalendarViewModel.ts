@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
-import { interviewService } from "@/features/interviews/services/interviewService";
-import type { Interview, NewInterview } from "@/features/interviews/services/interviewService";
+import { interviewService, type Interview, type NewInterview } from "@/features/interviews";
 import {
   FOLLOW_UPS_KEY,
   followUpService,

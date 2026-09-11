@@ -1,6 +1,6 @@
 import { useState, type KeyboardEvent, type ReactNode } from "react";
 import { ContextBarAccessory, ContextNote } from "@/app/layout/ContextBar";
-import { AiBenchmarkModal } from "@/features/ai/view/components/AiBenchmarkModal";
+import { AiBenchmarkModal, useAiRailStatusStore } from "@/features/ai";
 import { AppError } from "@/shared/types/app-error";
 import type { AnalysisMode, LlmForm, Settings } from "@/shared/types/generated/settings";
 import {
@@ -16,7 +16,6 @@ import {
   TextInput,
 } from "@/shared/ui";
 import { openExternal } from "@/shared/services/external-link";
-import { settingsService } from "../../services/settingsService";
 import { useSettingsViewModel } from "../../viewmodel/useSettingsViewModel";
 import {
   defFournisseur,
@@ -27,7 +26,6 @@ import {
   versProvider,
   type FournisseurOption,
 } from "../../model/providers";
-import { useAiRailStatusStore } from "@/features/ai/viewmodel/ai-rail-status-store";
 import { ProviderGrid, logoFournisseur } from "../components/ProviderGrid";
 import { AiHero } from "../components/AiHero";
 import { ManagedOllamaPanel } from "../components/ManagedOllamaPanel";
@@ -36,7 +34,6 @@ import { cn } from "@/shared/lib/cn";
 import { etatIa, type TestConnexion } from "../../model/etatIa";
 import { etatManagedOllama } from "../../model/etatManagedOllama";
 import { useManagedOllamaViewModel } from "../../viewmodel/useManagedOllamaViewModel";
-import { managedOllamaService } from "../../services/managedOllamaService";
 import type { ManagedModelStatus } from "@/shared/types/generated/ai";
 
 const MODES: Array<{ value: AnalysisMode; label: string }> = [
@@ -103,7 +100,7 @@ export function AiPage() {
     setTest("pending");
     setTestMessage(null);
     try {
-      await settingsService.testConnection(llm, apiKeyDraft.trim() || null);
+      await vm.testConnection(llm, apiKeyDraft.trim() || null);
       setTest("ok");
       setTestMessage("Connexion établie.");
     } catch (error) {
@@ -115,7 +112,7 @@ export function AiPage() {
   const actualiserModels = async () => {
     if (!llm) return;
     try {
-      const list = await settingsService.listModels(llm, apiKeyDraft.trim() || null);
+      const list = await vm.listModels(llm, apiKeyDraft.trim() || null);
       setModels(list);
       if (llm.model.trim().length > 0 && list.length > 0 && !list.includes(llm.model)) {
         patchLlm({ model: "" });
@@ -152,7 +149,7 @@ export function AiPage() {
   const testerModeleLocal = async (model: ManagedModelStatus) => {
     if (!model.installed) return;
     if (!model.active) {
-      await managedOllamaService.activate(model.definition.id);
+      await managedVm.activateAsync(model.definition.id);
     }
     ouvrirBenchmark(model.definition.display_name);
   };

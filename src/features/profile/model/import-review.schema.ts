@@ -80,7 +80,7 @@ type ListDecision<T> = {
   selected: boolean;
   value: T;
   existing_index: number | null;
-  resolution: z.infer<typeof importResolutionSchema>;
+  resolution: z.output<typeof importResolutionSchema>;
 };
 
 const listDecision = <T extends z.ZodType>(value: T) =>

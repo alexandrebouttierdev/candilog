@@ -1,159 +1,111 @@
-import { useState } from "react";
-import { aiService } from "@/features/ai/services/aiService";
-import type { AiExecution, ImportedResumeAnalysis, SelectedResumeFile } from "@/features/ai/model/types";
-import { AiStopButton } from "@/features/ai/view/components/AiStopButton";
-import { useAiOperation } from "@/features/ai/viewmodel/useAiOperation";
-import { useAiRailStatusStore } from "@/features/ai/viewmodel/ai-rail-status-store";
-import { isAiNotConfiguredError } from "@/features/ai/model/ai-not-configured";
-import { useAiProgress } from "@/features/ai/viewmodel/useAiProgress";
-import { useAiTimer } from "@/features/ai/viewmodel/useAiTimer";
 import { formatAiSummary } from "@/shared/lib/duration";
-import { AppError } from "@/shared/types/app-error";
 import { Button, EmptyState, ErrorBanner, Icon, PageHeader } from "@/shared/ui";
+import { AiStopButton } from "@/features/ai/view/components/AiStopButton";
+import { useResumeAnalysisViewModel } from "../../viewmodel/useResumeAnalysisViewModel";
 import { AiProgress, DocumentPanel, ScoreBadge } from "../components/DocumentUi";
-import { ChampOffre, HeaderBadge, labelSection, Screen, TexteNonVerifie, message } from "./documentPageSupport";
+import { ChampOffre, HeaderBadge, labelSection, Screen, TexteNonVerifie } from "./documentPageSupport";
 
 export function ResumeAnalysisPage() {
-  const [job_offer, setJobOffer] = useState("");
-  const [selectedFile, setSelectedFile] = useState<SelectedResumeFile | null>(null);
-  const [selecting, setSelecting] = useState(false);
-  const { operation, stopping, start, stop, finish, isCurrent } = useAiOperation();
-  const [result, setResult] = useState<ImportedResumeAnalysis | null>(null);
-  const [metrics, setMetrics] = useState<Pick<AiExecution<unknown>, "elapsed_ms" | "tokens_used"> | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const progress = useAiProgress(stopping ? null : (operation?.id ?? null));
-  const timer = useAiTimer(operation !== null && !stopping);
+  const vm = useResumeAnalysisViewModel();
 
-  const selectFile = async () => {
-    setSelecting(true);
-    setError(null);
-    try {
-      const selected = await aiService.selectResumeFile();
-      if (selected !== null) {
-        setSelectedFile(selected);
-        setResult(null);
-        setMetrics(null);
-      }
-    } catch (caught) {
-      setError(message(caught));
-    } finally {
-      setSelecting(false);
-    }
-  };
-
-  const reset = () => {
-    if (operation !== null) return;
-    setSelectedFile(null);
-    setResult(null);
-    setMetrics(null);
-    setError(null);
-    setJobOffer("");
-  };
-
-  const run = async () => {
-    if (!selectedFile) { setError("Choisissez le CV PDF à analyser."); return; }
-    if (!job_offer.trim()) { setError("Collez l’offre ciblée avant de lancer l’analyse."); return; }
-    let id: string;
-    try {
-      id = start("analyse");
-    } catch (caught) {
-      if (isAiNotConfiguredError(caught)) return;
-      setError(message(caught));
-      return;
-    }
-    setError(null);
-    timer.start();
-    try {
-      const execution = await aiService.analyzeResume({
-        generation_id: id,
-        job_offer,
-      });
-      if (!isCurrent(id)) return;
-      timer.stop();
-      setResult(execution.output);
-      setMetrics(execution);
-    } catch (e) {
-      if (isCurrent(id) && !(e instanceof AppError && e.code === "CANCELLED")) {
-        setError(message(e));
-        useAiRailStatusStore.getState().setLastOperationFailed(true);
-      }
-    } finally {
-      finish(id);
-    }
-  };
-  const canReset = operation === null && (selectedFile !== null || result !== null || job_offer.trim().length > 0 || error !== null);
   return (
-    <Screen header={
-      <PageHeader
-        icon="query_stats"
-        title="Analyse de CV"
-        subtitle="Comparez un CV à l’offre ciblée"
-        badge={
-          <>
-            {metrics !== null && operation === null ? (
-              <HeaderBadge icon="schedule">
-                {formatAiSummary("Analysé", metrics.elapsed_ms, metrics.tokens_used)}
-              </HeaderBadge>
-            ) : null}
-          </>
-        }
-        secondary={
-          canReset ? (
-            <Button icon="restart_alt" disabled={operation !== null} onClick={reset}>
-              Réinitialiser
-            </Button>
-          ) : undefined
-        }
-      />
-    }>
+    <Screen
+      header={
+        <PageHeader
+          icon="query_stats"
+          title="Analyse de CV"
+          subtitle="Comparez un CV à l’offre ciblée"
+          badge={
+            <>
+              {vm.metrics !== null && vm.operation === null ? (
+                <HeaderBadge icon="schedule">
+                  {formatAiSummary("Analysé", vm.metrics.elapsed_ms, vm.metrics.tokens_used)}
+                </HeaderBadge>
+              ) : null}
+            </>
+          }
+          secondary={
+            vm.canReset ? (
+              <Button icon="restart_alt" disabled={vm.operation !== null} onClick={vm.reset}>
+                Réinitialiser
+              </Button>
+            ) : undefined
+          }
+        />
+      }
+    >
       <div className="grid gap-4 xl:grid-cols-[400px_minmax(480px,1fr)]">
         <div className="space-y-4">
           <DocumentPanel title="Document à analyser" icon="upload_file">
             <div className="space-y-4 p-4">
-              {operation ? (
+              {vm.operation ? (
                 <>
-                  {stopping ? null : <AiProgress progress={progress} elapsedMs={timer.elapsedMs} />}
-                  <AiStopButton
-                    stopping={stopping}
-                    onStop={() => void stop().catch((caught: unknown) => setError(message(caught)))}
-                  />
+                  {vm.stopping ? null : (
+                    <AiProgress progress={vm.progress} elapsedMs={vm.elapsedMs} />
+                  )}
+                  <AiStopButton stopping={vm.stopping} onStop={() => void vm.stop()} />
                 </>
               ) : (
                 <>
-                  <button type="button" aria-label={selectedFile ? "Changer de fichier" : "Choisir un fichier"} disabled={selecting} onClick={() => void selectFile()} className="flex w-full flex-col items-center gap-2 rounded-card border border-dashed border-accent-border bg-accent-tint px-5 py-8 text-center disabled:cursor-default">
+                  <button
+                    type="button"
+                    aria-label={vm.selectedFile ? "Changer de fichier" : "Choisir un fichier"}
+                    disabled={vm.selecting}
+                    onClick={() => void vm.selectFile()}
+                    className="flex w-full flex-col items-center gap-2 rounded-card border border-dashed border-accent-border bg-accent-tint px-5 py-8 text-center disabled:cursor-default"
+                  >
                     <Icon name="upload_file" size={28} className="text-accent" />
                     <span className="font-medium text-ink">
-                      {selecting ? "Sélection du fichier…" : selectedFile ? "Changer de fichier" : "Choisir un fichier"}
+                      {vm.selecting
+                        ? "Sélection du fichier…"
+                        : vm.selectedFile
+                          ? "Changer de fichier"
+                          : "Choisir un fichier"}
                     </span>
-                    {selectedFile ? (
-                      <span className="font-mono text-meta text-accent">{selectedFile.name}</span>
+                    {vm.selectedFile ? (
+                      <span className="font-mono text-meta text-accent">{vm.selectedFile.name}</span>
                     ) : null}
                     <span className="text-meta text-ink-muted">PDF uniquement · 10 Mo maximum</span>
                   </button>
-                  <ChampOffre label="Offre ciblée" required rows={13} value={job_offer} onChange={setJobOffer} />
-                  {error ? <ErrorBanner title="Analyse impossible" message={error} /> : null}
-                  <Button variant="primary" icon="bolt" className="w-full" disabled={selecting || selectedFile === null || !job_offer.trim()} onClick={() => void run()}>Analyser le CV</Button>
+                  <ChampOffre
+                    label="Offre ciblée"
+                    required
+                    rows={13}
+                    value={vm.jobOffer}
+                    onChange={vm.setJobOffer}
+                    readClipboard={vm.readClipboard}
+                  />
+                  {vm.error ? <ErrorBanner title="Analyse impossible" message={vm.error} /> : null}
+                  <Button
+                    variant="primary"
+                    icon="bolt"
+                    className="w-full"
+                    disabled={vm.selecting || vm.selectedFile === null || !vm.jobOffer.trim()}
+                    onClick={() => void vm.run()}
+                  >
+                    Analyser le CV
+                  </Button>
                 </>
               )}
             </div>
           </DocumentPanel>
         </div>
         <div className="space-y-4">
-          {result ? (
+          {vm.result ? (
             <>
               <DocumentPanel title="Résultat" icon="analytics">
                 <div className="grid gap-5 p-4 sm:grid-cols-[auto_1fr]">
-                  <ScoreBadge value={result.score.total} />
+                  <ScoreBadge value={vm.result.score.total} />
                   <div className="space-y-2">
-                    <p className="text-body leading-relaxed text-ink-muted">{result.analysis.recap}</p>
+                    <p className="text-body leading-relaxed text-ink-muted">{vm.result.analysis.recap}</p>
                     <TexteNonVerifie />
                   </div>
                 </div>
               </DocumentPanel>
               <DocumentPanel title="Recommandations" icon="tips_and_updates">
-                {result.analysis.recommendations.length ? (
+                {vm.result.analysis.recommendations.length ? (
                   <ul className="divide-y divide-line">
-                    {result.analysis.recommendations.map((recommendation, i) => (
+                    {vm.result.analysis.recommendations.map((recommendation, i) => (
                       <li key={i} className="flex flex-col gap-1.5 px-4 py-3">
                         <span className="text-label font-medium text-accent">
                           {labelSection(recommendation.section)}
@@ -167,13 +119,21 @@ export function ResumeAnalysisPage() {
                     ))}
                   </ul>
                 ) : (
-                  <EmptyState icon="tips_and_updates" title="Aucune recommandation" description="Le modèle n’a proposé aucune reformulation pour cette analyse." />
+                  <EmptyState
+                    icon="tips_and_updates"
+                    title="Aucune recommandation"
+                    description="Le modèle n’a proposé aucune reformulation pour cette analyse."
+                  />
                 )}
               </DocumentPanel>
             </>
           ) : (
             <DocumentPanel title="Résultat de l’analyse" icon="analytics">
-              <EmptyState icon="query_stats" title="Prêt à analyser" description="Le score ATS, les écarts et les recommandations apparaîtront ici." />
+              <EmptyState
+                icon="query_stats"
+                title="Prêt à analyser"
+                description="Le score ATS, les écarts et les recommandations apparaîtront ici."
+              />
             </DocumentPanel>
           )}
         </div>

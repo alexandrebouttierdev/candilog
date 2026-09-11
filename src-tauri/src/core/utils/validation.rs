@@ -42,6 +42,34 @@ pub fn validate_user_file_path(path: impl AsRef<Path>) -> AppResult<PathBuf> {
     Ok(path.to_path_buf())
 }
 
+/// Indique si une adresse e-mail a une forme utilisable (`local@domaine.tld`).
+#[must_use]
+pub fn is_valid_email(email: &str) -> bool {
+    email.split_once('@').is_some_and(|(local, domain)| {
+        !local.is_empty()
+            && domain.contains('.')
+            && !domain.starts_with('.')
+            && !domain.ends_with('.')
+    })
+}
+
+/// Valide une adresse e-mail facultative.
+///
+/// # Errors
+/// Retourne `Validation` si l'adresse est renseignée mais mal formée.
+pub fn validate_optional_email(value: Option<&str>, field: &str) -> AppResult<()> {
+    let Some(value) = value.map(str::trim).filter(|value| !value.is_empty()) else {
+        return Ok(());
+    };
+    if is_valid_email(value) {
+        Ok(())
+    } else {
+        Err(AppError::Validation(format!(
+            "{field} doit être une adresse e-mail valide"
+        )))
+    }
+}
+
 /// Indique si une adresse IP appartient à une zone locale ou non routable.
 #[must_use]
 pub fn is_local_or_private_ip(ip: IpAddr) -> bool {

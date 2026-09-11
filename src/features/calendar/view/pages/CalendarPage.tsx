@@ -12,9 +12,9 @@ import {
 } from "../../model/month";
 import { GridMonth } from "../components/GridMonth";
 import { ViewDay, ViewWeek } from "../components/ViewAgenda";
-import { InterviewFormModal } from "@/features/interviews/view/components/InterviewFormModal";
+import { InterviewFormModal } from "@/features/interviews";
 import { FollowUpFormModal, type FollowUp } from "@/features/followups";
-import type { Interview } from "@/features/interviews/services/interviewService";
+import type { Interview } from "@/features/interviews";
 import { ContextBarAccessory, ContextNote } from "@/app/layout/ContextBar";
 import {
   Button,

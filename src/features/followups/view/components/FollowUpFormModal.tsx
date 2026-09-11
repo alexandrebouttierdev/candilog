@@ -9,8 +9,8 @@ import {
 import { CANAUX_FOLLOW_UP } from "../../model/types";
 import type { NewFollowUp, FollowUp } from "../../services/followUpService";
 import { versDateAffichee } from "@/shared/lib/dates";
+import { ApplicationPicker } from "@/features/applications";
 import {
-  ApplicationPicker,
   DateInput,
   FormField,
   ModalHost,

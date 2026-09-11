@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/shared/lib/cn";
 import { useDismissable } from "@/shared/hooks/useDismissable";
 import { Icon, StatusPill } from "@/shared/ui";
 import type { Tone } from "@/shared/ui";
 import type { ManagedModelId } from "@/shared/types/generated/ai";
-import type { LlmForm, Settings } from "@/shared/types/generated/settings";
+import type { LlmForm } from "@/shared/types/generated/settings";
 import { AppError } from "@/shared/types/app-error";
 import { iaEstConfiguree, etatIa } from "@/features/settings/model/etatIa";
 import { etatManagedOllama } from "@/features/settings/model/etatManagedOllama";
@@ -23,12 +23,7 @@ import {
   logoFournisseur,
   ManagedPublisherLogo,
 } from "@/features/settings/view/components/ProviderGrid";
-import { settingsService } from "@/features/settings/services/settingsService";
-import {
-  managedOllamaService,
-  MANAGED_OLLAMA_KEY,
-} from "@/features/settings/services/managedOllamaService";
-import { SETTINGS_KEY } from "@/features/settings/viewmodel/useSettingsViewModel";
+import { useAiQuickSelectorViewModel } from "../../viewmodel/useAiQuickSelectorViewModel";
 
 const DOT: Record<Tone, string> = {
   success: "bg-success",
@@ -45,38 +40,17 @@ function providerStatusTone(configured: boolean): Tone {
 /** Sélecteur rapide global : fournisseur + modèle, synchronisé avec les réglages. */
 export function AiQuickSelector({ shellBrand = false }: { shellBrand?: boolean }) {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const root = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [focusedProvider, setFocusedProvider] = useState<FournisseurOption["id"] | null>(null);
-
-  const settings = useQuery({
-    queryKey: SETTINGS_KEY,
-    queryFn: settingsService.load,
-  });
-  const llm = settings.data?.llm;
+  const vm = useAiQuickSelectorViewModel();
+  const llm = vm.settings?.llm;
   const activeProviderId = llm ? idProvider(llm.provider) : null;
-
-  const managed = useQuery({
-    queryKey: MANAGED_OLLAMA_KEY,
-    queryFn: managedOllamaService.status,
-  });
-
-  const saveSettings = useMutation({
-    mutationFn: (next: Settings) => settingsService.save(next, null),
-    onSuccess: (saved) => {
-      queryClient.setQueryData(SETTINGS_KEY, saved);
-    },
-  });
-
-  const activateManaged = useMutation({
-    mutationFn: (modelId: ManagedModelId) => managedOllamaService.activate(modelId),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: SETTINGS_KEY });
-      void queryClient.invalidateQueries({ queryKey: MANAGED_OLLAMA_KEY });
-      setOpen(false);
-    },
-  });
+  const managed = { data: vm.managed };
+  const activateManaged = (modelId: ManagedModelId) => {
+    vm.activateManaged(modelId);
+    setOpen(false);
+  };
 
   useDismissable({ open, onDismiss: () => setOpen(false) });
 
@@ -114,11 +88,11 @@ export function AiQuickSelector({ shellBrand = false }: { shellBrand?: boolean }
   const logo = activeProviderId ? logoFournisseur(activeProviderId) : null;
 
   const selectProvider = async (id: FournisseurOption["id"]) => {
-    if (!settings.data) return;
+    if (!vm.settings) return;
     if (id === "candilog_local") {
       const active = managed.data?.active_model;
       if (active) {
-        activateManaged.mutate(active.id);
+        activateManaged(active.id);
         return;
       }
       setOpen(false);
@@ -126,17 +100,17 @@ export function AiQuickSelector({ shellBrand = false }: { shellBrand?: boolean }
       return;
     }
     const nextLlm: LlmForm = {
-      ...settings.data.llm,
+      ...vm.settings.llm,
       provider: versProvider(id),
       endpoint: endpointDefaut(id),
-      model: id === activeProviderId ? settings.data.llm.model : modelDefaut(id),
+      model: id === activeProviderId ? vm.settings.llm.model : modelDefaut(id),
     };
     if (!iaEstConfiguree(nextLlm)) {
       setOpen(false);
       void navigate("/settings/ai");
       return;
     }
-    await saveSettings.mutateAsync({ ...settings.data, llm: nextLlm });
+    await vm.saveSettings({ ...vm.settings, llm: nextLlm });
     setOpen(false);
   };
 
@@ -146,7 +120,7 @@ export function AiQuickSelector({ shellBrand = false }: { shellBrand?: boolean }
       void navigate("/settings/ai");
       return;
     }
-    activateManaged.mutate(modelId);
+    activateManaged(modelId);
   };
 
   const triggerLabel = activeModelLabel
@@ -215,9 +189,9 @@ export function AiQuickSelector({ shellBrand = false }: { shellBrand?: boolean }
               const itemConfigured =
                 item.id === "candilog_local"
                   ? Boolean(managed.data?.active_model)
-                  : settings.data
+                  : vm.settings
                     ? iaEstConfiguree({
-                        ...settings.data.llm,
+                        ...vm.settings.llm,
                         provider: versProvider(item.id),
                       })
                     : false;
@@ -273,9 +247,9 @@ export function AiQuickSelector({ shellBrand = false }: { shellBrand?: boolean }
                 void navigate("/settings/ai");
               }}
               onSelectRemote={async (model) => {
-                if (!settings.data || !llm) return;
-                await saveSettings.mutateAsync({
-                  ...settings.data,
+                if (!vm.settings || !llm) return;
+                await vm.saveSettings({
+                  ...vm.settings,
                   llm: { ...llm, model, provider: versProvider(columnProvider) },
                 });
                 setOpen(false);
@@ -298,7 +272,7 @@ function ModelColumn({
 }: {
   providerId: FournisseurOption["id"];
   llm: LlmForm | undefined;
-  managed: Awaited<ReturnType<typeof managedOllamaService.status>> | undefined;
+  managed: ReturnType<typeof useAiQuickSelectorViewModel>["managed"];
   onSelectManaged: (id: ManagedModelId, installed: boolean) => void;
   onConfigure: () => void;
   onSelectRemote: (model: string) => Promise<void>;
@@ -366,10 +340,10 @@ function RemoteModelList({
   onConfigure: () => void;
   onSelectRemote: (model: string) => Promise<void>;
 }) {
+  const vm = useAiQuickSelectorViewModel();
   const query = useQuery({
     queryKey: ["parametres", "modeles-quick", providerId, llm?.endpoint, llm?.model],
-    queryFn: () =>
-      settingsService.listModels({ ...llm!, provider: versProvider(providerId) }, null),
+    queryFn: () => vm.listModels(providerId, llm!),
     enabled: Boolean(llm),
   });
 

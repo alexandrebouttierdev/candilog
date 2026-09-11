@@ -8,7 +8,7 @@ import {
 } from "../../model/schemas/contact-form.schema";
 import { Roles } from "../../model/roles";
 import type { Contact, NewContact } from "../../services/contactService";
-import { companyService } from "@/features/companies/services/companyService";
+import { fetchCompanyPickerPage } from "@/features/companies";
 import { EntityPicker, FormField, ModalHost, Select, TextArea, TextInput } from "@/shared/ui";
 
 const VIDE: ContactFormInput = {
@@ -158,26 +158,7 @@ export function ContactFormModal({
                       placeholder="Rechercher une entreprise…"
                       emptyHelp="Aucune entreprise trouvée."
                       queryKey={["entreprises"]}
-                      fetchPage={async (params) => {
-                        const result = await companyService.listPage({
-                          page: params.page,
-                          page_size: params.page_size,
-                          filter: {
-                            search: params.search,
-                            sector_id: null,
-                            company_type_id: null,
-                            company_size: null,
-                          },
-                        });
-                        return {
-                          ...result,
-                          items: result.items.map((company) => ({
-                            id: company.id,
-                            label: company.name,
-                            meta: company.city ?? undefined,
-                          })),
-                        };
-                      }}
+                      fetchPage={fetchCompanyPickerPage}
                       onChange={(id) => field.onChange(id ?? "")}
                     />
                   )}

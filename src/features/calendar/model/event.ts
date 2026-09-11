@@ -1,6 +1,5 @@
-import type { Interview } from "@/features/interviews/services/interviewService";
+import { interviewIcon, type Interview } from "@/features/interviews";
 import type { FollowUp } from "@/features/followups";
-import { interviewIcon } from "@/features/interviews/model/types";
 import { followUpIcon } from "@/features/followups";
 import { timeFromTimestamp, dayOf } from "@/shared/lib/dates";
 import type { Tone } from "@/shared/ui";

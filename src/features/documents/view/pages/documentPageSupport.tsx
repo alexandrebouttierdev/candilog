@@ -1,8 +1,6 @@
 import type { ReactNode } from "react";
 import type { AtsRecommendationSection, ResumeGeneration } from "@/features/ai/model/types";
-import type { CoverLetter, CoverLetterExport, ResumeDocument, ResumeWorkspace } from "../../services/documentsService";
-import { documentsService } from "../../services/documentsService";
-import type { ToastMessage } from "@/shared/lib/ui-store";
+import type { CoverLetter, ResumeWorkspace } from "../../services/documentsService";
 import { AppError } from "@/shared/types/app-error";
 import { ContextBarAccessory, ContextSearch } from "@/app/layout/ContextBar";
 import { Button, FormField, Icon, TextArea, TextInput } from "@/shared/ui";
@@ -10,8 +8,7 @@ import { useUiStore } from "@/shared/lib/ui-store";
 import type { IconName } from "@/shared/ui/icon-names";
 import { normalizeResumeWorkspace } from "../../model/resumeWorkspace";
 
-export const RESUME_KEY = ["documents", "cv"] as const;
-export const COVER_LETTERS_KEY = ["documents", "lettres"] as const;
+export { RESUME_KEY, COVER_LETTERS_KEY } from "../../viewmodel/documentKeys";
 
 export function Screen({
   header,
@@ -93,6 +90,7 @@ export function ChampOffre({
   help,
   placeholder,
   onChange,
+  readClipboard,
 }: {
   label: string;
   value: string;
@@ -101,12 +99,14 @@ export function ChampOffre({
   help?: string;
   placeholder?: string;
   onChange: (value: string) => void;
+  /** Lecture native du presse-papiers, fournie par le ViewModel. */
+  readClipboard: () => Promise<string>;
 }) {
   const notify = useUiStore((state) => state.notify);
 
   const coller = async () => {
     try {
-      const texte = await documentsService.readClipboard();
+      const texte = await readClipboard();
       if (!texte.trim()) {
         notify({ tone: "info", title: "Le presse-papiers est vide" });
         return;
@@ -201,36 +201,3 @@ export function labelSection(section: AtsRecommendationSection): string {
   return section === "experience" ? "Expérience" : "Profil";
 }
 
-export async function exportPdf(
-  document: ResumeDocument,
-  notify: (toast: Omit<ToastMessage, "id">) => void,
-) {
-  try {
-    const exported = await documentsService.exportPdf(document);
-    if (!exported) return;
-    notify({ tone: "success", title: "CV exporté" });
-  } catch (error) {
-    notify({
-      tone: "error",
-      title: "Export PDF impossible",
-      detail: error instanceof AppError ? error.message : undefined,
-    });
-  }
-}
-
-export async function exportLetterPdf(
-  cover_letter: CoverLetterExport,
-  notify: (toast: Omit<ToastMessage, "id">) => void,
-) {
-  try {
-    const exported = await documentsService.exportCoverLetterPdf(cover_letter);
-    if (!exported) return;
-    notify({ tone: "success", title: "Lettre exportée" });
-  } catch (error) {
-    notify({
-      tone: "error",
-      title: "Export PDF impossible",
-      detail: error instanceof AppError ? error.message : undefined,
-    });
-  }
-}

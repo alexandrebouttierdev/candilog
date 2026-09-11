@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 import { settingsService } from "../services/settingsService";
-import { resetOnboarding } from "@/features/onboarding/model/onboarding-storage";
+import { resetOnboarding } from "@/features/onboarding";
 
 function errorDetail(error: unknown): string | undefined {
   return error instanceof AppError ? error.message : undefined;

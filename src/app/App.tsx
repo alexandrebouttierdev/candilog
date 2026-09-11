@@ -3,9 +3,11 @@ import { AppProviders } from "./providers/AppProviders";
 import { AppRouter } from "./router/AppRouter";
 import { Toaster } from "@/shared/ui";
 import { applyTheme, useUiStore } from "@/shared/lib/ui-store";
-import { settingsService } from "@/features/settings/services/settingsService";
-import { OnboardingTour } from "@/features/onboarding/view/components/OnboardingTour";
-import { markOnboardingCompleted, onboardingCompleted } from "@/features/onboarding/model/onboarding-storage";
+import {
+  OnboardingTour,
+  markOnboardingCompleted,
+  onboardingCompleted,
+} from "@/features/onboarding";
 
 export function App() {
   const theme = useUiStore((state) => state.theme);
@@ -18,20 +20,10 @@ export function App() {
     if (!onboardingCompleted()) setOnboarding(true);
   }, [setOnboarding]);
 
-  useEffect(() => {
-    void settingsService
-      .load()
-      .then((settings) => {
-        useUiStore.getState().setTheme(settings.theme);
-      })
-      .catch(() => {
-        /* Première ouverture : le thème système reste. */
-      });
-  }, []);
-
   // Le thème vit sur `document.documentElement`, hors de l'arbre React : un effet est le
   // seul moyen de l'y refléter. `system` retire l'attribut, laissant jouer la préférence
-  // du système d'exploitation.
+  // du système d'exploitation. Le chargement initial passe par useBootstrapTheme dans
+  // AppProviders (QueryClient disponible).
   useEffect(() => {
     applyTheme(theme);
   }, [theme]);

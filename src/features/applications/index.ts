@@ -5,3 +5,4 @@ export type { ApplicationFilter, ApplicationStatus } from "./services/applicatio
 export { applicationService } from "./services/applicationService";
 export { FILTER_VIDE } from "./model/schemas/application-filter.schema";
 export { status_meta } from "./model/statuses";
+export { ApplicationPicker } from "./view/components/ApplicationPicker";

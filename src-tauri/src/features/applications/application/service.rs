@@ -56,6 +56,7 @@ impl<R: ApplicationRepository> ApplicationService<R> {
         page_size: u64,
         filter: &ApplicationFilter,
     ) -> AppResult<Page<Application>> {
+        Self::validate_filter(filter)?;
         self.repo.list_page(page, page_size, filter)
     }
 
@@ -68,6 +69,7 @@ impl<R: ApplicationRepository> ApplicationService<R> {
     /// # Errors
     /// Propage l'erreur du dépôt.
     pub fn list_matching(&self, filter: &ApplicationFilter) -> AppResult<Vec<Application>> {
+        Self::validate_filter(filter)?;
         let mut page = 1;
         let mut items = Vec::new();
         loop {
@@ -88,6 +90,7 @@ impl<R: ApplicationRepository> ApplicationService<R> {
     /// # Errors
     /// Propage l'erreur du dépôt.
     pub fn breakdown(&self, filter: &ApplicationFilter) -> AppResult<PipelineBreakdown> {
+        Self::validate_filter(filter)?;
         self.repo.breakdown(filter)
     }
 
@@ -176,6 +179,56 @@ impl<R: ApplicationRepository> ApplicationService<R> {
             ApplicationType::Unsolicited => normalisee.job_url = None,
         }
         Ok(normalisee)
+    }
+
+    /// Revalide les bornes de filtre reçues de l'IPC avant toute requête SQL.
+    fn validate_filter(filter: &ApplicationFilter) -> AppResult<()> {
+        for (value, label) in [
+            (&filter.start_date, "La date de début"),
+            (&filter.end_date, "La date de fin"),
+        ] {
+            if let Some(raw) = value {
+                if chrono::NaiveDate::parse_from_str(raw, "%Y-%m-%d").is_err() {
+                    return Err(AppError::Validation(format!(
+                        "{label} du filtre est invalide"
+                    )));
+                }
+            }
+        }
+        if let (Some(start), Some(end)) = (&filter.start_date, &filter.end_date) {
+            if start > end {
+                return Err(AppError::Validation(
+                    "La date de début doit précéder la date de fin".into(),
+                ));
+            }
+        }
+        Self::validate_filter_hours(filter.min_weekly_hours, "minimal")?;
+        Self::validate_filter_hours(filter.max_weekly_hours, "maximal")?;
+        if let (Some(min), Some(max)) = (filter.min_weekly_hours, filter.max_weekly_hours) {
+            if min > max {
+                return Err(AppError::Validation(
+                    "Le volume horaire minimal ne peut pas dépasser le maximal".into(),
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    fn validate_filter_hours(value: Option<f64>, label: &str) -> AppResult<()> {
+        let Some(hours) = value else {
+            return Ok(());
+        };
+        if !hours.is_finite() {
+            return Err(AppError::Validation(format!(
+                "Le volume horaire {label} du filtre est invalide"
+            )));
+        }
+        if hours < 0.0 || hours > MAX_WEEKLY_HOURS {
+            return Err(AppError::Validation(format!(
+                "Le volume horaire {label} doit être compris entre 0 et {MAX_WEEKLY_HOURS:.0}"
+            )));
+        }
+        Ok(())
     }
 
     /// Contrôle le volume horaire hebdomadaire lorsqu'il est renseigné.

@@ -11,8 +11,8 @@ import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 import type { ResumeWorkspace } from "@/shared/types/generated/documents";
 import { documentsService } from "../services/documentsService";
-
-const RESUME_KEY = ["documents", "cv"] as const;
+import { exportResumePdf } from "./documentExport";
+import { RESUME_KEY } from "./documentKeys";
 
 export interface ResumeGeneratorInitial {
   result: ResumeGeneration | null;
@@ -159,5 +159,7 @@ export function useResumeGeneratorViewModel(initial: ResumeGeneratorInitial) {
     generate,
     stop: stopGeneration,
     saveResume: save.mutateAsync,
+    readClipboard: () => documentsService.readClipboard(),
+    exportPdf: (document: Parameters<typeof exportResumePdf>[0]) => exportResumePdf(document, notify),
   };
 }

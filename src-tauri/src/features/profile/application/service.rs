@@ -2,7 +2,7 @@
 
 use crate::core::errors::{AppError, AppResult};
 use crate::core::utils::text::search_key;
-use crate::core::utils::validation::validate_optional_http_url;
+use crate::core::utils::validation::{is_valid_email, validate_optional_http_url};
 use crate::features::profile::domain::{
     apply_decisions, build_preview, normaliser, nouveau_nom_fichier, Identity,
     ImportProfilePreview, ImportProfileRequest, ImportProfileResult, Profile, ProfilePayload,
@@ -291,7 +291,7 @@ fn identity_complete(identity: &Identity) -> bool {
 
 fn valider(profile: &Profile) -> AppResult<()> {
     let email = profile.identity.email.trim();
-    if !email.is_empty() && !email_valide(email) {
+    if !email.is_empty() && !is_valid_email(email) {
         return Err(AppError::Validation("L'adresse e-mail est invalide".into()));
     }
     validate_optional_http_url(profile.identity.linkedin.as_deref(), "Le profil LinkedIn")?;
@@ -366,15 +366,6 @@ fn valider(profile: &Profile) -> AppResult<()> {
         validate_optional_http_url(certification.url.as_deref(), "Le lien de la certification")?;
     }
     Ok(())
-}
-
-fn email_valide(email: &str) -> bool {
-    email.split_once('@').is_some_and(|(local, domaine)| {
-        !local.is_empty()
-            && domaine.contains('.')
-            && !domaine.starts_with('.')
-            && !domaine.ends_with('.')
-    })
 }
 
 #[cfg(test)]

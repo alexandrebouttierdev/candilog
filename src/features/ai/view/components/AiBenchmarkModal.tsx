@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { aiService } from "@/features/ai/services/aiService";
+import { cancelAiOperation, runUserBenchmark } from "../../viewmodel/importProfile";
 import type { UserBenchmarkResult } from "@/shared/types/generated/ai";
 import { ModalHost } from "@/shared/ui";
 import { AppError } from "@/shared/types/app-error";
@@ -68,8 +68,7 @@ function BenchmarkSession({
   useEffect(() => {
     const started = Date.now();
     const timer = setInterval(() => setElapsedMs(Date.now() - started), 200);
-    void aiService
-      .runUserBenchmark(generationId)
+    void runUserBenchmark(generationId)
       .then((payload) => {
         setResult(payload);
         setPhase("done");
@@ -87,7 +86,7 @@ function BenchmarkSession({
   }, [attempt, generationId, onClose]);
 
   const stop = () => {
-    void aiService.cancel(generationId).finally(onClose);
+    void cancelAiOperation(generationId).finally(onClose);
   };
 
   return (

@@ -1,8 +1,8 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { Sections, sectionForPath } from "@/app/router/routes";
-import { applyTheme, useShellBrand, useUiStore } from "@/shared/lib/ui-store";
+import { useShellBrand } from "@/shared/lib/ui-store";
 import type { ThemePref } from "@/shared/types/generated/settings";
-import { settingsService } from "@/features/settings/services/settingsService";
+import { useThemePreference } from "@/features/settings/viewmodel/useSettingsViewModel";
 import { Icon } from "@/shared/ui/Icon";
 import { cn } from "@/shared/lib/cn";
 import logoCandilog from "@/assets/logo-candilog.svg";
@@ -12,9 +12,9 @@ import logoCandilogDark from "@/assets/logo-candilog-dark.svg";
 export function NavRail() {
   const { pathname } = useLocation();
   const active = sectionForPath(pathname);
-  const setTheme = useUiStore((state) => state.setTheme);
   const railBrand = useShellBrand();
   const sombre = !railBrand;
+  const { saveTheme } = useThemePreference();
 
   return (
     <nav
@@ -24,7 +24,7 @@ export function NavRail() {
       <span
         className={cn(
           "mb-3 flex size-9 items-center justify-center",
-          railBrand && "rounded-tile bg-white/95 p-1 shadow-sm",
+          railBrand && "rounded-tile bg-rail-logo p-1 shadow-sm",
         )}
       >
         <img
@@ -79,14 +79,7 @@ export function NavRail() {
         aria-label={sombre ? "Passer en thème clair" : "Passer en thème sombre"}
         onClick={() => {
           const suivant: ThemePref = sombre ? "light" : "dark";
-          setTheme(suivant);
-          applyTheme(suivant);
-          void settingsService
-            .load()
-            .then((settings) => settingsService.save({ ...settings, theme: suivant }))
-            .catch(() => {
-              /* Revue navigateur sans backend : le thème reste en session. */
-            });
+          void saveTheme(suivant);
         }}
         className={cn(
           "mt-1 flex h-9 w-[42px] flex-none items-center justify-center rounded-tile transition-colors duration-hover",

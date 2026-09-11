@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { IconButton, Select } from "@/shared/ui";
 import { DocumentPanel } from "./DocumentUi";
 import { LetterPaper, type LetterPaperField, type LetterPaperFields } from "./LetterPaper";
+import type { Identity } from "@/shared/types/generated/profile";
 import type { IconName } from "@/shared/ui/icon-names";
 import {
   markupFromDom,
@@ -32,6 +33,8 @@ export function LetterEditor({
   value,
   readOnly,
   fields,
+  identity = null,
+  onSaveIdentity,
   onChange,
   onFieldsChange,
   onOverflowChange,
@@ -39,6 +42,8 @@ export function LetterEditor({
   value: string;
   readOnly: boolean;
   fields: LetterPaperFields;
+  identity?: Identity | null;
+  onSaveIdentity?: (identity: Identity) => void | Promise<unknown>;
   onChange: (markup: string) => void;
   onFieldsChange: (field: LetterPaperField, value: string) => void;
   onOverflowChange: (overflow: boolean) => void;
@@ -167,9 +172,11 @@ export function LetterEditor({
       <div className="flex min-h-0 flex-1 flex-col items-center gap-3 overflow-y-auto bg-page p-[26px]">
         <LetterPaper
           fields={fields}
+          identity={identity}
           editable={!readOnly}
           onChange={onFieldsChange}
           onOverflowChange={onOverflowChange}
+          {...(onSaveIdentity ? { onSaveIdentity } : {})}
         >
           <div
             ref={zone}

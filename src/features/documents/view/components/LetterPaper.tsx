@@ -1,7 +1,4 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { profileService } from "@/features/profile/services/profileService";
-import { PROFILE_KEY } from "@/features/profile/viewmodel/useProfileViewModel";
 import type { Identity } from "@/shared/types/generated/profile";
 import {
   letterDateLine,
@@ -41,40 +38,36 @@ export type LetterPaperFields = {
 /**
  * Feuille A4 de la lettre, portée du template fourni.
  *
- * L'identité vient du profil courant (lecture seule). Entreprise, poste, destinataire et
+ * L'identité est fournie par le parent (ViewModel) : pas d'appel service ici. Entreprise, poste, destinataire et
  * référence sont éditables sur le papier en mode édition ; les blocs vides sont omis en
  * lecture. Aperçu et PDF partagent la même hiérarchie.
  */
 export function LetterPaper({
   fields,
+  identity: identityProp = null,
+  onSaveIdentity,
   editable = false,
   children,
   onChange,
   onOverflowChange,
 }: {
   fields: LetterPaperFields;
+  /** Identité du profil, injectée par le ViewModel parent. */
+  identity?: Identity | null;
+  /** Persistance de l'identité au blur ; absente en lecture seule. */
+  onSaveIdentity?: (identity: Identity) => void | Promise<unknown>;
   editable?: boolean;
   children: ReactNode;
   onChange?: (field: LetterPaperField, value: string) => void;
   onOverflowChange?: (overflow: boolean) => void;
 }) {
-  const profile = useQuery({ queryKey: PROFILE_KEY, queryFn: profileService.load });
-  const queryClient = useQueryClient();
-  const enregistre = useMutation({
-    mutationFn: (identity: Identity) => {
-      const courant = profile.data?.profile;
-      if (!courant) throw new Error("Profil indisponible");
-      return profileService.save({ ...courant, identity });
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: PROFILE_KEY }),
-  });
   // Brouillon local : la zone éditable prévient à chaque frappe, mais le profil n'est
   // écrit qu'à la sortie du champ. Le brouillon suit le profil tant qu'on n'y touche pas.
   const [brouillon, setBrouillon] = useState<Identity | null>(null);
   // La sortie du champ suit immédiatement la frappe : l'état n'est pas encore réappliqué
   // quand elle survient, d'où cette référence qui, elle, porte toujours la dernière saisie.
   const brouillonRef = useRef<Identity | null>(null);
-  const identity = brouillon ?? profile.data?.profile.identity;
+  const identity = brouillon ?? identityProp ?? undefined;
   const firstName = identity?.first_name?.trim() ?? "";
   const lastName = identity?.name?.trim() ?? "";
   const nom = letterSignature(firstName, lastName);
@@ -98,7 +91,7 @@ export function LetterPaper({
   };
   const valider = () => {
     const saisie = brouillonRef.current;
-    if (saisie) enregistre.mutate(saisie);
+    if (saisie) void onSaveIdentity?.(saisie);
   };
   const paperRef = useRef<HTMLElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
