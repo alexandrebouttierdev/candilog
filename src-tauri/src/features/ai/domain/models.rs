@@ -328,6 +328,39 @@ pub struct ResumeAnalysisRequest {
 #[ts(export, export_to = "ai.ts")]
 pub struct ProfileImportRequest {
     pub generation_id: String,
+    /// Préférence d'analyse. Absente ou `vision` : Vision si le modèle le permet, sinon Texte.
+    #[serde(default)]
+    pub method: super::CvAnalysisMethod,
+}
+
+/// Aperçu d'import enrichi de la méthode réellement utilisée (et d'un éventuel repli).
+#[derive(Debug, Clone, Serialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "ai.ts")]
+pub struct ProfileImportAnalysis {
+    pub preview: crate::features::profile::domain::ImportProfilePreview,
+    pub method_used: super::CvAnalysisMethodUsed,
+    pub fallback_used: bool,
+}
+
+#[derive(Debug, Clone, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "ai.ts")]
+pub struct UserBenchmarkRequest {
+    pub generation_id: String,
+    /// Pipeline à tester. Par défaut Vision (avec repli Texte si le modèle le permet).
+    #[serde(default)]
+    pub method: super::CvAnalysisMethod,
+}
+
+/// Capacités du modèle actif, exposées à l'UI pour désactiver Vision si besoin.
+#[derive(Debug, Clone, Serialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "ai.ts")]
+pub struct ActiveModelCapabilities {
+    pub vision: bool,
+    pub provider_label: String,
+    pub model_label: String,
 }
 
 /// Résultat final d'un traitement IA et métriques communiquées à l'interface.

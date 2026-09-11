@@ -6,6 +6,7 @@ export type {
   ResumeAnalysisRequest,
   ResumeGenerationRequest,
   ProfileImportRequest,
+  ProfileImportAnalysis,
   CoverLetterRequest,
   GeneratedExperience,
   GeneratedEducation,
@@ -21,4 +22,8 @@ export type {
   LanguageCorrectionField,
   LanguageCorrectionRequest,
   LanguageCorrectionResult,
+  CvAnalysisMethod,
+  CvAnalysisMethodUsed,
+  ActiveModelCapabilities,
+  UserBenchmarkRequest,
 } from "@/shared/types/generated/ai";

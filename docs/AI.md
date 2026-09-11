@@ -82,6 +82,32 @@ Une date avec une année est ramenée à `AAAA-MM` ou `AAAA`, une fin « en cour
 poste comme actuel et un fragment inexploitable est vidé. Une variation de format ne fait
 donc plus perdre toute une analyse de CV ; les autres bornes de sortie restent inchangées.
 
+### Import de CV : Vision par défaut, Texte en repli
+
+L'import de profil (`ai_import_profile`) propose deux méthodes :
+
+| Méthode | Pipeline |
+| --- | --- |
+| **Vision** (recommandé) | PDF → rendu pages (`pdftoppm`) → modèle multimodal (+ texte Rust complémentaire) → JSON |
+| **Texte** | PDF → extraction Rust (`pdftotext -layout` / flux) → modèle texte → JSON |
+
+La capacité Vision est déterminée pour le **modèle réellement sélectionné** (métadonnées
+Ollama `/api/show` si disponibles, sinon catalogue Candilog et familles connues). Ministral 3
+du catalogue local est Vision ; LFM2.5 ne l'est pas.
+
+Comportement :
+
+1. préférence `vision` + modèle compatible → Vision, avec **repli automatique Texte** en cas
+   d'échec (rendu, provider, JSON, timeout…) ;
+2. préférence `vision` + modèle text-only → Texte sans erreur ;
+3. préférence `text` → Texte uniquement, Vision jamais appelée.
+
+Le résultat (`ProfileImportAnalysis`) indique `method_used` et `fallback_used`. Les invites
+Vision sont distinctes : le document visuel prime, le texte brut n'est qu'un complément.
+Le recadrage (`ground_imported_profile`) s'applique dès qu'un texte complémentaire est
+disponible. L'UI expose le choix Vision / Texte, désactive Vision si indisponible, et
+signale un repli éventuel.
+
 Le gabarit envoyé au modèle **décrit** chaque valeur attendue (« prénom du candidat ») au
 lieu de la laisser vide. Un gabarit rempli de `""` était recopié tel quel par les petits
 modèles : `llama3.2:1b` renvoyait le squelette intact et l'import échouait faute de données.
@@ -259,10 +285,13 @@ qu'après confirmation et transmission de l'arrêt au backend.
 Le bouton **Tester** (en-tête global, héros des réglages IA, carte de chaque modèle local
 installé) lance `run_user_cv_benchmark`. Le PDF de référence et sa ground truth
 (`resources/CV_BENCHMARK.pdf`, `resources/CV_BENCHMARK.expected.json`) sont embarqués dans
-`src-tauri/resources/`. Le pipeline est **identique** à un import de profil réel
-(`import_profile` en dry-run) : extraction PDF, invite, post-traitements, scoring
-déterministe contre la ground truth. Aucune donnée utilisateur n'est persistée ; le profil
-extrait est jeté après calcul du score.
+`src-tauri/resources/`. Le pipeline suit le même orchestrateur que l'import de profil
+(`method` Vision ou Texte, repli éventuel) : prétraitement PDF, invite, post-traitements,
+scoring déterministe contre la ground truth. Aucune donnée utilisateur n'est persistée ; le
+profil extrait est jeté après calcul du score.
+
+`UserBenchmarkResult` expose `method_used` et `fallback_used` pour comparer Texte, Vision et
+Vision hybride (images + texte complémentaire) sur un même modèle compatible.
 
 Le benchmark fonctionne avec **tout fournisseur configuré** (IA locale Candilog, Ollama
 externe, cloud). Les providers distants affichent un avertissement : le CV de

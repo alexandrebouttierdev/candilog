@@ -1,14 +1,18 @@
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { aiService, type AiExecution } from "@/features/ai";
+import { aiService, type AiExecution, type ProfileImportAnalysis } from "@/features/ai";
 import type { ImportProfilePreview } from "@/shared/types/generated/profile";
 import { AppError } from "@/shared/types/app-error";
 import { ProfileImportModal } from "../ProfileImportModal";
 import { useAiOperationStore } from "@/features/ai";
 
 vi.mock("@/features/ai/services/aiService", () => ({
-  aiService: { importProfile: vi.fn(), cancel: vi.fn() },
+  aiService: {
+    importProfile: vi.fn(),
+    cancel: vi.fn(),
+    activeModelCapabilities: vi.fn(),
+  },
   generation_id: () => "gen-1",
 }));
 
@@ -55,11 +59,19 @@ function conflictOnlyPreview(): ImportProfilePreview {
 }
 
 function execution(
-  output = conflictOnlyPreview(),
+  preview = conflictOnlyPreview(),
   elapsed_ms = 2_000,
   tokens_used: number | null = 640,
-): AiExecution<ImportProfilePreview> {
-  return { output, elapsed_ms, tokens_used };
+): AiExecution<ProfileImportAnalysis> {
+  return {
+    output: {
+      preview,
+      method_used: "vision",
+      fallback_used: false,
+    },
+    elapsed_ms,
+    tokens_used,
+  };
 }
 
 describe("ProfileImportModal", () => {
@@ -67,18 +79,25 @@ describe("ProfileImportModal", () => {
     vi.clearAllMocks();
     useAiOperationStore.setState({ active: null });
     vi.mocked(aiService.cancel).mockResolvedValue(undefined);
+    vi.mocked(aiService.activeModelCapabilities).mockResolvedValue({
+      vision: true,
+      provider_label: "IA locale Candilog",
+      model_label: "ministral-3:3b",
+    });
     progress.current = { step: null, entries: [], tokens_used: null, tokens_per_second: null };
+    localStorage.removeItem("candilog.cv-analysis-method");
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it("n'affiche pas Importer avant la revue", () => {
+  it("n'affiche pas Importer avant la revue", async () => {
     render(
       <ProfileImportModal open busy={false} onClose={vi.fn()} onApply={vi.fn()} />,
     );
 
+    expect(await screen.findByText("Méthode d'analyse")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Annuler" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Importer les éléments sélectionnés" })).not.toBeInTheDocument();
     expect(screen.queryByText(/%/)).not.toBeInTheDocument();
@@ -117,7 +136,7 @@ describe("ProfileImportModal", () => {
   });
 
   it("arrête l'analyse, revient au sélecteur et ignore le résultat tardif", async () => {
-    let resolveImport: ((value: AiExecution<ImportProfilePreview>) => void) | undefined;
+    let resolveImport: ((value: AiExecution<ProfileImportAnalysis>) => void) | undefined;
     vi.mocked(aiService.importProfile).mockReturnValue(
       new Promise((resolve) => { resolveImport = resolve; }),
     );
@@ -197,7 +216,7 @@ describe("ProfileImportModal", () => {
   it("mesure la durée d'analyse sans le temps passé dans le sélecteur", async () => {
     const now = vi.spyOn(Date, "now");
     now.mockReturnValue(1_000);
-    let publish: (preview: AiExecution<ImportProfilePreview>) => void = () => undefined;
+    let publish: (preview: AiExecution<ProfileImportAnalysis>) => void = () => undefined;
     vi.mocked(aiService.importProfile).mockReturnValue(
       new Promise((resolve) => {
         publish = resolve;
@@ -240,6 +259,35 @@ describe("ProfileImportModal", () => {
     );
 
     expect(onApply).toHaveBeenCalledOnce();
-    expect(aiService.importProfile).toHaveBeenCalledWith({ generation_id: "gen-1" });
+    expect(aiService.importProfile).toHaveBeenCalledWith({
+      generation_id: "gen-1",
+      method: "vision",
+    });
+  });
+
+  it("désactive Vision et force Texte si le modèle est text-only", async () => {
+    vi.mocked(aiService.activeModelCapabilities).mockResolvedValue({
+      vision: false,
+      provider_label: "IA locale Candilog",
+      model_label: "lfm2.5:1.2b",
+    });
+    vi.mocked(aiService.importProfile).mockResolvedValue(
+      execution(conflictOnlyPreview()),
+    );
+
+    render(<ProfileImportModal open busy={false} onClose={vi.fn()} onApply={vi.fn()} />);
+
+    expect(
+      await screen.findByText(/ne prend pas en charge l'analyse visuelle/i),
+    ).toBeInTheDocument();
+    const vision = screen.getByRole("radio", { name: /Vision/i });
+    expect(vision).toBeDisabled();
+    expect(screen.getByRole("radio", { name: /^Texte/i })).toBeChecked();
+
+    await userEvent.click(screen.getByRole("button", { name: /Choisir et analyser un CV PDF/ }));
+    expect(aiService.importProfile).toHaveBeenCalledWith({
+      generation_id: "gen-1",
+      method: "text",
+    });
   });
 });

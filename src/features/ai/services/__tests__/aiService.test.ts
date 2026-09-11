@@ -31,9 +31,22 @@ describe("aiService", () => {
   it("reste muet quand le sélecteur de fichier a été annulé", async () => {
     vi.mocked(ipc).mockResolvedValue(null);
 
-    await aiService.importProfile({ generation_id: "gen-2" });
+    await aiService.importProfile({ generation_id: "gen-2", method: "vision" });
 
     expect(playCompletionSound).not.toHaveBeenCalled();
+  });
+
+  it("demande les capacités du modèle actif", async () => {
+    vi.mocked(ipc).mockResolvedValue({
+      vision: true,
+      provider_label: "Ollama",
+      model_label: "ministral-3:3b",
+    });
+
+    await expect(aiService.activeModelCapabilities()).resolves.toMatchObject({
+      vision: true,
+    });
+    expect(ipc).toHaveBeenCalledWith("ai_active_model_capabilities");
   });
 
   it("sélectionne un PDF sans lancer ni annoncer un traitement IA", async () => {

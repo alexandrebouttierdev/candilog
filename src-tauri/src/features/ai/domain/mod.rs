@@ -2,6 +2,7 @@
 
 mod config;
 mod cover_letter;
+mod cv_analysis;
 mod managed_ollama;
 mod models;
 mod normalization;
@@ -15,6 +16,7 @@ mod validation;
 pub use crate::core::utils::text::search_key;
 pub use config::*;
 pub use cover_letter::*;
+pub use cv_analysis::*;
 pub use managed_ollama::*;
 pub use models::*;
 pub use profile_dates::normalize_profile_dates;
@@ -29,6 +31,6 @@ pub use scoring::{
 pub use system_resources::*;
 pub use user_benchmark::{
     benchmark_ground_truth_path, benchmark_pdf_path, build_benchmark_result, load_ground_truth,
-    score_extracted_profile, BenchmarkGroundTruth, BenchmarkScore,
+    score_extracted_profile, BenchmarkAnalysisOutcome, BenchmarkGroundTruth, BenchmarkScore,
 };
 pub use validation::*;

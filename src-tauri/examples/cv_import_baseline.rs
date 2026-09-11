@@ -205,6 +205,7 @@ async fn main() {
             .import_profile(
                 ProfileImportRequest {
                     generation_id: format!("{out_name}-{cv_id}"),
+                    method: candilog_lib::features::ai::domain::CvAnalysisMethod::Text,
                 },
                 path.clone(),
                 move |event| {
@@ -233,10 +234,10 @@ async fn main() {
         let item = match result {
             Ok(execution) => {
                 let heuristic = match extract_pdf(path).await {
-                    Ok(text) => Some(score_heuristic(&text, &execution.output)),
+                    Ok(text) => Some(score_heuristic(&text, &execution.output.preview)),
                     Err(_) => None,
                 };
-                if let Err(error) = write_raw(&raw_dir, cv_id, &execution.output) {
+                if let Err(error) = write_raw(&raw_dir, cv_id, &execution.output.preview) {
                     eprintln!("{cv_id} raw write failed: {error}");
                 }
                 item_ok(
@@ -244,7 +245,7 @@ async fn main() {
                     duration_ms,
                     execution.elapsed_ms,
                     execution.tokens_used.or(progress.tokens),
-                    &execution.output,
+                    &execution.output.preview,
                     heuristic,
                     &progress.llm_calls,
                 )

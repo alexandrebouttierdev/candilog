@@ -88,6 +88,7 @@ image = { version = "0.25", default-features = false, features = ["jpeg", "png",
 # transitif lui aussi ; l'écrire à la main serait exactement le genre de code à ne pas
 # réimplémenter.
 base64 = "0.22"
+tempfile = "3"
 ts-rs = { version = "12", features = ["serde-compat", "uuid-impl", "chrono-impl", "no-serde-warnings"] }
 encoding_rs = "0.8.35"
 # Extraction de l'archive Ollama (tgz) lors de l'installation du runtime géré.
@@ -95,7 +96,6 @@ flate2 = "1"
 tar = "0.4"
 
 [dev-dependencies]
-tempfile = "3"
 
 [profile.release]
 lto = "thin"
