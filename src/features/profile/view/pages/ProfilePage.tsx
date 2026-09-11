@@ -100,67 +100,65 @@ export function ProfilePage() {
               />
             </div>
 
-            <div className="flex flex-wrap items-start gap-4 px-7 pt-5 pb-8">
-              <div className="flex min-w-0 flex-[1_1_460px] flex-col gap-4">
-                <ProfilePanel tab="identity" active={tab === "identity"}>
-                  <SectionCard icon="badge" title="Identité" onEdit={() => setSection("identity")}>
-                    <IdentityRows identity={vm.data.profile.identity} fields="identity" />
-                  </SectionCard>
-                </ProfilePanel>
-                <ProfilePanel tab="objective" active={tab === "objective"}>
-                  <SectionCard icon="target" title="Objectif professionnel" onEdit={() => setSection("objective")}>
-                    <IdentityRows identity={vm.data.profile.identity} fields="objective" />
-                  </SectionCard>
-                </ProfilePanel>
-                <ProfilePanel tab="online" active={tab === "online"}>
-                  <SectionCard icon="link" title="Présence en ligne" onEdit={() => setSection("online")}>
-                    <IdentityRows identity={vm.data.profile.identity} fields="online" />
-                  </SectionCard>
-                </ProfilePanel>
-                <ProfilePanel tab="experiences" active={tab === "experiences"}>
-                  <SectionCard icon="work_history" title="Expériences" onEdit={() => setSection("experiences")}>
-                    <ExperiencesList profile={vm.data.profile} onEdit={() => setSection("experiences")} />
-                  </SectionCard>
-                </ProfilePanel>
-                <ProfilePanel tab="skills" active={tab === "skills"}>
-                  <SectionCard icon="psychology" title="Compétences" actionLabel="Gérer" onEdit={() => setSection("skills")}>
-                    <SkillsList profile={vm.data.profile} onEdit={() => setSection("skills")} />
-                  </SectionCard>
-                </ProfilePanel>
-                <ProfilePanel tab="education" active={tab === "education"}>
-                  <SectionCard icon="school" title="Formations" onEdit={() => setSection("education")}>
-                    <EducationList profile={vm.data.profile} onEdit={() => setSection("education")} />
-                  </SectionCard>
-                </ProfilePanel>
-                <ProfilePanel tab="projects" active={tab === "projects"}>
-                  <SectionCard icon="rocket_launch" title="Projets" onEdit={() => setSection("projects")}>
-                    <SimpleList items={vm.data.profile.projects.map((item) => ({ title: item.name, meta: item.technologies, body: item.description }))} empty="Aucun projet ajouté" action="Ajouter un projet" onEdit={() => setSection("projects")} />
-                  </SectionCard>
-                </ProfilePanel>
-                <ProfilePanel tab="certifications" active={tab === "certifications"}>
-                  <SectionCard icon="workspace_premium" title="Certifications" onEdit={() => setSection("certifications")}>
-                    <SimpleList items={vm.data.profile.certifications.map((item) => ({ title: item.name, meta: [item.issuer, item.date].filter(Boolean).join(" · ") || null, body: item.description }))} empty="Aucune certification ajoutée" action="Ajouter une certification" onEdit={() => setSection("certifications")} />
-                  </SectionCard>
-                </ProfilePanel>
-                <ProfilePanel tab="languages" active={tab === "languages"}>
-                  <SectionCard icon="translate" title="Langues" onEdit={() => setSection("languages")}>
-                    <SimpleList items={vm.data.profile.languages.map((item) => ({ title: item.name, meta: item.level, body: null }))} empty="Aucune langue ajoutée" action="Ajouter une langue" onEdit={() => setSection("languages")} />
-                  </SectionCard>
-                </ProfilePanel>
-                <ProfilePanel tab="interests" active={tab === "interests"}>
-                  <SectionCard icon="palette" title="Centres d'intérêts" actionLabel="Gérer" onEdit={() => setSection("interests")}>
-                    <SkillsLikeList
-                      items={vm.data.profile.interests.map((item) => item.name)}
-                      empty="Aucun centre d'intérêt ajouté"
-                      emptyDescription="Facultatif. Ajoutez vos hobbies et centres d'intérêts pour enrichir le profil."
-                      action="Ajouter des centres d'intérêts"
-                      onEdit={() => setSection("interests")}
-                    />
-                  </SectionCard>
-                </ProfilePanel>
-              </div>
+            <div className="flex flex-col gap-4 px-7 pt-5 pb-8">
+              <ProfilePanel tab="identity" active={tab === "identity"}>
+                <SectionCard icon="badge" title="Identité" onEdit={() => setSection("identity")}>
+                  <IdentityRows identity={vm.data.profile.identity} fields="identity" />
+                </SectionCard>
+              </ProfilePanel>
+              <ProfilePanel tab="objective" active={tab === "objective"}>
+                <SectionCard icon="target" title="Objectif professionnel" onEdit={() => setSection("objective")}>
+                  <IdentityRows identity={vm.data.profile.identity} fields="objective" />
+                </SectionCard>
+              </ProfilePanel>
+              <ProfilePanel tab="online" active={tab === "online"}>
+                <SectionCard icon="link" title="Présence en ligne" onEdit={() => setSection("online")}>
+                  <IdentityRows identity={vm.data.profile.identity} fields="online" />
+                </SectionCard>
+              </ProfilePanel>
+              <ProfilePanel tab="experiences" active={tab === "experiences"}>
+                <SectionCard icon="work_history" title="Expériences" onEdit={() => setSection("experiences")}>
+                  <ExperiencesList profile={vm.data.profile} onEdit={() => setSection("experiences")} />
+                </SectionCard>
+              </ProfilePanel>
+              <ProfilePanel tab="skills" active={tab === "skills"}>
+                <SectionCard icon="psychology" title="Compétences" actionLabel="Gérer" onEdit={() => setSection("skills")}>
+                  <SkillsList profile={vm.data.profile} onEdit={() => setSection("skills")} />
+                </SectionCard>
+              </ProfilePanel>
+              <ProfilePanel tab="education" active={tab === "education"}>
+                <SectionCard icon="school" title="Formations" onEdit={() => setSection("education")}>
+                  <EducationList profile={vm.data.profile} onEdit={() => setSection("education")} />
+                </SectionCard>
+              </ProfilePanel>
+              <ProfilePanel tab="projects" active={tab === "projects"}>
+                <SectionCard icon="rocket_launch" title="Projets" onEdit={() => setSection("projects")}>
+                  <SimpleList items={vm.data.profile.projects.map((item) => ({ title: item.name, meta: item.technologies, body: item.description }))} empty="Aucun projet ajouté" action="Ajouter un projet" onEdit={() => setSection("projects")} />
+                </SectionCard>
+              </ProfilePanel>
+              <ProfilePanel tab="certifications" active={tab === "certifications"}>
+                <SectionCard icon="workspace_premium" title="Certifications" onEdit={() => setSection("certifications")}>
+                  <SimpleList items={vm.data.profile.certifications.map((item) => ({ title: item.name, meta: [item.issuer, item.date].filter(Boolean).join(" · ") || null, body: item.description }))} empty="Aucune certification ajoutée" action="Ajouter une certification" onEdit={() => setSection("certifications")} />
+                </SectionCard>
+              </ProfilePanel>
+              <ProfilePanel tab="languages" active={tab === "languages"}>
+                <SectionCard icon="translate" title="Langues" onEdit={() => setSection("languages")}>
+                  <SimpleList items={vm.data.profile.languages.map((item) => ({ title: item.name, meta: item.level, body: null }))} empty="Aucune langue ajoutée" action="Ajouter une langue" onEdit={() => setSection("languages")} />
+                </SectionCard>
+              </ProfilePanel>
+              <ProfilePanel tab="interests" active={tab === "interests"}>
+                <SectionCard icon="palette" title="Centres d'intérêts" actionLabel="Gérer" onEdit={() => setSection("interests")}>
+                  <SkillsLikeList
+                    items={vm.data.profile.interests.map((item) => item.name)}
+                    empty="Aucun centre d'intérêt ajouté"
+                    emptyDescription="Facultatif. Ajoutez vos hobbies et centres d'intérêts pour enrichir le profil."
+                    action="Ajouter des centres d'intérêts"
+                    onEdit={() => setSection("interests")}
+                  />
+                </SectionCard>
+              </ProfilePanel>
 
-              <div className="flex max-w-[380px] min-w-0 flex-[1_1_300px] flex-col gap-4">
+              <div className="max-w-md">
                 <ProfileResetCard busy={vm.isResetting} onReset={() => setResetOuvert(true)} />
               </div>
             </div>

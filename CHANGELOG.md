@@ -17,7 +17,8 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
   et `src-tauri/examples/PROMPT_IMPORT_CV.md`.
 
 - Page Profil : sections Identité, Objectif professionnel et Présence en ligne en onglets
-  dédiés (modales séparées). Le bouton et la carte « Modifier le profil » sont retirés.
+  dédiés (modales séparées). Le bouton « Modifier le profil » et le panneau latéral
+  Identité sont retirés.
 
 - Fournisseur IA NVIDIA remplacé par DeepSeek (API compatible OpenAI,
   `https://api.deepseek.com`, modèle par défaut `deepseek-v4-flash`). Un réglage encore

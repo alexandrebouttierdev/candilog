@@ -148,9 +148,8 @@ export function SectionCard({
 /**
  * Identité du bandeau : photo carrée, nom, coordonnées, et complément de l'appelant.
  *
- * La photo se change là où elle s'affiche : deux commandes de 24 px sous la pastille, au
- * lieu d'une carte séparée en bas de la colonne de droite. La suppression n'apparaît que
- * s'il y a quelque chose à supprimer.
+ * La photo se change là où elle s'affiche : deux commandes de 24 px sous la pastille.
+ * La suppression n'apparaît que s'il y a quelque chose à supprimer.
  */
 export function ProfileIdentity({
   identity,
