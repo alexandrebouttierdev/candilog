@@ -119,6 +119,9 @@ qu'une sélection d'identifiants du catalogue de faits et des mots-clés du brie
 les petits modèles locaux. Un identifiant inconnu invalide la réponse ; un mot-clé absent
 du brief est simplement écarté, parce qu'une paraphrase du modèle ne justifie pas de faire
 échouer toute la rédaction — la lettre reste dans tous les cas limitée aux faits vérifiés.
+Si le plan est vide ou trop court, l'assemblage **complète** avec les faits du catalogue
+dans le même ordre de priorité, pour éviter une lettre réduite à l'ouverture et la
+formule de politesse.
 
 La composition de la lettre produit un français de candidature (ouverture selon le ton,
 faits reliés au poste, clôture) : la préposition est **élidée**

@@ -46,7 +46,7 @@ impl ManagedOllamaService {
         let total_ram_gb = (System::new_all().total_memory() / 1_073_741_824).max(1) as u32;
         let installed_tags = settings.installed_model_tags.clone();
         let preferred = recommended_model_id(total_ram_gb);
-        let models = ManagedModelRegistry::all()
+        let mut models = ManagedModelRegistry::all()
             .into_iter()
             .map(|definition| {
                 let installed = installed_tags
@@ -73,7 +73,9 @@ impl ManagedOllamaService {
                     last_benchmark,
                 }
             })
-            .collect();
+            .collect::<Vec<_>>();
+        // Le modèle recommandé (Ministral 3 3B dès que la RAM le permet) apparaît en premier.
+        models.sort_by_key(|model| (!model.recommended, model.definition.recommended_ram_gb));
         let active_model = settings.active_model_id.and_then(ManagedModelRegistry::get);
         Ok(ManagedOllamaStatus {
             runtime_state: settings.runtime_state,
@@ -221,6 +223,8 @@ impl ManagedOllamaService {
                 .push(definition.ollama_tag.clone());
         }
         settings.managed_ollama.active_model_id = Some(request.model_id);
+        settings.llm.provider = crate::features::ai::domain::ProviderKind::CandilogLocal;
+        settings.llm.model = definition.ollama_tag.clone();
         settings.managed_ollama.last_error = None;
         self.save_settings(&settings)?;
         Ok(())

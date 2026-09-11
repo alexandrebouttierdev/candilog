@@ -204,11 +204,16 @@ pub fn render_grounded_letter(
             selected.push(*fact);
         }
     }
+    // Un petit modèle renvoie parfois un plan vide ou trop court : on complète alors avec
+    // les faits du catalogue dans l'ordre métier, pour éviter une lettre réduite à l'ouverture.
+    fill_selected_facts(&mut selected, &mut seen_ids, catalog, fact_limit);
+    selected.sort_by_key(|fact| fact_kind_priority(fact.kind));
 
     let brief = [
         request.company.as_deref().unwrap_or_default(),
         request.job_title.as_deref().unwrap_or_default(),
         request.context.as_deref().unwrap_or_default(),
+        request.instruction.as_deref().unwrap_or_default(),
     ]
     .join(" ");
     let mut keywords = Vec::new();
@@ -221,7 +226,7 @@ pub fn render_grounded_letter(
         if key.is_empty() || !contains_search_term(&brief, keyword) {
             continue;
         }
-        if seen_keywords.insert(key) && keywords.len() < 5 {
+        if seen_keywords.insert(key) && keywords.len() < 3 {
             keywords.push(keyword.trim());
         }
     }
@@ -257,21 +262,24 @@ pub fn render_grounded_letter(
     paragraphs.extend(
         selected
             .into_iter()
-            .map(|fact| fact_sentence(fact, tone, job)),
+            .map(|fact| fact_sentence(fact, tone, job, company)),
     );
     if !keywords.is_empty() {
         paragraphs.push(match tone {
             "casual" => format!(
-                "Les enjeux autour {} me parlent particulièrement et renforcent mon envie de rejoindre votre équipe.",
-                elider("de", &join_french(&keywords))
+                "Les enjeux autour {} me parlent particulièrement et renforcent mon envie de rejoindre {}.",
+                elider("de", &join_french(&keywords)),
+                company
             ),
             "creative" => format!(
-                "C'est surtout autour {} que je souhaite m'investir auprès de vous.",
-                elider("de", &join_french(&keywords))
+                "C'est surtout autour {} que je souhaite m'investir auprès de {}.",
+                elider("de", &join_french(&keywords)),
+                company
             ),
             _ => format!(
-                "Votre besoin autour {} motive particulièrement ma candidature et s'aligne avec mon expérience.",
-                elider("de", &join_french(&keywords))
+                "Votre besoin autour {} motive particulièrement ma candidature auprès de {}.",
+                elider("de", &join_french(&keywords)),
+                company
             ),
         });
     }
@@ -283,7 +291,39 @@ pub fn render_grounded_letter(
     Ok(paragraphs.join("\n\n"))
 }
 
-fn fact_sentence(fact: &GroundedFact, tone: &str, job: &str) -> String {
+fn fact_kind_priority(kind: GroundedFactKind) -> u8 {
+    match kind {
+        GroundedFactKind::Experience => 0,
+        GroundedFactKind::Summary => 1,
+        GroundedFactKind::Skill => 2,
+        GroundedFactKind::Project => 3,
+        GroundedFactKind::Education => 4,
+        GroundedFactKind::Certification => 5,
+    }
+}
+
+fn fill_selected_facts<'a>(
+    selected: &mut Vec<&'a GroundedFact>,
+    seen_ids: &mut HashSet<&'a str>,
+    catalog: &'a [GroundedFact],
+    fact_limit: usize,
+) {
+    if selected.len() >= fact_limit || catalog.is_empty() {
+        return;
+    }
+    let mut ranked: Vec<&GroundedFact> = catalog.iter().collect();
+    ranked.sort_by_key(|fact| fact_kind_priority(fact.kind));
+    for fact in ranked {
+        if selected.len() >= fact_limit {
+            break;
+        }
+        if seen_ids.insert(fact.id.as_str()) {
+            selected.push(fact);
+        }
+    }
+}
+
+fn fact_sentence(fact: &GroundedFact, tone: &str, job: &str, company: &str) -> String {
     let text = phrase(&fact.text);
     match (fact.kind, tone) {
         (GroundedFactKind::Summary, "casual" | "creative") => {
@@ -293,15 +333,19 @@ fn fact_sentence(fact: &GroundedFact, tone: &str, job: &str) -> String {
             format!("Mon projet professionnel s'inscrit dans cette direction : {text}")
         }
         (GroundedFactKind::Experience, "casual") => {
-            format!("De mon côté, j'ai notamment mené {text}")
+            format!("De mon côté, j'ai notamment mené {text} — une base utile pour {company}.")
         }
         (GroundedFactKind::Experience, "creative") => {
-            format!("Une expérience me paraît particulièrement pertinente pour ce poste : {text}")
+            format!(
+                "Une expérience me paraît particulièrement pertinente pour le poste {} : {text}",
+                elider("de", job)
+            )
         }
         (GroundedFactKind::Experience, _) => {
             format!(
-                "Pour le poste {}, je peux notamment m'appuyer sur l'expérience suivante : {text}",
-                elider("de", job)
+                "Pour le poste {} chez {}, je peux notamment m'appuyer sur l'expérience suivante : {text}",
+                elider("de", job),
+                company
             )
         }
         (GroundedFactKind::Skill, "casual" | "creative") => {
@@ -422,6 +466,20 @@ mod tests {
 
         assert!(!text.contains("Kubernetes"));
         assert!(text.contains("Votre besoin autour d\u{2019}APIs"));
+        assert!(text.contains("auprès de Acme"));
+    }
+
+    /// Un plan vide (petit modèle local) ne doit plus produire une lettre sans faits.
+    #[test]
+    fn un_plan_vide_est_complete_avec_les_faits_du_catalogue() {
+        let plan = CoverLetterPlan::default();
+        let text = render_grounded_letter(&catalog(), &plan, &request()).unwrap();
+
+        assert!(text.contains("Nova"), "{text}");
+        assert!(
+            text.contains("Pour le poste") || text.contains("De mon côté"),
+            "{text}"
+        );
     }
 
     /// « pour le poste de Administrateur », « au sein de Astek » : la lettre composait ses

@@ -27,7 +27,7 @@ Réponds uniquement en JSON : {"selected_fact_ids":[],"motivation_keywords":[]}.
 Règles de sélection :
 1. Choisis uniquement des identifiants présents dans catalogue[].id — aucun autre.
 2. Priorise dans cet ordre : experience, puis summary, puis skill, project, education, certification.
-3. Adapte le nombre de faits à "longueur" : short → 1, medium → 2, long → 3. Ne dépasse jamais ce maximum.
+3. Remplis exactement le nombre de faits demandé par "longueur" : short → 1, medium → 2, long → 3. Ne renvoie jamais une liste vide si le catalogue contient des faits.
 4. Retiens les faits les plus utiles pour le poste et l'entreprise du brief ; écarte le hors-sujet.
 5. motivation_keywords : 0 à 3 termes recopiés caractère pour caractère depuis le brief (poste, entreprise, contexte ou instruction). Aucune paraphrase.
 6. N'écris aucune phrase de lettre. N'invente aucun fait, compétence, entreprise ni diplôme."#;
