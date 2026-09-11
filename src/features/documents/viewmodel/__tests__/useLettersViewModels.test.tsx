@@ -28,9 +28,10 @@ function profilePayload() {
       identity: {
         first_name: "Alex", name: "Exemple", email: "alex@exemple.fr",
         phone: null, address: null, city: "Rennes", title: null,
-        resume: null, linkedin: null, github: null, website: null,
+        resume: null, birth_date: null, age: null, availability: null, desired_contracts: null, linkedin: null, github: null, website: null,
       },
       experiences: [], skills: [], education: [], languages: [], projects: [], certifications: [],
+    interests: [],
     },
     completion: 40, incomplete_sections: [], updated_at: "2026-08-31T00:00:00Z",
   };

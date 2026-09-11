@@ -117,6 +117,12 @@ pool par l'initialiseur, à côté de `PRAGMA foreign_keys` ; son implémentatio
 `core::utils::text`. Normaliser d'un seul côté rendait « ÉCOLE » introuvable, y compris en
 le cherchant par son nom exact.
 
+`profile.data` est un JSON unique (ligne singleton). Outre l'identité (coordonnées, titre,
+résumé facultatif, date de naissance et âge facultatifs, disponibilité et contrats
+recherchés facultatifs) et les listes d'expériences, compétences, formations, langues,
+projets et certifications, le profil porte aussi une liste facultative de **centres
+d'intérêts**. Une base antérieure sans ces clés reste lisible grâce aux défauts Serde.
+
 ## Photo de profil
 
 La photo n'est pas stockée en base : `profile.data` ne porte que le **nom** du fichier, et

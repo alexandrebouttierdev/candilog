@@ -3,6 +3,7 @@ import type {
   Education,
   Experience,
   Identity,
+  Interest,
   Language,
   Project,
   Skill,
@@ -17,6 +18,10 @@ export const identityDefaults = (value: Identity) => ({
   city: text(value.city),
   title: text(value.title),
   resume: text(value.resume),
+  birth_date: text(value.birth_date),
+  age: value.age == null ? "" : String(value.age),
+  availability: text(value.availability),
+  desired_contracts: text(value.desired_contracts),
   linkedin: text(value.linkedin),
   github: text(value.github),
   website: text(value.website),
@@ -42,6 +47,9 @@ export const experienceDefaults = (items: Experience[]) => ({
 
 export const skillDefaults = (items: Skill[]) => ({ items: structuredClone(items) });
 export const emptySkill = () => ({ name: "" });
+
+export const interestDefaults = (items: Interest[]) => ({ items: structuredClone(items) });
+export const emptyInterest = () => ({ name: "" });
 
 export const emptyEducation = () => ({
   degree: "",

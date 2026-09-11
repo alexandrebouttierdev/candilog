@@ -425,14 +425,9 @@ mod tests {
                 first_name: "Camille".into(),
                 name: "Martin".into(),
                 email: "camille@example.fr".into(),
-                phone: None,
-                address: None,
-                city: None,
                 title: Some("Développeuse Rust".into()),
                 resume: Some("Systèmes et CLI".into()),
-                linkedin: None,
-                github: None,
-                website: None,
+                ..Identity::default()
             },
             experiences: vec![Experience {
                 title: "Ingénieure".into(),
@@ -457,6 +452,7 @@ mod tests {
             languages: vec![],
             projects: vec![],
             certifications: vec![],
+            interests: vec![],
         }
     }
 

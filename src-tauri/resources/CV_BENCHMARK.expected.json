@@ -1,13 +1,19 @@
 {
-  "benchmark_version": 1,
+  "benchmark_version": 2,
   "profile": {
     "identity": {
       "first_name": "Thomas",
       "name": "Candilog",
       "email": "thomas.candilog.dev@gmail.com",
       "phone": "0618425791",
+      "address": "18 rue des Tanneurs, 35000 Rennes",
       "city": "Rennes",
       "title": "Développeur Full-Stack JavaScript / TypeScript",
+      "resume": "Développeur full-stack avec 8 ans d’expérience dans la conception d’applications web et mobiles. Expertise React, Node.js, TypeScript et PostgreSQL. Habitué aux environnements produit, aux équipes PO/UX/QA/DevOps et à la livraison de fonctionnalités de bout en bout. Sensible à la qualité, aux performances et à l’UX.",
+      "birth_date": "14 avril 1992",
+      "age": 34,
+      "availability": "Sous 1 mois • préavis négociable",
+      "desired_contracts": "CDI • CDD long • Freelance",
       "linkedin": "linkedin.com/in/thomascandilogdev",
       "github": "github.com/thomascandilogdev",
       "website": "portfolio.thomas-candilog.dev"
@@ -17,7 +23,7 @@
         "title": "Senior Full-Stack Developer",
         "company": "AlthéaRH",
         "location": "Rennes",
-        "start_date": "01/2023",
+        "start_date": "2023-01",
         "end_date": null,
         "current": true
       },
@@ -25,24 +31,24 @@
         "title": "Full-Stack Developer",
         "company": "Kivora Commerce",
         "location": "Nantes",
-        "start_date": "06/2020",
-        "end_date": "12/2022",
+        "start_date": "2020-06",
+        "end_date": "2022-12",
         "current": false
       },
       {
         "title": "Frontend Developer",
         "company": "Nexelio Digital",
         "location": "Rennes",
-        "start_date": "09/2018",
-        "end_date": "05/2020",
+        "start_date": "2018-09",
+        "end_date": "2020-05",
         "current": false
       },
       {
         "title": "Développeur Web Junior",
         "company": "Studio Velmora",
         "location": "Rennes",
-        "start_date": "09/2016",
-        "end_date": "08/2018",
+        "start_date": "2016-09",
+        "end_date": "2018-08",
         "current": false
       }
     ],
@@ -85,6 +91,12 @@
       { "name": "AWS Certified Cloud Practitioner", "issuer": "AWS", "date": "2024" },
       { "name": "Scrum Foundation Professional Certificate", "issuer": "", "date": "2023" },
       { "name": "TOEIC 865/990", "issuer": "", "date": "2022" }
+    ],
+    "interests": [
+      { "name": "Open source & veille IA" },
+      { "name": "Photographie urbaine" },
+      { "name": "Course à pied (10 km)" },
+      { "name": "Moto & mécanique" }
     ]
   }
 }

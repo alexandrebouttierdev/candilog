@@ -27,9 +27,20 @@ pub fn ground_imported_profile(source: &str, profile: &mut Profile) {
     retenir_option(source, &mut identity.city);
     retenir_option(source, &mut identity.title);
     retenir_option(source, &mut identity.resume);
+    retenir_option(source, &mut identity.birth_date);
+    retenir_option(source, &mut identity.availability);
+    retenir_option(source, &mut identity.desired_contracts);
     retenir_option(source, &mut identity.linkedin);
     retenir_option(source, &mut identity.github);
     retenir_option(source, &mut identity.website);
+    // L'âge est un nombre dérivé du CV (« 34 ans ») : on le garde si la date ou
+    // le chiffre apparaît dans le texte, sinon on l'efface.
+    if let Some(age) = identity.age {
+        let age_text = age.to_string();
+        if !est_recopie(source, &age_text) {
+            identity.age = None;
+        }
+    }
 
     for experience in &mut profile.experiences {
         retenir(source, &mut experience.title);
@@ -60,6 +71,9 @@ pub fn ground_imported_profile(source: &str, profile: &mut Profile) {
         retenir(source, &mut certification.name);
         retenir_option(source, &mut certification.issuer);
         retenir_option(source, &mut certification.url);
+    }
+    for interest in &mut profile.interests {
+        retenir(source, &mut interest.name);
     }
 }
 

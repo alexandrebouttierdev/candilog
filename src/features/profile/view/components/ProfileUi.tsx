@@ -10,7 +10,8 @@ export type ProfileTab =
   | "education"
   | "projects"
   | "certifications"
-  | "languages";
+  | "languages"
+  | "interests";
 
 const TAB_LABELS: Record<ProfileTab, { label: string; icon: IconName }> = {
   experiences: { label: "Expériences", icon: "work_history" },
@@ -19,6 +20,7 @@ const TAB_LABELS: Record<ProfileTab, { label: string; icon: IconName }> = {
   projects: { label: "Projets", icon: "rocket_launch" },
   certifications: { label: "Certifications", icon: "workspace_premium" },
   languages: { label: "Langues", icon: "translate" },
+  interests: { label: "Centres d'intérêts", icon: "palette" },
 };
 
 /** Onglets du bandeau profil : 9 px / 13 px, soulignement accent, compteur 10,5 px. */

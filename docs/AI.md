@@ -115,7 +115,10 @@ Le gabarit envoyé au modèle **décrit** chaque valeur attendue (« prénom du 
 lieu de la laisser vide. Un gabarit rempli de `""` était recopié tel quel par les petits
 modèles : `llama3.2:1b` renvoyait le squelette intact et l'import échouait faute de données.
 Les libellés comptent plusieurs mots exprès — recopiés faute d'information, ils ne figurent
-dans aucun CV et le recadrage les écarte.
+dans aucun CV et le recadrage les écarte. L'identité demande aussi l'**adresse postale**
+(`adresse`), distincte du courriel, ainsi que les champs facultatifs date de naissance, âge,
+disponibilité, contrats recherchés, résumé du profil et centres d'intérêts — en mode Texte
+comme en Vision.
 
 Une extraction qui ne rapporte ni identité, ni expérience, ni compétence relance **un**
 second appel, en disant au modèle ce qui manquait à sa réponse. Ce défaut-là échappe à la

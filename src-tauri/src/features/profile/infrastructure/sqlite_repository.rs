@@ -4,8 +4,8 @@ use crate::core::database::helpers::{connection, now_iso, translate_error};
 use crate::core::database::SqlitePool;
 use crate::core::errors::{AppError, AppResult};
 use crate::features::profile::domain::{
-    Certification, Education, Experience, Identity, Language, Profile, ProfileRepository, Project,
-    Skill,
+    Certification, Education, Experience, Identity, Interest, Language, Profile, ProfileRepository,
+    Project, Skill,
 };
 use rusqlite::OptionalExtension;
 use serde::{Deserialize, Serialize};
@@ -72,6 +72,8 @@ struct StoredProfile {
     languages: Vec<LanguageStored>,
     projects: Vec<ProjectStored>,
     certifications: Vec<CertificationStored>,
+    /// Centres d'intérêts — absents des bases antérieures.
+    interests: Vec<InterestStored>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -85,6 +87,10 @@ struct StoredIdentity {
     city: Option<String>,
     headline: Option<String>,
     summary: Option<String>,
+    birth_date: Option<String>,
+    age: Option<u8>,
+    availability: Option<String>,
+    desired_contracts: Option<String>,
     linkedin: Option<String>,
     github: Option<String>,
     website: Option<String>,
@@ -144,6 +150,12 @@ struct CertificationStored {
     url: Option<String>,
 }
 
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(default)]
+struct InterestStored {
+    name: String,
+}
+
 impl From<StoredProfile> for Profile {
     fn from(value: StoredProfile) -> Self {
         Self {
@@ -155,6 +167,7 @@ impl From<StoredProfile> for Profile {
             languages: value.languages.into_iter().map(Into::into).collect(),
             projects: value.projects.into_iter().map(Into::into).collect(),
             certifications: value.certifications.into_iter().map(Into::into).collect(),
+            interests: value.interests.into_iter().map(Into::into).collect(),
         }
     }
 }
@@ -170,6 +183,7 @@ impl From<&Profile> for StoredProfile {
             languages: value.languages.iter().map(Into::into).collect(),
             projects: value.projects.iter().map(Into::into).collect(),
             certifications: value.certifications.iter().map(Into::into).collect(),
+            interests: value.interests.iter().map(Into::into).collect(),
         }
     }
 }
@@ -185,6 +199,10 @@ impl From<StoredIdentity> for Identity {
             city: value.city,
             title: value.headline,
             resume: value.summary,
+            birth_date: value.birth_date,
+            age: value.age,
+            availability: value.availability,
+            desired_contracts: value.desired_contracts,
             linkedin: value.linkedin,
             github: value.github,
             website: value.website,
@@ -203,6 +221,10 @@ impl From<&Identity> for StoredIdentity {
             city: value.city.clone(),
             headline: value.title.clone(),
             summary: value.resume.clone(),
+            birth_date: value.birth_date.clone(),
+            age: value.age,
+            availability: value.availability.clone(),
+            desired_contracts: value.desired_contracts.clone(),
             linkedin: value.linkedin.clone(),
             github: value.github.clone(),
             website: value.website.clone(),
@@ -281,6 +303,7 @@ conversion_simple!(
     date => date,
     url => url,
 );
+conversion_simple!(InterestStored, Interest, name => name);
 
 #[cfg(test)]
 #[path = "tests/sqlite_repository/mod.rs"]

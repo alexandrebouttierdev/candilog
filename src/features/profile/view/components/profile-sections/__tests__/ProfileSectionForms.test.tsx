@@ -17,6 +17,10 @@ const profile: Profile = {
     city: null,
     title: null,
     resume: null,
+    birth_date: null,
+    age: null,
+    availability: null,
+    desired_contracts: null,
     linkedin: null,
     github: null,
     website: null,
@@ -27,6 +31,7 @@ const profile: Profile = {
   languages: [],
   projects: [],
   certifications: [],
+interests: [],
 };
 
 describe("formulaires de sections Profil", () => {

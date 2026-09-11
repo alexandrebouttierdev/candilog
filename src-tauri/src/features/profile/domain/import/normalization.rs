@@ -1,4 +1,4 @@
-use super::super::{Certification, Education, Experience, Language, Project, Skill};
+use super::super::{Certification, Education, Experience, Interest, Language, Project, Skill};
 
 pub(super) fn empty_to_none(value: &str) -> Option<String> {
     if value.is_empty() {
@@ -36,6 +36,10 @@ pub(super) fn project_key(item: &Project) -> String {
 }
 
 pub(super) fn certification_key(item: &Certification) -> String {
+    normalize(&item.name)
+}
+
+pub(super) fn interest_key(item: &Interest) -> String {
     normalize(&item.name)
 }
 

@@ -223,7 +223,7 @@ impl<R: ApplicationRepository> ApplicationService<R> {
                 "Le volume horaire {label} du filtre est invalide"
             )));
         }
-        if hours < 0.0 || hours > MAX_WEEKLY_HOURS {
+        if !(0.0..=MAX_WEEKLY_HOURS).contains(&hours) {
             return Err(AppError::Validation(format!(
                 "Le volume horaire {label} doit être compris entre 0 et {MAX_WEEKLY_HOURS:.0}"
             )));

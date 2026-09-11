@@ -31,7 +31,7 @@ function sampleResult(overrides: Partial<UserBenchmarkResult> = {}): UserBenchma
       { label: "Expériences", score: 20, max_score: 30 },
     ],
     hallucination_count: 0,
-    benchmark_version: 1,
+    benchmark_version: 2,
     provider_label: "IA locale",
     model_label: "ministral-3:3b",
     remote_warning: false,

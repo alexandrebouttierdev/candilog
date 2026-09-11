@@ -46,6 +46,7 @@ function conflictOnlyPreview(): ImportProfilePreview {
     languages: [],
     projects: [],
     certifications: [],
+    interests: [],
     counts: {
       identity: 1,
       experiences: 0,
@@ -54,6 +55,7 @@ function conflictOnlyPreview(): ImportProfilePreview {
       languages: 0,
       projects: 0,
       certifications: 0,
+      interests: 0,
     },
   };
 }

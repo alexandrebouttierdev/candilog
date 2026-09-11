@@ -1,5 +1,6 @@
 use super::*;
 use crate::core::database::{open_pool, run_local_migrations};
+use crate::features::profile::domain::Interest;
 
 fn repo() -> SqliteProfileRepository {
     let pool = open_pool(None).unwrap();
@@ -91,4 +92,63 @@ fn json_sans_adresse_reste_lisible() {
 
     let (profile, _) = repo.get().unwrap();
     assert_eq!(profile.identity.address, None);
+}
+
+#[test]
+fn champs_facultatifs_et_centres_d_interet_sont_persistes() {
+    let repo = repo();
+    let mut profile = Profile::default();
+    profile.identity.first_name = "Thomas".into();
+    profile.identity.birth_date = Some("14 avril 1992".into());
+    profile.identity.age = Some(34);
+    profile.identity.availability = Some("Sous 1 mois".into());
+    profile.identity.desired_contracts = Some("CDI • Freelance".into());
+    profile.identity.resume = Some("Résumé du profil".into());
+    profile.interests = vec![
+        Interest {
+            name: "Photographie urbaine".into(),
+        },
+        Interest {
+            name: "Course à pied".into(),
+        },
+    ];
+    repo.save(&profile).unwrap();
+
+    let (recharge, _) = repo.get().unwrap();
+    assert_eq!(
+        recharge.identity.birth_date.as_deref(),
+        Some("14 avril 1992")
+    );
+    assert_eq!(recharge.identity.age, Some(34));
+    assert_eq!(
+        recharge.identity.availability.as_deref(),
+        Some("Sous 1 mois")
+    );
+    assert_eq!(
+        recharge.identity.desired_contracts.as_deref(),
+        Some("CDI • Freelance")
+    );
+    assert_eq!(
+        recharge.identity.resume.as_deref(),
+        Some("Résumé du profil")
+    );
+    assert_eq!(recharge.interests.len(), 2);
+    assert_eq!(recharge.interests[0].name, "Photographie urbaine");
+}
+
+#[test]
+fn json_historique_sans_interets_reste_lisible() {
+    let repo = repo();
+    connection(&repo.pool)
+        .unwrap()
+        .execute(
+            "INSERT INTO profile (id, data, updated_at) VALUES (1, ?1, '2026-08-01')",
+            [r#"{"personal":{"first_name":"Camille","last_name":"Rivet","email":"camille@example.fr"},"experiences":[],"skills":[],"education":[],"languages":[],"projects":[],"certifications":[]}"#],
+        )
+        .unwrap();
+
+    let (profile, _) = repo.get().unwrap();
+    assert!(profile.interests.is_empty());
+    assert_eq!(profile.identity.age, None);
+    assert_eq!(profile.identity.availability, None);
 }

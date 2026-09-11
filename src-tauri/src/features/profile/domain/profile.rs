@@ -19,16 +19,42 @@ pub struct Identity {
         deserialize_with = "option_string_lenient"
     )]
     pub phone: Option<String>,
-    #[serde(default, deserialize_with = "option_string_lenient")]
+    #[serde(default, alias = "adresse", deserialize_with = "option_string_lenient")]
     pub address: Option<String>,
     #[serde(default, alias = "ville", deserialize_with = "option_string_lenient")]
     pub city: Option<String>,
     /// Accroche courte, utilisée comme objectif ou titre de CV.
     #[serde(default, alias = "titre", deserialize_with = "option_string_lenient")]
     pub title: Option<String>,
-    /// Présentation détaillée du parcours et de l'objectif.
+    /// Présentation / résumé du profil CV — facultatif.
     #[serde(default, deserialize_with = "option_string_lenient")]
     pub resume: Option<String>,
+    /// Date de naissance telle qu'écrite sur le CV — facultatif.
+    #[serde(
+        default,
+        alias = "dateNaissance",
+        alias = "date_naissance",
+        deserialize_with = "option_string_lenient"
+    )]
+    pub birth_date: Option<String>,
+    /// Âge déclaré sur le CV — facultatif, non recalculé automatiquement.
+    #[serde(default, deserialize_with = "option_u8_lenient")]
+    #[ts(type = "number | null")]
+    pub age: Option<u8>,
+    /// Disponibilité (ex. « Sous 1 mois ») — facultatif.
+    #[serde(
+        default,
+        alias = "disponibilite",
+        deserialize_with = "option_string_lenient"
+    )]
+    pub availability: Option<String>,
+    /// Contrats recherchés (ex. « CDI • Freelance ») — facultatif.
+    #[serde(
+        default,
+        alias = "contrats",
+        deserialize_with = "option_string_lenient"
+    )]
+    pub desired_contracts: Option<String>,
     #[serde(default, deserialize_with = "option_string_lenient")]
     pub linkedin: Option<String>,
     #[serde(default, deserialize_with = "option_string_lenient")]
@@ -136,6 +162,15 @@ pub struct Certification {
     pub url: Option<String>,
 }
 
+/// Centre d'intérêt déclaré sur le CV — facultatif.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, ts_rs::TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "profile.ts")]
+pub struct Interest {
+    #[serde(default, alias = "nom", deserialize_with = "string_lenient")]
+    pub name: String,
+}
+
 /// Profile complet persisté dans la ligne singleton `profil`.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "snake_case")]
@@ -162,6 +197,13 @@ pub struct Profile {
     pub projects: Vec<Project>,
     #[serde(default)]
     pub certifications: Vec<Certification>,
+    #[serde(
+        default,
+        alias = "centresInterets",
+        alias = "centres_interets",
+        deserialize_with = "interests_lenient"
+    )]
+    pub interests: Vec<Interest>,
 }
 
 /// Payload utile de l'écran Profile.
@@ -206,9 +248,30 @@ fn skills_lenient<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Vec<Skil
     })
 }
 
+fn interests_lenient<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Vec<Interest>, D::Error> {
+    let value = serde_json::Value::deserialize(deserializer)?;
+    Ok(match value {
+        serde_json::Value::Array(items) => {
+            items.into_iter().filter_map(interest_from_value).collect()
+        }
+        serde_json::Value::String(name) if !name.trim().is_empty() => vec![Interest { name }],
+        _ => Vec::new(),
+    })
+}
+
 fn skill_from_value(value: serde_json::Value) -> Option<Skill> {
+    named_item(value).map(|name| Skill { name })
+}
+
+fn interest_from_value(value: serde_json::Value) -> Option<Interest> {
+    named_item(value).map(|name| Interest { name })
+}
+
+fn named_item(value: serde_json::Value) -> Option<String> {
     match value {
-        serde_json::Value::String(name) if !name.trim().is_empty() => Some(Skill { name }),
+        serde_json::Value::String(name) if !name.trim().is_empty() => Some(name),
         serde_json::Value::Object(map) => {
             let name = map
                 .get("name")
@@ -217,8 +280,31 @@ fn skill_from_value(value: serde_json::Value) -> Option<Skill> {
             if name.trim().is_empty() {
                 None
             } else {
-                Some(Skill { name })
+                Some(name)
             }
+        }
+        _ => None,
+    }
+}
+
+fn option_u8_lenient<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Option<u8>, D::Error> {
+    let value = serde_json::Value::deserialize(deserializer)?;
+    Ok(age_from_value(value))
+}
+
+fn age_from_value(value: serde_json::Value) -> Option<u8> {
+    match value {
+        serde_json::Value::Null => None,
+        serde_json::Value::Number(number) => number.as_u64().and_then(|n| u8::try_from(n).ok()),
+        serde_json::Value::String(text) => {
+            let digits: String = text.chars().filter(|ch| ch.is_ascii_digit()).collect();
+            if digits.is_empty() {
+                return None;
+            }
+            digits
+                .parse::<u8>()
+                .ok()
+                .filter(|age| (1..=120).contains(age))
         }
         _ => None,
     }

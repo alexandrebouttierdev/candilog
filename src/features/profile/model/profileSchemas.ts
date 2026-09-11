@@ -28,6 +28,28 @@ export const identitySchema = z.object({
   city: optional,
   title: optional,
   resume: optional,
+  birth_date: optional,
+  age: z
+    .union([z.string(), z.number(), z.null()])
+    .transform((value) => {
+      if (value === null || value === "") return null;
+      const digits =
+        typeof value === "number"
+          ? String(value)
+          : value.replace(/\D/g, "");
+      if (!digits) return null;
+      const parsed = Number(digits);
+      if (!Number.isInteger(parsed) || parsed < 1 || parsed > 120) {
+        return null;
+      }
+      return parsed;
+    })
+    .nullable()
+    .refine((value) => value === null || (value >= 1 && value <= 120), {
+      message: "L'âge doit être compris entre 1 et 120",
+    }),
+  availability: optional,
+  desired_contracts: optional,
   linkedin: urlOptional("Le profil LinkedIn doit commencer par http:// ou https://"),
   github: urlOptional("Le profil GitHub doit commencer par http:// ou https://"),
   website: urlOptional("Le site web doit commencer par http:// ou https://"),
@@ -84,6 +106,9 @@ export const certificationSchema = z.object({
 export const skillsSchema = z.array(
   z.object({ name: z.string().trim().min(1, "Le nom est obligatoire") }),
 );
+export const interestsSchema = z.array(
+  z.object({ name: z.string().trim().min(1, "Le nom est obligatoire") }),
+);
 export const experiencesSchema = z.array(experienceSchema);
 export const educationSchema = z.array(educationItemSchema);
 export const languagesSchema = z.array(languageSchema);
@@ -94,6 +119,7 @@ export const certificationsSchema = z.array(certificationSchema);
 // schémas métier ci-dessus et ne déballent `items` qu'au moment de fusionner le profil.
 export const experiencesFormSchema = z.object({ items: experiencesSchema });
 export const skillsFormSchema = z.object({ items: skillsSchema });
+export const interestsFormSchema = z.object({ items: interestsSchema });
 export const educationFormSchema = z.object({ items: educationSchema });
 export const languagesFormSchema = z.object({ items: languagesSchema });
 export const projectsFormSchema = z.object({ items: projectsSchema });

@@ -10,6 +10,7 @@ export const SECTION_LABELS: Record<ImportSection, string> = {
   languages: "Langues",
   projects: "Projets",
   certifications: "Certifications",
+  interests: "Centres d'intérêts",
 };
 
 export const SECTION_ARIA: Record<ImportSection, string> = {
@@ -20,6 +21,7 @@ export const SECTION_ARIA: Record<ImportSection, string> = {
   languages: "les langues",
   projects: "les projets",
   certifications: "les certifications",
+  interests: "les centres d'intérêts",
 };
 
 export const SECTION_ICONS: Record<ImportSection, IconName> = {
@@ -30,6 +32,7 @@ export const SECTION_ICONS: Record<ImportSection, IconName> = {
   languages: "translate",
   projects: "rocket_launch",
   certifications: "workspace_premium",
+  interests: "palette",
 };
 
 export type CatalogRow = {
@@ -94,6 +97,13 @@ export function catalogOf(preview: ImportProfilePreview): CatalogRow[] {
       id: item.id,
       title: item.proposed.name,
       ...(item.proposed.issuer ? { subtitle: item.proposed.issuer } : {}),
+      conflict: item.has_conflict,
+    })),
+    ...preview.interests.map((item, index) => ({
+      section: "interests" as const,
+      index,
+      id: item.id,
+      title: item.proposed.name,
       conflict: item.has_conflict,
     })),
   ];

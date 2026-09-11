@@ -378,6 +378,15 @@ fn valider(profile: &Profile) -> AppResult<()> {
             "Chaque certification nécessite un nom".into(),
         ));
     }
+    if profile
+        .interests
+        .iter()
+        .any(|item| item.name.trim().is_empty())
+    {
+        return Err(AppError::Validation(
+            "Chaque centre d'intérêt nécessite un nom".into(),
+        ));
+    }
     for project in &profile.projects {
         validate_optional_http_url(project.url.as_deref(), "Le lien du projet")?;
     }
