@@ -12,6 +12,11 @@ export type AnalysisMode = "auto" | "small" | "standard" | "advanced";
 
 export type LlmForm = { provider: ProviderKind, api_key_configured: boolean, endpoint: string | null, model: string, temperature: number, mode: AnalysisMode, };
 
+/**
+ * Forme IPC d'un preset, avec l'état de clé (jamais le secret).
+ */
+export type LlmProviderPresetForm = { endpoint: string | null, model: string, temperature: number, mode: AnalysisMode, api_key_configured: boolean, };
+
 export type ProviderKind = "candilog_local" | "ollama" | "claude" | "openai" | "gemini" | "mistral" | "deepseek" | { "custom": string };
 
 /**
@@ -22,7 +27,7 @@ export type ResetOutcome = { data_cleared: boolean, secret_cleared: boolean, };
 /**
  * Forme IPC destinée à React.
  */
-export type Settings = { llm: LlmForm, theme: ThemePref, language: string, };
+export type Settings = { llm: LlmForm, llm_presets: { [key in string]: LlmProviderPresetForm }, theme: ThemePref, language: string, };
 
 /**
  * Préférence de thème, identique à l'enum historique.

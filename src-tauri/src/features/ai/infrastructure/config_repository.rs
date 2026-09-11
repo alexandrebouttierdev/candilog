@@ -41,7 +41,7 @@ pub fn load_config_avec(
         .trim()
         .is_empty()
     {
-        config.api_key = secret_store.load_api_key()?;
+        config.api_key = secret_store.load_api_key(config.provider.storage_id())?;
     }
     if !config.est_configure() {
         return Err(AppError::Provider(
@@ -122,10 +122,13 @@ mod tests {
     struct CoffreFixe(Option<String>);
 
     impl SecretStoreContract for CoffreFixe {
-        fn load_api_key(&self) -> AppResult<Option<String>> {
+        fn load_api_key(&self, _provider_id: &str) -> AppResult<Option<String>> {
             Ok(self.0.clone())
         }
-        fn store_api_key(&self, _: Option<&str>) -> AppResult<()> {
+        fn store_api_key(&self, _: &str, _: Option<&str>) -> AppResult<()> {
+            Ok(())
+        }
+        fn clear_all_api_keys(&self) -> AppResult<()> {
             Ok(())
         }
     }

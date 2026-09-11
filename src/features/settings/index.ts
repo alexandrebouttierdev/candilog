@@ -10,6 +10,8 @@ export {
   getProvider,
   idProvider,
   toProvider,
+  presetFromLlm,
+  llmFromPreset,
   type ProviderOption,
 } from "./model/providers";
 export {

@@ -12,14 +12,12 @@ import {
   ManagedPublisherLogo,
   PROVIDERS,
   aiStatus,
-  defaultEndpoint,
-  defaultModel,
   getProvider,
   idProvider,
   isAiConfigured,
+  llmFromPreset,
   managedOllamaStatus,
   providerLogo,
-  toProvider,
   type ProviderOption,
 } from "@/features/settings";
 import { useAiQuickSelectorViewModel } from "../../viewmodel/useAiQuickSelectorViewModel";
@@ -98,18 +96,29 @@ export function AiQuickSelector({ shellBrand = false }: { shellBrand?: boolean }
       void navigate("/settings/ai");
       return;
     }
-    const nextLlm: LlmForm = {
-      ...vm.settings.llm,
-      provider: toProvider(id),
-      endpoint: defaultEndpoint(id),
-      model: id === activeProviderId ? vm.settings.llm.model : defaultModel(id),
-    };
+    const nextLlm = llmFromPreset(id, vm.settings.llm_presets[id], {
+      temperature: vm.settings.llm.temperature,
+      mode: vm.settings.llm.mode,
+    });
     if (!isAiConfigured(nextLlm)) {
       setOpen(false);
       void navigate("/settings/ai");
       return;
     }
-    await vm.saveSettings({ ...vm.settings, llm: nextLlm });
+    await vm.saveSettings({
+      ...vm.settings,
+      llm: nextLlm,
+      llm_presets: {
+        ...vm.settings.llm_presets,
+        [id]: {
+          endpoint: nextLlm.endpoint,
+          model: nextLlm.model,
+          temperature: nextLlm.temperature,
+          mode: nextLlm.mode,
+          api_key_configured: nextLlm.api_key_configured,
+        },
+      },
+    });
     setOpen(false);
   };
 
@@ -195,10 +204,9 @@ export function AiQuickSelector({ shellBrand = false }: { shellBrand?: boolean }
                   item.id === "candilog_local"
                     ? Boolean(managed.data?.active_model)
                     : vm.settings
-                      ? isAiConfigured({
-                          ...vm.settings.llm,
-                          provider: toProvider(item.id),
-                        })
+                      ? isAiConfigured(
+                          llmFromPreset(item.id, vm.settings.llm_presets[item.id]),
+                        )
                       : false;
                 const logoItem = providerLogo(item.id);
                 return (
@@ -273,10 +281,30 @@ export function AiQuickSelector({ shellBrand = false }: { shellBrand?: boolean }
                 void navigate("/settings/ai");
               }}
               onSelectRemote={async (model) => {
-                if (!vm.settings || !llm) return;
+                if (!vm.settings) return;
+                const nextLlm = {
+                  ...llmFromPreset(
+                    columnProvider,
+                    vm.settings.llm_presets[columnProvider],
+                    llm
+                      ? { temperature: llm.temperature, mode: llm.mode }
+                      : undefined,
+                  ),
+                  model,
+                };
                 await vm.saveSettings({
                   ...vm.settings,
-                  llm: { ...llm, model, provider: toProvider(columnProvider) },
+                  llm: nextLlm,
+                  llm_presets: {
+                    ...vm.settings.llm_presets,
+                    [columnProvider]: {
+                      endpoint: nextLlm.endpoint,
+                      model: nextLlm.model,
+                      temperature: nextLlm.temperature,
+                      mode: nextLlm.mode,
+                      api_key_configured: nextLlm.api_key_configured,
+                    },
+                  },
                 });
                 setOpen(false);
               }}
@@ -397,10 +425,33 @@ function RemoteModelList({
   onSelectRemote: (model: string) => Promise<void>;
 }) {
   const vm = useAiQuickSelectorViewModel();
+  const activeMatches = llm ? idProvider(llm.provider) === providerId : false;
+  const presetLlm = vm.settings
+    ? llmFromPreset(
+        providerId,
+        vm.settings.llm_presets[providerId] ??
+          (activeMatches && llm
+            ? {
+                endpoint: llm.endpoint,
+                model: llm.model,
+                temperature: llm.temperature,
+                mode: llm.mode,
+                api_key_configured: llm.api_key_configured,
+              }
+            : undefined),
+        llm ? { temperature: llm.temperature, mode: llm.mode } : undefined,
+      )
+    : undefined;
   const query = useQuery({
-    queryKey: ["parametres", "modeles-quick", providerId, llm?.endpoint, llm?.model],
-    queryFn: () => vm.listModels(providerId, llm!),
-    enabled: Boolean(llm),
+    queryKey: [
+      "parametres",
+      "modeles-quick",
+      providerId,
+      presetLlm?.endpoint,
+      presetLlm?.api_key_configured,
+    ],
+    queryFn: () => vm.listModels(providerId, presetLlm!),
+    enabled: Boolean(presetLlm),
   });
 
   if (query.isPending) {

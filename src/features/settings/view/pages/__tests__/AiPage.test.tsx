@@ -49,6 +49,7 @@ function reglages(llm: Partial<LlmForm> = {}): Settings {
       mode: "auto",
       ...llm,
     },
+    llm_presets: {},
     theme: "system",
     language: "fr",
   };
@@ -207,5 +208,43 @@ describe("écran Intelligence artificielle", () => {
     await waitFor(() =>
       expect(screen.getByPlaceholderText("Clé configurée")).toBeInTheDocument(),
     );
+  });
+
+  it("conserve la config d'un fournisseur quand on en sélectionne un autre", async () => {
+    const initial = reglages({
+      provider: "openai",
+      model: "gpt-4o-mini",
+      endpoint: "https://api.openai.com",
+      api_key_configured: true,
+    });
+    initial.llm_presets = {
+      openai: {
+        endpoint: "https://api.openai.com",
+        model: "gpt-4o-mini",
+        temperature: 0.7,
+        mode: "auto",
+        api_key_configured: true,
+      },
+      mistral: {
+        endpoint: "https://api.mistral.ai",
+        model: "mistral-small-latest",
+        temperature: 0.4,
+        mode: "standard",
+        api_key_configured: true,
+      },
+    };
+    vi.spyOn(settingsService, "load").mockResolvedValue(initial);
+
+    render(<AiPage />, { wrapper });
+    await userEvent.click(await screen.findByRole("tab", { name: "IA online/personnalisé" }));
+
+    expect(await screen.findByDisplayValue("gpt-4o-mini")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("radio", { name: "Mistral" }));
+    expect(await screen.findByDisplayValue("mistral-small-latest")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("https://api.mistral.ai")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("radio", { name: "OpenAI" }));
+    expect(await screen.findByDisplayValue("gpt-4o-mini")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("https://api.openai.com")).toBeInTheDocument();
   });
 });

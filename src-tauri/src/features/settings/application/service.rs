@@ -40,56 +40,83 @@ impl<R: SettingsRepository, C: SecretStoreContract> SettingsService<R, C> {
     /// Propage l'erreur du dépôt ou du coffre.
     pub fn load(&self) -> AppResult<Settings> {
         let mut settings = self.repo.get()?;
+        let provider_id = settings.llm.provider.storage_id().to_string();
         if let Some(heritage) = settings
             .llm
             .api_key
             .take()
             .filter(|cle| !cle.trim().is_empty())
         {
-            self.secret_store.store_api_key(Some(&heritage))?;
+            self.secret_store
+                .store_api_key(&provider_id, Some(&heritage))?;
             self.repo.upsert(&settings)?;
         }
+        settings.capture_llm_preset();
+        let keys_configured = self.keys_configured(&settings)?;
         let api_key_configured = if provider_cloud(&settings.llm.provider) {
-            self.secret_store.load_api_key()?.is_some()
+            keys_configured.get(&provider_id).copied().unwrap_or(false)
         } else {
             false
         };
-        Ok(Settings::from_app(settings, api_key_configured))
+        Ok(Settings::from_app(
+            settings,
+            api_key_configured,
+            &keys_configured,
+        ))
     }
 
-    /// Valide, range la clé dans le coffre, persiste le JSON sans secret.
+    /// Valide, range la clé dans le coffre du fournisseur actif, persiste le JSON sans secret.
+    ///
+    /// Les presets des autres fournisseurs déjà connus (envoyés par le frontend ou déjà
+    /// stockés) sont conservés : enregistrer Mistral n'efface pas la config OpenAI.
     ///
     /// # Errors
     /// `Validation` si la configuration est incohérente ; sinon l'erreur du dépôt ou du coffre.
     pub fn save(&self, settings: Settings, api_key: Option<String>) -> AppResult<Settings> {
+        let provider_id = settings.llm.provider.storage_id().to_string();
         let api_key = non_empty_secret(api_key);
         let stored_api_key = if provider_cloud(&settings.llm.provider) && api_key.is_none() {
-            self.secret_store.load_api_key()?
+            self.secret_store.load_api_key(&provider_id)?
         } else {
             None
         };
         let api_key_configured = api_key.is_some() || stored_api_key.is_some();
         validate(&settings, api_key_configured)?;
 
-        let mut settings = AppSettings::from(settings);
+        let existing = self.repo.get()?;
+        let mut app = AppSettings::from(settings);
+        // Fusionne : presets déjà persistés ← presets du formulaire ← fournisseur actif.
+        let mut presets = existing.llm_presets;
+        for (id, preset) in std::mem::take(&mut app.llm_presets) {
+            presets.insert(id, preset);
+        }
+        app.llm_presets = presets;
+        app.capture_llm_preset();
         // Les métadonnées du modèle sont gérées par le service IA local : sauvegarder le
         // formulaire général ne doit ni les exposer au frontend ni les réinitialiser.
-        settings.managed_ollama = self.repo.get()?.managed_ollama;
-        if provider_cloud(&settings.llm.provider) {
+        app.managed_ollama = existing.managed_ollama;
+        if provider_cloud(&app.llm.provider) {
             if let Some(secret) = api_key.as_deref() {
-                self.secret_store.store_api_key(Some(secret))?;
+                self.secret_store
+                    .store_api_key(&provider_id, Some(secret))?;
             }
         }
-        self.repo.upsert(&settings)?;
-        Ok(Settings::from_app(settings, api_key_configured))
+        self.repo.upsert(&app)?;
+        let keys_configured = self.keys_configured(&app)?;
+        Ok(Settings::from_app(
+            app,
+            api_key_configured,
+            &keys_configured,
+        ))
     }
 
-    /// Supprime explicitement la clé IA du coffre.
+    /// Supprime explicitement la clé du fournisseur actuellement actif.
     ///
     /// # Errors
     /// Propage l'erreur du coffre système.
     pub fn clear_api_key(&self) -> AppResult<()> {
-        self.secret_store.store_api_key(None)
+        let provider_id = self.repo.get()?.llm.provider.storage_id().to_string();
+        self.secret_store.store_api_key(&provider_id, None)
     }
 
     /// # Errors
@@ -109,7 +136,7 @@ impl<R: SettingsRepository, C: SecretStoreContract> SettingsService<R, C> {
     /// car les données SQLite ont alors déjà été supprimées de manière irréversible.
     pub fn reset(&self) -> AppResult<ResetOutcome> {
         backup::reset_data(&self.pool)?;
-        let secret_cleared = match self.secret_store.store_api_key(None) {
+        let secret_cleared = match self.secret_store.clear_all_api_keys() {
             Ok(()) => true,
             Err(error) => {
                 tracing::error!(%error, "données effacées mais secret non supprimé du coffre");
@@ -128,6 +155,28 @@ impl<R: SettingsRepository, C: SecretStoreContract> SettingsService<R, C> {
             version: env!("CARGO_PKG_VERSION").into(),
             name: "Candilog".into(),
         }
+    }
+
+    /// Indique, pour chaque preset connu, si une clé est présente dans le coffre.
+    fn keys_configured(
+        &self,
+        settings: &AppSettings,
+    ) -> AppResult<std::collections::BTreeMap<String, bool>> {
+        let mut map = std::collections::BTreeMap::new();
+        for id in settings.llm_presets.keys() {
+            let configured = self.secret_store.load_api_key(id)?.is_some();
+            map.insert(id.clone(), configured);
+        }
+        let active = settings.llm.provider.storage_id().to_string();
+        if !map.contains_key(&active) && provider_cloud(&settings.llm.provider) {
+            map.insert(
+                active,
+                self.secret_store
+                    .load_api_key(settings.llm.provider.storage_id())?
+                    .is_some(),
+            );
+        }
+        Ok(map)
     }
 }
 
@@ -158,22 +207,22 @@ impl<R: SettingsRepository, C: SecretStoreContract> SettingsService<R, C> {
 
     /// Construit la configuration d'un essai de connexion à partir du formulaire.
     ///
-    /// La clé du coffre n'est reprise que si le formulaire décrit **le couple déjà
-    /// persisté** (fournisseur et endpoint effectif). Sans ce contrôle, un appel IPC forgé
-    /// pouvait déclarer un fournisseur personnalisé pointant vers une adresse quelconque et
-    /// se faire présenter le secret en en-tête d'authentification : le coffre serait
-    /// contourné par la seule commande censée le respecter.
+    /// La clé du coffre n'est reprise que si le formulaire décrit **un couple
+    /// (fournisseur, endpoint) déjà mémorisé** — soit le fournisseur actif, soit un preset
+    /// enregistré. Sans ce contrôle, un appel IPC forgé pouvait déclarer un fournisseur
+    /// personnalisé pointant vers une adresse quelconque et se faire présenter le secret.
     ///
     /// # Errors
     /// `Validation` si le formulaire vise un autre fournisseur ou un autre endpoint sans
     /// fournir explicitement la clé à utiliser.
     fn provider_config(&self, llm: LlmForm, api_key: Option<String>) -> AppResult<LlmConfig> {
         let mut config = LlmConfig::from(llm);
+        let provider_id = config.provider.storage_id();
         if provider_cloud(&config.provider) {
             config.api_key = match non_empty_secret(api_key) {
                 Some(secret) => Some(secret),
-                None if self.correspond_aux_reglages(&config)? => {
-                    self.secret_store.load_api_key()?
+                None if self.peut_reutiliser_cle(&config)? => {
+                    self.secret_store.load_api_key(provider_id)?
                 }
                 None => {
                     tracing::warn!(
@@ -190,11 +239,18 @@ impl<R: SettingsRepository, C: SecretStoreContract> SettingsService<R, C> {
         Ok(config)
     }
 
-    /// Le formulaire vise-t-il le fournisseur et l'endpoint effectivement enregistrés ?
-    fn correspond_aux_reglages(&self, config: &LlmConfig) -> AppResult<bool> {
-        let enregistres = self.repo.get()?.llm;
-        Ok(enregistres.provider == config.provider
-            && enregistres.endpoint_effectif() == config.endpoint_effectif())
+    /// Le formulaire vise-t-il un fournisseur/endpoint pour lequel une clé a déjà été rangée ?
+    fn peut_reutiliser_cle(&self, config: &LlmConfig) -> AppResult<bool> {
+        let enregistres = self.repo.get()?;
+        if enregistres.llm.provider == config.provider
+            && enregistres.llm.endpoint_effectif() == config.endpoint_effectif()
+        {
+            return Ok(true);
+        }
+        let id = config.provider.storage_id();
+        Ok(enregistres.llm_presets.get(id).is_some_and(|preset| {
+            preset.endpoint_effectif(&config.provider) == config.endpoint_effectif()
+        }))
     }
 
     /// Compare la version installée à la dernière release GitHub.
@@ -316,23 +372,39 @@ mod tests {
     use crate::core::secrets::SecretStoreContract;
     use crate::features::ai::domain::{AnalysisMode, ProviderKind};
     use crate::features::settings::domain::ThemePref;
+    use std::collections::HashMap;
     use std::sync::Mutex;
 
     #[derive(Default)]
     struct CoffreMemoire {
-        cle: Mutex<Option<String>>,
+        cles: Mutex<HashMap<String, String>>,
         echec_suppression: bool,
     }
 
     impl SecretStoreContract for CoffreMemoire {
-        fn load_api_key(&self) -> AppResult<Option<String>> {
-            Ok(self.cle.lock().unwrap().clone())
+        fn load_api_key(&self, provider_id: &str) -> AppResult<Option<String>> {
+            Ok(self.cles.lock().unwrap().get(provider_id).cloned())
         }
-        fn store_api_key(&self, secret: Option<&str>) -> AppResult<()> {
+        fn store_api_key(&self, provider_id: &str, secret: Option<&str>) -> AppResult<()> {
             if secret.is_none() && self.echec_suppression {
                 return Err(AppError::Provider("coffre indisponible".into()));
             }
-            *self.cle.lock().unwrap() = secret.filter(|v| !v.trim().is_empty()).map(str::to_owned);
+            let mut cles = self.cles.lock().unwrap();
+            match secret.filter(|v| !v.trim().is_empty()) {
+                Some(secret) => {
+                    cles.insert(provider_id.to_string(), secret.to_owned());
+                }
+                None => {
+                    cles.remove(provider_id);
+                }
+            }
+            Ok(())
+        }
+        fn clear_all_api_keys(&self) -> AppResult<()> {
+            if self.echec_suppression {
+                return Err(AppError::Provider("coffre indisponible".into()));
+            }
+            self.cles.lock().unwrap().clear();
             Ok(())
         }
     }
@@ -367,6 +439,7 @@ mod tests {
     fn form(llm: LlmForm) -> Settings {
         Settings {
             llm,
+            llm_presets: Default::default(),
             theme: ThemePref::System,
             language: "fr".into(),
         }
@@ -436,13 +509,67 @@ mod tests {
         let stored = service.repo.get().unwrap();
         assert!(stored.llm.api_key.is_none());
         assert_eq!(
-            service.secret_store.load_api_key().unwrap().as_deref(),
+            service
+                .secret_store
+                .load_api_key("openai")
+                .unwrap()
+                .as_deref(),
             Some("sk-test")
         );
     }
 
+    /// Enregistrer un second fournisseur conserve le modèle, l'endpoint et la clé du premier.
+    #[test]
+    fn enregistrer_un_autre_fournisseur_n_ecrase_pas_le_precedent() {
+        let service = service();
+        let mut openai = ollama();
+        openai.provider = ProviderKind::OpenAI;
+        openai.endpoint = Some("https://api.openai.com".into());
+        openai.model = "gpt-4o".into();
+        openai.temperature = 0.2;
+        service
+            .save(form(openai), Some("sk-openai".into()))
+            .unwrap();
+
+        let mut mistral = ollama();
+        mistral.provider = ProviderKind::Mistral;
+        mistral.endpoint = Some("https://api.mistral.ai".into());
+        mistral.model = "mistral-small".into();
+        mistral.temperature = 0.9;
+        let saved = service
+            .save(form(mistral), Some("sk-mistral".into()))
+            .unwrap();
+
+        assert_eq!(saved.llm.provider, ProviderKind::Mistral);
+        assert_eq!(saved.llm.model, "mistral-small");
+        let openai_preset = saved.llm_presets.get("openai").expect("preset openai");
+        assert_eq!(openai_preset.model, "gpt-4o");
+        assert_eq!(
+            openai_preset.endpoint.as_deref(),
+            Some("https://api.openai.com")
+        );
+        assert!((openai_preset.temperature - 0.2).abs() < f32::EPSILON);
+        assert!(openai_preset.api_key_configured);
+        assert_eq!(
+            service
+                .secret_store
+                .load_api_key("openai")
+                .unwrap()
+                .as_deref(),
+            Some("sk-openai")
+        );
+        assert_eq!(
+            service
+                .secret_store
+                .load_api_key("mistral")
+                .unwrap()
+                .as_deref(),
+            Some("sk-mistral")
+        );
+    }
+
     /// Le formulaire décrit un fournisseur que l'utilisateur n'a pas encore enregistré : la
-    /// clé du coffre appartient au couple (fournisseur, endpoint) persisté, et l'attacher à
+    /// clé du coffre appartient au couple (fournisseur, endpoint) mémorisé, et l'attacher à
     /// une adresse arbitraire reviendrait à la présenter en `Authorization` à un tiers.
     #[test]
     fn un_endpoint_non_persiste_ne_recoit_pas_la_cle_du_coffre() {
@@ -451,8 +578,12 @@ mod tests {
         stored.llm.provider = ProviderKind::OpenAI;
         stored.llm.endpoint = Some("https://api.openai.com".into());
         stored.llm.model = "gpt-4o".into();
+        stored.capture_llm_preset();
         service.repo.upsert(&stored).unwrap();
-        service.secret_store.store_api_key(Some("sk-test")).unwrap();
+        service
+            .secret_store
+            .store_api_key("openai", Some("sk-test"))
+            .unwrap();
 
         let mut llm = ollama();
         llm.provider = ProviderKind::Custom("maison".into());
@@ -470,7 +601,7 @@ mod tests {
         let service = service();
         service
             .secret_store
-            .store_api_key(Some("sk-cachee"))
+            .store_api_key("openai", Some("sk-cachee"))
             .unwrap();
         let payload = service.load().unwrap();
         assert!(!payload.llm.api_key_configured);
@@ -482,10 +613,11 @@ mod tests {
         let mut stored = AppSettings::default();
         stored.llm.provider = ProviderKind::OpenAI;
         stored.llm.model = "gpt-4o".into();
+        stored.capture_llm_preset();
         service.repo.upsert(&stored).unwrap();
         service
             .secret_store
-            .store_api_key(Some("sk-secret"))
+            .store_api_key("openai", Some("sk-secret"))
             .unwrap();
 
         let payload = service.load().unwrap();
@@ -496,8 +628,8 @@ mod tests {
         assert!(!json.contains("api_key\":"));
     }
 
-    /// La clé du coffre est reprise sans ressaisie — mais seulement pour le fournisseur et
-    /// l'endpoint réellement enregistrés, sur lesquels porte le secret.
+    /// La clé du coffre est reprise sans ressaisie — pour le fournisseur et l'endpoint
+    /// mémorisés, y compris via un preset non actif.
     #[test]
     fn provider_config_charge_le_secret_du_coffre() {
         let service = service();
@@ -505,10 +637,11 @@ mod tests {
         stored.llm.provider = ProviderKind::OpenAI;
         stored.llm.endpoint = Some("https://api.openai.com".into());
         stored.llm.model = "gpt-4o".into();
+        stored.capture_llm_preset();
         service.repo.upsert(&stored).unwrap();
         service
             .secret_store
-            .store_api_key(Some("sk-stored"))
+            .store_api_key("openai", Some("sk-stored"))
             .unwrap();
         let mut llm = ollama();
         llm.provider = ProviderKind::OpenAI;
@@ -521,11 +654,37 @@ mod tests {
     }
 
     #[test]
+    fn provider_config_reutilise_la_cle_d_un_preset_inactif() {
+        let service = service();
+        let mut openai = ollama();
+        openai.provider = ProviderKind::OpenAI;
+        openai.endpoint = Some("https://api.openai.com".into());
+        openai.model = "gpt-4o".into();
+        service
+            .save(form(openai), Some("sk-openai".into()))
+            .unwrap();
+        let mut mistral = ollama();
+        mistral.provider = ProviderKind::Mistral;
+        mistral.endpoint = Some("https://api.mistral.ai".into());
+        mistral.model = "mistral-small".into();
+        service
+            .save(form(mistral), Some("sk-mistral".into()))
+            .unwrap();
+
+        let mut llm = ollama();
+        llm.provider = ProviderKind::OpenAI;
+        llm.endpoint = Some("https://api.openai.com".into());
+        llm.model = "gpt-4o".into();
+        let config = service.provider_config(llm, None).unwrap();
+        assert_eq!(config.api_key.as_deref(), Some("sk-openai"));
+    }
+
+    #[test]
     fn provider_config_prefere_la_nouvelle_cle() {
         let service = service();
         service
             .secret_store
-            .store_api_key(Some("sk-stored"))
+            .store_api_key("openai", Some("sk-stored"))
             .unwrap();
         let mut llm = ollama();
         llm.provider = ProviderKind::OpenAI;
@@ -539,16 +698,32 @@ mod tests {
     }
 
     #[test]
-    fn clear_api_key_supprime_le_secret() {
+    fn clear_api_key_supprime_uniquement_le_fournisseur_actif() {
         let service = service();
+        let mut openai = ollama();
+        openai.provider = ProviderKind::OpenAI;
+        openai.model = "gpt-4o".into();
         service
-            .secret_store
-            .store_api_key(Some("sk-stored"))
+            .save(form(openai), Some("sk-openai".into()))
+            .unwrap();
+        let mut mistral = ollama();
+        mistral.provider = ProviderKind::Mistral;
+        mistral.model = "mistral-small".into();
+        service
+            .save(form(mistral), Some("sk-mistral".into()))
             .unwrap();
 
         service.clear_api_key().unwrap();
 
-        assert_eq!(service.secret_store.load_api_key().unwrap(), None);
+        assert_eq!(service.secret_store.load_api_key("mistral").unwrap(), None);
+        assert_eq!(
+            service
+                .secret_store
+                .load_api_key("openai")
+                .unwrap()
+                .as_deref(),
+            Some("sk-openai")
+        );
     }
 
     #[test]
@@ -563,7 +738,7 @@ mod tests {
             .unwrap();
         service
             .secret_store
-            .store_api_key(Some("sk-stored"))
+            .store_api_key("openai", Some("sk-stored"))
             .unwrap();
 
         let outcome = service.reset().unwrap();
@@ -573,7 +748,7 @@ mod tests {
             .query_row("SELECT COUNT(*) FROM app_kv", [], |row| row.get(0))
             .unwrap();
         assert_eq!(remaining, 0);
-        assert_eq!(service.secret_store.load_api_key().unwrap(), None);
+        assert_eq!(service.secret_store.load_api_key("openai").unwrap(), None);
         assert!(outcome.data_cleared);
         assert!(outcome.secret_cleared);
     }
@@ -594,7 +769,7 @@ mod tests {
                 store: Mutex::new(None),
             },
             CoffreMemoire {
-                cle: Mutex::new(Some("sk-stored".into())),
+                cles: Mutex::new(HashMap::from([("openai".into(), "sk-stored".into())])),
                 echec_suppression: true,
             },
             pool,
