@@ -19,8 +19,9 @@ use std::sync::{Arc, Mutex};
 use tokio_util::sync::CancellationToken;
 
 const JOB_OFFER_SYSTEM: &str = r#"Extrais une offre d'emploi en JSON. Recopie uniquement les informations présentes, sans traduire ni inventer.
-Ne mélange pas le contexte entreprise (stack utilisée en interne, clients, présentation) avec les exigences du poste.
-"competences" = outils, technos, métiers, diplômes, permis, certifications EXIGÉS pour le poste (pas la stack de l'entreprise hors profil recherché).
+Ne mélange pas le contexte entreprise (stack utilisée en interne, clients, présentation, « expertises reconnues ») avec les exigences du poste.
+Si le texte distingue une présentation d'entreprise et une section du type « Compétences techniques clés », « Profil recherché », « Prérequis » ou « Vous maîtrisez », ne mets dans competences QUE les exigences de cette section poste.
+"competences" = outils, technos, métiers, diplômes, permis, certifications EXIGÉS pour le poste (ignore Java/J2EE/C# cités seulement comme expertises de l'entreprise).
 "savoirEtre" = soft skills demandés.
 "experience" = durée ou niveau d'expérience demandé, sinon null.
 "motsCles" = missions, responsabilités et mots-clés ATS utiles, sans dupliquer les compétences déjà listées.

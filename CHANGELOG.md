@@ -13,6 +13,10 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
   mots-clés dédupliqués des compétences, prompts offre / recommandations plus stricts
   (exigences vs contexte entreprise, pas d'invention). Tests Open + multi-domaines.
 
+- Analyse de CV : ne plus scorer l'expérience à 0 quand les dates manquent ;
+  déduction du titre et des années depuis le texte ; filtre des compétences
+  issues du blurb entreprise (ex. « Expertises reconnues ») hors exigences poste.
+
 - Analyse de CV : padding horizontal autour du nom de fichier ; marge sous « Offre ciblée ».
 
 - Import CV : descriptions de compétences et de projets mieux récupérées (clés
