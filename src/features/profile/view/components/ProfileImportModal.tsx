@@ -314,17 +314,23 @@ export function ProfileImportModal({
           </div>
         ) : null}
         {view === "review" && preview ? (
-          <div className="space-y-4">
-            {fallbackUsed ? (
-              <p className="rounded-button border border-line bg-surface-alt px-3 py-2 text-note text-ink">
-                L'analyse visuelle a échoué. Candilog a poursuivi automatiquement avec
-                l'analyse du texte.
-              </p>
-            ) : null}
-            {methodUsed ? (
-              <p className="text-meta text-ink-faint">
-                Méthode utilisée : {methodUsed === "vision" ? "Vision" : "Texte"}
-              </p>
+          // Chaîne flex intacte : un wrapper `space-y-*` cassait le `min-h-0` / `flex-1`
+          // requis par le split, et le corps `flush` (overflow masqué) ne défilait plus.
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            {fallbackUsed || methodUsed ? (
+              <div className="flex-none space-y-2 px-[18px] pt-3">
+                {fallbackUsed ? (
+                  <p className="rounded-button border border-line bg-surface-alt px-3 py-2 text-note text-ink">
+                    L'analyse visuelle a échoué. Candilog a poursuivi automatiquement avec
+                    l'analyse du texte.
+                  </p>
+                ) : null}
+                {methodUsed ? (
+                  <p className="text-meta text-ink-faint">
+                    Méthode utilisée : {methodUsed === "vision" ? "Vision" : "Texte"}
+                  </p>
+                ) : null}
+              </div>
             ) : null}
             <ImportReviewForm
               preview={preview}
