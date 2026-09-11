@@ -102,10 +102,7 @@ describe("écran Intelligence artificielle", () => {
     await userEvent.click(await screen.findByRole("tab", { name: "IA online/personnalisé" }));
     await userEvent.click(await screen.findByRole("button", { name: "Actualiser" }));
     await waitFor(() => expect(listModels).toHaveBeenCalledOnce());
-    await userEvent.selectOptions(
-      await screen.findByLabelText(/^Modèle/),
-      "maternion/lfm2.5:350m",
-    );
+    await userEvent.click(await screen.findByRole("radio", { name: "maternion/lfm2.5:350m" }));
     await userEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
 
     await waitFor(() => expect(save).toHaveBeenCalledOnce());

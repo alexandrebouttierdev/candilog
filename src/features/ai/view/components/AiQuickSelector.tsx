@@ -135,26 +135,26 @@ export function AiQuickSelector({ shellBrand = false }: { shellBrand?: boolean }
         aria-label={`Fournisseur IA : ${triggerLabel} — ${globalEtat.label}`}
         onClick={() => setOpen((value) => !value)}
         className={cn(
-          "inline-flex h-control max-w-[min(42vw,18rem)] items-center gap-1.5 rounded-button border px-2.5",
+          "inline-flex h-control max-w-[min(42vw,20rem)] items-center gap-2 rounded-button border px-2",
           "text-item font-medium transition-colors duration-hover",
           shellBrand
             ? "shell-brand-control focus-visible:outline-1 focus-visible:outline-rail-focus"
             : "border-control-strong bg-fill text-ink hover:bg-fill-hover focus-visible:outline-1 focus-visible:outline-accent-focus",
         )}
       >
-        <span className="relative flex size-5 flex-none items-center justify-center">
+        <span className="relative flex size-6 flex-none items-center justify-center rounded-control bg-surface">
           {logo ? (
             <img
               src={logo.src}
               alt=""
-              width={16}
-              height={16}
-              className={cn("size-4 object-contain", logo.mono && "dark:invert")}
+              width={14}
+              height={14}
+              className={cn("size-3.5 object-contain", logo.mono && "dark:invert")}
             />
           ) : (
             <Icon
               name="smart_toy"
-              size={16}
+              size={14}
               className={shellBrand ? "text-rail-ink" : "text-ink-muted"}
             />
           )}
@@ -171,7 +171,11 @@ export function AiQuickSelector({ shellBrand = false }: { shellBrand?: boolean }
         <Icon
           name="expand_more"
           size={15}
-          className={cn("flex-none", shellBrand ? "text-rail-ink" : "text-ink-faint")}
+          className={cn(
+            "flex-none transition-transform duration-hover",
+            open && "rotate-180",
+            shellBrand ? "text-rail-ink" : "text-ink-faint",
+          )}
         />
       </button>
 
@@ -179,63 +183,86 @@ export function AiQuickSelector({ shellBrand = false }: { shellBrand?: boolean }
         <div
           role="dialog"
           aria-label="Choisir le fournisseur et le modèle IA"
-          className="glass-popover absolute top-[calc(100%+6px)] right-0 z-50 flex max-h-[min(70vh,480px)] w-[min(92vw,560px)] overflow-hidden rounded-overlay border border-overlay shadow-overlay"
+          className="glass-popover absolute top-[calc(100%+6px)] right-0 z-50 flex max-h-[min(72vh,520px)] w-[min(94vw,580px)] overflow-hidden rounded-overlay border border-overlay shadow-overlay"
         >
-          <div className="flex w-[220px] flex-none flex-col overflow-y-auto border-r border-line-soft p-2">
-            <p className="px-2 py-1 text-eyebrow uppercase text-ink-label">Fournisseur</p>
-            {PROVIDERS.map((item) => {
-              const selected = item.id === columnProvider;
-              const itemConfigured =
-                item.id === "candilog_local"
-                  ? Boolean(managed.data?.active_model)
-                  : vm.settings
-                    ? isAiConfigured({
-                        ...vm.settings.llm,
-                        provider: toProvider(item.id),
-                      })
-                    : false;
-              const logoItem = providerLogo(item.id);
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onMouseEnter={() => setFocusedProvider(item.id)}
-                  onFocus={() => setFocusedProvider(item.id)}
-                  onClick={() => void selectProvider(item.id)}
-                  className={cn(
-                    "flex w-full items-start gap-2 rounded-button px-2 py-2 text-left transition-colors",
-                    selected ? "bg-accent-tint text-accent" : "hover:bg-fill-hover",
-                  )}
-                >
-                  <span className="mt-0.5 flex size-6 flex-none items-center justify-center rounded-control bg-surface">
-                    {logoItem ? (
-                      <img
-                        src={logoItem.src}
-                        alt=""
-                        width={14}
-                        height={14}
-                        className={cn("size-3.5", logoItem.mono && "dark:invert")}
-                      />
-                    ) : (
-                      <Icon name="smart_toy" size={14} className="text-ink-muted" />
+          <div className="flex w-[232px] flex-none flex-col overflow-y-auto border-r border-line-soft p-2.5">
+            <p className="px-2 py-1.5 text-eyebrow uppercase text-ink-label">Fournisseur</p>
+            <div className="flex flex-col gap-1">
+              {PROVIDERS.map((item) => {
+                const selected = item.id === columnProvider;
+                const active = item.id === activeProviderId;
+                const itemConfigured =
+                  item.id === "candilog_local"
+                    ? Boolean(managed.data?.active_model)
+                    : vm.settings
+                      ? isAiConfigured({
+                          ...vm.settings.llm,
+                          provider: toProvider(item.id),
+                        })
+                      : false;
+                const logoItem = providerLogo(item.id);
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onMouseEnter={() => setFocusedProvider(item.id)}
+                    onFocus={() => setFocusedProvider(item.id)}
+                    onClick={() => void selectProvider(item.id)}
+                    className={cn(
+                      "flex w-full items-start gap-2.5 rounded-button border px-2 py-2 text-left transition-[background-color,border-color] duration-hover",
+                      selected
+                        ? "border-accent bg-accent-tint-12"
+                        : "border-transparent hover:border-line-soft hover:bg-fill-hover",
                     )}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-label font-mid">{item.label}</span>
-                    <span className="block truncate text-meta text-ink-faint">{item.hint}</span>
-                    <StatusPill tone={providerStatusTone(itemConfigured)} className="mt-1">
-                      {itemConfigured ? "Configuré" : "À configurer"}
-                    </StatusPill>
-                  </span>
-                  {item.id === activeProviderId ? (
-                    <Icon name="check" size={16} className="mt-1 flex-none text-accent" />
-                  ) : null}
-                </button>
-              );
-            })}
+                  >
+                    <span
+                      className={cn(
+                        "mt-0.5 flex size-7 flex-none items-center justify-center rounded-control",
+                        selected ? "bg-surface" : "bg-fill",
+                      )}
+                    >
+                      {logoItem ? (
+                        <img
+                          src={logoItem.src}
+                          alt=""
+                          width={14}
+                          height={14}
+                          className={cn("size-3.5", logoItem.mono && "dark:invert")}
+                        />
+                      ) : (
+                        <Icon name="smart_toy" size={14} className="text-ink-muted" />
+                      )}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span
+                        className={cn(
+                          "block truncate text-label font-mid",
+                          selected ? "text-accent-text-soft" : "text-ink",
+                        )}
+                      >
+                        {item.label}
+                      </span>
+                      <span className="mt-0.5 block truncate text-meta text-ink-faint">
+                        {item.hint}
+                      </span>
+                      <StatusPill
+                        tone={providerStatusTone(itemConfigured)}
+                        compact
+                        className="mt-1.5"
+                      >
+                        {itemConfigured ? "Configuré" : "À configurer"}
+                      </StatusPill>
+                    </span>
+                    {active ? (
+                      <Icon name="check_circle" size={16} filled className="mt-1 flex-none text-accent" />
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          <div className="min-w-0 flex-1 overflow-y-auto p-2">
-            <p className="px-2 py-1 text-eyebrow uppercase text-ink-label">Modèles</p>
+          <div className="min-w-0 flex-1 overflow-y-auto p-2.5">
+            <p className="px-2 py-1.5 text-eyebrow uppercase text-ink-label">Modèles</p>
             <ModelColumn
               providerId={columnProvider}
               llm={llm}
@@ -281,39 +308,69 @@ function ModelColumn({
       return <p className="px-2 py-3 text-note text-ink-muted">Chargement…</p>;
     }
     return (
-      <ul className="flex flex-col gap-1">
-        {managed.models.map((item) => (
-          <li key={item.definition.id}>
-            <button
-              type="button"
-              disabled={!item.installed && item.machine_fit === "insufficient_memory"}
-              onClick={() => onSelectManaged(item.definition.id, item.installed)}
-              className={cn(
-                "flex w-full items-center gap-2 rounded-button px-2 py-2 text-left",
-                item.active ? "bg-accent-tint" : "hover:bg-fill-hover",
-              )}
-            >
-              <span className="flex size-6 flex-none items-center justify-center rounded-control bg-surface">
-                <ManagedPublisherLogo
-                  publisher={item.definition.publisher}
-                  className="size-3.5"
-                />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-label font-mid text-ink">
-                  {item.definition.display_name}
+      <ul className="flex flex-col gap-1.5">
+        {managed.models.map((item) => {
+          const disabled = !item.installed && item.machine_fit === "insufficient_memory";
+          return (
+            <li key={item.definition.id}>
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => onSelectManaged(item.definition.id, item.installed)}
+                className={cn(
+                  "flex w-full items-start gap-2.5 rounded-button border px-2.5 py-2 text-left transition-[background-color,border-color] duration-hover",
+                  item.active
+                    ? "border-accent bg-accent-tint-12"
+                    : "border-line bg-surface hover:border-control-strong hover:bg-fill",
+                  disabled && "cursor-not-allowed opacity-55",
+                )}
+              >
+                <span
+                  className={cn(
+                    "mt-0.5 flex size-7 flex-none items-center justify-center rounded-control",
+                    item.active ? "bg-surface" : "bg-fill",
+                  )}
+                >
+                  <ManagedPublisherLogo
+                    publisher={item.definition.publisher}
+                    className="size-3.5"
+                  />
                 </span>
-                <span className="block truncate text-meta text-ink-faint">
-                  {item.definition.publisher_label}
-                  {item.installed ? " · Installé" : " · Télécharger"}
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-label font-mid text-ink">
+                    {item.definition.display_name}
+                  </span>
+                  <span className="mt-0.5 block truncate text-meta text-ink-faint">
+                    {item.definition.publisher_label}
+                  </span>
+                  <span className="mt-1.5 flex flex-wrap gap-1">
+                    {item.active ? (
+                      <StatusPill tone="accent" compact>
+                        Actif
+                      </StatusPill>
+                    ) : item.installed ? (
+                      <StatusPill tone="success" compact>
+                        Installé
+                      </StatusPill>
+                    ) : (
+                      <StatusPill tone="neutral" compact>
+                        À télécharger
+                      </StatusPill>
+                    )}
+                    {item.recommended && !item.active ? (
+                      <StatusPill tone="accent" compact>
+                        Recommandé
+                      </StatusPill>
+                    ) : null}
+                  </span>
                 </span>
-              </span>
-              {item.active ? (
-                <Icon name="check" size={16} className="flex-none text-accent" />
-              ) : null}
-            </button>
-          </li>
-        ))}
+                {item.active ? (
+                  <Icon name="check_circle" size={16} filled className="mt-1 flex-none text-accent" />
+                ) : null}
+              </button>
+            </li>
+          );
+        })}
       </ul>
     );
   }
@@ -346,14 +403,20 @@ function RemoteModelList({
     enabled: Boolean(llm),
   });
 
-  if (query.isPending) return <p className="px-2 py-3 text-note text-ink-muted">Chargement des modèles…</p>;
+  if (query.isPending) {
+    return <p className="px-2 py-3 text-note text-ink-muted">Chargement des modèles…</p>;
+  }
   if (query.error) {
     const message =
       query.error instanceof AppError ? query.error.message : "Modèles inaccessibles.";
     return (
-      <div className="px-2 py-3">
+      <div className="rounded-button border border-line bg-fill px-3 py-3">
         <p className="text-note text-danger">{message}</p>
-        <button type="button" onClick={onConfigure} className="mt-2 text-label font-semibold text-accent">
+        <button
+          type="button"
+          onClick={onConfigure}
+          className="mt-2 text-label font-semibold text-accent"
+        >
           Configurer
         </button>
       </div>
@@ -362,9 +425,13 @@ function RemoteModelList({
   const models = query.data ?? [];
   if (models.length === 0) {
     return (
-      <div className="px-2 py-3">
+      <div className="rounded-button border border-line bg-fill px-3 py-3">
         <p className="text-note text-ink-muted">Aucun modèle disponible.</p>
-        <button type="button" onClick={onConfigure} className="mt-2 text-label font-semibold text-accent">
+        <button
+          type="button"
+          onClick={onConfigure}
+          className="mt-2 text-label font-semibold text-accent"
+        >
           Configurer
         </button>
       </div>
@@ -372,24 +439,49 @@ function RemoteModelList({
   }
 
   return (
-    <ul className="flex flex-col gap-1">
-      {models.map((model) => (
-        <li key={model}>
-          <button
-            type="button"
-            onClick={() => void onSelectRemote(model)}
-            className={cn(
-              "flex w-full items-center justify-between gap-2 rounded-button px-2 py-2 text-left hover:bg-fill-hover",
-              llm?.model === model && idProvider(llm.provider) === providerId ? "bg-accent-tint" : "",
-            )}
-          >
-            <span className="truncate font-mono text-label text-ink">{model}</span>
-            {llm?.model === model && idProvider(llm.provider) === providerId ? (
-              <Icon name="check" size={16} className="text-accent" />
-            ) : null}
-          </button>
-        </li>
-      ))}
+    <ul className="flex flex-col gap-1.5">
+      {models.map((model) => {
+        const selected =
+          llm?.model === model && idProvider(llm.provider) === providerId;
+        return (
+          <li key={model}>
+            <button
+              type="button"
+              onClick={() => void onSelectRemote(model)}
+              className={cn(
+                "flex w-full items-center gap-2.5 rounded-button border px-2.5 py-2 text-left transition-[background-color,border-color] duration-hover",
+                selected
+                  ? "border-accent bg-accent-tint-12"
+                  : "border-line bg-surface hover:border-control-strong hover:bg-fill",
+              )}
+            >
+              <span
+                className={cn(
+                  "flex size-7 flex-none items-center justify-center rounded-control",
+                  selected ? "bg-surface" : "bg-fill",
+                )}
+              >
+                <Icon
+                  name="smart_toy"
+                  size={14}
+                  className={selected ? "text-accent" : "text-ink-muted"}
+                />
+              </span>
+              <span
+                className={cn(
+                  "min-w-0 flex-1 truncate font-mono text-label",
+                  selected ? "font-mid text-ink" : "text-ink-muted",
+                )}
+              >
+                {model}
+              </span>
+              {selected ? (
+                <Icon name="check_circle" size={16} filled className="flex-none text-accent" />
+              ) : null}
+            </button>
+          </li>
+        );
+      })}
     </ul>
   );
 }

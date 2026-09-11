@@ -10,7 +10,6 @@ import {
   Icon,
   PageHeader,
   SegmentedControl,
-  Select,
   Skeleton,
   Tag,
   TextInput,
@@ -29,6 +28,7 @@ import {
 import { ProviderGrid, providerLogo } from "../components/ProviderGrid";
 import { AiHero } from "../components/AiHero";
 import { ManagedOllamaPanel } from "../components/ManagedOllamaPanel";
+import { RemoteModelPicker } from "../components/RemoteModelPicker";
 import { SettingsBody, SettingsCard } from "../components/SettingsUi";
 import { cn } from "@/shared/lib/cn";
 import { aiStatus, type ConnectionTest } from "../../model/aiStatus";
@@ -245,33 +245,43 @@ export function AiPage() {
                 <div className="grid gap-4 min-[900px]:grid-cols-2 min-[900px]:items-start">
                     <SettingsCard icon="tune" title="Configuration">
                       <div className="flex flex-col gap-3.5">
-                        <div className="flex max-w-[380px] items-end gap-2">
-                          <FormField label="Modèle" required className="flex-1">
-                            {(props) =>
-                              models.length > 0 ? (
-                                <Select
-                                  {...props}
-                                  value={llm.model}
-                                  onChange={(event) => patchLlm({ model: event.target.value })}
-                                >
-                                  {models.map((model) => (
-                                    <option key={model} value={model}>
-                                      {model}
-                                    </option>
-                                  ))}
-                                </Select>
-                              ) : (
+                        <div className="flex flex-col gap-2.5">
+                          <div className="flex max-w-[380px] items-end gap-2">
+                            <FormField label="Modèle" required className="flex-1">
+                              {(props) => (
                                 <TextInput
                                   {...props}
                                   value={llm.model}
                                   onChange={(event) => patchLlm({ model: event.target.value })}
+                                  placeholder={
+                                    models.length > 0
+                                      ? "Choisissez ci-dessous ou saisissez un identifiant"
+                                      : "Identifiant du modèle"
+                                  }
                                 />
-                              )
-                            }
-                          </FormField>
-                          <Button variant="secondary" icon="refresh" onClick={() => void actualiserModels()}>
-                            Actualiser
-                          </Button>
+                              )}
+                            </FormField>
+                            <Button
+                              variant="secondary"
+                              icon="refresh"
+                              onClick={() => void actualiserModels()}
+                            >
+                              Actualiser
+                            </Button>
+                          </div>
+                          {models.length > 0 ? (
+                            <RemoteModelPicker
+                              models={models}
+                              value={llm.model}
+                              onChange={(model) => patchLlm({ model })}
+                              providerLabel={fournisseur.label}
+                            />
+                          ) : (
+                            <p className="text-meta leading-relaxed text-ink-faint">
+                              Actualisez la liste pour afficher les modèles proposés par le
+                              fournisseur.
+                            </p>
+                          )}
                         </div>
                         <FormField
                           label="Endpoint"
