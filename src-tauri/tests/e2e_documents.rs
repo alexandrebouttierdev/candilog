@@ -507,12 +507,12 @@ async fn obtenir_lettre(
                 cas.profile.identity.first_name, cas.profile.identity.name
             );
             let mut paragraphes = vec![format!(
-                "Madame, Monsieur,\n\nJe souhaite rejoindre {} au poste d'{}.",
-                COMPANY, JOB_TITLE
+                "Madame, Monsieur,\n\nJe me permets de vous adresser ma candidature pour le poste d'{} au sein de {}.",
+                JOB_TITLE, COMPANY
             )];
             if let Some(resume) = cas.profile.identity.resume.as_deref() {
                 paragraphes.push(format!(
-                    "Mon projet professionnel : {}.",
+                    "Mon projet professionnel s'inscrit dans cette direction : {}.",
                     resume.trim().trim_end_matches('.')
                 ));
             }
@@ -531,24 +531,27 @@ async fn obtenir_lettre(
                     format!(" : {}", description.trim_end_matches('.'))
                 };
                 paragraphes.push(format!(
-                    "Mon expérience comprend notamment {} chez {}{}.",
-                    experience.title, experience.company, precision
+                    "Pour le poste d'{}, je peux notamment m'appuyer sur l'expérience suivante : {} chez {}{}.",
+                    JOB_TITLE, experience.title, experience.company, precision
                 ));
             }
             if let Some(skill) = cas.profile.skills.first() {
                 paragraphes.push(format!(
-                    "Je peux notamment mobiliser {}.",
+                    "Parmi les compétences utiles à ce poste, je maîtrise notamment {}.",
                     skill.name.trim_end_matches('.')
                 ));
             }
             if let Some(education) = cas.profile.education.first() {
                 paragraphes.push(format!(
-                    "Ma formation inclut {} à {}.",
+                    "Sur le plan de la formation, j'ai suivi {} à {}.",
                     education.degree.trim_end_matches('.'),
                     education.school.trim_end_matches('.')
                 ));
             }
-            paragraphes.push(format!("Cordialement,\n{}", nom.trim()));
+            paragraphes.push(format!(
+                "Je reste à votre disposition pour un entretien afin de détailler ma candidature.\n\nVeuillez agréer, Madame, Monsieur, l'expression de mes salutations distinguées.\n{}",
+                nom.trim()
+            ));
             return Ok(paragraphes.join("\n\n"));
         }
         return std::fs::read_to_string(&cache)

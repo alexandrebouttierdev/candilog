@@ -297,7 +297,7 @@ impl ManagedModelRegistry {
                 publisher_label: ManagedModelPublisher::Mistral.label().into(),
                 display_name: "Ministral 3 3B".into(),
                 description:
-                    "Plus précis tout en restant adapté aux machines disposant de peu de mémoire."
+                    "Modèle recommandé pour Candilog : bon équilibre qualité / mémoire, adapté aux lettres, CV et analyses locales."
                         .into(),
                 ollama_tag: "ministral-3:3b".into(),
                 approximate_download_bytes: 2_100_000_000,
@@ -363,8 +363,8 @@ pub fn evaluate_machine_fit(
     model: &ManagedModelDefinition,
     total_ram_gb: u32,
 ) -> (MachineFit, bool) {
-    let recommended = total_ram_gb >= model.recommended_ram_gb;
-    let fit = if total_ram_gb >= model.recommended_ram_gb {
+    let fits = total_ram_gb >= model.recommended_ram_gb;
+    let fit = if fits {
         MachineFit::Recommended
     } else if total_ram_gb >= model.recommended_ram_gb.saturating_sub(2).max(4) {
         MachineFit::Compatible
@@ -373,5 +373,58 @@ pub fn evaluate_machine_fit(
     } else {
         MachineFit::InsufficientMemory
     };
-    (fit, recommended)
+    // `recommended` est recalculé au niveau catalogue : un seul modèle mis en avant.
+    (fit, false)
+}
+
+/// Ordre de préférence pour le badge « Recommandé » : Ministral 3 3B d'abord quand la
+/// machine le tient, sinon le plus grand modèle encore confortable.
+#[must_use]
+pub fn preferred_model_order() -> &'static [ManagedModelId] {
+    &[
+        ManagedModelId::Ministral3Light,
+        ManagedModelId::Ministral3Balanced,
+        ManagedModelId::Lfm25UltraLight,
+        ManagedModelId::Ministral3Powerful,
+        ManagedModelId::Lfm25350m,
+        ManagedModelId::MistralSmallQuality,
+    ]
+}
+
+/// Choisit le modèle à badge « Recommandé » pour une quantité de RAM donnée.
+#[must_use]
+pub fn recommended_model_id(total_ram_gb: u32) -> Option<ManagedModelId> {
+    preferred_model_order().iter().copied().find(|&id| {
+        ManagedModelRegistry::get(id)
+            .map(|model| {
+                let (fit, _) = evaluate_machine_fit(&model, total_ram_gb);
+                matches!(fit, MachineFit::Recommended | MachineFit::Compatible)
+            })
+            .unwrap_or(false)
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ministral_3b_est_recommande_des_8_go() {
+        assert_eq!(
+            recommended_model_id(8),
+            Some(ManagedModelId::Ministral3Light)
+        );
+        assert_eq!(
+            recommended_model_id(16),
+            Some(ManagedModelId::Ministral3Light)
+        );
+    }
+
+    #[test]
+    fn une_machine_modeste_recoit_un_modele_plus_leger() {
+        assert_eq!(
+            recommended_model_id(4),
+            Some(ManagedModelId::Lfm25UltraLight)
+        );
+    }
 }

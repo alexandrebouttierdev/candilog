@@ -16,7 +16,9 @@ délègue l'inférence à un runtime Ollama privé géré par l'application : bi
 téléchargé et vérifié (SHA-256), processus isolé sur `127.0.0.1` à partir du port 11435,
 répertoire de modèles séparé de l'Ollama utilisateur (`:11434`). Le catalogue, les pulls,
 l'activation et le benchmark utilisateur passent par `ManagedOllamaService` ; l'adaptateur
-HTTP Ollama existant est réutilisé avec l'endpoint local du processus géré. Windows n'est
+HTTP Ollama existant est réutilisé avec l'endpoint local du processus géré. Le badge
+**Recommandé** du catalogue met en avant **Ministral 3 3B** (`ministral-3:3b`) dès que la
+RAM le permet — bon compromis pour lettres, CV et analyses. Windows n'est
 pas encore supporté (archive `.zip` non extraite).
 
 HTTPS obligatoire hors Ollama, adresses privées refusées pour un point de terminaison
@@ -110,13 +112,16 @@ recommandations de contenu, elles, ne transportent que des identifiants du catal
 profil, une justification et une pertinence qualitative. `ground_content_recommendations`
 écarte les identifiants inconnus et les doublons avant l'éditeur.
 
-La lettre de motivation est **assemblée**, pas rédigée : le modèle ne renvoie qu'une
-sélection d'identifiants du catalogue de faits et des mots-clés du brief
-(`domain/cover_letter.rs`). Un identifiant inconnu invalide la réponse ; un mot-clé absent
+La lettre de motivation est **assemblée**, pas rédigée librement : le modèle ne renvoie
+qu'une sélection d'identifiants du catalogue de faits et des mots-clés du brief
+(`domain/cover_letter.rs`). Les invites système détaillent la priorité des faits
+(experience → summary → skill…) et le plafond selon la longueur demandée, pour guider
+les petits modèles locaux. Un identifiant inconnu invalide la réponse ; un mot-clé absent
 du brief est simplement écarté, parce qu'une paraphrase du modèle ne justifie pas de faire
 échouer toute la rédaction — la lettre reste dans tous les cas limitée aux faits vérifiés.
 
-La composition de la lettre est du français, pas du gabarit : la préposition est **élidée**
+La composition de la lettre produit un français de candidature (ouverture selon le ton,
+faits reliés au poste, clôture) : la préposition est **élidée**
 devant une voyelle (`core::utils::text::elider`, jumeau de `letterLayout.ts`) — « au poste
 d'Administrateur », jamais « au poste de Administrateur » —, et un fait repris du profil est
 ramené à une fin de phrase unique, ses retours à la ligne aplatis et sa ponctuation finale

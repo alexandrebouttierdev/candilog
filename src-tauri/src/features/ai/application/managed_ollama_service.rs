@@ -3,9 +3,10 @@
 use crate::core::database::SqlitePool;
 use crate::core::errors::{AppError, AppResult};
 use crate::features::ai::domain::{
-    evaluate_machine_fit, InstallManagedModelRequest, ManagedDownloadKind, ManagedModelDefinition,
-    ManagedModelId, ManagedModelRegistry, ManagedModelStatus, ManagedOllamaDownloadProgress,
-    ManagedOllamaStatus, ManagedRuntimeState, StoredBenchmarkResult, UserBenchmarkSummary,
+    evaluate_machine_fit, recommended_model_id, InstallManagedModelRequest, ManagedDownloadKind,
+    ManagedModelDefinition, ManagedModelId, ManagedModelRegistry, ManagedModelStatus,
+    ManagedOllamaDownloadProgress, ManagedOllamaStatus, ManagedRuntimeState, StoredBenchmarkResult,
+    UserBenchmarkSummary,
 };
 use crate::features::ai::infrastructure::{
     require_runtime_artifact, ManagedOllamaApi, ManagedOllamaProcess, RuntimeInstaller,
@@ -44,13 +45,14 @@ impl ManagedOllamaService {
         let settings = self.settings()?.managed_ollama;
         let total_ram_gb = (System::new_all().total_memory() / 1_073_741_824).max(1) as u32;
         let installed_tags = settings.installed_model_tags.clone();
+        let preferred = recommended_model_id(total_ram_gb);
         let models = ManagedModelRegistry::all()
             .into_iter()
             .map(|definition| {
                 let installed = installed_tags
                     .iter()
                     .any(|tag| tag == &definition.ollama_tag);
-                let (machine_fit, recommended) = evaluate_machine_fit(&definition, total_ram_gb);
+                let (machine_fit, _) = evaluate_machine_fit(&definition, total_ram_gb);
                 let last_benchmark = settings
                     .benchmark_history
                     .iter()
@@ -67,7 +69,7 @@ impl ManagedOllamaService {
                     installed,
                     active: settings.active_model_id == Some(model_id),
                     machine_fit,
-                    recommended,
+                    recommended: preferred == Some(model_id),
                     last_benchmark,
                 }
             })
