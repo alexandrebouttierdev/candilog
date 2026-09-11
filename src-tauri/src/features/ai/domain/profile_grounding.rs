@@ -176,9 +176,7 @@ fn retenir_description(source: &str, value: &mut Option<String>) {
 fn decouper_description(texte: &str) -> Vec<String> {
     texte
         .lines()
-        .flat_map(|ligne| {
-            ligne.split(['•', '●', '▪', '◦', '·', ';', '|'])
-        })
+        .flat_map(|ligne| ligne.split(['•', '●', '▪', '◦', '·', ';', '|']))
         .map(|fragment| {
             fragment
                 .trim()
@@ -269,12 +267,15 @@ fn premier_nom_personne(source: &str) -> Option<(String, String)> {
 
 fn est_jeton_nom(valeur: &str) -> bool {
     let epure = valeur.trim_matches(|caractere: char| {
-        matches!(caractere, ',' | ';' | '.' | ':' | '!' | '?' | '"' | '\'' | '(' | ')')
+        matches!(
+            caractere,
+            ',' | ';' | '.' | ':' | '!' | '?' | '"' | '\'' | '(' | ')'
+        )
     });
     !epure.is_empty()
-        && epure.chars().all(|caractere| {
-            caractere.is_alphabetic() || matches!(caractere, '-' | '\'' | '’')
-        })
+        && epure
+            .chars()
+            .all(|caractere| caractere.is_alphabetic() || matches!(caractere, '-' | '\'' | '’'))
 }
 
 /// Complète l'email et le téléphone vides à partir du texte déjà soumis au modèle.
