@@ -270,12 +270,15 @@ export function ProfileSkeleton() {
   return (
     <div>
       <div className="border-b border-line bg-surface px-7 pt-[22px] pb-0">
-        <div className="flex items-start gap-4">
-          <Skeleton className="size-16 rounded-field" />
-          <div className="flex-1 space-y-2">
-            <Skeleton className="h-5 w-52" />
-            <Skeleton className="h-3 w-72" />
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex min-w-[260px] flex-1 items-start gap-4">
+            <Skeleton className="size-16 rounded-field" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-5 w-52" />
+              <Skeleton className="h-3 w-72" />
+            </div>
           </div>
+          <Skeleton className="ml-auto h-[120px] w-[min(100%,20rem)] flex-none rounded-card" />
         </div>
         <Skeleton className="mt-[18px] h-10 w-full" />
       </div>
@@ -283,7 +286,7 @@ export function ProfileSkeleton() {
   );
 }
 
-/** Action destructive du profil, isolée en bas de colonne et clairement signalée. */
+/** Action destructive du profil, alignée en haut à droite du bandeau et clairement signalée. */
 export function ProfileResetCard({ busy, onReset }: { busy: boolean; onReset: () => void }) {
   return (
     <div className="rounded-card border border-danger-border bg-danger-tint px-[18px] py-4">
