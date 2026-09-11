@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import type { CoverLetter } from "../../services/documentsService";
+import type { CoverLetter } from "@/shared/types/generated/documents";
 import type { Identity } from "@/shared/types/generated/profile";
-import { AiStopButton } from "@/features/ai/view/components/AiStopButton";
+import { AiStopButton } from "@/features/ai";
 import {
   Button,
   ConfirmDialog,

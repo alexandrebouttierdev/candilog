@@ -11,6 +11,6 @@ export function useAboutViewModel() {
     name: query.data?.name,
     isLoading: query.isPending,
     error: query.error,
-    recharger: () => void query.refetch(),
+    reload: () => void query.refetch(),
   };
 }

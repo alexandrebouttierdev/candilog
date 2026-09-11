@@ -4,14 +4,15 @@ import * as model from "../model/resumeWorkspace";
 import type { ResumeField, ResumeSectionKind } from "../model/resumeWorkspace";
 import { documentsService } from "../services/documentsService";
 import type { ResumeWorkspace } from "@/shared/types/generated/documents";
-import { profileService } from "@/features/profile/services/profileService";
-import { PROFILE_KEY } from "@/features/profile/viewmodel/useProfileViewModel";
+import { PROFILE_KEY, profileService } from "@/features/profile";
 import { AppError } from "@/shared/types/app-error";
 import { runResumeRecalculation } from "./resumeRecalculation";
-import { aiService } from "@/features/ai/services/aiService";
-import { useAiOperation } from "@/features/ai/viewmodel/useAiOperation";
-import { useAiRailStatusStore } from "@/features/ai/viewmodel/ai-rail-status-store";
-import { isAiNotConfiguredError } from "@/features/ai/model/ai-not-configured";
+import {
+  aiService,
+  isAiNotConfiguredError,
+  useAiOperation,
+  useAiRailStatusStore,
+} from "@/features/ai";
 
 /** Pile d'annulation/rétablissement bornée : au-delà, les plus anciens états sont perdus. */
 const HISTORY_LIMIT = 50;

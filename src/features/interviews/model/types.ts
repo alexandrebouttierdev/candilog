@@ -9,7 +9,7 @@ export type { InterviewType };
  * Les valeurs reprennent la casse et les accents contraints en base par la migration 005 :
  * les modifier romprait la lecture des lignes existantes.
  */
-export const TYPES_INTERVIEW: readonly InterviewType[] = [
+export const INTERVIEW_TYPES: readonly InterviewType[] = [
   "Présentiel",
   "Visio",
   "Téléphonique",

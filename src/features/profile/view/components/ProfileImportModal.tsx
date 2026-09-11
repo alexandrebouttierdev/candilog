@@ -6,11 +6,13 @@ import type {
   ImportProfileRequest,
   ImportProfileResult,
 } from "@/shared/types/generated/profile";
-import { importProfileFromResume } from "@/features/ai/viewmodel/importProfile";
-import type { AiExecution } from "@/features/ai/model/types";
-import { useAiOperation } from "@/features/ai/viewmodel/useAiOperation";
-import { useAiRailStatusStore } from "@/features/ai/viewmodel/ai-rail-status-store";
-import { isAiNotConfiguredError } from "@/features/ai/model/ai-not-configured";
+import {
+  type AiExecution,
+  importProfileFromResume,
+  isAiNotConfiguredError,
+  useAiOperation,
+  useAiRailStatusStore,
+} from "@/features/ai";
 import { AppError } from "@/shared/types/app-error";
 import {
   Button,

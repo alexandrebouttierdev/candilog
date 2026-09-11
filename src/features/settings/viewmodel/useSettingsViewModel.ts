@@ -110,7 +110,7 @@ export function useSettingsViewModel() {
     isLoading: query.isPending,
     isSaving: save.isPending,
     isClearingApiKey: clearApiKey.isPending,
-    recharger: () => void query.refetch(),
+    reload: () => void query.refetch(),
     save: (settings: Settings, apiKey: string | null) =>
       save.mutateAsync({ settings, apiKey }),
     clearApiKey: clearApiKey.mutateAsync,

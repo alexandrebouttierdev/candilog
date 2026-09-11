@@ -8,21 +8,20 @@ import type { Tone } from "@/shared/ui";
 import type { ManagedModelId } from "@/shared/types/generated/ai";
 import type { LlmForm } from "@/shared/types/generated/settings";
 import { AppError } from "@/shared/types/app-error";
-import { iaEstConfiguree, etatIa } from "@/features/settings/model/etatIa";
-import { etatManagedOllama } from "@/features/settings/model/etatManagedOllama";
 import {
-  FOURNISSEURS,
-  endpointDefaut,
-  idProvider,
-  modelDefaut,
-  versProvider,
-  type FournisseurOption,
-} from "@/features/settings/model/providers";
-import { defFournisseur } from "@/features/settings/model/providers";
-import {
-  logoFournisseur,
   ManagedPublisherLogo,
-} from "@/features/settings/view/components/ProviderGrid";
+  PROVIDERS,
+  aiStatus,
+  defaultEndpoint,
+  defaultModel,
+  getProvider,
+  idProvider,
+  isAiConfigured,
+  managedOllamaStatus,
+  providerLogo,
+  toProvider,
+  type ProviderOption,
+} from "@/features/settings";
 import { useAiQuickSelectorViewModel } from "../../viewmodel/useAiQuickSelectorViewModel";
 
 const DOT: Record<Tone, string> = {
@@ -42,7 +41,7 @@ export function AiQuickSelector({ shellBrand = false }: { shellBrand?: boolean }
   const navigate = useNavigate();
   const root = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
-  const [focusedProvider, setFocusedProvider] = useState<FournisseurOption["id"] | null>(null);
+  const [focusedProvider, setFocusedProvider] = useState<ProviderOption["id"] | null>(null);
   const vm = useAiQuickSelectorViewModel();
   const llm = vm.settings?.llm;
   const activeProviderId = llm ? idProvider(llm.provider) : null;
@@ -73,21 +72,21 @@ export function AiQuickSelector({ shellBrand = false }: { shellBrand?: boolean }
     return llm.model.trim();
   }, [activeProviderId, llm, managed.data]);
 
-  const fournisseur = llm ? defFournisseur(llm.provider) : FOURNISSEURS[0]!;
+  const fournisseur = llm ? getProvider(llm.provider) : PROVIDERS[0]!;
 
   const globalEtat = useMemo(() => {
     if (!llm || !activeProviderId) {
       return { label: "Non configuré", tone: "neutral" as Tone };
     }
     if (activeProviderId === "candilog_local") {
-      return etatManagedOllama(managed.data ?? null, null);
+      return managedOllamaStatus(managed.data ?? null, null);
     }
-    return etatIa(llm, "idle");
+    return aiStatus(llm, "idle");
   }, [activeProviderId, llm, managed.data]);
 
-  const logo = activeProviderId ? logoFournisseur(activeProviderId) : null;
+  const logo = activeProviderId ? providerLogo(activeProviderId) : null;
 
-  const selectProvider = async (id: FournisseurOption["id"]) => {
+  const selectProvider = async (id: ProviderOption["id"]) => {
     if (!vm.settings) return;
     if (id === "candilog_local") {
       const active = managed.data?.active_model;
@@ -101,11 +100,11 @@ export function AiQuickSelector({ shellBrand = false }: { shellBrand?: boolean }
     }
     const nextLlm: LlmForm = {
       ...vm.settings.llm,
-      provider: versProvider(id),
-      endpoint: endpointDefaut(id),
-      model: id === activeProviderId ? vm.settings.llm.model : modelDefaut(id),
+      provider: toProvider(id),
+      endpoint: defaultEndpoint(id),
+      model: id === activeProviderId ? vm.settings.llm.model : defaultModel(id),
     };
-    if (!iaEstConfiguree(nextLlm)) {
+    if (!isAiConfigured(nextLlm)) {
       setOpen(false);
       void navigate("/settings/ai");
       return;
@@ -184,18 +183,18 @@ export function AiQuickSelector({ shellBrand = false }: { shellBrand?: boolean }
         >
           <div className="flex w-[220px] flex-none flex-col overflow-y-auto border-r border-line-soft p-2">
             <p className="px-2 py-1 text-eyebrow uppercase text-ink-label">Fournisseur</p>
-            {FOURNISSEURS.map((item) => {
+            {PROVIDERS.map((item) => {
               const selected = item.id === columnProvider;
               const itemConfigured =
                 item.id === "candilog_local"
                   ? Boolean(managed.data?.active_model)
                   : vm.settings
-                    ? iaEstConfiguree({
+                    ? isAiConfigured({
                         ...vm.settings.llm,
-                        provider: versProvider(item.id),
+                        provider: toProvider(item.id),
                       })
                     : false;
-              const logoItem = logoFournisseur(item.id);
+              const logoItem = providerLogo(item.id);
               return (
                 <button
                   key={item.id}
@@ -250,7 +249,7 @@ export function AiQuickSelector({ shellBrand = false }: { shellBrand?: boolean }
                 if (!vm.settings || !llm) return;
                 await vm.saveSettings({
                   ...vm.settings,
-                  llm: { ...llm, model, provider: versProvider(columnProvider) },
+                  llm: { ...llm, model, provider: toProvider(columnProvider) },
                 });
                 setOpen(false);
               }}
@@ -270,7 +269,7 @@ function ModelColumn({
   onConfigure,
   onSelectRemote,
 }: {
-  providerId: FournisseurOption["id"];
+  providerId: ProviderOption["id"];
   llm: LlmForm | undefined;
   managed: ReturnType<typeof useAiQuickSelectorViewModel>["managed"];
   onSelectManaged: (id: ManagedModelId, installed: boolean) => void;
@@ -335,7 +334,7 @@ function RemoteModelList({
   onConfigure,
   onSelectRemote,
 }: {
-  providerId: FournisseurOption["id"];
+  providerId: ProviderOption["id"];
   llm: LlmForm | undefined;
   onConfigure: () => void;
   onSelectRemote: (model: string) => Promise<void>;

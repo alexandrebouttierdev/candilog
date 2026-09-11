@@ -2,9 +2,11 @@ import { useCallback, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { companyService } from "../services/companyService";
 import type { Company, CompanyFilter, NewCompany } from "../services/companyService";
-import { applicationService } from "@/features/applications/services/applicationService";
-import type { ApplicationFilter } from "@/features/applications/services/applicationService";
-import { FILTER_VIDE } from "@/features/applications/model/schemas/application-filter.schema";
+import {
+  applicationService,
+  EMPTY_FILTER,
+  type ApplicationFilter,
+} from "@/features/applications";
 import { COMPANIES_PAGE_SIZE, PAGE_SIZE } from "@/shared/types/page";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
@@ -34,7 +36,7 @@ export const CRITERES_VIDES: CompanyCriteria = {
 };
 
 function applicationsForCompany(company_id: string | null): ApplicationFilter {
-  return { ...FILTER_VIDE, company_id, search: "", sort: "date", descending: true, ids: [] };
+  return { ...EMPTY_FILTER, company_id, search: "", sort: "date", descending: true, ids: [] };
 }
 
 /**
@@ -50,7 +52,7 @@ export function useCompaniesViewModel() {
   const notify = useUiStore((state) => state.notify);
 
   const [page, setPage] = useState(1);
-  const [search, setSearch] = useState("");
+  const [search, setSearchState] = useState("");
   const searchQuery = useDebounce(search);
   const [criteres, setCriteres] = useState<CompanyCriteria>(CRITERES_VIDES);
   const [selected_id, setSelectedId] = useState<string | null>(null);
@@ -99,13 +101,13 @@ export function useCompaniesViewModel() {
   };
 
   /** Recharge toute la feature : liste, filtres et fiche sélectionnée. */
-  const invalider = useCallback(
+  const invalidate = useCallback(
     () => queryClient.invalidateQueries({ queryKey: COMPANIES_KEY }),
     [queryClient],
   );
 
   /** Présente l'échec d'une écriture sans faire disparaître le formulaire. */
-  const signalerEchec = useCallback(
+  const reportFailure = useCallback(
     (title: string) => (error: unknown) => {
       notify({
         tone: "error",
@@ -119,38 +121,38 @@ export function useCompaniesViewModel() {
   const creation = useMutation({
     mutationFn: (input: NewCompany) => companyService.create(input),
     onSuccess: async (company) => {
-      await invalider();
+      await invalidate();
       setSelectedId(company.id);
       notify({ tone: "success", title: "Entreprise enregistrée", detail: company.name });
     },
-    onError: signalerEchec("Enregistrement impossible"),
+    onError: reportFailure("Enregistrement impossible"),
   });
 
   const modification = useMutation({
     mutationFn: (params: { id: string; input: NewCompany }) =>
       companyService.update(params.id, params.input),
     onSuccess: async (company) => {
-      await invalider();
+      await invalidate();
       notify({ tone: "success", title: "Entreprise modifiée", detail: company.name });
     },
-    onError: signalerEchec("Modification impossible"),
+    onError: reportFailure("Modification impossible"),
   });
 
   const suppression = useMutation({
     mutationFn: (id: string) => companyService.delete(id),
     onSuccess: async (_result, id) => {
-      await invalider();
+      await invalidate();
       // La fiche affichée n'existe plus : la garder ouverte laisserait des données mortes
       // à l'écran jusqu'à la prochaine sélection.
       if (selected_id === id) setSelectedId(null);
       notify({ tone: "success", title: "Entreprise supprimée" });
     },
-    onError: signalerEchec("Suppression impossible"),
+    onError: reportFailure("Suppression impossible"),
   });
 
   /** Toute recherche ou tout filtre ramène à la première page. */
-  const rechercher = useCallback((value: string) => {
-    setSearch(value);
+  const setSearch = useCallback((value: string) => {
+    setSearchState(value);
     setPage(1);
   }, []);
 
@@ -165,7 +167,7 @@ export function useCompaniesViewModel() {
   }, []);
 
   /** Nombre de critères actifs, hors recherche libre, pour la pastille du bouton Filtres. */
-  const filtersActifs = [
+  const activeFilterCount = [
     criteres.sector_id,
     criteres.company_type_id,
     criteres.company_size,
@@ -177,8 +179,9 @@ export function useCompaniesViewModel() {
     page,
     page_size: COMPANIES_PAGE_SIZE,
     search,
+    setSearch,
     criteres,
-    filtersActifs,
+    activeFilterCount,
     selection,
     selected_id,
     /** Applications rattachées à la fiche ouverte, page la plus récente. */
@@ -191,11 +194,10 @@ export function useCompaniesViewModel() {
     isDeleting: suppression.isPending,
 
     setPage,
-    rechercher,
     appliquerCriteres,
     resetFilters,
-    selectionner: setSelectedId,
-    recharger: () => void list.refetch(),
+    select: setSelectedId,
+    reload: () => void list.refetch(),
     create: creation.mutateAsync,
     update: modification.mutateAsync,
     delete: suppression.mutateAsync,

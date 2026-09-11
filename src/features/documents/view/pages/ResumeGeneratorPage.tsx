@@ -11,7 +11,7 @@ import { ProfileSkillChoiceDialog } from "../components/ProfileSkillChoiceDialog
 import { ResumeAtsPanel } from "../components/ResumeAtsPanel";
 import { ResumePaper } from "../components/ResumePaper";
 import { useProfilePhoto } from "@/features/profile";
-import { AiStopButton } from "@/features/ai/view/components/AiStopButton";
+import { AiStopButton } from "@/features/ai";
 import { ChampOffre, HeaderBadge, Screen, generationFromNavigation } from "./documentPageSupport";
 
 export function ResumeGeneratorPage() {

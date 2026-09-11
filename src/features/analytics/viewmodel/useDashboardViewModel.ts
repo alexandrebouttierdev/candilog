@@ -15,6 +15,6 @@ export function useDashboardViewModel() {
     data: query.data,
     isLoading: query.isPending,
     error: query.error,
-    recharger: () => void query.refetch(),
+    reload: () => void query.refetch(),
   };
 }

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { textFacultatif } from "@/shared/lib/zod-helpers";
+import { optionalText } from "@/shared/lib/zod-helpers";
 import { FORMAT_DATE, versDateIso } from "@/shared/lib/dates";
 
 /**
@@ -19,7 +19,7 @@ export const followUpFormSchema = z.object({
     })
     .transform((value) => versDateIso(value) as string),
   type: z.string().trim().min(1, "Le canal est obligatoire"),
-  notes: textFacultatif,
+  notes: optionalText,
 });
 
 /** Valeurs validées, telles qu'envoyées au backend. */

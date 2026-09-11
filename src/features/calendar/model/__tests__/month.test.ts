@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   gridBounds,
   dateFromIso,
-  decalerDays,
-  decalerMonth,
-  gridDuMonth,
+  shiftDays,
+  shiftMonth,
+  monthGrid,
   isoLocal,
   daysDeLaWeek,
   labelDay,
@@ -21,44 +21,44 @@ describe("grille du mois", () => {
       [2026, 7],
       [2024, 1], // février bissextile
     ] as const) {
-      expect(gridDuMonth(year, month)).toHaveLength(42);
+      expect(monthGrid(year, month)).toHaveLength(42);
     }
   });
 
   it("commence la semaine le lundi", () => {
     // Le 1er août 2026 est un samedi : la grille doit débuter le lundi 27 juillet.
-    const cells = gridDuMonth(2026, 7);
+    const cells = monthGrid(2026, 7);
     expect(cells[0]?.iso).toBe("2026-07-27");
   });
 
   it("commence sur le jour même quand le mois débute un lundi", () => {
     // Le 1er juin 2026 est un lundi : aucune case du mois précédent en tête.
-    const cells = gridDuMonth(2026, 5);
+    const cells = monthGrid(2026, 5);
     expect(cells[0]?.iso).toBe("2026-06-01");
     expect(cells[0]?.in_month).toBe(true);
   });
 
   it("marque les jours hors du mois affiché", () => {
-    const cells = gridDuMonth(2026, 7);
+    const cells = monthGrid(2026, 7);
     expect(cells[0]?.in_month).toBe(false);
     expect(cells.filter((day) => day.in_month)).toHaveLength(31);
   });
 
   it("marque aujourd'hui, et lui seul", () => {
-    const cells = gridDuMonth(2026, 7, new Date(2026, 7, 25));
+    const cells = monthGrid(2026, 7, new Date(2026, 7, 25));
     const marques = cells.filter((day) => day.today);
     expect(marques).toHaveLength(1);
     expect(marques[0]?.iso).toBe("2026-08-25");
   });
 
   it("ne marque aucun jour quand la date du jour est hors de la grille", () => {
-    expect(gridDuMonth(2026, 7, new Date(2027, 0, 15)).some((day) => day.today)).toBe(
+    expect(monthGrid(2026, 7, new Date(2027, 0, 15)).some((day) => day.today)).toBe(
       false,
     );
   });
 
   it("donne des jours consécutifs, sans trou ni doublon", () => {
-    const cells = gridDuMonth(2026, 7);
+    const cells = monthGrid(2026, 7);
     const uniques = new Set(cells.map((day) => day.iso));
     expect(uniques.size).toBe(42);
 
@@ -80,12 +80,12 @@ describe("bornes de la grille", () => {
 
 describe("navigation entre mois", () => {
   it("passe au mois suivant", () => {
-    expect(decalerMonth(2026, 7, 1)).toEqual({ year: 2026, month: 8 });
+    expect(shiftMonth(2026, 7, 1)).toEqual({ year: 2026, month: 8 });
   });
 
   it("franchit l'année en avant comme en arrière", () => {
-    expect(decalerMonth(2026, 11, 1)).toEqual({ year: 2027, month: 0 });
-    expect(decalerMonth(2026, 0, -1)).toEqual({ year: 2025, month: 11 });
+    expect(shiftMonth(2026, 11, 1)).toEqual({ year: 2027, month: 0 });
+    expect(shiftMonth(2026, 0, -1)).toEqual({ year: 2025, month: 11 });
   });
 });
 
@@ -107,8 +107,8 @@ describe("semaine et jour", () => {
   });
 
   it("décale une clé ISO en heure locale", () => {
-    expect(decalerDays("2026-08-31", 1)).toBe("2026-09-01");
-    expect(decalerDays("2026-01-01", -1)).toBe("2025-12-31");
+    expect(shiftDays("2026-08-31", 1)).toBe("2026-09-01");
+    expect(shiftDays("2026-01-01", -1)).toBe("2025-12-31");
   });
 
   it("round-trip ISO sans glisser en UTC", () => {

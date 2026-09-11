@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import type { AtsRecommendationSection, ResumeGeneration } from "@/features/ai/model/types";
-import type { CoverLetter, ResumeWorkspace } from "../../services/documentsService";
+import type { AtsRecommendationSection, ResumeGeneration } from "@/features/ai";
+import type { CoverLetter, ResumeWorkspace } from "@/shared/types/generated/documents";
 import { AppError } from "@/shared/types/app-error";
 import { ContextBarAccessory, ContextSearch } from "@/app/layout/ContextBar";
 import { Button, FormField, Icon, TextArea, TextInput } from "@/shared/ui";

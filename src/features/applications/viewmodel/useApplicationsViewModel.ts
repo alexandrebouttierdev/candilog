@@ -9,7 +9,7 @@ import type {
   ApplicationStatus,
 } from "../services/applicationService";
 import {
-  FILTER_VIDE,
+  EMPTY_FILTER,
   type ApplicationFilterValues,
 } from "../model/schemas/application-filter.schema";
 import type { ApplicationSort } from "@/shared/types/generated/applications";
@@ -43,13 +43,13 @@ export function useApplicationsViewModel() {
   const notify = useUiStore((state) => state.notify);
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const [view, setVue] = useState<TrackingView>("kanban");
+  const [view, setViewState] = useState<TrackingView>("kanban");
   const [page, setPage] = useState(1);
   const [sizePage, setSizePage] = useState<number>(PAGE_SIZE);
   const [kanbanPages, setKanbanPages] = useState(INITIAL_KANBAN_PAGES);
-  const [search, setSearch] = useState("");
+  const [search, setSearchState] = useState("");
   const searchQuery = useDebounce(search);
-  const [filters, setFilters] = useState<ApplicationFilterValues>(FILTER_VIDE);
+  const [filters, setFilters] = useState<ApplicationFilterValues>(EMPTY_FILTER);
   const [sort, setSort] = useState<ApplicationSort>("date");
   const [descending, setDescending] = useState(true);
 
@@ -58,7 +58,7 @@ export function useApplicationsViewModel() {
   // retour arrière. Aucune fiche n'est sélectionnée tant que le paramètre est absent.
   const selected_id = searchParams.get("fiche");
 
-  const selectionner = useCallback(
+  const select = useCallback(
     (id: string | null) => {
       setSearchParams(
         (actuel) => {
@@ -139,12 +139,12 @@ export function useApplicationsViewModel() {
     enabled: selected_id !== null,
   });
 
-  const invalider = useCallback(
+  const invalidate = useCallback(
     () => queryClient.invalidateQueries({ queryKey: APPLICATIONS_KEY }),
     [queryClient],
   );
 
-  const signalerEchec = useCallback(
+  const reportFailure = useCallback(
     (title: string) => (error: unknown) => {
       notify({
         tone: "error",
@@ -158,44 +158,44 @@ export function useApplicationsViewModel() {
   const creation = useMutation({
     mutationFn: (input: NewApplication) => applicationService.create(input),
     onSuccess: async (application) => {
-      await invalider();
-      selectionner(application.id);
+      await invalidate();
+      select(application.id);
       notify({
         tone: "success",
         title: "Candidature enregistrée",
         detail: `${application.job_title} — ${application.company_name ?? ""}`,
       });
     },
-    onError: signalerEchec("Enregistrement impossible"),
+    onError: reportFailure("Enregistrement impossible"),
   });
 
   const modification = useMutation({
     mutationFn: (params: { id: string; input: NewApplication }) =>
       applicationService.update(params.id, params.input),
     onSuccess: async (application) => {
-      await invalider();
+      await invalidate();
       notify({ tone: "success", title: "Candidature modifiée", detail: application.job_title });
     },
-    onError: signalerEchec("Modification impossible"),
+    onError: reportFailure("Modification impossible"),
   });
 
   const changementStatus = useMutation({
     mutationFn: (params: { id: string; status: ApplicationStatus }) =>
       applicationService.changeStatus(params.id, params.status),
-    onSuccess: invalider,
+    onSuccess: invalidate,
     // Pas de toast en cas de succès : le déplacement de la carte est déjà la confirmation
     // visible du geste. Un échec, lui, doit être annoncé — la carte reviendra à sa place.
-    onError: signalerEchec("Changement de statut impossible"),
+    onError: reportFailure("Changement de statut impossible"),
   });
 
   const suppression = useMutation({
     mutationFn: (id: string) => applicationService.delete(id),
     onSuccess: async (_result, id) => {
-      if (selected_id === id) selectionner(null);
-      await invalider();
+      if (selected_id === id) select(null);
+      await invalidate();
       notify({ tone: "success", title: "Candidature supprimée" });
     },
-    onError: signalerEchec("Suppression impossible"),
+    onError: reportFailure("Suppression impossible"),
   });
 
   const suppressionMultiple = useMutation({
@@ -206,14 +206,14 @@ export function useApplicationsViewModel() {
       return ids.length;
     },
     onSuccess: async (count, ids) => {
-      if (selected_id !== null && ids.includes(selected_id)) selectionner(null);
-      await invalider();
+      if (selected_id !== null && ids.includes(selected_id)) select(null);
+      await invalidate();
       notify({
         tone: "success",
         title: count === 1 ? "Candidature supprimée" : `${count} candidatures supprimées`,
       });
     },
-    onError: signalerEchec("Suppression impossible"),
+    onError: reportFailure("Suppression impossible"),
   });
 
   const exportCsv = useMutation({
@@ -226,29 +226,29 @@ export function useApplicationsViewModel() {
         detail: `${rows} candidature${rows > 1 ? "s" : ""} exportée${rows > 1 ? "s" : ""}.`,
       });
     },
-    onError: signalerEchec("Export impossible"),
+    onError: reportFailure("Export impossible"),
   });
 
-  const rechercher = useCallback((value: string) => {
-    setSearch(value);
+  const setSearch = useCallback((value: string) => {
+    setSearchState(value);
     setPage(1);
     setKanbanPages(INITIAL_KANBAN_PAGES);
   }, []);
 
-  const appliquerFilters = useCallback((values: ApplicationFilterValues) => {
+  const applyFilters = useCallback((values: ApplicationFilterValues) => {
     setFilters(values);
     setPage(1);
     setKanbanPages(INITIAL_KANBAN_PAGES);
   }, []);
 
   const resetFilters = useCallback(() => {
-    setFilters(FILTER_VIDE);
+    setFilters(EMPTY_FILTER);
     setPage(1);
     setKanbanPages(INITIAL_KANBAN_PAGES);
   }, []);
 
   /** Nombre de critères actifs, hors recherche libre, pour la pastille du bouton Filtres. */
-  const filtersActifs = useMemo(
+  const activeFilterCount = useMemo(
     () =>
       filters.status.length +
       filters.application_type.length +
@@ -271,7 +271,7 @@ export function useApplicationsViewModel() {
   );
 
   /** Bascule la direction si l'on retrie la colonne courante, sinon trie la nouvelle. */
-  const trierPar = useCallback(
+  const sortBy = useCallback(
     (column: ApplicationSort) => {
       if (column === sort) {
         setDescending((value) => !value);
@@ -309,13 +309,13 @@ export function useApplicationsViewModel() {
   const detailError = detail.error;
   useEffect(() => {
     if (detailError === null) return;
-    selectionner(null);
+    select(null);
     notify({
       tone: "error",
       title: "Candidature introuvable",
       detail: detailError instanceof AppError ? detailError.message : undefined,
     });
-  }, [detailError, selectionner, notify]);
+  }, [detailError, select, notify]);
 
   return {
     view,
@@ -327,8 +327,9 @@ export function useApplicationsViewModel() {
     page,
     page_size: sizePage,
     search,
+    setSearch,
     filters,
-    filtersActifs,
+    activeFilterCount,
     filter,
     sort,
     descending,
@@ -346,7 +347,7 @@ export function useApplicationsViewModel() {
 
     /** Change de vue et revient à la première page de la liste. */
     setView: useCallback((suivante: TrackingView) => {
-      setVue(suivante);
+      setViewState(suivante);
       setPage(1);
     }, []),
     setPage,
@@ -358,13 +359,12 @@ export function useApplicationsViewModel() {
       setSizePage(size);
       setPage(1);
     }, []),
-    rechercher,
-    appliquerFilters,
+    applyFilters,
     resetFilters,
-    trierPar,
-    selectionner,
+    sortBy,
+    select,
     /** Recharge la liste, les compteurs et la fiche ouverte, pas seulement la page. */
-    recharger: () => void invalider(),
+    reload: () => void invalidate(),
     create: creation.mutateAsync,
     update: modification.mutateAsync,
     changeStatus: changementStatus.mutateAsync,

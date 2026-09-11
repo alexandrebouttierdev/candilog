@@ -1,11 +1,15 @@
 import { useState } from "react";
-import { aiService } from "@/features/ai/services/aiService";
-import type { AiExecution, ImportedResumeAnalysis, SelectedResumeFile } from "@/features/ai/model/types";
-import { useAiOperation } from "@/features/ai/viewmodel/useAiOperation";
-import { useAiRailStatusStore } from "@/features/ai/viewmodel/ai-rail-status-store";
-import { isAiNotConfiguredError } from "@/features/ai/model/ai-not-configured";
-import { useAiProgress } from "@/features/ai/viewmodel/useAiProgress";
-import { useAiTimer } from "@/features/ai/viewmodel/useAiTimer";
+import {
+  aiService,
+  isAiNotConfiguredError,
+  useAiOperation,
+  useAiProgress,
+  useAiRailStatusStore,
+  useAiTimer,
+  type AiExecution,
+  type ImportedResumeAnalysis,
+  type SelectedResumeFile,
+} from "@/features/ai";
 import { documentsService } from "../services/documentsService";
 import { AppError } from "@/shared/types/app-error";
 

@@ -15,3 +15,4 @@ export type {
   ReferenceItem,
   Referentials,
 } from "./services/referentialService";
+export { referentialService } from "./services/referentialService";

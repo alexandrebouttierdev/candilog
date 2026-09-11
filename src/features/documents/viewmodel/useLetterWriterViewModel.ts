@@ -1,16 +1,17 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { aiService } from "@/features/ai/services/aiService";
-import { useAiOperation } from "@/features/ai/viewmodel/useAiOperation";
-import { useAiRailStatusStore } from "@/features/ai/viewmodel/ai-rail-status-store";
-import { isAiNotConfiguredError } from "@/features/ai/model/ai-not-configured";
-import { useAiProgress } from "@/features/ai/viewmodel/useAiProgress";
-import { useAiTimer } from "@/features/ai/viewmodel/useAiTimer";
+import {
+  aiService,
+  isAiNotConfiguredError,
+  useAiOperation,
+  useAiProgress,
+  useAiRailStatusStore,
+  useAiTimer,
+} from "@/features/ai";
 import { formatAiSummary } from "@/shared/lib/duration";
 import { documentsService, type CoverLetter } from "../services/documentsService";
 import { applyLetterCorrection, letterCorrectionFields } from "../model/letterMarkup";
-import { profileService } from "@/features/profile/services/profileService";
-import { PROFILE_KEY } from "@/features/profile/viewmodel/useProfileViewModel";
+import { PROFILE_KEY, profileService } from "@/features/profile";
 import type { Identity } from "@/shared/types/generated/profile";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";

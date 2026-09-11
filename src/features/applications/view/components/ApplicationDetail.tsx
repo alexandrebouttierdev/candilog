@@ -1,4 +1,4 @@
-import type { Application } from "../../services/applicationService";
+import type { Application } from "@/shared/types/generated/applications";
 import { Statuses, status_meta } from "../../model/statuses";
 import {
   applicationTypeLabel,
@@ -15,7 +15,7 @@ import {
   InspectorRow,
   InspectorSectionLabel,
 } from "@/shared/ui";
-import type { ApplicationStatus } from "../../services/applicationService";
+import type { ApplicationStatus } from "@/shared/types/generated/applications";
 import { cn } from "@/shared/lib/cn";
 
 /** Panneau latéral de détail d'une candidature. */

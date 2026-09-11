@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { ContactDetail } from "../ContactDetail";
-import type { Contact } from "../../../services/contactService";
+import type { Contact } from "@/shared/types/generated/contacts";
 import { openExternal } from "@/shared/services/external-link";
 
 vi.mock("@/shared/services/external-link", () => ({ openExternal: vi.fn() }));

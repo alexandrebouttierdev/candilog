@@ -4,7 +4,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DateInput, TimeInput } from "../DateInput";
 import { FormField } from "../FormField";
-import { labelDay } from "@/features/calendar/model/month";
+import { labelDay } from "@/features/calendar";
 
 function DateHarness({ initial = "" }: { initial?: string }) {
   const [value, setValue] = useState(initial);

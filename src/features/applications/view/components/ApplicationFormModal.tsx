@@ -8,7 +8,7 @@ import {
 } from "../../model/schemas/application-form.schema";
 import { versDateAffichee } from "@/shared/lib/dates";
 import { Statuses } from "../../model/statuses";
-import type { Application, NewApplication } from "../../services/applicationService";
+import type { Application, NewApplication } from "@/shared/types/generated/applications";
 import { CompanyPicker, useCompany } from "@/features/companies";
 import {
   ApplicationTypes,

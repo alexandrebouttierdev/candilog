@@ -2,10 +2,12 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/shared/lib/cn";
 import { Button, IconButton } from "@/shared/ui";
-import { iaEstConfiguree } from "@/features/settings/model/etatIa";
-import { idProvider } from "@/features/settings/model/providers";
-import { useManagedOllamaViewModel } from "@/features/settings/viewmodel/useManagedOllamaViewModel";
-import { useSettingsViewModel } from "@/features/settings/viewmodel/useSettingsViewModel";
+import {
+  idProvider,
+  isAiConfigured,
+  useManagedOllamaViewModel,
+  useSettingsViewModel,
+} from "@/features/settings";
 import { AiBenchmarkModal, AiQuickSelector } from "@/features/ai";
 
 /** En-tête IA global : sélecteur rapide, benchmark et accès aux réglages. */
@@ -18,7 +20,7 @@ export function AiGlobalHeader({ shellBrand = false }: { shellBrand?: boolean })
 
   const llm = settings.data?.llm;
   const providerId = llm ? idProvider(llm.provider) : null;
-  const configured = llm ? iaEstConfiguree(llm) : false;
+  const configured = llm ? isAiConfigured(llm) : false;
 
   const modelLabel =
     providerId === "candilog_local"

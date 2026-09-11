@@ -63,7 +63,7 @@ export function ProfilePage() {
         {vm.isLoading ? (
           <ProfileSkeleton />
         ) : vm.error || !vm.data ? (
-          <div className="p-6"><ErrorBanner message={vm.error instanceof AppError ? vm.error.message : "Le profil n’a pas pu être chargé."} onRetry={vm.recharger} /></div>
+          <div className="p-6"><ErrorBanner message={vm.error instanceof AppError ? vm.error.message : "Le profil n’a pas pu être chargé."} onRetry={vm.reload} /></div>
         ) : (
           <div>
             <div className="border-b border-line bg-surface px-7 pt-[22px]">

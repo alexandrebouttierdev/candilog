@@ -2,7 +2,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import { Sections, sectionForPath } from "@/app/router/routes";
 import { useShellBrand } from "@/shared/lib/ui-store";
 import type { ThemePref } from "@/shared/types/generated/settings";
-import { useThemePreference } from "@/features/settings/viewmodel/useSettingsViewModel";
+import { useThemePreference } from "@/features/settings";
 import { Icon } from "@/shared/ui/Icon";
 import { cn } from "@/shared/lib/cn";
 import logoCandilog from "@/assets/logo-candilog.svg";

@@ -7,7 +7,7 @@ import {
   type FollowUpFormValues,
 } from "../../model/schemas/follow-up-form.schema";
 import { CANAUX_FOLLOW_UP } from "../../model/types";
-import type { NewFollowUp, FollowUp } from "../../services/followUpService";
+import type { FollowUp, NewFollowUp } from "@/shared/types/generated/followUps";
 import { versDateAffichee } from "@/shared/lib/dates";
 import { ApplicationPicker } from "@/features/applications";
 import {

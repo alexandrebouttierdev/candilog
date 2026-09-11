@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { textFacultatif } from "@/shared/lib/zod-helpers";
+import { optionalText } from "@/shared/lib/zod-helpers";
 import { FORMAT_DATE, timeValide, versDateIso, versTimestamp } from "@/shared/lib/dates";
 
 /**
@@ -30,9 +30,9 @@ export const interviewFormSchema = z
       .min(1, "L'heure est obligatoire")
       .refine(timeValide, { message: "Heure invalide — format attendu HH:MM." }),
     type: z.enum(["Présentiel", "Visio", "Téléphonique", "Technique", "RH", "Autre"]),
-    location: textFacultatif,
-    notes: textFacultatif,
-    minutes: textFacultatif,
+    location: optionalText,
+    notes: optionalText,
+    minutes: optionalText,
   })
   .transform((values) => ({
     application_id: values.application_id,

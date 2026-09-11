@@ -15,11 +15,11 @@ import { useDismissable } from "@/shared/hooks/useDismissable";
 import {
   DAYS,
   dateFromIso,
-  decalerMonth,
-  gridDuMonth,
+  shiftMonth,
+  monthGrid,
   labelDay,
   monthLabel,
-} from "@/features/calendar/model/month";
+} from "@/features/calendar";
 
 /**
  * Champ date (ou heure) : saisie texte **et** popover.
@@ -99,7 +99,7 @@ export function DateInput({
   const saisie = typeof value === "string" ? value : String(defaultValue ?? "");
   const choisi = versDateIso(saisie);
   const [curseur, setCurseur] = useState(() => moisDe(saisie));
-  const cells = gridDuMonth(curseur.year, curseur.month);
+  const cells = monthGrid(curseur.year, curseur.month);
 
   return (
     <div ref={root} className={cn("relative min-w-0", className)}>
@@ -142,7 +142,7 @@ export function DateInput({
             <button
               type="button"
               aria-label="Mois précédent"
-              onClick={() => setCurseur((c) => decalerMonth(c.year, c.month, -1))}
+              onClick={() => setCurseur((c) => shiftMonth(c.year, c.month, -1))}
               className="flex size-7 items-center justify-center rounded-button text-ink-muted hover:bg-fill-hover hover:text-ink"
             >
               <Icon name="chevron_left" size={18} />
@@ -153,7 +153,7 @@ export function DateInput({
             <button
               type="button"
               aria-label="Mois suivant"
-              onClick={() => setCurseur((c) => decalerMonth(c.year, c.month, 1))}
+              onClick={() => setCurseur((c) => shiftMonth(c.year, c.month, 1))}
               className="flex size-7 items-center justify-center rounded-button text-ink-muted hover:bg-fill-hover hover:text-ink"
             >
               <Icon name="chevron_right" size={18} />

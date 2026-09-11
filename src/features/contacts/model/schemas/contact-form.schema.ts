@@ -1,8 +1,8 @@
 import { z } from "zod";
 import {
-  idFacultatif,
-  textFacultatif,
-  urlFacultative,
+  optionalId,
+  optionalText,
+  optionalUrl,
 } from "@/shared/lib/zod-helpers";
 
 /**
@@ -25,12 +25,12 @@ export const contactFormSchema = z.object({
     .refine((value) => value === null || z.email().safeParse(value).success, {
       message: "Adresse e-mail invalide",
     }),
-  phone: textFacultatif,
-  company_id: idFacultatif,
-  job_title: textFacultatif,
-  tracking_role: textFacultatif,
-  linkedin: urlFacultative("Le profil LinkedIn doit commencer par http:// ou https://"),
-  notes: textFacultatif,
+  phone: optionalText,
+  company_id: optionalId,
+  job_title: optionalText,
+  tracking_role: optionalText,
+  linkedin: optionalUrl("Le profil LinkedIn doit commencer par http:// ou https://"),
+  notes: optionalText,
 });
 
 /** Valeurs validées, telles qu'envoyées au backend. */

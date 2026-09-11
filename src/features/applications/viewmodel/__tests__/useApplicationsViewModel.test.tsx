@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import type { ReactNode } from "react";
 import { useApplicationsViewModel } from "../useApplicationsViewModel";
-import { FILTER_VIDE } from "../../model/schemas/application-filter.schema";
+import { EMPTY_FILTER } from "../../model/schemas/application-filter.schema";
 import { applicationService } from "../../services/applicationService";
 import type { Application } from "../../services/applicationService";
 import { useUiStore } from "@/shared/lib/ui-store";
@@ -160,7 +160,7 @@ describe("ViewModel des candidatures", () => {
     act(() => result.current.setPage(3));
     await waitFor(() => expect(result.current.page).toBe(3));
 
-    act(() => result.current.rechercher("nova"));
+    act(() => result.current.setSearch("nova"));
 
     await waitFor(() => expect(result.current.page).toBe(1));
     await waitFor(() => expect(listPage.mock.calls.at(-1)?.[0].filter.search).toBe("nova"));
@@ -174,7 +174,7 @@ describe("ViewModel des candidatures", () => {
     expect(result.current.sort).toBe("date");
     expect(result.current.descending).toBe(true);
 
-    act(() => result.current.trierPar("date"));
+    act(() => result.current.sortBy("date"));
     expect(result.current.descending).toBe(false);
   });
 
@@ -186,8 +186,8 @@ describe("ViewModel des candidatures", () => {
     const { result } = renderHook(() => useApplicationsViewModel(), { wrapper });
     await waitFor(() => expect(result.current.items).toHaveLength(1));
 
-    act(() => result.current.trierPar("date"));
-    act(() => result.current.trierPar("job_title"));
+    act(() => result.current.sortBy("date"));
+    act(() => result.current.sortBy("job_title"));
 
     expect(result.current.sort).toBe("job_title");
     expect(result.current.descending).toBe(true);
@@ -201,19 +201,19 @@ describe("ViewModel des candidatures", () => {
     const { result } = renderHook(() => useApplicationsViewModel(), { wrapper });
     await waitFor(() => expect(result.current.items).toHaveLength(1));
 
-    act(() => result.current.rechercher("nova"));
-    expect(result.current.filtersActifs).toBe(0);
+    act(() => result.current.setSearch("nova"));
+    expect(result.current.activeFilterCount).toBe(0);
 
     act(() =>
-      result.current.appliquerFilters({
-        ...FILTER_VIDE,
+      result.current.applyFilters({
+        ...EMPTY_FILTER,
         status: ["ENTRETIEN"],
         contract_type_code: ["CDI"],
         company_size: ["PME"],
         min_weekly_hours: 20,
       }),
     );
-    expect(result.current.filtersActifs).toBe(4);
+    expect(result.current.activeFilterCount).toBe(4);
   });
 
   it("n'annonce pas de succès après un changement de statut", async () => {
@@ -274,7 +274,7 @@ describe("ViewModel des candidatures", () => {
     const { result } = renderHook(() => useApplicationsViewModel(), { wrapper });
     await waitFor(() => expect(result.current.items).toHaveLength(2));
 
-    act(() => result.current.selectionner("Développeur"));
+    act(() => result.current.select("Développeur"));
     await act(async () => {
       await result.current.deleteMany(["Développeur", "Designer"]);
     });
@@ -291,7 +291,7 @@ describe("ViewModel des candidatures", () => {
     const { result } = renderHook(() => useApplicationsViewModel(), { wrapper });
     await waitFor(() => expect(result.current.items).toHaveLength(1));
 
-    act(() => result.current.selectionner("Développeur"));
+    act(() => result.current.select("Développeur"));
     await act(async () => {
       await result.current.delete("Développeur");
     });

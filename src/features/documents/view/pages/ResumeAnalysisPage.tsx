@@ -1,6 +1,6 @@
 import { formatAiSummary } from "@/shared/lib/duration";
 import { Button, EmptyState, ErrorBanner, Icon, PageHeader } from "@/shared/ui";
-import { AiStopButton } from "@/features/ai/view/components/AiStopButton";
+import { AiStopButton } from "@/features/ai";
 import { useResumeAnalysisViewModel } from "../../viewmodel/useResumeAnalysisViewModel";
 import { AiProgress, DocumentPanel, ScoreBadge } from "../components/DocumentUi";
 import { ChampOffre, HeaderBadge, labelSection, Screen, TexteNonVerifie } from "./documentPageSupport";

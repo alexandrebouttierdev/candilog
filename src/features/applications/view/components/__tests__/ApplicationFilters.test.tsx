@@ -3,8 +3,8 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { userWithoutDelay } from "@/shared/lib/test-user";
 import { ApplicationFilters } from "../ApplicationFilters";
-import { FILTER_VIDE } from "../../../model/schemas/application-filter.schema";
-import { referentialService } from "@/features/referentials/services/referentialService";
+import { EMPTY_FILTER } from "../../../model/schemas/application-filter.schema";
+import { referentialService } from "@/features/referentials";
 import { QueryWrapper, REFERENTIELS_DE_TEST } from "@/shared/lib/test-utils";
 
 /** Conteneur des options d'un groupe de filtres, désigné par son intitulé. */
@@ -20,13 +20,13 @@ async function openFilters() {
 }
 
 /** Rend la barre de filtres vide, seul `onApply` variant selon les tests. */
-function renderFilters(onApply: (values: typeof FILTER_VIDE) => void) {
+function renderFilters(onApply: (values: typeof EMPTY_FILTER) => void) {
   return render(
     <QueryWrapper>
       <ApplicationFilters
         search=""
         onSearch={() => {}}
-        filters={FILTER_VIDE}
+        filters={EMPTY_FILTER}
         count={0}
         total={0}
         onApply={onApply}
@@ -91,7 +91,7 @@ describe("filtres alimentés par les référentiels", () => {
         <ApplicationFilters
           search=""
           onSearch={() => {}}
-          filters={{ ...FILTER_VIDE, professional_domain_id: ["M18"] }}
+          filters={{ ...EMPTY_FILTER, professional_domain_id: ["M18"] }}
           count={1}
           total={0}
           onApply={onApply}

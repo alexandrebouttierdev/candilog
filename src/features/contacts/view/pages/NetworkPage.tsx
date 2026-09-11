@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useContactsViewModel } from "../../viewmodel/useContactsViewModel";
-import type { Contact } from "../../services/contactService";
+import type { Contact } from "@/shared/types/generated/contacts";
 import { ContactFormModal } from "../components/ContactFormModal";
 import { ContactDetail } from "../components/ContactDetail";
 import { ContactFilters } from "../components/ContactFilters";
@@ -28,7 +28,7 @@ export function NetworkPage() {
     cible: null,
   });
   const [aDelete, setADelete] = useState<Contact | null>(null);
-  const aucunResultat = Boolean(vm.search) || vm.filtersActifs > 0;
+  const aucunResultat = Boolean(vm.search) || vm.activeFilterCount > 0;
 
   return (
     <div className="flex h-full flex-col">
@@ -36,11 +36,11 @@ export function NetworkPage() {
 
       <ContactFilters
         search={vm.search}
-        onSearch={vm.rechercher}
+        onSearch={vm.setSearch}
         tracking_role={vm.tracking_role}
-        count={vm.filtersActifs}
+        count={vm.activeFilterCount}
         total={vm.isLoading ? null : vm.total}
-        onSelectRole={vm.filtrerParRole}
+        onSelectRole={vm.filterByRole}
         onReset={vm.resetFilters}
         actions={
           <Button
@@ -80,7 +80,7 @@ export function NetworkPage() {
                     ? vm.error.message
                     : "Le réseau n'a pas pu être chargé."
                 }
-                onRetry={vm.recharger}
+                onRetry={vm.reload}
               />
             </div>
           ) : vm.items.length === 0 ? (
@@ -98,7 +98,7 @@ export function NetworkPage() {
                     icon="filter_alt_off"
                     onClick={() => {
                       vm.resetFilters();
-                      vm.rechercher("");
+                      vm.setSearch("");
                     }}
                   >
                     Tout effacer
@@ -125,7 +125,7 @@ export function NetworkPage() {
                   ) : undefined
                 }
                 selected={contact.id === vm.selected_id}
-                onSelect={() => vm.selectionner(contact.id)}
+                onSelect={() => vm.select(contact.id)}
               />
             ))
           )}

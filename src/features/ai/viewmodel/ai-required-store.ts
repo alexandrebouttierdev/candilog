@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import type { LlmForm } from "@/shared/types/generated/settings";
-import { iaEstConfiguree } from "@/features/settings/model/etatIa";
+import { isAiConfigured } from "@/features/settings";
 
 interface AiRequiredState {
   /** Dernière configuration connue ; `null` tant que les réglages n'ont pas été chargés. */
@@ -28,6 +28,6 @@ export const useAiRequiredStore = create<AiRequiredState>((set, get) => ({
   configured: () => {
     const { llm } = get();
     if (llm === null) return null;
-    return iaEstConfiguree(llm);
+    return isAiConfigured(llm);
   },
 }));

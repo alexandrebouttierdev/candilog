@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { idFacultatif, textFacultatif } from "@/shared/lib/zod-helpers";
+import { optionalId, optionalText } from "@/shared/lib/zod-helpers";
 import { FORMAT_DATE, versDateIso } from "@/shared/lib/dates";
 
 /** Borne haute du volume horaire, alignée sur `MAX_WEEKLY_HOURS` côté Rust. */
@@ -48,15 +48,15 @@ export const applicationFormSchema = z
   .object({
     job_title: z.string().trim().min(1, "Le poste est obligatoire"),
     company_id: z.string().min(1, "L'entreprise est obligatoire"),
-    contact_id: idFacultatif,
+    contact_id: optionalId,
     application_type: z.enum(["OFFRE", "SPONTANEE"]),
     contract_type_code: z.string().min(1, "Le type de contrat est obligatoire"),
     weekly_work_schedule: z.enum(["FULL_TIME", "PART_TIME", "UNSPECIFIED"]),
     weekly_hours: weeklyHoursFacultatif,
-    professional_domain_id: idFacultatif,
-    city: textFacultatif,
-    address: textFacultatif,
-    company_type_id: idFacultatif,
+    professional_domain_id: optionalId,
+    city: optionalText,
+    address: optionalText,
+    company_type_id: optionalId,
     status: z.enum(["EN_ATTENTE", "RELANCEE", "ENTRETIEN", "REFUS"]),
     sent_date: z
       .string()
@@ -68,7 +68,7 @@ export const applicationFormSchema = z
       // Transformée dès la validation : le ViewModel et le backend ne manipulent que de l'ISO.
       .transform((value) => versDateIso(value) as string),
     job_url: z.string().trim().default(""),
-    notes: textFacultatif,
+    notes: optionalText,
   })
   .superRefine((values, ctx) => {
     // Le lien est la trace de l'offre à laquelle on a répondu : sans lui, relire la fiche

@@ -1,10 +1,10 @@
 import { create } from "zustand";
-import type { TestConnexion } from "@/features/settings/model/etatIa";
+import type { ConnectionTest } from "@/features/settings";
 
 interface AiRailStatusState {
-  connectionTest: TestConnexion;
+  connectionTest: ConnectionTest;
   lastOperationFailed: boolean;
-  setConnectionTest: (test: TestConnexion) => void;
+  setConnectionTest: (test: ConnectionTest) => void;
   setLastOperationFailed: (failed: boolean) => void;
 }
 

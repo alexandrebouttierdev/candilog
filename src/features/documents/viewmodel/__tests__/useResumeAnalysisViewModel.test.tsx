@@ -2,8 +2,7 @@ import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { aiService } from "@/features/ai/services/aiService";
-import { useAiOperationStore } from "@/features/ai/viewmodel/ai-operation-store";
+import { aiService, useAiOperationStore } from "@/features/ai";
 import { AppError } from "@/shared/types/app-error";
 import { useResumeAnalysisViewModel } from "../useResumeAnalysisViewModel";
 

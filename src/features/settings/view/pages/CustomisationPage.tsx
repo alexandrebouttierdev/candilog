@@ -63,7 +63,7 @@ export function CustomisationPage() {
         <div className="px-[18px] pt-4">
           <ErrorBanner
             message={vm.error instanceof AppError ? vm.error.message : "Les réglages n'ont pas pu être chargés."}
-            onRetry={vm.recharger}
+            onRetry={vm.reload}
           />
         </div>
       ) : vm.isLoading || !form ? (

@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { documentsService } from "../services/documentsService";
-import { profileService } from "@/features/profile/services/profileService";
-import { PROFILE_KEY } from "@/features/profile/viewmodel/useProfileViewModel";
+import { PROFILE_KEY, profileService } from "@/features/profile";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 import { PAGE_SIZE } from "@/shared/types/page";

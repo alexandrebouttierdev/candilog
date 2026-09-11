@@ -1,5 +1,5 @@
 import { applicationService } from "../services/applicationService";
-import { FILTER_VIDE } from "../model/schemas/application-filter.schema";
+import { EMPTY_FILTER } from "../model/schemas/application-filter.schema";
 import type { Page } from "@/shared/types/page";
 import type { EntityOption } from "@/shared/ui";
 
@@ -12,7 +12,7 @@ export async function fetchApplicationPickerPage(params: {
   const result = await applicationService.listPage({
     page: params.page,
     page_size: params.page_size,
-    filter: { ...FILTER_VIDE, search: params.search, sort: "date", descending: true, ids: [] },
+    filter: { ...EMPTY_FILTER, search: params.search, sort: "date", descending: true, ids: [] },
   });
   return {
     ...result,

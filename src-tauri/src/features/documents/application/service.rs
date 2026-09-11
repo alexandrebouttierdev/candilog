@@ -1,12 +1,22 @@
-//! Validation des CV et lettres avant persistance.
+//! Validation des CV et lettres avant persistance, et orchestration des exports PDF.
 
 use crate::core::errors::{AppError, AppResult};
+use crate::core::files::atomic_write;
 use crate::core::pagination::Page;
-use crate::features::documents::application::validate_document;
-use crate::features::documents::domain::{
-    sanitize_letter, CoverLetter, CoverLetterRepository, NewCoverLetter, NewResume,
-    ResumeRepository, ResumeSummary, ResumeVersion, ResumeWorkspace, RESUME_WORKSPACE_VERSION,
+use crate::features::ai::domain::ResumeGeneration;
+use crate::features::documents::application::{
+    apply_proposal, build, build_cover_letter, prepare_workspace, recalculate, reject_proposal,
+    validate_document,
 };
+use crate::features::documents::domain::{
+    sanitize_letter, CoverLetter, CoverLetterExport, CoverLetterRepository, NewCoverLetter,
+    NewResume, ResumeDocument, ResumeRepository, ResumeSummary, ResumeVersion, ResumeWorkspace,
+    RESUME_WORKSPACE_VERSION,
+};
+use crate::features::profile::application::ProfileService;
+use crate::features::profile::domain::ProfileRepository;
+use std::path::Path;
+use std::sync::Arc;
 use uuid::Uuid;
 
 /// Borne du JSON d'une version de CV.
@@ -25,18 +35,90 @@ const TONES: [&str; 3] = ["formal", "casual", "creative"];
 /// Longueurs acceptées, alignées sur celles que le rendu de lettre sait interpréter.
 const LENGTHS: [&str; 3] = ["short", "medium", "long"];
 
-pub struct DocumentsService<C: ResumeRepository, L: CoverLetterRepository> {
+pub struct DocumentsService<C: ResumeRepository, L: CoverLetterRepository, P: ProfileRepository> {
     resume: C,
     cover_letters: L,
+    profile: Arc<ProfileService<P>>,
 }
 
-impl<C: ResumeRepository, L: CoverLetterRepository> DocumentsService<C, L> {
+impl<C: ResumeRepository, L: CoverLetterRepository, P: ProfileRepository>
+    DocumentsService<C, L, P>
+{
     #[must_use]
-    pub const fn new(resume: C, cover_letters: L) -> Self {
+    pub fn new(resume: C, cover_letters: L, profile: Arc<ProfileService<P>>) -> Self {
         Self {
             resume,
             cover_letters,
+            profile,
         }
+    }
+
+    /// Fige le profil et une génération IA dans un document de travail autonome.
+    pub fn resume_prepare(&self, generation: ResumeGeneration) -> AppResult<ResumeWorkspace> {
+        let payload = self.profile.load()?;
+        let photo = self.profile.photo_bytes()?;
+        prepare_workspace(&payload.profile, generation, photo)
+    }
+
+    /// Revalide le document puis recalcule score et propositions après une édition manuelle.
+    pub fn resume_recalculate(&self, workspace: ResumeWorkspace) -> AppResult<ResumeWorkspace> {
+        let photo = self.profile.photo_bytes()?;
+        recalculate(workspace, photo)
+    }
+
+    /// Applique une proposition puis recalcule le poste de travail.
+    pub fn resume_apply_proposal(
+        &self,
+        workspace: ResumeWorkspace,
+        proposal_id: &str,
+    ) -> AppResult<ResumeWorkspace> {
+        let photo = self.profile.photo_bytes()?;
+        apply_proposal(workspace, proposal_id, photo)
+    }
+
+    /// Refuse une proposition sans modifier le document, puis recalcule le poste de travail.
+    pub fn resume_reject_proposal(
+        &self,
+        workspace: ResumeWorkspace,
+        proposal_id: &str,
+    ) -> AppResult<ResumeWorkspace> {
+        let photo = self.profile.photo_bytes()?;
+        reject_proposal(workspace, proposal_id, photo)
+    }
+
+    /// Exporte un document CV autonome au chemin indiqué.
+    ///
+    /// La photo suit le profil courant, pas la version de CV enregistrée : un CV rouvert
+    /// après suppression de la photo s'exporte sans elle, sans laisser de cadre vide.
+    pub fn resume_export_pdf(
+        &self,
+        document: &ResumeDocument,
+        destination: &Path,
+    ) -> AppResult<()> {
+        let photo = self.profile.photo_bytes()?;
+        let bytes = build(document, photo).render_bytes()?;
+        atomic_write(destination, "pdf", |temporaire| {
+            std::fs::write(temporaire, &bytes).map_err(|error| {
+                tracing::error!(%error, "export PDF impossible");
+                AppError::Database(format!("Écriture du PDF impossible : {error}"))
+            })
+        })
+    }
+
+    /// Exporte une lettre au chemin indiqué, avec l'identité du profil en en-tête.
+    pub fn cover_letter_export_pdf(
+        &self,
+        cover_letter: &CoverLetterExport,
+        destination: &Path,
+    ) -> AppResult<()> {
+        let payload = self.profile.load()?;
+        let bytes = build_cover_letter(&payload.profile, cover_letter).render_bytes()?;
+        atomic_write(destination, "pdf", |temporaire| {
+            std::fs::write(temporaire, &bytes).map_err(|error| {
+                tracing::error!(%error, "export PDF de lettre impossible");
+                AppError::Database(format!("Écriture du PDF de lettre impossible : {error}"))
+            })
+        })
     }
 
     /// Valide puis enregistre une version de CV.
@@ -183,13 +265,25 @@ mod tests {
     use crate::features::documents::infrastructure::{
         SqliteCoverLetterRepository, SqliteResumeRepository,
     };
+    use crate::features::profile::application::ProfileService;
+    use crate::features::profile::infrastructure::SqliteProfileRepository;
+    use std::sync::Arc;
 
-    fn service() -> DocumentsService<SqliteResumeRepository, SqliteCoverLetterRepository> {
+    fn service() -> DocumentsService<
+        SqliteResumeRepository,
+        SqliteCoverLetterRepository,
+        SqliteProfileRepository,
+    > {
         let pool = open_pool(None).unwrap();
         run_local_migrations(&pool).unwrap();
+        let profile = Arc::new(ProfileService::new(
+            SqliteProfileRepository::new(pool.clone()),
+            std::env::temp_dir().join("candilog-photos-documents-tests"),
+        ));
         DocumentsService::new(
             SqliteResumeRepository::new(pool.clone()),
             SqliteCoverLetterRepository::new(pool),
+            profile,
         )
     }
 

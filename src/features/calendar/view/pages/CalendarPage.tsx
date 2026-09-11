@@ -3,8 +3,8 @@ import { useCalendarViewModel } from "../../viewmodel/useCalendarViewModel";
 import type { CalendarEvent } from "../../model/event";
 import {
   dateFromIso,
-  decalerDays,
-  decalerMonth,
+  shiftDays,
+  shiftMonth,
   isoLocal,
   daysDeLaWeek,
   labelDay,
@@ -63,7 +63,7 @@ export function CalendarPage() {
 
   const navigate = (step: number) => {
     if (view === "mois") {
-      const next = decalerMonth(vm.year, vm.month, step);
+      const next = shiftMonth(vm.year, vm.month, step);
       vm.allerA(next.year, next.month);
       const today = new Date();
       if (today.getFullYear() === next.year && today.getMonth() === next.month) {
@@ -73,7 +73,7 @@ export function CalendarPage() {
       }
       return;
     }
-    goToDay(decalerDays(selected_day, view === "semaine" ? step * 7 : step));
+    goToDay(shiftDays(selected_day, view === "semaine" ? step * 7 : step));
   };
 
   const goToday = () => {
@@ -179,7 +179,7 @@ export function CalendarPage() {
                 ? vm.error.message
                 : "Le calendrier n'a pas pu être chargé."
             }
-            onRetry={vm.recharger}
+            onRetry={vm.reload}
           />
         ) : vm.isLoading ? (
           <GridSkeleton />

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { etatIa, iaEstConfiguree, manquants } from "../etatIa";
+import { aiStatus, isAiConfigured, manquants } from "../aiStatus";
 import type { LlmForm } from "@/shared/types/generated/settings";
 
 function llm(patch: Partial<LlmForm> = {}): LlmForm {
@@ -14,13 +14,13 @@ function llm(patch: Partial<LlmForm> = {}): LlmForm {
   };
 }
 
-describe("etatIa", () => {
+describe("aiStatus", () => {
   it("annonce « Configuré » quand tout est renseigné, avant tout test", () => {
-    expect(etatIa(llm(), "idle")).toMatchObject({ label: "Configuré", tone: "accent" });
+    expect(aiStatus(llm(), "idle")).toMatchObject({ label: "Configuré", tone: "accent" });
   });
 
   it("réclame la clé API manquante d'un fournisseur distant", () => {
-    const etat = etatIa(llm({ api_key_configured: false }), "idle");
+    const etat = aiStatus(llm({ api_key_configured: false }), "idle");
 
     expect(etat.label).toBe("Non configuré");
     expect(etat.hint).toBe("Renseignez la clé API pour utiliser l'assistance.");
@@ -28,12 +28,12 @@ describe("etatIa", () => {
 
   it("n'exige aucune clé pour Ollama, qui tourne en local", () => {
     expect(
-      etatIa(llm({ provider: "ollama", api_key_configured: false }), "idle").label,
+      aiStatus(llm({ provider: "ollama", api_key_configured: false }), "idle").label,
     ).toBe("Configuré");
   });
 
   it("réclame l'endpoint d'un fournisseur personnalisé", () => {
-    const etat = etatIa(
+    const etat = aiStatus(
       llm({ provider: { custom: "custom" }, api_key_configured: false, endpoint: "" }),
       "idle",
     );
@@ -43,37 +43,37 @@ describe("etatIa", () => {
   });
 
   it("cumule les champs manquants dans un seul message", () => {
-    const etat = etatIa(llm({ model: "  ", api_key_configured: false }), "idle");
+    const etat = aiStatus(llm({ model: "  ", api_key_configured: false }), "idle");
 
     expect(etat.hint).toBe("Renseignez le modèle et la clé API pour utiliser l'assistance.");
   });
 
   it("laisse le résultat du test primer sur la configuration", () => {
-    expect(etatIa(llm(), "pending").label).toBe("Connexion en cours");
-    expect(etatIa(llm(), "ok")).toMatchObject({ label: "Disponible", tone: "success" });
-    expect(etatIa(llm({ api_key_configured: false }), "error")).toMatchObject({
+    expect(aiStatus(llm(), "pending").label).toBe("Connexion en cours");
+    expect(aiStatus(llm(), "ok")).toMatchObject({ label: "Disponible", tone: "success" });
+    expect(aiStatus(llm({ api_key_configured: false }), "error")).toMatchObject({
       label: "Erreur",
       tone: "danger",
     });
   });
 });
 
-describe("iaEstConfiguree", () => {
+describe("isAiConfigured", () => {
   it("accepte une configuration cloud complète", () => {
-    expect(iaEstConfiguree(llm())).toBe(true);
+    expect(isAiConfigured(llm())).toBe(true);
   });
 
   it("refuse un modèle vide", () => {
-    expect(iaEstConfiguree(llm({ model: "  " }))).toBe(false);
+    expect(isAiConfigured(llm({ model: "  " }))).toBe(false);
   });
 
   it("refuse une clé API manquante pour un fournisseur distant", () => {
-    expect(iaEstConfiguree(llm({ api_key_configured: false }))).toBe(false);
+    expect(isAiConfigured(llm({ api_key_configured: false }))).toBe(false);
   });
 
   it("accepte l'IA locale Candilog sans nom de modèle dans llm.model", () => {
     expect(
-      iaEstConfiguree(
+      isAiConfigured(
         llm({ provider: "candilog_local", model: "", endpoint: null, api_key_configured: false }),
       ),
     ).toBe(true);

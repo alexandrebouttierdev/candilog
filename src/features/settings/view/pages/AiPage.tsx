@@ -18,21 +18,21 @@ import {
 import { openExternal } from "@/shared/services/external-link";
 import { useSettingsViewModel } from "../../viewmodel/useSettingsViewModel";
 import {
-  defFournisseur,
-  endpointDefaut,
-  FOURNISSEURS_AUTRES,
+  getProvider,
+  defaultEndpoint,
+  OTHER_PROVIDERS,
   idProvider,
-  modelDefaut,
-  versProvider,
-  type FournisseurOption,
+  defaultModel,
+  toProvider,
+  type ProviderOption,
 } from "../../model/providers";
-import { ProviderGrid, logoFournisseur } from "../components/ProviderGrid";
+import { ProviderGrid, providerLogo } from "../components/ProviderGrid";
 import { AiHero } from "../components/AiHero";
 import { ManagedOllamaPanel } from "../components/ManagedOllamaPanel";
 import { SettingsBody, SettingsCard } from "../components/SettingsUi";
 import { cn } from "@/shared/lib/cn";
-import { etatIa, type TestConnexion } from "../../model/etatIa";
-import { etatManagedOllama } from "../../model/etatManagedOllama";
+import { aiStatus, type ConnectionTest } from "../../model/aiStatus";
+import { managedOllamaStatus } from "../../model/managedOllamaStatus";
 import { useManagedOllamaViewModel } from "../../viewmodel/useManagedOllamaViewModel";
 import type { ManagedModelStatus } from "@/shared/types/generated/ai";
 
@@ -57,7 +57,7 @@ export function AiPage() {
   const [draft, setDraft] = useState<Settings | null>(null);
   const [apiKeyDraft, setApiKeyDraft] = useState("");
   const [models, setModels] = useState<string[]>([]);
-  const [test, setTestState] = useState<TestConnexion>("idle");
+  const [test, setTestState] = useState<ConnectionTest>("idle");
   const [testMessage, setTestMessage] = useState<string | null>(null);
   const [benchmarkOpen, setBenchmarkOpen] = useState(false);
   const [benchmarkModelLabel, setBenchmarkModelLabel] = useState("");
@@ -67,7 +67,7 @@ export function AiPage() {
   const isCandilogLocal = providerId === "candilog_local";
   const managedVm = useManagedOllamaViewModel(() => setDraft(null));
 
-  const setTest = (value: TestConnexion) => {
+  const setTest = (value: ConnectionTest) => {
     setTestState(value);
     useAiRailStatusStore.getState().setConnectionTest(value);
   };
@@ -80,11 +80,11 @@ export function AiPage() {
     setTest("idle");
   };
 
-  const choisirFournisseur = (id: FournisseurOption["id"]) => {
+  const selectProvider = (id: ProviderOption["id"]) => {
     patchLlm({
-      provider: versProvider(id),
-      endpoint: endpointDefaut(id),
-      model: modelDefaut(id),
+      provider: toProvider(id),
+      endpoint: defaultEndpoint(id),
+      model: defaultModel(id),
     });
   };
 
@@ -136,9 +136,9 @@ export function AiPage() {
     );
   };
 
-  const fournisseur = llm ? defFournisseur(llm.provider) : null;
+  const fournisseur = llm ? getProvider(llm.provider) : null;
   const managedActive = managedVm.status?.active_model ?? null;
-  const logo = fournisseur ? logoFournisseur(fournisseur.id) : null;
+  const logo = fournisseur ? providerLogo(fournisseur.id) : null;
   const managedModelLabel = managedActive?.display_name ?? "";
 
   const ouvrirBenchmark = (label: string) => {
@@ -186,7 +186,7 @@ export function AiPage() {
         <div className="px-[18px] pt-4">
           <ErrorBanner
             message={vm.error instanceof AppError ? vm.error.message : "Les réglages n'ont pas pu être chargés."}
-            onRetry={vm.recharger}
+            onRetry={vm.reload}
           />
         </div>
       ) : vm.isLoading || !form || !llm || !fournisseur ? (
@@ -207,7 +207,7 @@ export function AiPage() {
                 logo={logo}
                 label={fournisseur.label}
                 model={managedModelLabel}
-                etat={etatManagedOllama(managedVm.status, managedVm.error)}
+                etat={managedOllamaStatus(managedVm.status, managedVm.error)}
                 testMessage={null}
                 testLabel="Tester l'IA"
                 busy={managedVm.isInstalling}
@@ -219,7 +219,7 @@ export function AiPage() {
                 logo={logo}
                 label={fournisseur.label}
                 model={llm.model}
-                etat={etatIa(llm, test)}
+                etat={aiStatus(llm, test)}
                 testMessage={test === "error" ? testMessage : null}
                 busy={test === "pending"}
                 onTest={() => void runTest()}
@@ -237,8 +237,8 @@ export function AiPage() {
                 <SettingsCard icon="hub" title="Fournisseur">
                   <ProviderGrid
                     value={llm.provider}
-                    onChange={choisirFournisseur}
-                    items={FOURNISSEURS_AUTRES}
+                    onChange={selectProvider}
+                    items={OTHER_PROVIDERS}
                   />
                 </SettingsCard>
 

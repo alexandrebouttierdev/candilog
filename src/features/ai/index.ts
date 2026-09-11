@@ -16,6 +16,11 @@ export {
 export { useAiRequiredStore } from "./viewmodel/ai-required-store";
 
 export { aiService } from "./services/aiService";
+export {
+  cancelAiOperation,
+  importProfileFromResume,
+  runUserBenchmark,
+} from "./viewmodel/importProfile";
 export { isAiNotConfiguredError } from "./model/ai-not-configured";
 export type {
   AiExecution,

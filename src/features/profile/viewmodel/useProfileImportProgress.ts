@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
-import type { ProfileImportProgress } from "@/features/ai/model/types";
+import type { ProfileImportProgress } from "@/features/ai";
 
 export type ImportJournalEntry = { at: string; message: string };
 

@@ -6,8 +6,8 @@ import {
   type InterviewFormInput,
   type InterviewFormValues,
 } from "../../model/schemas/interview-form.schema";
-import { TYPES_INTERVIEW } from "../../model/types";
-import type { Interview, NewInterview } from "../../services/interviewService";
+import { INTERVIEW_TYPES } from "../../model/types";
+import type { Interview, NewInterview } from "@/shared/types/generated/interviews";
 import { fetchContactPickerPage } from "@/features/contacts";
 import { ApplicationPicker } from "@/features/applications";
 import { dateFromTimestamp, timeFromTimestamp, versDateAffichee } from "@/shared/lib/dates";
@@ -188,7 +188,7 @@ export function InterviewFormModal({
             <FormField label="Format">
               {(props) => (
                 <Select {...props} {...form.register("type")}>
-                  {TYPES_INTERVIEW.map((type) => (
+                  {INTERVIEW_TYPES.map((type) => (
                     <option key={type} value={type}>
                       {type}
                     </option>

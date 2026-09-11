@@ -39,7 +39,9 @@ pub type Companies = Arc<CompanyService<SqliteCompanyRepository>>;
 /// Service des contacts tel que partagé par les commandes.
 pub type Contacts = Arc<ContactService<SqliteContactRepository>>;
 /// Service des bibliothèques de CV et lettres.
-pub type Documents = Arc<DocumentsService<SqliteResumeRepository, SqliteCoverLetterRepository>>;
+pub type Documents = Arc<
+    DocumentsService<SqliteResumeRepository, SqliteCoverLetterRepository, SqliteProfileRepository>,
+>;
 /// Service des entretiens tel que partagé par les commandes.
 pub type Interviews = Arc<InterviewService<SqliteInterviewRepository>>;
 /// Orchestrateur des traitements IA et de leur annulation.
@@ -118,6 +120,10 @@ impl AppState {
         managed_paths: ManagedOllamaPaths,
     ) -> AppResult<Self> {
         let managed_ollama = Arc::new(ManagedOllamaService::new(pool.clone(), managed_paths));
+        let profile = Arc::new(ProfileService::new(
+            SqliteProfileRepository::new(pool.clone()),
+            photos_dir,
+        ));
         Ok(Self {
             analytics: Arc::new(AnalyticsService::new(SqliteAnalyticsRepository::new(
                 pool.clone(),
@@ -131,9 +137,11 @@ impl AppState {
             contacts: Arc::new(ContactService::new(SqliteContactRepository::new(
                 pool.clone(),
             ))),
+            profile: Arc::clone(&profile),
             documents: Arc::new(DocumentsService::new(
                 SqliteResumeRepository::new(pool.clone()),
                 SqliteCoverLetterRepository::new(pool.clone()),
+                profile,
             )),
             interviews: Arc::new(InterviewService::new(SqliteInterviewRepository::new(
                 pool.clone(),
@@ -145,10 +153,6 @@ impl AppState {
                 SecretStore,
                 pool.clone(),
                 db_path.clone(),
-            )),
-            profile: Arc::new(ProfileService::new(
-                SqliteProfileRepository::new(pool.clone()),
-                photos_dir,
             )),
             followups: Arc::new(FollowUpService::new(SqliteFollowUpRepository::new(
                 pool.clone(),

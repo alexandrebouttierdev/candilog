@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { documentsService, type ResumeVersion } from "../services/documentsService";
 import { normalizeResumeWorkspace } from "../model/resumeWorkspace";
-import type { ResumeGeneration } from "@/features/ai/model/types";
+import type { ResumeGeneration } from "@/features/ai";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 import { PAGE_SIZE } from "@/shared/types/page";

@@ -1,4 +1,4 @@
-import type { Contact } from "../../services/contactService";
+import type { Contact } from "@/shared/types/generated/contacts";
 import { roleMeta } from "../../model/roles";
 import { Card, CardHeader, RecordAction, RecordHeader, StatusPill, initials } from "@/shared/ui";
 import { openExternal } from "@/shared/services/external-link";

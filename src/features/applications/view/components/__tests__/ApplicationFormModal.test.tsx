@@ -5,9 +5,9 @@ import { userWithoutDelay } from "@/shared/lib/test-user";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { ApplicationFormModal } from "../ApplicationFormModal";
-import { companyService } from "@/features/companies/services/companyService";
-import type { Company } from "@/features/companies/services/companyService";
-import { referentialService } from "@/features/referentials/services/referentialService";
+import { companyService } from "@/features/companies";
+import type { Company } from "@/shared/types/generated/companies";
+import { referentialService } from "@/features/referentials";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 

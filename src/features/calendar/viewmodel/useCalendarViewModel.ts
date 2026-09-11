@@ -10,8 +10,8 @@ import {
 import { APPLICATIONS_KEY } from "@/features/applications";
 import {
   gridBounds,
-  decalerMonth,
-  gridDuMonth,
+  shiftMonth,
+  monthGrid,
   monthLabel,
 } from "../model/month";
 import {
@@ -47,7 +47,7 @@ export function useCalendarViewModel() {
   const { year, month } = period;
 
   const bounds = useMemo(() => gridBounds(year, month), [year, month]);
-  const cells = useMemo(() => gridDuMonth(year, month), [year, month]);
+  const cells = useMemo(() => monthGrid(year, month), [year, month]);
 
   const [interviews, follow_ups] = useQueries({
     queries: [
@@ -84,7 +84,7 @@ export function useCalendarViewModel() {
     [events, prefixe_du_mois],
   );
 
-  const invalider = useCallback(async () => {
+  const invalidate = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: INTERVIEWS_KEY });
     await queryClient.invalidateQueries({ queryKey: FOLLOW_UPS_KEY });
     // Save un entretien fait avancer la candidature : sans cette invalidation, le
@@ -92,7 +92,7 @@ export function useCalendarViewModel() {
     await queryClient.invalidateQueries({ queryKey: APPLICATIONS_KEY });
   }, [queryClient]);
 
-  const signalerEchec = useCallback(
+  const reportFailure = useCallback(
     (title: string) => (error: unknown) => {
       notify({
         tone: "error",
@@ -107,23 +107,23 @@ export function useCalendarViewModel() {
     mutationFn: (params: { id: string | null; input: NewInterview }) =>
       interviewService.save(params.id, params.input),
     onSuccess: async (interview) => {
-      await invalider();
+      await invalidate();
       notify({
         tone: "success",
         title: "Entretien enregistré",
         detail: `${interview.application_job_title ?? ""} — la candidature passe en « Entretien ».`,
       });
     },
-    onError: signalerEchec("Enregistrement impossible"),
+    onError: reportFailure("Enregistrement impossible"),
   });
 
   const deleteInterview = useMutation({
     mutationFn: (id: string) => interviewService.delete(id),
     onSuccess: async () => {
-      await invalider();
+      await invalidate();
       notify({ tone: "success", title: "Entretien supprimé" });
     },
-    onError: signalerEchec("Suppression impossible"),
+    onError: reportFailure("Suppression impossible"),
   });
 
   const saveFollowUp = useMutation({
@@ -132,23 +132,23 @@ export function useCalendarViewModel() {
         ? followUpService.create(params.input)
         : followUpService.update(params.id, params.input),
     onSuccess: async () => {
-      await invalider();
+      await invalidate();
       notify({ tone: "success", title: "Relance enregistrée" });
     },
-    onError: signalerEchec("Enregistrement impossible"),
+    onError: reportFailure("Enregistrement impossible"),
   });
 
   const deleteFollowUp = useMutation({
     mutationFn: (id: string) => followUpService.delete(id),
     onSuccess: async () => {
-      await invalider();
+      await invalidate();
       notify({ tone: "success", title: "Relance supprimée" });
     },
-    onError: signalerEchec("Suppression impossible"),
+    onError: reportFailure("Suppression impossible"),
   });
 
   const naviguer = useCallback((pas: number) => {
-    setPeriod((courante) => decalerMonth(courante.year, courante.month, pas));
+    setPeriod((courante) => shiftMonth(courante.year, courante.month, pas));
   }, []);
 
   const revenirToday = useCallback(() => {
@@ -186,7 +186,7 @@ export function useCalendarViewModel() {
     naviguer,
     allerA,
     revenirToday,
-    recharger: () => {
+    reload: () => {
       void interviews.refetch();
       void follow_ups.refetch();
     },

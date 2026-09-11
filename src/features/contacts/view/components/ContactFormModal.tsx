@@ -7,7 +7,7 @@ import {
   type ContactFormValues,
 } from "../../model/schemas/contact-form.schema";
 import { Roles } from "../../model/roles";
-import type { Contact, NewContact } from "../../services/contactService";
+import type { Contact, NewContact } from "@/shared/types/generated/contacts";
 import { fetchCompanyPickerPage } from "@/features/companies";
 import { EntityPicker, FormField, ModalHost, Select, TextArea, TextInput } from "@/shared/ui";
 

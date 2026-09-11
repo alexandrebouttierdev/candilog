@@ -25,7 +25,7 @@ import type { Column } from "@/shared/ui";
 import type { ApplicationSort } from "@/shared/types/generated/applications";
 import { AppError } from "@/shared/types/app-error";
 import { PAGE_SIZE } from "@/shared/types/page";
-import { FILTER_VIDE } from "../../model/schemas/application-filter.schema";
+import { EMPTY_FILTER } from "../../model/schemas/application-filter.schema";
 
 /** Densités proposées par le pied de la vue Liste. */
 const DENSITES = [PAGE_SIZE, 25, 50] as const;
@@ -76,7 +76,7 @@ export function ApplicationsPage() {
     // une ligne sélectionnée puis masquée par une recherche ou un statut.
     const filter =
       ids.length > 0
-        ? { ...FILTER_VIDE, sort: vm.sort, descending: vm.descending, search: "", ids }
+        ? { ...EMPTY_FILTER, sort: vm.sort, descending: vm.descending, search: "", ids }
         : vm.filter;
     await vm.exportCsv(filter);
   };
@@ -205,11 +205,11 @@ export function ApplicationsPage() {
     <div className="flex h-full flex-col">
       <ApplicationFilters
         search={vm.search}
-        onSearch={vm.rechercher}
+        onSearch={vm.setSearch}
         filters={vm.filters}
-        count={vm.filtersActifs}
+        count={vm.activeFilterCount}
         total={vm.isLoading ? null : vm.total}
-        onApply={vm.appliquerFilters}
+        onApply={vm.applyFilters}
         onReset={vm.resetFilters}
         actions={
           <>
@@ -263,7 +263,7 @@ export function ApplicationsPage() {
                     ? vm.error.message
                     : "Les candidatures n'ont pas pu être chargées."
                 }
-                onRetry={vm.recharger}
+                onRetry={vm.reload}
               />
             </div>
           ) : vm.isLoading ? (
@@ -277,19 +277,19 @@ export function ApplicationsPage() {
               <EmptyState
                 bordered
                 icon="work"
-                title={vm.search || vm.filtersActifs > 0 ? "Aucun résultat" : "Aucune candidature"}
+                title={vm.search || vm.activeFilterCount > 0 ? "Aucun résultat" : "Aucune candidature"}
                 description={
-                  vm.search || vm.filtersActifs > 0
+                  vm.search || vm.activeFilterCount > 0
                     ? "Aucune candidature ne correspond à ces critères."
                     : "Créez votre première candidature pour lancer le suivi."
                 }
                 action={
-                  vm.search || vm.filtersActifs > 0 ? (
+                  vm.search || vm.activeFilterCount > 0 ? (
                     <Button
                       icon="filter_alt_off"
                       onClick={() => {
                         vm.resetFilters();
-                        vm.rechercher("");
+                        vm.setSearch("");
                       }}
                     >
                       Tout effacer
@@ -311,7 +311,7 @@ export function ApplicationsPage() {
               columns={vm.kanbanColumns}
               selected_id={vm.selected_id}
               checkedIds={cochees}
-              onSelect={vm.selectionner}
+              onSelect={vm.select}
               onToggleSelect={basculerCoche}
               onStatusChange={(id, status) => void vm.changeStatus({ id, status })}
               onCreate={(statut) => setForm({ ouvert: true, cible: null, statut })}
@@ -324,8 +324,8 @@ export function ApplicationsPage() {
                 rows={vm.items}
                 row_key={(row) => row.id}
                 sort={{ key: vm.sort, direction: vm.descending ? "desc" : "asc" }}
-                onSortChange={vm.trierPar}
-                onRowClick={(row) => vm.selectionner(row.id)}
+                onSortChange={vm.sortBy}
+                onRowClick={(row) => vm.select(row.id)}
                 isSelected={(row) => row.id === vm.selected_id}
                 selection={{
                   selected: cochees,
@@ -353,7 +353,7 @@ export function ApplicationsPage() {
         {fiche ? (
           <ApplicationDetail
             application={fiche}
-            onClose={() => vm.selectionner(null)}
+            onClose={() => vm.select(null)}
             onEdit={() => setForm({ ouvert: true, cible: fiche, statut: null })}
             onDelete={() => setADelete([fiche.id])}
             onStatusChange={(status) => void vm.changeStatus({ id: fiche.id, status })}

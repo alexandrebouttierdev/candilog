@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { Application, ApplicationStatus } from "../../services/applicationService";
+import type { Application, ApplicationStatus } from "@/shared/types/generated/applications";
 import { Statuses } from "../../model/statuses";
 import { ApplicationCard } from "./ApplicationCard";
 import type { ApercuGlisse } from "./ApplicationCard";

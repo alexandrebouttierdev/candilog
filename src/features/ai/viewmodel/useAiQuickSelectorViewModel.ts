@@ -1,13 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ManagedModelId } from "@/shared/types/generated/ai";
 import type { LlmForm, Settings } from "@/shared/types/generated/settings";
-import { settingsService } from "@/features/settings/services/settingsService";
 import {
   managedOllamaService,
   MANAGED_OLLAMA_KEY,
-} from "@/features/settings/services/managedOllamaService";
-import { SETTINGS_KEY } from "@/features/settings/viewmodel/useSettingsViewModel";
-import { versProvider, type FournisseurOption } from "@/features/settings/model/providers";
+  SETTINGS_KEY,
+  settingsService,
+  toProvider,
+  type ProviderOption,
+} from "@/features/settings";
 
 /** Données et mutations du sélecteur IA rapide — la vue ne parle plus aux services. */
 export function useAiQuickSelectorViewModel() {
@@ -47,7 +48,7 @@ export function useAiQuickSelectorViewModel() {
     activateManagedAsync: activateManaged.mutateAsync,
     isSaving: saveSettings.isPending,
     isActivating: activateManaged.isPending,
-    listModels: (providerId: FournisseurOption["id"], llm: LlmForm) =>
-      settingsService.listModels({ ...llm, provider: versProvider(providerId) }, null),
+    listModels: (providerId: ProviderOption["id"], llm: LlmForm) =>
+      settingsService.listModels({ ...llm, provider: toProvider(providerId) }, null),
   };
 }

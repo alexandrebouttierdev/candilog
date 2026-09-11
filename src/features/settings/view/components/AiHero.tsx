@@ -1,6 +1,6 @@
 import { cn } from "@/shared/lib/cn";
 import { Button, Icon, StatusPill } from "@/shared/ui";
-import type { EtatIa } from "../../model/etatIa";
+import type { AiStatus } from "../../model/aiStatus";
 
 /**
  * En-tête de l'écran IA : fournisseur actif, modèle, état, action de test.
@@ -23,7 +23,7 @@ export function AiHero({
   logo: { src: string; mono: boolean } | null;
   label: string;
   model: string;
-  etat: EtatIa;
+  etat: AiStatus;
   /** Message du dernier échec, affiché sous l'état ; `null` sinon. */
   testMessage: string | null;
   testLabel?: string;

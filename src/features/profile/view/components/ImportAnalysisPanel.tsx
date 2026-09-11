@@ -1,7 +1,7 @@
 import { formatProgressMetrics } from "@/shared/lib/duration";
 import type { ImportJournalEntry } from "../../viewmodel/useProfileImportProgress";
 import { ImportJournal } from "./ImportJournal";
-import { AiStopButton } from "@/features/ai/view/components/AiStopButton";
+import { AiStopButton } from "@/features/ai";
 
 /** Progression indéterminée : aucune valeur chiffrée n'est affichée. */
 export function ImportAnalysisPanel({

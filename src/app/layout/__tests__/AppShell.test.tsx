@@ -8,8 +8,7 @@ import {
 import { fireEvent, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { QueryWrapper } from "@/shared/lib/test-utils";
-import { settingsService } from "@/features/settings/services/settingsService";
-import { managedOllamaService } from "@/features/settings/services/managedOllamaService";
+import { managedOllamaService, settingsService } from "@/features/settings";
 import type { Settings } from "@/shared/types/generated/settings";
 import { AppShell } from "../AppShell";
 import { NavRail } from "../NavRail";

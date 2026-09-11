@@ -5,7 +5,7 @@ import type { Contact, NewContact } from "../services/contactService";
 import { PAGE_SIZE } from "@/shared/types/page";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
-import { COMPANIES_KEY } from "@/features/companies/viewmodel/useCompaniesViewModel";
+import { COMPANIES_KEY } from "@/features/companies";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 
 /** Root des clés de cache de la feature. */
@@ -22,7 +22,7 @@ export function useContactsViewModel() {
   const notify = useUiStore((state) => state.notify);
 
   const [page, setPage] = useState(1);
-  const [search, setSearch] = useState("");
+  const [search, setSearchState] = useState("");
   const searchQuery = useDebounce(search);
   const [tracking_role, setTrackingRole] = useState<string | null>(null);
   const [selected_id, setSelectedId] = useState<string | null>(null);
@@ -33,14 +33,14 @@ export function useContactsViewModel() {
       contactService.listPage({ page, page_size: PAGE_SIZE, search: searchQuery, tracking_role }),
   });
 
-  const invalider = useCallback(async () => {
+  const invalidate = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: CONTACTS_KEY });
     // Un contact rattaché change ce que la fiche entreprise affiche de son réseau : sans
     // cette seconde invalidation, la fiche resterait sur son décompte précédent.
     await queryClient.invalidateQueries({ queryKey: COMPANIES_KEY });
   }, [queryClient]);
 
-  const signalerEchec = useCallback(
+  const reportFailure = useCallback(
     (title: string) => (error: unknown) => {
       notify({
         tone: "error",
@@ -54,7 +54,7 @@ export function useContactsViewModel() {
   const creation = useMutation({
     mutationFn: (input: NewContact) => contactService.create(input),
     onSuccess: async (contact) => {
-      await invalider();
+      await invalidate();
       setSelectedId(contact.id);
       notify({
         tone: "success",
@@ -62,39 +62,39 @@ export function useContactsViewModel() {
         detail: `${contact.first_name} ${contact.name}`,
       });
     },
-    onError: signalerEchec("Enregistrement impossible"),
+    onError: reportFailure("Enregistrement impossible"),
   });
 
   const modification = useMutation({
     mutationFn: (params: { id: string; input: NewContact }) =>
       contactService.update(params.id, params.input),
     onSuccess: async (contact) => {
-      await invalider();
+      await invalidate();
       notify({
         tone: "success",
         title: "Contact modifié",
         detail: `${contact.first_name} ${contact.name}`,
       });
     },
-    onError: signalerEchec("Modification impossible"),
+    onError: reportFailure("Modification impossible"),
   });
 
   const suppression = useMutation({
     mutationFn: (id: string) => contactService.delete(id),
     onSuccess: async (_result, id) => {
-      await invalider();
+      await invalidate();
       if (selected_id === id) setSelectedId(null);
       notify({ tone: "success", title: "Contact supprimé" });
     },
-    onError: signalerEchec("Suppression impossible"),
+    onError: reportFailure("Suppression impossible"),
   });
 
-  const rechercher = useCallback((value: string) => {
-    setSearch(value);
+  const setSearch = useCallback((value: string) => {
+    setSearchState(value);
     setPage(1);
   }, []);
 
-  const filtrerParRole = useCallback((value: string | null) => {
+  const filterByRole = useCallback((value: string | null) => {
     setTrackingRole(value);
     setPage(1);
   }, []);
@@ -105,7 +105,7 @@ export function useContactsViewModel() {
   }, []);
 
   /** Nombre de critères actifs, hors recherche libre, pour la pastille du bouton Filtres. */
-  const filtersActifs = tracking_role ? 1 : 0;
+  const activeFilterCount = tracking_role ? 1 : 0;
 
   const items: Contact[] = list.data?.items ?? [];
   // Comme pour les entreprises, la fiche de droite n'est jamais vide tant que la page
@@ -118,8 +118,9 @@ export function useContactsViewModel() {
     page,
     page_size: PAGE_SIZE,
     search,
+    setSearch,
     tracking_role,
-    filtersActifs,
+    activeFilterCount,
     selection,
     selected_id: selection?.id ?? null,
     isLoading: list.isPending,
@@ -128,11 +129,10 @@ export function useContactsViewModel() {
     isDeleting: suppression.isPending,
 
     setPage,
-    rechercher,
-    filtrerParRole,
+    filterByRole,
     resetFilters,
-    selectionner: setSelectedId,
-    recharger: () => void list.refetch(),
+    select: setSelectedId,
+    reload: () => void list.refetch(),
     create: creation.mutateAsync,
     update: modification.mutateAsync,
     delete: suppression.mutateAsync,

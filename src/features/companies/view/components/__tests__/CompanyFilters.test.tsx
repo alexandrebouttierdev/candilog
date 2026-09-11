@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { CompanyFilters } from "../CompanyFilters";
 import type { CompanyCriteria } from "../../../viewmodel/useCompaniesViewModel";
 import { CRITERES_VIDES } from "../../../viewmodel/useCompaniesViewModel";
-import { referentialService } from "@/features/referentials/services/referentialService";
+import { referentialService } from "@/features/referentials";
 import { QueryWrapper, REFERENTIELS_DE_TEST } from "@/shared/lib/test-utils";
 
 async function openFilters() {

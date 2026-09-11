@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import type { ResumeVersion } from "../../services/documentsService";
+import type { ResumeVersion } from "@/shared/types/generated/documents";
 import { normalizeResumeWorkspace } from "../../model/resumeWorkspace";
 import { useResumeLibraryViewModel } from "../../viewmodel/useResumeLibraryViewModel";
 import { Button, ConfirmDialog, EmptyState, ErrorBanner, Icon, PageHeader, Pager } from "@/shared/ui";

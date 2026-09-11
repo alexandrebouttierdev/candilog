@@ -59,7 +59,7 @@ export function DashboardPage() {
                 ? vm.error.message
                 : "L'écran d'accueil n'a pas pu être chargé."
             }
-            onRetry={vm.recharger}
+            onRetry={vm.reload}
           />
         </div>
       ) : (

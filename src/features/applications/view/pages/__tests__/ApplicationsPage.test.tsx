@@ -6,8 +6,8 @@ import { MemoryRouter } from "react-router-dom";
 import type { ReactNode } from "react";
 import { ApplicationsPage } from "../ApplicationsPage";
 import { applicationService } from "../../../services/applicationService";
-import type { Application } from "../../../services/applicationService";
-import { companyService } from "@/features/companies/services/companyService";
+import type { Application } from "@/shared/types/generated/applications";
+import { companyService } from "@/features/companies";
 import { useUiStore } from "@/shared/lib/ui-store";
 
 function cand(job_title: string): Application {

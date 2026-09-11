@@ -127,6 +127,25 @@ impl<R: ProfileRepository> ProfileService<R> {
         }
     }
 
+    /// Bytes bruts de la photo, pour le rendu PDF.
+    ///
+    /// Fichier disparu : retourne `None` plutôt qu'une erreur, comme [`Self::photo_data_url`].
+    ///
+    /// # Errors
+    /// `AppError::Database` si le profil ne peut pas être lu.
+    pub fn photo_bytes(&self) -> AppResult<Option<Vec<u8>>> {
+        let Some(chemin) = self.photo_path()? else {
+            return Ok(None);
+        };
+        match std::fs::read(&chemin) {
+            Ok(bytes) => Ok(Some(bytes)),
+            Err(error) => {
+                tracing::warn!(%error, "photo de profil absente du dossier de données");
+                Ok(None)
+            }
+        }
+    }
+
     /// Path absolu de la photo, pour le moteur PDF.
     ///
     /// # Errors
