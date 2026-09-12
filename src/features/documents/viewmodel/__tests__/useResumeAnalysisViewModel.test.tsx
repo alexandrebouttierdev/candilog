@@ -36,8 +36,26 @@ describe("ViewModel de l'analyse de CV", () => {
     const analyze = vi.spyOn(aiService, "analyzeResume").mockResolvedValue({
       output: {
         resume: { resume: "", experiences: [], skills: [], education: [] },
-        job_offer: { title: "Dev", skills: [], soft_skills: [], experience: null, keywords: [] },
-        score: { total: 72, skills: null, experience: null, ats: null, present: [], missing: [] },
+        job_offer: {
+          title: "Dev",
+          skills: [],
+          soft_skills: [],
+          experience: null,
+          keywords: [],
+          requirements: [],
+          location: null,
+        },
+        score: {
+          total: 72,
+          skills: null,
+          experience: null,
+          ats: null,
+          present: [],
+          missing: [],
+          breakdown: [],
+          evaluations: [],
+          critical_requirements_penalty: 0,
+        },
         analysis: { recap: "Correct", recommendations: [], content_recommendations: [] },
         method_used: "text" as const,
         fallback_used: false,

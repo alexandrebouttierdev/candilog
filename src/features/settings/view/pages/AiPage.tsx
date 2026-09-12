@@ -61,8 +61,6 @@ export function AiPage() {
   const [benchmarkModelLabel, setBenchmarkModelLabel] = useState("");
   const form = draft ?? vm.data ?? null;
   const llm = form?.llm;
-  const providerId = llm ? idProvider(llm.provider) : null;
-  const isCandilogLocal = providerId === "candilog_local";
   const managedVm = useManagedOllamaViewModel(() => setDraft(null));
 
   const setTest = (value: ConnectionTest) => {

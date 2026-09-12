@@ -24,8 +24,26 @@ function generation(): ResumeGeneration {
   return {
     resume: { resume: "Profil ciblé", experiences: [], skills: [], education: [] },
     analysis: { recap: "", recommendations: [], content_recommendations: [] },
-    job_offer: { title: "Développeur Rust", skills: [], soft_skills: [], experience: null, keywords: [] },
-    profile_score: { total: 70, skills: null, experience: null, ats: null, present: [], missing: [] },
+    job_offer: {
+      title: "Développeur Rust",
+      skills: [],
+      soft_skills: [],
+      experience: null,
+      keywords: [],
+      requirements: [],
+      location: null,
+    },
+    profile_score: {
+      total: 70,
+      skills: null,
+      experience: null,
+      ats: null,
+      present: [],
+      missing: [],
+      breakdown: [],
+      evaluations: [],
+      critical_requirements_penalty: 0,
+    },
     recommendation_error: null,
   };
 }

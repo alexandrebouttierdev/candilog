@@ -1,35 +1,56 @@
 //! Score ATS local et déterministe, sans appel réseau.
 
 use super::normalization::{contains_search_term, deduplicate_labels};
-use super::{search_key, AtsAnalysis, GeneratedResume, MatchScore, StructuredListing};
+use super::{
+    search_key, AtsAnalysis, AtsBreakdownItem, GeneratedResume, JobRequirement, MatchScore,
+    RequirementCategory, RequirementEvaluation, RequirementImportance, RequirementMatchKind,
+    StructuredListing,
+};
 use crate::features::profile::domain::Profile;
 use chrono::Datelike;
 use serde::Serialize;
 use std::collections::HashSet;
 
-/// Pondération de base des compétences (ajustée dynamiquement).
-const WEIGHT_SKILLS: u16 = 35;
-/// Pondération de la proximité métier (titres).
-const WEIGHT_OCCUPATION: u16 = 20;
-/// Pondération des années d'expérience.
-const WEIGHT_EXPERIENCE: u16 = 25;
-/// Pondération des savoir-être.
-const WEIGHT_SOFT: u16 = 10;
-/// Pondération des mots-clés / missions (hors compétences déjà comptées).
-const WEIGHT_ATS: u16 = 10;
-
-/// Crédit partiel pour une compétence transférable (même famille d'outils).
-const TRANSFERABLE_CREDIT: u8 = 40;
+const EQUIVALENT_CREDIT: u8 = 90;
+const TRANSFERABLE_CREDIT: u8 = 45;
+const PARTIAL_CREDIT: u8 = 55;
 
 /// Familles multi-domaines d'équivalence / transfert.
 /// Données structurées génériques — pas de branche `if skill == "react"`.
-const TRANSFER_FAMILIES: &[&[&str]] = &[
+const LEGACY_TRANSFER_FAMILIES: &[&[&str]] = &[
     &["react", "angular", "vue", "svelte", "ember"],
-    &["ci/cd", "cicd", "gitlab ci", "github actions", "integration continue", "intégration continue", "pipelines"],
+    &[
+        "ci/cd",
+        "cicd",
+        "gitlab ci",
+        "github actions",
+        "integration continue",
+        "intégration continue",
+        "pipelines",
+    ],
     &["java", "j2ee", "spring", "spring boot", "jakarta ee"],
-    &["excel", "calc", "google sheets", "sheets", "numbers", "libreoffice calc"],
-    &["word", "writer", "google docs", "pages", "libreoffice writer"],
-    &["salesforce", "hubspot", "dynamics 365", "pipedrive", "zoho crm"],
+    &[
+        "excel",
+        "calc",
+        "google sheets",
+        "sheets",
+        "numbers",
+        "libreoffice calc",
+    ],
+    &[
+        "word",
+        "writer",
+        "google docs",
+        "pages",
+        "libreoffice writer",
+    ],
+    &[
+        "salesforce",
+        "hubspot",
+        "dynamics 365",
+        "pipedrive",
+        "zoho crm",
+    ],
     &["sap", "odoo", "microsoft dynamics", "oracle ebs"],
     &["autocad", "solidworks", "catia", "revit", "archicad"],
     &["photoshop", "gimp", "affinity photo", "lightroom"],
@@ -71,9 +92,36 @@ const SOFT_REQUIREMENT_MARKERS: &[&str] = &[
 
 /// Mots trop génériques pour servir de token de proximité métier.
 const TITLE_STOPWORDS: &[&str] = &[
-    "de", "du", "des", "la", "le", "les", "un", "une", "et", "en", "au", "aux", "a",
-    "the", "and", "or", "of", "in", "for", "to", "junior", "senior", "confirme",
-    "confirmee", "experimente", "experimentee", "h", "f", "hf", "fh",
+    "de",
+    "du",
+    "des",
+    "la",
+    "le",
+    "les",
+    "un",
+    "une",
+    "et",
+    "en",
+    "au",
+    "aux",
+    "a",
+    "the",
+    "and",
+    "or",
+    "of",
+    "in",
+    "for",
+    "to",
+    "junior",
+    "senior",
+    "confirme",
+    "confirmee",
+    "experimente",
+    "experimentee",
+    "h",
+    "f",
+    "hf",
+    "fh",
 ];
 
 /// Entrée compacte transmise au modèle : l'identifiant est la seule valeur qu'une
@@ -160,12 +208,88 @@ pub fn ground_content_recommendations(
     });
     analysis.content_recommendations.truncate(8);
 }
+
+/// Recadre les reformulations sur une cible réelle du CV et sur les exigences calculées.
+///
+/// Le modèle aide à rédiger, mais ne peut ni cibler un texte inexistant, ni glisser dans la
+/// proposition une exigence que le moteur vient d'identifier comme absente.
+pub fn ground_ats_recommendations(
+    resume: &GeneratedResume,
+    score: &MatchScore,
+    analysis: &mut AtsAnalysis,
+) {
+    let resume_source = resume_text_raw(resume);
+    let mut seen = HashSet::new();
+    analysis.recommendations.retain_mut(|recommendation| {
+        let target_text = match recommendation.section {
+            super::AtsRecommendationSection::Profile => Some(resume.resume.as_str()),
+            super::AtsRecommendationSection::Experience => recommendation
+                .item_index
+                .and_then(|index| resume.experiences.get(index))
+                .map(|experience| experience.description.as_str()),
+        };
+        let Some(target_text) = target_text else {
+            return false;
+        };
+        if target_text != recommendation.original_text
+            || search_key(&recommendation.original_text)
+                == search_key(&recommendation.proposed_text)
+        {
+            return false;
+        }
+        if score.missing.iter().any(|missing| {
+            contains_term(&recommendation.proposed_text, missing)
+                && !contains_term(&recommendation.original_text, missing)
+        }) {
+            return false;
+        }
+        recommendation.source_evidence = deduplicate_labels(&recommendation.source_evidence)
+            .into_iter()
+            .filter(|evidence| contains_term(&resume_source, evidence))
+            .collect();
+        if recommendation.source_evidence.is_empty() {
+            recommendation
+                .source_evidence
+                .push(recommendation.original_text.clone());
+        }
+        if recommendation
+            .target_requirement
+            .as_deref()
+            .is_some_and(|target| {
+                !score
+                    .evaluations
+                    .iter()
+                    .any(|evaluation| labels_overlap(&evaluation.requirement, target))
+            })
+        {
+            recommendation.target_requirement = None;
+        }
+        if recommendation.reason.trim().is_empty() {
+            recommendation.reason = recommendation.target_requirement.as_deref().map_or_else(
+                || {
+                    "Cette reformulation rend plus visible une preuve déjà présente dans le CV."
+                        .to_owned()
+                },
+                |target| {
+                    format!(
+                        "L'offre met en avant « {target} » et cette preuve existe déjà dans le CV."
+                    )
+                },
+            );
+        }
+        seen.insert(search_key(&recommendation.proposed_text))
+    });
+    analysis.recommendations.truncate(8);
+}
 #[must_use]
 pub fn profile_score(profile: &Profile, job_offer: &StructuredListing) -> MatchScore {
     let names: Vec<&str> = profile
         .skills
         .iter()
         .map(|skill| skill.name.as_str())
+        .chain(profile.certifications.iter().map(|item| item.name.as_str()))
+        .chain(profile.languages.iter().map(|item| item.name.as_str()))
+        .chain(profile.education.iter().map(|item| item.degree.as_str()))
         .filter(|name| !search_key(name).is_empty())
         .collect();
     let evidence = candidate_evidence(profile);
@@ -174,6 +298,12 @@ pub fn profile_score(profile: &Profile, job_offer: &StructuredListing) -> MatchS
         &evidence,
         profile_title(profile),
         Some(annees_experience(profile)),
+        profile
+            .identity
+            .city
+            .as_deref()
+            .or(profile.identity.address.as_deref()),
+        true,
         job_offer,
     )
 }
@@ -215,6 +345,7 @@ pub fn score_resume_imported_with_source(
         .skills
         .iter()
         .map(String::as_str)
+        .chain(resume.education.iter().map(|item| item.degree.as_str()))
         .filter(|name| !search_key(name).is_empty())
         .collect();
     let evidence = match source {
@@ -228,6 +359,8 @@ pub fn score_resume_imported_with_source(
         &evidence,
         &infer_title_from_resume(resume),
         infer_annees_from_parts(resume, source),
+        None,
+        source.is_some_and(|value| !value.trim().is_empty()),
         job_offer,
     )
 }
@@ -238,109 +371,528 @@ fn score_against_offer(
     evidence: &str,
     title: &str,
     annees: Option<usize>,
+    location: Option<&str>,
+    allow_unstructured_skill_evidence: bool,
     job_offer: &StructuredListing,
 ) -> MatchScore {
-    let (offer_skills, soft_skills, keywords) = partition_offer_requirements(job_offer);
+    let (requirements, legacy) = normalized_requirements(job_offer);
+    let candidate = CandidateContext {
+        skill_names,
+        evidence,
+        title,
+        years: annees,
+        location,
+        allow_unstructured_skill_evidence,
+    };
+    let evaluations: Vec<RequirementEvaluation> = requirements
+        .iter()
+        .map(|requirement| evaluate_requirement(requirement, &candidate, legacy))
+        .collect();
 
-    let mut present = Vec::new();
-    let mut missing = Vec::new();
-    let mut credit = 0_u32;
-    for skill in &offer_skills {
-        match match_requirement(skill_names, evidence, skill) {
-            RequirementMatch::Exact => {
-                present.push(skill.clone());
-                credit += 100;
+    let (weighted_sum, total_weight) = evaluations.iter().fold(
+        (0_u32, 0_u32),
+        |(sum, total_weight), evaluation| match evaluation.score {
+            Some(score) => {
+                let weight = requirement_weight(evaluation.category, evaluation.importance);
+                (
+                    sum + u32::from(score) * u32::from(weight),
+                    total_weight + u32::from(weight),
+                )
             }
-            RequirementMatch::Transferable => {
-                present.push(skill.clone());
-                credit += u32::from(TRANSFERABLE_CREDIT);
-            }
-            RequirementMatch::Missing => missing.push(skill.clone()),
-        }
-    }
-    let skills = (!offer_skills.is_empty()).then(|| {
-        (credit.saturating_add(offer_skills.len() as u32 / 2) / offer_skills.len() as u32).min(100) as u8
+            None => (sum, total_weight),
+        },
+    );
+    let raw_total = weighted_sum
+        .saturating_add(total_weight / 2)
+        .checked_div(total_weight)
+        .unwrap_or_default()
+        .min(100) as u8;
+    let missing_critical = evaluations.iter().any(|evaluation| {
+        evaluation.category.is_regulated()
+            && evaluation.importance == RequirementImportance::Mandatory
+            && evaluation.match_kind == RequirementMatchKind::Missing
     });
-
-    let occupation = occupation_proximity(title, &job_offer.title);
-
-    let soft = soft_match_score(evidence, &soft_skills);
-
-    let key_hits = keywords.iter().filter(|m| contains_term(evidence, m)).count();
-    let ats = percentage(key_hits, keywords.len());
-
-    let requis = job_offer.experience.as_deref().map_or(0, first_entier);
-    // `None` = durée inconnue → dimension exclue (pas un zéro qui écrase le total).
-    let experience = match (requis > 0, annees) {
-        (true, Some(annees)) => Some(
-            annees
-                .saturating_mul(100)
-                .checked_div(requis)
-                .map_or(0, |value| value.min(100) as u8),
-        ),
-        _ => None,
+    let total = if missing_critical {
+        raw_total.min(35)
+    } else {
+        raw_total
     };
 
-    // Noyau = compétences + expérience uniquement.
-    // Soft / ATS / proximité métier sont des BONUS (jamais une moyenne avec des 0
-    // qui écrasent un profil partiellement aligné vers ~17/100).
-    let core = weighted_total(&[(skills, WEIGHT_SKILLS), (experience, WEIGHT_EXPERIENCE)]);
-    let skills_factor = u32::from(skills.unwrap_or(0));
-    let occupation_bonus = occupation
-        .map(|score| {
-            let raw = u32::from(score) * u32::from(WEIGHT_OCCUPATION) / 100;
-            ((raw * skills_factor) / 100).min(u32::from(WEIGHT_OCCUPATION)) as u8
-        })
-        .unwrap_or(0);
-    let soft_bonus = soft
-        .map(|score| (u32::from(score) * u32::from(WEIGHT_SOFT) / 100) as u8)
-        .unwrap_or(0);
-    let ats_bonus = ats
-        .map(|score| (u32::from(score) * u32::from(WEIGHT_ATS) / 100) as u8)
-        .unwrap_or(0);
-    let total = core
-        .saturating_add(occupation_bonus)
-        .saturating_add(soft_bonus)
-        .saturating_add(ats_bonus)
-        .min(100);
+    let skills = category_score(
+        &evaluations,
+        &[
+            RequirementCategory::HardSkill,
+            RequirementCategory::Tool,
+            RequirementCategory::Methodology,
+        ],
+    );
+    let experience = category_score(&evaluations, &[RequirementCategory::Experience]);
+    let ats = category_score(
+        &evaluations,
+        &[
+            RequirementCategory::Responsibility,
+            RequirementCategory::SoftSkill,
+            RequirementCategory::Industry,
+        ],
+    );
+    let mut present = Vec::new();
+    let mut missing = Vec::new();
+    for evaluation in &evaluations {
+        if !matches!(
+            evaluation.category,
+            RequirementCategory::HardSkill
+                | RequirementCategory::Tool
+                | RequirementCategory::Methodology
+                | RequirementCategory::Education
+                | RequirementCategory::Certification
+                | RequirementCategory::License
+                | RequirementCategory::Language
+        ) {
+            continue;
+        }
+        match evaluation.match_kind {
+            RequirementMatchKind::Exact
+            | RequirementMatchKind::Equivalent
+            | RequirementMatchKind::Transferable
+            | RequirementMatchKind::Partial => present.push(evaluation.requirement.clone()),
+            RequirementMatchKind::Missing => missing.push(evaluation.requirement.clone()),
+            RequirementMatchKind::Unknown => {}
+        }
+    }
 
     MatchScore {
         total,
         skills,
         experience,
         ats,
-        present,
-        missing,
+        present: deduplicate_labels(&present),
+        missing: deduplicate_labels(&missing),
+        breakdown: build_breakdown(&evaluations),
+        evaluations,
+        critical_requirements_penalty: raw_total.saturating_sub(total),
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum RequirementMatch {
-    Exact,
-    Transferable,
-    Missing,
+fn normalized_requirements(job_offer: &StructuredListing) -> (Vec<JobRequirement>, bool) {
+    let legacy = job_offer.requirements.is_empty();
+    let mut requirements = if legacy {
+        let (hard, soft, keywords) = partition_offer_requirements(job_offer);
+        let mut values = hard
+            .into_iter()
+            .map(|name| JobRequirement {
+                name,
+                category: RequirementCategory::HardSkill,
+                importance: RequirementImportance::Important,
+                ..JobRequirement::default()
+            })
+            .chain(soft.into_iter().map(|name| JobRequirement {
+                name,
+                category: RequirementCategory::SoftSkill,
+                importance: RequirementImportance::Preferred,
+                ..JobRequirement::default()
+            }))
+            .chain(keywords.into_iter().map(|name| JobRequirement {
+                name,
+                category: RequirementCategory::Responsibility,
+                importance: RequirementImportance::Preferred,
+                ..JobRequirement::default()
+            }))
+            .collect::<Vec<_>>();
+        if let Some(experience) = job_offer.experience.as_deref() {
+            let minimum_years = first_entier(experience);
+            if minimum_years > 0 {
+                values.push(JobRequirement {
+                    name: experience.trim().to_owned(),
+                    category: RequirementCategory::Experience,
+                    importance: RequirementImportance::Important,
+                    minimum_years: u8::try_from(minimum_years).ok(),
+                    ..JobRequirement::default()
+                });
+            }
+        }
+        values
+    } else {
+        job_offer.requirements.clone()
+    };
+
+    if meaningful_occupation(&job_offer.title)
+        && !requirements
+            .iter()
+            .any(|item| item.category == RequirementCategory::Occupation)
+    {
+        requirements.push(JobRequirement {
+            name: job_offer.title.trim().to_owned(),
+            category: RequirementCategory::Occupation,
+            importance: RequirementImportance::Important,
+            ..JobRequirement::default()
+        });
+    }
+    if let Some(location) = job_offer
+        .location
+        .as_deref()
+        .filter(|value| !value.trim().is_empty())
+    {
+        if !requirements
+            .iter()
+            .any(|item| item.category == RequirementCategory::Location)
+        {
+            requirements.push(JobRequirement {
+                name: location.trim().to_owned(),
+                category: RequirementCategory::Location,
+                importance: RequirementImportance::Preferred,
+                ..JobRequirement::default()
+            });
+        }
+    }
+
+    let mut deduplicated = Vec::<JobRequirement>::new();
+    for mut requirement in requirements {
+        requirement.name = requirement.name.trim().to_owned();
+        if requirement.name.is_empty()
+            || matches!(
+                requirement.importance,
+                RequirementImportance::Contextual | RequirementImportance::Informational
+            )
+        {
+            continue;
+        }
+        if requirement.mandatory {
+            requirement.importance = RequirementImportance::Mandatory;
+        }
+        requirement.transferable_from = deduplicate_labels(&requirement.transferable_from);
+        if let Some(existing) = deduplicated
+            .iter_mut()
+            .find(|existing| labels_overlap(&existing.name, &requirement.name))
+        {
+            existing.importance = existing.importance.max(requirement.importance);
+            existing.mandatory |= requirement.mandatory;
+            existing.minimum_years = existing.minimum_years.max(requirement.minimum_years);
+            existing
+                .transferable_from
+                .extend(requirement.transferable_from);
+            existing.transferable_from = deduplicate_labels(&existing.transferable_from);
+        } else {
+            deduplicated.push(requirement);
+        }
+    }
+    (deduplicated, legacy)
 }
 
-fn match_requirement(skill_names: &[&str], evidence: &str, required: &str) -> RequirementMatch {
-    if skill_couverte(skill_names, required) || contains_term(evidence, required) {
-        return RequirementMatch::Exact;
-    }
-    if transferable_requirement(skill_names, evidence, required) {
-        return RequirementMatch::Transferable;
-    }
-    RequirementMatch::Missing
+fn meaningful_occupation(title: &str) -> bool {
+    let key = search_key(title);
+    !key.is_empty() && !matches!(key.as_str(), "poste" | "emploi" | "offre")
 }
 
-/// Transfert via familles multi-domaines (tableurs, CRM, frameworks front, etc.).
-fn transferable_requirement(skill_names: &[&str], evidence: &str, required: &str) -> bool {
+fn labels_overlap(left: &str, right: &str) -> bool {
+    let left_key = search_key(left);
+    let right_key = search_key(right);
+    !left_key.is_empty()
+        && (left_key == right_key
+            || contains_search_term(left, right)
+            || contains_search_term(right, left))
+}
+
+struct CandidateContext<'a> {
+    skill_names: &'a [&'a str],
+    evidence: &'a str,
+    title: &'a str,
+    years: Option<usize>,
+    location: Option<&'a str>,
+    allow_unstructured_skill_evidence: bool,
+}
+
+fn evaluate_requirement(
+    requirement: &JobRequirement,
+    candidate: &CandidateContext<'_>,
+    legacy: bool,
+) -> RequirementEvaluation {
+    let importance = if requirement.mandatory {
+        RequirementImportance::Mandatory
+    } else {
+        requirement.importance
+    };
+    let result = match requirement.category {
+        RequirementCategory::Experience => match (
+            requirement.minimum_years.map(usize::from).or_else(|| {
+                let parsed = first_entier(&requirement.name);
+                (parsed > 0).then_some(parsed)
+            }),
+            candidate.years,
+        ) {
+            (Some(required), Some(actual)) => {
+                let score = actual
+                    .saturating_mul(100)
+                    .checked_div(required)
+                    .map_or(0, |value| value.min(100) as u8);
+                let kind = if score == 100 {
+                    RequirementMatchKind::Exact
+                } else if score > 0 {
+                    RequirementMatchKind::Partial
+                } else {
+                    RequirementMatchKind::Missing
+                };
+                (kind, Some(score), Some(format!("{actual} ans")))
+            }
+            _ => (RequirementMatchKind::Unknown, None, None),
+        },
+        RequirementCategory::Occupation => {
+            match occupation_proximity(candidate.title, &requirement.name) {
+                Some(score) if score == 100 => (
+                    RequirementMatchKind::Exact,
+                    Some(score),
+                    Some(candidate.title.to_owned()),
+                ),
+                Some(score) if score >= PARTIAL_CREDIT => (
+                    RequirementMatchKind::Equivalent,
+                    Some(score.max(EQUIVALENT_CREDIT)),
+                    Some(candidate.title.to_owned()),
+                ),
+                Some(score) if score > 0 => (
+                    RequirementMatchKind::Partial,
+                    Some(score.max(PARTIAL_CREDIT)),
+                    Some(candidate.title.to_owned()),
+                ),
+                Some(_) => (RequirementMatchKind::Missing, Some(0), None),
+                None => (RequirementMatchKind::Unknown, None, None),
+            }
+        }
+        RequirementCategory::Location => {
+            let candidate_location = candidate.location.unwrap_or(candidate.evidence);
+            if contains_term(candidate_location, &requirement.name) {
+                (
+                    RequirementMatchKind::Exact,
+                    Some(100),
+                    Some(requirement.name.clone()),
+                )
+            } else {
+                (RequirementMatchKind::Missing, Some(0), None)
+            }
+        }
+        _ => evaluate_text_requirement(
+            requirement,
+            candidate.skill_names,
+            candidate.evidence,
+            candidate.allow_unstructured_skill_evidence,
+            legacy,
+        ),
+    };
+    RequirementEvaluation {
+        requirement: requirement.name.clone(),
+        category: requirement.category,
+        importance,
+        match_kind: result.0,
+        score: result.1,
+        evidence: result.2,
+    }
+}
+
+fn evaluate_text_requirement(
+    requirement: &JobRequirement,
+    skill_names: &[&str],
+    evidence: &str,
+    allow_unstructured_skill_evidence: bool,
+    legacy: bool,
+) -> (RequirementMatchKind, Option<u8>, Option<String>) {
+    if let Some(exact) = skill_names
+        .iter()
+        .find(|candidate| search_key(candidate) == search_key(&requirement.name))
+    {
+        return (
+            RequirementMatchKind::Exact,
+            Some(100),
+            Some((*exact).to_string()),
+        );
+    }
+    if let Some(equivalent) = skill_names
+        .iter()
+        .find(|candidate| labels_overlap(candidate, &requirement.name))
+    {
+        return (
+            RequirementMatchKind::Equivalent,
+            Some(100),
+            Some((*equivalent).to_string()),
+        );
+    }
+    let strict_listing = matches!(
+        requirement.category,
+        RequirementCategory::HardSkill
+            | RequirementCategory::Tool
+            | RequirementCategory::Methodology
+    );
+    if (!strict_listing || allow_unstructured_skill_evidence)
+        && contains_term(evidence, &requirement.name)
+    {
+        return (
+            RequirementMatchKind::Exact,
+            Some(100),
+            Some(requirement.name.clone()),
+        );
+    }
+
+    if !requirement.category.is_regulated() {
+        if let Some(term) = requirement
+            .transferable_from
+            .iter()
+            .find(|term| {
+                skill_couverte(skill_names, term)
+                    || (allow_unstructured_skill_evidence && contains_term(evidence, term))
+            })
+            .cloned()
+            .or_else(|| {
+                let legacy_evidence = if allow_unstructured_skill_evidence {
+                    evidence
+                } else {
+                    ""
+                };
+                legacy.then(|| {
+                    legacy_transferable_requirement(skill_names, legacy_evidence, &requirement.name)
+                })?
+            })
+        {
+            return (
+                RequirementMatchKind::Transferable,
+                Some(TRANSFERABLE_CREDIT),
+                Some(term),
+            );
+        }
+    }
+
+    if matches!(
+        requirement.category,
+        RequirementCategory::Responsibility
+            | RequirementCategory::SoftSkill
+            | RequirementCategory::Industry
+            | RequirementCategory::Availability
+            | RequirementCategory::Other
+    ) && token_coverage(evidence, &requirement.name) >= 50
+    {
+        return (RequirementMatchKind::Partial, Some(PARTIAL_CREDIT), None);
+    }
+    (RequirementMatchKind::Missing, Some(0), None)
+}
+
+fn token_coverage(evidence: &str, requirement: &str) -> u8 {
+    let normalized = search_key(requirement);
+    let tokens: Vec<&str> = normalized
+        .split_whitespace()
+        .filter(|token| token.len() >= 4)
+        .filter(|token| !TITLE_STOPWORDS.contains(token))
+        .collect();
+    percentage(
+        tokens
+            .iter()
+            .filter(|token| contains_search_term(evidence, token))
+            .count(),
+        tokens.len(),
+    )
+    .unwrap_or(0)
+}
+
+const fn requirement_weight(
+    category: RequirementCategory,
+    importance: RequirementImportance,
+) -> u16 {
+    let category_weight = match category {
+        RequirementCategory::Occupation => 20,
+        RequirementCategory::Experience => 16,
+        RequirementCategory::Education
+        | RequirementCategory::Certification
+        | RequirementCategory::License => 18,
+        RequirementCategory::HardSkill => 14,
+        RequirementCategory::Responsibility => 12,
+        RequirementCategory::Tool | RequirementCategory::Methodology => 11,
+        RequirementCategory::Language => 10,
+        RequirementCategory::SoftSkill => 7,
+        RequirementCategory::Industry => 5,
+        RequirementCategory::Location | RequirementCategory::Availability => 4,
+        RequirementCategory::Other => 6,
+    };
+    let importance_weight = match importance {
+        RequirementImportance::Mandatory => 5,
+        RequirementImportance::Important => 3,
+        RequirementImportance::Preferred => 2,
+        RequirementImportance::Optional => 1,
+        RequirementImportance::Contextual | RequirementImportance::Informational => 0,
+    };
+    category_weight * importance_weight
+}
+
+fn category_score(
+    evaluations: &[RequirementEvaluation],
+    categories: &[RequirementCategory],
+) -> Option<u8> {
+    let (sum, weight) = evaluations
+        .iter()
+        .filter(|item| categories.contains(&item.category))
+        .filter_map(|item| {
+            item.score.map(|score| {
+                let weight = requirement_weight(item.category, item.importance);
+                (u32::from(score) * u32::from(weight), u32::from(weight))
+            })
+        })
+        .fold((0_u32, 0_u32), |(sum, weight), item| {
+            (sum + item.0, weight + item.1)
+        });
+    (weight > 0).then(|| ((sum + weight / 2) / weight).min(100) as u8)
+}
+
+fn build_breakdown(evaluations: &[RequirementEvaluation]) -> Vec<AtsBreakdownItem> {
+    const CATEGORIES: &[(RequirementCategory, &str)] = &[
+        (RequirementCategory::Occupation, "Métier / fonction"),
+        (RequirementCategory::Experience, "Expérience"),
+        (RequirementCategory::HardSkill, "Savoir-faire"),
+        (RequirementCategory::Responsibility, "Missions"),
+        (RequirementCategory::Tool, "Outils"),
+        (RequirementCategory::Methodology, "Méthodes"),
+        (RequirementCategory::SoftSkill, "Compétences relationnelles"),
+        (RequirementCategory::Education, "Diplômes"),
+        (RequirementCategory::Certification, "Certifications"),
+        (RequirementCategory::License, "Permis et habilitations"),
+        (RequirementCategory::Language, "Langues"),
+        (RequirementCategory::Industry, "Secteur"),
+        (RequirementCategory::Location, "Localisation"),
+        (RequirementCategory::Availability, "Disponibilité"),
+        (RequirementCategory::Other, "Autres critères"),
+    ];
+    CATEGORIES
+        .iter()
+        .filter_map(|(category, label)| {
+            let category_evaluations: Vec<&RequirementEvaluation> = evaluations
+                .iter()
+                .filter(|item| item.category == *category && item.score.is_some())
+                .collect();
+            if category_evaluations.is_empty() {
+                return None;
+            }
+            let weight = category_evaluations
+                .iter()
+                .map(|item| requirement_weight(item.category, item.importance))
+                .sum();
+            category_score(evaluations, &[*category]).map(|score| AtsBreakdownItem {
+                category: *category,
+                label: (*label).to_owned(),
+                score,
+                weight,
+            })
+        })
+        .collect()
+}
+
+fn legacy_transferable_requirement(
+    skill_names: &[&str],
+    evidence: &str,
+    required: &str,
+) -> Option<String> {
     let required_key = search_key(required);
     if required_key.is_empty() {
-        return false;
+        return None;
     }
-    for family in TRANSFER_FAMILIES {
-        let in_family = family.iter().any(|member| search_key(member) == required_key
-            || contains_search_term(required, member)
-            || contains_search_term(member, required));
+    for family in LEGACY_TRANSFER_FAMILIES {
+        let in_family = family.iter().any(|member| {
+            search_key(member) == required_key
+                || contains_search_term(required, member)
+                || contains_search_term(member, required)
+        });
         if !in_family {
             continue;
         }
@@ -350,11 +902,11 @@ fn transferable_requirement(skill_names: &[&str], evidence: &str, required: &str
                 continue;
             }
             if skill_couverte(skill_names, member) || contains_term(evidence, member) {
-                return true;
+                return Some((*member).to_owned());
             }
         }
     }
-    false
+    None
 }
 
 fn occupation_proximity(candidate_title: &str, offer_title: &str) -> Option<u8> {
@@ -364,11 +916,6 @@ fn occupation_proximity(candidate_title: &str, offer_title: &str) -> Option<u8> 
         return None;
     }
     let overlap = tokens_overlap(&left, &right);
-    // Pas de signal de proximité : on n'inclut pas la dimension (évite de tirer
-    // le total vers 0 quand l'offre a un titre générique du type « Poste »).
-    if overlap == 0 {
-        return None;
-    }
     let denom = left.len().max(right.len());
     Some(((overlap * 100) / denom).min(100) as u8)
 }
@@ -414,31 +961,6 @@ fn tokens_overlap(left: &[String], right: &[String]) -> usize {
         })
         .count()
 }
-
-fn soft_match_score(evidence: &str, soft_skills: &[String]) -> Option<u8> {
-    if soft_skills.is_empty() {
-        return None;
-    }
-    let hits = soft_skills
-        .iter()
-        .filter(|skill| soft_skill_couverte(evidence, skill))
-        .count();
-    percentage(hits, soft_skills.len())
-}
-
-fn soft_skill_couverte(evidence: &str, skill: &str) -> bool {
-    if contains_term(evidence, skill) {
-        return true;
-    }
-    // « qualité logicielle » : tous les tokens significatifs (≥4) présents.
-    let key = search_key(skill);
-    let tokens: Vec<&str> = key
-        .split_whitespace()
-        .filter(|t| t.len() >= 4)
-        .collect();
-    !tokens.is_empty() && tokens.iter().all(|t| contains_search_term(evidence, t))
-}
-
 
 /// Sépare compétences dures, savoir-être et mots-clés pour éviter la dilution du score.
 fn partition_offer_requirements(
@@ -559,13 +1081,7 @@ fn candidate_evidence(profile: &Profile) -> String {
     let certifications = profile
         .certifications
         .iter()
-        .map(|c| {
-            format!(
-                "{} {}",
-                c.name,
-                c.issuer.as_deref().unwrap_or_default()
-            )
-        })
+        .map(|c| format!("{} {}", c.name, c.issuer.as_deref().unwrap_or_default()))
         .collect::<Vec<_>>()
         .join(" ");
     let languages = profile
@@ -693,7 +1209,28 @@ pub fn ground_extracted_listing(source: &str, listing: &mut StructuredListing) {
         .soft_skills
         .retain(|term| contains_term(source, term));
     listing.keywords.retain(|term| contains_term(source, term));
+    listing
+        .requirements
+        .retain(|requirement| contains_term(source, &requirement.name));
+    if listing
+        .location
+        .as_deref()
+        .is_some_and(|location| !contains_term(source, location))
+    {
+        listing.location = None;
+    }
     strip_company_only_skills(source, listing);
+    let key = search_key(source);
+    let requirement_zone = requirement_zone(&key);
+    listing.requirements.retain(|requirement| {
+        if requirement.importance == RequirementImportance::Contextual {
+            return false;
+        }
+        requirement.category == RequirementCategory::Occupation
+            || requirement.category == RequirementCategory::Location
+            || contains_search_term(requirement_zone, &requirement.name)
+            || !appears_only_in_company_blurb(&key, &requirement.name)
+    });
 }
 
 /// En-têtes typiques de la zone « exigences du poste » (multi-métiers, FR/EN).
@@ -876,20 +1413,6 @@ fn percentage(count: usize, total: usize) -> Option<u8> {
     (total > 0).then(|| count.saturating_mul(100).saturating_div(total).min(100) as u8)
 }
 
-fn weighted_total(values: &[(Option<u8>, u16)]) -> u8 {
-    let (sum, weight) = values.iter().fold(
-        (0_u32, 0_u32),
-        |(sum, weight), (value, dimension_weight)| {
-            value.map_or((sum, weight), |score| {
-                (
-                    sum + u32::from(score) * u32::from(*dimension_weight),
-                    weight + u32::from(*dimension_weight),
-                )
-            })
-        },
-    );
-    (sum + weight / 2).checked_div(weight).unwrap_or_default() as u8
-}
 /// Nombre d'années d'expérience exigé, lu dans le texte libre d'une offre.
 ///
 /// Le premier entier du texte n'est pas le bon : « Bac+3, 5 ans d'expérience » donnait 3,
@@ -960,7 +1483,8 @@ fn year(value: &str) -> Option<i32> {
 mod tests {
     use super::*;
     use crate::features::ai::domain::{
-        AtsContentRecommendation, ContentRelevance, GeneratedEducation, GeneratedExperience,
+        AtsContentRecommendation, AtsRecommendation, AtsRecommendationSection, ContentRelevance,
+        GeneratedEducation, GeneratedExperience,
     };
     use crate::features::profile::domain::{Education, Experience, Identity, Profile, Skill};
 
@@ -1014,6 +1538,7 @@ mod tests {
             soft_skills: vec![],
             experience: experience.map(str::to_owned),
             keywords: keywords.into_iter().map(str::to_owned).collect(),
+            ..StructuredListing::default()
         }
     }
 
@@ -1371,8 +1896,8 @@ mod tests {
         let score = score_resume_imported(&resume, &offre(vec!["Rust", "Go"], vec!["cli"], None));
         assert_eq!(score.skills, Some(50));
         assert_eq!(score.ats, Some(0));
-        // Soft/ATS en bonus seulement : noyau = skills 50 → total 50
-        assert_eq!(score.total, 50);
+        // La mission absente participe désormais au détail dynamique au lieu d'être un bonus.
+        assert_eq!(score.total, 39);
     }
 
     #[test]
@@ -1462,6 +1987,7 @@ Pratiques Agile, intégration continue, code review
             soft_skills: vec![],
             experience: None,
             keywords: vec![],
+            ..StructuredListing::default()
         };
         ground_extracted_listing(source, &mut listing);
         assert!(listing.skills.iter().any(|s| s == "Java"));
@@ -1485,12 +2011,12 @@ Pratiques Agile, intégration continue, code review
 
     /// CV réel (Alexandre Bouttier) vs offre Open-like — chemin Analyse de CV importé.
     /// Régression du score ~9/100 : expérience à 0 + titre vide.
-    
+    ///
     /// JSON parsé volontairement pauvre + texte PDF → le score lit le PDF.
-    
+    ///
     /// Régression score ~17 : commentaire LLM aligné mais soft/ATS à 0 + skills partiels
     /// ne doivent plus écraser le total (noyau compétences+expérience + bonus).
-    
+    ///
     /// Agile / qualité / MOA / UX dans `competences` ne doivent pas tirer le score à ~31.
     #[test]
     fn cas_open_soft_dans_competences_ne_dilue_pas() {
@@ -1533,21 +2059,26 @@ Pratiques Agile, intégration continue, code review
             soft_skills: vec![],
             experience: None,
             keywords: vec!["manuels d'usage".into(), "mise en production".into()],
+            ..StructuredListing::default()
         };
         let score = score_resume_imported_with_source(&resume, &offre, Some(source));
         assert!(
-            score.total >= 45,
-            "attendu ≥45 (plus de ~31), obtenu {} skills={:?} present={:?} missing={:?}",
+            score.total >= 40,
+            "attendu ≥40, obtenu {} skills={:?} present={:?} missing={:?}",
             score.total,
             score.skills,
             score.present,
             score.missing
         );
-        assert!(score.present.iter().any(|s| search_key(s).contains("angular")));
+        assert!(score
+            .present
+            .iter()
+            .any(|s| search_key(s).contains("angular")));
         // Java peut être manquant ou seulement transférable via Spring Boot — jamais un match JS.
-        assert!(
-            !score.present.iter().any(|s| search_key(s) == "javascript" && search_key(s) == "java"),
-        );
+        assert!(!score
+            .present
+            .iter()
+            .any(|s| search_key(s) == "javascript" && search_key(s) == "java"),);
         assert!(
             score.skills.unwrap_or(0) >= 40,
             "compétences dures après reclassement: {:?}",
@@ -1555,7 +2086,7 @@ Pratiques Agile, intégration continue, code review
         );
     }
 
-#[test]
+    #[test]
     fn cas_open_commentaire_aligne_score_pas_ecrase() {
         let resume = GeneratedResume {
             resume: "Développeur fullstack JavaScript / TypeScript avec 6 ans d'expérience.".into(),
@@ -1599,6 +2130,7 @@ Pratiques Agile, intégration continue, code review
                 "manuels d'usage".into(),
                 "cadrage MOA".into(),
             ],
+            ..StructuredListing::default()
         };
         let score = score_resume_imported_with_source(&resume, &offre, Some(source));
         assert!(
@@ -1618,7 +2150,7 @@ Pratiques Agile, intégration continue, code review
         );
     }
 
-#[test]
+    #[test]
     fn score_avec_texte_pdf_source_meme_si_json_pauvre() {
         let resume = GeneratedResume {
             resume: "Développeur".into(),
@@ -1644,6 +2176,7 @@ Pratiques Agile, intégration continue, code review
             soft_skills: vec![],
             experience: Some("3 ans".into()),
             keywords: vec![],
+            ..StructuredListing::default()
         };
         let without = score_resume_imported(&resume, &offre);
         let with = score_resume_imported_with_source(&resume, &offre, Some(source));
@@ -1659,7 +2192,7 @@ Pratiques Agile, intégration continue, code review
         assert!(with.total >= 40, "obtenu {}", with.total);
     }
 
-#[test]
+    #[test]
     fn cas_open_cv_alexandre_score_intermediaire() {
         let resume = GeneratedResume {
             resume: "Développeur fullstack JavaScript / TypeScript avec 6 ans d'expérience en agence. Mode régie Agile TMA Code review. Docker GitLab CI CI/CD.".into(),
@@ -1705,6 +2238,7 @@ Pratiques Agile, intégration continue, code review
                 "IA".into(),
                 "full stack".into(),
             ],
+            ..StructuredListing::default()
         };
         let score = score_resume_imported(&resume, &offre);
         assert_eq!(score.experience, Some(100), "6 ans ≥ 3 ans exigés");
@@ -1766,15 +2300,29 @@ Pratiques Agile, intégration continue, code review
     fn cas_open_score_intermediaire() {
         let mut profile = profile_rust();
         profile.identity.title = Some("Développeur Full Stack".into());
-        profile.identity.resume = Some(
-            "Développement d'applications web, tests et livraison continue.".into(),
-        );
+        profile.identity.resume =
+            Some("Développement d'applications web, tests et livraison continue.".into());
         profile.skills = vec![
-            Skill { name: "JavaScript".into(), description: Some("ES6+".into()) },
-            Skill { name: "TypeScript".into(), description: None },
-            Skill { name: "React".into(), description: Some("hooks, SPA".into()) },
-            Skill { name: "Node.js".into(), description: None },
-            Skill { name: "PostgreSQL".into(), description: None },
+            Skill {
+                name: "JavaScript".into(),
+                description: Some("ES6+".into()),
+            },
+            Skill {
+                name: "TypeScript".into(),
+                description: None,
+            },
+            Skill {
+                name: "React".into(),
+                description: Some("hooks, SPA".into()),
+            },
+            Skill {
+                name: "Node.js".into(),
+                description: None,
+            },
+            Skill {
+                name: "PostgreSQL".into(),
+                description: None,
+            },
         ];
         profile.experiences = vec![Experience {
             title: "Développeur Full Stack".into(),
@@ -1783,9 +2331,7 @@ Pratiques Agile, intégration continue, code review
             start_date: "2019-01".into(),
             end_date: None,
             current: true,
-            description: Some(
-                "Conception d'APIs, interfaces React, tests et CI/CD.".into(),
-            ),
+            description: Some("Conception d'APIs, interfaces React, tests et CI/CD.".into()),
         }];
 
         let offre = StructuredListing {
@@ -1808,6 +2354,7 @@ Pratiques Agile, intégration continue, code review
                 "API".into(),
                 "React".into(), // doublon compétence → ignoré côté ATS
             ],
+            ..StructuredListing::default()
         };
 
         let score = profile_score(&profile, &offre);
@@ -1817,8 +2364,14 @@ Pratiques Agile, intégration continue, code review
             score.total
         );
         assert!(score.present.iter().any(|s| s == "React"));
-        assert!(score.present.iter().any(|s| s == "Angular"), "Angular transférable via famille front");
-        assert!(score.missing.iter().any(|s| s == "Java"), "Java reste absent (pas JavaScript)");
+        assert!(
+            score.present.iter().any(|s| s == "Angular"),
+            "Angular transférable via famille front"
+        );
+        assert!(
+            score.missing.iter().any(|s| s == "Java"),
+            "Java reste absent (pas JavaScript)"
+        );
         assert!(score.skills.unwrap_or(0) >= 40);
         assert_eq!(score.experience, Some(100));
     }
@@ -1839,11 +2392,12 @@ Pratiques Agile, intégration continue, code review
                 soft_skills: vec![],
                 experience: None,
                 keywords: vec![],
+                ..StructuredListing::default()
             },
         );
         assert_eq!(score.missing, Vec::<String>::new());
         assert_eq!(score.present, vec!["LibreOffice Calc"]);
-        assert_eq!(score.skills, Some(40)); // crédit transférable
+        assert_eq!(score.skills, Some(45)); // crédit transférable, jamais équivalent exact
     }
 
     #[test]
@@ -1863,6 +2417,7 @@ Pratiques Agile, intégration continue, code review
                 soft_skills: vec![],
                 experience: Some("2 ans".into()),
                 keywords: vec!["soins".into()],
+                ..StructuredListing::default()
             },
         );
         assert!(!score.missing.is_empty());
@@ -1891,10 +2446,7 @@ Pratiques Agile, intégration continue, code review
             name: "Rust".into(),
             description: None,
         }];
-        let score = profile_score(
-            &profile,
-            &offre(vec!["Rust"], vec!["Rust", "CLI"], None),
-        );
+        let score = profile_score(&profile, &offre(vec!["Rust"], vec!["Rust", "CLI"], None));
         // ATS ne voit que CLI (Rust dédupliqué) — présence de CLI dans le résumé
         assert!(score.ats.is_some());
     }
@@ -1912,6 +2464,7 @@ Pratiques Agile, intégration continue, code review
                 soft_skills: vec![],
                 experience: None,
                 keywords: vec![],
+                ..StructuredListing::default()
             },
         );
         let loin = profile_score(
@@ -1922,9 +2475,273 @@ Pratiques Agile, intégration continue, code review
                 soft_skills: vec![],
                 experience: None,
                 keywords: vec![],
+                ..StructuredListing::default()
             },
         );
-        assert!(proche.total > loin.total, "{} vs {}", proche.total, loin.total);
+        assert!(
+            proche.total > loin.total,
+            "{} vs {}",
+            proche.total,
+            loin.total
+        );
     }
 
+    fn exigence(
+        name: &str,
+        category: RequirementCategory,
+        importance: RequirementImportance,
+    ) -> JobRequirement {
+        JobRequirement {
+            name: name.into(),
+            category,
+            importance,
+            mandatory: importance == RequirementImportance::Mandatory,
+            ..JobRequirement::default()
+        }
+    }
+
+    #[test]
+    fn commerce_titres_voisins_et_missions_donnent_une_bonne_correspondance() {
+        let mut profile = profile_rust();
+        profile.identity.title = Some("Conseiller de vente".into());
+        profile.identity.resume = Some("Accueil, conseil et relation client.".into());
+        profile.skills = vec![Skill {
+            name: "Encaissement".into(),
+            description: Some("Tenue de caisse".into()),
+        }];
+        profile.experiences[0].title = "Conseiller de vente".into();
+        profile.experiences[0].description = Some("Merchandising et conseil client".into());
+        let score = profile_score(
+            &profile,
+            &StructuredListing {
+                title: "Vendeur conseil".into(),
+                requirements: vec![
+                    exigence(
+                        "Vendeur conseil",
+                        RequirementCategory::Occupation,
+                        RequirementImportance::Important,
+                    ),
+                    exigence(
+                        "Accueil client",
+                        RequirementCategory::Responsibility,
+                        RequirementImportance::Important,
+                    ),
+                    exigence(
+                        "Conseil client",
+                        RequirementCategory::Responsibility,
+                        RequirementImportance::Important,
+                    ),
+                    exigence(
+                        "Encaissement",
+                        RequirementCategory::HardSkill,
+                        RequirementImportance::Important,
+                    ),
+                    exigence(
+                        "Gestion de rayon",
+                        RequirementCategory::Responsibility,
+                        RequirementImportance::Preferred,
+                    ),
+                ],
+                ..StructuredListing::default()
+            },
+        );
+        assert!(score.total >= 55, "score commerce: {score:?}");
+        assert!(score.breakdown.iter().any(|item| item.label == "Missions"));
+    }
+
+    #[test]
+    fn administratif_outil_voisin_reste_transferable_et_non_exact() {
+        let mut profile = profile_rust();
+        profile.identity.title = Some("Assistant administratif".into());
+        profile.identity.resume = Some("Gestion de dossiers et accueil.".into());
+        profile.skills = vec![Skill {
+            name: "LibreOffice Calc".into(),
+            description: None,
+        }];
+        let mut excel = exigence(
+            "Excel",
+            RequirementCategory::Tool,
+            RequirementImportance::Important,
+        );
+        excel.transferable_from = vec!["LibreOffice Calc".into()];
+        let score = profile_score(
+            &profile,
+            &StructuredListing {
+                title: "Assistant administratif".into(),
+                requirements: vec![
+                    exigence(
+                        "Assistant administratif",
+                        RequirementCategory::Occupation,
+                        RequirementImportance::Important,
+                    ),
+                    excel,
+                    exigence(
+                        "Gestion documentaire",
+                        RequirementCategory::Responsibility,
+                        RequirementImportance::Important,
+                    ),
+                    exigence(
+                        "Accueil",
+                        RequirementCategory::Responsibility,
+                        RequirementImportance::Important,
+                    ),
+                ],
+                ..StructuredListing::default()
+            },
+        );
+        let excel = score
+            .evaluations
+            .iter()
+            .find(|item| item.requirement == "Excel")
+            .unwrap();
+        assert_eq!(excel.match_kind, RequirementMatchKind::Transferable);
+        assert_eq!(excel.score, Some(TRANSFERABLE_CREDIT));
+        assert!(score.total >= 60, "score administratif: {score:?}");
+    }
+
+    #[test]
+    fn caces_obligatoire_absent_plafonne_le_score_sans_inventer() {
+        let mut profile = profile_rust();
+        profile.identity.title = Some("Préparateur de commandes".into());
+        profile.identity.resume = Some("Trois ans en préparation de commandes.".into());
+        profile.skills = vec![Skill {
+            name: "Préparation de commandes".into(),
+            description: None,
+        }];
+        let score = profile_score(
+            &profile,
+            &StructuredListing {
+                title: "Cariste".into(),
+                requirements: vec![
+                    exigence(
+                        "Cariste",
+                        RequirementCategory::Occupation,
+                        RequirementImportance::Important,
+                    ),
+                    exigence(
+                        "Préparation de commandes",
+                        RequirementCategory::Responsibility,
+                        RequirementImportance::Important,
+                    ),
+                    exigence(
+                        "CACES 3",
+                        RequirementCategory::License,
+                        RequirementImportance::Mandatory,
+                    ),
+                ],
+                ..StructuredListing::default()
+            },
+        );
+        assert!(score.total <= 35, "score cariste sans CACES: {score:?}");
+        assert!(score.missing.iter().any(|item| item == "CACES 3"));
+    }
+
+    #[test]
+    fn metiers_sans_rapport_restent_tres_faibles() {
+        let mut profile = profile_rust();
+        profile.identity.title = Some("Comptable fournisseurs".into());
+        profile.identity.resume = Some("Facturation et rapprochements bancaires.".into());
+        profile.skills = vec![Skill {
+            name: "Comptabilité fournisseurs".into(),
+            description: None,
+        }];
+        let score = profile_score(
+            &profile,
+            &StructuredListing {
+                title: "Développeur Java".into(),
+                requirements: vec![
+                    exigence(
+                        "Développeur Java",
+                        RequirementCategory::Occupation,
+                        RequirementImportance::Important,
+                    ),
+                    exigence(
+                        "Java",
+                        RequirementCategory::HardSkill,
+                        RequirementImportance::Important,
+                    ),
+                ],
+                ..StructuredListing::default()
+            },
+        );
+        assert!(score.total <= 10, "métiers sans rapport: {score:?}");
+    }
+
+    #[test]
+    fn exigences_repetees_ne_sont_comptees_qu_une_fois() {
+        let mut listing = StructuredListing {
+            title: "Cariste".into(),
+            requirements: vec![
+                exigence(
+                    "CACES 3",
+                    RequirementCategory::License,
+                    RequirementImportance::Mandatory,
+                ),
+                exigence(
+                    "CACES catégorie 3",
+                    RequirementCategory::Certification,
+                    RequirementImportance::Important,
+                ),
+            ],
+            ..StructuredListing::default()
+        };
+        listing.requirements[1].name = "CACES 3".into();
+        let score = profile_score(&profile_rust(), &listing);
+        assert_eq!(
+            score
+                .evaluations
+                .iter()
+                .filter(|item| item.requirement == "CACES 3")
+                .count(),
+            1
+        );
+    }
+
+    #[test]
+    fn recommandation_repetitive_ou_qui_ajoute_un_manque_est_ecartee() {
+        let resume = GeneratedResume {
+            resume: "Vendeur avec expérience en conseil client.".into(),
+            experiences: vec![],
+            skills: vec!["Conseil client".into()],
+            education: vec![],
+        };
+        let score = MatchScore {
+            missing: vec!["Management".into()],
+            evaluations: vec![RequirementEvaluation {
+                requirement: "Conseil client".into(),
+                category: RequirementCategory::Responsibility,
+                importance: RequirementImportance::Important,
+                match_kind: RequirementMatchKind::Exact,
+                score: Some(100),
+                evidence: Some("Conseil client".into()),
+            }],
+            ..MatchScore::default()
+        };
+        let mut analysis = AtsAnalysis {
+            recommendations: vec![
+                AtsRecommendation {
+                    section: AtsRecommendationSection::Profile,
+                    item_index: None,
+                    original_text: resume.resume.clone(),
+                    proposed_text: resume.resume.clone(),
+                    target_requirement: Some("Conseil client".into()),
+                    reason: "Répétition".into(),
+                    source_evidence: vec!["Conseil client".into()],
+                },
+                AtsRecommendation {
+                    section: AtsRecommendationSection::Profile,
+                    item_index: None,
+                    original_text: resume.resume.clone(),
+                    proposed_text: "Vendeur avec expérience en conseil client et management."
+                        .into(),
+                    target_requirement: Some("Management".into()),
+                    reason: "Ajout inventé".into(),
+                    source_evidence: vec!["Conseil client".into()],
+                },
+            ],
+            ..AtsAnalysis::default()
+        };
+        ground_ats_recommendations(&resume, &score, &mut analysis);
+        assert!(analysis.recommendations.is_empty());
+    }
 }

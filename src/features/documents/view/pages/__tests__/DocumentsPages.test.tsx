@@ -13,7 +13,12 @@ import { ResumeGeneratorPage } from "../ResumeGeneratorPage";
 import { ResumeAnalysisPage } from "../ResumeAnalysisPage";
 import { LetterWriterPage } from "../LettersPages";
 import { AppError } from "@/shared/types/app-error";
-import { aiService, useAiOperationStore } from "@/features/ai";
+import {
+  aiService,
+  type AiExecution,
+  type ImportedResumeAnalysis,
+  useAiOperationStore,
+} from "@/features/ai";
 
 const navigateMock = vi.hoisted(() => vi.fn());
 vi.mock("react-router-dom", async () => {
@@ -28,6 +33,32 @@ function wrapper({ children }: { children: ReactNode }) {
 
 function aiExecution<T>(output: T) {
   return { output, elapsed_ms: 18_400, tokens_used: 1_024 };
+}
+
+function emptyJobOffer(title: string) {
+  return {
+    title,
+    skills: [],
+    soft_skills: [],
+    experience: null,
+    keywords: [],
+    requirements: [],
+    location: null,
+  };
+}
+
+function emptyMatchScore(total: number) {
+  return {
+    total,
+    skills: null,
+    experience: null,
+    ats: null,
+    present: [],
+    missing: [],
+    breakdown: [],
+    evaluations: [],
+    critical_requirements_penalty: 0,
+  };
 }
 
 beforeEach(() => {
@@ -69,20 +100,13 @@ describe("analyse explicite d'un CV sélectionné", () => {
     const analyze = vi.spyOn(aiService, "analyzeResume").mockResolvedValue({
       output: {
         resume: { resume: "Profil", experiences: [], skills: [], education: [] },
-        job_offer: {
-          title: "Développeur",
-          skills: [],
-          soft_skills: [],
-          experience: null,
-          keywords: [],
-        },
+        job_offer: emptyJobOffer("Développeur"),
         score: {
-          total: 72,
-          skills: null,
-          experience: null,
-          ats: null,
-          present: [],
-          missing: [],
+          ...emptyMatchScore(72),
+          missing: ["Java"],
+          breakdown: [
+            { category: "occupation" as const, label: "Métier / fonction", score: 80, weight: 60 },
+          ],
         },
         analysis: { recap: "Analyse terminée", recommendations: [], content_recommendations: [] },
         method_used: "text" as const,
@@ -112,16 +136,14 @@ describe("analyse explicite d'un CV sélectionné", () => {
     expect(
       await screen.findByText("Analysé en 18,4 s · 1 024 tokens"),
     ).toBeInTheDocument();
+    expect(screen.getByText("Métier / fonction")).toBeInTheDocument();
+    expect(screen.getByText("Exigence absente : Java")).toBeInTheDocument();
+    expect(screen.queryByText("À appliquer dans l’éditeur de CV")).not.toBeInTheDocument();
   });
 
   it("masque le formulaire pendant l'analyse puis le restaure après un arrêt réel", async () => {
     vi.spyOn(aiService, "selectResumeFile").mockResolvedValue({ name: "cv.pdf" });
-    let resolveAnalysis: ((value: ReturnType<typeof aiExecution<{
-      resume: { resume: string; experiences: never[]; skills: never[]; education: never[] };
-      job_offer: { title: string; skills: never[]; soft_skills: never[]; experience: null; keywords: never[] };
-      score: { total: number; skills: null; experience: null; ats: null; present: never[]; missing: never[] };
-      analysis: { recap: string; recommendations: never[]; content_recommendations: never[] };
-    }>>) => void) | undefined;
+    let resolveAnalysis: ((value: AiExecution<ImportedResumeAnalysis>) => void) | undefined;
     vi.spyOn(aiService, "analyzeResume").mockReturnValue(
       new Promise((resolve) => { resolveAnalysis = resolve; }),
     );
@@ -155,8 +177,8 @@ describe("analyse explicite d'un CV sélectionné", () => {
     await act(async () => {
       resolveAnalysis?.(aiExecution({
         resume: { resume: "Résultat tardif", experiences: [], skills: [], education: [] },
-        job_offer: { title: "Dev", skills: [], soft_skills: [], experience: null, keywords: [] },
-        score: { total: 99, skills: null, experience: null, ats: null, present: [], missing: [] },
+        job_offer: emptyJobOffer("Dev"),
+        score: emptyMatchScore(99),
         analysis: { recap: "Analyse tardive", recommendations: [], content_recommendations: [] },
         method_used: "text" as const,
         fallback_used: false,
@@ -201,15 +223,8 @@ describe("échecs d'enregistrement", () => {
       content: {
         resume: { resume: "", experiences: [], skills: [], education: [] },
         analysis: { recap: "", recommendations: [], content_recommendations: [] },
-        job_offer: { title: "Dev", skills: [], soft_skills: [], experience: null, keywords: [] },
-        profile_score: {
-          total: 70,
-          skills: null,
-          experience: null,
-          ats: null,
-          present: [],
-          missing: [],
-        },
+        job_offer: emptyJobOffer("Dev"),
+        profile_score: emptyMatchScore(70),
       },
       created_at: "2026-08-30T00:00:00Z",
     });
@@ -492,8 +507,8 @@ describe("bibliothèque CV workspace", () => {
     const generation = {
       resume: { resume: "Résumé historique.", experiences: [], skills: [], education: [] },
       analysis: { recap: "", recommendations: [], content_recommendations: [] },
-      job_offer: { title: "Dev", skills: [], soft_skills: [], experience: null, keywords: [] },
-      profile_score: { total: 72, skills: null, experience: null, ats: null, present: [], missing: [] },
+      job_offer: emptyJobOffer("Dev"),
+      profile_score: emptyMatchScore(72),
       recommendation_error: null,
     };
     const prepared = workspaceFixture({ profile: "Document préparé à l'export." });
@@ -553,8 +568,8 @@ describe("décisions ATS et confirmation profil dans le générateur de CV", () 
     vi.spyOn(aiService, "generateResume").mockResolvedValue(aiExecution({
       resume: { resume: "", experiences: [], skills: [], education: [] },
       analysis: { recap: "", recommendations: [], content_recommendations: [] },
-      job_offer: { title: "Développeur", skills: [], soft_skills: [], experience: null, keywords: [] },
-      profile_score: { total: 60, skills: null, experience: null, ats: null, present: [], missing: [] },
+      job_offer: emptyJobOffer("Développeur"),
+      profile_score: emptyMatchScore(60),
       recommendation_error: null,
     }));
     const workspace = missingSkillWorkspace();
@@ -576,8 +591,8 @@ describe("décisions ATS et confirmation profil dans le générateur de CV", () 
     vi.spyOn(aiService, "generateResume").mockResolvedValue(aiExecution({
       resume: { resume: "", experiences: [], skills: [], education: [] },
       analysis: { recap: "", recommendations: [], content_recommendations: [] },
-      job_offer: { title: "Développeur", skills: [], soft_skills: [], experience: null, keywords: [] },
-      profile_score: { total: 60, skills: null, experience: null, ats: null, present: [], missing: [] },
+      job_offer: emptyJobOffer("Développeur"),
+      profile_score: emptyMatchScore(60),
       recommendation_error: null,
     }));
     vi.spyOn(documentsService, "prepareResume").mockResolvedValue(missingSkillWorkspace());

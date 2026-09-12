@@ -211,6 +211,27 @@ impl ValidateAiOutput for StructuredListing {
         if let Some(experience) = &self.experience {
             ensure_output_string(experience, "l'expérience requise")?;
         }
+        ensure_output_list(&self.requirements, "les exigences de l'offre")?;
+        for requirement in &self.requirements {
+            ensure_output_string(&requirement.name, "une exigence de l'offre")?;
+            ensure_output_list(
+                &requirement.transferable_from,
+                "les compétences transférables d'une exigence",
+            )?;
+            validate_strings(
+                requirement.transferable_from.iter().map(String::as_str),
+                "les compétences transférables d'une exigence",
+            )?;
+            if requirement.category.is_regulated() && !requirement.transferable_from.is_empty() {
+                return Err(AppError::Provider(
+                    "Une qualification réglementaire ne peut pas avoir d'équivalent transférable."
+                        .into(),
+                ));
+            }
+        }
+        if let Some(location) = &self.location {
+            ensure_output_string(location, "la localisation de l'offre")?;
+        }
         Ok(())
     }
 }
@@ -274,9 +295,17 @@ impl ValidateAiOutput for AtsAnalysis {
                 [
                     recommendation.original_text.as_str(),
                     recommendation.proposed_text.as_str(),
+                    recommendation.reason.as_str(),
                 ],
                 "une recommandation ATS",
             )?;
+            validate_strings(
+                recommendation.source_evidence.iter().map(String::as_str),
+                "les preuves d'une recommandation ATS",
+            )?;
+            if let Some(requirement) = &recommendation.target_requirement {
+                ensure_output_string(requirement, "l'exigence ciblée par une recommandation")?;
+            }
             ensure_recommendation_targetable(recommendation)?;
         }
         for recommendation in &self.content_recommendations {
@@ -451,6 +480,9 @@ mod tests {
             item_index,
             original_text: "Profil actuel".into(),
             proposed_text: "Profil reformulé".into(),
+            target_requirement: None,
+            reason: "Mettre en avant une preuve existante.".into(),
+            source_evidence: vec!["Profil actuel".into()],
         }
     }
 

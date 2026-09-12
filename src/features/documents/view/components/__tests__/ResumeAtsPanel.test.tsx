@@ -120,7 +120,15 @@ describe("ResumeAtsPanel", () => {
 
   it("explique pourquoi aucune recommandation n'est calculée sans offre", () => {
     const workspace = assistantWorkspace();
-    workspace.job_offer = { title: "", skills: [], soft_skills: [], experience: null, keywords: [] };
+    workspace.job_offer = {
+      title: "",
+      skills: [],
+      soft_skills: [],
+      experience: null,
+      keywords: [],
+      requirements: [],
+      location: null,
+    };
     workspace.content_recommendations = [];
     renderPanel(workspace);
     expect(screen.getByText("Offre absente")).toBeInTheDocument();

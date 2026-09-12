@@ -1,6 +1,6 @@
 import { formatAiSummary } from "@/shared/lib/duration";
 import { Button, EmptyState, ErrorBanner, Icon, PageHeader } from "@/shared/ui";
-import { AiStopButton } from "@/features/ai";
+import { AiStopButton, type MatchScore } from "@/features/ai";
 import { useResumeAnalysisViewModel } from "../../viewmodel/useResumeAnalysisViewModel";
 import { AiProgress, DocumentPanel, ScoreBadge } from "../components/DocumentUi";
 import { ChampOffre, HeaderBadge, labelSection, Screen, TexteNonVerifie } from "./documentPageSupport";
@@ -100,21 +100,41 @@ export function ResumeAnalysisPage() {
                     <p className="text-body leading-relaxed text-ink-muted">{vm.result.analysis.recap}</p>
                     <TexteNonVerifie />
                   </div>
+                  <ScoreBreakdown score={vm.result.score} />
                 </div>
               </DocumentPanel>
               <DocumentPanel title="Recommandations" icon="tips_and_updates">
-                {vm.result.analysis.recommendations.length ? (
+                {vm.result.analysis.recommendations.length || vm.result.score.missing.length ? (
                   <ul className="divide-y divide-line">
                     {vm.result.analysis.recommendations.map((recommendation, i) => (
                       <li key={i} className="flex flex-col gap-1.5 px-4 py-3">
                         <span className="text-label font-medium text-accent">
-                          {labelSection(recommendation.section)}
+                          {recommendation.target_requirement || labelSection(recommendation.section)}
                         </span>
+                        {recommendation.reason ? (
+                          <p className="text-body text-ink-muted">{recommendation.reason}</p>
+                        ) : null}
                         <p className="text-body text-ink-muted">{recommendation.proposed_text}</p>
+                        {recommendation.source_evidence.length ? (
+                          <p className="text-meta text-ink-faint">
+                            Preuve dans le CV : {recommendation.source_evidence.join(" · ")}
+                          </p>
+                        ) : null}
                         <span className="flex items-center gap-1.5 text-meta text-ink-faint">
                           <Icon name="info" size={14} />
                           À appliquer dans l’éditeur de CV
                         </span>
+                      </li>
+                    ))}
+                    {vm.result.score.missing.map((requirement) => (
+                      <li key={`missing-${requirement}`} className="flex flex-col gap-1.5 px-4 py-3">
+                        <span className="text-label font-medium text-warning">
+                          Exigence absente : {requirement}
+                        </span>
+                        <p className="text-body text-ink-muted">
+                          Cette exigence apparaît dans l’offre, mais aucune preuve n’a été trouvée
+                          dans le CV. Ne l’ajoutez que si vous la possédez réellement.
+                        </p>
                       </li>
                     ))}
                   </ul>
@@ -139,5 +159,39 @@ export function ResumeAnalysisPage() {
         </div>
       </div>
     </Screen>
+  );
+}
+
+function ScoreBreakdown({ score }: { score: MatchScore }) {
+  if (score.breakdown.length === 0) return null;
+  const totalWeight = score.breakdown.reduce((total, item) => total + item.weight, 0);
+
+  return (
+    <div className="space-y-2 border-t border-line pt-4 sm:col-span-2" aria-label="Détail du score ATS">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-label font-semibold text-ink">Détail du score</h3>
+        <span className="text-meta text-ink-faint">Pondération adaptée à l’offre</span>
+      </div>
+      <dl className="grid gap-x-5 gap-y-2 sm:grid-cols-2">
+        {score.breakdown.map((item) => {
+          const weight = totalWeight > 0 ? Math.round((item.weight / totalWeight) * 100) : 0;
+          return (
+            <div key={item.category} className="flex items-center justify-between gap-3">
+              <dt className="min-w-0 truncate text-label text-ink-muted">{item.label}</dt>
+              <dd className="flex-none tabular text-label font-medium text-ink">
+                {item.score} / 100
+                <span className="ml-1.5 font-normal text-ink-faint">· poids {weight} %</span>
+              </dd>
+            </div>
+          );
+        })}
+      </dl>
+      {score.critical_requirements_penalty > 0 ? (
+        <p className="flex items-center gap-1.5 text-meta text-danger-text">
+          <Icon name="warning" size={14} />
+          Exigence réglementaire obligatoire absente : −{score.critical_requirements_penalty} points.
+        </p>
+      ) : null}
+    </div>
   );
 }

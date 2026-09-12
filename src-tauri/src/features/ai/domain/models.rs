@@ -39,6 +39,13 @@ fn list_lenient<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Vec<String
     })
 }
 
+fn option_string_lenient<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<String>, D::Error> {
+    let value = string_lenient(deserializer)?;
+    Ok((!value.trim().is_empty()).then_some(value))
+}
+
 /// Retombe sur `Profile` pour toute valeur absente ou inconnue (ex. `"resume"` des anciennes
 /// réponses IA) : une section imprévue ne doit jamais faire échouer la désérialisation d'une
 /// analyse historique, seulement dégrader la recommandation vers la section sans exigence
@@ -79,6 +86,119 @@ pub struct StructuredListing {
         deserialize_with = "list_lenient"
     )]
     pub keywords: Vec<String>,
+    /// Exigences normalisées utilisées par le moteur ATS multi-métiers.
+    ///
+    /// Les champs historiques ci-dessus restent acceptés pour les petits modèles et les
+    /// documents enregistrés avant l'introduction de cette représentation.
+    #[serde(default, alias = "exigences")]
+    pub requirements: Vec<JobRequirement>,
+    #[serde(
+        default,
+        alias = "localisation",
+        deserialize_with = "option_string_lenient"
+    )]
+    pub location: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "ai.ts")]
+pub enum RequirementCategory {
+    Occupation,
+    HardSkill,
+    SoftSkill,
+    Responsibility,
+    Experience,
+    Education,
+    Certification,
+    License,
+    Language,
+    Tool,
+    Methodology,
+    Industry,
+    Location,
+    Availability,
+    #[default]
+    Other,
+}
+
+impl RequirementCategory {
+    #[must_use]
+    pub const fn is_regulated(self) -> bool {
+        matches!(self, Self::Education | Self::Certification | Self::License)
+    }
+}
+
+#[derive(
+    Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, TS,
+)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "ai.ts")]
+pub enum RequirementImportance {
+    Contextual,
+    Informational,
+    Optional,
+    Preferred,
+    #[default]
+    Important,
+    Mandatory,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "ai.ts")]
+pub struct JobRequirement {
+    #[serde(default, deserialize_with = "string_lenient")]
+    pub name: String,
+    #[serde(default)]
+    pub category: RequirementCategory,
+    #[serde(default)]
+    pub importance: RequirementImportance,
+    #[serde(default)]
+    pub mandatory: bool,
+    /// Durée minimale lorsque la catégorie est `experience`.
+    #[serde(default)]
+    pub minimum_years: Option<u8>,
+    /// Appellations voisines ou savoir-faire transférables proposés lors de la
+    /// structuration. Le score reste calculé localement et les qualifications
+    /// réglementaires n'utilisent jamais cette liste.
+    #[serde(default, deserialize_with = "list_lenient")]
+    pub transferable_from: Vec<String>,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "ai.ts")]
+pub enum RequirementMatchKind {
+    Exact,
+    Equivalent,
+    Transferable,
+    Partial,
+    Missing,
+    #[default]
+    Unknown,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "ai.ts")]
+pub struct RequirementEvaluation {
+    pub requirement: String,
+    pub category: RequirementCategory,
+    pub importance: RequirementImportance,
+    pub match_kind: RequirementMatchKind,
+    pub score: Option<u8>,
+    pub evidence: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "ai.ts")]
+pub struct AtsBreakdownItem {
+    pub category: RequirementCategory,
+    pub label: String,
+    pub score: u8,
+    pub weight: u16,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -91,6 +211,12 @@ pub struct MatchScore {
     pub ats: Option<u8>,
     pub present: Vec<String>,
     pub missing: Vec<String>,
+    #[serde(default)]
+    pub breakdown: Vec<AtsBreakdownItem>,
+    #[serde(default)]
+    pub evaluations: Vec<RequirementEvaluation>,
+    #[serde(default)]
+    pub critical_requirements_penalty: u8,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -173,6 +299,15 @@ pub struct AtsRecommendation {
         deserialize_with = "string_lenient"
     )]
     pub proposed_text: String,
+    /// Exigence de l'offre rendue plus visible par la reformulation.
+    #[serde(default, deserialize_with = "option_string_lenient")]
+    pub target_requirement: Option<String>,
+    /// Explication concrète affichée à l'utilisateur.
+    #[serde(default, deserialize_with = "string_lenient")]
+    pub reason: String,
+    /// Preuves recopiées du CV, jamais de l'offre seule.
+    #[serde(default, deserialize_with = "list_lenient")]
+    pub source_evidence: Vec<String>,
 }
 
 /// Écarte les recommandations inexploitables au lieu de faire échouer toute l'analyse.

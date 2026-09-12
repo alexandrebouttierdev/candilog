@@ -31,6 +31,7 @@ export type {
   CvAnalysisMethodUsed,
   GeneratedResume,
   ImportedResumeAnalysis,
+  MatchScore,
   ProfileImportAnalysis,
   ProfileImportProgress,
   ResumeGeneration,

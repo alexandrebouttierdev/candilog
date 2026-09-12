@@ -27,9 +27,23 @@ export type AtsAnalysis = { recap: string, recommendations: Array<AtsRecommendat
  */
 content_recommendations: Array<AtsContentRecommendation>, };
 
+export type AtsBreakdownItem = { category: RequirementCategory, label: string, score: number, weight: number, };
+
 export type AtsContentRecommendation = { item_id: string, reason: string, relevance: ContentRelevance, };
 
-export type AtsRecommendation = { section: AtsRecommendationSection, item_index: number | null, original_text: string, proposed_text: string, };
+export type AtsRecommendation = { section: AtsRecommendationSection, item_index: number | null, original_text: string, proposed_text: string, 
+/**
+ * Exigence de l'offre rendue plus visible par la reformulation.
+ */
+target_requirement: string | null, 
+/**
+ * Explication concrète affichée à l'utilisateur.
+ */
+reason: string, 
+/**
+ * Preuves recopiées du CV, jamais de l'offre seule.
+ */
+source_evidence: Array<string>, };
 
 /**
  * Section ciblée par une recommandation ATS. Le score et les suggestions libres du LLM ne
@@ -69,6 +83,18 @@ export type GeneratedResume = { resume: string, experiences: Array<GeneratedExpe
 export type ImportedResumeAnalysis = { resume: GeneratedResume, job_offer: StructuredListing, score: MatchScore, analysis: AtsAnalysis, method_used: CvAnalysisMethodUsed, fallback_used: boolean, };
 
 export type InstallManagedModelRequest = { model_id: ManagedModelId, };
+
+export type JobRequirement = { name: string, category: RequirementCategory, importance: RequirementImportance, mandatory: boolean, 
+/**
+ * Durée minimale lorsque la catégorie est `experience`.
+ */
+minimum_years: number | null, 
+/**
+ * Appellations voisines ou savoir-faire transférables proposés lors de la
+ * structuration. Le score reste calculé localement et les qualifications
+ * réglementaires n'utilisent jamais cette liste.
+ */
+transferable_from: Array<string>, };
 
 /**
  * Champ textuel isolé pour une relecture linguistique. L'identifiant est opaque pour le
@@ -111,7 +137,7 @@ export type ManagedOllamaStatus = { runtime_state: ManagedRuntimeState, runtime_
 
 export type ManagedRuntimeState = "not_installed" | "downloading" | "installing" | "starting" | "ready" | "stopping" | "stopped" | "updating" | "error";
 
-export type MatchScore = { total: number, skills: number | null, experience: number | null, ats: number | null, present: Array<string>, missing: Array<string>, };
+export type MatchScore = { total: number, skills: number | null, experience: number | null, ats: number | null, present: Array<string>, missing: Array<string>, breakdown: Array<AtsBreakdownItem>, evaluations: Array<RequirementEvaluation>, critical_requirements_penalty: number, };
 
 /**
  * Capacités du modèle réellement sélectionné (pas seulement du fournisseur).
@@ -144,13 +170,25 @@ export type ProfileImportRequest = { generation_id: string,
  */
 method: CvAnalysisMethod, };
 
+export type RequirementCategory = "occupation" | "hard_skill" | "soft_skill" | "responsibility" | "experience" | "education" | "certification" | "license" | "language" | "tool" | "methodology" | "industry" | "location" | "availability" | "other";
+
+export type RequirementEvaluation = { requirement: string, category: RequirementCategory, importance: RequirementImportance, match_kind: RequirementMatchKind, score: number | null, evidence: string | null, };
+
+export type RequirementImportance = "contextual" | "informational" | "optional" | "preferred" | "important" | "mandatory";
+
+export type RequirementMatchKind = "exact" | "equivalent" | "transferable" | "partial" | "missing" | "unknown";
+
 /**
  * Demande d'analyse d'un CV déjà choisi par `ai_select_resume_file`.
  *
  * Aucun chemin : le fichier analysé est celui que l'utilisateur a désigné dans le dialogue
  * natif, retenu côté Rust. Le frontend ne peut donc pas faire lire un autre document.
  */
-export type ResumeAnalysisRequest = { generation_id: string, job_offer: string, method?: CvAnalysisMethod, };
+export type ResumeAnalysisRequest = { generation_id: string, job_offer: string, 
+/**
+ * Préférence d'analyse. Absente ou `vision` : Vision si le modèle le permet, sinon Texte.
+ */
+method: CvAnalysisMethod, };
 
 export type ResumeGeneration = { resume: GeneratedResume, analysis: AtsAnalysis, job_offer: StructuredListing, profile_score: MatchScore, 
 /**
@@ -172,7 +210,14 @@ export type SelectedResumeFile = { name: string, };
 
 export type StoredBenchmarkResult = { provider: string, model: string, benchmark_version: number, score: number, total_ms: number, measured_at: string, };
 
-export type StructuredListing = { title: string, skills: Array<string>, soft_skills: Array<string>, experience: string | null, keywords: Array<string>, };
+export type StructuredListing = { title: string, skills: Array<string>, soft_skills: Array<string>, experience: string | null, keywords: Array<string>, 
+/**
+ * Exigences normalisées utilisées par le moteur ATS multi-métiers.
+ *
+ * Les champs historiques ci-dessus restent acceptés pour les petits modèles et les
+ * documents enregistrés avant l'introduction de cette représentation.
+ */
+requirements: Array<JobRequirement>, location: string | null, };
 
 /**
  * Charge CPU, RAM et VRAM (ou mémoire unifiée) à un instant donné.

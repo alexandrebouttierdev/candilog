@@ -18,19 +18,22 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tokio_util::sync::CancellationToken;
 
-const JOB_OFFER_SYSTEM: &str = r#"Extrais une offre d'emploi en JSON. Recopie uniquement les informations présentes, sans traduire ni inventer.
-Ne mélange pas le contexte entreprise (stack utilisée en interne, clients, présentation, « expertises reconnues ») avec les exigences du poste.
-Si le texte distingue une présentation d'entreprise et une section du type « Compétences techniques clés », « Profil recherché », « Prérequis » ou « Vous maîtrisez », ne mets dans competences QUE les exigences de cette section poste.
-"competences" = outils, technos, métiers, diplômes, permis, certifications EXIGÉS pour le poste (ignore Java/J2EE/C# cités seulement comme expertises de l'entreprise).
-"savoirEtre" = soft skills demandés.
-"experience" = durée ou niveau d'expérience demandé, sinon null.
-"motsCles" = missions, responsabilités et mots-clés ATS utiles, sans dupliquer les compétences déjà listées.
-Réponds exactement avec les clés {"titre":"","competences":[],"savoirEtre":[],"experience":null,"motsCles":[]}. Réponds uniquement en JSON."#;
+const JOB_OFFER_SYSTEM: &str = r#"Structure une offre d'emploi en JSON, pour n'importe quel métier. Recopie uniquement les informations présentes, sans traduire ni inventer.
+Sépare strictement les exigences du candidat du contexte de l'entreprise. Une technologie, un secteur ou une expertise seulement cités dans « à propos », les valeurs, les clients ou les activités du groupe ne sont pas des exigences.
+
+Catégories autorisées : occupation, hard_skill, soft_skill, responsibility, experience, education, certification, license, language, tool, methodology, industry, location, availability, other.
+Importance autorisée : mandatory (obligatoire/indispensable/exigé), important (demandé), preferred (souhaité/apprécié/un plus), optional, contextual, informational.
+Une exigence = une seule idée. Déduplique les répétitions. `minimum_years` est un entier uniquement pour l'expérience. `transferable_from` contient au maximum 4 appellations réellement voisines ou transférables ; laisse cette liste vide pour les diplômes, permis, habilitations et certifications réglementaires. Ne considère jamais une compétence transférable comme identique.
+
+Conserve aussi les champs simples pour compatibilité : `competences` pour les savoir-faire/outils/qualifications demandés, `savoirEtre`, `experience`, `motsCles` pour les missions sans doublon.
+Réponds uniquement avec ce JSON : {"titre":"","competences":[],"savoirEtre":[],"experience":null,"motsCles":[],"requirements":[{"name":"","category":"hard_skill","importance":"important","mandatory":false,"minimum_years":null,"transferable_from":[]}],"location":null}."#;
 const RESUME_SYSTEM: &str = r#"Adapte le socle d'un CV à une offre en JSON. Reformule uniquement les faits du profil, sans ajouter compétence, entreprise, diplôme ou expérience. Conserve toutes les expériences et formations. Laisse toujours competences vide : les contenus optionnels seront choisis ensuite par l'utilisateur. Réponds avec {"resume":"","experiences":[{"intitule":"","entreprise":"","description":""}],"competences":[],"formations":[{"diplome":"","etablissement":""}]}. JSON uniquement."#;
-const ATS_SYSTEM: &str = r#"Compare le CV et l'offre fournis. Réponds en français, uniquement en JSON : {"recap":"","recommendations":[{"section":"profile","item_index":null,"original_text":"","proposed_text":""}],"content_recommendations":[{"item_id":"","reason":"","relevance":"very_relevant"}]}.
+const ATS_SYSTEM: &str = r#"Compare le CV et l'offre fournis. Réponds en français, uniquement en JSON : {"recap":"","recommendations":[{"section":"profile","item_index":null,"original_text":"","proposed_text":"","target_requirement":"","reason":"","source_evidence":[]}],"content_recommendations":[{"item_id":"","reason":"","relevance":"very_relevant"}]}.
+Le champ `score_candilog` est le résultat déterministe et explicable calculé par l'application. Le récapitulatif doit être cohérent avec son total, son détail et ses correspondances ; ne calcule et n'annonce aucun autre score.
 Types d'action implicites : highlight_existing (mettre en avant un élément déjà présent), rewrite (reformuler un texte existant), missing_requirement (signaler une exigence absente SANS inventer de compétence), structure, keyword, clarify, remove_irrelevant.
 "section" vaut "profile" ou "experience". Pour "experience", "item_index" est l'indice (à partir de 0) de l'expérience du CV concernée ; laisse "item_index" à null pour "profile".
 "original_text" doit reprendre exactement un texte présent dans le CV fourni, "proposed_text" est la reformulation proposée — uniquement à partir de faits déjà présents dans le CV. N'invente jamais une compétence, un diplôme, une expérience ou un outil absent du CV.
+Chaque recommandation doit relier une `target_requirement` importante de l'offre, au moins une `source_evidence` réellement présente dans le CV, une `reason` concrète, puis une modification utile. Ne reformule pas simplement une phrase à l'identique. Si une exigence est absente, signale-la seulement dans le récapitulatif : ne crée pas de reformulation qui l'ajoute.
 Pour content_recommendations, sélectionne au maximum 8 identifiants du tableau contenu_profil, dans l'ordre de priorité. relevance vaut "very_relevant", "relevant" ou "secondary". Associe chaque recommandation à un élément important de l'offre et à une preuve dans le CV. Privilégie highlight_existing et rewrite. Ne renvoie pas tout le catalogue. N'invente aucun fait ni identifiant absent du CV, de l'offre ou du catalogue."#;
 const COVER_LETTER_SYSTEM: &str = r#"Tu prépares le plan d'une lettre de motivation française.
 
@@ -72,13 +75,13 @@ Règles :
 9. Si lettre_precedente + instruction sont fournis, ajuste la lettre en respectant les mêmes règles factuelles."#;
 
 const FRENCH_CORRECTION_SYSTEM: &str = r#"Tu es un correcteur professionnel de français. Corrige uniquement l'orthographe, la grammaire, les accords, la ponctuation, les coquilles et les formulations manifestement maladroites. Préserve strictement le sens, les faits, les noms propres, les chiffres, les dates, les coordonnées, les technologies et le niveau de précision. N'ajoute aucune information, ne supprime aucun fait et ne réécris pas un passage déjà correct. Chaque objet reçu contient un id opaque et un texte : renvoie exactement un objet par id, dans le même ordre, avec {"fields":[{"id":"","text":""}]}. Recopie le texte à l'identique si aucune correction n'est nécessaire. JSON uniquement."#;
-const PARSE_RESUME_SYSTEM: &str = r#"Structure le texte brut d'un CV sans traduire, reformuler ni inventer. Recopie toutes les compétences listées (langages, frameworks, devops, méthodes) et les projets avec leur stack. Réponds uniquement en JSON : {"resume":"","experiences":[{"intitule":"","entreprise":"","description":""}],"competences":[],"formations":[{"diplome":"","etablissement":""}]}"#;
+const PARSE_RESUME_SYSTEM: &str = r#"Structure le texte brut d'un CV sans traduire, reformuler ni inventer. Fonctionne pour tout métier. Recopie les intitulés, employeurs, missions, responsabilités, savoir-faire, outils, logiciels, machines, méthodes, langues, permis, habilitations, certifications et formations réellement écrits. Mets dans `competences` chaque élément professionnel explicite, pas seulement les technologies. Réponds uniquement en JSON : {"resume":"","experiences":[{"intitule":"","entreprise":"","description":""}],"competences":[],"formations":[{"diplome":"","etablissement":""}]}"#;
 
 const PARSE_RESUME_SYSTEM_VISION: &str = r#"Structure le CV fourni sans traduire, reformuler ni inventer.
 
-Le document visuel (images des pages) est la source principale. Utilise la mise en page (colonnes, sections COMPÉTENCES / EXPÉRIENCE / PROJETS) pour extraire compétences, méthodes (Agile, CI/CD, code review), stacks et descriptions.
+Le document visuel (images des pages) est la source principale. Utilise la mise en page et les rubriques pour extraire les intitulés, employeurs, missions, responsabilités, savoir-faire, outils, logiciels, machines, méthodes, langues, permis, habilitations, certifications, formations et descriptions, quel que soit le métier.
 
-Un texte brut PDF peut être fourni en complément. Liste TOUTES les compétences visibles et les projets avec leur stack (ex. Angular, React, Docker, GitLab CI).
+Un texte brut PDF peut être fourni en complément. Liste dans `competences` chaque élément professionnel explicite visible, pas seulement les technologies. N'invente aucune information illisible ou absente.
 
 Réponds uniquement en JSON : {"resume":"","experiences":[{"intitule":"","entreprise":"","description":""}],"competences":[],"formations":[{"diplome":"","etablissement":""}]}"#;
 /// Le gabarit décrit chaque valeur attendue au lieu de la laisser vide.
@@ -379,6 +382,7 @@ impl AiService {
         let context_ats = serde_json::json!({
             "cv": resume_base,
             "offre": job_offer,
+            "score_candilog": score,
             "contenu_profil": content_catalog,
         })
         .to_string();
@@ -392,6 +396,7 @@ impl AiService {
         )
         .await?;
         ground_content_recommendations(&content_catalog, &mut analysis);
+        ground_ats_recommendations(&resume, &score, &mut analysis);
         tokens = add_tokens(tokens, call_tokens);
         progres(notifier, &request.generation_id, "Terminé", None, tokens);
         Ok((
@@ -541,13 +546,8 @@ impl AiService {
             // Fallback dégradé si le modèle n'a pas produit de prose.
             cover_letter = render_grounded_letter(&catalog, &plan, &request)?;
         } else {
-            cover_letter = ground_cover_letter(
-                &cover_letter,
-                &evidence,
-                company,
-                job_title,
-                &cleaned_offer,
-            );
+            cover_letter =
+                ground_cover_letter(&cover_letter, &evidence, company, job_title, &cleaned_offer);
         }
         progres(&notifier, &id, "Relecture du français", None, tokens);
         let correction_request = LanguageCorrectionRequest {
@@ -702,7 +702,7 @@ impl AiService {
         // Score déterministe sur le PDF brut (pas seulement le JSON LLM).
         let score = score_resume_imported_with_source(&resume, &job_offer, Some(&text));
         progres(&notifier, &id, "Recommandations ATS", None, tokens);
-        let (analysis, call_tokens): (AtsAnalysis, Option<u32>) = cancel(
+        let (mut analysis, call_tokens): (AtsAnalysis, Option<u32>) = cancel(
             &token,
             generate_json(
                 provider,
@@ -712,6 +712,7 @@ impl AiService {
                         "cv": resume,
                         "cv_texte": text,
                         "offre": job_offer,
+                        "score_candilog": score,
                         "method_used": method_used,
                     })
                     .to_string(),
@@ -720,6 +721,7 @@ impl AiService {
             ),
         )
         .await?;
+        ground_ats_recommendations(&resume, &score, &mut analysis);
         tokens = add_tokens(tokens, call_tokens);
         progres(&notifier, &id, "Terminé", None, tokens);
         Ok(execution(
@@ -747,11 +749,7 @@ impl AiService {
         progres(notifier, id, "Structuration du CV (texte)", None, None);
         cancel(
             token,
-            generate_json(
-                provider,
-                &bloc_donnees("cv", text),
-                PARSE_RESUME_SYSTEM,
-            ),
+            generate_json(provider, &bloc_donnees("cv", text), PARSE_RESUME_SYSTEM),
         )
         .await
     }

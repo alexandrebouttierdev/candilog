@@ -168,6 +168,9 @@ fn workspace_avec_recommandation(original: &str, proposed: &str) -> ResumeWorksp
         item_index: None,
         original_text: original.into(),
         proposed_text: proposed.into(),
+        target_requirement: None,
+        reason: "Rendre le profil plus précis.".into(),
+        source_evidence: vec![original.into()],
     }];
     prepare_workspace(&profile(), generation, None).unwrap()
 }

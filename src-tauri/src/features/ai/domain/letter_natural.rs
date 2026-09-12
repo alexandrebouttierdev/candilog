@@ -1,6 +1,6 @@
 //! Pipeline lettres naturelles : nettoyage offre, pack d'évidences, grounding prose LLM.
 
-use super::cover_letter::{GroundedFact, GroundedFactKind, CoverLetterPlan};
+use super::cover_letter::{CoverLetterPlan, GroundedFact, GroundedFactKind};
 use super::normalization::contains_search_term;
 use super::{search_key, CoverLetterRequest, ValidateAiOutput};
 use crate::core::errors::{AppError, AppResult};
@@ -263,8 +263,7 @@ fn sentence_supported(block: &str, corpus: &str) -> bool {
         .iter()
         .filter(|t| {
             // corpus déjà en letter_match_key : comparaison directe ou sous-chaîne bornée.
-            corpus.split_whitespace().any(|w| w == *t)
-                || contains_search_term(corpus, t)
+            corpus.split_whitespace().any(|w| w == *t) || contains_search_term(corpus, t)
         })
         .count();
     hits * 2 >= tokens.len()
@@ -303,7 +302,10 @@ mod tests {
         }];
         let letter = "Madame, Monsieur,\n\nJ'ai une expérience en préparation de commandes chez Nova.\n\nJe possède le CACES 3 et un permis poids lourd depuis dix ans.\n\nCordialement,";
         let grounded = ground_cover_letter(letter, &evidence, "Acme", "Préparateur", "");
-        assert!(grounded.contains("préparation") || grounded.contains("Nova"), "{grounded}");
+        assert!(
+            grounded.contains("préparation") || grounded.contains("Nova"),
+            "{grounded}"
+        );
         assert!(!grounded.contains("CACES"), "{grounded}");
         assert!(!grounded.contains("poids lourd"), "{grounded}");
         assert!(grounded.contains("Cordialement"));
@@ -332,7 +334,10 @@ Relation client et négociation
 Égalité des chances
 RGPD";
         let cleaned = clean_offer_context(raw);
-        assert!(cleaned.contains("Commercial") || cleaned.contains("Relation"), "{cleaned}");
+        assert!(
+            cleaned.contains("Commercial") || cleaned.contains("Relation"),
+            "{cleaned}"
+        );
         assert!(!cleaned.contains("COM-99"), "{cleaned}");
         assert!(!cleaned.contains("RGPD"), "{cleaned}");
     }
@@ -352,7 +357,10 @@ Je suis infirmier diplômé d'État depuis 2018.
 
 Cordialement,";
         let grounded = ground_cover_letter(letter, &evidence, "CHU", "Aide-soignant", "");
-        assert!(grounded.contains("aide-soignant") || grounded.contains("Clinique"), "{grounded}");
+        assert!(
+            grounded.contains("aide-soignant") || grounded.contains("Clinique"),
+            "{grounded}"
+        );
         assert!(!grounded.contains("infirmier"), "{grounded}");
         assert!(!grounded.contains("2018"), "{grounded}");
     }

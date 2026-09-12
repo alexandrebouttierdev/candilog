@@ -2,8 +2,8 @@
 
 mod config;
 mod cover_letter;
-mod letter_natural;
 mod cv_analysis;
+mod letter_natural;
 mod managed_ollama;
 mod models;
 mod normalization;
@@ -17,19 +17,20 @@ mod validation;
 pub use crate::core::utils::text::search_key;
 pub use config::*;
 pub use cover_letter::*;
-pub use letter_natural::*;
 pub use cv_analysis::*;
+pub use letter_natural::*;
 pub use managed_ollama::*;
 pub use models::*;
 pub use profile_dates::normalize_profile_dates;
 pub use profile_grounding::{
-    completer_contacts_vides, completer_formations_manquantes, completer_identite_noms,
-    completer_descriptions_depuis_libelles, ground_imported_profile, ground_imported_profile_keep_free_text,
+    completer_contacts_vides, completer_descriptions_depuis_libelles,
+    completer_formations_manquantes, completer_identite_noms, ground_imported_profile,
+    ground_imported_profile_keep_free_text,
 };
 pub use scoring::{
-    ground_content_recommendations, ground_extracted_listing, ground_generated_resume,
-    ground_imported_resume, profile_content_catalog, profile_score, score_resume_imported, score_resume_imported_with_source,
-    ProfileContentCatalogEntry,
+    ground_ats_recommendations, ground_content_recommendations, ground_extracted_listing,
+    ground_generated_resume, ground_imported_resume, profile_content_catalog, profile_score,
+    score_resume_imported, score_resume_imported_with_source, ProfileContentCatalogEntry,
 };
 pub use system_resources::*;
 pub use user_benchmark::{

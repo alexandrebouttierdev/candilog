@@ -19,6 +19,15 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
   mots-clés dédupliqués des compétences, prompts offre / recommandations plus stricts
   (exigences vs contexte entreprise, pas d'invention). Tests Open + multi-domaines.
 
+- Score ATS : exigences structurées par catégorie, importance et caractère obligatoire ;
+  pondération dynamique, détail explicable par catégorie, correspondances exactes,
+  équivalentes, transférables ou partielles, et plafonnement des qualifications
+  réglementaires obligatoires absentes. Le même calcul suit les extractions Vision et Texte.
+
+- Analyse de CV : recommandations reliées à une exigence et à des preuves du CV ; les
+  reformulations répétitives ou ajoutant une exigence absente sont écartées, et les écarts
+  restent informatifs sans action d'ajout.
+
 - Analyse de CV : score déterministe enrichi avec le texte PDF brut (plus seulement le JSON LLM) ; mode Vision si le modèle le permet, avec repli Texte.
 
 - Analyse de CV : ne plus scorer l'expérience à 0 quand les dates manquent ;

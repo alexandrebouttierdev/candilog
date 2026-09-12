@@ -304,10 +304,9 @@ fn skill_from_value(value: serde_json::Value) -> Option<Skill> {
 fn projects_lenient<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Vec<Project>, D::Error> {
     let value = serde_json::Value::deserialize(deserializer)?;
     Ok(match value {
-        serde_json::Value::Array(items) => items
-            .into_iter()
-            .filter_map(project_from_value)
-            .collect(),
+        serde_json::Value::Array(items) => {
+            items.into_iter().filter_map(project_from_value).collect()
+        }
         serde_json::Value::String(name) if !name.trim().is_empty() => vec![Project {
             name,
             description: None,
@@ -345,10 +344,8 @@ fn project_from_value(value: serde_json::Value) -> Option<Project> {
                 ],
             );
             let url = map_get_text(&map, &["url", "lien", "link"]);
-            let technologies = map_get_text(
-                &map,
-                &["technologies", "techno", "stack", "tech", "outils"],
-            );
+            let technologies =
+                map_get_text(&map, &["technologies", "techno", "stack", "tech", "outils"]);
             Some(Project {
                 name,
                 description,
@@ -361,10 +358,7 @@ fn project_from_value(value: serde_json::Value) -> Option<Project> {
 }
 
 /// Lit la première clé présente (comparaison insensible à la casse).
-fn map_get_text(
-    map: &serde_json::Map<String, serde_json::Value>,
-    keys: &[&str],
-) -> Option<String> {
+fn map_get_text(map: &serde_json::Map<String, serde_json::Value>, keys: &[&str]) -> Option<String> {
     for wanted in keys {
         for (key, value) in map {
             if key.eq_ignore_ascii_case(wanted) {
@@ -444,7 +438,6 @@ fn text_from_value(value: serde_json::Value) -> String {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -477,8 +470,7 @@ mod tests {
 
     #[test]
     fn accepte_un_projet_ecrit_comme_une_chaine() {
-        let profile: Profile =
-            serde_json::from_str(r#"{"projets":["Portfolio perso"]}"#).unwrap();
+        let profile: Profile = serde_json::from_str(r#"{"projets":["Portfolio perso"]}"#).unwrap();
         assert_eq!(profile.projects[0].name, "Portfolio perso");
         assert!(profile.projects[0].description.is_none());
     }

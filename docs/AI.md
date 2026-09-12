@@ -195,6 +195,28 @@ fragment dans sa mise en forme existante.
 Le score ATS affiché est toujours le calcul déterministe Rust (`profile_score` /
 `score_resume_imported`, `domain/scoring.rs`), jamais le chiffre renvoyé par le modèle.
 
+L'extraction de l'offre produit des `JobRequirement` multi-métiers : catégorie (fonction,
+savoir-faire, mission, outil, méthode, diplôme, certification, permis/habilitation, langue,
+secteur, localisation…), importance, caractère obligatoire, durée minimale et éventuelles
+appellations transférables. Le modèle structure ces données, puis Rust les recadre sur le
+texte de l'offre, retire le contexte d'entreprise et les doublons, et calcule chaque
+`RequirementEvaluation`. Une réponse ancienne ou incomplète reste compatible grâce aux
+champs historiques `skills`, `soft_skills`, `experience` et `keywords`.
+
+La pondération dépend des exigences réellement présentes et de leur importance. Les
+catégories absentes ne comptent pas. Un match peut être exact, équivalent, transférable,
+partiel, manquant ou inconnu ; une valeur inconnue est exclue au lieu de devenir un zéro.
+Les diplômes, certifications, permis et habilitations réglementaires obligatoires ne sont
+jamais transférables et leur absence peut plafonner le résultat à 35. `MatchScore.breakdown`
+expose uniquement les catégories utiles, avec leur poids, et
+`critical_requirements_penalty` rend visible un éventuel plafonnement.
+
+Dans **Analyse de CV**, cette logique reçoit indifféremment la structure issue du mode
+Vision ou du mode Texte. Le texte PDF brut complète le JSON lorsque l'extracteur en dispose,
+mais ne remplace pas les contrôles de grounding. Le score et ses évaluations sont ensuite
+transmis au prompt de commentaire : le modèle doit expliquer le résultat Candilog, sans
+inventer ni recalculer un autre score.
+
 L'exigence d'expérience est lue **à côté d'une mention d'année**, et non comme le premier
 entier du texte : « Bac+3, 5 ans d'expérience » demande cinq ans, pas trois. Une fourchette
 vaut par son minimum — « 2 à 5 ans » n'écarte pas un profil de deux ans.
@@ -241,6 +263,12 @@ Chaque recommandation du modèle (`AtsRecommendation`) cible une section **ferm�
 `validate_ai_output` rejette une recommandation mal ciblée (profil avec indice, expérience
 sans indice, indice hors limites). Le champ `impact` n'existe plus : le modèle ne déclare
 aucun gain de score.
+
+Une recommandation relie désormais l'exigence ciblée, sa raison et les preuves recopiées du
+CV à la reformulation. `ground_ats_recommendations` écarte les répétitions, les cibles qui ne
+correspondent plus au document et toute proposition qui introduit une exigence identifiée
+comme absente. Un écart reste un avertissement sans action ; il n'est jamais transformé en
+bouton d'ajout.
 
 Dans l'éditeur, chaque recommandation applicable devient une `ResumeProposal`. Son **gain**
 (`proposal.gain`) est simulé localement par `simulate_gain` sur une copie du document
