@@ -145,13 +145,44 @@ describe("écran Candidatures — sélection multiple", () => {
 
     await userEvent.click(screen.getByRole("checkbox", { name: "Cocher CAN-142" }));
     await userEvent.click(screen.getByRole("checkbox", { name: "Cocher CAN-139" }));
-    expect(screen.getByText("2 cochées")).toBeInTheDocument();
+    const barre = screen.getByRole("toolbar", { name: "Actions sur les candidatures cochées" });
+    expect(within(barre).getByText("2 candidatures sélectionnées")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Supprimer" }));
+    await userEvent.click(within(barre).getByRole("button", { name: /Supprimer/ }));
     const dialog = screen.getByRole("alertdialog", { name: "Supprimer 2 candidatures ?" });
     await userEvent.click(within(dialog).getByRole("button", { name: /Supprimer/ }));
 
     await waitFor(() => expect(supprimer).toHaveBeenCalledTimes(2));
+  });
+});
+
+describe("écran Candidatures — actions groupées", () => {
+  it("change le statut de toutes les candidatures cochées", async () => {
+    const changer = vi.spyOn(applicationService, "changeStatus").mockImplementation((id, status) =>
+      Promise.resolve({ ...cand("Développeur"), id, status }),
+    );
+    render(<ApplicationsPage view="list" />, { wrapper });
+    await screen.findByText("CAN-142");
+
+    await userEvent.click(screen.getByRole("checkbox", { name: "Cocher CAN-142" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Cocher CAN-139" }));
+    await userEvent.keyboard("s");
+    await userEvent.click(await screen.findByRole("menuitem", { name: /Entretien/ }));
+
+    await waitFor(() => expect(changer).toHaveBeenCalledTimes(2));
+    expect(changer).toHaveBeenCalledWith(expect.any(String), "ENTRETIEN");
+  });
+
+  it("décoche tout avec Échap", async () => {
+    render(<ApplicationsPage view="list" />, { wrapper });
+    await screen.findByText("CAN-142");
+
+    await userEvent.click(screen.getByRole("checkbox", { name: "Cocher CAN-142" }));
+    expect(screen.getByRole("toolbar", { name: "Actions sur les candidatures cochées" })).toBeInTheDocument();
+    (document.activeElement as HTMLElement | null)?.blur();
+    await userEvent.keyboard("{Escape}");
+
+    expect(screen.queryByRole("toolbar", { name: "Actions sur les candidatures cochées" })).not.toBeInTheDocument();
   });
 });
 

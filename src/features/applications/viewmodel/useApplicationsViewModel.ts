@@ -133,6 +133,13 @@ export function useApplicationsViewModel(controlledView?: TrackingView) {
     queryKey: [...APPLICATIONS_KEY, "repartition", { filter }],
     queryFn: () => applicationService.breakdown(filter),
   });
+  // Total sans aucun critère, pour le décompte « 3 / 24 » de la barre d'outils. Même clé
+  // que le décompte de la navigation : une seule requête pour les deux.
+  const overall = useQuery({
+    queryKey: [...APPLICATIONS_KEY, "navigation"],
+    queryFn: () =>
+      applicationService.breakdown({ ...EMPTY_FILTER, search: "", sort: "date", descending: true, ids: [] }),
+  });
 
   // Le détail est chargé par son identifiant, pas cherché dans `items` : une fiche ouverte
   // depuis le Dashboard, ou restée sélectionnée après un changement de page, de filtre ou
@@ -192,6 +199,21 @@ export function useApplicationsViewModel(controlledView?: TrackingView) {
       await invalidate();
       const label = Statuses.find((status) => status.value === application.status)?.label ?? application.status;
       notify({ tone: "success", title: `${formatReference(application.reference_number)} → ${label}` });
+    },
+    onError: reportFailure("Changement de statut impossible"),
+  });
+
+  const changementStatusMultiple = useMutation({
+    mutationFn: async (params: { ids: readonly string[]; status: ApplicationStatus }) => {
+      for (const id of params.ids) {
+        await applicationService.changeStatus(id, params.status);
+      }
+      return params.ids.length;
+    },
+    onSuccess: async (count, params) => {
+      await invalidate();
+      const label = Statuses.find((status) => status.value === params.status)?.label ?? params.status;
+      notify({ tone: "success", title: `${count} candidature${count > 1 ? "s" : ""} → ${label}` });
     },
     onError: reportFailure("Changement de statut impossible"),
   });
@@ -337,6 +359,9 @@ export function useApplicationsViewModel(controlledView?: TrackingView) {
     kanbanColumns,
     kanbanPages,
     total: totalKanban,
+    overallTotal: overall.data
+      ? overall.data.pending + overall.data.followed_up + overall.data.interview + overall.data.rejected
+      : null,
     groupLimits,
     search,
     setSearch,
@@ -370,6 +395,7 @@ export function useApplicationsViewModel(controlledView?: TrackingView) {
     create: creation.mutateAsync,
     update: modification.mutateAsync,
     changeStatus: changementStatus.mutateAsync,
+    changeStatusMany: changementStatusMultiple.mutateAsync,
     delete: suppression.mutateAsync,
     duplicate: duplication.mutateAsync,
     deleteMany: suppressionMultiple.mutateAsync,

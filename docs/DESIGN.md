@@ -213,7 +213,7 @@ les écrans v1 le temps de leur migration.
 
 Réutiliser la recette du voisin plutôt que d’en inventer une.
 
-### Liste filtrée (Candidatures, Entreprises, Réseau)
+### Liste filtrée (Entreprises, Réseau)
 
 ```
 PageHeader (titre + sous-titre, sans search ni primary si la barre les porte)
@@ -231,7 +231,7 @@ contenu (Kanban/table ou MasterList + fiche)
 - Action primaire (« Nouvelle », « Nouveau contact ») **dans** `FilterBar.actions`, pas dans le `PageHeader`.
 - Vide + critères : « Aucun résultat » + bouton Tout effacer.
 
-Références : `ApplicationFilters`, `CompanyFilters`, `ContactFilters`.
+Références : `CompanyFilters`, `ContactFilters` (Candidatures : voir ci-dessous).
 
 ### Maître-détail (Entreprises, Réseau)
 
@@ -241,23 +241,38 @@ Références : `ApplicationFilters`, `CompanyFilters`, `ContactFilters`.
 - Pagination : `Pager` dense dans le pied de liste — dix fiches par page pour Entreprises
   (`COMPANIES_PAGE_SIZE`), `PAGE_SIZE` ailleurs.
 
-### Table / Kanban (Candidatures)
+### Candidatures v2 (Liste, Kanban)
 
-- `FilterBar` identique.
-- Liste : `DataTable` + `CellIdentity` + `StatusPill` + `Pager`.
-- Kanban : colonnes denses, chacune paginée indépendamment côté SQLite par `ColumnPager` ;
-  sélection multiple → actions dans la FilterBar (pas une barre flottante SaaS).
-- Fiche : `Inspector` (380 px, redimensionnable 320–460, glass), rangées `InspectorRow`.
+```
+Barre d'outils 38 px : puces · + Filtre F · Tout effacer ……… n / total · Rechercher / · CSV · Ajouter N
+contenu (liste groupée par statut ou Kanban) + inspecteur 380 px (flottant sous 1060 px)
+barre groupée 40 px dès qu'une case est cochée
+```
 
-### Tableau de bord (Aujourd’hui)
+- **Puces** (`ApplicationToolbar`) : une par critère, « Champ est / n'est pas Valeurs ».
+  Un clic inverse la condition (`excluded` côté backend), la croix retire le critère. Les
+  bornes (heures, période d'envoi) ne s'inversent pas.
+- **« + Filtre »** (`ApplicationFilterMenu`, sur `Menu`) : deux niveaux, champ puis valeur ;
+  `←` revient aux champs. Tous les critères backend y figurent, y compris les critères fins
+  de la v1 (domaine, type et taille d'entreprise, secteur, régime, heures, poste, ville,
+  période). Une saisie invalide est signalée dans le menu et n'est jamais appliquée.
+- Recherche : `/` y place le focus, `Échap` l'efface puis la quitte.
+- **Barre groupée** (`BulkBar`) : changer le statut (`S`), exporter en CSV (`⌘E`),
+  supprimer (`⌘⌫`), désélectionner (`Échap`). Elle agit sur les cases cochées, jamais sur
+  la seule fiche ouverte.
+- **Kanban** : colonnes élastiques 236–340 px sur `bg-group`, défilement horizontal ;
+  bandeaux « sans réponse depuis plus de 14 jours » et « entretien aujourd'hui » ; cartes
+  compactes (référence, échéance, intitulé, entreprise, contrat, date) ; chaque colonne est
+  paginée côté SQLite (`ColumnPager`). Un changement de statut affiche `CAN-142 → Entretien`.
 
-- Blocs sur `bg-surface` dans des `TodayCard` (`analytics/view/components/TodayUi.tsx`) :
-  intitulé en eyebrow, pastille de compte ou action à droite, contenu dessous. Pas de
-  bandes posées à même le fond de page ni de filet vertical entre les colonnes.
-- Bandeau de compteurs pleine largeur, puis deux colonnes : `Prochainement` et `À faire`
-  à gauche, `Candidatures récentes`, `Activité` et `Pipeline` à droite.
-- Chaque panneau est une région nommée : `aria-label` égal à son intitulé.
-- Bureau entièrement vide : `TodayEmpty` prend l’écran, sans panneau.
+### Aujourd’hui
+
+- Bloc centré de 1 180 px : titre serif de la date, résumé mono, puis trois horizons (en
+  retard, aujourd'hui, cette semaine) sur `bg-group` ; lignes de 44 px (34 px pour la
+  semaine). `⏎` fait la relance focalisée, `R` la reporte.
+- Colonne Situation de 290 px (dès 1060 px) : répartition des statuts, 30 derniers jours,
+  candidatures sans réponse.
+- Base neuve : « Votre suivi commence ici » ; rien de dû : « Rien à faire aujourd'hui ».
 
 ### Graphiques (Aujourd’hui, Analyses)
 

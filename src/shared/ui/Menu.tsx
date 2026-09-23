@@ -53,6 +53,7 @@ export function Menu({
   label,
   width = 236,
   header,
+  onBack,
 }: {
   open: boolean;
   anchor: MenuAnchor | null;
@@ -63,6 +64,8 @@ export function Menu({
   width?: number;
   /** Contenu fixe au-dessus des entrées (retour de sous-niveau, titre). */
   header?: ReactNode;
+  /** Retour au niveau précédent : `←` ou `⌫`, hors saisie dans un champ de l'en-tête. */
+  onBack?: () => void;
 }) {
   const surface = useRef<HTMLDivElement>(null);
   const actives = entries.filter((entry): entry is MenuItem => entry.kind === "item" && !entry.disabled);
@@ -135,6 +138,13 @@ export function Menu({
         } else if (event.key === "ArrowUp") {
           event.preventDefault();
           deplacer(-1);
+        } else if (
+          onBack &&
+          (event.key === "ArrowLeft" || event.key === "Backspace") &&
+          !(event.target instanceof HTMLInputElement)
+        ) {
+          event.preventDefault();
+          onBack();
         }
       }}
       style={{

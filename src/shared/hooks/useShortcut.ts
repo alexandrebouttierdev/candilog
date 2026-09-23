@@ -1,6 +1,9 @@
 import { useEffect, useRef } from "react";
 import { hasOpenSurface } from "./useDismissable";
 
+/** Champs `<input>` qui ne reçoivent pas de texte : un raccourci à une lettre y reste actif. */
+const NON_TEXT_INPUTS = new Set(["checkbox", "radio", "range", "button", "submit", "reset", "color", "file"]);
+
 /**
  * La frappe vise-t-elle un champ ? Un raccourci à une lettre ne doit jamais voler la
  * saisie : `N` tapé dans un champ reste un « n ».
@@ -8,10 +11,10 @@ import { hasOpenSurface } from "./useDismissable";
 export function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   return (
-    target instanceof HTMLInputElement ||
+    (target instanceof HTMLInputElement && !NON_TEXT_INPUTS.has(target.type)) ||
     target instanceof HTMLTextAreaElement ||
     target instanceof HTMLSelectElement ||
-    target.isContentEditable
+    target.isContentEditable === true
   );
 }
 

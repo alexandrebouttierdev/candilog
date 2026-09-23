@@ -8,7 +8,7 @@ import { Statuses } from "../../model/statuses";
 import { formatReference } from "../../model/presentation";
 import { EMPTY_FILTER } from "../../model/schemas/application-filter.schema";
 import { ApplicationFormModal } from "../components/ApplicationFormModal";
-import { ApplicationFilters } from "../components/ApplicationFilters";
+import { ApplicationToolbar } from "../components/ApplicationToolbar";
 import { ApplicationGroupList } from "../components/ApplicationGroupList";
 import type { Anchor } from "../components/ApplicationGroupList";
 import { ApplicationInspector } from "../components/ApplicationInspector";
@@ -16,6 +16,7 @@ import { DeleteApplicationDialog } from "../components/DeleteApplicationDialog";
 import { applicationMenu } from "../components/applicationActions";
 import type { ApplicationHandlers } from "../components/applicationActions";
 import { KanbanBoard } from "../components/KanbanBoard";
+import { BulkBar } from "../components/BulkBar";
 import { FollowUpFormModal } from "@/features/followups";
 import { AppError } from "@/shared/types/app-error";
 import { PATHS } from "@/shared/lib/paths";
@@ -82,7 +83,9 @@ export function ApplicationsPage({ view }: { view?: TrackingView } = {}) {
   const [floating, setFloating] = useState(false);
 
   const selection = vm.selection;
-  const isFresh = !vm.isLoading && vm.total === 0 && !vm.search && vm.activeFilterCount === 0;
+  // Une erreur de chargement n'est pas une base neuve : `total` vaut alors 0 sans rien dire.
+  const isFresh =
+    !vm.isLoading && !vm.error && vm.total === 0 && !vm.search && vm.activeFilterCount === 0;
   const floatingOpen = !wide && floating && selection !== null;
   useDismissable({ open: floatingOpen, onDismiss: () => setFloating(false) });
 
@@ -151,17 +154,56 @@ export function ApplicationsPage({ view }: { view?: TrackingView } = {}) {
       entries: applicationMenu(application, handlers),
     });
 
-  // Raccourcis d'écran sur la candidature sélectionnée. Ils se taisent pendant une saisie
-  // ou quand une surface est ouverte (`useShortcut`).
+  const checked = [...checkedIds];
+
+  /** Exporte le filtre courant, ou uniquement les lignes cochées. */
+  const exportRows = async () => {
+    const ids = [...checkedIds];
+    // Les identifiants cochés suffisent : les combiner au filtre courant exclurait une
+    // ligne sélectionnée puis masquée par une recherche ou un statut.
+    const filter =
+      ids.length > 0
+        ? { ...EMPTY_FILTER, sort: vm.sort, descending: vm.descending, search: "", ids }
+        : vm.filter;
+    await vm.exportCsv(filter);
+  };
+
+  /** Statut commun appliqué à toutes les candidatures cochées. */
+  const bulkStatusMenu = (anchor: Anchor) =>
+    setMenu({
+      label: `Statut de ${checked.length} candidatures`,
+      anchor,
+      entries: [
+        { kind: "section", id: "titre", label: "Changer le statut" },
+        ...Statuses.map(
+          (status): MenuEntry => ({
+            kind: "item",
+            id: status.value,
+            label: status.label,
+            leading: <StatusGlyph tone={status.glyph} />,
+            onSelect: () => void vm.changeStatusMany({ ids: checked, status: status.value }),
+          }),
+        ),
+      ],
+    });
+
+  // Raccourcis d'écran : sur les candidatures cochées s'il y en a, sinon sur la candidature
+  // sélectionnée. Ils se taisent pendant une saisie ou quand une surface est ouverte.
   const onSelection = (run: (application: Application) => void) => () => {
     if (selection) run(selection);
   };
   useShortcut("n", () => openCreate());
-  useShortcut("s", onSelection((application) => statusMenu(application, centre())));
+  useShortcut("s", () =>
+    checked.length > 0 ? bulkStatusMenu(centre()) : onSelection((application) => statusMenu(application, centre()))(),
+  );
   useShortcut("r", onSelection(handlers.scheduleFollowUp));
   useShortcut("mod+enter", onSelection(handlers.edit));
   useShortcut("mod+d", onSelection(handlers.duplicate));
-  useShortcut("mod+backspace", onSelection(handlers.remove));
+  useShortcut("mod+backspace", () =>
+    checked.length > 0 ? setPendingBulkDelete(checked) : onSelection(handlers.remove)(),
+  );
+  useShortcut("mod+e", () => void exportRows());
+  useShortcut("escape", () => setCheckedIds(new Set()), { enabled: checked.length > 0 });
 
   const selectionLabel = selection ? formatReference(selection.reference_number) : "";
   const on = (run: (application: Application) => void) => () => {
@@ -203,17 +245,6 @@ export function ApplicationsPage({ view }: { view?: TrackingView } = {}) {
     });
   };
 
-  /** Exporte le filtre courant, ou uniquement les lignes cochées. */
-  const exportRows = async () => {
-    const ids = [...checkedIds];
-    // Les identifiants cochés suffisent : les combiner au filtre courant exclurait une
-    // ligne sélectionnée puis masquée par une recherche ou un statut.
-    const filter =
-      ids.length > 0
-        ? { ...EMPTY_FILTER, sort: vm.sort, descending: vm.descending, search: "", ids }
-        : vm.filter;
-    await vm.exportCsv(filter);
-  };
 
   const filtersActive = vm.search !== "" || vm.activeFilterCount > 0;
   const inspector = selection ? (
@@ -230,29 +261,19 @@ export function ApplicationsPage({ view }: { view?: TrackingView } = {}) {
 
   return (
     <div className="flex h-full flex-col">
-      <ApplicationFilters
-        search={vm.search}
-        onSearch={vm.setSearch}
+      <ApplicationToolbar
         filters={vm.filters}
-        count={vm.activeFilterCount}
-        total={vm.isLoading ? null : vm.total}
         onApply={vm.applyFilters}
         onReset={vm.resetFilters}
+        search={vm.search}
+        onSearch={vm.setSearch}
+        count={
+          filtersActive && !vm.isLoading && vm.overallTotal !== null
+            ? { filtered: vm.total, total: vm.overallTotal }
+            : null
+        }
         actions={
           <>
-            {checkedIds.size > 0 ? (
-              <>
-                <span className="text-small font-medium text-tx">
-                  {checkedIds.size} cochée{checkedIds.size > 1 ? "s" : ""}
-                </span>
-                <Button variant="ghost" size="compact" onClick={() => setCheckedIds(new Set())}>
-                  Tout décocher
-                </Button>
-                <Button variant="danger" size="compact" onClick={() => setPendingBulkDelete([...checkedIds])}>
-                  Supprimer
-                </Button>
-              </>
-            ) : null}
             <Button size="compact" disabled={vm.isExporting} onClick={() => void exportRows()}>
               <LineIcon name="export-csv" size={13} />
               CSV
@@ -365,9 +386,12 @@ export function ApplicationsPage({ view }: { view?: TrackingView } = {}) {
                 onKey: (application, event) => {
                   const mod = event.metaKey || event.ctrlKey;
                   const key = event.key.toLowerCase();
+                  const bulk = checked.length > 0;
                   if (key === "enter" && mod) handlers.edit(application);
                   else if (key === "enter") handlers.open(application);
+                  else if (key === "s" && !mod && bulk) bulkStatusMenu(centre());
                   else if (key === "s" && !mod) statusMenu(application, centre());
+                  else if ((key === "backspace" || key === "delete") && mod && bulk) setPendingBulkDelete(checked);
                   else if (key === "r" && !mod) handlers.scheduleFollowUp(application);
                   else if (key === "d" && mod) handlers.duplicate(application);
                   else if ((key === "backspace" || key === "delete") && mod) handlers.remove(application);
@@ -396,6 +420,17 @@ export function ApplicationsPage({ view }: { view?: TrackingView } = {}) {
           </>
         ) : null}
       </div>
+
+      {checked.length > 0 ? (
+        <BulkBar
+          count={checked.length}
+          busy={vm.isDeleting || vm.isExporting}
+          onStatus={bulkStatusMenu}
+          onExport={() => void exportRows()}
+          onDelete={() => setPendingBulkDelete(checked)}
+          onClear={() => setCheckedIds(new Set())}
+        />
+      ) : null}
 
       <ApplicationFormModal
         open={form.isOpen}

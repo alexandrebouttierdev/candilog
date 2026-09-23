@@ -31,6 +31,13 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
   semaine) ; une relance se marque faite (`⏎`) ou se reporte (`R`), et reste dans
   l'historique. Colonne Situation : répartition des statuts, 30 derniers jours,
   candidatures sans réponse. Le décompte de la navigation compte les retards et le jour.
+- Refonte v2 — Candidatures : barre de filtres à puces (« Contrat est CDI, CDD ») ; un clic
+  sur une puce inverse la condition (« n'est pas »). Menu « + Filtre » (`F`) à deux niveaux
+  couvrant tous les critères, canal et entreprise compris ; recherche sur `/`. Barre
+  d'actions groupées sur les cases cochées : statut, export CSV, suppression.
+- Refonte v2 — Kanban : colonnes élastiques, cartes compactes avec échéance, bandeaux
+  « sans réponse » et « entretien aujourd'hui » ; toast `CAN-142 → Entretien`.
+- Les raccourcis à une lettre restent actifs quand le focus est sur une case à cocher.
 - Export CSV des candidatures : colonnes `reference` et `canal` ajoutées.
 - Le lien de l'offre n'est plus exigé que pour une offre publiée ; il devient facultatif
   pour une candidature trouvée sur le site de l'entreprise ou par le réseau.
