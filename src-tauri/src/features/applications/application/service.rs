@@ -4,8 +4,8 @@ use crate::core::errors::{AppError, AppResult};
 use crate::core::pagination::{Page, MAX_PAGE_SIZE};
 use crate::core::utils::validation::validate_optional_http_url;
 use crate::features::applications::domain::{
-    Application, ApplicationFilter, ApplicationRepository, ApplicationStatus, ApplicationType,
-    NewApplication, PipelineBreakdown, MAX_WEEKLY_HOURS,
+    Application, ApplicationChannel, ApplicationFilter, ApplicationRepository, ApplicationStatus,
+    DeletionImpact, NewApplication, PipelineBreakdown, StatusChange, MAX_WEEKLY_HOURS,
 };
 use uuid::Uuid;
 
@@ -130,6 +130,57 @@ impl<R: ApplicationRepository> ApplicationService<R> {
         self.repo.delete(id)
     }
 
+    /// Ce que la suppression emporterait, pour l'énumérer avant de confirmer.
+    ///
+    /// # Errors
+    /// `AppError::NotFound` si l'identifiant est inconnu.
+    pub fn deletion_impact(&self, id: Uuid) -> AppResult<DeletionImpact> {
+        self.repo.deletion_impact(id)
+    }
+
+    /// Historique des statuts, le plus récent d'abord.
+    ///
+    /// # Errors
+    /// `AppError::NotFound` si l'identifiant est inconnu.
+    pub fn status_history(&self, id: Uuid) -> AppResult<Vec<StatusChange>> {
+        self.repo.status_history(id)
+    }
+
+    /// Duplique une candidature pour en préparer une voisine (`⌘D`).
+    ///
+    /// La copie reprend le poste, l'entreprise, le contact, le canal, le contrat et les
+    /// précisions ; elle repart **En attente**, envoyée aujourd'hui, avec une nouvelle
+    /// référence. Relances, entretiens et historique ne sont pas copiés : ils décrivent ce
+    /// qui est arrivé à l'original, pas à la copie.
+    ///
+    /// # Errors
+    /// `AppError::NotFound` si l'identifiant est inconnu ; les erreurs de validation de
+    /// [`Self::create`].
+    pub fn duplicate(&self, id: Uuid) -> AppResult<Application> {
+        let source = self.repo.get(id)?;
+        let copie = NewApplication {
+            job_title: source.job_title,
+            company_id: source.company_id,
+            contact_id: source.contact_id,
+            channel: source.channel,
+            contract_type_code: source.contract_type_code,
+            weekly_work_schedule: source.weekly_work_schedule,
+            weekly_hours: source.weekly_hours,
+            professional_domain_id: source.professional_domain_id,
+            city: source.city,
+            address: source.address,
+            company_type_id: source.company_type_id,
+            status: ApplicationStatus::Pending,
+            sent_date: chrono::Local::now()
+                .date_naive()
+                .format("%Y-%m-%d")
+                .to_string(),
+            job_url: source.job_url,
+            notes: source.notes,
+        };
+        self.create(&copie)
+    }
+
     /// Valide les règles communes à la création et à la modification, puis renvoie la
     /// candidature sous sa forme canonique.
     ///
@@ -156,16 +207,16 @@ impl<R: ApplicationRepository> ApplicationService<R> {
         Self::valider_heures(input.weekly_hours)?;
 
         let mut normalisee = input.clone();
-        match input.application_type {
-            // Le lien est la trace de l'offre à laquelle on a répondu : sans lui, la
+        let job_url = input
+            .job_url
+            .as_deref()
+            .map(str::trim)
+            .filter(|url| !url.is_empty());
+        match input.channel {
+            // Le lien est la trace de l'offre publiée à laquelle on a répondu : sans lui, la
             // candidature n'est plus rattachable à une annonce, et la relire six mois plus
             // tard ne dit plus à quoi elle correspondait.
-            ApplicationType::JobOffer => {
-                let job_url = input
-                    .job_url
-                    .as_deref()
-                    .map(str::trim)
-                    .filter(|url| !url.is_empty());
+            ApplicationChannel::Offer => {
                 if job_url.is_none() {
                     return Err(AppError::Validation(
                         "Le lien de l'offre est requis pour une candidature à une offre".into(),
@@ -174,9 +225,16 @@ impl<R: ApplicationRepository> ApplicationService<R> {
                 validate_optional_http_url(job_url, "Le lien de l'offre")?;
                 normalisee.job_url = job_url.map(str::to_owned);
             }
+            // Site de l'entreprise ou réseau : l'offre n'a pas toujours d'adresse publique
+            // (cooptation, annonce retirée). Le lien reste facultatif, mais valide s'il est
+            // donné.
+            ApplicationChannel::CompanySite | ApplicationChannel::Network => {
+                validate_optional_http_url(job_url, "Le lien de l'offre")?;
+                normalisee.job_url = job_url.map(str::to_owned);
+            }
             // Une candidature spontanée n'a pas d'offre : conserver le lien d'un ancien
             // état « offre » ferait pointer la fiche vers une annonce sans rapport.
-            ApplicationType::Unsolicited => normalisee.job_url = None,
+            ApplicationChannel::Spontaneous => normalisee.job_url = None,
         }
         Ok(normalisee)
     }

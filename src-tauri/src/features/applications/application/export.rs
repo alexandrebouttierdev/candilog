@@ -25,9 +25,11 @@ pub fn vers_csv(applications: &[Application]) -> AppResult<String> {
 
     writer
         .write_record([
+            "reference",
             "poste",
             "entreprise",
             "type_candidature",
+            "canal",
             "contrat",
             "duree_hebdomadaire",
             "heures_par_semaine",
@@ -49,9 +51,11 @@ pub fn vers_csv(applications: &[Application]) -> AppResult<String> {
         writer
             .write_record(
                 [
+                    &format!("CAN-{:03}", row.reference_number),
                     row.job_title.as_str(),
                     row.company_name.as_deref().unwrap_or_default(),
                     &row.application_type.to_string(),
+                    &row.channel.to_string(),
                     row.contract_type_name
                         .as_deref()
                         .unwrap_or(row.contract_type_code.as_str()),

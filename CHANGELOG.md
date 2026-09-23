@@ -18,6 +18,19 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
   Mono ; dialogues à trois registres qui énumèrent les conséquences ; une seule notification
   à la fois ; fenêtre utilisable dès 940 × 560 px, navigation réduite sous 1060 px.
 
+- Refonte v2 — Candidatures : chaque candidature reçoit une référence lisible (`CAN-142`) et
+  un canal « Trouvée via » (Offre, Site, Réseau, Spontanée) ; les candidatures existantes
+  sont numérotées dans leur ordre de création. La vue Liste devient une liste groupée par
+  statut (Refusée repliée), avec échéance en pastille (entretien, relance, silence de plus
+  de 14 jours) et colonnes selon la largeur disponible. Nouvel inspecteur avec historique
+  des statuts, menu d'actions (clic droit ou `⋯`), dialogue de suppression qui énumère
+  relances, entretiens et historique emportés, duplication (`⌘D`), programmation d'une
+  relance (`R`), changement de statut (`S`). Le formulaire garde toutes les précisions dans
+  « Plus de détails » et demande confirmation avant de fermer une fiche modifiée.
+- Export CSV des candidatures : colonnes `reference` et `canal` ajoutées.
+- Le lien de l'offre n'est plus exigé que pour une offre publiée ; il devient facultatif
+  pour une candidature trouvée sur le site de l'entreprise ou par le réseau.
+
 - Lettres de motivation : rédaction LLM à partir d’un pack d’évidences courtes (plus de collage template du CV), nettoyage d’offre (codes REC, slogans, process RH), grounding factuel Rust (zéro invention). Fallback template si brouillon trop court.
 
 - Score ATS : reclassement automatique des exigences soft (Agile, qualité, MOA, UX, IA…) hors compétences dures pour éviter la dilution (~31/100) ; famille Java/Spring pour crédit partiel.
@@ -85,6 +98,8 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
 
 ### Retiré
 
+- Tri par colonne de la table des candidatures : la liste v2 est groupée par statut, les
+  plus récentes d'abord.
 - Tour d'accueil : le premier lancement ouvre directement Aujourd'hui, dont l'état vide
   propose les premières actions.
 

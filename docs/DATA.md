@@ -18,7 +18,7 @@ libre : ils doivent être exactement le nom issu du `ModelRegistry` sous `ai/mod
 
 ## Référentiels métier
 
-Le schéma courant (`PRAGMA user_version = 2`) porte
+Le schéma courant (`PRAGMA user_version = 3`) porte
 quatre catalogues **distincts**, semés par `init_schema.sql` en `INSERT OR IGNORE` :
 
 | Table | Clé | Rôle |
@@ -64,6 +64,23 @@ développement antérieure les conserve, orphelines et sans usage ; un test vér
 base neuve ne les recrée pas.
 
 `app_kv` reste : elle porte l'archive des réglages illisibles (`parametres_corrompus`).
+
+## Référence et canal d'une candidature
+
+`applications.reference_number` porte la référence affichée `CAN-142`. Un déclencheur
+(`applications_assign_reference`) attribue à **toute** insertion le numéro suivant
+`max(reference_number) + 1` — écran, import ou restauration, le dépôt n'a pas à y penser — et
+un index unique interdit les doublons. Un numéro supprimé n'est jamais réattribué : « CAN-003 »
+ne peut pas désigner deux candidatures dans l'historique de l'utilisateur. La migration 3 a
+numéroté les candidatures existantes dans leur ordre de création.
+
+`applications.channel` (`OFFER`, `COMPANY_SITE`, `NETWORK`, `SPONTANEOUS`) dit par où l'offre
+a été trouvée. `application_type` en **découle** (`SPONTANEOUS` → `SPONTANEE`, sinon `OFFRE`) :
+le formulaire ne saisit plus que le canal. Le lien de l'offre est requis pour `OFFER`,
+facultatif pour le site de l'entreprise et le réseau, interdit pour une démarche spontanée.
+
+La liste lit aussi, par sous-requête, la prochaine relance et le prochain entretien à venir
+(`next_follow_up_date`, `next_interview_at`) : ce sont les échéances affichées en pastille.
 
 ## Contraintes portées par le schéma
 

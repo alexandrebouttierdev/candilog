@@ -7,7 +7,8 @@ use crate::core::pagination::Page;
 use crate::core::utils::blocking;
 use crate::features::applications::application::export;
 use crate::features::applications::domain::{
-    Application, ApplicationFilter, ApplicationStatus, NewApplication, PipelineBreakdown,
+    Application, ApplicationFilter, ApplicationStatus, DeletionImpact, NewApplication,
+    PipelineBreakdown, StatusChange,
 };
 use std::sync::Arc;
 use tauri::{AppHandle, State};
@@ -81,6 +82,36 @@ pub async fn applications_change_status(
 pub async fn applications_delete(state: State<'_, AppState>, id: uuid::Uuid) -> AppResult<()> {
     let service = Arc::clone(&state.applications);
     blocking::execute(move || service.delete(id)).await
+}
+
+/// Ce que la suppression d'une candidature emporterait, énuméré dans le dialogue.
+#[tauri::command(rename_all = "snake_case")]
+pub async fn applications_deletion_impact(
+    state: State<'_, AppState>,
+    id: uuid::Uuid,
+) -> AppResult<DeletionImpact> {
+    let service = Arc::clone(&state.applications);
+    blocking::execute(move || service.deletion_impact(id)).await
+}
+
+/// Historique des statuts d'une candidature, le plus récent d'abord.
+#[tauri::command(rename_all = "snake_case")]
+pub async fn applications_status_history(
+    state: State<'_, AppState>,
+    id: uuid::Uuid,
+) -> AppResult<Vec<StatusChange>> {
+    let service = Arc::clone(&state.applications);
+    blocking::execute(move || service.status_history(id)).await
+}
+
+/// Duplique une candidature : même poste et même entreprise, nouvelle référence.
+#[tauri::command(rename_all = "snake_case")]
+pub async fn applications_duplicate(
+    state: State<'_, AppState>,
+    id: uuid::Uuid,
+) -> AppResult<Application> {
+    let service = Arc::clone(&state.applications);
+    blocking::execute(move || service.duplicate(id)).await
 }
 
 /// Exporte en CSV les candidatures correspondant au filtre courant, au chemin choisi.

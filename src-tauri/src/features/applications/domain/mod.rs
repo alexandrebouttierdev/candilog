@@ -2,12 +2,14 @@
 
 pub mod application;
 pub mod application_type;
+pub mod channel;
 pub mod repository;
 pub mod schedule;
 pub mod status;
 
-pub use application::{Application, NewApplication};
+pub use application::{Application, DeletionImpact, NewApplication, StatusChange};
 pub use application_type::ApplicationType;
+pub use channel::ApplicationChannel;
 pub use repository::{
     ApplicationFilter, ApplicationRepository, ApplicationSort, PipelineBreakdown,
 };

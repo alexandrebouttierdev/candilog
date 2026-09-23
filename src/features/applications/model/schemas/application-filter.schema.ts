@@ -59,6 +59,9 @@ export const applicationFilterSchema = z
   .object({
     status: z.array(z.enum(["EN_ATTENTE", "RELANCEE", "ENTRETIEN", "REFUS"])).default([]),
     application_type: z.array(z.enum(["OFFRE", "SPONTANEE"])).default([]),
+    channel: z
+      .array(z.enum(["OFFER", "COMPANY_SITE", "NETWORK", "SPONTANEOUS"]))
+      .default([]),
     contract_type_code: z.array(z.string()).default([]),
     professional_domain_id: z.array(z.string()).default([]),
     company_type_id: z.array(z.string()).default([]),
@@ -112,6 +115,7 @@ export type ApplicationFilterInput = z.input<typeof applicationFilterSchema>;
 export const EMPTY_FILTER: ApplicationFilterValues = {
   status: [],
   application_type: [],
+  channel: [],
   contract_type_code: [],
   professional_domain_id: [],
   company_type_id: [],

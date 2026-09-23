@@ -5,7 +5,7 @@ const BASE = {
   job_title: "Développeur Frontend",
   company_id: "11111111-1111-1111-1111-111111111111",
   contact_id: "",
-  application_type: "OFFRE" as const,
+  channel: "OFFER" as const,
   contract_type_code: "CDI",
   weekly_work_schedule: "UNSPECIFIED" as const,
   weekly_hours: "",
@@ -74,17 +74,28 @@ describe("schéma du formulaire candidature", () => {
     it("est effacé pour une candidature spontanée", () => {
       const resultat = applicationFormSchema.parse({
         ...BASE,
-        application_type: "SPONTANEE",
+        channel: "SPONTANEOUS",
         job_url: "https://example.org/offre",
       });
       expect(resultat.job_url).toBeNull();
+    });
+
+    it("est facultatif pour le site de l'entreprise et le réseau, mais contrôlé", () => {
+      // Une cooptation n'a pas toujours d'annonce publique ; un lien donné reste vérifié.
+      for (const channel of ["COMPANY_SITE", "NETWORK"] as const) {
+        const vide = applicationFormSchema.parse({ ...BASE, channel, job_url: "" });
+        expect(vide.job_url).toBeNull();
+        expect(
+          applicationFormSchema.safeParse({ ...BASE, channel, job_url: "ftp://exemple" }).success,
+        ).toBe(false);
+      }
     });
 
     it("n'est pas exigé pour une candidature spontanée", () => {
       expect(
         applicationFormSchema.safeParse({
           ...BASE,
-          application_type: "SPONTANEE",
+          channel: "SPONTANEOUS",
           job_url: "",
         }).success,
       ).toBe(true);

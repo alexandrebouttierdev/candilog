@@ -33,18 +33,10 @@ fn une_base_v1_recoit_les_colonnes_sans_perdre_les_lettres() {
     let pool = open_pool(None).unwrap();
     {
         let conn = pool.get().unwrap();
+        // Une vraie base v1 : les migrations suivantes touchent aussi d'autres tables.
+        conn.execute_batch(MIGRATIONS[0].1).unwrap();
         conn.execute_batch(
-            "CREATE TABLE cover_letters (
-                id TEXT PRIMARY KEY,
-                name TEXT NOT NULL,
-                company TEXT,
-                job_title TEXT,
-                tone TEXT NOT NULL DEFAULT 'formal',
-                length TEXT NOT NULL DEFAULT 'medium',
-                content TEXT NOT NULL,
-                created_at TEXT NOT NULL
-            );
-            INSERT INTO cover_letters (id, name, tone, length, content, created_at)
+            "INSERT INTO cover_letters (id, name, tone, length, content, created_at)
             VALUES ('lettre-1', 'Lettre Nova', 'formal', 'medium', 'Madame,', '2026-01-01');",
         )
         .unwrap();
@@ -56,7 +48,7 @@ fn une_base_v1_recoit_les_colonnes_sans_perdre_les_lettres() {
     let version: i64 = conn
         .query_row("PRAGMA user_version", [], |r| r.get(0))
         .unwrap();
-    assert_eq!(version, 2);
+    assert_eq!(version, LATEST_SCHEMA_VERSION);
     let cover_letters = colonnes(&conn, "cover_letters");
     for attendue in ["recipient", "recipient_address", "job_reference"] {
         assert!(

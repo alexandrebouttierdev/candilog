@@ -36,7 +36,8 @@ const weeklyHoursFacultatif = z
  * Formulaire candidature, création et modification.
  *
  * Reprend les règles de `ApplicationService::normalize` côté Rust : poste requis, contrat
- * requis, date valide, volume horaire plausible, lien limité à HTTP(S). L'entreprise est
+ * requis, date valide, volume horaire plausible, lien limité à HTTP(S) et requis pour une
+ * offre publiée (canal `OFFER`). L'entreprise est
  * requise ici **et** en base par une clé étrangère `NOT NULL` : une candidature sans
  * entreprise n'a pas de sens métier.
  *
@@ -49,7 +50,7 @@ export const applicationFormSchema = z
     job_title: z.string().trim().min(1, "Le poste est obligatoire"),
     company_id: z.string().min(1, "L'entreprise est obligatoire"),
     contact_id: optionalId,
-    application_type: z.enum(["OFFRE", "SPONTANEE"]),
+    channel: z.enum(["OFFER", "COMPANY_SITE", "NETWORK", "SPONTANEOUS"]),
     contract_type_code: z.string().min(1, "Le type de contrat est obligatoire"),
     weekly_work_schedule: z.enum(["FULL_TIME", "PART_TIME", "UNSPECIFIED"]),
     weekly_hours: weeklyHoursFacultatif,
@@ -71,10 +72,12 @@ export const applicationFormSchema = z
     notes: optionalText,
   })
   .superRefine((values, ctx) => {
-    // Le lien est la trace de l'offre à laquelle on a répondu : sans lui, relire la fiche
-    // six mois plus tard ne dit plus à quoi la candidature correspondait.
-    if (values.application_type !== "OFFRE") return;
+    if (values.channel === "SPONTANEOUS") return;
+    // Le lien est la trace de l'offre publiée à laquelle on a répondu : sans lui, relire la
+    // fiche six mois plus tard ne dit plus à quoi la candidature correspondait. Site de
+    // l'entreprise et réseau n'ont pas toujours d'annonce publique : lien facultatif.
     if (values.job_url === "") {
+      if (values.channel !== "OFFER") return;
       ctx.addIssue({
         code: "custom",
         path: ["job_url"],
@@ -93,8 +96,9 @@ export const applicationFormSchema = z
   .transform((values) => ({
     ...values,
     // Une candidature spontanée n'a pas d'offre : conserver le lien d'un ancien état
-    // « offre » ferait pointer la fiche vers une annonce sans rapport.
-    job_url: values.application_type === "OFFRE" ? values.job_url : null,
+    // « offre » ferait pointer la fiche vers une annonce sans rapport. Un lien facultatif
+    // laissé vide vaut `null`, jamais la chaîne vide.
+    job_url: values.channel === "SPONTANEOUS" || values.job_url === "" ? null : values.job_url,
   }));
 
 /** Vrai si la chaîne est une URL HTTP(S) — la règle appliquée par le backend. */

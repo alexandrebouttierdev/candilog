@@ -80,7 +80,7 @@ describe("Nouvelle candidature — création rapide d'entreprise", () => {
       { wrapper },
     );
 
-    await user.type(screen.getByLabelText(/^Poste/), "Développeur Frontend");
+    await user.type(screen.getByLabelText(/^Intitulé du poste/), "Développeur Frontend");
 
     const creation = await ouvrirCreationRapide(user);
     // Le nom recherché est déjà là : l'utilisateur n'a pas à le ressaisir.
@@ -94,7 +94,7 @@ describe("Nouvelle candidature — création rapide d'entreprise", () => {
     expect(creer).toHaveBeenCalledWith(expect.objectContaining({ name: "Nova Digital" }));
 
     // Le formulaire de candidature n'a pas bougé et porte la nouvelle entreprise.
-    expect(screen.getByLabelText(/^Poste/)).toHaveValue("Développeur Frontend");
+    expect(screen.getByLabelText(/^Intitulé du poste/)).toHaveValue("Développeur Frontend");
     await waitFor(() =>
       expect(screen.getByLabelText(/^Entreprise/)).toHaveValue("Nova Digital"),
     );
@@ -117,7 +117,7 @@ describe("Nouvelle candidature — création rapide d'entreprise", () => {
       { wrapper },
     );
 
-    await user.type(screen.getByLabelText(/^Poste/), "Développeur Frontend");
+    await user.type(screen.getByLabelText(/^Intitulé du poste/), "Développeur Frontend");
     const creation = await ouvrirCreationRapide(user);
     await user.click(within(creation).getByRole("button", { name: "Enregistrer" }));
 
@@ -129,7 +129,7 @@ describe("Nouvelle candidature — création rapide d'entreprise", () => {
       }),
     );
     expect(screen.getByRole("dialog", { name: "Nouvelle entreprise" })).toBeInTheDocument();
-    expect(screen.getByLabelText(/^Poste/)).toHaveValue("Développeur Frontend");
+    expect(screen.getByLabelText(/^Intitulé du poste/)).toHaveValue("Développeur Frontend");
   });
 
   it("abandonne proprement la création annulée", async () => {

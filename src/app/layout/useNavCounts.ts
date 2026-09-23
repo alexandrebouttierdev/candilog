@@ -13,6 +13,7 @@ const TOUTES: ApplicationFilter = {
   search: "",
   status: [],
   application_type: [],
+  channel: [],
   contract_type_code: [],
   professional_domain_id: [],
   company_type_id: [],

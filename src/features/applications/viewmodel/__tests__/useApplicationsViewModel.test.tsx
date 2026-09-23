@@ -19,6 +19,10 @@ function cand(job_title: string, status: Application["status"] = "EN_ATTENTE"): 
     company_size: "PME",
     contact_id: null,
     application_type: "OFFRE",
+    channel: "OFFER",
+    reference_number: 142,
+    next_follow_up_date: null,
+    next_interview_at: null,
     contract_type_code: "CDI",
     contract_type_name: "CDI",
     weekly_work_schedule: "FULL_TIME",
@@ -149,7 +153,7 @@ describe("ViewModel des candidatures", () => {
     ).toBe(false);
   });
 
-  it("transmet la recherche au backend et revient en première page", async () => {
+  it("transmet la recherche au backend et repart de la première page de chaque groupe", async () => {
     const listPage = vi
       .spyOn(applicationService, "listPage")
       .mockResolvedValue(page([cand("Développeur")], 40));
@@ -157,40 +161,50 @@ describe("ViewModel des candidatures", () => {
     const { result } = renderHook(() => useApplicationsViewModel(), { wrapper });
     await waitFor(() => expect(listPage).toHaveBeenCalled());
 
-    act(() => result.current.setPage(3));
-    await waitFor(() => expect(result.current.page).toBe(3));
-
+    act(() => result.current.setKanbanPage("REFUS", 3));
     act(() => result.current.setSearch("nova"));
 
-    await waitFor(() => expect(result.current.page).toBe(1));
+    await waitFor(() => expect(result.current.kanbanPages.REFUS).toBe(1));
     await waitFor(() => expect(listPage.mock.calls.at(-1)?.[0].filter.search).toBe("nova"));
   });
 
-  it("inverse la direction quand on retrie la colonne courante", async () => {
-    vi.spyOn(applicationService, "listPage").mockResolvedValue(page([cand("Développeur")]));
+  it("charge 50 lignes par groupe dans la liste, puis 50 de plus à la demande", async () => {
+    // La liste v2 est groupée par statut : chaque groupe interroge SQLite séparément,
+    // sans pagination globale qui couperait un groupe en deux.
+    const listPage = vi
+      .spyOn(applicationService, "listPage")
+      .mockResolvedValue(page([cand("Développeur")], 120));
 
-    const { result } = renderHook(() => useApplicationsViewModel(), { wrapper });
-    await waitFor(() => expect(result.current.items).toHaveLength(1));
-    expect(result.current.sort).toBe("date");
-    expect(result.current.descending).toBe(true);
+    const { result } = renderHook(() => useApplicationsViewModel("list"), { wrapper });
+    await waitFor(() => expect(listPage).toHaveBeenCalledTimes(4));
+    expect(listPage.mock.calls.every(([params]) => params.page === 1 && params.page_size === 50)).toBe(true);
+    listPage.mockClear();
 
-    act(() => result.current.sortBy("date"));
-    expect(result.current.descending).toBe(false);
+    act(() => result.current.showMore("EN_ATTENTE"));
+
+    await waitFor(() =>
+      expect(
+        listPage.mock.calls.some(
+          ([params]) => params.page_size === 100 && params.filter.status[0] === "EN_ATTENTE",
+        ),
+      ).toBe(true),
+    );
+    expect(result.current.groupLimits.RELANCEE).toBe(50);
   });
 
-  it("repart en descendant sur une nouvelle colonne de tri", async () => {
-    // Conserver la direction précédente donnerait un premier clic dont l'effet dépend de
-    // l'historique des clics sur une autre colonne.
+  it("duplique la candidature et sélectionne la copie", async () => {
     vi.spyOn(applicationService, "listPage").mockResolvedValue(page([cand("Développeur")]));
+    const copie = { ...cand("Développeur"), id: "copie", reference_number: 143 };
+    const duplicate = vi.spyOn(applicationService, "duplicate").mockResolvedValue(copie);
 
     const { result } = renderHook(() => useApplicationsViewModel(), { wrapper });
-    await waitFor(() => expect(result.current.items).toHaveLength(1));
+    await act(async () => {
+      await result.current.duplicate("original");
+    });
 
-    act(() => result.current.sortBy("date"));
-    act(() => result.current.sortBy("job_title"));
-
-    expect(result.current.sort).toBe("job_title");
-    expect(result.current.descending).toBe(true);
+    expect(duplicate).toHaveBeenCalledWith("original");
+    expect(result.current.selected_id).toBe("copie");
+    expect(useUiStore.getState().toasts.at(-1)?.title).toBe("CAN-143 créée par duplication");
   });
 
   it("compte les filtres actifs sans la recherche libre", async () => {

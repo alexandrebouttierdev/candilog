@@ -1,7 +1,9 @@
 //! Helpers communs et déclaration des cas de test.
 use super::*;
 use crate::core::database::{open_pool, run_local_migrations};
-use crate::features::applications::domain::{ApplicationType, WeeklyWorkSchedule};
+use crate::features::applications::domain::{
+    ApplicationChannel, ApplicationType, WeeklyWorkSchedule,
+};
 
 /// Dépôt sur base mémoire migrée, avec une entreprise déjà créée.
 ///
@@ -51,7 +53,7 @@ fn entree(company_id: Uuid, job_title: &str, sent_date: &str) -> NewApplication 
         job_title: job_title.into(),
         company_id,
         contact_id: None,
-        application_type: ApplicationType::JobOffer,
+        channel: ApplicationChannel::Offer,
         contract_type_code: "CDI".into(),
         weekly_work_schedule: WeeklyWorkSchedule::Unspecified,
         weekly_hours: None,
@@ -96,6 +98,7 @@ mod test_le_tri_par_entreprise_ignore_la_casse;
 mod test_les_libelles_des_referentiels_sont_resolus_par_jointure;
 mod test_les_surcharges_priment_et_leur_retrait_restitue_l_heritage;
 mod test_pagination_applique_les_filtres_avant_la_limite;
+mod test_reference_canal_et_echeances_de_la_liste;
 mod test_repartition_compte_les_quatre_statuts;
 mod test_repartition_ignore_le_filtre_de_statut;
 mod test_un_contrat_inconnu_est_refuse;

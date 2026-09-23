@@ -1,5 +1,5 @@
 import type { ApplicationStatus } from "@/shared/types/generated/applications";
-import type { Tone } from "@/shared/ui";
+import type { GlyphTone, Tone } from "@/shared/ui";
 import type { IconName } from "@/shared/ui/icon-names";
 
 export type { ApplicationStatus };
@@ -10,6 +10,8 @@ export interface StatusMeta {
   readonly label: string;
   readonly tone: Tone;
   readonly icon: IconName;
+  /** Remplissage du glyphe de statut v2 : vide, demi, trois quarts, plein. */
+  readonly glyph: GlyphTone;
 }
 
 /**
@@ -20,10 +22,10 @@ export interface StatusMeta {
  * l'information seule — chaque pastille affiche son libellé.
  */
 export const Statuses: readonly StatusMeta[] = [
-  { value: "EN_ATTENTE", label: "En attente", tone: "neutral", icon: "hourglass_top" },
-  { value: "RELANCEE", label: "Relancée", tone: "warning", icon: "send" },
-  { value: "ENTRETIEN", label: "Entretien", tone: "success", icon: "event_available" },
-  { value: "REFUS", label: "Refusée", tone: "danger", icon: "do_not_disturb_on" },
+  { value: "EN_ATTENTE", label: "En attente", tone: "neutral", icon: "hourglass_top", glyph: "n" },
+  { value: "RELANCEE", label: "Relancée", tone: "warning", icon: "send", glyph: "a" },
+  { value: "ENTRETIEN", label: "Entretien", tone: "success", icon: "event_available", glyph: "g" },
+  { value: "REFUS", label: "Refusée", tone: "danger", icon: "do_not_disturb_on", glyph: "c" },
 ] as const;
 
 /** Présentation d'un statut donné. */

@@ -8,6 +8,7 @@ import {
 const EMPTY_FILTER_INPUT: ApplicationFilterInput = {
   status: [],
   application_type: [],
+  channel: [],
   contract_type_code: [],
   professional_domain_id: [],
   company_type_id: [],

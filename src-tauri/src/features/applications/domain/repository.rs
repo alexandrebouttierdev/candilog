@@ -2,8 +2,11 @@
 
 use crate::core::errors::AppResult;
 use crate::core::pagination::Page;
-use crate::features::applications::domain::application::{Application, NewApplication};
+use crate::features::applications::domain::application::{
+    Application, DeletionImpact, NewApplication, StatusChange,
+};
 use crate::features::applications::domain::application_type::ApplicationType;
+use crate::features::applications::domain::channel::ApplicationChannel;
 use crate::features::applications::domain::schedule::WeeklyWorkSchedule;
 use crate::features::applications::domain::status::ApplicationStatus;
 use crate::features::companies::domain::CompanySize;
@@ -50,6 +53,9 @@ pub struct ApplicationFilter {
     /// Natures de candidature retenues ; vide = toutes.
     #[serde(default)]
     pub application_type: Vec<ApplicationType>,
+    /// Canaux retenus ; vide = tous.
+    #[serde(default)]
+    pub channel: Vec<ApplicationChannel>,
     /// Codes de contrat retenus ; vide = tous.
     #[serde(default)]
     pub contract_type_code: Vec<String>,
@@ -165,4 +171,16 @@ pub trait ApplicationRepository: Send + Sync {
     /// `AppError::NotFound` si l'identifiant est inconnu ; `AppError::Database` si la
     /// suppression échoue.
     fn delete(&self, id: Uuid) -> AppResult<()>;
+
+    /// Compte ce que la suppression emporterait.
+    ///
+    /// # Errors
+    /// `AppError::NotFound` si l'identifiant est inconnu.
+    fn deletion_impact(&self, id: Uuid) -> AppResult<DeletionImpact>;
+
+    /// Historique des statuts, le plus récent d'abord.
+    ///
+    /// # Errors
+    /// `AppError::NotFound` si l'identifiant est inconnu.
+    fn status_history(&self, id: Uuid) -> AppResult<Vec<StatusChange>>;
 }

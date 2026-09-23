@@ -12,7 +12,8 @@ fn test_entete_precede_les_lignes() {
     assert_eq!(
         rows.next(),
         Some(
-            "poste;entreprise;type_candidature;contrat;duree_hebdomadaire;heures_par_semaine;\
+            "reference;poste;entreprise;type_candidature;canal;contrat;duree_hebdomadaire;\
+             heures_par_semaine;\
              domaine_professionnel;type_entreprise;taille_entreprise;ville;adresse;statut;\
              date_envoi;lien_offre;notes"
         )
@@ -20,5 +21,5 @@ fn test_entete_precede_les_lignes() {
     assert!(rows
         .next()
         .unwrap()
-        .starts_with("Développeur Frontend;Nova Digital;Offre d'emploi;CDI"));
+        .starts_with("CAN-042;Développeur Frontend;Nova Digital;Offre d'emploi;Réseau;CDI"));
 }

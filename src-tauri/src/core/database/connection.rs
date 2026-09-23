@@ -23,10 +23,14 @@ const MIGRATIONS: &[(i64, &str)] = &[
         2,
         include_str!("../../../migrations/002_cover_letter_layout.sql"),
     ),
+    (
+        3,
+        include_str!("../../../migrations/003_applications_reference_channel.sql"),
+    ),
 ];
 
 /// Version de schéma atteinte après la dernière migration.
-pub const LATEST_SCHEMA_VERSION: i64 = 2;
+pub const LATEST_SCHEMA_VERSION: i64 = 3;
 
 /// Vérifie qu'un fichier existant appartient à la génération de schéma prise en charge.
 ///

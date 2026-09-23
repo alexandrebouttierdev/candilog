@@ -10,7 +10,7 @@ import type { Application } from "@/shared/types/generated/applications";
 import { companyService } from "@/features/companies";
 import { useUiStore } from "@/shared/lib/ui-store";
 
-function cand(job_title: string): Application {
+function cand(job_title: string, reference_number = 142): Application {
   return {
     id: job_title,
     job_title,
@@ -19,6 +19,10 @@ function cand(job_title: string): Application {
     company_size: "PME",
     contact_id: null,
     application_type: "OFFRE",
+    channel: "OFFER",
+    reference_number,
+    next_follow_up_date: null,
+    next_interview_at: null,
     contract_type_code: "CDI",
     contract_type_name: "CDI",
     weekly_work_schedule: "FULL_TIME",
@@ -62,7 +66,7 @@ beforeEach(() => {
     rejected: 0,
   });
   vi.spyOn(applicationService, "listPage").mockImplementation(({ page, page_size, filter }) => {
-    const all = [cand("Développeur"), cand("Designer")];
+    const all = [cand("Développeur", 142), cand("Designer", 139)];
     const items =
       filter.status.length === 0
         ? all
@@ -84,62 +88,6 @@ beforeEach(() => {
   });
 });
 
-describe("écran Candidatures — sélection multiple", () => {
-  it("affiche les actions groupées dès qu'une carte est cochée", async () => {
-    render(<ApplicationsPage />, { wrapper });
-    await waitFor(() => expect(screen.getByText("Développeur")).toBeInTheDocument());
-    expect(screen.getByText("2 candidatures")).toBeInTheDocument();
-
-    expect(screen.queryByText("1 sélectionnée")).not.toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole("checkbox", { name: "Sélectionner Développeur" }));
-
-    expect(screen.getByText("1 sélectionnée")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Supprimer" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Tout désélectionner" })).toBeInTheDocument();
-  });
-
-  it("propose de supprimer toute la page cochée en Liste", async () => {
-    const supprimer = vi.spyOn(applicationService, "delete").mockResolvedValue(undefined);
-    render(<ApplicationsPage />, { wrapper });
-    await waitFor(() => expect(screen.getByText("Développeur")).toBeInTheDocument());
-
-    await userEvent.click(screen.getByRole("button", { name: "Liste" }));
-    await userEvent.click(
-      screen.getByRole("checkbox", { name: "Sélectionner les candidatures de la page" }),
-    );
-
-    expect(screen.getByText("2 sélectionnées")).toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole("button", { name: "Supprimer" }));
-
-    const dialog = screen.getByRole("alertdialog", { name: "Supprimer 2 candidatures ?" });
-    expect(
-      within(dialog).getByText(
-        "Les candidatures sélectionnées seront définitivement supprimées, ainsi que les entretiens et relances rattachés.",
-      ),
-    ).toBeInTheDocument();
-
-    await userEvent.click(within(dialog).getByRole("button", { name: "Supprimer" }));
-
-    await waitFor(() => expect(supprimer).toHaveBeenCalledTimes(2));
-  });
-});
-
-describe("écran Candidatures — création depuis le Kanban", () => {
-  it("préremplit le statut de la colonne dont on a cliqué le plus", async () => {
-    render(<ApplicationsPage />, { wrapper });
-    await waitFor(() => expect(screen.getByText("Développeur")).toBeInTheDocument());
-
-    await userEvent.click(
-      screen.getByRole("button", { name: "Nouvelle candidature au statut Entretien" }),
-    );
-
-    expect(screen.getByRole("dialog", { name: "Nouvelle candidature" })).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByLabelText("Statut")).toHaveValue("ENTRETIEN"));
-  });
-});
-
 /** Rendu de la page sur une URL donnée, pour les tests de lien profond. */
 function wrapperSur(url: string) {
   return function WrapperSur({ children }: { children: ReactNode }) {
@@ -154,65 +102,128 @@ function wrapperSur(url: string) {
   };
 }
 
-describe("écran Candidatures — panneau de détail", () => {
-  it("n'affiche aucun panneau tant qu'aucune candidature n'est sélectionnée", async () => {
-    render(<ApplicationsPage />, { wrapper });
-    await waitFor(() => expect(screen.getByText("Développeur")).toBeInTheDocument());
-    await userEvent.click(screen.getByRole("button", { name: "Liste" }));
+describe("écran Candidatures — liste groupée", () => {
+  it("regroupe les candidatures par statut, avec le décompte du filtre", async () => {
+    render(<ApplicationsPage view="list" />, { wrapper });
+    const liste = await screen.findByRole("listbox", { name: "Candidatures" });
 
-    expect(screen.queryByText("Aucune sélection")).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Fermer l'inspecteur" }),
-    ).not.toBeInTheDocument();
+    expect(within(liste).getByRole("region", { name: "En attente, 2" })).toBeInTheDocument();
+    expect(await within(liste).findByText("CAN-142")).toBeInTheDocument();
+    expect(within(liste).getByText("CAN-139")).toBeInTheDocument();
+  });
+
+  it("replie le groupe Refusée par défaut, et le déplie à la demande", async () => {
+    render(<ApplicationsPage view="list" />, { wrapper });
+    const bouton = await screen.findByRole("button", { name: "Déplier Refusée" });
+    expect(bouton).toHaveAttribute("aria-expanded", "false");
+    await userEvent.click(bouton);
+    expect(screen.getByRole("button", { name: "Replier Refusée" })).toBeInTheDocument();
+  });
+
+  it("ouvre la création au clavier avec N", async () => {
+    render(<ApplicationsPage view="list" />, { wrapper });
+    await screen.findByText("CAN-142");
+    await userEvent.keyboard("n");
+    expect(screen.getByRole("dialog", { name: "Nouvelle candidature" })).toBeInTheDocument();
+  });
+
+  it("n'autorise la création qu'une fois l'intitulé et l'entreprise renseignés", async () => {
+    render(<ApplicationsPage view="list" />, { wrapper });
+    await screen.findByText("CAN-142");
+    await userEvent.keyboard("n");
+    const dialog = screen.getByRole("dialog", { name: "Nouvelle candidature" });
+    expect(within(dialog).getByRole("button", { name: /Créer la candidature/ })).toBeDisabled();
+    expect(within(dialog).getAllByText("obligatoire").length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe("écran Candidatures — sélection multiple", () => {
+  it("propose de supprimer les candidatures cochées", async () => {
+    const supprimer = vi.spyOn(applicationService, "delete").mockResolvedValue(undefined);
+    render(<ApplicationsPage view="list" />, { wrapper });
+    await screen.findByText("CAN-142");
+
+    await userEvent.click(screen.getByRole("checkbox", { name: "Cocher CAN-142" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Cocher CAN-139" }));
+    expect(screen.getByText("2 cochées")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Supprimer" }));
+    const dialog = screen.getByRole("alertdialog", { name: "Supprimer 2 candidatures ?" });
+    await userEvent.click(within(dialog).getByRole("button", { name: /Supprimer/ }));
+
+    await waitFor(() => expect(supprimer).toHaveBeenCalledTimes(2));
+  });
+});
+
+describe("écran Candidatures — création depuis le Kanban", () => {
+  it("préremplit le statut de la colonne dont on a cliqué le plus", async () => {
+    render(<ApplicationsPage view="kanban" />, { wrapper });
+    await waitFor(() => expect(screen.getByText("Développeur")).toBeInTheDocument());
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Nouvelle candidature au statut Entretien" }),
+    );
+
+    const dialog = screen.getByRole("dialog", { name: "Nouvelle candidature" });
+    await waitFor(() =>
+      expect(within(dialog).getByRole("radio", { name: /Entretien/ })).toHaveAttribute(
+        "aria-checked",
+        "true",
+      ),
+    );
+  });
+});
+
+describe("écran Candidatures — inspecteur", () => {
+  it("n'affiche aucune fiche tant qu'aucune candidature n'est sélectionnée", async () => {
+    render(<ApplicationsPage view="list" />, { wrapper });
+    await screen.findByText("CAN-142");
+    expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
   });
 
   it("charge la fiche par son identifiant au clic sur une ligne, puis la referme", async () => {
     const get = vi.spyOn(applicationService, "get").mockResolvedValue(cand("Développeur"));
-    render(<ApplicationsPage />, { wrapper });
-    await waitFor(() => expect(screen.getByText("Développeur")).toBeInTheDocument());
-    await userEvent.click(screen.getByRole("button", { name: "Liste" }));
+    vi.spyOn(applicationService, "statusHistory").mockResolvedValue([]);
+    render(<ApplicationsPage view="list" />, { wrapper });
+    await userEvent.click(await screen.findByText("Développeur"));
 
-    await userEvent.click(screen.getByText("Développeur"));
-
-    expect(
-      await screen.findByRole("complementary", { name: "Développeur" }),
-    ).toBeInTheDocument();
+    const fiche = await screen.findByRole("complementary", { name: "Fiche CAN-142" });
     expect(get).toHaveBeenCalledWith("Développeur");
 
-    await userEvent.click(screen.getByRole("button", { name: "Fermer l'inspecteur" }));
-
-    await waitFor(() =>
-      expect(
-        screen.queryByRole("complementary", { name: "Développeur" }),
-      ).not.toBeInTheDocument(),
-    );
+    await userEvent.click(within(fiche).getByRole("button", { name: "Fermer la fiche" }));
+    await waitFor(() => expect(screen.queryByRole("complementary")).not.toBeInTheDocument());
   });
 
-  it("ouvre la fiche demandée par l'URL même si elle est absente de la page courante", async () => {
-    const get = vi.spyOn(applicationService, "get").mockResolvedValue(cand("Data Analyst"));
-    render(<ApplicationsPage />, { wrapper: wrapperSur("/candidatures?id=Data%20Analyst") });
+  it("ouvre la fiche demandée par l'URL même si elle est absente des groupes chargés", async () => {
+    const get = vi.spyOn(applicationService, "get").mockResolvedValue(cand("Data Analyst", 7));
+    vi.spyOn(applicationService, "statusHistory").mockResolvedValue([]);
+    render(<ApplicationsPage view="list" />, { wrapper: wrapperSur("/applications?id=Data%20Analyst") });
 
-    expect(
-      await screen.findByRole("complementary", { name: "Data Analyst" }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("complementary", { name: "Fiche CAN-007" })).toBeInTheDocument();
     expect(get).toHaveBeenCalledWith("Data Analyst");
   });
 
-  it("referme le panneau quand la candidature affichée est supprimée", async () => {
+  it("énumère les conséquences avant de supprimer, puis referme la fiche", async () => {
     vi.spyOn(applicationService, "get").mockResolvedValue(cand("Développeur"));
-    vi.spyOn(applicationService, "delete").mockResolvedValue(undefined);
-    render(<ApplicationsPage />, { wrapper: wrapperSur("/candidatures?id=Développeur") });
+    vi.spyOn(applicationService, "statusHistory").mockResolvedValue([]);
+    vi.spyOn(applicationService, "deletionImpact").mockResolvedValue({
+      follow_ups: 1,
+      interviews: 2,
+      status_changes: 3,
+    });
+    const supprimer = vi.spyOn(applicationService, "delete").mockResolvedValue(undefined);
+    render(<ApplicationsPage view="list" />, { wrapper: wrapperSur("/applications?id=Développeur") });
 
-    const panneau = await screen.findByRole("complementary", { name: "Développeur" });
-    await userEvent.click(within(panneau).getByRole("button", { name: "Supprimer" }));
+    const fiche = await screen.findByRole("complementary", { name: "Fiche CAN-142" });
+    await userEvent.click(within(fiche).getByRole("button", { name: "Actions sur CAN-142" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: /Supprimer…/ }));
 
-    const dialog = screen.getByRole("alertdialog", { name: "Supprimer cette candidature ?" });
-    await userEvent.click(within(dialog).getByRole("button", { name: "Supprimer" }));
+    const dialog = screen.getByRole("alertdialog", { name: "Supprimer CAN-142 ?" });
+    expect(await within(dialog).findByText("Entretiens")).toBeInTheDocument();
+    expect(within(dialog).getByText("L'entreprise et le contact associés sont conservés.")).toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole("button", { name: /Supprimer/ }));
 
-    await waitFor(() =>
-      expect(
-        screen.queryByRole("complementary", { name: "Développeur" }),
-      ).not.toBeInTheDocument(),
-    );
+    await waitFor(() => expect(supprimer).toHaveBeenCalledWith("Développeur"));
+    await waitFor(() => expect(screen.queryByRole("complementary")).not.toBeInTheDocument());
   });
 });
