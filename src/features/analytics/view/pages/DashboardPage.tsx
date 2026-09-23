@@ -18,6 +18,7 @@ import {
 } from "../components/TodayUi";
 import { AppError } from "@/shared/types/app-error";
 import { Button, ErrorBanner } from "@/shared/ui";
+import { PATHS, applicationsPath } from "@/shared/lib/paths";
 
 /** Centre d'activité : prochain rendez-vous, tâches, suivi. */
 export function DashboardPage() {
@@ -37,13 +38,13 @@ export function DashboardPage() {
           {date.charAt(0).toUpperCase() + date.slice(1)}
         </span>
         <div className="flex items-center gap-2">
-          <Button icon="calendar_month" onClick={() => void navigate("/tracking/calendar")}>
+          <Button icon="calendar_month" onClick={() => void navigate(PATHS.calendar)}>
             Calendrier
           </Button>
           <Button
             variant="primary"
             icon="add"
-            onClick={() => void navigate("/tracking/applications?new=1")}
+            onClick={() => void navigate(applicationsPath({ create: true }))}
           >
             Nouvelle
           </Button>
@@ -77,9 +78,9 @@ function TodayWorkspace({ data }: { data: Dashboard }) {
   if (isTodayEmpty(data)) {
     return (
       <TodayEmpty
-        onCreate={() => void navigate("/tracking/applications?new=1")}
-        onOpenApplications={() => void navigate("/tracking/applications")}
-        onOpenCalendar={() => void navigate("/tracking/calendar")}
+        onCreate={() => void navigate(applicationsPath({ create: true }))}
+        onOpenApplications={() => void navigate(PATHS.applications)}
+        onOpenCalendar={() => void navigate(PATHS.calendar)}
       />
     );
   }
@@ -97,18 +98,18 @@ function TodayWorkspace({ data }: { data: Dashboard }) {
           <div className="flex min-w-0 flex-col gap-4">
             <TodayCard label="Prochainement">
               {next === null ? (
-                <UpcomingEmpty onOpenCalendar={() => void navigate("/tracking/calendar")} />
+                <UpcomingEmpty onOpenCalendar={() => void navigate(PATHS.calendar)} />
               ) : (
                 <>
                   <NextEvent
                     item={next}
-                    href={next.kind === "entretien" ? "/tracking/calendar" : "/tracking/applications"}
+                    href={next.kind === "entretien" ? PATHS.calendar : PATHS.applications}
                   />
                   {rest.length > 0 ? (
                     <UpcomingRows
                       items={rest}
                       hrefFor={(item) =>
-                        item.kind === "entretien" ? "/tracking/calendar" : "/tracking/applications"
+                        item.kind === "entretien" ? PATHS.calendar : PATHS.applications
                       }
                     />
                   ) : null}
@@ -119,8 +120,8 @@ function TodayWorkspace({ data }: { data: Dashboard }) {
             <TodoRows
               overdue={data.performance.overdue_follow_ups}
               items={data.upcoming_items}
-              onOpenApplications={() => void navigate("/tracking/applications")}
-              onOpenCalendar={() => void navigate("/tracking/calendar")}
+              onOpenApplications={() => void navigate(PATHS.applications)}
+              onOpenCalendar={() => void navigate(PATHS.calendar)}
             />
           </div>
 
@@ -130,7 +131,7 @@ function TodayWorkspace({ data }: { data: Dashboard }) {
               action={
                 <button
                   type="button"
-                  onClick={() => void navigate("/tracking/applications")}
+                  onClick={() => void navigate(PATHS.applications)}
                   className="text-label font-medium text-accent-text hover:text-accent-hover"
                 >
                   Tout voir
@@ -140,9 +141,9 @@ function TodayWorkspace({ data }: { data: Dashboard }) {
               <RecentRows
                 applications={data.recent}
                 onOpen={(id) =>
-                  void navigate(`/tracking/applications?id=${encodeURIComponent(id)}`)
+                  void navigate(applicationsPath({ id }))
                 }
-                onCreate={() => void navigate("/tracking/applications?new=1")}
+                onCreate={() => void navigate(applicationsPath({ create: true }))}
               />
             </TodayCard>
             <TodayActivity activity={data.activity} />

@@ -30,6 +30,7 @@ import {
   labelTone,
   message,
 } from "./documentPageSupport";
+import { PATHS } from "@/shared/lib/paths";
 
 export function LettersLibraryPage() {
   const navigate = useNavigate();
@@ -54,7 +55,7 @@ export function LettersLibraryPage() {
             <Button
               variant="primary"
               icon="auto_awesome"
-              onClick={() => void navigate("/documents/write-cover-letter")}
+              onClick={() => void navigate(PATHS.writeLetter)}
             >
               Rédiger une lettre
             </Button>
@@ -140,7 +141,7 @@ export function LettersLibraryPage() {
                 action={
                   <Button
                     icon="auto_awesome"
-                    onClick={() => void navigate("/documents/write-cover-letter")}
+                    onClick={() => void navigate(PATHS.writeLetter)}
                   >
                     Rédiger une lettre
                   </Button>
@@ -165,7 +166,7 @@ export function LettersLibraryPage() {
                 <PreviewAction
                   icon="edit"
                   onClick={() =>
-                    void navigate("/documents/write-cover-letter", {
+                    void navigate(PATHS.writeLetter, {
                       state: { cover_letter: vm.selectedLetter },
                     })
                   }

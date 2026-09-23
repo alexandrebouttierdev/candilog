@@ -1,4 +1,3 @@
-import { useNavigate } from "react-router-dom";
 import { Button, InspectorRow, PageHeader } from "@/shared/ui";
 import logoCandilog from "@/assets/logo-candilog.svg";
 import { useAboutViewModel } from "../../viewmodel/useAboutViewModel";
@@ -7,8 +6,7 @@ import { useUiStore } from "@/shared/lib/ui-store";
 
 /** Identité du produit : qui l'a fait, où vivent les données, comment mettre à jour. */
 export function AboutPage() {
-  const navigate = useNavigate();
-  const setOnboarding = useUiStore((state) => state.setOnboarding);
+  const openSettings = useUiStore((state) => state.openSettings);
   const about = useAboutViewModel();
   const version = about.version;
 
@@ -36,21 +34,6 @@ export function AboutPage() {
             <InspectorRow label="IA">Vous choisissez le fournisseur et le modèle</InspectorRow>
           </SettingsCard>
 
-          <SettingsCard icon="tips_and_updates" title="Découvrir Candilog">
-            <div className="flex flex-wrap items-center gap-3">
-              <p className="min-w-0 flex-1 text-body leading-relaxed text-ink-muted">
-                La visite guidée des écrans, affichée au premier lancement. La rejouer ne
-                touche à aucune de vos données.
-              </p>
-              <Button
-                variant="secondary"
-                icon="tips_and_updates"
-                onClick={() => setOnboarding(true)}
-              >
-                Revoir la présentation
-              </Button>
-            </div>
-          </SettingsCard>
 
           <SettingsCard icon="badge" title="Conçu et développé par">
             <div className="flex flex-wrap items-center gap-3">
@@ -69,7 +52,7 @@ export function AboutPage() {
               <Button
                 variant="primary"
                 icon="system_update"
-                onClick={() => void navigate("/settings/updates")}
+                onClick={() => openSettings("updates")}
               >
                 Vérifier les mises à jour
               </Button>

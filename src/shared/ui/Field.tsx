@@ -86,19 +86,19 @@ export function SearchInput({
   value: string;
   onValueChange: (value: string) => void;
   placeholder: string;
-  /** `toolbar` : 30 px, 300 px max, pour la barre d'un tableau. */
+  /** `toolbar` : recherche de barre d'outils du design — 23 px, fond `bg-elev`, sans contour. */
   variant?: "field" | "toolbar";
 }) {
   const toolbar = variant === "toolbar";
 
   return (
-    <div className={cn("relative min-w-0", toolbar && "w-full max-w-[300px] flex-[0_1_300px]", className)}>
+    <div className={cn("relative min-w-0", toolbar && "w-full min-w-[150px] max-w-[300px] flex-[0_1_220px]", className)}>
       <Icon
         name="search"
-        size={16}
+        size={toolbar ? 13 : 15}
         className={cn(
           "pointer-events-none absolute top-1/2 -translate-y-1/2",
-          toolbar ? "left-2.5 text-ink-disabled" : "left-3 text-ink-faint",
+          toolbar ? "left-2 text-tx-5" : "left-2.5 text-tx-5",
         )}
       />
       <input
@@ -110,8 +110,8 @@ export function SearchInput({
         className={controlClasses(
           false,
           toolbar
-            ? "h-control min-h-control rounded-button border-control bg-fill py-0 pr-2.5 pl-8 text-note"
-            : "pl-9",
+            ? "h-[23px] min-h-[23px] rounded-r6 border-transparent bg-elev py-0 pr-2 pl-6 text-small focus:border-ac"
+            : "pl-8",
         )}
         {...props}
       />

@@ -149,7 +149,7 @@ describe("écran Profil — import de CV", () => {
 
     await screen.findByRole("tablist", { name: "Sections du profil" });
     const bouton = screen.getByRole("button", { name: "Importer mon profil" });
-    expect(bouton.className).toContain("bg-accent");
+    expect(bouton).toHaveAttribute("data-variant", "primary");
 
     await userEvent.click(bouton);
 

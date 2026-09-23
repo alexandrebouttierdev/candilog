@@ -2,23 +2,24 @@ import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useUiStore } from "@/shared/lib/ui-store";
 import type { ToastMessage } from "@/shared/lib/ui-store";
-import { Icon } from "./Icon";
+import { StatusGlyph } from "./StatusGlyph";
+import type { GlyphTone } from "./StatusGlyph";
 
-const TONES = {
-  success: { icon: "check_circle", className: "text-success" },
-  error: { icon: "error", className: "text-danger" },
-  info: { icon: "info", className: "text-accent" },
-} as const;
+/** Durée d'affichage d'un toast : 2,6 s (`COMPONENTS.md` §12 du design). */
+const DUREE_MS = 2600;
 
-/** Durée d'affichage d'un toast, fixée à 4 s par le guide. */
-const DUREE_MS = 4000;
+const GLYPHES: Record<ToastMessage["tone"], GlyphTone> = {
+  success: "g",
+  error: "c",
+  info: "n",
+};
 
 /**
- * File de notifications discrètes, en bas à droite.
+ * Notification brève, centrée à 20 px au-dessus de la barre d'état.
  *
- * Jamais bloquantes : une erreur qui exige une décision passe par `ConfirmDialog`, une
- * erreur de chargement par `ErrorBanner`. Le toast ne sert qu'à confirmer ce qui vient
- * d'aboutir ou d'échouer sans conséquence sur la suite.
+ * Toujours factuelle et au passé (« CAN-142 supprimée »). Un seul toast à la fois : le
+ * store remplace le précédent. Aucun bouton : une action annulable propose « annuler » à
+ * l'endroit où elle a eu lieu, et une erreur qui exige une décision passe par un dialogue.
  */
 export function Toaster() {
   const toasts = useUiStore((state) => state.toasts);
@@ -26,7 +27,7 @@ export function Toaster() {
   return createPortal(
     <div
       aria-live="polite"
-      className="pointer-events-none fixed right-5 bottom-5 z-60 flex flex-col gap-2"
+      className="pointer-events-none fixed inset-x-0 bottom-[54px] z-[80] flex justify-center"
     >
       {toasts.map((toast) => (
         <Toast key={toast.id} toast={toast} />
@@ -38,7 +39,6 @@ export function Toaster() {
 
 function Toast({ toast }: { toast: ToastMessage }) {
   const dismiss = useUiStore((state) => state.dismissToast);
-  const tone = TONES[toast.tone];
 
   useEffect(() => {
     const timer = setTimeout(() => dismiss(toast.id), DUREE_MS);
@@ -48,23 +48,13 @@ function Toast({ toast }: { toast: ToastMessage }) {
   return (
     <div
       role="status"
-      className="pointer-events-auto flex w-[320px] items-start gap-2.5 rounded-card border border-line bg-surface px-3.5 py-3 shadow-e2"
+      className="pointer-events-auto flex max-w-[560px] animate-pop items-center gap-2 rounded-r9 border border-bd-menu bg-menu px-3.5 py-2 text-ui text-tx-2 shadow-pop"
     >
-      <Icon name={tone.icon} size={17} className={`mt-px flex-none ${tone.className}`} />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-body font-medium text-ink">{toast.title}</p>
-        {toast.detail ? (
-          <p className="truncate text-meta text-ink-muted">{toast.detail}</p>
-        ) : null}
-      </div>
-      <button
-        type="button"
-        aria-label="Fermer la notification"
-        onClick={() => dismiss(toast.id)}
-        className="flex size-6 flex-none items-center justify-center rounded-button text-ink-faint transition-colors duration-150 hover:bg-neutral-tint hover:text-ink"
-      >
-        <Icon name="close" size={15} />
-      </button>
+      <StatusGlyph tone={GLYPHES[toast.tone]} small />
+      <p className="min-w-0 truncate">
+        <span className="text-tx">{toast.title}</span>
+        {toast.detail ? <span className="text-tx-4"> · {toast.detail}</span> : null}
+      </p>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useApplicationsViewModel } from "../../viewmodel/useApplicationsViewModel";
+import type { TrackingView } from "../../viewmodel/useApplicationsViewModel";
 import type { Application, ApplicationStatus } from "@/shared/types/generated/applications";
 import { status_meta } from "../../model/statuses";
 import { applicationTypeLabel, weeklyDurationLabel } from "@/features/referentials";
@@ -31,8 +32,8 @@ import { EMPTY_FILTER } from "../../model/schemas/application-filter.schema";
 const DENSITIES = [PAGE_SIZE, 25, 50] as const;
 
 /** Écran Suivi → Candidatures : Kanban ou Liste, sur le même filtre. */
-export function ApplicationsPage() {
-  const vm = useApplicationsViewModel();
+export function ApplicationsPage({ view }: { view?: TrackingView } = {}) {
+  const vm = useApplicationsViewModel(view);
   const [searchParams, setSearchParams] = useSearchParams();
   const [form, setForm] = useState<{
     isOpen: boolean;
@@ -213,15 +214,18 @@ export function ApplicationsPage() {
         onReset={vm.resetFilters}
         actions={
           <>
-            <SegmentedControl
-              label="Mode d'affichage"
-              value={vm.view}
-              onChange={vm.setView}
-              options={[
-                { value: "kanban", label: "Kanban", icon: "view_kanban" },
-                { value: "list", label: "Liste", icon: "view_list" },
-              ]}
-            />
+            {/* Sous la coque v2, la vue se choisit dans les onglets de la barre de titre. */}
+            {view ? null : (
+              <SegmentedControl
+                label="Mode d'affichage"
+                value={vm.view}
+                onChange={vm.setView}
+                options={[
+                  { value: "kanban", label: "Kanban", icon: "view_kanban" },
+                  { value: "list", label: "Liste", icon: "view_list" },
+                ]}
+              />
+            )}
             {checkedIds.size > 0 ? (
               <>
                 <span className="text-note font-semibold text-ink">

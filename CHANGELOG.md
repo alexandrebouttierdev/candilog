@@ -8,6 +8,16 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
 
 ### Modifié
 
+- Refonte v2 (en cours) — nouvelle coque : barre de titre avec fil d'Ariane et onglets de
+  vue, navigation à six destinations (Aujourd'hui, Candidatures, Relations, Documents,
+  Intelligence artificielle, Profil) avec décomptes, barre d'état rappelant le contrat
+  clavier de l'écran. Les Réglages deviennent une surcouche (`⌘,`) en six sections ;
+  Apparence regroupe thème, densité des listes, animations et son de fin de traitement.
+- Refonte v2 — palette de commandes `⌘K` et navigation au clavier (`G` puis `A/C/R/D/P`).
+- Refonte v2 — nouvelle palette de couleurs, titres en IBM Plex Serif, données en IBM Plex
+  Mono ; dialogues à trois registres qui énumèrent les conséquences ; une seule notification
+  à la fois ; fenêtre utilisable dès 940 × 560 px, navigation réduite sous 1060 px.
+
 - Lettres de motivation : rédaction LLM à partir d’un pack d’évidences courtes (plus de collage template du CV), nettoyage d’offre (codes REC, slogans, process RH), grounding factuel Rust (zéro invention). Fallback template si brouillon trop court.
 
 - Score ATS : reclassement automatique des exigences soft (Agile, qualité, MOA, UX, IA…) hors compétences dures pour éviter la dilution (~31/100) ; famille Java/Spring pour crédit partiel.
@@ -72,6 +82,11 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
 - Fournisseur IA NVIDIA remplacé par DeepSeek (API compatible OpenAI,
   `https://api.deepseek.com`, modèle par défaut `deepseek-v4-flash`). Un réglage encore
   enregistré sous `nvidia` est relu comme DeepSeek.
+
+### Retiré
+
+- Tour d'accueil : le premier lancement ouvre directement Aujourd'hui, dont l'état vide
+  propose les premières actions.
 
 ## [0.0.1] — non publiée
 

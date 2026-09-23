@@ -18,7 +18,7 @@ livré.
 Ce sont les seuls composants tiers dont les **fichiers** sont redistribués tels quels par
 Candilog ; leurs licences exigent que la mention de copyright et le texte les accompagnent.
 
-### IBM Plex Sans, IBM Plex Mono
+### IBM Plex Sans, IBM Plex Serif, IBM Plex Mono
 
 Copyright © 2017 IBM Corp. with Reserved Font Name "Plex".
 Licence **SIL Open Font License 1.1** — texte intégral :
@@ -26,7 +26,9 @@ Licence **SIL Open Font License 1.1** — texte intégral :
 livré dans le paquet sous `licenses/ibm-plex-OFL-1.1.txt`.
 
 Utilisation : composition des CV et des lettres exportés en PDF (`src-tauri/src/infrastructure/pdf/`)
-et de leur aperçu à l'écran, qui doit rester fidèle à la page imprimée.
+et de leur aperçu à l'écran, qui doit rester fidèle à la page imprimée (Sans, Mono) ; titres,
+scores et données machine de l'interface (Serif 500 et 600, Mono), téléchargés depuis le
+dépôt officiel `IBM/plex`.
 
 ### Material Symbols Rounded
 

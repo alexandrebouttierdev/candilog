@@ -16,6 +16,14 @@ Sources dans le code :
 
 Ne pas inventer de couleur, de rayon, de gabarit de bouton ou de composant déjà présent dans `shared/ui`.
 
+> **Refonte v2 en cours.** La référence visuelle est désormais `reference_design/`
+> (`tokens.json` pour les valeurs, `DECISIONS.md` pour les arbitrages). `styles.css` porte les
+> jetons v2 sous leurs noms du handoff (`--bg-app`, `--tx-3`, `--ac`, `--st-g`…) et les
+> utilitaires correspondants (`bg-panel`, `text-tx-4`, `bg-ac`, `rounded-r7`, `h-row-app`…).
+> Les jetons v1 (`bg-surface`, `text-ink`, `border-line`…) sont **repointés** sur la palette
+> v2 le temps que chaque écran soit refondu : un écran neuf ou refondu n'emploie que les
+> jetons v2. Les sections ci-dessous marquées « v1 » décrivent les écrans pas encore migrés.
+
 ---
 
 ## 1. Produit
@@ -145,7 +153,10 @@ Composant : `Icon` (`src/shared/ui/Icon.tsx`). Tailles usuelles : 14 (pastille),
 
 La police embarquée est une **sous-police** réduite aux icônes de `src/shared/ui/icon-names.ts`, qui est aussi le type `IconName` du composant : une icône hors de cette liste est refusée par `tsc` plutôt qu'affichée en toutes lettres. Ajouter une icône : voir `docs/DEVELOPMENT.md`.
 
-Noms d’icônes des sections : `src/app/router/routes.ts`. Logo produit : `src/assets/logo-candilog.svg` (36×36 dans le rail ; variante sombre `logo-candilog-dark.svg` ; coche `#4FC27A`).
+Icônes v2 de la navigation et des listes : `LineIcon` (`src/shared/ui/LineIcon.tsx`), les
+11 tracés dessinés pour Candilog (grille 16, trait 1,4 px, `currentColor`) ; marque :
+`BrandMark` (tuile `#5B62F0` fixe dans les deux thèmes). Material Symbols reste employé par
+les écrans v1 le temps de leur migration.
 
 ---
 
@@ -160,25 +171,43 @@ Noms d’icônes des sections : `src/app/router/routes.ts`. Logo produit : `src/
 
 ---
 
-## 8. Coque (ne pas recréer)
+## 8. Coque v2 (ne pas recréer)
 
 ```
-┌──────┬──────────────────────────────────────────────┐
-│ Rail │ Topbar (accessoires / IA)                   │
-│ 68px │──────────────────────────────────────────────│
-│      │ SubNav 186px │  main  (#contenu)             │
-│      │ (si >1 route)│                               │
-└──────┴──────────────┴───────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│ Barre de titre 40 px : fil d'Ariane · onglets de vue · mention│
+├──────────┬───────────────────────────────────────────────────┤
+│ Nav      │ main (#contenu) — panneau `bg-panel`, rayon 9      │
+│ 202 px   │ (barre d'outils 38 px de l'écran, contenu)        │
+│ (52 px   │                                                   │
+│ < 1060)  │                                                   │
+├──────────┴───────────────────────────────────────────────────┤
+│ Barre d'état 34 px : décompte (mono) · contrat clavier       │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-- `AppShell` : `h-screen overflow-hidden`, glass sur rail / topbar / sous-nav (`glass-rail`, `glass-topbar`, `glass-subnav`).
-- `NavRail` : 7 sections, tooltip = `long_label`, item actif en teinte accent. Pas de raccourcis clavier de navigation (cf. §4).
-- `SubNav` : eyebrow = `short_label` uppercase ; item 30 px ; actif `bg-accent-tint-12 text-accent-text-soft`.
-- `TopBar` : accessoires à droite via `ContextBarAccessory` (sélecteur IA `AiQuickSelector`, note, ou recherche **seulement** si l’écran n’a pas de FilterBar). Le titre de section vit dans le `PageHeader` de l’écran, pas dans la topbar.
-
-Le workspace (`main`) est un **outil plein cadre** : header d’écran + contenu, sans padding de page type site web (sauf Réglages, voir §10).
-
----
+- `AppShell` : fournit le registre de commandes (`shared/lib/commands.tsx`) et le chrome
+  (`shared/lib/chrome.tsx`). Les barres ne défilent jamais ; seule la zone de contenu défile.
+- `TitleBar` : zone de glissement (`data-tauri-drag-region`). Sous macOS la fenêtre est en
+  `titleBarStyle: Overlay` et la barre réserve 68 px aux feux natifs ; sous Windows et Linux
+  la barre système est conservée et cette barre se place dessous. Onglets de vue issus de
+  `routes.ts` (`DESTINATIONS[].tabs`).
+- `Sidebar` : six destinations avec décompte (`useNavCounts`, requêtes rangées sous la clé
+  racine de chaque feature), Réglages et indicateur d'IA en pied. `wide:` = ≥ 1060 px.
+- `StatusBar` : un écran y écrit son décompte et son contrat clavier par
+  `useChrome({ crumb, aside, status, keys })` ; « Actions ⌘K » est toujours présent.
+- **Réglages** : surcouche (`SettingsOverlay`, état `settings` du `ui-store`), jamais une
+  route. `⌘,` l'ouvre, `Échap` la ferme en rendant l'écran intact.
+- **Palette** `⌘K` : `CommandPalette` ; la coque inscrit créer / aller à / réglages
+  (`useShellCommands`), chaque écran ajoute ses actions sur la sélection par
+  `useRegisterCommands`. Aucune commande qui n'aboutit pas.
+- **Raccourcis** : `useShortcut` (`shared/hooks/`) ignore la frappe dans un champ et se tait
+  quand une surface est ouverte (`hasOpenSurface`). `G` puis `A/C/R/D/P` change de
+  destination. N'inscrire dans Réglages → Raccourcis (`app/overlays/shortcutList.ts`) qu'un
+  raccourci réellement câblé. Notation imprimée par `Kbd` / `formatShortcut` : `⌘K` sous
+  macOS, `Ctrl K` ailleurs.
+- Pas de tour d'accueil (décision D1) : le premier lancement ouvre Aujourd'hui, dont l'état
+  vide porte l'amorce.
 
 ## 9. Recettes d’écrans
 
@@ -316,22 +345,6 @@ Sans `backdrop-filter`, fallback `glass-fallback` / `surface-elevated` (déjà d
 
 Fermeture : `useDismissable` (Escape + clic extérieur) — calendrier, FilterMenu, inspecteur, modale.
 
-### Tour d'accueil
-
-`features/onboarding` : `OnboardingTour`, affiché une fois au premier lancement
-(`localStorage`, comme la préférence de son — pas la base, ce n'est pas une donnée de
-recherche d'emploi). Volontairement **non-fermable** avant la dernière étape : ni Escape,
-ni clic extérieur, ni croix — un composant autonome plutôt qu'un `ModalHost` détourné, qui
-impose ces deux raccourcis à toute modale. Une étape par section du rail, plus une
-ouverture et une clôture ; l'aperçu (`OnboardingPreview`) est une miniature de l'écran
-présenté, avec ses libellés réels — « En attente », « Taux de réponse », les logos des
-fournisseurs — dessinée avec les jetons du thème plutôt qu'une capture d'écran : lisible en
-clair comme en sombre, sans double jeu d'images à maintenir, et une maquette abstraite se
-lirait comme un squelette de chargement.
-
-Deux façons de le revoir : le bouton « Revoir la présentation » de Réglages → À propos, qui
-ne touche à aucune donnée, et Réinitialiser les données (Réglages → Sauvegardes), qui remet
-le tour à l'état « jamais vu » — une base vidée, c'est une application neuve.
 
 ---
 

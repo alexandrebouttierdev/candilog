@@ -1,28 +1,47 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { ButtonHTMLAttributes, ComponentPropsWithRef, ReactNode } from "react";
 import { cn } from "@/shared/lib/cn";
 import { Icon } from "./Icon";
+import { Kbd } from "./Kbd";
 import type { IconName } from "./icon-names";
 
-export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
+/**
+ * Variantes du design (`COMPONENTS.md` §1) :
+ * - `primary` : accent plein, une seule par écran ou par modale ;
+ * - `secondary` : `bg-chip`, actions de même rang que la primaire ;
+ * - `ghost` (« discret ») : transparent, encre `tx-5` montant à `tx-3` au survol ;
+ * - `danger` (« destructeur ») : contour `st-c` sur fond transparent — jamais de rouge
+ *   plein, et uniquement pour confirmer une destruction ;
+ * - `link` : lien d'action en `ac-tx` (« changer », « annuler »).
+ */
+export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "link";
 
 const VARIANTS: Record<ButtonVariant, string> = {
-  primary:
-    "border border-on-accent-border bg-accent font-semibold text-on-accent hover:bg-accent-hover",
-  secondary:
-    "border border-control-strong bg-fill font-semibold text-ink hover:bg-fill-hover",
-  ghost: "font-semibold text-ink-muted hover:text-ink",
-  danger: "border border-danger-border bg-danger-tint font-semibold text-danger-text hover:bg-danger-tint",
+  primary: "bg-ac px-3 font-medium text-white hover:brightness-110",
+  secondary: "bg-chip px-[11px] font-medium text-tx-2 hover:bg-elev",
+  ghost: "bg-transparent px-2.5 text-tx-5 hover:text-tx-3",
+  danger: "border border-st-c bg-transparent px-[11px] font-medium text-st-c hover:bg-tint-c-bg",
+  link: "h-auto bg-transparent px-0 text-ac-tx hover:underline",
 };
 
+/**
+ * Hauteurs du design : 27 px par défaut, 26 px dans une barre, 23 px en barre d'outils
+ * compacte, 28 px dans un état vide. `control` et `dialog` sont conservés pour les écrans
+ * qui n'ont pas encore migré : tous deux valent désormais la hauteur par défaut.
+ */
 const SIZES = {
-  control: { height: "h-control", icon: 16, pad: { large: "px-[13px]", small: "pl-[9px] pr-[11px]" } },
-  dialog: { height: "h-[32px]", icon: 16, pad: { large: "px-[13px]", small: "px-[13px]" } },
+  control: "h-btn",
+  dialog: "h-btn",
+  bar: "h-[26px]",
+  compact: "h-[23px]",
+  empty: "h-7",
 } as const;
 
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+interface ButtonProps extends ComponentPropsWithRef<"button"> {
   variant?: ButtonVariant;
   size?: keyof typeof SIZES;
   icon?: IconName;
+  /** Raccourci imprimé à droite du libellé (`mod+enter`, `n`…), notation de la plateforme. */
+  shortcut?: string;
   children?: ReactNode;
 }
 
@@ -30,23 +49,26 @@ export function Button({
   variant = "secondary",
   size = "control",
   icon,
+  shortcut,
   children,
   className,
   type = "button",
   ...props
 }: ButtonProps) {
-  const gabarit = SIZES[size];
-
   return (
     <button
       type={type}
+      data-variant={variant}
+      {...(shortcut ? { "aria-keyshortcuts": ariaShortcut(shortcut) } : {})}
       className={cn(
-        "inline-flex items-center justify-center gap-1.5 rounded-button text-item whitespace-nowrap",
-        "transition-[background-color,border-color,color] duration-hover ease-in-out",
-        "focus-visible:outline-1 focus-visible:outline-accent-focus",
-        "disabled:pointer-events-none disabled:border-transparent disabled:bg-fill disabled:text-ink-faint",
-        gabarit.height,
-        variant === "primary" ? gabarit.pad.large : gabarit.pad.small,
+        // `nowrap` + `flex-none` : un libellé long ou « Ctrl ⏎ » ne passe jamais sur deux
+        // lignes et ne comprime pas son voisin (`COMPONENTS.md` §10).
+        "inline-flex flex-none items-center justify-center gap-1.5 rounded-r7 text-ui whitespace-nowrap",
+        "transition-color",
+        // Désactivé : fond `bg-chip`, encre `tx-5`, hors de la tabulation (le navigateur
+        // retire déjà un bouton `disabled` de l'ordre de focus).
+        "disabled:pointer-events-none disabled:border-transparent disabled:bg-chip disabled:text-tx-5 disabled:brightness-100",
+        variant === "link" ? "" : SIZES[size],
         VARIANTS[variant],
         className,
       )}
@@ -55,19 +77,46 @@ export function Button({
       {icon ? (
         <Icon
           name={icon}
-          size={gabarit.icon}
+          size={15}
           {...(icon === "progress_activity" ? { className: "animate-spin" } : {})}
         />
       ) : null}
       {children}
+      {shortcut ? (
+        // Décorative : le raccourci est annoncé par `aria-keyshortcuts`, pas dans le nom du
+        // bouton (« Supprimer ⏎ » n'est pas un nom).
+        <Kbd shortcut={shortcut} tone={variant === "primary" ? "on-accent" : "chip"} decorative className="-mr-1 ml-0.5" />
+      ) : null}
     </button>
   );
 }
 
+/** Notation ARIA d'un raccourci neutre : `mod+enter` → `Meta+Enter Control+Enter`. */
+function ariaShortcut(shortcut: string): string {
+  const touches = shortcut.split("+").map((part) => {
+    const lower = part.toLowerCase();
+    if (lower === "enter") return "Enter";
+    if (lower === "shift") return "Shift";
+    if (lower === "alt") return "Alt";
+    if (lower === "backspace") return "Backspace";
+    if (lower === "escape") return "Escape";
+    return part.length === 1 ? part.toUpperCase() : part;
+  });
+  if (touches[0]?.toLowerCase() !== "mod") return touches.join("+");
+  const reste = touches.slice(1).join("+");
+  return `Meta+${reste} Control+${reste}`;
+}
+
+/**
+ * Bouton carré d'icône (`✕`, `⋯`, `+`) : 24 px par défaut, fond `bg-chip`, rayon 7.
+ *
+ * Le libellé est obligatoire : c'est le nom accessible et l'infobulle d'un contrôle sans
+ * texte.
+ */
 export function IconButton({
   icon,
   label,
-  size = 17,
+  size = 15,
   className,
   type = "button",
   ...props
@@ -82,16 +131,46 @@ export function IconButton({
       aria-label={label}
       title={label}
       className={cn(
-        "flex size-[30px] flex-none items-center justify-center rounded-button",
-        "border border-control bg-fill text-ink-muted",
-        "transition-colors duration-hover ease-in-out hover:bg-fill-hover hover:text-ink",
-        "focus-visible:outline-1 focus-visible:outline-accent-focus",
-        "disabled:pointer-events-none disabled:text-ink-faint/50",
+        "flex size-6 flex-none items-center justify-center rounded-r7",
+        "bg-chip text-tx-4 transition-color hover:bg-elev hover:text-tx-2",
+        "disabled:pointer-events-none disabled:text-tx-6",
         className,
       )}
       {...props}
     >
       <Icon name={icon} size={size} />
+    </button>
+  );
+}
+
+/**
+ * Bouton carré à glyphe typographique (`✕`, `⋯`, `+`, `✎`) — les micro-icônes que le design
+ * garde en texte (`DESIGN_SYSTEM.md` §7). Même gabarit qu'`IconButton`, sans police d'icônes.
+ */
+export function GlyphButton({
+  glyph,
+  label,
+  className,
+  type = "button",
+  ...props
+}: Omit<ComponentPropsWithRef<"button">, "children"> & {
+  glyph: string;
+  label: string;
+}) {
+  return (
+    <button
+      type={type}
+      aria-label={label}
+      title={label}
+      className={cn(
+        "flex size-[22px] flex-none items-center justify-center rounded-r6",
+        "bg-chip text-small leading-none text-tx-4 transition-color hover:bg-elev hover:text-tx-2",
+        "disabled:pointer-events-none disabled:text-tx-6",
+        className,
+      )}
+      {...props}
+    >
+      <span aria-hidden>{glyph}</span>
     </button>
   );
 }

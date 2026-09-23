@@ -21,6 +21,7 @@ import {
   type ProviderOption,
 } from "@/features/settings";
 import { useAiQuickSelectorViewModel } from "../../viewmodel/useAiQuickSelectorViewModel";
+import { PATHS } from "@/shared/lib/paths";
 
 const DOT: Record<Tone, string> = {
   success: "bg-success",
@@ -93,7 +94,7 @@ export function AiQuickSelector({ shellBrand = false }: { shellBrand?: boolean }
         return;
       }
       setOpen(false);
-      void navigate("/settings/ai");
+      void navigate(PATHS.ai);
       return;
     }
     const nextLlm = llmFromPreset(id, vm.settings.llm_presets[id], {
@@ -102,7 +103,7 @@ export function AiQuickSelector({ shellBrand = false }: { shellBrand?: boolean }
     });
     if (!isAiConfigured(nextLlm)) {
       setOpen(false);
-      void navigate("/settings/ai");
+      void navigate(PATHS.ai);
       return;
     }
     await vm.saveSettings({
@@ -125,7 +126,7 @@ export function AiQuickSelector({ shellBrand = false }: { shellBrand?: boolean }
   const selectManagedModel = (modelId: ManagedModelId, installed: boolean) => {
     if (!installed) {
       setOpen(false);
-      void navigate("/settings/ai");
+      void navigate(PATHS.ai);
       return;
     }
     activateManaged(modelId);
@@ -278,7 +279,7 @@ export function AiQuickSelector({ shellBrand = false }: { shellBrand?: boolean }
               onSelectManaged={selectManagedModel}
               onConfigure={() => {
                 setOpen(false);
-                void navigate("/settings/ai");
+                void navigate(PATHS.ai);
               }}
               onSelectRemote={async (model) => {
                 if (!vm.settings) return;

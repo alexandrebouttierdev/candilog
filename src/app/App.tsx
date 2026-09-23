@@ -3,23 +3,9 @@ import { AppProviders } from "./providers/AppProviders";
 import { AppRouter } from "./router/AppRouter";
 import { Toaster } from "@/shared/ui";
 import { applyTheme, useUiStore } from "@/shared/lib/ui-store";
-import {
-  OnboardingTour,
-  markOnboardingCompleted,
-  onboardingCompleted,
-} from "@/features/onboarding";
 
 export function App() {
   const theme = useUiStore((state) => state.theme);
-  // L'affichage du tour vit dans le store : les Réglages doivent pouvoir le rouvrir après
-  // une réinitialisation des données, depuis un autre écran.
-  const onboarding = useUiStore((state) => state.onboarding);
-  const setOnboarding = useUiStore((state) => state.setOnboarding);
-
-  useEffect(() => {
-    if (!onboardingCompleted()) setOnboarding(true);
-  }, [setOnboarding]);
-
   // Le thème vit sur `document.documentElement`, hors de l'arbre React : un effet est le
   // seul moyen de l'y refléter. `system` retire l'attribut, laissant jouer la préférence
   // du système d'exploitation. Le chargement initial passe par useBootstrapTheme dans
@@ -32,14 +18,6 @@ export function App() {
     <AppProviders>
       <AppRouter />
       <Toaster />
-      {onboarding ? (
-        <OnboardingTour
-          onFinish={() => {
-            markOnboardingCompleted();
-            setOnboarding(false);
-          }}
-        />
-      ) : null}
     </AppProviders>
   );
 }

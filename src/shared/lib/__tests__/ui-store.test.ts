@@ -25,23 +25,26 @@ describe("préférence de thème", () => {
 });
 
 describe("file de notifications", () => {
-  it("empile les notifications avec un identifiant propre", () => {
+  it("n'affiche qu'une notification à la fois : la nouvelle remplace la précédente", () => {
+    // Décision E15 du design : deux actions rapides ne doivent jamais empiler deux bandeaux.
     const { notify } = useUiStore.getState();
     notify({ tone: "success", title: "Candidature enregistrée" });
+    const premiere = useUiStore.getState().toasts[0]!;
     notify({ tone: "error", title: "Enregistrement impossible" });
 
     const { toasts } = useUiStore.getState();
-    expect(toasts).toHaveLength(2);
-    expect(new Set(toasts.map((toast) => toast.id)).size).toBe(2);
+    expect(toasts.map((toast) => toast.title)).toEqual(["Enregistrement impossible"]);
+    expect(toasts[0]!.id).not.toBe(premiere.id);
   });
 
   it("ne retire que la notification visée", () => {
     const { notify } = useUiStore.getState();
     notify({ tone: "info", title: "Première" });
+    const premiere = useUiStore.getState().toasts[0]!;
     notify({ tone: "info", title: "Seconde" });
 
-    const [premiere] = useUiStore.getState().toasts;
-    useUiStore.getState().dismissToast(premiere!.id);
+    // Le minuteur de la première, remplacée, ne doit pas faire disparaître la seconde.
+    useUiStore.getState().dismissToast(premiere.id);
 
     expect(useUiStore.getState().toasts.map((toast) => toast.title)).toEqual(["Seconde"]);
   });

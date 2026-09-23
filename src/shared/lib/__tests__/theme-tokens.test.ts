@@ -33,10 +33,30 @@ describe("jetons Tailwind", () => {
     expect(colors.filter((name) => texts.includes(name))).toEqual([]);
   });
 
-  it("redessine les cases à cocher que le preflight Tailwind rend transparentes", () => {
-    expect(styles).toContain("--candilog-border-checkbox:");
+  it("redessine les cases à cocher que le preflight Tailwind rend invisibles", () => {
+    // Case v2 : 12 px, contour 1,5 px en `tx-6`, remplie en `ac` une fois cochée. Sans ce
+    // contour, le preflight laisse une case sans fond ni filet, invisible sur la liste.
     expect(styles).toMatch(/input\[type="checkbox"\][\s\S]*?appearance:\s*none/);
-    expect(styles).toMatch(/input\[type="checkbox"\][\s\S]*?background-color:\s*var\(--color-fill\)/);
+    expect(styles).toMatch(/input\[type="checkbox"\][\s\S]*?border:\s*1\.5px solid var\(--tx-6\)/);
+    expect(styles).toMatch(/input\[type="checkbox"\]:checked[\s\S]*?background-color:\s*var\(--ac\)/);
+  });
+
+  it("définit chaque jeton v2 dans les deux thèmes", () => {
+    // Un jeton oublié dans le bloc sombre garderait sa valeur claire : texte clair sur
+    // fond clair, sans que rien ne le signale ailleurs qu'à l'écran.
+    const bloc = (selecteur: string) => {
+      const debut = styles.indexOf(selecteur);
+      return styles.slice(debut, styles.indexOf("}", debut));
+    };
+    const clair = bloc(":root {");
+    const sombre = bloc(':root[data-theme="dark"] {');
+    const sombreSysteme = bloc(':root:not([data-theme="light"]) {');
+    const jetons = [...clair.matchAll(/--((?:bg|tx|st|tint|av)[a-z0-9-]*|ac[a-z-]*|bd[a-z-]*|modal-bg|menu-bg|field-bg|scrim|sk):/g)].map((m) => m[1]);
+    expect(jetons.length).toBeGreaterThanOrEqual(39);
+    for (const jeton of jetons) {
+      expect(sombre).toContain(`--${jeton}:`);
+      expect(sombreSysteme).toContain(`--${jeton}:`);
+    }
   });
 
   it("donne à la feuille sa propre sélection, illisible sinon en thème sombre", () => {
@@ -73,5 +93,7 @@ describe("jetons Tailwind", () => {
     // moins une règle `@font-face`.
     expect(styles).toMatch(/@font-face\s*{[^}]*font-family:\s*"IBM Plex Sans"/);
     expect(styles).toMatch(/@font-face\s*{[^}]*font-family:\s*"IBM Plex Mono"/);
+    // Serif de l'interface v2 (titres, scores), embarqué lui aussi.
+    expect(styles).toMatch(/@font-face\s*{[^}]*font-family:\s*"IBM Plex Serif"/);
   });
 });

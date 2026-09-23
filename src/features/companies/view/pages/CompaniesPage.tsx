@@ -19,6 +19,7 @@ import {
   wordInitials,
 } from "@/shared/ui";
 import { AppError } from "@/shared/types/app-error";
+import { PATHS } from "@/shared/lib/paths";
 
 /** Écran Relations → Companies : liste maître paginée et fiche détaillée. */
 export function CompaniesPage() {
@@ -150,8 +151,8 @@ export function CompaniesPage() {
               metrics={vm.companyMetrics}
               onEdit={() => setForm({ isOpen: true, editing: vm.selection })}
               onDelete={() => setPendingDelete(vm.selection)}
-              onOuvrirApplication={() => void naviguer("/tracking/applications")}
-              onToutVoir={() => void naviguer("/tracking/applications")}
+              onOuvrirApplication={() => void naviguer(PATHS.applications)}
+              onToutVoir={() => void naviguer(PATHS.applications)}
             />
           ) : vm.items.length > 0 || vm.isLoading ? (
             <div className="flex h-full items-center justify-center">

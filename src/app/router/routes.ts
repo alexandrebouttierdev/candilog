@@ -1,117 +1,103 @@
 /**
- * Carte des écrans de Candilog.
+ * Carte des destinations de Candilog v2 (`reference_design/INTERACTIONS.md` §1-2).
  *
- * Sept sections dans le rail, chacune ouvrant un écran par défaut et exposant ses
- * onglets contextuels. La coque est décrite dans `docs/DESIGN.md` §8.
+ * Six destinations dans la barre de navigation. Les Réglages ne sont pas une destination
+ * mais une surcouche (`⌘,`) ; les générateurs, l'analyse et l'import sont des actions.
+ * Chaque destination peut exposer des onglets de vue, rendus dans la barre de titre.
  */
 
-import type { IconName } from "@/shared/ui/icon-names";
+import type { LineIconName } from "@/shared/ui";
+import { PATHS } from "@/shared/lib/paths";
 
-export type SectionKey =
-  | "accueil"
-  | "suivi"
-  | "relations"
-  | "documents"
-  | "analyses"
-  | "profil"
-  | "reglages";
+export type DestinationKey = "today" | "applications" | "relations" | "documents" | "ai" | "profile";
 
-export interface RouteDef {
-  /** Path React Router. */
+export interface ViewTab {
   readonly path: string;
-  /** Libellé de l'onglet contextuel. */
   readonly label: string;
-  /** Nom d'icône Material Symbols (cf. `docs/DESIGN.md` §6). */
-  readonly icon: IconName;
 }
 
-export interface SectionDef {
-  readonly key: SectionKey;
-  /** Libellé court affiché sous la tuile du rail. */
-  readonly short_label: string;
-  /** Libellé complet, donné en infobulle. */
-  readonly long_label: string;
-  readonly icon: IconName;
-  /** Onglets contextuels ; le premier est l'écran par défaut de la section. */
-  readonly routes: readonly RouteDef[];
+export interface Destination {
+  readonly key: DestinationKey;
+  readonly label: string;
+  readonly icon: LineIconName;
+  /** Chemin ouvert par la navigation (vue par défaut). */
+  readonly path: string;
+  /** Lettre du raccourci `G` puis lettre, quand la destination en a un. */
+  readonly goKey?: string;
+  /** Préfixes de chemin appartenant à la destination. */
+  readonly prefixes: readonly string[];
+  /** Onglets de vue de la barre de titre ; le premier est la vue par défaut. */
+  readonly tabs?: readonly ViewTab[];
 }
 
-export const Sections: readonly SectionDef[] = [
+export const DESTINATIONS: readonly Destination[] = [
+  { key: "today", label: "Aujourd'hui", icon: "today", path: PATHS.today, goKey: "a", prefixes: [] },
   {
-    key: "accueil",
-    short_label: "Aujourd'hui",
-    long_label: "Aujourd'hui",
-    icon: "today",
-    routes: [{ path: "/", label: "Aujourd'hui", icon: "today" }],
-  },
-  {
-    key: "suivi",
-    short_label: "Suivi",
-    long_label: "Candidatures et calendrier",
-    icon: "work",
-    routes: [
-      { path: "/tracking/applications", label: "Candidatures", icon: "work" },
-      { path: "/tracking/calendar", label: "Calendrier", icon: "calendar_month" },
+    key: "applications",
+    label: "Candidatures",
+    icon: "applications",
+    path: PATHS.applications,
+    goKey: "c",
+    prefixes: ["/applications"],
+    tabs: [
+      { path: PATHS.applications, label: "Liste" },
+      { path: PATHS.applicationsKanban, label: "Kanban" },
+      { path: PATHS.calendar, label: "Calendrier" },
+      { path: PATHS.analytics, label: "Analyse" },
     ],
   },
   {
     key: "relations",
-    short_label: "Relations",
-    long_label: "Entreprises et réseau",
-    icon: "hub",
-    routes: [
-      { path: "/relations/companies", label: "Entreprises", icon: "apartment" },
-      { path: "/relations/network", label: "Réseau", icon: "hub" },
+    label: "Relations",
+    icon: "relations",
+    path: PATHS.companies,
+    goKey: "r",
+    prefixes: ["/relations"],
+    tabs: [
+      { path: PATHS.companies, label: "Entreprises" },
+      { path: PATHS.contacts, label: "Contacts" },
     ],
   },
   {
     key: "documents",
-    short_label: "Documents",
-    long_label: "CV et lettres de motivation",
-    icon: "description",
-    routes: [
-      { path: "/documents/cv", label: "Mes CV", icon: "description" },
-      { path: "/documents/generate-resume", label: "Générer un CV", icon: "auto_awesome" },
-      { path: "/documents/cover-letters", label: "Mes lettres", icon: "mail" },
-      { path: "/documents/write-cover-letter", label: "Lettre de motivation", icon: "edit_note" },
-      { path: "/documents/analyze", label: "Analyser", icon: "query_stats" },
+    label: "Documents",
+    icon: "documents",
+    path: PATHS.documents,
+    goKey: "d",
+    prefixes: ["/documents"],
+    tabs: [
+      { path: PATHS.documents, label: "CV" },
+      { path: PATHS.letters, label: "Lettres" },
     ],
   },
-  {
-    key: "analyses",
-    short_label: "Analyses",
-    long_label: "Statistiques",
-    icon: "monitoring",
-    routes: [{ path: "/analytics", label: "Statistiques", icon: "monitoring" }],
-  },
-  {
-    key: "profil",
-    short_label: "Profil",
-    long_label: "Profil professionnel",
-    icon: "account_circle",
-    routes: [{ path: "/profile", label: "Profil", icon: "account_circle" }],
-  },
-  {
-    key: "reglages",
-    short_label: "Paramètres",
-    long_label: "Paramètres",
-    icon: "tune",
-    routes: [
-      { path: "/settings/ai", label: "Intelligence artificielle", icon: "smart_toy" },
-      { path: "/settings/backups", label: "Données", icon: "save" },
-      { path: "/settings/customization", label: "Customisation", icon: "palette" },
-      { path: "/settings/updates", label: "Mises à jour", icon: "system_update" },
-      { path: "/settings/about", label: "À propos", icon: "info" },
-    ],
-  },
+  { key: "ai", label: "Intelligence artificielle", icon: "ai", path: PATHS.ai, prefixes: ["/ai"] },
+  { key: "profile", label: "Profil", icon: "profile", path: PATHS.profile, goKey: "p", prefixes: ["/profile"] },
 ] as const;
 
-/** Section à laquelle appartient un chemin, pour l'état sélectionné du rail. */
-export function sectionForPath(pathname: string): SectionDef {
-  const match = Sections.find((section) =>
-    section.routes.some((route) =>
-      route.path === "/" ? pathname === "/" : pathname.startsWith(route.path),
-    ),
+/** Destination d'un chemin, pour l'état actif de la navigation ; Aujourd'hui par défaut. */
+export function destinationForPath(pathname: string): Destination {
+  return (
+    DESTINATIONS.find((destination) =>
+      destination.prefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)),
+    ) ?? DESTINATIONS[0]!
   );
-  return match ?? Sections[0]!;
 }
+
+/** Onglet de vue actif : correspondance exacte, sinon le premier onglet. */
+export function activeTab(destination: Destination, pathname: string): ViewTab | undefined {
+  return destination.tabs?.find((tab) => tab.path === pathname) ?? destination.tabs?.[0];
+}
+
+/**
+ * Anciens chemins (v1) → nouveaux. Conservés pour les liens encore émis par un écran non
+ * migré ; les Réglages v1 ouvrent la surcouche sur leur section.
+ */
+export const LEGACY_REDIRECTS: Readonly<Record<string, string>> = {
+  "/tracking/applications": PATHS.applications,
+  "/tracking/calendar": PATHS.calendar,
+  "/analytics": PATHS.analytics,
+  "/relations/network": PATHS.contacts,
+  "/documents/cv": PATHS.documents,
+  "/documents/cover-letters": PATHS.letters,
+  "/settings/ai": PATHS.ai,
+};

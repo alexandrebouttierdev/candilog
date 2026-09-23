@@ -23,6 +23,7 @@ import {
   SectionCard,
   type ProfileTab,
 } from "../components/ProfileUi";
+import { PATHS } from "@/shared/lib/paths";
 
 /** Profile professionnel, objectif et parcours exploités par le générateur de CV. */
 export function ProfilePage() {
@@ -41,7 +42,7 @@ export function ProfilePage() {
         title="Profil professionnel"
         subtitle="Source de vérité de vos documents"
         secondary={
-          <Button variant="secondary" icon="description" onClick={() => void navigate("/documents/cv")}>
+          <Button variant="secondary" icon="description" onClick={() => void navigate(PATHS.documents)}>
             Mes CV
           </Button>
         }

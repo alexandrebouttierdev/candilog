@@ -32,3 +32,8 @@ export {
 export { useAboutViewModel } from "./viewmodel/useAboutViewModel";
 export { useManagedOllamaViewModel } from "./viewmodel/useManagedOllamaViewModel";
 export type { ManagedOllamaViewModel } from "./viewmodel/useManagedOllamaViewModel";
+export { AppearanceSettings } from "./view/pages/AppearanceSettings";
+export { SettingsRow, SettingsSection } from "./view/components/SettingsSection";
+export { BackupsPage } from "./view/pages/BackupsPage";
+export { UpdatesPage } from "./view/pages/UpdatesPage";
+export { AboutPage } from "./view/pages/AboutPage";

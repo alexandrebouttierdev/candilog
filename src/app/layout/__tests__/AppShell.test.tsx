@@ -1,18 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  createMemoryRouter,
-  MemoryRouter,
-  RouterProvider,
-  type RouteObject,
-} from "react-router-dom";
-import { fireEvent, render, screen } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createMemoryRouter, RouterProvider, type RouteObject } from "react-router-dom";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { QueryWrapper } from "@/shared/lib/test-utils";
+import { useUiStore } from "@/shared/lib/ui-store";
 import { managedOllamaService, settingsService } from "@/features/settings";
+import { applicationService } from "@/features/applications";
+import { profileService } from "@/features/profile";
 import type { Settings } from "@/shared/types/generated/settings";
 import { AppShell } from "../AppShell";
-import { NavRail } from "../NavRail";
-import { TopBar } from "../TopBar";
 
 const REGLAGES: Settings = {
   llm: {
@@ -28,20 +24,27 @@ const REGLAGES: Settings = {
   language: "fr",
 };
 
-function renderShell(children: RouteObject[], initialEntries = ["/"]) {
-  const router = createMemoryRouter(
-    [{ path: "/", element: <AppShell />, children }],
-    { initialEntries },
-  );
-  return render(
+const ECRANS: RouteObject[] = [
+  { index: true, element: <p>Écran Aujourd'hui</p> },
+  { path: "applications", element: <><p>Écran Candidatures</p><input aria-label="Recherche" /></> },
+  { path: "profile", element: <p>Écran Profil</p> },
+];
+
+function renderShell(initialEntries = ["/"]) {
+  const router = createMemoryRouter([{ path: "/", element: <AppShell />, children: ECRANS }], {
+    initialEntries,
+  });
+  render(
     <QueryWrapper>
       <RouterProvider router={router} />
     </QueryWrapper>,
   );
+  return router;
 }
 
 beforeEach(() => {
   vi.restoreAllMocks();
+  useUiStore.setState({ settings: null, palette: false, toasts: [] });
   vi.spyOn(settingsService, "load").mockResolvedValue(REGLAGES);
   vi.spyOn(managedOllamaService, "status").mockResolvedValue({
     runtime_state: "not_installed",
@@ -57,71 +60,73 @@ beforeEach(() => {
 
 describe("coque applicative", () => {
   it("offre un lien d'évitement vers le contenu et un seul main", () => {
-    renderShell([{ index: true, element: <p>Accueil</p> }]);
-    const skip = screen.getByRole("link", { name: "Aller au contenu" });
-    expect(skip).toHaveAttribute("href", "#contenu");
+    renderShell();
+    expect(screen.getByRole("link", { name: "Aller au contenu" })).toHaveAttribute("href", "#contenu");
     expect(screen.getAllByRole("main")).toHaveLength(1);
     expect(screen.getByRole("main")).toHaveAttribute("id", "contenu");
   });
 
-  it("ne navigue plus au clavier avec Ctrl/Cmd + chiffre", () => {
-    renderShell([
-      { index: true, element: <p>Accueil</p> },
-      { path: "tracking/applications", element: <p>Candidatures</p> },
-    ]);
-
-    fireEvent.keyDown(document, { key: "2", ctrlKey: true });
-
-    expect(screen.getByText("Accueil")).toBeInTheDocument();
-    expect(screen.queryByText("Candidatures")).not.toBeInTheDocument();
+  it("expose les six destinations et marque la destination active", () => {
+    renderShell(["/applications"]);
+    const nav = screen.getByRole("navigation", { name: "Navigation principale" });
+    for (const label of ["Aujourd'hui", "Candidatures", "Relations", "Documents", "Intelligence artificielle", "Profil"]) {
+      expect(within(nav).getByRole("link", { name: new RegExp(label) })).toBeInTheDocument();
+    }
+    expect(within(nav).getByRole("link", { name: /Candidatures/ })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("tab", { name: "Kanban" })).toBeInTheDocument();
   });
 
-  it("n'ouvre plus de palette globale avec Ctrl/Cmd+K", () => {
-    renderShell([{ index: true, element: <p>Accueil</p> }]);
+  it("affiche les décomptes connus : total des candidatures et complétude du profil", async () => {
+    vi.spyOn(applicationService, "breakdown").mockResolvedValue({
+      pending: 12,
+      followed_up: 4,
+      interview: 3,
+      rejected: 5,
+    });
+    vi.spyOn(profileService, "load").mockResolvedValue({
+      completion: 92,
+    } as Awaited<ReturnType<typeof profileService.load>>);
+    renderShell();
+    const nav = screen.getByRole("navigation", { name: "Navigation principale" });
+    expect(await within(nav).findByText("24")).toBeInTheDocument();
+    // Profil incomplet : ambre, jamais rouge (`DECISIONS.md` B11).
+    expect(await within(nav).findByText("92 %")).toHaveClass("text-st-a");
+  });
 
+  it("ouvre la palette avec Ctrl/Cmd+K et exécute une commande de navigation", async () => {
+    const router = renderShell();
     fireEvent.keyDown(document, { key: "k", ctrlKey: true });
-
+    const palette = await screen.findByRole("dialog", { name: "Palette de commandes" });
+    await userEvent.type(within(palette).getByRole("combobox"), "profil");
+    await userEvent.keyboard("{Enter}");
+    expect(router.state.location.pathname).toBe("/profile");
     expect(screen.queryByRole("dialog", { name: "Palette de commandes" })).not.toBeInTheDocument();
   });
-});
 
-describe("rail de navigation", () => {
-  it("expose des entrées accessibles par icône avec libellé complet", () => {
-    const client = new QueryClient({
-      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-    });
-    render(
-      <QueryClientProvider client={client}>
-        <MemoryRouter>
-          <NavRail />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-    expect(screen.getByRole("navigation", { name: "Navigation principale" })).toHaveClass("z-20");
-    expect(screen.getByRole("link", { name: "Aujourd'hui" })).toBeInTheDocument();
-    // Plus aucune pastille de raccourci : la navigation se fait à la souris ou au clavier
-    // par tabulation, pas par une combinaison à mémoriser.
-    expect(screen.queryByText("⌘1")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Passer en thème sombre" })).toBeInTheDocument();
-    const logo = screen.getByRole("img", { name: "Candilog" });
-    expect(logo).toHaveAttribute("width", "36");
-    expect(logo).toHaveAttribute("height", "36");
+  it("ouvre les Réglages en surcouche et rend l'écran intact à la fermeture", async () => {
+    const router = renderShell(["/applications"]);
+    fireEvent.keyDown(document, { key: ",", metaKey: true });
+    expect(await screen.findByRole("dialog", { name: "Réglages" })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/applications");
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Réglages" })).not.toBeInTheDocument());
+    expect(screen.getByText("Écran Candidatures")).toBeInTheDocument();
   });
-});
 
-describe("barre supérieure", () => {
-  it("n'affiche pas de titre d'écran et expose les contrôles IA", () => {
-    render(
-      <QueryWrapper>
-        <MemoryRouter initialEntries={["/tracking/calendar"]}>
-          <TopBar slotRef={() => {}} />
-        </MemoryRouter>
-      </QueryWrapper>,
-    );
-    expect(screen.queryByRole("heading", { name: "Calendrier" })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Fournisseur IA/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Tester" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Réglages Intelligence artificielle" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Rechercher ou exécuter" })).not.toBeInTheDocument();
+  it("change de destination avec G puis une lettre", async () => {
+    const router = renderShell();
+    act(() => {
+      fireEvent.keyDown(document.body, { key: "g" });
+      fireEvent.keyDown(document.body, { key: "c" });
+    });
+    await waitFor(() => expect(router.state.location.pathname).toBe("/applications"));
+  });
+
+  it("laisse la saisie intacte : G tapé dans un champ ne navigue pas", async () => {
+    const router = renderShell(["/applications"]);
+    const champ = screen.getByRole("textbox", { name: "Recherche" });
+    await userEvent.type(champ, "gp");
+    expect(champ).toHaveValue("gp");
+    expect(router.state.location.pathname).toBe("/applications");
   });
 });

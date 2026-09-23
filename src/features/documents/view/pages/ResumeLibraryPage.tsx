@@ -7,6 +7,7 @@ import { A4Preview, PreviewAction } from "../components/DocumentUi";
 import { ResumePaper } from "../components/ResumePaper";
 import { useProfilePhoto } from "@/features/profile";
 import { AtsChip, HeaderBadge, Screen, date, isLegacyGeneration, message } from "./documentPageSupport";
+import { PATHS } from "@/shared/lib/paths";
 
 export function ResumeLibraryPage() {
   const navigate = useNavigate();
@@ -28,7 +29,7 @@ export function ResumeLibraryPage() {
             ) : undefined
           }
           secondary={
-            <Button icon="upload_file" onClick={() => void navigate("/documents/analyze")}>
+            <Button icon="upload_file" onClick={() => void navigate(PATHS.analyzeResume)}>
               Importer
             </Button>
           }
@@ -36,7 +37,7 @@ export function ResumeLibraryPage() {
             <Button
               variant="primary"
               icon="auto_awesome"
-              onClick={() => void navigate("/documents/generate-resume")}
+              onClick={() => void navigate(PATHS.generateResume)}
             >
               Nouveau CV
             </Button>
@@ -126,7 +127,7 @@ export function ResumeLibraryPage() {
                 action={
                   <Button
                     icon="auto_awesome"
-                    onClick={() => void navigate("/documents/generate-resume")}
+                    onClick={() => void navigate(PATHS.generateResume)}
                   >
                     Générer un CV
                   </Button>
@@ -156,7 +157,7 @@ export function ResumeLibraryPage() {
                     <PreviewAction
                       icon="edit"
                       onClick={() =>
-                        void navigate("/documents/generate-resume", {
+                        void navigate(PATHS.generateResume, {
                           state: { workspace: vm.workspace, name: vm.version?.name },
                         })
                       }
@@ -187,7 +188,7 @@ export function ResumeLibraryPage() {
                     <PreviewAction
                       icon="edit"
                       onClick={() =>
-                        void navigate("/documents/generate-resume", {
+                        void navigate(PATHS.generateResume, {
                           state: { generation: vm.generation, name: vm.version?.name },
                         })
                       }

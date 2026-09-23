@@ -1,90 +1,173 @@
 @import "tailwindcss";
 @import "./shared/ui/material-symbols.css";
 
-/* Jetons Candilog — dark-first, surfaces glass, accent indigo centralisé. */
+/*
+ * Jetons Candilog v2 — valeurs de `reference_design/tokens.json` (source de vérité
+ * numérique du design, voir `docs/DESIGN.md`). Les noms reprennent ceux du handoff
+ * (`--bg-app`, `--tx-3`, `--ac`…) pour faciliter la relecture croisée avec la maquette.
+ *
+ * Thème clair par défaut ; le sombre s'applique via `prefers-color-scheme` (mode
+ * « Système ») ou `data-theme="dark"`, jamais en dupliquant les jetons dérivés.
+ */
 
 :root {
-  --candilog-page: #f2f3f6;
-  --candilog-surface: #ffffff;
-  --candilog-surface-alt: #f7f8fa;
-  --candilog-surface-elevated: #f4f5f8;
-  --candilog-surface-raised: #eef0f4;
-  --candilog-surface-hover: rgb(15 18 32 / 0.045);
-  --candilog-border: rgb(15 18 32 / 0.08);
-  --candilog-border-strong: rgb(15 18 32 / 0.14);
-  --candilog-border-section: rgb(15 18 32 / 0.07);
-  --candilog-border-field: rgb(15 18 32 / 0.055);
-  --candilog-border-overlay: rgb(15 18 32 / 0.12);
-  --candilog-border-overlay-strong: rgb(15 18 32 / 0.16);
-  --candilog-border-control: rgb(15 18 32 / 0.1);
-  --candilog-border-control-strong: rgb(15 18 32 / 0.12);
-  --candilog-border-checkbox: #3d3f48;
+  --bg-app: #F1F0EC;
+  --bg-panel: #FCFBF9;
+  --bg-elev: #E4E2DC;
+  --bg-hover: #F4F2EC;
+  --bg-sel: #ECEDFB;
+  --bg-group: #F5F3EE;
+  --bg-chip: #EAE7E0;
+  --modal-bg: #FFFFFF;
+  --menu-bg: #FFFFFF;
+  --field-bg: #F5F3EE;
+  --scrim: rgb(58 48 32 / 0.26);
+  --sk: #EDEBE5;
+  --bd: #E7E4DD;
+  --bd-soft: #EFEDE7;
+  --bd-menu: #E4E0D8;
+  --tx: #1A1A1C;
+  --tx-2: #2C2A27;
+  --tx-3: #4B4843;
+  --tx-4: #767069;
+  --tx-5: #84807A;
+  --tx-6: #A8A39C;
+  --tx-7: #BDB9B1;
+  --ac: #4A51DF;
+  --ac-tx: #3B41C4;
+  --ac-soft: #ECEDFB;
+  --on-accent: #FFFFFF;
+  --st-n: #8C877F;
+  --st-a: #A8761C;
+  --st-g: #2F8C5B;
+  --st-c: #B03A2E;
+  --tint-ac-bg: #DEDFF6;
+  --tint-ac-tx: #33356B;
+  --tint-g-bg: #D3E8DB;
+  --tint-g-tx: #256647;
+  --tint-c-bg: #F6DEDA;
+  --tint-c-tx: #A5342A;
+  --av1-bg: #C9CBEE;
+  --av2-bg: #C7DDD0;
+  --av3-bg: #DCCFE2;
+  --av-tx: #33356B;
+  --mark-ollama-bg: #1F2125;
+  --mark-ollama-fg: #FFFFFF;
+  /* Ombre unique de l'application : menus, dialogues, formulaires modaux. */
+  --shadow: 0 18px 40px -12px rgb(58 48 32 / 0.34);
+  /* Papier des aperçus : clair dans les deux thèmes, fidèle au PDF exporté. */
+  --shadow-page: 0 18px 40px -20px rgb(0 0 0 / 0.45);
+
+  /* Hauteurs de ligne, densité « Confortable » (défaut) — `DECISIONS.md` E9. */
+  --h-row-app: 34px;
+  --h-row-rel: 38px;
+  --h-row-doc: 40px;
+  --h-today-lg: 44px;
+  --h-today-sm: 34px;
+  --h-group: 30px;
+  --h-nav-item: 26px;
+  --h-prof-field: 30px;
+  --h-menu-row: 28px;
+  --h-palette-row: 38px;
+  --h-ai-row: 33px;
+
+  /* Durées d'animation ; ramenées à 0,01 ms par la réduction de mouvement. */
+  --dur-pop: 140ms;
+  --dur-pop-menu: 120ms;
+  --dur-color: 120ms;
+  --dur-gauge: 250ms;
+  --dur-progress: 300ms;
+  --dur-progress-gen: 500ms;
+  --dur-sk: 1400ms;
+  --dur-spin: 700ms;
+
+  /*
+   * Jetons hérités, repointés sur la palette v2 : les écrans pas encore refondus prennent
+   * ainsi les couleurs du nouveau design sans changer de code. À retirer quand plus aucun
+   * composant ne les utilise (étape de nettoyage de la refonte).
+   */
+  --candilog-page: var(--bg-app);
+  --candilog-surface: var(--bg-panel);
+  --candilog-surface-alt: var(--bg-group);
+  --candilog-surface-elevated: var(--bg-elev);
+  --candilog-surface-raised: var(--bg-chip);
+  --candilog-surface-hover: var(--bg-hover);
+  --candilog-border: var(--bd);
+  --candilog-border-strong: var(--bd-menu);
+  --candilog-border-section: var(--bd-soft);
+  --candilog-border-field: var(--bd-menu);
+  --candilog-border-overlay: var(--bd-menu);
+  --candilog-border-overlay-strong: var(--bd-menu);
+  --candilog-border-control: var(--bd-menu);
+  --candilog-border-control-strong: var(--bd-menu);
+  --candilog-border-checkbox: var(--tx-6);
   --candilog-border-on-accent: rgb(255 255 255 / 0.28);
-  --candilog-text-primary: #111216;
-  --candilog-text-strong: #1a1b21;
-  --candilog-text-secondary: #3d3f48;
-  --candilog-text-tertiary: #5c5e68;
-  --candilog-text-subtle: #6e7078;
-  --candilog-text-muted-2: #7a7c85;
-  --candilog-text-label: #6e7078;
-  --candilog-text-disabled: #8a8c95;
-  --candilog-accent: #4f5fe8;
-  --candilog-accent-hover: #6372f2;
-  --candilog-accent-text: #3d4fd4;
-  --candilog-accent-text-soft: #4f5fe8;
-  --candilog-accent-tint: rgb(79 95 232 / 0.1);
-  --candilog-accent-tint-08: rgb(79 95 232 / 0.07);
-  --candilog-accent-tint-12: rgb(79 95 232 / 0.12);
-  --candilog-accent-border: rgb(79 95 232 / 0.28);
-  --candilog-accent-focus: rgb(79 95 232 / 0.55);
-  --candilog-text-on-accent: #ffffff;
-  --candilog-fill: rgb(15 18 32 / 0.04);
-  --candilog-fill-hover: rgb(15 18 32 / 0.08);
-  --candilog-glass-rail: linear-gradient(180deg, #5263eb 0%, #4555d8 100%);
-  --candilog-glass-rail-border: #3d4fd4;
-  --candilog-rail-ink: rgb(255 255 255 / 0.76);
-  --candilog-rail-ink-hover: #ffffff;
-  --candilog-rail-item-hover: rgb(255 255 255 / 0.1);
-  --candilog-rail-item-active-bg: rgb(255 255 255 / 0.16);
-  --candilog-rail-item-active-border: rgb(255 255 255 / 0.38);
-  --candilog-rail-divider: rgb(255 255 255 / 0.22);
-  --candilog-rail-focus: rgb(255 255 255 / 0.72);
-  --candilog-rail-logo: rgb(255 255 255 / 0.95);
-  --candilog-shell-control-disabled-border: rgb(255 255 255 / 0.15);
-  --candilog-shell-control-disabled-bg: rgb(255 255 255 / 0.05);
-  --candilog-shell-control-disabled-ink: rgb(255 255 255 / 0.4);
-  --candilog-glass-subnav: #f3f5fd;
-  --candilog-glass-subnav-border: rgb(79 95 232 / 0.1);
-  --candilog-glass-topbar: var(--candilog-glass-rail);
-  --candilog-glass-topbar-border: var(--candilog-glass-rail-border);
-  --candilog-glass-inspector: rgb(255 255 255 / 0.8);
-  --candilog-glass-inspector-border: rgb(15 18 32 / 0.08);
-  --candilog-glass-popover: rgb(255 255 255 / 0.94);
-  --candilog-glass-menu: rgb(255 255 255 / 0.96);
-  --candilog-glass-modal: rgb(255 255 255 / 0.96);
-  --candilog-glass-fallback: #f7f8fa;
-  --candilog-blur-shell: 20px;
-  --candilog-blur-subnav: 16px;
-  --candilog-blur-overlay: 30px;
-  --candilog-success: #1f9a5c;
-  --candilog-success-text: #178a50;
-  --candilog-success-tint: rgb(53 192 122 / 0.12);
-  --candilog-success-border: rgb(53 192 122 / 0.22);
-  --candilog-warning: #c47a12;
-  --candilog-warning-tint: rgb(255 183 77 / 0.16);
-  --candilog-danger: #d63d42;
-  --candilog-danger-text: #c93a3f;
-  --candilog-danger-tint: rgb(255 90 95 / 0.1);
-  --candilog-danger-border: rgb(255 90 95 / 0.22);
-  --candilog-neutral-tint: rgb(15 18 32 / 0.045);
-  --candilog-scrim: rgb(242 243 246 / 0.86);
+  --candilog-text-primary: var(--tx);
+  --candilog-text-strong: var(--tx);
+  --candilog-text-secondary: var(--tx-3);
+  --candilog-text-tertiary: var(--tx-4);
+  --candilog-text-subtle: var(--tx-5);
+  --candilog-text-muted-2: var(--tx-5);
+  --candilog-text-label: var(--tx-5);
+  --candilog-text-disabled: var(--tx-6);
+  --candilog-accent: var(--ac);
+  --candilog-accent-hover: var(--ac);
+  --candilog-accent-text: var(--ac-tx);
+  --candilog-accent-text-soft: var(--ac-tx);
+  --candilog-accent-tint: var(--tint-ac-bg);
+  --candilog-accent-tint-08: var(--ac-soft);
+  --candilog-accent-tint-12: var(--tint-ac-bg);
+  --candilog-accent-border: color-mix(in srgb, var(--ac) 32%, transparent);
+  --candilog-accent-focus: var(--ac);
+  --candilog-text-on-accent: var(--on-accent);
+  --candilog-fill: var(--bg-chip);
+  --candilog-fill-hover: var(--bg-elev);
+  --candilog-glass-rail: var(--bg-app);
+  --candilog-glass-rail-border: var(--bd-soft);
+  --candilog-rail-ink: var(--tx-4);
+  --candilog-rail-ink-hover: var(--tx);
+  --candilog-rail-item-hover: var(--bg-elev);
+  --candilog-rail-item-active-bg: var(--bg-sel);
+  --candilog-rail-item-active-border: var(--bd-menu);
+  --candilog-rail-divider: var(--bd);
+  --candilog-rail-focus: var(--ac);
+  --candilog-rail-logo: var(--ac);
+  --candilog-shell-control-disabled-border: var(--bd);
+  --candilog-shell-control-disabled-bg: var(--bg-chip);
+  --candilog-shell-control-disabled-ink: var(--tx-6);
+  --candilog-glass-subnav: var(--bg-app);
+  --candilog-glass-subnav-border: var(--bd-soft);
+  --candilog-glass-topbar: var(--bg-app);
+  --candilog-glass-topbar-border: var(--bd-soft);
+  --candilog-glass-inspector: var(--bg-panel);
+  --candilog-glass-inspector-border: var(--bd-soft);
+  --candilog-glass-popover: var(--menu-bg);
+  --candilog-glass-menu: var(--menu-bg);
+  --candilog-glass-modal: var(--modal-bg);
+  --candilog-glass-fallback: var(--bg-panel);
+  --candilog-blur-shell: 0px;
+  --candilog-blur-subnav: 0px;
+  --candilog-blur-overlay: 0px;
+  --candilog-success: var(--st-g);
+  --candilog-success-text: var(--tint-g-tx);
+  --candilog-success-tint: var(--tint-g-bg);
+  --candilog-success-border: color-mix(in srgb, var(--st-g) 30%, transparent);
+  --candilog-warning: var(--st-a);
+  --candilog-warning-tint: color-mix(in srgb, var(--st-a) 16%, transparent);
+  --candilog-danger: var(--st-c);
+  --candilog-danger-text: var(--tint-c-tx);
+  --candilog-danger-tint: var(--tint-c-bg);
+  --candilog-danger-border: color-mix(in srgb, var(--st-c) 30%, transparent);
+  --candilog-neutral-tint: var(--bg-chip);
+  --candilog-scrim: var(--scrim);
   --candilog-shadow-1: none;
   --candilog-shadow-accent: none;
-  --candilog-shadow-2: 0 18px 44px rgb(15 18 32 / 0.12);
-  --candilog-shadow-3: 0 40px 90px rgb(15 18 32 / 0.18);
-  --candilog-shadow-paper: 0 10px 34px rgb(15 18 32 / 0.1);
-  --candilog-shadow-overlay: 0 40px 90px rgb(15 18 32 / 0.22);
-  --candilog-shadow-menu: 0 22px 54px rgb(15 18 32 / 0.16);
+  --candilog-shadow-2: var(--shadow);
+  --candilog-shadow-3: var(--shadow);
+  --candilog-shadow-paper: var(--shadow-page);
+  --candilog-shadow-overlay: var(--shadow);
+  --candilog-shadow-menu: var(--shadow);
+
   /* La feuille représente le document imprimé et ne s'inverse donc jamais en thème sombre. */
   --paper-bg: #ffffff;
   /* Encres exactes du moteur PDF (`cover_letter_pdf.rs` : TEXT et SECONDAIRE). */
@@ -130,144 +213,132 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --candilog-page: #08090c;
-    --candilog-surface: #111216;
-    --candilog-surface-alt: #0c0d10;
-    --candilog-surface-elevated: #15161b;
-    --candilog-surface-raised: #17181d;
-    --candilog-surface-hover: rgb(255 255 255 / 0.05);
-    --candilog-border: rgb(255 255 255 / 0.07);
-    --candilog-border-strong: rgb(255 255 255 / 0.1);
-    --candilog-border-section: rgb(255 255 255 / 0.055);
-    --candilog-border-field: rgb(255 255 255 / 0.045);
-    --candilog-border-overlay: rgb(255 255 255 / 0.1);
-    --candilog-border-overlay-strong: rgb(255 255 255 / 0.11);
-    --candilog-border-control: rgb(255 255 255 / 0.08);
-    --candilog-border-control-strong: rgb(255 255 255 / 0.09);
-    --candilog-border-checkbox: rgb(255 255 255 / 0.4);
-    --candilog-border-on-accent: rgb(255 255 255 / 0.12);
-    --candilog-text-primary: #f4f4f5;
-    --candilog-text-strong: #e6e6e9;
-    --candilog-text-secondary: #c9cad1;
-    --candilog-text-tertiary: #a9aab2;
-    --candilog-text-subtle: #7a7c85;
-    --candilog-text-muted-2: #8a8c95;
-    --candilog-text-label: #5e6068;
-    --candilog-text-disabled: #62646c;
-    --candilog-accent: #6b7cff;
-    --candilog-accent-hover: #8491ff;
-    --candilog-accent-text: #9aa6ff;
-    --candilog-accent-text-soft: #b0baff;
-    --candilog-accent-tint: rgb(107 124 255 / 0.13);
-    --candilog-accent-tint-08: rgb(107 124 255 / 0.09);
-    --candilog-accent-tint-12: rgb(107 124 255 / 0.12);
-    --candilog-accent-border: rgb(107 124 255 / 0.22);
-    --candilog-accent-focus: rgb(107 124 255 / 0.55);
-    --candilog-text-on-accent: #f4f4f5;
-    --candilog-fill: rgb(255 255 255 / 0.05);
-    --candilog-fill-hover: rgb(255 255 255 / 0.09);
-    --candilog-glass-rail: rgb(17 18 22 / 0.72);
-    --candilog-glass-rail-border: rgb(255 255 255 / 0.07);
-    --candilog-glass-subnav: rgb(15 16 20 / 0.6);
-    --candilog-glass-subnav-border: rgb(255 255 255 / 0.06);
-    --candilog-glass-topbar: rgb(17 18 22 / 0.7);
-    --candilog-glass-topbar-border: rgb(255 255 255 / 0.07);
-    --candilog-glass-inspector: rgb(17 18 22 / 0.66);
-    --candilog-glass-inspector-border: rgb(255 255 255 / 0.07);
-    --candilog-glass-popover: rgb(26 27 33 / 0.92);
-    --candilog-glass-menu: rgb(28 29 35 / 0.94);
-    --candilog-glass-modal: rgb(26 27 33 / 0.94);
-    --candilog-glass-fallback: #16171c;
-    --candilog-success: #35c07a;
-    --candilog-success-text: #4fd394;
-    --candilog-success-tint: rgb(53 192 122 / 0.13);
-    --candilog-success-border: rgb(53 192 122 / 0.2);
-    --candilog-warning: #ffb74d;
-    --candilog-warning-tint: rgb(255 183 77 / 0.13);
-    --candilog-danger: #ff5a5f;
-    --candilog-danger-text: #ff8085;
-    --candilog-danger-tint: rgb(255 90 95 / 0.13);
-    --candilog-danger-border: rgb(255 90 95 / 0.22);
-    --candilog-neutral-tint: rgb(255 255 255 / 0.04);
-    --candilog-scrim: rgb(4 4 6 / 0.6);
-    --candilog-shadow-1: none;
-    --candilog-shadow-accent: none;
-    --candilog-shadow-2: 0 18px 44px rgb(0 0 0 / 0.55);
-    --candilog-shadow-3: 0 40px 90px rgb(0 0 0 / 0.7);
-    --candilog-shadow-paper: 0 8px 30px rgb(0 0 0 / 0.55);
-    --candilog-shadow-overlay: 0 40px 90px rgb(0 0 0 / 0.65);
-    --candilog-shadow-menu: 0 22px 54px rgb(0 0 0 / 0.6);
+    --bg-app: #101114;
+    --bg-panel: #16171B;
+    --bg-elev: #1C1E24;
+    --bg-hover: #191B21;
+    --bg-sel: #1E2029;
+    --bg-group: #1A1C21;
+    --bg-chip: #26282F;
+    --modal-bg: #23252C;
+    --menu-bg: #1E2026;
+    --field-bg: #1A1C21;
+    --scrim: rgb(8 9 11 / 0.62);
+    --sk: #1E2026;
+    --bd: #212329;
+    --bd-soft: #1D1F25;
+    --bd-menu: #2C2F37;
+    --tx: #E8E9ED;
+    --tx-2: #D8DBE2;
+    --tx-3: #A8ADB8;
+    --tx-4: #7B808C;
+    --tx-5: #6A6F7A;
+    --tx-6: #5A5F69;
+    --tx-7: #4A4E58;
+    --ac: #5B62F0;
+    --ac-tx: #8E94FF;
+    --ac-soft: #1E2029;
+    --on-accent: #FFFFFF;
+    --st-n: #8A8F9A;
+    --st-a: #D2A24A;
+    --st-g: #4FB07A;
+    --st-c: #E0776A;
+    --tint-ac-bg: #252842;
+    --tint-ac-tx: #A9AEFF;
+    --tint-g-bg: #1F3329;
+    --tint-g-tx: #6FC795;
+    --tint-c-bg: #33232A;
+    --tint-c-tx: #E0776A;
+    --av1-bg: #3A3F6B;
+    --av2-bg: #2F4A3E;
+    --av3-bg: #4A3A56;
+    --av-tx: #C5C9D2;
+    --mark-ollama-bg: #E8E9ED;
+    --mark-ollama-fg: #16171B;
+    --shadow: 0 20px 44px -12px rgb(0 0 0 / 0.75);
   }
 }
 
 :root[data-theme="dark"] {
-  --candilog-page: #08090c;
-  --candilog-surface: #111216;
-  --candilog-surface-alt: #0c0d10;
-  --candilog-surface-elevated: #15161b;
-  --candilog-surface-raised: #17181d;
-  --candilog-surface-hover: rgb(255 255 255 / 0.05);
-  --candilog-border: rgb(255 255 255 / 0.07);
-  --candilog-border-strong: rgb(255 255 255 / 0.1);
-  --candilog-border-section: rgb(255 255 255 / 0.055);
-  --candilog-border-field: rgb(255 255 255 / 0.045);
-  --candilog-border-overlay: rgb(255 255 255 / 0.1);
-  --candilog-border-overlay-strong: rgb(255 255 255 / 0.11);
-  --candilog-border-control: rgb(255 255 255 / 0.08);
-  --candilog-border-control-strong: rgb(255 255 255 / 0.09);
-  --candilog-border-checkbox: rgb(255 255 255 / 0.4);
-  --candilog-border-on-accent: rgb(255 255 255 / 0.12);
-  --candilog-text-primary: #f4f4f5;
-  --candilog-text-strong: #e6e6e9;
-  --candilog-text-secondary: #c9cad1;
-  --candilog-text-tertiary: #a9aab2;
-  --candilog-text-subtle: #7a7c85;
-  --candilog-text-muted-2: #8a8c95;
-  --candilog-text-label: #5e6068;
-  --candilog-text-disabled: #62646c;
-  --candilog-accent: #6b7cff;
-  --candilog-accent-hover: #8491ff;
-  --candilog-accent-text: #9aa6ff;
-  --candilog-accent-text-soft: #b0baff;
-  --candilog-accent-tint: rgb(107 124 255 / 0.13);
-  --candilog-accent-tint-08: rgb(107 124 255 / 0.09);
-  --candilog-accent-tint-12: rgb(107 124 255 / 0.12);
-  --candilog-accent-border: rgb(107 124 255 / 0.22);
-  --candilog-accent-focus: rgb(107 124 255 / 0.55);
-  --candilog-text-on-accent: #f4f4f5;
-  --candilog-fill: rgb(255 255 255 / 0.05);
-  --candilog-fill-hover: rgb(255 255 255 / 0.09);
-  --candilog-glass-rail: rgb(17 18 22 / 0.72);
-  --candilog-glass-rail-border: rgb(255 255 255 / 0.07);
-  --candilog-glass-subnav: rgb(15 16 20 / 0.6);
-  --candilog-glass-subnav-border: rgb(255 255 255 / 0.06);
-  --candilog-glass-topbar: rgb(17 18 22 / 0.7);
-  --candilog-glass-topbar-border: rgb(255 255 255 / 0.07);
-  --candilog-glass-inspector: rgb(17 18 22 / 0.66);
-  --candilog-glass-inspector-border: rgb(255 255 255 / 0.07);
-  --candilog-glass-popover: rgb(26 27 33 / 0.92);
-  --candilog-glass-menu: rgb(28 29 35 / 0.94);
-  --candilog-glass-modal: rgb(26 27 33 / 0.94);
-  --candilog-glass-fallback: #16171c;
-  --candilog-success: #35c07a;
-  --candilog-success-text: #4fd394;
-  --candilog-success-tint: rgb(53 192 122 / 0.13);
-  --candilog-success-border: rgb(53 192 122 / 0.2);
-  --candilog-warning: #ffb74d;
-  --candilog-warning-tint: rgb(255 183 77 / 0.13);
-  --candilog-danger: #ff5a5f;
-  --candilog-danger-text: #ff8085;
-  --candilog-danger-tint: rgb(255 90 95 / 0.13);
-  --candilog-danger-border: rgb(255 90 95 / 0.22);
-  --candilog-neutral-tint: rgb(255 255 255 / 0.04);
-  --candilog-scrim: rgb(4 4 6 / 0.6);
-  --candilog-shadow-1: none;
-  --candilog-shadow-accent: none;
-  --candilog-shadow-2: 0 18px 44px rgb(0 0 0 / 0.55);
-  --candilog-shadow-3: 0 40px 90px rgb(0 0 0 / 0.7);
-  --candilog-shadow-paper: 0 8px 30px rgb(0 0 0 / 0.55);
-  --candilog-shadow-overlay: 0 40px 90px rgb(0 0 0 / 0.65);
-  --candilog-shadow-menu: 0 22px 54px rgb(0 0 0 / 0.6);
+  --bg-app: #101114;
+  --bg-panel: #16171B;
+  --bg-elev: #1C1E24;
+  --bg-hover: #191B21;
+  --bg-sel: #1E2029;
+  --bg-group: #1A1C21;
+  --bg-chip: #26282F;
+  --modal-bg: #23252C;
+  --menu-bg: #1E2026;
+  --field-bg: #1A1C21;
+  --scrim: rgb(8 9 11 / 0.62);
+  --sk: #1E2026;
+  --bd: #212329;
+  --bd-soft: #1D1F25;
+  --bd-menu: #2C2F37;
+  --tx: #E8E9ED;
+  --tx-2: #D8DBE2;
+  --tx-3: #A8ADB8;
+  --tx-4: #7B808C;
+  --tx-5: #6A6F7A;
+  --tx-6: #5A5F69;
+  --tx-7: #4A4E58;
+  --ac: #5B62F0;
+  --ac-tx: #8E94FF;
+  --ac-soft: #1E2029;
+  --on-accent: #FFFFFF;
+  --st-n: #8A8F9A;
+  --st-a: #D2A24A;
+  --st-g: #4FB07A;
+  --st-c: #E0776A;
+  --tint-ac-bg: #252842;
+  --tint-ac-tx: #A9AEFF;
+  --tint-g-bg: #1F3329;
+  --tint-g-tx: #6FC795;
+  --tint-c-bg: #33232A;
+  --tint-c-tx: #E0776A;
+  --av1-bg: #3A3F6B;
+  --av2-bg: #2F4A3E;
+  --av3-bg: #4A3A56;
+  --av-tx: #C5C9D2;
+  --mark-ollama-bg: #E8E9ED;
+  --mark-ollama-fg: #16171B;
+  --shadow: 0 20px 44px -12px rgb(0 0 0 / 0.75);
+}
+
+/* Densité « Compacte » : seules les hauteurs de ligne changent (`DECISIONS.md` E9). */
+:root[data-density="compact"] {
+  --h-row-app: 30px;
+  --h-row-rel: 34px;
+  --h-row-doc: 36px;
+  --h-today-lg: 40px;
+  --h-today-sm: 30px;
+  --h-group: 27px;
+  --h-nav-item: 24px;
+  --h-prof-field: 27px;
+  --h-menu-row: 26px;
+  --h-palette-row: 34px;
+  --h-ai-row: 30px;
+}
+
+/* Réduction de mouvement : préférence système ou interrupteur « Animations » des Réglages. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-pop: 0.01ms;
+    --dur-pop-menu: 0.01ms;
+    --dur-color: 0.01ms;
+    --dur-gauge: 0.01ms;
+    --dur-progress: 0.01ms;
+    --dur-progress-gen: 0.01ms;
+  }
+}
+
+:root[data-motion="off"] {
+  --dur-pop: 0.01ms;
+  --dur-pop-menu: 0.01ms;
+  --dur-color: 0.01ms;
+  --dur-gauge: 0.01ms;
+  --dur-progress: 0.01ms;
+  --dur-progress-gen: 0.01ms;
 }
 
 @custom-variant dark {
@@ -282,6 +353,52 @@
 }
 
 @theme inline {
+  /* Palier unique de la fenêtre (`DESIGN_SYSTEM.md` §9.3) : au-dessus de 1060 px,
+     navigation de 202 px et inspecteurs ancrés ; en dessous, navigation de 52 px. */
+  --breakpoint-wide: 1060px;
+
+  /* ── Couleurs v2 ─────────────────────────────────────────────────────── */
+  --color-app: var(--bg-app);
+  --color-panel: var(--bg-panel);
+  --color-elev: var(--bg-elev);
+  --color-hover: var(--bg-hover);
+  --color-sel: var(--bg-sel);
+  --color-group: var(--bg-group);
+  --color-chip: var(--bg-chip);
+  --color-modal: var(--modal-bg);
+  --color-menu: var(--menu-bg);
+  --color-input: var(--field-bg);
+  --color-sk: var(--sk);
+  --color-bd: var(--bd);
+  --color-bd-soft: var(--bd-soft);
+  --color-bd-menu: var(--bd-menu);
+  --color-tx: var(--tx);
+  --color-tx-2: var(--tx-2);
+  --color-tx-3: var(--tx-3);
+  --color-tx-4: var(--tx-4);
+  --color-tx-5: var(--tx-5);
+  --color-tx-6: var(--tx-6);
+  --color-tx-7: var(--tx-7);
+  --color-ac: var(--ac);
+  --color-ac-tx: var(--ac-tx);
+  --color-ac-soft: var(--ac-soft);
+  --color-st-n: var(--st-n);
+  --color-st-a: var(--st-a);
+  --color-st-g: var(--st-g);
+  --color-st-c: var(--st-c);
+  --color-tint-ac-bg: var(--tint-ac-bg);
+  --color-tint-ac-tx: var(--tint-ac-tx);
+  --color-tint-g-bg: var(--tint-g-bg);
+  --color-tint-g-tx: var(--tint-g-tx);
+  --color-tint-c-bg: var(--tint-c-bg);
+  --color-tint-c-tx: var(--tint-c-tx);
+  --color-av1: var(--av1-bg);
+  --color-av2: var(--av2-bg);
+  --color-av3: var(--av3-bg);
+  --color-av-tx: var(--av-tx);
+  --color-brand: #5b62f0;
+
+  /* ── Couleurs héritées (écrans non encore refondus) ──────────────────── */
   --color-page: var(--candilog-page);
   --color-surface: var(--candilog-surface);
   --color-surface-alt: var(--candilog-surface-alt);
@@ -348,9 +465,55 @@
   --color-paper-muted: var(--paper-muted);
   --color-paper-border: var(--paper-border);
 
-  --font-sans: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  /* ── Typographie : système (interface), Plex Serif (autorité), Plex Mono (données) ── */
+  --font-sans: system-ui, -apple-system, "Segoe UI Variable Text", "Segoe UI", Cantarell,
+    "Noto Sans", Helvetica, Arial, sans-serif;
+  --font-serif: "IBM Plex Serif", ui-serif, Georgia, serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
 
+  /* Échelle v2 (`DESIGN_SYSTEM.md` §2.1), noms distincts de l'échelle héritée. */
+  --text-hero: 32px;
+  --text-hero--line-height: 1;
+  --text-score: 26px;
+  --text-score--line-height: 1;
+  --text-stat: 25px;
+  --text-stat--line-height: 1;
+  --text-doc-score: 22px;
+  --text-doc-score--line-height: 1.1;
+  --text-screen: 21px;
+  --text-screen--line-height: 1.2;
+  --text-overlay-title: 20px;
+  --text-overlay-title--line-height: 1.2;
+  --text-empty: 19px;
+  --text-empty--line-height: 1.25;
+  --text-form: 17px;
+  --text-form--line-height: 1.25;
+  --text-dialog: 16.5px;
+  --text-dialog--line-height: 1.3;
+  --text-lead: 15px;
+  --text-lead--line-height: 1.3;
+  --text-card: 14.5px;
+  --text-card--line-height: 1.35;
+  --text-entry: 13.5px;
+  --text-entry--line-height: 1.35;
+  --text-row: 13px;
+  --text-row--line-height: 1.4;
+  --text-ui: 12.5px;
+  --text-ui--line-height: 1.4;
+  --text-small: 12px;
+  --text-small--line-height: 1.45;
+  --text-sub: 11.5px;
+  --text-sub--line-height: 1.45;
+  --text-tiny: 11px;
+  --text-tiny--line-height: 1.4;
+  --text-caps: 10.5px;
+  --text-caps--line-height: 1.3;
+  --text-mono-sm: 10px;
+  --text-mono-sm--line-height: 1.3;
+  --text-kbd: 9.5px;
+  --text-kbd--line-height: 1;
+
+  /* Échelle héritée. */
   --text-display: 1.4375rem;
   --text-display--line-height: 1;
   --text-display--font-weight: 600;
@@ -392,6 +555,19 @@
   --font-weight-mid: 500;
   --font-weight-strong: 600;
 
+  /* Rayons v2 (`DESIGN_SYSTEM.md` §4) : la valeur est dans le nom (`rounded-r7` = 7 px). */
+  --radius-r2: 2px;
+  --radius-r3: 3px;
+  --radius-r4: 4px;
+  --radius-r5: 5px;
+  --radius-r6: 6px;
+  --radius-r7: 7px;
+  --radius-r8: 8px;
+  --radius-r9: 9px;
+  --radius-r10: 10px;
+  --radius-r11: 11px;
+
+  /* Rayons hérités. */
   --radius-card: 12px;
   --radius-tile: 10px;
   --radius-field: 9px;
@@ -403,6 +579,29 @@
   --radius-overlay: 14px;
   --radius-paper: 4px;
 
+  /* Dimensions v2 : chrome et contrôles fixes, lignes selon la densité. */
+  --spacing-titlebar: 40px;
+  --spacing-toolbar: 38px;
+  --spacing-statusbar: 34px;
+  --spacing-overlay-head: 44px;
+  --spacing-btn: 27px;
+  --spacing-input: 30px;
+  --spacing-nav: 202px;
+  --spacing-nav-sm: 52px;
+  --spacing-inspector: 300px;
+  --spacing-row-app: var(--h-row-app);
+  --spacing-row-rel: var(--h-row-rel);
+  --spacing-row-doc: var(--h-row-doc);
+  --spacing-today-lg: var(--h-today-lg);
+  --spacing-today-sm: var(--h-today-sm);
+  --spacing-group-head: var(--h-group);
+  --spacing-nav-item: var(--h-nav-item);
+  --spacing-prof-field: var(--h-prof-field);
+  --spacing-menu-row: var(--h-menu-row);
+  --spacing-palette-row: var(--h-palette-row);
+  --spacing-ai-row: var(--h-ai-row);
+
+  /* Dimensions héritées. */
   --spacing-control: 30px;
   --spacing-field: 31px;
   --spacing-row: 38px;
@@ -414,6 +613,8 @@
   --spacing-rail: 68px;
   --spacing-subnav: 186px;
 
+  --shadow-pop: var(--shadow);
+  --shadow-sheet: var(--shadow-page);
   --shadow-overlay: var(--candilog-shadow-overlay);
   --shadow-menu: var(--candilog-shadow-menu);
   --shadow-e1: var(--candilog-shadow-1);
@@ -422,7 +623,33 @@
   --shadow-e3: var(--candilog-shadow-3);
   --shadow-paper: var(--candilog-shadow-paper);
 
-  --duration-hover: 120ms;
+  --duration-hover: var(--dur-color);
+
+  --animate-pop: pop var(--dur-pop) ease-out both;
+  --animate-pop-menu: pop var(--dur-pop-menu) ease-out both;
+  --animate-sk: sk var(--dur-sk) ease-in-out infinite;
+  --animate-spin-ring: spin var(--dur-spin) linear infinite;
+
+  @keyframes pop {
+    from {
+      opacity: 0;
+      transform: translateY(-4px) scale(0.985);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes sk {
+    0%,
+    100% {
+      opacity: 0.45;
+    }
+    50% {
+      opacity: 0.9;
+    }
+  }
 }
 
 @layer components {
@@ -680,9 +907,10 @@
   }
 }
 
-/* Polices du template CV fourni, embarquées localement (SIL OFL 1.1, IBM/plex — voir
-   `src-tauri/assets/fonts/ibm-plex/LICENSE.txt`) : ni Google Fonts, ni Play CDN, comme à
-   l'export PDF. */
+/* Polices IBM Plex embarquées localement (SIL OFL 1.1, IBM/plex — voir
+   `src-tauri/assets/fonts/ibm-plex/LICENSE.txt`) : Sans et Mono pour le CV
+   et la lettre, comme à l'export PDF ; Serif et Mono pour l'interface. Ni Google Fonts, ni CDN :
+   l'application fonctionne hors ligne. */
 @font-face {
   font-family: "IBM Plex Sans";
   font-weight: 400;
@@ -718,6 +946,20 @@
   src: url("../src-tauri/assets/fonts/ibm-plex/IBMPlexMono-Medium.ttf") format("truetype");
 }
 
+@font-face {
+  font-family: "IBM Plex Serif";
+  font-weight: 500;
+  font-display: block;
+  src: url("../src-tauri/assets/fonts/ibm-plex/IBMPlexSerif-Medium.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "IBM Plex Serif";
+  font-weight: 600;
+  font-display: block;
+  src: url("../src-tauri/assets/fonts/ibm-plex/IBMPlexSerif-SemiBold.ttf") format("truetype");
+}
+
 @layer base {
   html {
     color-scheme: light dark;
@@ -733,34 +975,34 @@
 
   /*
    * Le preflight Tailwind pose `background-color: transparent` et `border-radius: 0`
-   * sur tout `input`. La case native disparaît alors, surtout en light sur une
-   * surface blanche : il ne reste plus de fond ni de filet. On la redessine.
+   * sur tout `input`. La case native disparaît alors : on la redessine au gabarit v2
+   * (12 px, contour 1,5 px, rayon 3, remplie en `ac` une fois cochée).
    */
   input[type="checkbox"] {
     appearance: none;
     -webkit-appearance: none;
-    width: 15px;
-    height: 15px;
+    width: 12px;
+    height: 12px;
     margin: 0;
     flex-shrink: 0;
     cursor: pointer;
-    border: 2px solid var(--color-checkbox);
-    border-radius: 4px;
-    background-color: var(--color-fill);
+    border: 1.5px solid var(--tx-6);
+    border-radius: 3px;
+    background-color: transparent;
     background-position: center;
     background-repeat: no-repeat;
-    background-size: 11px 11px;
+    background-size: 10px 10px;
     accent-color: unset;
   }
 
   input[type="checkbox"]:hover:not(:disabled) {
-    border-color: var(--color-ink-faint);
+    border-color: var(--tx-4);
   }
 
   input[type="checkbox"]:checked,
   input[type="checkbox"]:indeterminate {
-    border-color: var(--color-accent);
-    background-color: var(--color-accent);
+    border-color: var(--ac);
+    background-color: var(--ac);
   }
 
   input[type="checkbox"]:checked {
@@ -772,52 +1014,56 @@
   }
 
   body {
-    background-color: var(--color-page);
-    color: var(--color-ink);
+    background-color: var(--bg-app);
+    color: var(--tx-2);
     font-family: var(--font-sans);
-    font-size: var(--text-body);
-    letter-spacing: 0.005em;
-    line-height: normal;
+    font-size: 12.5px;
+    line-height: 1.4;
     -webkit-font-smoothing: antialiased;
   }
 
+  /* Sélection de texte et curseur : `ac-soft` / `ac` (décision E11 du handoff). */
   ::selection {
-    background: var(--candilog-accent-tint-12);
-    color: var(--color-ink);
+    background: var(--tint-ac-bg);
+    color: var(--tx);
   }
 
+  input,
+  textarea,
+  [contenteditable] {
+    caret-color: var(--ac);
+  }
+
+  /* Anneau de focus des contrôles : 2 px `ac`, décalé de 2 px (`ACCESSIBILITY.md` §2).
+     Les lignes de liste portent leur propre focus (liseré gauche, `DECISIONS.md` B1). */
   :focus-visible {
-    outline: 1px solid var(--color-accent-focus);
-    outline-offset: 0;
+    outline: 2px solid var(--ac);
+    outline-offset: 2px;
   }
 
+  /* Barres de défilement fines et discrètes : 6 px, poignée `tx-7` (décision E11). */
   * {
-    scrollbar-color: var(--color-line-strong) transparent;
+    scrollbar-color: var(--tx-7) transparent;
     scrollbar-width: thin;
   }
 
   ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+    width: 6px;
+    height: 6px;
   }
 
-  ::-webkit-scrollbar-track {
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner {
     background: transparent;
   }
 
   ::-webkit-scrollbar-thumb {
-    background-clip: padding-box;
-    background-color: var(--color-line-strong);
-    border: 3px solid transparent;
-    border-radius: 999px;
+    background-color: transparent;
+    border-radius: 9999px;
   }
 
-  ::-webkit-scrollbar-thumb:hover {
-    background-color: var(--color-ink-faint);
-  }
-
-  ::-webkit-scrollbar-corner {
-    background: transparent;
+  *:hover::-webkit-scrollbar-thumb {
+    background-color: var(--tx-7);
   }
 }
 
@@ -826,36 +1072,74 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* En-tête de section capitalisé : 10,5 px, graisse 500, `.04em`, `tx-6`. */
+  .caps {
+    font-size: 10.5px;
+    font-weight: 500;
+    line-height: 1.3;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--tx-6);
+  }
+
+  /* Titres serif ≥ 15 px : interlettrage resserré (`DESIGN_SYSTEM.md` §2.1). */
+  .serif-title {
+    font-family: var(--font-serif);
+    font-weight: 600;
+    letter-spacing: -0.015em;
+  }
+
+  /* États de ligne (`DECISIONS.md` B1) : focus clavier, sélection, et les deux. */
+  .row-focus {
+    background: var(--bg-hover);
+    box-shadow: inset 2px 0 0 var(--tx-6);
+  }
+
   .row-selected {
-    background: var(--candilog-accent-tint-08);
-    box-shadow: inset 2px 0 0 var(--color-accent);
+    background: var(--bg-sel);
+    box-shadow: inset 2px 0 0 var(--ac);
+    color: var(--tx);
   }
 
-  .glass-rail,
-  .glass-topbar,
-  .glass-inspector {
-    backdrop-filter: blur(var(--candilog-blur-shell));
-    -webkit-backdrop-filter: blur(var(--candilog-blur-shell));
+  .row-selected.row-focus {
+    box-shadow:
+      inset 2px 0 0 var(--ac),
+      inset 0 0 0 1px var(--ac-tx);
   }
 
+  .transition-color {
+    transition: background-color var(--dur-color) ease, color var(--dur-color) ease,
+      border-color var(--dur-color) ease;
+  }
+
+  /* Surfaces héritées de la coque « glass » : désormais opaques, conservées le temps de
+     la migration des écrans qui les emploient encore. */
   .glass-rail {
     background: var(--candilog-glass-rail);
   }
 
-  @media (prefers-color-scheme: light) {
-    :root:not([data-theme="dark"]) .glass-rail,
-    :root:not([data-theme="dark"]) .glass-topbar,
-    :root:not([data-theme="dark"]) .glass-subnav {
-      backdrop-filter: none;
-      -webkit-backdrop-filter: none;
-    }
+  .glass-topbar {
+    background: var(--candilog-glass-topbar);
   }
 
-  :root[data-theme="light"] .glass-rail,
-  :root[data-theme="light"] .glass-topbar,
-  :root[data-theme="light"] .glass-subnav {
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
+  .glass-subnav {
+    background: var(--candilog-glass-subnav);
+  }
+
+  .glass-inspector {
+    background: var(--candilog-glass-inspector);
+  }
+
+  .glass-popover {
+    background: var(--candilog-glass-popover);
+  }
+
+  .glass-menu {
+    background: var(--candilog-glass-menu);
+  }
+
+  .glass-modal {
+    background: var(--candilog-glass-modal);
   }
 
   .shell-brand-control {
@@ -874,41 +1158,6 @@
     color: var(--candilog-shell-control-disabled-ink);
   }
 
-  .glass-subnav {
-    background: var(--candilog-glass-subnav);
-    backdrop-filter: blur(var(--candilog-blur-subnav));
-    -webkit-backdrop-filter: blur(var(--candilog-blur-subnav));
-  }
-
-  .glass-topbar {
-    background: var(--candilog-glass-topbar);
-  }
-
-  .glass-inspector {
-    background: var(--candilog-glass-inspector);
-  }
-
-  .glass-popover {
-    background: var(--candilog-glass-popover);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-  }
-
-  .glass-menu {
-    background: var(--candilog-glass-menu);
-    backdrop-filter: blur(26px);
-    -webkit-backdrop-filter: blur(26px);
-  }
-
-  .glass-modal {
-    backdrop-filter: blur(var(--candilog-blur-overlay));
-    -webkit-backdrop-filter: blur(var(--candilog-blur-overlay));
-  }
-
-  .glass-modal {
-    background: var(--candilog-glass-modal);
-  }
-
   @keyframes import-indeterminate {
     0% {
       transform: translateX(-120%);
@@ -923,26 +1172,16 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .import-indeterminate {
+    .import-indeterminate,
+    .animate-sk,
+    .animate-spin-ring {
       animation: none;
     }
   }
 
-  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-    .glass-rail,
-    .glass-topbar,
-    .glass-inspector {
-      background: var(--candilog-glass-fallback);
-    }
-
-    .glass-subnav {
-      background: var(--candilog-surface-alt);
-    }
-
-    .glass-popover,
-    .glass-modal,
-    .glass-menu {
-      background: var(--candilog-surface-elevated);
-    }
+  :root[data-motion="off"] .import-indeterminate,
+  :root[data-motion="off"] .animate-sk,
+  :root[data-motion="off"] .animate-spin-ring {
+    animation: none;
   }
 }

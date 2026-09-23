@@ -11,19 +11,23 @@ import type { IconName } from "./icon-names";
  */
 export type Tone = "neutral" | "accent" | "success" | "warning" | "danger";
 
+/**
+ * Paires teinte / encre du design (`DESIGN_SYSTEM.md` §1.6), indissociables : une encre
+ * posée sur une autre teinte perd son contraste. L'ambre n'a pas de paire dans le design ;
+ * il reprend la couleur d'attention sur un fond qui en dérive.
+ */
 const TONES: Record<Tone, string> = {
-  neutral: "bg-neutral-tint text-ink-muted",
-  accent: "bg-accent-tint text-accent",
-  success: "bg-success-tint text-success",
-  warning: "bg-warning-tint text-warning",
-  danger: "bg-danger-tint text-danger",
+  neutral: "bg-chip text-tx-3",
+  accent: "bg-tint-ac-bg text-tint-ac-tx",
+  success: "bg-tint-g-bg text-tint-g-tx",
+  warning: "bg-warning-tint text-st-a",
+  danger: "bg-tint-c-bg text-tint-c-tx",
 };
 
 /**
- * Pastille de statut : fond teinté, icône 14 px, libellé 11,5 px/550, rayon 6 px.
+ * Pastille (`COMPONENTS.md` §7) : 20 px, rayon 5, retrait `0 7px`, texte 12 px.
  *
- * Reprend exactement la pastille des tableaux et des listes des maquettes ; `compact`
- * donne la variante sans icône des compteurs (rayon 5 px, padding réduit).
+ * `compact` donne la variante 19 px à retrait `0 6px` des listes denses.
  */
 export function StatusPill({
   tone = "neutral",
@@ -41,26 +45,24 @@ export function StatusPill({
   return (
     <span
       className={cn(
-        "inline-flex h-5 items-center gap-[7px] font-medium whitespace-nowrap",
-        compact
-          ? "rounded-chip px-1.5 text-label"
-          : "rounded-pill px-2 text-label",
+        "inline-flex items-center gap-1.5 rounded-r5 text-small whitespace-nowrap",
+        compact ? "h-[19px] px-1.5" : "h-5 px-[7px]",
         TONES[tone],
         className,
       )}
     >
-      {icon ? <Icon name={icon} size={14} /> : null}
+      {icon ? <Icon name={icon} size={13} /> : null}
       {children}
     </span>
   );
 }
 
-/** Pastille grise d'un attribut sans tonalité (type de contrat, technologie). */
+/** Pastille neutre d'un attribut sans tonalité (type de contrat, technologie). */
 export function Tag({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-chip bg-neutral-tint px-[7px] py-[2px] text-tag font-mid text-ink-muted",
+        "inline-flex h-5 items-center rounded-r5 bg-chip px-[7px] text-small whitespace-nowrap text-tx-3",
         className,
       )}
     >

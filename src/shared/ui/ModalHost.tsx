@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { Icon } from "./Icon";
 import { Button, IconButton } from "./Button";
 import { useDismissable } from "@/shared/hooks/useDismissable";
+import { useFocusTrap } from "@/shared/hooks/useFocusTrap";
 import type { IconName } from "./icon-names";
 
 /**
@@ -17,46 +17,48 @@ import type { IconName } from "./icon-names";
 const ProfondeurModale = createContext(0);
 
 /**
- * Modale du guide : en-tête, corps défilant, pied fixe.
+ * Formulaire modal (`COMPONENTS.md` §11 du design).
  *
- * Géométrie des maquettes : rayon 14 px, ombre de niveau 3, en-tête de 18 px / 22 px avec
- * pastille d'icône de 34 px et titre 16 px/650, pied en `surface-alt` de 14 px / 22 px.
+ * Surface `modal-bg`, rayon 11, ancrée à 58 px du haut, hauteur du contenu bornée à la
+ * fenêtre − 78 px, corps défilant. En-tête : titre serif 17 px et sous-titre qui **énonce
+ * le contrat** (« Le minimum suffit : intitulé et entreprise »). Pied : contrat clavier en
+ * mono à gauche, `Annuler` et le bouton principal à droite. La structure en trois bandes
+ * garde le pied et son action visibles quelle que soit la longueur du formulaire.
  *
- * Rendue en superposition dans le document plutôt que dans une fenêtre native : le guide
- * demande de conserver l'arrière-plan atténué et le focus dans la page. La structure en
- * trois bandes (`grid-rows-[auto_1fr_auto]`) garantit que le pied et son action primaire
- * restent visibles quelle que soit la longueur du formulaire — c'est le défaut que la
- * refonte corrige.
+ * Le focus entre dans le formulaire (premier champ), y reste piégé, et revient au
+ * déclencheur à la fermeture. `icon` et `submitIcon` restent acceptés pour les écrans pas
+ * encore migrés ; le design n'en affiche pas.
  */
 export function ModalHost({
   open,
-  icon,
   title,
   subtitle,
   footer_note,
-  footerIcon = "info",
   footerTone = "neutral",
   submitLabel = "Enregistrer",
-  submitIcon = "check",
   submitDisabled = false,
+  submitShortcut,
   busy = false,
   cancelLabel = "Annuler",
   flush = false,
   onClose,
   onSubmit,
-  width = "620px",
+  width = "600px",
   children,
 }: {
   open: boolean;
-  icon: IconName;
+  icon?: IconName;
   title: string;
   subtitle?: string | undefined;
+  /** Contrat clavier ou précision, en mono à gauche du pied (`⏎ créer · ⇧⏎ …`). */
   footer_note?: string | undefined;
   footerIcon?: IconName;
   footerTone?: "neutral" | "danger";
   submitLabel?: string;
   submitIcon?: IconName;
   submitDisabled?: boolean;
+  /** Raccourci imprimé dans le bouton principal. */
+  submitShortcut?: string;
   busy?: boolean;
   cancelLabel?: string;
   /** Corps sans gouttière, pour un split liste / détail. */
@@ -78,6 +80,7 @@ export function ModalHost({
     dismissDisabled: busy,
     ...(onSubmit ? { onSubmit } : {}),
   });
+  useFocusTrap(panel, open);
 
   // Le focus doit entrer dans la modale à l'ouverture, sinon la tabulation continue de
   // parcourir l'arrière-plan atténué, invisible mais toujours atteignable au clavier.
@@ -99,8 +102,8 @@ export function ModalHost({
 
   return createPortal(
     <div
-      style={{ zIndex: 50 + profondeur * 10 }}
-      className="fixed inset-0 flex items-center justify-center bg-scrim/70 p-[34px] backdrop-blur-[2px]"
+      style={{ zIndex: 60 + profondeur * 4 }}
+      className="fixed inset-0 flex items-start justify-center bg-scrim px-8 pt-[58px] pb-5"
     >
       <div
         ref={panel}
@@ -109,21 +112,21 @@ export function ModalHost({
         aria-label={title}
         tabIndex={-1}
         style={{ width, maxWidth: "100%" }}
-        className={`flex max-h-full flex-col overflow-hidden rounded-overlay border border-line bg-surface shadow-overlay${flush ? " h-[min(720px,100%)]" : ""}`}
+        className={`flex max-h-[calc(100vh-78px)] animate-pop flex-col overflow-hidden rounded-r11 border border-bd-menu bg-modal shadow-pop${flush ? " h-[min(720px,calc(100vh-78px))]" : ""}`}
       >
-        <header className="flex flex-none items-start gap-[13px] border-b border-line px-[22px] py-[18px]">
-          <span className="flex size-[34px] flex-none items-center justify-center rounded-tile bg-accent-tint text-accent">
-            <Icon name={icon} size={19} />
-          </span>
+        <header className="flex flex-none items-start gap-3 border-b border-bd-soft px-[17px] pt-[15px] pb-[13px]">
           <div className="min-w-0 flex-1">
-            <h2 className="truncate text-heading leading-tight tracking-[-0.015em] text-ink">
-              {title}
-            </h2>
-            {subtitle ? (
-              <p className="mt-[3px] truncate text-note text-ink-faint">{subtitle}</p>
-            ) : null}
+            <h2 className="serif-title truncate text-form text-tx">{title}</h2>
+            {subtitle ? <p className="mt-1 text-small text-tx-5">{subtitle}</p> : null}
           </div>
-          <IconButton icon="close" label="Fermer" onClick={onClose} disabled={busy} />
+          <IconButton
+            icon="close"
+            label="Fermer"
+            onClick={onClose}
+            disabled={busy}
+            size={13}
+            className="size-[22px]"
+          />
         </header>
 
         <div
@@ -131,35 +134,29 @@ export function ModalHost({
           className={
             flush
               ? "flex min-h-0 flex-1 flex-col overflow-hidden"
-              : "min-h-0 flex-1 overflow-y-auto px-[22px] pt-1.5 pb-[18px]"
+              : "min-h-0 flex-1 overflow-y-auto px-[17px] py-3.5"
           }
         >
           <ProfondeurModale.Provider value={profondeur + 1}>{children}</ProfondeurModale.Provider>
         </div>
 
-        <footer className="flex flex-none flex-wrap items-center gap-3 border-t border-line bg-surface-alt px-[22px] py-3.5">
-          {footer_note ? (
-            <p
-              className={`flex min-w-[180px] flex-1 items-center gap-1.5 text-label ${
-                footerTone === "danger" ? "text-danger" : "text-ink-faint"
-              }`}
-            >
-              <Icon name={footerIcon} size={15} className="flex-none" />
-              {footer_note}
-            </p>
-          ) : (
-            <div className="flex-1" />
-          )}
-          <Button variant="secondary" size="dialog" onClick={onClose} disabled={busy}>
+        <footer className="flex flex-none items-center gap-2 border-t border-bd-soft px-[17px] pt-[13px] pb-4">
+          <p
+            className={`min-w-0 flex-1 truncate font-mono text-mono-sm ${
+              footerTone === "danger" ? "text-st-c" : "text-tx-6"
+            }`}
+          >
+            {footer_note}
+          </p>
+          <Button variant="secondary" onClick={onClose} disabled={busy}>
             {cancelLabel}
           </Button>
           {onSubmit ? (
             <Button
               variant="primary"
-              size="dialog"
-              icon={busy ? "progress_activity" : submitIcon}
               disabled={submitDisabled || busy}
               onClick={onSubmit}
+              {...(submitShortcut ? { shortcut: submitShortcut } : {})}
             >
               {busy ? "Enregistrement…" : submitLabel}
             </Button>
@@ -172,7 +169,8 @@ export function ModalHost({
 }
 
 /**
- * Title de section d'un formulaire : icône, libellé 12,5 px/600, filet occupant le reste.
+ * Section d'un formulaire : en-tête capitalisé et filet occupant le reste. `icon` est
+ * conservé pour les écrans pas encore migrés.
  */
 export function ModalSection({
   icon,
@@ -184,11 +182,10 @@ export function ModalSection({
   children: ReactNode;
 }) {
   return (
-    <section className="pt-[18px]">
-      <div className="mb-3 flex items-center gap-2">
-        <Icon name={icon} size={16} className="flex-none text-ink-faint" />
-        <span className="text-body font-semibold text-ink">{title}</span>
-        <span aria-hidden className="h-px flex-1 bg-line" />
+    <section className="pt-4" data-icon={icon}>
+      <div className="mb-2.5 flex items-center gap-2">
+        <span className="caps">{title}</span>
+        <span aria-hidden className="h-px flex-1 bg-bd-soft" />
       </div>
       {children}
     </section>

@@ -1,9 +1,10 @@
-import { createElement, lazy, Suspense } from "react";
-import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
+import { createElement, lazy, Suspense, useEffect } from "react";
+import { createBrowserRouter, Navigate, RouterProvider, useLocation, useParams } from "react-router-dom";
 import type { RouteObject } from "react-router-dom";
 import { AppShell } from "@/app/layout/AppShell";
-import { Sections } from "./routes";
-import { PlaceholderPage } from "./PlaceholderPage";
+import { useUiStore } from "@/shared/lib/ui-store";
+import type { SettingsSection } from "@/shared/lib/ui-store";
+import { LEGACY_REDIRECTS } from "./routes";
 
 const DashboardPage = lazy(() =>
   import("@/features/analytics/view/pages/DashboardPage").then((m) => ({ default: m.DashboardPage })),
@@ -17,14 +18,10 @@ const ApplicationsPage = lazy(() =>
   })),
 );
 const CalendarPage = lazy(() =>
-  import("@/features/calendar/view/pages/CalendarPage").then((m) => ({
-    default: m.CalendarPage,
-  })),
+  import("@/features/calendar/view/pages/CalendarPage").then((m) => ({ default: m.CalendarPage })),
 );
 const CompaniesPage = lazy(() =>
-  import("@/features/companies/view/pages/CompaniesPage").then((m) => ({
-    default: m.CompaniesPage,
-  })),
+  import("@/features/companies/view/pages/CompaniesPage").then((m) => ({ default: m.CompaniesPage })),
 );
 const NetworkPage = lazy(() =>
   import("@/features/contacts/view/pages/NetworkPage").then((m) => ({ default: m.NetworkPage })),
@@ -36,46 +33,21 @@ const ResumeLibraryPage = lazy(() =>
   import("@/features/documents/view/pages/DocumentsPages").then((m) => ({ default: m.ResumeLibraryPage })),
 );
 const ResumeGeneratorPage = lazy(() =>
-  import("@/features/documents/view/pages/DocumentsPages").then((m) => ({
-    default: m.ResumeGeneratorPage,
-  })),
+  import("@/features/documents/view/pages/DocumentsPages").then((m) => ({ default: m.ResumeGeneratorPage })),
 );
 const LettersLibraryPage = lazy(() =>
-  import("@/features/documents/view/pages/DocumentsPages").then((m) => ({
-    default: m.LettersLibraryPage,
-  })),
+  import("@/features/documents/view/pages/DocumentsPages").then((m) => ({ default: m.LettersLibraryPage })),
 );
 const LetterWriterPage = lazy(() =>
-  import("@/features/documents/view/pages/DocumentsPages").then((m) => ({
-    default: m.LetterWriterPage,
-  })),
+  import("@/features/documents/view/pages/DocumentsPages").then((m) => ({ default: m.LetterWriterPage })),
 );
 const ResumeAnalysisPage = lazy(() =>
-  import("@/features/documents/view/pages/DocumentsPages").then((m) => ({
-    default: m.ResumeAnalysisPage,
-  })),
+  import("@/features/documents/view/pages/DocumentsPages").then((m) => ({ default: m.ResumeAnalysisPage })),
 );
 const AiPage = lazy(() =>
   import("@/features/settings/view/pages/AiPage").then((m) => ({ default: m.AiPage })),
 );
-const BackupsPage = lazy(() =>
-  import("@/features/settings/view/pages/BackupsPage").then((m) => ({
-    default: m.BackupsPage,
-  })),
-);
-const CustomisationPage = lazy(() =>
-  import("@/features/settings/view/pages/CustomisationPage").then((m) => ({
-    default: m.CustomisationPage,
-  })),
-);
-const UpdatesPage = lazy(() =>
-  import("@/features/settings/view/pages/UpdatesPage").then((m) => ({
-    default: m.UpdatesPage,
-  })),
-);
-const AboutPage = lazy(() =>
-  import("@/features/settings/view/pages/AboutPage").then((m) => ({ default: m.AboutPage })),
-);
+
 /**
  * Atelier du design system, réservé au développement.
  *
@@ -90,9 +62,7 @@ const designRoutes: RouteObject[] = import.meta.env.DEV
         element: (
           <Suspense fallback={null}>
             {createElement(
-              lazy(() =>
-                import("@/app/dev/DesignGallery").then((m) => ({ default: m.DesignGallery })),
-              ),
+              lazy(() => import("@/app/dev/DesignGallery").then((m) => ({ default: m.DesignGallery }))),
             )}
           </Suspense>
         ),
@@ -100,55 +70,57 @@ const designRoutes: RouteObject[] = import.meta.env.DEV
     ]
   : [];
 
-/**
- * Écrans réellement migrés, indexés par chemin.
- *
- * Tous les chemins du rail sont couverts. Un chemin absent retomberait encore sur le jalon
- * « écran non encore migré », conservé si la carte de navigation s'agrandit avant sa page.
- */
-const Pages: Record<string, React.ReactElement> = {
-  "/": <DashboardPage />,
-  "/analytics": <AnalyticsPage />,
-  "/tracking/applications": <ApplicationsPage />,
-  "/tracking/calendar": <CalendarPage />,
-  "/relations/companies": <CompaniesPage />,
-  "/relations/network": <NetworkPage />,
-  "/profile": <ProfilePage />,
-  "/documents/cv": <ResumeLibraryPage />,
-  "/documents/generate-resume": <ResumeGeneratorPage />,
-  "/documents/cover-letters": <LettersLibraryPage />,
-  "/documents/write-cover-letter": <LetterWriterPage />,
-  "/documents/analyze": <ResumeAnalysisPage />,
-  "/settings/ai": <AiPage />,
-  "/settings/backups": <BackupsPage />,
-  "/settings/customization": <CustomisationPage />,
-  "/settings/updates": <UpdatesPage />,
-  "/settings/about": <AboutPage />,
+/** Redirige un ancien chemin v1 vers son équivalent v2, en conservant la requête (`?id=`). */
+function LegacyRedirect({ to }: { to: string }) {
+  const { search } = useLocation();
+  return <Navigate to={`${to}${search}`} replace />;
+}
+
+const SECTIONS_V1: Readonly<Record<string, SettingsSection>> = {
+  backups: "data",
+  customization: "appearance",
+  updates: "updates",
+  about: "about",
 };
 
-/** Chemins dont la page n'est plus un jalon. */
-export const MIGRATED_PATHS = Object.keys(Pages);
+/** Ancien écran de réglages v1 : ouvre la surcouche sur sa section, au-dessus d'Aujourd'hui. */
+function LegacySettings() {
+  const { section = "" } = useParams();
+  const openSettings = useUiStore((state) => state.openSettings);
+  useEffect(() => {
+    openSettings(SECTIONS_V1[section] ?? "appearance");
+  }, [openSettings, section]);
+  return <Navigate to="/" replace />;
+}
 
-const screenRoutes: RouteObject[] = Sections.flatMap((section) =>
-  section.routes.map((route): RouteObject => {
-    const element = Pages[route.path] ?? (
-      <PlaceholderPage icon={route.icon} title={route.label} section={section.long_label} />
-    );
-    return route.path === "/"
-      ? { index: true, element }
-      : { path: route.path.slice(1), element };
-  }),
-);
+/** Écrans de la v2, indexés par chemin (sans la barre oblique initiale). */
+export const ROUTES: RouteObject[] = [
+  { index: true, element: <DashboardPage /> },
+  { path: "applications", element: <ApplicationsPage view="list" /> },
+  { path: "applications/kanban", element: <ApplicationsPage view="kanban" /> },
+  { path: "applications/calendar", element: <CalendarPage /> },
+  { path: "applications/analytics", element: <AnalyticsPage /> },
+  { path: "relations/companies", element: <CompaniesPage /> },
+  { path: "relations/contacts", element: <NetworkPage /> },
+  { path: "documents", element: <ResumeLibraryPage /> },
+  { path: "documents/letters", element: <LettersLibraryPage /> },
+  { path: "documents/generate-resume", element: <ResumeGeneratorPage /> },
+  { path: "documents/write-cover-letter", element: <LetterWriterPage /> },
+  { path: "documents/analyze", element: <ResumeAnalysisPage /> },
+  { path: "ai", element: <AiPage /> },
+  { path: "profile", element: <ProfilePage /> },
+  ...Object.entries(LEGACY_REDIRECTS).map(([from, to]) => ({
+    path: from.slice(1),
+    element: <LegacyRedirect to={to} />,
+  })),
+  { path: "settings/:section", element: <LegacySettings /> },
+];
 
 const router = createBrowserRouter([
   {
     path: "/",
     element: <AppShell />,
-    children: [
-      ...screenRoutes,
-      ...designRoutes,
-      { path: "*", element: <Navigate to="/" replace /> },
-    ],
+    children: [...ROUTES, ...designRoutes, { path: "*", element: <Navigate to="/" replace /> }],
   },
 ]);
 

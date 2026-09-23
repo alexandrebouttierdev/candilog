@@ -329,8 +329,8 @@ qu'après confirmation et transmission de l'arrêt au backend.
 
 ## Benchmark utilisateur (`CV_BENCHMARK.pdf`)
 
-Le bouton **Tester** (en-tête global, héros des réglages IA, carte de chaque modèle local
-installé) lance `run_user_cv_benchmark`. Le PDF de référence et sa ground truth
+Le bouton **Tester** (héros de l'écran Intelligence artificielle, carte de chaque modèle
+local installé) lance `run_user_cv_benchmark`. Le PDF de référence et sa ground truth
 (`src-tauri/resources/CV_BENCHMARK.pdf`, `CV_BENCHMARK.expected.json`) sont **compilés dans
 le binaire** (`include_bytes!` / `include_str!`) : le PDF est ensuite écrit dans un fichier
 temporaire pour les extracteurs. Ils ne figurent pas dans le bundle Tauri
@@ -358,10 +358,13 @@ et fixtures associées).
 
 ## Interface IA
 
-L'écran Paramètres → Intelligence artificielle comporte deux onglets : **IA locale**
-(catalogue Ollama géré) et **IA online/personnalisé** (grille distante). Thème et son
-vivent dans **Paramètres → Customisation**. Le sélecteur rapide global (`AiQuickSelector` dans la barre supérieure)
-synchronise le fournisseur actif avec les paramètres persistés.
+L'écran **Intelligence artificielle** est une destination de la navigation (`/ai`) ; il
+comporte deux onglets : **IA locale** (catalogue Ollama géré) et **IA online/personnalisé**
+(grille distante), et porte le bouton **Tester** du benchmark. Le son de fin de traitement
+vit dans **Réglages → Apparence**. Le pied de la navigation rappelle le fournisseur actif,
+son modèle et sa localité (puce verte sur cet ordinateur, ambre pour un envoi distant — la
+puce suit l'adresse, `127.0.0.1` ou `localhost` comptant comme local, une IP de réseau
+privé comme distante).
 
 ## Cache
 

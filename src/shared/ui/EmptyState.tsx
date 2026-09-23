@@ -4,21 +4,20 @@ import { cn } from "@/shared/lib/cn";
 import type { IconName } from "./icon-names";
 
 /**
- * État vide d'un écran ou d'une carte.
+ * État vide (`COMPONENTS.md` §15 du design).
  *
- * Reprend la carte « Vide » des maquettes : encadré pointillé de 1,5 px, pastille d'icône
- * de 36 px, titre 13 px/600 puis explication 11,5 px et action. `bordered` peut être
- * désactivé lorsque l'état vide occupe déjà une carte à filet plein.
- *
- * Le design system demande un état vide **par carte** plutôt qu'un écran vide global :
- * ce composant est donc dimensionné pour être inséré dans un conteneur, pas pour occuper
- * la fenêtre.
+ * Il **explique la cause et propose la sortie** : jamais seulement « aucune donnée ».
+ * Cercle de 38 px en pointillés (plein et vert quand le vide est une bonne nouvelle :
+ * « Rien à faire aujourd'hui »), titre serif 19 px, corps 13 px, puis les actions.
+ * `compact` donne la variante en bandeau des sections de profil vides.
  */
 export function EmptyState({
   icon = "inbox",
   title,
   description,
   action,
+  good = false,
+  compact = false,
   bordered = false,
   className,
 }: {
@@ -26,26 +25,58 @@ export function EmptyState({
   title: string;
   description?: string | undefined;
   action?: ReactNode;
+  /** Le vide est une bonne nouvelle : cercle plein `st-g`. */
+  good?: boolean;
+  compact?: boolean;
   bordered?: boolean;
   className?: string;
 }) {
+  if (compact) {
+    return (
+      <div
+        role="status"
+        className={cn("flex items-center gap-3.5 rounded-r8 bg-app px-[18px] py-[22px]", className)}
+      >
+        <Circle icon={icon} good={good} size="size-8" />
+        <div className="min-w-0 flex-1">
+          <p className="text-row font-medium text-tx">{title}</p>
+          {description ? <p className="mt-0.5 text-small text-tx-4">{description}</p> : null}
+        </div>
+        {action}
+      </div>
+    );
+  }
+
   return (
     <div
       role="status"
       className={cn(
-        "px-[18px] py-6 text-center",
-        bordered && "rounded-tile border-[1.5px] border-dashed border-line",
+        "flex flex-col items-center gap-[3px] px-10 py-6 text-center",
+        bordered && "rounded-r9 border border-dashed border-bd-menu",
         className,
       )}
     >
-      <span className="mb-[11px] inline-flex size-9 items-center justify-center rounded-tile bg-neutral-tint text-ink-faint">
-        <Icon name={icon} size={20} />
-      </span>
-      <p className="mb-[5px] text-item font-semibold text-ink">{title}</p>
+      <Circle icon={icon} good={good} size="size-[38px]" />
+      <p className="serif-title mt-2.5 text-empty text-tx">{title}</p>
       {description ? (
-        <p className="mx-auto max-w-sm text-label leading-normal text-ink-faint">{description}</p>
+        <p className="max-w-[400px] text-row leading-[1.55] text-pretty text-tx-4">{description}</p>
       ) : null}
-      {action ? <div className="mt-[13px] flex justify-center">{action}</div> : null}
+      {action ? <div className="mt-3.5 flex items-center justify-center gap-2">{action}</div> : null}
     </div>
+  );
+}
+
+function Circle({ icon, good, size }: { icon: IconName; good: boolean; size: string }) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "inline-flex flex-none items-center justify-center rounded-full",
+        size,
+        good ? "bg-st-g text-white" : "border-[1.6px] border-dashed border-tx-6 text-tx-5",
+      )}
+    >
+      <Icon name={icon} size={15} />
+    </span>
   );
 }

@@ -36,12 +36,15 @@ const INITIAL_KANBAN_PAGES: Record<ApplicationStatus, number> = {
  * Sert les deux vues sur le même filtre. La liste porte une pagination globale ; le Kanban
  * interroge chaque statut séparément afin que ses quatre colonnes restent indépendantes.
  */
-export function useApplicationsViewModel() {
+export function useApplicationsViewModel(controlledView?: TrackingView) {
   const queryClient = useQueryClient();
   const notify = useUiStore((state) => state.notify);
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const [view, setViewState] = useState<TrackingView>("kanban");
+  const [viewState, setViewState] = useState<TrackingView>("kanban");
+  // La vue suit l'onglet de la barre de titre quand l'écran est monté par une route (v2) ;
+  // l'état local ne sert plus qu'aux écrans montés sans onglet.
+  const view = controlledView ?? viewState;
   const [page, setPage] = useState(1);
   const [sizePage, setSizePage] = useState<number>(PAGE_SIZE);
   const [kanbanPages, setKanbanPages] = useState(INITIAL_KANBAN_PAGES);

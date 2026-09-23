@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { ModalHost } from "@/shared/ui";
 import { useAiRequiredStore } from "../../viewmodel/ai-required-store";
+import { PATHS } from "@/shared/lib/paths";
 
 /** Invite à configurer l'IA avant toute action qui en dépend. */
 export function AiRequiredModal() {
@@ -20,7 +21,7 @@ export function AiRequiredModal() {
       onClose={hide}
       onSubmit={() => {
         hide();
-        void navigate("/settings/ai");
+        void navigate(PATHS.ai);
       }}
       width="480px"
     >
