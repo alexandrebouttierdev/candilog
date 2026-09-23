@@ -1,32 +1,34 @@
-import { useState, type KeyboardEvent, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { AiBenchmarkModal, useAiRailStatusStore } from "@/features/ai";
 import { AppError } from "@/shared/types/app-error";
-import type { AnalysisMode, LlmForm, Settings } from "@/shared/types/generated/settings";
+import type { AiTask, AnalysisMode, LlmForm, Settings, TaskRoute } from "@/shared/types/generated/settings";
 import {
   Button,
   ErrorBanner,
   FormField,
   Icon,
-  PageHeader,
   SegmentedControl,
   Skeleton,
-  Tag,
   TextInput,
 } from "@/shared/ui";
+import { useChrome } from "@/shared/lib/chrome";
+import { useShortcut } from "@/shared/hooks/useShortcut";
+import { useUiStore } from "@/shared/lib/ui-store";
 import { openExternal } from "@/shared/services/external-link";
 import { useSettingsViewModel } from "../../viewmodel/useSettingsViewModel";
 import {
   getProvider,
+  OLLAMA_PROVIDER,
   OTHER_PROVIDERS,
+  PROVIDERS,
   idProvider,
   llmFromPreset,
   presetFromLlm,
   type ProviderOption,
 } from "../../model/providers";
 import { ManagedOllamaPanel } from "../components/ManagedOllamaPanel";
-import { ProviderGrid } from "../components/ProviderGrid";
+import { AI_TASKS, AiTaskRouting, assignmentOf, mainLabel } from "../components/AiTaskRouting";
 import { RemoteModelPicker } from "../components/RemoteModelPicker";
-import { SettingsBody, SettingsCard } from "../components/SettingsUi";
 import { cn } from "@/shared/lib/cn";
 import { type ConnectionTest } from "../../model/aiStatus";
 import { useManagedOllamaViewModel } from "../../viewmodel/useManagedOllamaViewModel";
@@ -41,15 +43,12 @@ const MODES: Array<{ value: AnalysisMode; label: string }> = [
 
 type AiTab = "local" | "providers";
 
-const TABS: Array<{ id: AiTab; label: string; badge?: string }> = [
-  { id: "local", label: "IA locale", badge: "Gratuit" },
-  { id: "providers", label: "IA online/personnalisé" },
-];
-
 /** Intelligence artificielle : fournisseur, modèle, comportement et apparence. */
 export function AiPage() {
   const vm = useSettingsViewModel();
-  const [tab, setTab] = useState<AiTab>("local");
+  const notify = useUiStore((state) => state.notify);
+  // Sans choix explicite, l'écran s'ouvre sur le fournisseur principal.
+  const [chosenTab, setTab] = useState<AiTab | null>(null);
   const [draft, setDraft] = useState<Settings | null>(null);
   const [apiKeyDraft, setApiKeyDraft] = useState("");
   /** Brouillons de clé par fournisseur : basculer ne doit pas écraser la saisie en cours. */
@@ -60,6 +59,8 @@ export function AiPage() {
   const [benchmarkOpen, setBenchmarkOpen] = useState(false);
   const [benchmarkModelLabel, setBenchmarkModelLabel] = useState("");
   const form = draft ?? vm.data ?? null;
+  const tab: AiTab =
+    chosenTab ?? (vm.data && idProvider(vm.data.llm.provider) !== "candilog_local" ? "providers" : "local");
   const llm = form?.llm;
   const managedVm = useManagedOllamaViewModel(() => setDraft(null));
 
@@ -201,240 +202,329 @@ export function AiPage() {
     ouvrirBenchmark(model.definition.display_name);
   };
 
+  const saved = vm.data ?? null;
+  const localModels = managedVm.status?.models ?? [];
+  const installedCount = localModels.filter((model) => model.installed).length;
+  const selectedId: ProviderOption["id"] = tab === "local" ? "candilog_local" : llm ? idProvider(llm.provider) : "candilog_local";
+  const selected = selectedId === "candilog_local" ? PROVIDERS[0]! : getProvider(llm?.provider ?? "candilog_local");
+  const principalId = saved ? idProvider(saved.llm.provider) : null;
+  const listed = [
+    PROVIDERS[0]!,
+    ...(principalId === "ollama" || saved?.llm_presets.ollama ? [OLLAMA_PROVIDER] : []),
+    ...OTHER_PROVIDERS,
+  ];
+
+  const routes = saved?.ai_routes ?? {};
+  const assignments = saved ? AI_TASKS.map((task) => assignmentOf(task.value, saved, localModels)) : [];
+  const localTasks = assignments.filter((item) => item.locality === "local").length;
+  const remoteTasks = assignments.filter((item) => item.locality === "remote").length;
+  const offTasks = assignments.filter((item) => item.locality === "off").length;
+
+  const assignTask = async (task: AiTask, route: TaskRoute | null | undefined) => {
+    if (!saved) return;
+    const next: Settings["ai_routes"] = { ...routes };
+    if (route === undefined) delete next[task];
+    else next[task] = route;
+    await vm.save({ ...saved, ai_routes: next }, null);
+    const label = AI_TASKS.find((item) => item.value === task)?.label ?? task;
+    const target =
+      route === undefined
+        ? `${mainLabel(saved, localModels)} (par défaut)`
+        : route === null
+          ? "désactivée"
+          : assignmentOf(task, { ...saved, ai_routes: next }, localModels).label;
+    notify({ tone: "success", title: `${label} → ${target}` });
+  };
+
+  useChrome({
+    crumb: selected.label,
+    ...(saved ? { aside: `${mainLabel(saved, localModels)} · principal` } : {}),
+    status: saved
+      ? `5 tâches · ${localTasks} locale${localTasks > 1 ? "s" : ""} · ${remoteTasks} distante${remoteTasks > 1 ? "s" : ""}${offTasks ? ` · ${offTasks} désactivée${offTasks > 1 ? "s" : ""}` : ""}`
+      : "",
+    keys: tab === "providers" ? [{ label: "Tester", shortcut: "t" }] : [],
+  });
+  useShortcut("t", () => void runTest(), { enabled: tab === "providers" && test !== "pending" });
+
+  const choose = (id: ProviderOption["id"]) => {
+    if (id === "candilog_local") {
+      setTab("local");
+      return;
+    }
+    setTab("providers");
+    if (llm && idProvider(llm.provider) !== id) selectProvider(id);
+  };
+
+  if (vm.error && !vm.data) {
+    return (
+      <div className="px-[18px] pt-4">
+        <ErrorBanner
+          message={vm.error instanceof AppError ? vm.error.message : "Les réglages n'ont pas pu être chargés."}
+          onRetry={vm.reload}
+        />
+      </div>
+    );
+  }
+
+  if (vm.isLoading || !form || !llm || !fournisseur || !saved) {
+    return (
+      <div className="max-w-[1000px] space-y-4 px-[18px] pt-4" role="status" aria-label="Chargement des réglages">
+        <Skeleton className="h-[82px] w-full rounded-card" />
+        <Skeleton className="h-[136px] w-full rounded-card" />
+        <Skeleton className="h-60 w-full rounded-card" />
+      </div>
+    );
+  }
+
+  const facts = FACTS[selectedId](selected.label);
+
   return (
-    <div className="flex h-full flex-col">
-<PageHeader
-        icon="smart_toy"
-        title="Intelligence artificielle"
-        subtitle="Le moteur reste sous votre contrôle"
-        primary={
-          tab === "providers" ? (
-            <Button
-              variant="primary"
-              icon={vm.isSaving ? "progress_activity" : "save"}
-              disabled={!form || vm.isSaving}
-              onClick={() => void save()}
-            >
-              {vm.isSaving ? "Enregistrement…" : "Enregistrer"}
-            </Button>
-          ) : null
-        }
-      />
-
-      {vm.error && !vm.data ? (
-        <div className="px-[18px] pt-4">
-          <ErrorBanner
-            message={vm.error instanceof AppError ? vm.error.message : "Les réglages n'ont pas pu être chargés."}
-            onRetry={vm.reload}
-          />
+    <div className="flex h-full min-h-0">
+      <nav aria-label="Fournisseurs" className="flex w-[190px] flex-none flex-col border-r border-bd-soft">
+        <p className="caps px-3.5 pt-3.5 pb-2">Fournisseurs</p>
+        <div role="tablist" aria-label="Fournisseurs d'IA" aria-orientation="vertical" className="flex-1 overflow-y-auto px-2">
+          {listed.map((provider) => {
+            const active = provider.id === selectedId;
+            const preset = provider.id === principalId ? saved.llm : saved.llm_presets[provider.id];
+            const state =
+              provider.id === "candilog_local"
+                ? installedCount > 0
+                  ? { text: `Local · ${installedCount} modèle${installedCount > 1 ? "s" : ""}`, ready: true }
+                  : { text: "Aucun modèle installé", ready: false }
+                : provider.id === "ollama"
+                  ? { text: preset?.model ? `Local · ${preset.model}` : "Non configuré", ready: Boolean(preset?.model) }
+                  : preset?.api_key_configured
+                    ? { text: "Clé enregistrée", ready: true }
+                    : { text: "Aucune clé", ready: false };
+            return (
+              <button
+                key={provider.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => choose(provider.id)}
+                className={cn(
+                  "mb-px flex w-full items-center gap-2.5 rounded-r7 px-2 py-1.5 text-left",
+                  active ? "bg-elev shadow-[inset_2px_0_0_var(--ac)]" : "hover:bg-hover",
+                )}
+              >
+                <span className="min-w-0 flex-1">
+                  <span className={cn("block truncate text-ui", active ? "font-medium text-tx" : "text-tx-2")}>
+                    {provider.label}
+                  </span>
+                  <span className="block truncate text-tiny text-tx-5">
+                    {state.text}
+                    {provider.id === principalId ? " · principal" : ""}
+                  </span>
+                </span>
+                <span aria-hidden className={cn("size-1.5 flex-none rounded-full", state.ready ? "bg-st-g" : "bg-tx-7")} />
+              </button>
+            );
+          })}
         </div>
-      ) : vm.isLoading || !form || !llm || !fournisseur ? (
-        <div
-          className="max-w-[1000px] space-y-4 px-[18px] pt-4"
-          role="status"
-          aria-label="Chargement des réglages"
-        >
-          <Skeleton className="h-[82px] w-full rounded-card" />
-          <Skeleton className="h-[136px] w-full rounded-card" />
-          <Skeleton className="h-60 w-full rounded-card" />
-        </div>
-      ) : (
-        <SettingsBody>
-          <div className="flex min-w-0 max-w-[1000px] flex-col gap-4">
-            <AiTabs active={tab} onChange={setTab} />
+      </nav>
 
+      <div className="min-w-0 flex-1 overflow-y-auto px-[22px] pt-[18px] pb-8">
+        <div className="max-w-[760px]">
+          <div className="flex items-start gap-3">
+            <div className="min-w-0 flex-1">
+              <h1 className="serif-title text-[21px] leading-tight text-tx">{selected.label}</h1>
+              <p className="mt-1.5 max-w-[560px] text-small leading-[1.55] text-tx-4">{facts.description}</p>
+            </div>
+            {tab === "providers" ? (
+              <span className="flex flex-none gap-1.5">
+                <Button size="compact" disabled={test === "pending"} onClick={() => void runTest()}>
+                  {test === "pending" ? "Test en cours…" : "Tester la connexion"}
+                </Button>
+                <Button variant="primary" size="compact" disabled={vm.isSaving} onClick={() => void save()}>
+                  {vm.isSaving ? "Enregistrement…" : "Enregistrer"}
+                </Button>
+              </span>
+            ) : null}
+          </div>
+
+          <dl className="mt-4 flex flex-wrap gap-x-9 gap-y-3">
+            {facts.meters.map((meter) => (
+              <div key={meter.label}>
+                <div aria-hidden className="mb-1.5 flex gap-[3px]">
+                  {[0, 1, 2].map((index) => (
+                    <span key={index} className={cn("h-[3px] w-[13px] rounded-r2", index < meter.level ? meter.tone : "bg-chip")} />
+                  ))}
+                </div>
+                <dt className="text-small text-tx-2">{meter.label}</dt>
+                <dd className="text-tiny text-tx-5">{meter.value}</dd>
+              </div>
+            ))}
+          </dl>
+
+          <div className="mt-5 border-t border-bd-soft pt-4">
             {tab === "local" ? (
               <ManagedOllamaPanel vm={managedVm} onTestModel={(model) => void testerModeleLocal(model)} />
-            ) : null}
-
-            {tab === "providers" ? (
-              <div className="flex flex-col gap-4">
-                <SettingsCard icon="hub" title="Fournisseur">
-                  <ProviderGrid
-                    value={llm.provider}
-                    onChange={selectProvider}
-                    items={OTHER_PROVIDERS}
-                  />
-                </SettingsCard>
-
-                <div className="grid gap-4 min-[900px]:grid-cols-2 min-[900px]:items-start">
-                    <SettingsCard
-                      icon="tune"
-                      title="Configuration"
-                      action={
-                        <>
-                          <Button
-                            icon="wifi"
-                            disabled={test === "pending"}
-                            onClick={() => void runTest()}
-                          >
-                            {test === "pending" ? "Test en cours…" : "Tester la connexion"}
-                          </Button>
-                          <Button
-                            variant="secondary"
-                            icon="bolt"
-                            disabled={!llm.model.trim()}
-                            onClick={() => ouvrirBenchmark(llm.model.trim())}
-                          >
-                            Tester
-                          </Button>
-                        </>
-                      }
+            ) : (
+              <div className="flex flex-col gap-5">
+                {principalId !== selectedId ? (
+                  <p className="rounded-r8 bg-group px-3 py-2 text-small leading-[1.5] text-tx-3">
+                    Enregistrer fait de {selected.label} le fournisseur principal : les tâches sans modèle attitré
+                    l'utiliseront. Les tâches routées ci-dessous gardent leur modèle.
+                  </p>
+                ) : null}
+                <section aria-label="Configuration">
+                  <h2 className="caps mb-2.5">Configuration</h2>
+                  {testMessage ? (
+                    <p
+                      role="status"
+                      className={cn("mb-2.5 text-small leading-relaxed", test === "error" ? "text-st-c" : "text-tint-g-tx")}
                     >
-                      <div className="flex flex-col gap-3.5">
-                        {testMessage ? (
-                          <p
-                            role="status"
-                            className={
-                              test === "error"
-                                ? "text-note leading-relaxed text-danger"
-                                : "text-note leading-relaxed text-success"
-                            }
-                          >
-                            {testMessage}
-                          </p>
-                        ) : null}
-                        <div className="flex flex-col gap-2.5">
-                          <div className="flex max-w-[380px] items-end gap-2">
-                            <FormField label="Modèle" required className="flex-1">
-                              {(props) => (
-                                <TextInput
-                                  {...props}
-                                  value={llm.model}
-                                  onChange={(event) => patchLlm({ model: event.target.value })}
-                                  placeholder={
-                                    models.length > 0
-                                      ? "Choisissez ci-dessous ou saisissez un identifiant"
-                                      : "Identifiant du modèle"
-                                  }
-                                />
-                              )}
-                            </FormField>
-                            <Button
-                              variant="secondary"
-                              icon="refresh"
-                              onClick={() => void actualiserModels()}
-                            >
-                              Actualiser
-                            </Button>
-                          </div>
-                          {models.length > 0 ? (
-                            <RemoteModelPicker
-                              models={models}
-                              value={llm.model}
-                              onChange={(model) => patchLlm({ model })}
-                              providerLabel={fournisseur.label}
-                              providerId={idProvider(llm.provider)}
-                            />
-                          ) : (
-                            <p className="text-meta leading-relaxed text-ink-faint">
-                              Actualisez la liste pour afficher les modèles proposés par le
-                              fournisseur.
-                            </p>
-                          )}
-                        </div>
-                        <FormField
-                          label="Endpoint"
-                          required={idProvider(llm.provider) === "custom"}
-                          className="max-w-[380px]"
-                          help={
-                            idProvider(llm.provider) === "custom"
-                              ? "Ollama local ou LM Studio : http://localhost:11434 (HTTP, sans /v1)."
-                              : undefined
-                          }
-                        >
+                      {testMessage}
+                    </p>
+                  ) : null}
+                  <div className="flex flex-col gap-3.5">
+                    <div className="flex flex-col gap-2.5">
+                      <div className="flex max-w-[380px] items-end gap-2">
+                        <FormField label="Modèle" required className="flex-1">
                           {(props) => (
                             <TextInput
                               {...props}
-                              value={llm.endpoint ?? ""}
-                              onChange={(event) => patchLlm({ endpoint: event.target.value || null })}
+                              value={llm.model}
+                              onChange={(event) => patchLlm({ model: event.target.value })}
+                              placeholder={
+                                models.length > 0 ? "Choisissez ci-dessous ou saisissez un identifiant" : "Identifiant du modèle"
+                              }
                             />
                           )}
                         </FormField>
-                        {idProvider(llm.provider) !== "ollama" ? (
-                          <FormField
-                            label="Clé API"
-                            required={idProvider(llm.provider) !== "custom"}
-                            className="max-w-[380px]"
-                            help={
-                              llm.api_key_configured
-                                ? "Une clé est configurée dans le coffre système. Saisissez-en une nouvelle uniquement pour la remplacer."
-                                : "Stockée dans le coffre système, jamais renvoyée à l'interface ni écrite dans la base."
-                            }
-                          >
-                            {(props) => (
-                              <div className="flex items-center gap-2">
-                                <TextInput
-                                  {...props}
-                                  type="password"
-                                  autoComplete="new-password"
-                                  value={apiKeyDraft}
-                                  placeholder={llm.api_key_configured ? "Clé configurée" : "Saisir la clé API"}
-                                  onChange={(event) => {
-                                    setApiKeyDraft(event.target.value);
-                                    setTest("idle");
-                                  }}
-                                />
-                                {llm.api_key_configured ? (
-                                  <Button
-                                    variant="ghost"
-                                    icon="delete"
-                                    disabled={vm.isClearingApiKey}
-                                    onClick={() => void clearApiKey()}
-                                  >
-                                    Supprimer
-                                  </Button>
-                                ) : null}
-                              </div>
-                            )}
-                          </FormField>
-                        ) : (
-                          <div className="max-w-[380px] rounded-field border border-line bg-fill px-3 py-2.5">
-                            <p className="flex items-center gap-1.5 text-label font-mid text-ink">
-                              <Icon name="info" size={14} className="flex-none text-ink-faint" />
-                              Modèle local : aucune clé, aucune connexion
-                            </p>
-                            <p className="mt-1 text-meta leading-relaxed text-ink-muted">
-                              Besoin d'aide pour choisir un modèle compatible avec votre machine ?{" "}
-                              <button
-                                type="button"
-                                onClick={() => void openExternal("https://www.canirun.ai/")}
-                                className="text-accent underline-offset-2 hover:underline"
+                        <Button variant="secondary" icon="refresh" onClick={() => void actualiserModels()}>
+                          Actualiser
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          icon="bolt"
+                          disabled={!llm.model.trim()}
+                          onClick={() => ouvrirBenchmark(llm.model.trim())}
+                        >
+                          Tester
+                        </Button>
+                      </div>
+                      {models.length > 0 ? (
+                        <RemoteModelPicker
+                          models={models}
+                          value={llm.model}
+                          onChange={(model) => patchLlm({ model })}
+                          providerLabel={fournisseur.label}
+                          providerId={idProvider(llm.provider)}
+                        />
+                      ) : (
+                        <p className="text-sub leading-relaxed text-tx-5">
+                          Actualisez la liste pour afficher les modèles proposés par le fournisseur.
+                        </p>
+                      )}
+                    </div>
+                    <FormField
+                      label="Endpoint"
+                      required={idProvider(llm.provider) === "custom"}
+                      className="max-w-[380px]"
+                      help={
+                        idProvider(llm.provider) === "custom"
+                          ? "Ollama local ou LM Studio : http://localhost:11434 (HTTP, sans /v1)."
+                          : undefined
+                      }
+                    >
+                      {(props) => (
+                        <TextInput
+                          {...props}
+                          value={llm.endpoint ?? ""}
+                          onChange={(event) => patchLlm({ endpoint: event.target.value || null })}
+                        />
+                      )}
+                    </FormField>
+                    {idProvider(llm.provider) !== "ollama" ? (
+                      <FormField
+                        label="Clé API"
+                        required={idProvider(llm.provider) !== "custom"}
+                        className="max-w-[380px]"
+                        help={
+                          llm.api_key_configured
+                            ? "Une clé est configurée dans le coffre système. Saisissez-en une nouvelle uniquement pour la remplacer."
+                            : "Stockée dans le coffre système, jamais renvoyée à l'interface ni écrite dans la base."
+                        }
+                      >
+                        {(props) => (
+                          <div className="flex items-center gap-2">
+                            <TextInput
+                              {...props}
+                              type="password"
+                              autoComplete="new-password"
+                              value={apiKeyDraft}
+                              placeholder={llm.api_key_configured ? "Clé configurée" : "Saisir la clé API"}
+                              onChange={(event) => {
+                                setApiKeyDraft(event.target.value);
+                                setTest("idle");
+                              }}
+                            />
+                            {llm.api_key_configured ? (
+                              <Button
+                                variant="ghost"
+                                icon="delete"
+                                disabled={vm.isClearingApiKey}
+                                onClick={() => void clearApiKey()}
                               >
-                                canirun.ai
-                              </button>
-                            </p>
+                                Supprimer
+                              </Button>
+                            ) : null}
                           </div>
                         )}
+                      </FormField>
+                    ) : (
+                      <div className="max-w-[380px] rounded-r8 bg-group px-3 py-2.5">
+                        <p className="flex items-center gap-1.5 text-small font-medium text-tx-2">
+                          <Icon name="info" size={14} className="flex-none text-tx-5" />
+                          Modèle local : aucune clé, aucune connexion
+                        </p>
+                        <p className="mt-1 text-sub leading-relaxed text-tx-4">
+                          Besoin d'aide pour choisir un modèle compatible avec votre machine ?{" "}
+                          <button
+                            type="button"
+                            onClick={() => void openExternal("https://www.canirun.ai/")}
+                            className="text-ac-tx underline-offset-2 hover:underline"
+                          >
+                            canirun.ai
+                          </button>
+                        </p>
                       </div>
-                    </SettingsCard>
+                    )}
+                  </div>
+                </section>
 
-                    <SettingsCard icon="bolt" title="Génération">
-                      <div className="flex flex-col gap-4">
-                        <div>
-                          <ControlLabel>Mode d'analyse</ControlLabel>
-                          <div className="flex">
-                            <SegmentedControl
-                              label="Mode d'analyse"
-                              value={llm.mode}
-                              onChange={(mode) => patchLlm({ mode })}
-                              options={MODES}
-                            />
-                          </div>
-                        </div>
-                        <Temperature
-                          value={llm.temperature}
-                          onChange={(temperature) => patchLlm({ temperature })}
+                <section aria-label="Génération">
+                  <h2 className="caps mb-2.5">Génération</h2>
+                  <div className="flex flex-col gap-4">
+                    <div>
+                      <ControlLabel>Mode d'analyse</ControlLabel>
+                      <div className="flex">
+                        <SegmentedControl
+                          label="Mode d'analyse"
+                          value={llm.mode}
+                          onChange={(mode) => patchLlm({ mode })}
+                          options={MODES}
                         />
                       </div>
-                    </SettingsCard>
+                    </div>
+                    <Temperature value={llm.temperature} onChange={(temperature) => patchLlm({ temperature })} />
                   </div>
+                </section>
               </div>
-            ) : null}
-
+            )}
           </div>
-        </SettingsBody>
-      )}
+
+          <AiTaskRouting
+            settings={saved}
+            models={localModels}
+            busy={vm.isSaving}
+            onChange={(task, route) => void assignTask(task, route).catch(() => undefined)}
+          />
+        </div>
+      </div>
+
       <AiBenchmarkModal
         open={benchmarkOpen}
         onClose={() => setBenchmarkOpen(false)}
@@ -444,51 +534,60 @@ export function AiPage() {
   );
 }
 
-function AiTabs({ active, onChange }: { active: AiTab; onChange: (tab: AiTab) => void }) {
-  const naviguer = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
-    let prochain = index;
-    if (event.key === "ArrowRight") prochain = (index + 1) % TABS.length;
-    else if (event.key === "ArrowLeft") prochain = (index - 1 + TABS.length) % TABS.length;
-    else if (event.key === "Home") prochain = 0;
-    else if (event.key === "End") prochain = TABS.length - 1;
-    else return;
-    event.preventDefault();
-    const suivant = TABS[prochain];
-    if (!suivant) return;
-    onChange(suivant.id);
-    document.getElementById(`ai-tab-${suivant.id}`)?.focus();
-  };
-
-  return (
-    <div role="tablist" aria-label="Sections Intelligence artificielle" className="flex gap-[3px]">
-      {TABS.map((item, index) => {
-        const selected = active === item.id;
-        return (
-          <button
-            key={item.id}
-            id={`ai-tab-${item.id}`}
-            type="button"
-            role="tab"
-            aria-selected={selected}
-            aria-controls={`ai-panel-${item.id}`}
-            tabIndex={selected ? 0 : -1}
-            onClick={() => onChange(item.id)}
-            onKeyDown={(event) => naviguer(event, index)}
-            className={cn(
-              "flex h-tab flex-none items-center rounded-button px-3 text-body font-medium",
-              selected ? "bg-accent-tint text-accent" : "text-ink-muted hover:bg-neutral-tint",
-            )}
-          >
-            <span className="flex items-center gap-1.5">
-              {item.label}
-              {item.badge ? <Tag className="py-0">{item.badge}</Tag> : null}
-            </span>
-          </button>
-        );
-      })}
-    </div>
-  );
+/** Faits affichés sous le nom d'un fournisseur : aucune promesse de qualité, des faits. */
+interface ProviderFacts {
+  readonly description: string;
+  readonly meters: ReadonlyArray<{ label: string; value: string; level: number; tone: string }>;
 }
+
+const GOOD = "bg-st-g";
+const WARN = "bg-st-a";
+
+function remoteFacts(label: string): ProviderFacts {
+  return {
+    description: `Les données de chaque tâche confiée à ${label} lui sont envoyées pour être traitées. La rédaction est généralement plus rapide et plus fine qu'en local ; l'usage est facturé par ${label} selon votre compte.`,
+    meters: [
+      { label: "Confidentialité", value: `Envoyé à ${label}`, level: 1, tone: WARN },
+      { label: "Coût", value: "Facturé à l'usage", level: 1, tone: WARN },
+      { label: "Hors connexion", value: "Impossible", level: 0, tone: WARN },
+    ],
+  };
+}
+
+const FACTS: Record<ProviderOption["id"], (label: string) => ProviderFacts> = {
+  candilog_local: () => ({
+    description:
+      "Les modèles tournent sur votre machine. Vos CV, vos lettres et vos candidatures ne sortent jamais de l'ordinateur. C'est gratuit et utilisable hors connexion ; en contrepartie, c'est plus lent et la qualité dépend de la taille du modèle installé.",
+    meters: [
+      { label: "Confidentialité", value: "Rien ne sort", level: 3, tone: GOOD },
+      { label: "Coût", value: "Gratuit", level: 3, tone: GOOD },
+      { label: "Hors connexion", value: "Oui", level: 3, tone: GOOD },
+    ],
+  }),
+  ollama: () => ({
+    description:
+      "Votre propre installation d'Ollama, sur cet ordinateur ou sur votre réseau. Les données restent chez vous, sans service tiers.",
+    meters: [
+      { label: "Confidentialité", value: "Reste chez vous", level: 3, tone: GOOD },
+      { label: "Coût", value: "Gratuit", level: 3, tone: GOOD },
+      { label: "Hors connexion", value: "Selon l'installation", level: 2, tone: GOOD },
+    ],
+  }),
+  claude: remoteFacts,
+  openai: remoteFacts,
+  gemini: remoteFacts,
+  mistral: remoteFacts,
+  deepseek: remoteFacts,
+  custom: () => ({
+    description:
+      "Un service compatible OpenAI — LM Studio, un serveur interne… Les données vont à l'adresse que vous indiquez : locale ou distante, c'est elle qui décide.",
+    meters: [
+      { label: "Confidentialité", value: "Selon l'adresse", level: 2, tone: WARN },
+      { label: "Coût", value: "Selon le service", level: 2, tone: WARN },
+      { label: "Hors connexion", value: "Selon l'adresse", level: 1, tone: WARN },
+    ],
+  }),
+};
 
 function ControlLabel({ children }: { children: ReactNode }) {
   return <p className="mb-1.5 text-label font-mid text-ink-muted">{children}</p>;

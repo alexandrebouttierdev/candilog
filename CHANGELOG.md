@@ -52,6 +52,9 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
   d'offre, lecture d'un CV importé) peut utiliser son propre fournisseur et son propre
   modèle. Sans choix, elle suit le fournisseur principal ; une tâche mal configurée
   s'arrête avec un message au lieu de basculer ailleurs.
+- Refonte v2 — Intelligence artificielle : colonne des fournisseurs avec leur état, détail
+  factuel (confidentialité, coût, hors connexion) et section « Qui fait quoi » pour choisir
+  le modèle de chaque tâche, enregistré aussitôt.
 - Export CSV des candidatures : colonnes `reference` et `canal` ajoutées.
 - Le lien de l'offre n'est plus exigé que pour une offre publiée ; il devient facultatif
   pour une candidature trouvée sur le site de l'entreprise ou par le réseau.

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
@@ -78,7 +78,8 @@ describe("écran Intelligence artificielle", () => {
 
     render(<AiPage />, { wrapper });
 
-    await userEvent.click(await screen.findByRole("tab", { name: "IA online/personnalisé" }));
+    // Ollama est le fournisseur principal : l'écran s'ouvre sur lui.
+    expect(await screen.findByRole("tab", { name: /^Ollama/ })).toHaveAttribute("aria-selected", "true");
     expect(await screen.findByText("Modèle local : aucune clé, aucune connexion")).toBeInTheDocument();
     expect(screen.queryByLabelText(/^Clé API/)).not.toBeInTheDocument();
 
@@ -101,7 +102,7 @@ describe("écran Intelligence artificielle", () => {
     const save = vi.spyOn(settingsService, "save").mockResolvedValue(initial);
 
     render(<AiPage />, { wrapper });
-    await userEvent.click(await screen.findByRole("tab", { name: "IA online/personnalisé" }));
+    await userEvent.click(await screen.findByRole("tab", { name: /^OpenAI/ }));
     await userEvent.click(await screen.findByRole("button", { name: "Actualiser" }));
     await waitFor(() => expect(listModels).toHaveBeenCalledOnce());
     await userEvent.click(await screen.findByRole("radio", { name: "maternion/lfm2.5:350m" }));
@@ -115,13 +116,14 @@ describe("écran Intelligence artificielle", () => {
   it("annonce les sections fournisseur sans bandeau d'état en tête", async () => {
     render(<AiPage />, { wrapper });
 
-    await userEvent.click(await screen.findByRole("tab", { name: "IA online/personnalisé" }));
-    expect(screen.getByText("Fournisseur")).toBeInTheDocument();
-    expect(screen.getByText("Configuration")).toBeInTheDocument();
+    await userEvent.click(await screen.findByRole("tab", { name: /^OpenAI/ }));
+    expect(screen.getByRole("navigation", { name: "Fournisseurs" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Configuration" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Tester la connexion" })).toBeInTheDocument();
     expect(screen.getByDisplayValue("gpt-4o")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /IA locale/ })).toBeInTheDocument();
-    expect(screen.getByText("Gratuit")).toBeInTheDocument();
+    // Un fournisseur distant le dit : les données lui sont envoyées.
+    expect(screen.getByText("Envoyé à OpenAI")).toBeInTheDocument();
   });
 
   it("ouvre l'onglet IA locale sans bandeau d'état en tête", async () => {
@@ -165,7 +167,7 @@ describe("écran Intelligence artificielle", () => {
     );
 
     render(<AiPage />, { wrapper });
-    await userEvent.click(await screen.findByRole("tab", { name: "IA online/personnalisé" }));
+    await userEvent.click(await screen.findByRole("tab", { name: /^OpenAI/ }));
 
     expect(await screen.findByLabelText(/^Clé API/)).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Saisir la clé API")).toBeInTheDocument();
@@ -175,7 +177,7 @@ describe("écran Intelligence artificielle", () => {
     vi.spyOn(settingsService, "testConnection").mockResolvedValue(undefined);
 
     render(<AiPage />, { wrapper });
-    await userEvent.click(await screen.findByRole("tab", { name: "IA online/personnalisé" }));
+    await userEvent.click(await screen.findByRole("tab", { name: /^OpenAI/ }));
     await userEvent.click(await screen.findByRole("button", { name: "Tester la connexion" }));
 
     expect(await screen.findByText("Connexion établie.")).toBeInTheDocument();
@@ -187,7 +189,7 @@ describe("écran Intelligence artificielle", () => {
     );
 
     render(<AiPage />, { wrapper });
-    await userEvent.click(await screen.findByRole("tab", { name: "IA online/personnalisé" }));
+    await userEvent.click(await screen.findByRole("tab", { name: /^OpenAI/ }));
     await userEvent.click(await screen.findByRole("button", { name: "Tester la connexion" }));
 
     expect(await screen.findByText("Clé refusée par le fournisseur.")).toBeInTheDocument();
@@ -196,7 +198,7 @@ describe("écran Intelligence artificielle", () => {
   it("n'affiche jamais la clé API en clair", async () => {
     render(<AiPage />, { wrapper });
 
-    await userEvent.click(await screen.findByRole("tab", { name: "IA online/personnalisé" }));
+    await userEvent.click(await screen.findByRole("tab", { name: /^OpenAI/ }));
     const champ = await screen.findByLabelText(/^Clé API/);
     expect(champ).toHaveAttribute("type", "password");
     expect(champ).toHaveValue("");
@@ -231,15 +233,61 @@ describe("écran Intelligence artificielle", () => {
     vi.spyOn(settingsService, "load").mockResolvedValue(initial);
 
     render(<AiPage />, { wrapper });
-    await userEvent.click(await screen.findByRole("tab", { name: "IA online/personnalisé" }));
+    await userEvent.click(await screen.findByRole("tab", { name: /^OpenAI/ }));
 
     expect(await screen.findByDisplayValue("gpt-4o-mini")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("radio", { name: "Mistral" }));
+    await userEvent.click(screen.getByRole("tab", { name: /^Mistral/ }));
     expect(await screen.findByDisplayValue("mistral-small-latest")).toBeInTheDocument();
     expect(screen.getByDisplayValue("https://api.mistral.ai")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("radio", { name: "OpenAI" }));
+    await userEvent.click(screen.getByRole("tab", { name: /^OpenAI/ }));
     expect(await screen.findByDisplayValue("gpt-4o-mini")).toBeInTheDocument();
     expect(screen.getByDisplayValue("https://api.openai.com")).toBeInTheDocument();
+  });
+});
+
+describe("écran Intelligence artificielle — qui fait quoi", () => {
+  it("montre les cinq tâches, qui suivent le fournisseur principal par défaut", async () => {
+    render(<AiPage />, { wrapper });
+
+    const section = await screen.findByRole("region", { name: "Qui fait quoi" });
+    for (const tache of ["Générer un CV ciblé", "Rédiger une lettre", "Analyser un CV", "Extraire une offre d'emploi", "Lire un CV importé"]) {
+      expect(within(section).getByRole("button", { name: new RegExp(`^${tache}, modèle OpenAI · gpt-4o, distant`) })).toBeInTheDocument();
+    }
+  });
+
+  it("désactive une tâche et enregistre aussitôt le routage", async () => {
+    const save = vi.spyOn(settingsService, "save").mockImplementation((settings) => Promise.resolve(settings));
+    render(<AiPage />, { wrapper });
+
+    const section = await screen.findByRole("region", { name: "Qui fait quoi" });
+    await userEvent.click(within(section).getByRole("button", { name: /^Extraire une offre d'emploi/ }));
+    await userEvent.click(await screen.findByRole("menuitemradio", { name: "Aucun — désactiver cette tâche" }));
+
+    await waitFor(() => expect(save).toHaveBeenCalledOnce());
+    expect(save.mock.calls[0]?.[0].ai_routes).toEqual({ extract_offer: null });
+    // Le fournisseur principal n'est pas touché par un choix de routage.
+    expect(save.mock.calls[0]?.[0].llm.provider).toBe("openai");
+  });
+
+  it("route une tâche vers un fournisseur distant configuré", async () => {
+    vi.spyOn(settingsService, "load").mockResolvedValue({
+      ...reglages(),
+      llm_presets: {
+        mistral: { endpoint: null, model: "mistral-small-latest", temperature: 0.4, mode: "auto", api_key_configured: true },
+      },
+    });
+    const save = vi.spyOn(settingsService, "save").mockImplementation((settings) => Promise.resolve(settings));
+    render(<AiPage />, { wrapper });
+
+    const section = await screen.findByRole("region", { name: "Qui fait quoi" });
+    await userEvent.click(within(section).getByRole("button", { name: /^Analyser un CV/ }));
+    await userEvent.click(await screen.findByRole("menuitemradio", { name: "Mistral · mistral-small-latest" }));
+
+    await waitFor(() =>
+      expect(save.mock.calls[0]?.[0].ai_routes).toEqual({
+        analyze_resume: { provider: "mistral", model: "mistral-small-latest" },
+      }),
+    );
   });
 });
