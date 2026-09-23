@@ -102,4 +102,5 @@ mod test_reference_canal_et_echeances_de_la_liste;
 mod test_repartition_compte_les_quatre_statuts;
 mod test_repartition_ignore_le_filtre_de_statut;
 mod test_un_contrat_inconnu_est_refuse;
+mod test_un_critere_exclu_inverse_la_condition;
 mod test_update_n_historise_que_les_changements_reels;

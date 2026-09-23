@@ -186,9 +186,13 @@ export function useApplicationsViewModel(controlledView?: TrackingView) {
   const changementStatus = useMutation({
     mutationFn: (params: { id: string; status: ApplicationStatus }) =>
       applicationService.changeStatus(params.id, params.status),
-    onSuccess: invalidate,
-    // Pas de toast en cas de succès : le déplacement de la carte est déjà la confirmation
-    // visible du geste. Un échec, lui, doit être annoncé — la carte reviendra à sa place.
+    // Toast court `CAN-142 → Entretien` (`INTERACTIONS.md` §3.2) : le geste peut venir
+    // d'une glisse, du menu ou du clavier, et la ligne peut changer de groupe hors écran.
+    onSuccess: async (application: Application) => {
+      await invalidate();
+      const label = Statuses.find((status) => status.value === application.status)?.label ?? application.status;
+      notify({ tone: "success", title: `${formatReference(application.reference_number)} → ${label}` });
+    },
     onError: reportFailure("Changement de statut impossible"),
   });
 

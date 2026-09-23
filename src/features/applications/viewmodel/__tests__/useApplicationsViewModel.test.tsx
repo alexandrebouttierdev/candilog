@@ -230,9 +230,9 @@ describe("ViewModel des candidatures", () => {
     expect(result.current.activeFilterCount).toBe(4);
   });
 
-  it("n'annonce pas de succès après un changement de statut", async () => {
-    // Le déplacement de la carte est déjà la confirmation visible du geste : un toast à
-    // chaque glisser-déposer noierait les messages qui comptent.
+  it("annonce un changement de statut par un toast court « référence → statut »", async () => {
+    // `INTERACTIONS.md` §3.2 : le geste peut venir d'une glisse, du menu ou du clavier, et
+    // la ligne peut quitter l'écran en changeant de groupe — le toast confirme où elle va.
     vi.spyOn(applicationService, "listPage").mockResolvedValue(page([cand("Développeur")]));
     vi.spyOn(applicationService, "changeStatus").mockResolvedValue(
       cand("Développeur", "ENTRETIEN"),
@@ -245,7 +245,7 @@ describe("ViewModel des candidatures", () => {
       await result.current.changeStatus({ id: "Développeur", status: "ENTRETIEN" });
     });
 
-    expect(useUiStore.getState().toasts).toHaveLength(0);
+    expect(useUiStore.getState().toasts.map((toast) => toast.title)).toEqual(["CAN-142 → Entretien"]);
   });
 
   it("annonce l'échec d'un changement de statut", async () => {

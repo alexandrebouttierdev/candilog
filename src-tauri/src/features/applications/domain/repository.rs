@@ -33,6 +33,41 @@ pub enum ApplicationSort {
     Date,
 }
 
+/// Critère d'un filtre dont la condition peut être inversée (« n'est pas »).
+///
+/// Enum et non nom de colonne : le champ sert à choisir une clause SQL, jamais à être
+/// interpolé. Les bornes (heures, dates) n'en font pas partie : elles s'inversent en
+/// changeant de borne, pas en niant la condition.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ts_rs::TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "applications.ts")]
+pub enum FilterField {
+    /// Statut dans le pipeline.
+    Status,
+    /// Nature de la démarche (offre, spontanée).
+    ApplicationType,
+    /// Canal « Trouvée via ».
+    Channel,
+    /// Type de contrat.
+    ContractType,
+    /// Domaine professionnel du poste.
+    ProfessionalDomain,
+    /// Type d'entreprise effectif.
+    CompanyType,
+    /// Taille de l'entreprise.
+    CompanySize,
+    /// Secteur de l'entreprise.
+    Sector,
+    /// Régime horaire.
+    WeeklyWorkSchedule,
+    /// Entreprise liée.
+    Company,
+    /// Ville effective.
+    City,
+    /// Intitulé du poste.
+    JobTitle,
+}
+
 /// Critères appliqués par `SQLite` avant pagination.
 ///
 /// Tous les critères sont évalués en base : ramener les candidatures en mémoire pour les
@@ -95,6 +130,10 @@ pub struct ApplicationFilter {
     /// Identifiants retenus pour un export ou une action groupée ; vide = tout le filtre.
     #[serde(default)]
     pub ids: Vec<Uuid>,
+    /// Critères inversés : la candidature doit **ne pas** y répondre. Une valeur absente
+    /// (domaine, secteur, ville non renseignés) passe toujours un critère inversé.
+    #[serde(default)]
+    pub excluded: Vec<FilterField>,
 }
 
 /// Répartition du pipeline par statut, calculée par `SQLite`.

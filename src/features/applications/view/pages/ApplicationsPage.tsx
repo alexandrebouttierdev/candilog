@@ -329,6 +329,8 @@ export function ApplicationsPage({ view }: { view?: TrackingView } = {}) {
               columns={vm.kanbanColumns}
               selected_id={vm.selected_id}
               checkedIds={checkedIds}
+              filtered={filtersActive}
+              onMenu={openActions}
               onSelect={(id) => {
                 vm.select(id);
                 setFloating(true);

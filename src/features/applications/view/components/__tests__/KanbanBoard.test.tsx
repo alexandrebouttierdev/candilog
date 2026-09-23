@@ -87,6 +87,8 @@ describe("KanbanBoard", () => {
         columns={columns([cand("Développeur", "EN_ATTENTE")])}
         selected_id={null}
         checkedIds={new Set()}
+        filtered={false}
+        onMenu={vi.fn()}
         onSelect={vi.fn()}
         onToggleSelect={vi.fn()}
         onStatusChange={onStatusChange}
@@ -117,6 +119,8 @@ describe("KanbanBoard", () => {
         columns={columns([cand("Développeur", "EN_ATTENTE")])}
         selected_id={null}
         checkedIds={new Set()}
+        filtered={false}
+        onMenu={vi.fn()}
         onSelect={vi.fn()}
         onToggleSelect={vi.fn()}
         onStatusChange={vi.fn()}
@@ -141,6 +145,8 @@ describe("KanbanBoard", () => {
         columns={columns([cand("Développeur", "EN_ATTENTE")])}
         selected_id={null}
         checkedIds={new Set()}
+        filtered={false}
+        onMenu={vi.fn()}
         onSelect={vi.fn()}
         onToggleSelect={vi.fn()}
         onStatusChange={vi.fn()}
@@ -163,6 +169,8 @@ describe("KanbanBoard", () => {
         columns={columns([cand("Développeur", "EN_ATTENTE")], { EN_ATTENTE: 9 })}
         selected_id={null}
         checkedIds={new Set()}
+        filtered={false}
+        onMenu={vi.fn()}
         onSelect={vi.fn()}
         onToggleSelect={vi.fn()}
         onStatusChange={vi.fn()}
@@ -179,5 +187,88 @@ describe("KanbanBoard", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Page suivante de En attente" }));
     expect(onPageChange).toHaveBeenCalledWith("EN_ATTENTE", 2);
+  });
+
+  it("signale en bandeau les candidatures en attente restées sans réponse", () => {
+    const vieille = { ...cand("Ancienne", "EN_ATTENTE"), sent_date: "2020-01-01" };
+    render(
+      <KanbanBoard
+        columns={columns([vieille, { ...cand("Récente", "EN_ATTENTE"), sent_date: new Date().toISOString().slice(0, 10) }])}
+        selected_id={null}
+        checkedIds={new Set()}
+        filtered={false}
+        onMenu={vi.fn()}
+        onSelect={vi.fn()}
+        onToggleSelect={vi.fn()}
+        onStatusChange={vi.fn()}
+        onCreate={vi.fn()}
+        onPageChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("1 sans réponse depuis plus de 14 jours")).toBeInTheDocument();
+  });
+
+  it("annonce l'entretien du jour dans sa colonne", () => {
+    const now = new Date();
+    const pad = (value: number) => String(value).padStart(2, "0");
+    const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    const entretien = { ...cand("Support N2", "ENTRETIEN"), next_interview_at: `${today}T14:30:00` };
+    render(
+      <KanbanBoard
+        columns={columns([entretien])}
+        selected_id={null}
+        checkedIds={new Set()}
+        filtered={false}
+        onMenu={vi.fn()}
+        onSelect={vi.fn()}
+        onToggleSelect={vi.fn()}
+        onStatusChange={vi.fn()}
+        onCreate={vi.fn()}
+        onPageChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("1 entretien aujourd'hui à 14:30")).toBeInTheDocument();
+  });
+
+  it("dit d'une colonne vide qu'elle est filtrée quand un filtre est actif", () => {
+    render(
+      <KanbanBoard
+        columns={columns([])}
+        selected_id={null}
+        checkedIds={new Set()}
+        filtered
+        onMenu={vi.fn()}
+        onSelect={vi.fn()}
+        onToggleSelect={vi.fn()}
+        onStatusChange={vi.fn()}
+        onCreate={vi.fn()}
+        onPageChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getAllByText("Aucune candidature ne passe les filtres.")).toHaveLength(4);
+  });
+
+  it("ouvre le menu d'actions au clic droit sur une carte", () => {
+    const onMenu = vi.fn();
+    render(
+      <KanbanBoard
+        columns={columns([cand("Développeur", "EN_ATTENTE")])}
+        selected_id={null}
+        checkedIds={new Set()}
+        filtered={false}
+        onMenu={onMenu}
+        onSelect={vi.fn()}
+        onToggleSelect={vi.fn()}
+        onStatusChange={vi.fn()}
+        onCreate={vi.fn()}
+        onPageChange={vi.fn()}
+      />,
+    );
+
+    fireEvent.contextMenu(screen.getByRole("article", { name: /Développeur/ }), { clientX: 40, clientY: 60 });
+    expect(onMenu).toHaveBeenCalledWith(expect.objectContaining({ id: "Développeur" }), { x: 40, y: 60 });
   });
 });

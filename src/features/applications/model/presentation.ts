@@ -75,7 +75,8 @@ export function dueOf(application: Application, today = new Date()): Due | null 
   return null;
 }
 
-function localIso(date: Date): string {
+/** Date locale `AAAA-MM-JJ` : « aujourd'hui » est celui de l'utilisateur, pas l'UTC. */
+export function localIso(date: Date): string {
   const pad = (value: number) => String(value).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }

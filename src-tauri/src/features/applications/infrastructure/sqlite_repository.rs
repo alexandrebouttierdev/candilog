@@ -9,7 +9,7 @@ use crate::core::errors::{AppError, AppResult};
 use crate::core::pagination::{clamp_page_size, Page};
 use crate::features::applications::domain::{
     Application, ApplicationFilter, ApplicationRepository, ApplicationSort, ApplicationStatus,
-    DeletionImpact, NewApplication, PipelineBreakdown, StatusChange,
+    DeletionImpact, FilterField, NewApplication, PipelineBreakdown, StatusChange,
 };
 use rusqlite::types::Value;
 use uuid::Uuid;
@@ -143,9 +143,13 @@ fn save_status(
 }
 
 /// Ajoute une clause `colonne IN (…)` sur une liste de valeurs textuelles.
+///
+/// Inversée, la clause garde les valeurs absentes : `NULL NOT IN (…)` vaut `NULL` en SQL,
+/// et une candidature sans domaine serait sinon écartée de « domaine n'est pas M18 ».
 fn push_in_clause(
     column: &str,
     textes: impl IntoIterator<Item = String>,
+    negate: bool,
     values: &mut Vec<Value>,
     clauses: &mut Vec<String>,
 ) {
@@ -154,9 +158,15 @@ fn push_in_clause(
         values.push(Value::Text(texte));
         placeholders.push(format!("?{}", values.len()));
     }
-    if !placeholders.is_empty() {
-        clauses.push(format!("{column} IN ({})", placeholders.join(", ")));
+    if placeholders.is_empty() {
+        return;
     }
+    let list = placeholders.join(", ");
+    clauses.push(if negate {
+        format!("({column} IS NULL OR {column} NOT IN ({list}))")
+    } else {
+        format!("{column} IN ({list})")
+    });
 }
 
 /// Clauses `WHERE` et paramètres liés correspondant à un filtre.
@@ -174,6 +184,7 @@ fn clauses(filter: &ApplicationFilter) -> AppResult<(String, Vec<Value>)> {
     };
 
     let pattern = |text: &str| Value::Text(like_contains(text));
+    let excluded = |field: FilterField| filter.excluded.contains(&field);
 
     if !filter.search.trim().is_empty() {
         values.push(pattern(&filter.search));
@@ -188,19 +199,37 @@ fn clauses(filter: &ApplicationFilter) -> AppResult<(String, Vec<Value>)> {
     for status in &filter.status {
         statuses.push(text_from_enum(status)?);
     }
-    push_in_clause("c.status", statuses, &mut values, &mut clauses);
+    push_in_clause(
+        "c.status",
+        statuses,
+        excluded(FilterField::Status),
+        &mut values,
+        &mut clauses,
+    );
 
     let mut types = Vec::new();
     for application_type in &filter.application_type {
         types.push(text_from_enum(application_type)?);
     }
-    push_in_clause("c.application_type", types, &mut values, &mut clauses);
+    push_in_clause(
+        "c.application_type",
+        types,
+        excluded(FilterField::ApplicationType),
+        &mut values,
+        &mut clauses,
+    );
 
     let mut channels = Vec::new();
     for channel in &filter.channel {
         channels.push(text_from_enum(channel)?);
     }
-    push_in_clause("c.channel", channels, &mut values, &mut clauses);
+    push_in_clause(
+        "c.channel",
+        channels,
+        excluded(FilterField::Channel),
+        &mut values,
+        &mut clauses,
+    );
 
     let mut schedules = Vec::new();
     for schedule in &filter.weekly_work_schedule {
@@ -209,6 +238,7 @@ fn clauses(filter: &ApplicationFilter) -> AppResult<(String, Vec<Value>)> {
     push_in_clause(
         "c.weekly_work_schedule",
         schedules,
+        excluded(FilterField::WeeklyWorkSchedule),
         &mut values,
         &mut clauses,
     );
@@ -220,6 +250,7 @@ fn clauses(filter: &ApplicationFilter) -> AppResult<(String, Vec<Value>)> {
     push_in_clause(
         "coalesce(e.company_size, 'UNKNOWN')",
         sizes,
+        excluded(FilterField::CompanySize),
         &mut values,
         &mut clauses,
     );
@@ -227,31 +258,39 @@ fn clauses(filter: &ApplicationFilter) -> AppResult<(String, Vec<Value>)> {
     push_in_clause(
         "c.contract_type_code",
         filter.contract_type_code.iter().cloned(),
+        excluded(FilterField::ContractType),
         &mut values,
         &mut clauses,
     );
     push_in_clause(
         "c.professional_domain_id",
         filter.professional_domain_id.iter().cloned(),
+        excluded(FilterField::ProfessionalDomain),
         &mut values,
         &mut clauses,
     );
     push_in_clause(
         EFFECTIVE_COMPANY_TYPE,
         filter.company_type_id.iter().cloned(),
+        excluded(FilterField::CompanyType),
         &mut values,
         &mut clauses,
     );
     push_in_clause(
         "e.sector_id",
         filter.sector_id.iter().map(ToString::to_string),
+        excluded(FilterField::Sector),
         &mut values,
         &mut clauses,
     );
 
     if let Some(company_id) = filter.company_id {
         add(
-            "c.company_id = ?",
+            if excluded(FilterField::Company) {
+                "c.company_id != ?"
+            } else {
+                "c.company_id = ?"
+            },
             Value::Text(company_id.to_string()),
             &mut values,
             &mut clauses,
@@ -259,7 +298,14 @@ fn clauses(filter: &ApplicationFilter) -> AppResult<(String, Vec<Value>)> {
     }
     if !filter.city.trim().is_empty() {
         add(
-            &format!("search_key(coalesce({EFFECTIVE_CITY}, '')) LIKE ? {LIKE_ESCAPE}"),
+            &format!(
+                "{}search_key(coalesce({EFFECTIVE_CITY}, '')) LIKE ? {LIKE_ESCAPE}",
+                if excluded(FilterField::City) {
+                    "NOT "
+                } else {
+                    ""
+                }
+            ),
             pattern(&filter.city),
             &mut values,
             &mut clauses,
@@ -267,7 +313,14 @@ fn clauses(filter: &ApplicationFilter) -> AppResult<(String, Vec<Value>)> {
     }
     if !filter.job_title.trim().is_empty() {
         add(
-            &format!("search_key(c.job_title) LIKE ? {LIKE_ESCAPE}"),
+            &format!(
+                "{}search_key(c.job_title) LIKE ? {LIKE_ESCAPE}",
+                if excluded(FilterField::JobTitle) {
+                    "NOT "
+                } else {
+                    ""
+                }
+            ),
             pattern(&filter.job_title),
             &mut values,
             &mut clauses,
@@ -310,6 +363,7 @@ fn clauses(filter: &ApplicationFilter) -> AppResult<(String, Vec<Value>)> {
     push_in_clause(
         "c.id",
         filter.ids.iter().map(ToString::to_string),
+        false,
         &mut values,
         &mut clauses,
     );

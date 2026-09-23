@@ -83,6 +83,16 @@ export const applicationFilterSchema = z
     job_title: z.string().trim().default(""),
     start_date: borneFacultative(),
     end_date: borneFacultative(),
+    /** Critères inversés (« n'est pas ») : une puce cliquée inverse sa condition. */
+    excluded: z
+      .array(
+        z.enum([
+          "status", "application_type", "channel", "contract_type", "professional_domain",
+          "company_type", "company_size", "sector", "weekly_work_schedule", "company", "city",
+          "job_title",
+        ]),
+      )
+      .default([]),
   })
   .superRefine((filter, ctx) => {
     // Une période inversée ne renvoie jamais rien : sans ce contrôle, l'écran afficherait
@@ -129,4 +139,5 @@ export const EMPTY_FILTER: ApplicationFilterValues = {
   job_title: "",
   start_date: null,
   end_date: null,
+  excluded: [],
 };

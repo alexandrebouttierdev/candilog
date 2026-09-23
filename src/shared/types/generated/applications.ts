@@ -234,7 +234,12 @@ descending: boolean,
 /**
  * Identifiants retenus pour un export ou une action groupée ; vide = tout le filtre.
  */
-ids: Array<string>, };
+ids: Array<string>, 
+/**
+ * Critères inversés : la candidature doit **ne pas** y répondre. Une valeur absente
+ * (domaine, secteur, ville non renseignés) passe toujours un critère inversé.
+ */
+excluded: Array<FilterField>, };
 
 /**
  * Colonne de tri de la vue Liste.
@@ -281,6 +286,15 @@ interviews: number,
  * Changements de statut enregistrés.
  */
 status_changes: number, };
+
+/**
+ * Critère d'un filtre dont la condition peut être inversée (« n'est pas »).
+ *
+ * Enum et non nom de colonne : le champ sert à choisir une clause SQL, jamais à être
+ * interpolé. Les bornes (heures, dates) n'en font pas partie : elles s'inversent en
+ * changeant de borne, pas en niant la condition.
+ */
+export type FilterField = "status" | "application_type" | "channel" | "contract_type" | "professional_domain" | "company_type" | "company_size" | "sector" | "weekly_work_schedule" | "company" | "city" | "job_title";
 
 /**
  * Champs éditables d'une candidature, en création comme en modification.
