@@ -16,6 +16,7 @@ export async function fetchCompanyPickerPage(params: {
       sector_id: null,
       company_type_id: null,
       company_size: null,
+      relation_state: null,
     },
   });
   return {

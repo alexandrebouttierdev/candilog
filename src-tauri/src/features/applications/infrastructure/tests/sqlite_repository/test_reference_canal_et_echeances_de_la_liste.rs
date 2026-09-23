@@ -184,3 +184,35 @@ fn le_filtre_par_canal_ne_retient_que_les_canaux_coches() {
     assert_eq!(page.total, 1);
     assert_eq!(page.items[0].job_title, "Coopté");
 }
+
+#[test]
+fn le_filtre_par_contact_ne_retient_que_ses_candidatures() {
+    let (repo, company_id) = context();
+    let contact = Uuid::new_v4();
+    connection(&repo.pool)
+        .unwrap()
+        .execute(
+            "INSERT INTO contacts (id, company_id, first_name, name, created_at, updated_at)
+             VALUES (?1, ?2, 'Claire', 'Ménard', '2026-01-01', '2026-01-01')",
+            rusqlite::params![contact.to_string(), company_id.to_string()],
+        )
+        .unwrap();
+    let mut avec = entree(company_id, "Avec contact", "2026-08-20");
+    avec.contact_id = Some(contact);
+    repo.create(&avec).unwrap();
+    repo.create(&entree(company_id, "Sans contact", "2026-08-20"))
+        .unwrap();
+
+    let page = repo
+        .list_page(
+            1,
+            20,
+            &ApplicationFilter {
+                contact_id: Some(contact),
+                ..ApplicationFilter::default()
+            },
+        )
+        .unwrap();
+    assert_eq!(page.total, 1);
+    assert_eq!(page.items[0].job_title, "Avec contact");
+}

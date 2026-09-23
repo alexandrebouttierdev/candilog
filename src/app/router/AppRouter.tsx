@@ -20,11 +20,8 @@ const ApplicationsPage = lazy(() =>
 const CalendarPage = lazy(() =>
   import("@/features/calendar/view/pages/CalendarPage").then((m) => ({ default: m.CalendarPage })),
 );
-const CompaniesPage = lazy(() =>
-  import("@/features/companies/view/pages/CompaniesPage").then((m) => ({ default: m.CompaniesPage })),
-);
-const NetworkPage = lazy(() =>
-  import("@/features/contacts/view/pages/NetworkPage").then((m) => ({ default: m.NetworkPage })),
+const RelationsPage = lazy(() =>
+  import("@/features/relations/view/pages/RelationsPage").then((m) => ({ default: m.RelationsPage })),
 );
 const ProfilePage = lazy(() =>
   import("@/features/profile/view/pages/ProfilePage").then((m) => ({ default: m.ProfilePage })),
@@ -100,8 +97,8 @@ export const ROUTES: RouteObject[] = [
   { path: "applications/kanban", element: <ApplicationsPage view="kanban" /> },
   { path: "applications/calendar", element: <CalendarPage /> },
   { path: "applications/analytics", element: <AnalyticsPage /> },
-  { path: "relations/companies", element: <CompaniesPage /> },
-  { path: "relations/contacts", element: <NetworkPage /> },
+  { path: "relations/companies", element: <RelationsPage kind="companies" /> },
+  { path: "relations/contacts", element: <RelationsPage kind="contacts" /> },
   { path: "documents", element: <ResumeLibraryPage /> },
   { path: "documents/letters", element: <LettersLibraryPage /> },
   { path: "documents/generate-resume", element: <ResumeGeneratorPage /> },

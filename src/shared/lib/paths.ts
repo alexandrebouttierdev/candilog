@@ -23,11 +23,17 @@ export const PATHS = {
   profile: "/profile",
 } as const;
 
-/** Écran Candidatures sur une fiche (`id`) ou sur le formulaire de création (`new`). */
-export function applicationsPath(options: { id?: string; create?: boolean } = {}): string {
+/**
+ * Écran Candidatures sur une fiche (`id`) ou sur le formulaire de création (`new`),
+ * éventuellement prérempli avec une entreprise (`company`).
+ */
+export function applicationsPath(
+  options: { id?: string; create?: boolean; companyId?: string } = {},
+): string {
   const params = new URLSearchParams();
   if (options.id) params.set("id", options.id);
   if (options.create) params.set("new", "1");
+  if (options.create && options.companyId) params.set("company", options.companyId);
   const query = params.toString();
   return query ? `${PATHS.applications}?${query}` : PATHS.applications;
 }

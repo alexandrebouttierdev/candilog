@@ -26,6 +26,7 @@ function entreprise(name: string): Company {
     notes: null,
     created_at: "2026-08-20T00:00:00Z",
     updated_at: "2026-08-20T00:00:00Z",
+    activity: { open_applications: 0, applications: 0, contacts: 0, last_reference_number: null, last_sent_date: null },
   };
 }
 

@@ -45,6 +45,31 @@ pub struct Company {
     pub created_at: String,
     /// Date de dernière mise à jour (ISO 8601).
     pub updated_at: String,
+
+    /// Activité de la relation, calculée en base à chaque lecture.
+    pub activity: CompanyActivity,
+}
+
+/// Activité d'une entreprise dans le suivi : ce qui la range dans « En cours »,
+/// « Repérées » ou « Clôturées » (écran Relations).
+///
+/// Calculée par sous-requêtes et jamais stockée : une colonne de compteur dériverait à la
+/// première candidature supprimée hors du chemin prévu.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, ts_rs::TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "companies.ts")]
+pub struct CompanyActivity {
+    /// Candidatures non refusées.
+    pub open_applications: u32,
+    /// Toutes les candidatures envoyées à l'entreprise.
+    pub applications: u32,
+    /// Contacts rattachés à l'entreprise.
+    pub contacts: u32,
+    /// Numéro de référence de la candidature la plus récente.
+    #[ts(type = "number | null")]
+    pub last_reference_number: Option<i64>,
+    /// Date d'envoi de la candidature la plus récente (`AAAA-MM-JJ`).
+    pub last_sent_date: Option<String>,
 }
 
 /// Champs de création et d'édition d'une entreprise : seul le nom est requis.

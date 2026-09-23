@@ -61,7 +61,40 @@ created_at: string,
 /**
  * Date de dernière mise à jour (ISO 8601).
  */
-updated_at: string, };
+updated_at: string, 
+/**
+ * Activité de la relation, calculée en base à chaque lecture.
+ */
+activity: CompanyActivity, };
+
+/**
+ * Activité d'une entreprise dans le suivi : ce qui la range dans « En cours »,
+ * « Repérées » ou « Clôturées » (écran Relations).
+ *
+ * Calculée par sous-requêtes et jamais stockée : une colonne de compteur dériverait à la
+ * première candidature supprimée hors du chemin prévu.
+ */
+export type CompanyActivity = { 
+/**
+ * Candidatures non refusées.
+ */
+open_applications: number, 
+/**
+ * Toutes les candidatures envoyées à l'entreprise.
+ */
+applications: number, 
+/**
+ * Contacts rattachés à l'entreprise.
+ */
+contacts: number, 
+/**
+ * Numéro de référence de la candidature la plus récente.
+ */
+last_reference_number: number | null, 
+/**
+ * Date d'envoi de la candidature la plus récente (`AAAA-MM-JJ`).
+ */
+last_sent_date: string | null, };
 
 /**
  * Critères du répertoire, appliqués par `SQLite` avant pagination.
@@ -86,7 +119,11 @@ company_type_id: string | null,
 /**
  * Taille retenue.
  */
-company_size: CompanySize | null, };
+company_size: CompanySize | null, 
+/**
+ * État de la relation retenu ; absent = toutes.
+ */
+relation_state: RelationState | null, };
 
 /**
  * Taille de l'entreprise, dimension **distincte** de sa nature.
@@ -135,3 +172,8 @@ address: string | null,
  * Notes libres.
  */
 notes: string | null, };
+
+/**
+ * État d'une entreprise dans le suivi, groupes de l'écran Relations.
+ */
+export type RelationState = "active" | "watch" | "closed";

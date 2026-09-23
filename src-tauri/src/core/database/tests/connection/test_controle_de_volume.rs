@@ -98,7 +98,7 @@ fn controle_de_volume_pagination_et_indexes() {
     assert_eq!(companies.total, 10_000);
     assert_eq!(companies.items.len(), 8);
     let contacts = SqliteContactRepository::new(pool.clone())
-        .list_page(1_250, 8, "", None)
+        .list_page(1_250, 8, "", None, None)
         .unwrap();
     assert_eq!(contacts.total, 10_000);
     assert_eq!(contacts.items.len(), 8);

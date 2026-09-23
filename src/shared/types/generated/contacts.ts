@@ -61,7 +61,29 @@ created_at: string,
 /**
  * Date de dernière mise à jour (ISO 8601).
  */
-updated_at: string, };
+updated_at: string, 
+/**
+ * Candidatures dont ce contact est l'interlocuteur, calculées à la lecture.
+ */
+activity: ContactActivity, };
+
+/**
+ * Rattachement d'un contact au suivi : un contact lié à une candidature est un recruteur
+ * ou un manager, les autres relèvent du réseau (écran Relations).
+ */
+export type ContactActivity = { 
+/**
+ * Candidatures dont il est l'interlocuteur.
+ */
+applications: number, 
+/**
+ * Numéro de référence de la plus récente.
+ */
+last_reference_number: number | null, 
+/**
+ * Date d'envoi de la plus récente (`AAAA-MM-JJ`).
+ */
+last_sent_date: string | null, };
 
 /**
  * Champs de création et d'édition d'un contact : prénom et nom requis.

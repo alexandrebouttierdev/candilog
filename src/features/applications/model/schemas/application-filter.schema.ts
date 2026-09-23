@@ -79,6 +79,11 @@ export const applicationFilterSchema = z
       .transform((value) => (value === "" ? null : value))
       .nullable()
       .default(null),
+    contact_id: z
+      .string()
+      .transform((value) => (value === "" ? null : value))
+      .nullable()
+      .default(null),
     city: z.string().trim().default(""),
     job_title: z.string().trim().default(""),
     start_date: borneFacultative(),
@@ -135,6 +140,7 @@ export const EMPTY_FILTER: ApplicationFilterValues = {
   min_weekly_hours: null,
   max_weekly_hours: null,
   company_id: null,
+  contact_id: null,
   city: "",
   job_title: "",
   start_date: null,

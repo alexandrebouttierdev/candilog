@@ -296,6 +296,14 @@ fn clauses(filter: &ApplicationFilter) -> AppResult<(String, Vec<Value>)> {
             &mut clauses,
         );
     }
+    if let Some(contact_id) = filter.contact_id {
+        add(
+            "c.contact_id = ?",
+            Value::Text(contact_id.to_string()),
+            &mut values,
+            &mut clauses,
+        );
+    }
     if !filter.city.trim().is_empty() {
         add(
             &format!(

@@ -44,6 +44,12 @@ interface OpenMenu {
   readonly entries: readonly MenuEntry[];
 }
 
+/**
+ * Fin d'une écriture lancée sans attendre : l'échec est déjà annoncé par un toast du
+ * ViewModel, la promesse rejetée n'a rien de plus à dire.
+ */
+function ignore(): void {}
+
 /** Ancre par défaut d'un menu ouvert au clavier, sans ligne visible sous la main. */
 function centre(): Anchor {
   return { x: window.innerWidth / 2 - 118, y: window.innerHeight / 3 };
@@ -93,13 +99,14 @@ export function ApplicationsPage({ view }: { view?: TrackingView } = {}) {
   // paramètre reste dans l'URL le temps de la modale, puis est consommé à sa fermeture.
   const closeForm = () => {
     setForm({ isOpen: false, editing: null, status: null });
-    if (searchParams.get("new") === "1") {
+    if (searchParams.get("new") === "1" || searchParams.has("company")) {
       // Seul `new` est consommé : effacer toute la query effacerait aussi la fiche
       // ouverte dans l'inspecteur.
       setSearchParams(
         (current) => {
           const next = new URLSearchParams(current);
           next.delete("new");
+          next.delete("company");
           return next;
         },
         { replace: true },
@@ -123,7 +130,7 @@ export function ApplicationsPage({ view }: { view?: TrackingView } = {}) {
             label: status.label,
             leading: <StatusGlyph tone={status.glyph} />,
             checked: status.value === application.status,
-            onSelect: () => void vm.changeStatus({ id: application.id, status: status.value }),
+            onSelect: () => void vm.changeStatus({ id: application.id, status: status.value }).catch(ignore),
           }),
         ),
       ],
@@ -143,7 +150,7 @@ export function ApplicationsPage({ view }: { view?: TrackingView } = {}) {
     generateResume: () => void navigate(PATHS.generateResume),
     generateLetter: () => void navigate(PATHS.writeLetter),
     analyzeResume: () => void navigate(PATHS.analyzeResume),
-    duplicate: (application) => void vm.duplicate(application.id),
+    duplicate: (application) => void vm.duplicate(application.id).catch(ignore),
     remove: (application) => setPendingDelete(application),
   };
 
@@ -181,7 +188,7 @@ export function ApplicationsPage({ view }: { view?: TrackingView } = {}) {
             id: status.value,
             label: status.label,
             leading: <StatusGlyph tone={status.glyph} />,
-            onSelect: () => void vm.changeStatusMany({ ids: checked, status: status.value }),
+            onSelect: () => void vm.changeStatusMany({ ids: checked, status: status.value }).catch(ignore),
           }),
         ),
       ],
@@ -357,7 +364,7 @@ export function ApplicationsPage({ view }: { view?: TrackingView } = {}) {
                 setFloating(true);
               }}
               onToggleSelect={toggleChecked}
-              onStatusChange={(id, status) => void vm.changeStatus({ id, status })}
+              onStatusChange={(id, status) => void vm.changeStatus({ id, status }).catch(ignore)}
               onCreate={(status) => openCreate(status)}
               onPageChange={vm.setKanbanPage}
             />
@@ -436,6 +443,7 @@ export function ApplicationsPage({ view }: { view?: TrackingView } = {}) {
         open={form.isOpen}
         application={form.editing}
         defaultStatus={form.status}
+        defaultCompanyId={form.editing ? null : searchParams.get("company")}
         busy={vm.isSaving}
         onClose={closeForm}
         onSubmit={(values) =>
@@ -460,12 +468,14 @@ export function ApplicationsPage({ view }: { view?: TrackingView } = {}) {
           const target = pendingDelete;
           setPendingDelete(null);
           if (!target) return;
-          void vm.delete(target.id).then(() =>
-            setCheckedIds((current) => {
-              const next = new Set(current);
-              next.delete(target.id);
-              return next;
-            }),
+          vm.delete(target.id).then(
+            () =>
+              setCheckedIds((current) => {
+                const next = new Set(current);
+                next.delete(target.id);
+                return next;
+              }),
+            ignore,
           );
         }}
       />
@@ -482,7 +492,7 @@ export function ApplicationsPage({ view }: { view?: TrackingView } = {}) {
           const ids = pendingBulkDelete;
           setPendingBulkDelete(null);
           if (!ids || ids.length === 0) return;
-          void vm.deleteMany(ids).then(() => setCheckedIds(new Set()));
+          vm.deleteMany(ids).then(() => setCheckedIds(new Set()), ignore);
         }}
       />
 

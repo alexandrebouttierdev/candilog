@@ -38,6 +38,10 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
 - Refonte v2 — Kanban : colonnes élastiques, cartes compactes avec échéance, bandeaux
   « sans réponse » et « entretien aujourd'hui » ; toast `CAN-142 → Entretien`.
 - Les raccourcis à une lettre restent actifs quand le focus est sur une case à cocher.
+- Refonte v2 — Relations : entreprises et contacts réunis sur un écran à bascule. Les
+  entreprises sont groupées en cours / repérées / clôturées, les contacts en recruteurs et
+  managers / réseau ; inspecteur avec candidatures rattachées et historique. « Nouvelle
+  candidature » depuis une entreprise la préremplit.
 - Export CSV des candidatures : colonnes `reference` et `canal` ajoutées.
 - Le lien de l'offre n'est plus exigé que pour une offre publiée ; il devient facultatif
   pour une candidature trouvée sur le site de l'entreprise ou par le réseau.

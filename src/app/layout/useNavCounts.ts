@@ -30,7 +30,7 @@ export function useNavCounts() {
       companyService.listPage({
         page: 1,
         page_size: 1,
-        filter: { search: "", sector_id: null, company_type_id: null, company_size: null },
+        filter: { search: "", sector_id: null, company_type_id: null, company_size: null, relation_state: null },
       }),
   });
   const contacts = useQuery({

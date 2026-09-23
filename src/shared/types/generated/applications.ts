@@ -208,6 +208,10 @@ max_weekly_hours: number | null,
  */
 company_id: string | null, 
 /**
+ * Contact interlocuteur (inspecteur d'un contact, écran Relations).
+ */
+contact_id: string | null, 
+/**
  * Ville effective, en recherche partielle.
  */
 city: string, 

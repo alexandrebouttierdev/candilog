@@ -8,7 +8,7 @@ use crate::core::database::SqlitePool;
 use crate::core::errors::{AppError, AppResult};
 use crate::core::pagination::{clamp_page_size, Page};
 use crate::core::utils::text::search_key;
-use crate::features::contacts::domain::{Contact, ContactRepository, NewContact};
+use crate::features::contacts::domain::{Contact, ContactActivity, ContactRepository, NewContact};
 
 /// Implémentation `SQLite` du dépôt de contacts.
 pub struct SqliteContactRepository {
@@ -26,7 +26,11 @@ impl SqliteContactRepository {
 /// Columns lues par [`row_vers_contact`], dans l'ordre, avec la jointure entreprise.
 const COLUMNS: &str =
     "c.id, c.company_id, e.name, c.first_name, c.name, c.job_title, c.tracking_role, \
-                        c.email, c.phone, c.linkedin, c.notes, c.created_at, c.updated_at";
+                        c.email, c.phone, c.linkedin, c.notes, c.created_at, c.updated_at, \
+                        (SELECT count(*) FROM applications a WHERE a.contact_id = c.id), \
+                        (SELECT a.reference_number FROM applications a WHERE a.contact_id = c.id \
+                          ORDER BY a.sent_date DESC, a.reference_number DESC LIMIT 1), \
+                        (SELECT max(a.sent_date) FROM applications a WHERE a.contact_id = c.id)";
 
 /// Source des colonnes : `LEFT JOIN` et non jointure interne, un contact pouvant n'être
 /// rattaché à aucune entreprise.
@@ -51,6 +55,11 @@ fn row_vers_contact(row: &rusqlite::Row) -> rusqlite::Result<Contact> {
         notes: row.get(10)?,
         created_at: row.get(11)?,
         updated_at: row.get(12)?,
+        activity: ContactActivity {
+            applications: row.get(13)?,
+            last_reference_number: row.get(14)?,
+            last_sent_date: row.get(15)?,
+        },
     })
 }
 
@@ -89,6 +98,7 @@ impl ContactRepository for SqliteContactRepository {
         page_size: u64,
         search: &str,
         tracking_role: Option<&str>,
+        linked: Option<bool>,
     ) -> AppResult<Page<Contact>> {
         let conn = connection(&self.pool)?;
         let page = page.max(1);
@@ -105,7 +115,15 @@ impl ContactRepository for SqliteContactRepository {
              OR search_key(coalesce(c.tracking_role, '')) LIKE ?1 {LIKE_ESCAPE} \
              OR search_key(coalesce(c.email, '')) LIKE ?1 {LIKE_ESCAPE} \
              OR search_key(coalesce(e.name, '')) LIKE ?1 {LIKE_ESCAPE}) \
-             AND (?2 = '' OR search_key(coalesce(c.tracking_role, '')) = ?2)"
+             AND (?2 = '' OR search_key(coalesce(c.tracking_role, '')) = ?2){}",
+            match linked {
+                Some(true) =>
+                    " AND EXISTS (SELECT 1 FROM applications a WHERE a.contact_id = c.id)",
+                Some(false) => {
+                    " AND NOT EXISTS (SELECT 1 FROM applications a WHERE a.contact_id = c.id)"
+                }
+                None => "",
+            }
         );
         let total: u64 = conn
             .query_row(

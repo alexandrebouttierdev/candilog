@@ -34,10 +34,13 @@ function today(): string {
   return toDisplayDate(new Date().toISOString().slice(0, 10));
 }
 
-function vide(status: ApplicationFormInput["status"] = "EN_ATTENTE"): ApplicationFormInput {
+function vide(
+  status: ApplicationFormInput["status"] = "EN_ATTENTE",
+  company_id = "",
+): ApplicationFormInput {
   return {
     job_title: "",
-    company_id: "",
+    company_id,
     contact_id: "",
     channel: "OFFER",
     contract_type_code: "CDI",
@@ -106,6 +109,7 @@ export function ApplicationFormModal({
   open,
   application,
   defaultStatus = null,
+  defaultCompanyId = null,
   busy,
   onClose,
   onSubmit,
@@ -114,6 +118,8 @@ export function ApplicationFormModal({
   application: Application | null;
   /** Statut proposé à la création, typiquement celui du groupe ou de la colonne. */
   defaultStatus?: Application["status"] | null;
+  /** Entreprise préremplie à la création (« Nouvelle candidature » d'une fiche entreprise). */
+  defaultCompanyId?: string | null;
   busy: boolean;
   onClose: () => void;
   onSubmit: (values: NewApplication) => Promise<unknown>;
@@ -142,8 +148,10 @@ export function ApplicationFormModal({
 
   useEffect(() => {
     if (!open) return;
-    form.reset(application ? from(application) : vide(defaultStatus ?? "EN_ATTENTE"));
-  }, [open, application, defaultStatus, form]);
+    form.reset(
+      application ? from(application) : vide(defaultStatus ?? "EN_ATTENTE", defaultCompanyId ?? ""),
+    );
+  }, [open, application, defaultStatus, defaultCompanyId, form]);
 
   const channel = useWatch({ control: form.control, name: "channel" });
   const companyId = useWatch({ control: form.control, name: "company_id" });

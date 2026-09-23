@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { EntityPicker } from "@/shared/ui";
 import { useCompany, useCompanySearch, useCreateCompany } from "../../viewmodel/useCompany";
-import { COMPANIES_KEY } from "../../viewmodel/useCompaniesViewModel";
+import { COMPANIES_KEY } from "../../viewmodel/companyKeys";
 import { CompanyFormModal } from "./CompanyFormModal";
 
 /**

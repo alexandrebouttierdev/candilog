@@ -52,11 +52,9 @@ export const DESTINATIONS: readonly Destination[] = [
     icon: "relations",
     path: PATHS.companies,
     goKey: "r",
+    // La bascule Entreprises / Contacts vit dans la barre d'outils de l'écran
+    // (`screens/05-companies.png`), pas dans la barre de titre.
     prefixes: ["/relations"],
-    tabs: [
-      { path: PATHS.companies, label: "Entreprises" },
-      { path: PATHS.contacts, label: "Contacts" },
-    ],
   },
   {
     key: "documents",

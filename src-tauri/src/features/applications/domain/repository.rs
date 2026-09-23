@@ -115,6 +115,9 @@ pub struct ApplicationFilter {
     pub max_weekly_hours: Option<f64>,
     /// Entreprise liée.
     pub company_id: Option<Uuid>,
+    /// Contact interlocuteur (inspecteur d'un contact, écran Relations).
+    #[serde(default)]
+    pub contact_id: Option<Uuid>,
     /// Ville effective, en recherche partielle.
     pub city: String,
     /// Intitulé de poste, en recherche partielle.

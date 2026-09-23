@@ -213,33 +213,20 @@ les écrans v1 le temps de leur migration.
 
 Réutiliser la recette du voisin plutôt que d’en inventer une.
 
-### Liste filtrée (Entreprises, Réseau)
+### Relations (Entreprises, Contacts)
 
-```
-PageHeader (titre + sous-titre, sans search ni primary si la barre les porte)
-FilterBar : SearchInput toolbar 300px · Filtres · chips · Tout effacer · {n} nom(s) · actions à droite
-contenu (Kanban/table ou MasterList + fiche)
-```
-
-- `SearchInput variant="toolbar"` : placeholder **« Rechercher… »**.
-- `FilterMenu` + `FilterGroup` + `FilterOption` (pastilles, `aria-pressed`) : largeur
-  automatique selon la densité ; au-delà de 6 options, chaque groupe affiche
-  « Voir plus » / « Voir moins ».
-- Un critère = un `ActiveFilterChip` « Champ · Valeur ».
-- `activeFilterCount` **exclut** la recherche libre (pastille du bouton Filtres).
-- La recherche et les filtres sont des **paramètres de requête backend**, jamais un `.filter()` sur la page affichée.
-- Action primaire (« Nouvelle », « Nouveau contact ») **dans** `FilterBar.actions`, pas dans le `PageHeader`.
-- Vide + critères : « Aucun résultat » + bouton Tout effacer.
-
-Références : `CompanyFilters`, `ContactFilters` (Candidatures : voir ci-dessous).
-
-### Maître-détail (Entreprises, Réseau)
-
-- `MasterList` : 37 % largeur, min 300 px, `bg-surface`, filet droit.
-- Item : `MasterListItem` (initiales, titre, sous-titre, `MasterListTag`).
-- Fiche à droite ; si rien de sélectionné et liste non vide, ouvrir le premier item.
-- Pagination : `Pager` dense dans le pied de liste — dix fiches par page pour Entreprises
-  (`COMPANIES_PAGE_SIZE`), `PAGE_SIZE` ailleurs.
+- Un seul écran (`features/relations`) : bascule Entreprises / Contacts dans la barre
+  d'outils (et non dans la barre de titre), recherche `/`, « + Filtre » (`F`) pour les
+  critères fins de la v1 (secteur, type, taille ; rôle), action « Nouvelle entreprise » /
+  « Nouveau contact » (`N`).
+- Liste groupée, une requête SQLite par groupe : entreprises **En cours** (une candidature
+  non refusée), **Repérées** (aucune), **Clôturées** (toutes refusées) ; contacts
+  **Recruteurs et managers** (interlocuteurs d'une candidature) et **Réseau**. Lignes de
+  38 px : avatar, nom et sous-titre, rattachement, dernière référence, date.
+- Inspecteur 300 px (flottant sous 1060 px) : trois actions (Nouvelle candidature, Site web,
+  Note ; Écrire, Relancer, Note), champs, candidatures rattachées, historique des faits
+  enregistrés, notes. `mailto:` et `tel:` restent des liens natifs ; un lien web passe par
+  `openExternal`.
 
 ### Candidatures v2 (Liste, Kanban)
 

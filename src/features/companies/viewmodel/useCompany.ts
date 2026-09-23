@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { companyService } from "../services/companyService";
 import type { Company, NewCompany } from "@/shared/types/generated/companies";
-import { COMPANIES_KEY } from "./useCompaniesViewModel";
+import { COMPANIES_KEY } from "./companyKeys";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 
@@ -48,6 +48,7 @@ export function useCompanySearch() {
           sector_id: null,
           company_type_id: null,
           company_size: null,
+          relation_state: null,
         },
       });
       return {

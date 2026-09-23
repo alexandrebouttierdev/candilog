@@ -10,7 +10,7 @@ fn test_pagination_filtre_par_role_avant_la_limite() {
     repo.create(&recruteur).unwrap();
     repo.create(&manager).unwrap();
 
-    let page = repo.list_page(1, 24, "", Some("recruteur")).unwrap();
+    let page = repo.list_page(1, 24, "", Some("recruteur"), None).unwrap();
     assert_eq!(page.total, 1);
     assert_eq!(page.items[0].name, "Durand");
 }

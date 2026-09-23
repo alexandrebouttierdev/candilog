@@ -86,6 +86,14 @@ facultatif pour le site de l'entreprise et le réseau, interdit pour une démarc
 La liste lit aussi, par sous-requête, la prochaine relance et le prochain entretien à venir
 (`next_follow_up_date`, `next_interview_at`) : ce sont les échéances affichées en pastille.
 
+## Activité d'une relation
+
+`Company.activity` et `Contact.activity` sont calculées par sous-requêtes à chaque lecture,
+jamais stockées : candidatures ouvertes (statut autre que `REFUS`) et totales, contacts
+rattachés, référence et date d'envoi de la candidature la plus récente. Le filtre
+`relation_state` des entreprises (`active`, `watch`, `closed`) et le paramètre `linked` des
+contacts reposent sur les mêmes conditions, évaluées avant la pagination.
+
 ## Relance faite
 
 `follow_ups.done_at` (migration 4) horodate la relance que l'utilisateur a déclarée envoyée

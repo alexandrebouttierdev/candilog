@@ -7,7 +7,9 @@ use crate::core::database::helpers::{
 use crate::core::database::SqlitePool;
 use crate::core::errors::{AppError, AppResult};
 use crate::core::pagination::{clamp_page_size, Page};
-use crate::features::companies::domain::{Company, CompanyFilter, CompanyRepository, NewCompany};
+use crate::features::companies::domain::{
+    Company, CompanyActivity, CompanyFilter, CompanyRepository, NewCompany, RelationState,
+};
 use rusqlite::types::Value;
 
 /// Implémentation `SQLite` du dépôt d'entreprises.
@@ -23,10 +25,35 @@ impl SqliteCompanyRepository {
     }
 }
 
-/// Colonnes lues par [`row_to_company`], dans l'ordre.
+/// Colonnes lues par [`row_to_company`], dans l'ordre. Les cinq dernières forment
+/// l'activité de la relation, calculée à la lecture.
 const COLUMNS: &str = "e.id, e.name, e.sector_id, s.name, e.company_type_id, t.name, \
                         e.company_size, e.website, e.city, e.address, e.notes, \
-                        e.created_at, e.updated_at";
+                        e.created_at, e.updated_at, \
+                        (SELECT count(*) FROM applications a \
+                          WHERE a.company_id = e.id AND a.status != 'REFUS'), \
+                        (SELECT count(*) FROM applications a WHERE a.company_id = e.id), \
+                        (SELECT count(*) FROM contacts k WHERE k.company_id = e.id), \
+                        (SELECT a.reference_number FROM applications a WHERE a.company_id = e.id \
+                          ORDER BY a.sent_date DESC, a.reference_number DESC LIMIT 1), \
+                        (SELECT max(a.sent_date) FROM applications a WHERE a.company_id = e.id)";
+
+/// Condition SQL d'un état de relation (groupes de l'écran Relations).
+fn relation_state_clause(state: RelationState) -> &'static str {
+    match state {
+        RelationState::Active => {
+            "EXISTS (SELECT 1 FROM applications a WHERE a.company_id = e.id AND a.status != 'REFUS')"
+        }
+        RelationState::Watch => {
+            "NOT EXISTS (SELECT 1 FROM applications a WHERE a.company_id = e.id)"
+        }
+        RelationState::Closed => {
+            "EXISTS (SELECT 1 FROM applications a WHERE a.company_id = e.id) \
+             AND NOT EXISTS (SELECT 1 FROM applications a \
+                              WHERE a.company_id = e.id AND a.status != 'REFUS')"
+        }
+    }
+}
 
 /// Source des colonnes : les libellés des référentiels sont résolus par jointure.
 ///
@@ -56,6 +83,13 @@ fn row_to_company(row: &rusqlite::Row) -> AppResult<Company> {
         notes: row.get(10).map_err(|e| translate_error(e, "entreprise"))?,
         created_at: read(11)?,
         updated_at: read(12)?,
+        activity: CompanyActivity {
+            open_applications: row.get(13).map_err(|e| translate_error(e, "entreprise"))?,
+            applications: row.get(14).map_err(|e| translate_error(e, "entreprise"))?,
+            contacts: row.get(15).map_err(|e| translate_error(e, "entreprise"))?,
+            last_reference_number: row.get(16).map_err(|e| translate_error(e, "entreprise"))?,
+            last_sent_date: row.get(17).map_err(|e| translate_error(e, "entreprise"))?,
+        },
     })
 }
 
@@ -92,6 +126,9 @@ fn clauses(filter: &CompanyFilter) -> AppResult<(String, Vec<Value>)> {
     if let Some(company_size) = filter.company_size {
         values.push(Value::Text(text_from_enum(&company_size)?));
         clauses.push(format!("e.company_size = ?{}", values.len()));
+    }
+    if let Some(state) = filter.relation_state {
+        clauses.push(format!("({})", relation_state_clause(state)));
     }
 
     let sql = if clauses.is_empty() {
