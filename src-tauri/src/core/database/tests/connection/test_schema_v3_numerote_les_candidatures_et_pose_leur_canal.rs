@@ -81,7 +81,7 @@ fn une_nouvelle_candidature_recoit_le_numero_suivant_meme_apres_une_suppression(
             '2026-04-01T10:00:00', '2026-04-01T10:00:00');",
     )
     .unwrap();
-    assert_eq!(reference(&conn, "c-neuve"), 3);
+    assert_eq!(reference(&conn, "c-neuve"), 4);
 }
 
 #[test]

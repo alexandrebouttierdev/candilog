@@ -141,3 +141,61 @@ fn recentes_restituent_les_jointures_et_les_enums_du_domaine() {
     // Les valeurs héritées de l'entreprise sont résolues comme dans le suivi.
     assert_eq!(items[0].effective_city.as_deref(), Some("Rennes"));
 }
+
+fn relance(repo: &SqliteAnalyticsRepository, application: Uuid, date: &str, faite: bool) {
+    connection(&repo.pool)
+        .unwrap()
+        .execute(
+            "INSERT INTO follow_ups (id, application_id, follow_up_date, created_at, done_at)
+             VALUES (?1, ?2, ?3, '2026-01-01', ?4)",
+            rusqlite::params![
+                Uuid::new_v4().to_string(),
+                application.to_string(),
+                date,
+                faite.then_some("2026-09-01T10:00:00Z")
+            ],
+        )
+        .unwrap();
+}
+
+fn entretien(repo: &SqliteAnalyticsRepository, application: Uuid, at: &str) {
+    connection(&repo.pool)
+        .unwrap()
+        .execute(
+            "INSERT INTO interviews (id, application_id, interview_date, type, created_at, updated_at)
+             VALUES (?1, ?2, ?3, 'Visio', '2026-01-01', '2026-01-01')",
+            rusqlite::params![Uuid::new_v4().to_string(), application.to_string(), at],
+        )
+        .unwrap();
+}
+
+#[test]
+fn l_agenda_garde_les_retards_et_ecarte_ce_qui_est_fait_ou_passe() {
+    let (repo, company) = context();
+    let candidature = application(&repo, company, "RELANCEE", "2026-08-01");
+    relance(&repo, candidature, "2026-08-20", false); // en retard : reste
+    relance(&repo, candidature, "2026-08-25", true); // faite : écartée
+    relance(&repo, candidature, "2026-09-25", false); // au-delà de la semaine : écartée
+    entretien(&repo, candidature, "2026-09-10T14:30:00"); // passé : écarté
+    entretien(&repo, candidature, "2026-09-12T14:30:00"); // aujourd'hui : reste
+
+    let agenda = repo.agenda("2026-09-12", "2026-09-19").unwrap();
+
+    let dates: Vec<_> = agenda.iter().map(|item| item.date.as_str()).collect();
+    assert_eq!(dates, vec!["2026-08-20", "2026-09-12T14:30:00"]);
+    assert_eq!(agenda[0].kind, AgendaKind::FollowUp);
+    assert_eq!(agenda[1].kind, AgendaKind::Interview);
+    assert_eq!(agenda[1].detail, "Visio");
+    assert_eq!(agenda[0].reference_number, 1);
+    assert_eq!(agenda[0].status, ApplicationStatus::FollowedUp);
+}
+
+#[test]
+fn une_relance_faite_ne_compte_plus_en_retard() {
+    let (repo, company) = context();
+    let candidature = application(&repo, company, "EN_ATTENTE", "2026-08-01");
+    relance(&repo, candidature, "2026-08-20", true);
+    relance(&repo, candidature, "2026-08-21", false);
+
+    assert_eq!(repo.performance(None).unwrap().overdue_follow_ups, 1);
+}

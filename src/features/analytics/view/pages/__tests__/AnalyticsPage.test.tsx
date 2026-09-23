@@ -42,6 +42,7 @@ const ANALYTICS: Analytics = {
       company_name: "Nova Digital",
       sent_date: "2026-08-10",
       days: 18,
+      reference_number: 97,
     },
   ],
 };
@@ -108,6 +109,7 @@ describe("écran Analyses — candidatures à relancer", () => {
       follow_up_date: "2026-09-03",
       type: "Email",
       notes: null,
+      done_at: null,
       created_at: "2026-09-03T00:00:00Z",
     });
 

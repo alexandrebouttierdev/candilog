@@ -31,6 +31,7 @@ function follow_up(id: string, date: string): FollowUp {
     follow_up_date: date,
     type: "Email",
     notes: null,
+    done_at: null,
     created_at: "2026-08-20T00:00:00Z",
   };
 }

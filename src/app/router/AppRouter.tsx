@@ -6,8 +6,8 @@ import { useUiStore } from "@/shared/lib/ui-store";
 import type { SettingsSection } from "@/shared/lib/ui-store";
 import { LEGACY_REDIRECTS } from "./routes";
 
-const DashboardPage = lazy(() =>
-  import("@/features/analytics/view/pages/DashboardPage").then((m) => ({ default: m.DashboardPage })),
+const TodayPage = lazy(() =>
+  import("@/features/analytics/view/pages/TodayPage").then((m) => ({ default: m.TodayPage })),
 );
 const AnalyticsPage = lazy(() =>
   import("@/features/analytics/view/pages/AnalyticsPage").then((m) => ({ default: m.AnalyticsPage })),
@@ -95,7 +95,7 @@ function LegacySettings() {
 
 /** Écrans de la v2, indexés par chemin (sans la barre oblique initiale). */
 export const ROUTES: RouteObject[] = [
-  { index: true, element: <DashboardPage /> },
+  { index: true, element: <TodayPage /> },
   { path: "applications", element: <ApplicationsPage view="list" /> },
   { path: "applications/kanban", element: <ApplicationsPage view="kanban" /> },
   { path: "applications/calendar", element: <CalendarPage /> },

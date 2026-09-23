@@ -27,10 +27,18 @@ const MIGRATIONS: &[(i64, &str)] = &[
         3,
         include_str!("../../../migrations/003_applications_reference_channel.sql"),
     ),
+    (
+        4,
+        include_str!("../../../migrations/004_follow_up_done.sql"),
+    ),
+    (
+        5,
+        include_str!("../../../migrations/005_application_reference_counter.sql"),
+    ),
 ];
 
 /// Version de schéma atteinte après la dernière migration.
-pub const LATEST_SCHEMA_VERSION: i64 = 3;
+pub const LATEST_SCHEMA_VERSION: i64 = 5;
 
 /// Vérifie qu'un fichier existant appartient à la génération de schéma prise en charge.
 ///

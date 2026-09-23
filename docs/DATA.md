@@ -18,7 +18,7 @@ libre : ils doivent être exactement le nom issu du `ModelRegistry` sous `ai/mod
 
 ## Référentiels métier
 
-Le schéma courant (`PRAGMA user_version = 3`) porte
+Le schéma courant (`PRAGMA user_version = 5`) porte
 quatre catalogues **distincts**, semés par `init_schema.sql` en `INSERT OR IGNORE` :
 
 | Table | Clé | Rôle |
@@ -69,10 +69,14 @@ base neuve ne les recrée pas.
 
 `applications.reference_number` porte la référence affichée `CAN-142`. Un déclencheur
 (`applications_assign_reference`) attribue à **toute** insertion le numéro suivant
-`max(reference_number) + 1` — écran, import ou restauration, le dépôt n'a pas à y penser — et
-un index unique interdit les doublons. Un numéro supprimé n'est jamais réattribué : « CAN-003 »
-ne peut pas désigner deux candidatures dans l'historique de l'utilisateur. La migration 3 a
-numéroté les candidatures existantes dans leur ordre de création.
+le numéro suivant — écran, import ou restauration, le dépôt n'a pas à y penser — et un index
+unique interdit les doublons. Un numéro supprimé n'est jamais réattribué : « CAN-003 » ne peut
+pas désigner deux candidatures dans l'historique de l'utilisateur. Le dernier numéro attribué
+est donc retenu dans `app_kv` (`last_application_reference`, migration 5) : un simple
+`max + 1` rendrait son numéro à la candidature la plus récente supprimée. Le déclencheur
+prend le plus grand du compteur et des numéros présents ; une remise à zéro des données vide
+`app_kv` et la numérotation repart de 1. La migration 3 a numéroté les candidatures
+existantes dans leur ordre de création.
 
 `applications.channel` (`OFFER`, `COMPANY_SITE`, `NETWORK`, `SPONTANEOUS`) dit par où l'offre
 a été trouvée. `application_type` en **découle** (`SPONTANEOUS` → `SPONTANEE`, sinon `OFFRE`) :
@@ -81,6 +85,15 @@ facultatif pour le site de l'entreprise et le réseau, interdit pour une démarc
 
 La liste lit aussi, par sous-requête, la prochaine relance et le prochain entretien à venir
 (`next_follow_up_date`, `next_interview_at`) : ce sont les échéances affichées en pastille.
+
+## Relance faite
+
+`follow_ups.done_at` (migration 4) horodate la relance que l'utilisateur a déclarée envoyée
+(« Faire » sur Aujourd'hui) ; `NULL` signifie « encore à faire ». Une relance faite reste
+dans l'historique et au calendrier, mais ne compte plus en retard, ne devient plus la
+prochaine échéance d'une candidature et sort de l'agenda d'Aujourd'hui
+(`analytics_agenda` : relances non faites datées d'ici sept jours, retards compris, et
+entretiens des sept prochains jours).
 
 ## Contraintes portées par le schéma
 

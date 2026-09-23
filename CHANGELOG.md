@@ -27,6 +27,10 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
   relances, entretiens et historique emportés, duplication (`⌘D`), programmation d'une
   relance (`R`), changement de statut (`S`). Le formulaire garde toutes les précisions dans
   « Plus de détails » et demande confirmation avant de fermer une fiche modifiée.
+- Refonte v2 — Aujourd'hui : les échéances en trois horizons (en retard, aujourd'hui, cette
+  semaine) ; une relance se marque faite (`⏎`) ou se reporte (`R`), et reste dans
+  l'historique. Colonne Situation : répartition des statuts, 30 derniers jours,
+  candidatures sans réponse. Le décompte de la navigation compte les retards et le jour.
 - Export CSV des candidatures : colonnes `reference` et `canal` ajoutées.
 - Le lien de l'offre n'est plus exigé que pour une offre publiée ; il devient facultatif
   pour une candidature trouvée sur le site de l'entreprise ou par le réseau.

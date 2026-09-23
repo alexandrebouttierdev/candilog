@@ -36,6 +36,10 @@ type: string,
  */
 notes: string | null, 
 /**
+ * Horodatage où la relance a été déclarée faite ; `None` = encore à faire.
+ */
+done_at: string | null, 
+/**
  * Date de création (ISO 8601).
  */
 created_at: string, };

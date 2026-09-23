@@ -1,6 +1,6 @@
 //! Metrics affichés par le tableau de bord et par les analyses.
 
-use crate::features::applications::domain::Application;
+use crate::features::applications::domain::{Application, ApplicationStatus};
 use serde::Serialize;
 
 /// Compteur assorti de sa part du total.
@@ -37,6 +37,9 @@ pub struct ActivityWeek {
 pub struct ToFollowUp {
     /// Id de la candidature, pour ouvrir sa fiche.
     pub id: uuid::Uuid,
+    /// Numéro de la référence lisible `CAN-097`.
+    #[ts(type = "number")]
+    pub reference_number: i64,
     /// Intitulé du poste.
     pub job_title: String,
     /// Nom de l'entreprise.
@@ -166,4 +169,47 @@ mod tests {
         assert_eq!(json["upcoming_interviews"], 3);
         assert!(json.get("upcomingInterviews").is_none());
     }
+}
+
+/// Nature d'une échéance de l'écran Aujourd'hui.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, ts_rs::TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "analytics.ts")]
+pub enum AgendaKind {
+    /// Relance à envoyer.
+    FollowUp,
+    /// Entretien prévu.
+    Interview,
+}
+
+/// Une échéance datée : relance encore à faire ou entretien à venir.
+///
+/// L'écran Aujourd'hui les répartit en trois horizons — en retard, aujourd'hui, cette
+/// semaine — à partir de la date : le découpage dépend du jour de l'utilisateur, pas de la
+/// base.
+#[derive(Debug, Clone, Serialize, ts_rs::TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "analytics.ts")]
+pub struct AgendaItem {
+    /// Relance ou entretien.
+    pub kind: AgendaKind,
+    /// Id de la relance ou de l'entretien.
+    pub id: uuid::Uuid,
+    /// Id de la candidature concernée.
+    pub application_id: uuid::Uuid,
+    /// Numéro de la référence lisible de la candidature.
+    #[ts(type = "number")]
+    pub reference_number: i64,
+    /// Intitulé du poste.
+    pub job_title: String,
+    /// Nom de l'entreprise.
+    pub company_name: Option<String>,
+    /// Statut courant de la candidature.
+    pub status: ApplicationStatus,
+    /// Date (`AAAA-MM-JJ`) d'une relance, horodatage d'un entretien.
+    pub date: String,
+    /// Canal d'une relance (« Email »…) ou format d'un entretien (« Visio »…).
+    pub detail: String,
+    /// Lieu d'un entretien, s'il est renseigné.
+    pub location: Option<String>,
 }

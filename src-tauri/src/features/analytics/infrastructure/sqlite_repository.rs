@@ -1,10 +1,11 @@
 //! Agrégats d'analyse calculés par `SQLite`.
 
-use crate::core::database::helpers::{connection, translate_error, uuid_column};
+use crate::core::database::helpers::{connection, enum_from_text, translate_error, uuid_column};
 use crate::core::database::SqlitePool;
 use crate::core::errors::AppResult;
 use crate::features::analytics::domain::{
-    ActivityWeek, AnalyticsRepository, Metrics, Performance, Step, ToFollowUp, UpcomingItem,
+    ActivityWeek, AgendaItem, AgendaKind, AnalyticsRepository, Metrics, Performance, Step,
+    ToFollowUp, UpcomingItem,
 };
 use crate::features::applications::domain::{
     Application, ApplicationFilter, ApplicationRepository, ApplicationSort,
@@ -146,7 +147,7 @@ impl AnalyticsRepository for SqliteAnalyticsRepository {
             .map_err(|error| translate_error(error, "entretiens à venir"))?;
         let overdue_follow_ups = conn
             .query_row(
-                "SELECT count(*) FROM follow_ups WHERE follow_up_date < ?1",
+                "SELECT count(*) FROM follow_ups WHERE follow_up_date < ?1 AND done_at IS NULL",
                 [&day],
                 |row| row.get(0),
             )
@@ -247,7 +248,7 @@ impl AnalyticsRepository for SqliteAnalyticsRepository {
                  FROM follow_ups r
                  LEFT JOIN applications c ON c.id = r.application_id
                  LEFT JOIN companies ent ON ent.id = c.company_id
-                 WHERE r.follow_up_date >= ?1
+                 WHERE r.follow_up_date >= ?1 AND r.done_at IS NULL
                  ORDER BY 3 ASC LIMIT ?2",
             )
             .map_err(|error| translate_error(error, "échéances"))?;
@@ -291,7 +292,8 @@ impl AnalyticsRepository for SqliteAnalyticsRepository {
         let mut query = conn
             .prepare(
                 "SELECT c.id, c.job_title, e.name, substr(c.sent_date, 1, 10),
-                        cast(max(0, julianday(?1) - julianday(substr(c.sent_date, 1, 10))) AS INTEGER)
+                        cast(max(0, julianday(?1) - julianday(substr(c.sent_date, 1, 10))) AS INTEGER),
+                        c.reference_number
                  FROM applications c
                  LEFT JOIN companies e ON e.id = c.company_id
                  WHERE c.status = 'EN_ATTENTE' AND substr(c.sent_date, 1, 10) <= ?2
@@ -308,6 +310,9 @@ impl AnalyticsRepository for SqliteAnalyticsRepository {
         {
             items.push(ToFollowUp {
                 id: uuid_column(row, 0)
+                    .map_err(|error| translate_error(error, "candidature à relancer"))?,
+                reference_number: row
+                    .get(5)
                     .map_err(|error| translate_error(error, "candidature à relancer"))?,
                 job_title: row
                     .get(1)
@@ -338,6 +343,58 @@ impl AnalyticsRepository for SqliteAnalyticsRepository {
         Ok(SqliteApplicationRepository::new(self.pool.clone())
             .list_page(1, limite.max(1), &filter)?
             .items)
+    }
+
+    fn agenda(&self, today: &str, until: &str) -> AppResult<Vec<AgendaItem>> {
+        let conn = connection(&self.pool)?;
+        // Une relance encore à faire reste à l'écran tant qu'elle n'est pas faite, même
+        // ancienne : la cacher après quelques jours ferait disparaître un oubli au lieu de
+        // le signaler. Un entretien passé, lui, n'est plus une échéance.
+        let mut query = conn
+            .prepare(
+                "SELECT 'follow_up', r.id, c.id, c.reference_number, c.job_title, ent.name,
+                        c.status, r.follow_up_date, r.type, NULL
+                 FROM follow_ups r
+                 JOIN applications c ON c.id = r.application_id
+                 LEFT JOIN companies ent ON ent.id = c.company_id
+                 WHERE r.done_at IS NULL AND r.follow_up_date <= ?2
+                 UNION ALL
+                 SELECT 'interview', e.id, c.id, c.reference_number, c.job_title, ent.name,
+                        c.status, e.interview_date, e.type, e.location
+                 FROM interviews e
+                 JOIN applications c ON c.id = e.application_id
+                 LEFT JOIN companies ent ON ent.id = c.company_id
+                 WHERE substr(e.interview_date, 1, 10) >= ?1
+                   AND substr(e.interview_date, 1, 10) <= ?2
+                 ORDER BY 8 ASC",
+            )
+            .map_err(|error| translate_error(error, "échéances"))?;
+        let mut rows = query
+            .query(rusqlite::params![today, until])
+            .map_err(|error| translate_error(error, "échéances"))?;
+        let mut items = Vec::new();
+        let lire = |error| translate_error(error, "échéance");
+        while let Some(row) = rows.next().map_err(lire)? {
+            let kind: String = row.get(0).map_err(lire)?;
+            let status: String = row.get(6).map_err(lire)?;
+            items.push(AgendaItem {
+                kind: if kind == "interview" {
+                    AgendaKind::Interview
+                } else {
+                    AgendaKind::FollowUp
+                },
+                id: uuid_column(row, 1).map_err(lire)?,
+                application_id: uuid_column(row, 2).map_err(lire)?,
+                reference_number: row.get(3).map_err(lire)?,
+                job_title: row.get(4).map_err(lire)?,
+                company_name: row.get(5).map_err(lire)?,
+                status: enum_from_text(&status)?,
+                date: row.get(7).map_err(lire)?,
+                detail: row.get(8).map_err(lire)?,
+                location: row.get(9).map_err(lire)?,
+            });
+        }
+        Ok(items)
     }
 }
 

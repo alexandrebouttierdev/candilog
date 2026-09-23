@@ -26,6 +26,8 @@ pub struct FollowUp {
     pub channel: String,
     /// Notes libres.
     pub notes: Option<String>,
+    /// Horodatage où la relance a été déclarée faite ; `None` = encore à faire.
+    pub done_at: Option<String>,
     /// Date de création (ISO 8601).
     pub created_at: String,
 }

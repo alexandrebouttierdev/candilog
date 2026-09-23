@@ -41,6 +41,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             analytics::analytics_dashboard,
+            analytics::analytics_agenda,
             analytics::analytics_load,
             analytics::analytics_export_csv,
             applications::applications_list_page,
@@ -125,6 +126,7 @@ pub fn run() {
             followups::follow_ups_create,
             followups::follow_ups_update,
             followups::follow_ups_delete,
+            followups::follow_ups_set_done,
             referentials::referentials_load,
         ])
         .run(tauri::generate_context!())

@@ -22,6 +22,40 @@ fn chaque_candidature_recoit_une_reference_croissante() {
 }
 
 #[test]
+fn une_reference_supprimee_n_est_jamais_reattribuee() {
+    let (repo, company_id) = context();
+    repo.create(&entree(company_id, "Premier", "2026-08-20"))
+        .unwrap();
+    let derniere = repo
+        .create(&entree(company_id, "Second", "2026-08-21"))
+        .unwrap();
+    repo.delete(derniere.id).unwrap();
+
+    let suivante = repo
+        .create(&entree(company_id, "Troisième", "2026-08-22"))
+        .unwrap();
+    // « CAN-002 » a désigné une candidature supprimée : il ne peut pas en désigner une autre.
+    assert_eq!(suivante.reference_number, 3);
+}
+
+#[test]
+fn apres_une_remise_a_zero_la_numerotation_repart_de_un() {
+    let (repo, company_id) = context();
+    repo.create(&entree(company_id, "Ancienne", "2026-08-20"))
+        .unwrap();
+    // `reset_data` vide aussi `app_kv`, compteur compris.
+    connection(&repo.pool)
+        .unwrap()
+        .execute_batch("DELETE FROM applications; DELETE FROM app_kv;")
+        .unwrap();
+
+    let nouvelle = repo
+        .create(&entree(company_id, "Nouvelle", "2026-08-21"))
+        .unwrap();
+    assert_eq!(nouvelle.reference_number, 1);
+}
+
+#[test]
 fn le_canal_est_persiste_et_fixe_la_nature_de_la_demarche() {
     let (repo, company_id) = context();
     let mut reseau = entree(company_id, "Coopté", "2026-08-20");

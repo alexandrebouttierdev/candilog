@@ -1,42 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { APPLICATIONS_KEY, applicationService } from "@/features/applications";
+import { EMPTY_FILTER } from "@/features/applications";
 import type { ApplicationFilter } from "@/features/applications";
 import { COMPANIES_KEY, companyService } from "@/features/companies";
 import { CONTACTS_KEY, contactService } from "@/features/contacts";
 import { COVER_LETTERS_KEY, RESUME_KEY, documentsService } from "@/features/documents";
-import { FOLLOW_UPS_KEY, followUpService } from "@/features/followups";
-import { interviewService } from "@/features/interviews";
+import { horizonOf, useAgenda } from "@/features/analytics";
 import { PROFILE_KEY, profileService } from "@/features/profile";
 
 /** Toutes les candidatures, sans filtre : le décompte de la navigation est un total. */
-const TOUTES: ApplicationFilter = {
-  search: "",
-  status: [],
-  application_type: [],
-  channel: [],
-  contract_type_code: [],
-  professional_domain_id: [],
-  company_type_id: [],
-  company_size: [],
-  sector_id: [],
-  weekly_work_schedule: [],
-  min_weekly_hours: null,
-  max_weekly_hours: null,
-  company_id: null,
-  city: "",
-  job_title: "",
-  start_date: null,
-  end_date: null,
-  sort: "date",
-  descending: true,
-  ids: [],
-};
-
-/** Date locale `AAAA-MM-JJ` : « aujourd'hui » est celui de l'utilisateur, pas l'UTC. */
-function localDate(date = new Date()): string {
-  const pad = (value: number) => String(value).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-}
+const TOUTES: ApplicationFilter = { ...EMPTY_FILTER, search: "", sort: "date", descending: true, ids: [] };
 
 /**
  * Décomptes de la barre de navigation (`INTERACTIONS.md` §2) : échéances du jour, total
@@ -47,8 +20,6 @@ function localDate(date = new Date()): string {
  * décompte inconnu (chargement, erreur) n'est pas affiché plutôt que d'afficher 0.
  */
 export function useNavCounts() {
-  const today = localDate();
-
   const applications = useQuery({
     queryKey: [...APPLICATIONS_KEY, "navigation"],
     queryFn: () => applicationService.breakdown(TOUTES),
@@ -74,21 +45,13 @@ export function useNavCounts() {
     queryKey: [...COVER_LETTERS_KEY, "navigation"],
     queryFn: () => documentsService.listCoverLettersPage({ page: 1, page_size: 1, search: "" }),
   });
-  const followUps = useQuery({
-    queryKey: [...FOLLOW_UPS_KEY, "navigation", today],
-    queryFn: () => followUpService.listBetween(today, today),
-  });
-  const interviews = useQuery({
-    queryKey: ["entretiens", "navigation", today],
-    // Les entretiens portent une heure : les bornes couvrent la journée entière.
-    queryFn: () => interviewService.listBetween(`${today}T00:00:00`, `${today}T23:59:59`),
-  });
+  const agenda = useAgenda();
   const profile = useQuery({ queryKey: PROFILE_KEY, queryFn: profileService.load });
 
   const breakdown = applications.data;
   return {
-    today:
-      followUps.data && interviews.data ? followUps.data.length + interviews.data.length : undefined,
+    // Ce qui est à traiter aujourd'hui : retards compris, la semaine à venir exclue.
+    today: agenda.data?.filter((item) => horizonOf(item, agenda.today) !== "week").length,
     applications: breakdown
       ? breakdown.pending + breakdown.followed_up + breakdown.interview + breakdown.rejected
       : undefined,

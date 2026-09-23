@@ -40,6 +40,19 @@ fn base_garnie() -> SqlitePool {
     pool
 }
 
+const TABLES_EPARGNEES: [&str; 10] = [
+    "companies",
+    "contacts",
+    "applications",
+    "status_history",
+    "follow_ups",
+    "interviews",
+    "resume_versions",
+    "cover_letters",
+    "settings",
+    "app_kv",
+];
+
 fn compte(pool: &SqlitePool, table: &str) -> i64 {
     connection(pool)
         .unwrap()
@@ -73,25 +86,23 @@ fn reinitialiser_le_profil_ne_touche_a_aucune_autre_table() {
         })
         .unwrap();
 
+    // `app_kv` porte aussi le compteur des références : on compare à l'état d'avant.
+    let avant: Vec<i64> = TABLES_EPARGNEES
+        .iter()
+        .map(|table| compte(&pool, table))
+        .collect();
     let payload = service.reset().unwrap();
 
     assert_eq!(payload.profile, Profile::default());
     assert_eq!(service.load().unwrap().profile, Profile::default());
 
     // Tout le reste des données utilisateur est intact, à la ligne près.
-    for table in [
-        "companies",
-        "contacts",
-        "applications",
-        "status_history",
-        "follow_ups",
-        "interviews",
-        "resume_versions",
-        "cover_letters",
-        "settings",
-        "app_kv",
-    ] {
-        assert_eq!(compte(&pool, table), 1, "la table {table} a été modifiée");
+    for (table, attendu) in TABLES_EPARGNEES.iter().zip(avant) {
+        assert_eq!(
+            compte(&pool, table),
+            attendu,
+            "la table {table} a été modifiée"
+        );
     }
 
     // Les référentiels métier semés par le schéma sont eux aussi préservés.

@@ -41,4 +41,10 @@ pub trait FollowUpRepository: Send + Sync {
     /// `AppError::NotFound` si l'identifiant est inconnu ; `AppError::Database` si la
     /// suppression échoue.
     fn delete(&self, id: Uuid) -> AppResult<()>;
+
+    /// Marque la relance faite (`done = true`) ou la rouvre (`false`, pour « annuler »).
+    ///
+    /// # Errors
+    /// `AppError::NotFound` si l'identifiant est inconnu.
+    fn set_done(&self, id: Uuid, done: bool) -> AppResult<FollowUp>;
 }

@@ -5,6 +5,9 @@ import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 import { APPLICATIONS_KEY } from "./useApplicationsViewModel";
 
+/** Racine des analyses (Aujourd'hui) : même valeur que `ANALYTICS_KEY`, sans dépendre de la feature. */
+const ANALYSES = ["analyses"] as const;
+
 /**
  * Programme une relance depuis l'écran Candidatures (`R`).
  *
@@ -20,6 +23,7 @@ export function useScheduleFollowUp() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: FOLLOW_UPS_KEY }),
         queryClient.invalidateQueries({ queryKey: APPLICATIONS_KEY }),
+        queryClient.invalidateQueries({ queryKey: ANALYSES }),
       ]);
       const date = followUp.follow_up_date;
       notify({ tone: "success", title: `Relance programmée pour le ${date.slice(8, 10)}-${date.slice(5, 7)}` });

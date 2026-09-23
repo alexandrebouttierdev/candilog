@@ -39,6 +39,17 @@ pub async fn follow_ups_update(
     blocking::execute(move || service.update(id, &input)).await
 }
 
+/// Marque une relance faite (`done`) ou la rouvre.
+#[tauri::command(rename_all = "snake_case")]
+pub async fn follow_ups_set_done(
+    state: State<'_, AppState>,
+    id: uuid::Uuid,
+    done: bool,
+) -> AppResult<FollowUp> {
+    let service = Arc::clone(&state.followups);
+    blocking::execute(move || service.set_done(id, done)).await
+}
+
 /// Supprime une relance.
 #[tauri::command(rename_all = "snake_case")]
 pub async fn follow_ups_delete(state: State<'_, AppState>, id: uuid::Uuid) -> AppResult<()> {

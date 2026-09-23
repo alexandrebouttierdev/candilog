@@ -44,7 +44,7 @@ const COLUMNS: &str =
                         c.status, c.sent_date, c.job_url, c.notes, c.created_at, c.updated_at, \
                         c.reference_number, c.channel, \
                         (SELECT min(f.follow_up_date) FROM follow_ups f \
-                          WHERE f.application_id = c.id \
+                          WHERE f.application_id = c.id AND f.done_at IS NULL \
                             AND f.follow_up_date >= date('now', 'localtime')), \
                         (SELECT min(i.interview_date) FROM interviews i \
                           WHERE i.application_id = c.id \

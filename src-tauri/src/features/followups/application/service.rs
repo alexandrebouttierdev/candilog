@@ -60,6 +60,14 @@ impl<R: FollowUpRepository> FollowUpService<R> {
         self.repo.delete(id)
     }
 
+    /// Marque la relance faite, ou la rouvre pour annuler ce geste.
+    ///
+    /// # Errors
+    /// `AppError::NotFound` si l'identifiant est inconnu.
+    pub fn set_done(&self, id: Uuid, done: bool) -> AppResult<FollowUp> {
+        self.repo.set_done(id, done)
+    }
+
     /// Valide une plage calendaire reçue de l'IPC (`AAAA-MM-JJ`, `from ≤ to`).
     fn validate_range(from: &str, to: &str) -> AppResult<()> {
         let from_d = chrono::NaiveDate::parse_from_str(from, "%Y-%m-%d").map_err(|_| {

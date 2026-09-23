@@ -11,6 +11,7 @@ fn rel(date: &str, channel: &str) -> FollowUp {
         follow_up_date: date.into(),
         channel: channel.into(),
         notes: None,
+        done_at: None,
         created_at: "2026-08-20T00:00:00Z".into(),
     }
 }
@@ -43,6 +44,11 @@ impl FollowUpRepository for StubRepo {
     }
     fn delete(&self, _id: uuid::Uuid) -> AppResult<()> {
         Ok(())
+    }
+    fn set_done(&self, _id: uuid::Uuid, done: bool) -> AppResult<FollowUp> {
+        let mut relance = rel("2026-08-20", "Email");
+        relance.done_at = done.then(|| "2026-08-21T09:00:00Z".to_owned());
+        Ok(relance)
     }
 }
 
