@@ -48,6 +48,10 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
 - Refonte v2 — Profil : colonne des sections avec leur état et leur décompte, contenu de la
   section à droite ; retrait d'une entrée en un clic (confirmé), import de CV et
   réinitialisation sous les sections.
+- IA — routage par tâche : chaque tâche (CV ciblé, lettre, analyse de CV, extraction
+  d'offre, lecture d'un CV importé) peut utiliser son propre fournisseur et son propre
+  modèle. Sans choix, elle suit le fournisseur principal ; une tâche mal configurée
+  s'arrête avec un message au lieu de basculer ailleurs.
 - Export CSV des candidatures : colonnes `reference` et `canal` ajoutées.
 - Le lien de l'offre n'est plus exigé que pour une offre publiée ; il devient facultatif
   pour une candidature trouvée sur le site de l'entreprise ou par le réseau.

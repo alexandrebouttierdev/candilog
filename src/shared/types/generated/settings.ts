@@ -6,6 +6,11 @@
 export type About = { version: string, name: string, };
 
 /**
+ * Tâche IA routable vers un modèle précis (écran IA, section « Qui fait quoi »).
+ */
+export type AiTask = "generate_resume" | "write_letter" | "analyze_resume" | "extract_offer" | "import_resume";
+
+/**
  * Mode d'analyse, rétro-compatible avec les bases antérieures à son introduction.
  */
 export type AnalysisMode = "auto" | "small" | "standard" | "advanced";
@@ -27,7 +32,20 @@ export type ResetOutcome = { data_cleared: boolean, secret_cleared: boolean, };
 /**
  * Forme IPC destinée à React.
  */
-export type Settings = { llm: LlmForm, llm_presets: { [key in string]: LlmProviderPresetForm }, theme: ThemePref, language: string, };
+export type Settings = { llm: LlmForm, llm_presets: { [key in string]: LlmProviderPresetForm }, 
+/**
+ * Routage des tâches IA ; une tâche absente suit le fournisseur principal.
+ */
+ai_routes: { [key in AiTask]?: TaskRoute | null }, theme: ThemePref, language: string, };
+
+/**
+ * Modèle assigné à une tâche : un fournisseur et l'un de ses modèles.
+ */
+export type TaskRoute = { provider: ProviderKind, 
+/**
+ * Modèle du fournisseur ; pour l'IA locale, le tag Ollama d'un modèle installé.
+ */
+model: string, };
 
 /**
  * Préférence de thème, identique à l'enum historique.

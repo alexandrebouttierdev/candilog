@@ -6,7 +6,7 @@ mod pdf;
 mod provider;
 mod system_resources;
 
-pub use config_repository::load_config;
+pub use config_repository::{load_config, load_task_config};
 pub use managed_ollama::{
     require_runtime_artifact, ManagedOllamaApi, ManagedOllamaProcess, RuntimeInstaller,
 };

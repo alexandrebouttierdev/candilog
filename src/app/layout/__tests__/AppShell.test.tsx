@@ -20,6 +20,7 @@ const REGLAGES: Settings = {
     mode: "auto",
   },
   llm_presets: {},
+  ai_routes: {},
   theme: "system",
   language: "fr",
 };

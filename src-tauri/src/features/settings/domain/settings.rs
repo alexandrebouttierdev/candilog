@@ -1,6 +1,8 @@
 //! Modèle persisté (JSON Iced) et DTO IPC camelCase.
 
-use crate::features::ai::domain::{AnalysisMode, LlmConfig, ManagedOllamaSettings, ProviderKind};
+use crate::features::ai::domain::{
+    AiRoutes, AnalysisMode, LlmConfig, ManagedOllamaSettings, ProviderKind,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use ts_rs::TS;
@@ -78,6 +80,9 @@ pub struct AppSettings {
     pub llm_presets: BTreeMap<String, LlmProviderPreset>,
     #[serde(default)]
     pub managed_ollama: ManagedOllamaSettings,
+    /// Routage des tâches IA ; une tâche absente suit le fournisseur principal.
+    #[serde(default)]
+    pub ai_routes: AiRoutes,
     #[serde(default)]
     pub theme: ThemePref,
     #[serde(default = "language_fr")]
@@ -129,6 +134,7 @@ impl Default for AppSettings {
             llm: LlmConfig::default(),
             llm_presets: BTreeMap::new(),
             managed_ollama: ManagedOllamaSettings::default(),
+            ai_routes: AiRoutes::new(),
             theme: ThemePref::System,
             language: language_fr(),
         }
@@ -152,6 +158,9 @@ pub struct Settings {
     pub llm: LlmForm,
     #[serde(default)]
     pub llm_presets: BTreeMap<String, LlmProviderPresetForm>,
+    /// Routage des tâches IA ; une tâche absente suit le fournisseur principal.
+    #[serde(default)]
+    pub ai_routes: AiRoutes,
     pub theme: ThemePref,
     pub language: String,
 }
@@ -200,6 +209,7 @@ impl Settings {
         Self {
             llm: LlmForm::from_config(value.llm, api_key_configured),
             llm_presets,
+            ai_routes: value.ai_routes,
             theme: value.theme,
             language: value.language,
         }
@@ -216,6 +226,7 @@ impl From<Settings> for AppSettings {
                 .map(|(id, preset)| (id, LlmProviderPreset::from(preset)))
                 .collect(),
             managed_ollama: ManagedOllamaSettings::default(),
+            ai_routes: value.ai_routes,
             theme: value.theme,
             language: value.language,
         };

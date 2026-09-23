@@ -47,6 +47,25 @@ réponse HTTP valide dont le corps n'est pas le JSON attendu. Les deux se cumule
 transport d'abord, forme de la réponse ensuite. L'import de profil en ajoute une troisième,
 qui porte sur le contenu et non sur la forme (voir « Sorties du modèle »).
 
+## Routage par tâche (« Qui fait quoi »)
+
+Cinq tâches sont routables (`AiTask`) : générer un CV ciblé, rédiger une lettre (et sa
+correction), analyser un CV, extraire une offre, lire un CV importé. Le routage vit dans les
+réglages (`ai_routes`) :
+
+- **route absente** : la tâche suit le fournisseur principal (`llm`). C'est l'état de toute
+  base antérieure au routage, qui garde donc son comportement (décision D3) ;
+- **route** `{ provider, model }` : la tâche utilise ce fournisseur, avec les réglages
+  mémorisés de son preset (endpoint, température, mode) et sa clé du coffre. Pour l'IA
+  locale, `model` est le tag Ollama d'un modèle installé ;
+- **`null`** : tâche désactivée.
+
+Aucun repli : une tâche dont le fournisseur n'a pas de clé, dont le modèle local a été
+désinstallé ou qui est désactivée **s'arrête et le dit** (`load_task_config`,
+`AiService::provider_for`). Elle n'envoie jamais ses données à un autre fournisseur que
+celui choisi. Le benchmark utilisateur mesure le fournisseur principal. Toute route est
+revalidée en Rust à l'enregistrement (modèle non vide).
+
 ## IA locale Candilog (détails)
 
 `candilog_local` est le seul fournisseur dont le modèle actif ne vit pas dans `llm.model` :

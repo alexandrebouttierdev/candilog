@@ -19,6 +19,7 @@ function reglages(theme: Settings["theme"] = "system"): Settings {
       mode: "auto",
     },
     llm_presets: {},
+    ai_routes: {},
     theme,
     language: "fr",
   };

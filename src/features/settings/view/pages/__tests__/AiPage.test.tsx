@@ -50,6 +50,7 @@ function reglages(llm: Partial<LlmForm> = {}): Settings {
       ...llm,
     },
     llm_presets: {},
+    ai_routes: {},
     theme: "system",
     language: "fr",
   };
