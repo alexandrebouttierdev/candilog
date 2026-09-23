@@ -7,7 +7,15 @@ use uuid::Uuid;
 
 pub trait ResumeRepository: Send + Sync {
     fn save(&self, input: &NewResume) -> AppResult<ResumeVersion>;
-    fn list_page(&self, page: u64, page_size: u64, search: &str) -> AppResult<Page<ResumeSummary>>;
+    /// Page de CV ; `scored_only` ne retient que ceux qui portent un score ATS
+    /// (onglet « Analyses » de Documents).
+    fn list_page(
+        &self,
+        page: u64,
+        page_size: u64,
+        search: &str,
+        scored_only: bool,
+    ) -> AppResult<Page<ResumeSummary>>;
     fn get(&self, id: Uuid) -> AppResult<ResumeVersion>;
     fn delete(&self, id: Uuid) -> AppResult<()>;
 }

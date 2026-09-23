@@ -150,8 +150,9 @@ impl<C: ResumeRepository, L: CoverLetterRepository, P: ProfileRepository>
         page: u64,
         page_size: u64,
         search: &str,
+        scored_only: bool,
     ) -> AppResult<Page<ResumeSummary>> {
-        self.resume.list_page(page, page_size, search)
+        self.resume.list_page(page, page_size, search, scored_only)
     }
     pub fn resume_get(&self, id: Uuid) -> AppResult<ResumeVersion> {
         self.resume.get(id)
@@ -335,7 +336,7 @@ mod tests {
             })
             .unwrap_err();
         assert!(matches!(err, AppError::Validation(_)));
-        assert_eq!(service.resume_list_page(1, 8, "").unwrap().total, 0);
+        assert_eq!(service.resume_list_page(1, 8, "", false).unwrap().total, 0);
     }
 
     #[test]

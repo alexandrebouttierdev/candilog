@@ -8,7 +8,6 @@ import { documentsService } from "../../services/documentsService";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 import { useLetterWriterViewModel } from "../useLetterWriterViewModel";
-import { useLettersLibraryViewModel } from "../useLettersLibraryViewModel";
 
 vi.mock("@/features/ai/viewmodel/useAiProgress", () => ({
   useAiProgress: () => null,
@@ -42,23 +41,6 @@ beforeEach(() => {
   useAiOperationStore.setState({ active: null });
   useUiStore.setState({ toasts: [] });
   vi.spyOn(profileService, "load").mockResolvedValue(profilePayload());
-});
-
-describe("ViewModel de la bibliothèque de lettres", () => {
-  it("liste les lettres et expose l'identité du profil", async () => {
-    vi.spyOn(documentsService, "listCoverLettersPage").mockResolvedValue({
-      items: [{
-        id: "l-1", name: "Lettre Astek", company: "Astek", job_title: "Dev",
-        recipient: null, recipient_address: null, job_reference: null,
-        tone: "formal", length: "medium", content: "Madame, Monsieur,",
-        created_at: "2026-08-30T00:00:00Z",
-      }],
-      total: 1, page: 1, page_size: 8, total_pages: 1,
-    });
-    const { result } = renderHook(() => useLettersLibraryViewModel(), { wrapper });
-    await waitFor(() => expect(result.current.coverLetters).toHaveLength(1));
-    await waitFor(() => expect(result.current.identity?.first_name).toBe("Alex"));
-  });
 });
 
 describe("ViewModel du rédacteur de lettre", () => {

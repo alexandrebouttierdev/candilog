@@ -17,7 +17,7 @@ fn cv_est_restitue_avec_son_json_et_son_resume() {
         })
         .unwrap();
     assert_eq!(
-        repo.list_page(1, 8, "").unwrap().items[0].name,
+        repo.list_page(1, 8, "", false).unwrap().items[0].name,
         "CV Produit"
     );
     assert_eq!(
@@ -64,7 +64,7 @@ fn cv_pagination_filtre_avant_la_limite() {
         .unwrap();
     }
 
-    let page = repo.list_page(2, 8, "cible").unwrap();
+    let page = repo.list_page(2, 8, "cible", false).unwrap();
 
     assert_eq!(page.total, 13);
     assert_eq!(page.items.len(), 5);
@@ -128,7 +128,7 @@ fn la_recherche_des_bibliotheques_ignore_les_accents() {
 
     for terme in ["école", "ECOLE"] {
         assert_eq!(
-            cvs.list_page(1, 8, terme).unwrap().total,
+            cvs.list_page(1, 8, terme, false).unwrap().total,
             1,
             "CV : recherche « {terme} » sans résultat"
         );
@@ -138,4 +138,47 @@ fn la_recherche_des_bibliotheques_ignore_les_accents() {
             "lettres : recherche « {terme} » sans résultat"
         );
     }
+}
+
+#[test]
+fn cv_expose_son_score_ats_et_son_offre_et_filtre_les_analyses() {
+    let repo = SqliteResumeRepository::new(pool());
+    repo.save(&NewResume {
+        name: "CV ciblé".into(),
+        content: serde_json::json!({
+            "schema_version": 1,
+            "score": { "total": 81.6 },
+            "job_offer": { "title": "Chargé d'exploitation" }
+        }),
+    })
+    .unwrap();
+    repo.save(&NewResume {
+        name: "CV ancien".into(),
+        content: serde_json::json!({ "resume": {}, "analysis": {}, "profile_score": { "total": 61 } }),
+    })
+    .unwrap();
+    repo.save(&NewResume {
+        name: "CV socle".into(),
+        content: serde_json::json!({ "cv": {} }),
+    })
+    .unwrap();
+
+    let tous = repo.list_page(1, 8, "", false).unwrap();
+    let par_nom = |nom: &str| {
+        tous.items
+            .iter()
+            .find(|item| item.name == nom)
+            .unwrap()
+            .clone()
+    };
+    assert_eq!(par_nom("CV ciblé").ats_score, Some(82));
+    assert_eq!(
+        par_nom("CV ciblé").target_title.as_deref(),
+        Some("Chargé d'exploitation")
+    );
+    assert_eq!(par_nom("CV ancien").ats_score, Some(61));
+    assert_eq!(par_nom("CV socle").ats_score, None);
+
+    let analyses = repo.list_page(1, 8, "", true).unwrap();
+    assert_eq!(analyses.total, 2);
 }

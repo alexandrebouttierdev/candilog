@@ -26,9 +26,13 @@ pub async fn documents_resume_list_page(
     page: u64,
     page_size: u64,
     search: String,
+    scored_only: Option<bool>,
 ) -> AppResult<Page<ResumeSummary>> {
     let service = state.documents.clone();
-    blocking::execute(move || service.resume_list_page(page, page_size, &search)).await
+    blocking::execute(move || {
+        service.resume_list_page(page, page_size, &search, scored_only.unwrap_or(false))
+    })
+    .await
 }
 #[tauri::command(rename_all = "snake_case")]
 pub async fn documents_resume_get(

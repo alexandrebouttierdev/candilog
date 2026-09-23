@@ -42,6 +42,9 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
   entreprises sont groupées en cours / repérées / clôturées, les contacts en recruteurs et
   managers / réseau ; inspecteur avec candidatures rattachées et historique. « Nouvelle
   candidature » depuis une entreprise la préremplit.
+- Refonte v2 — Documents : CV et lettres réunis dans une bibliothèque à onglets (Tous, CV,
+  Lettres, Analyses), score ATS affiché dans la liste et l'inspecteur ; Ouvrir, PDF,
+  dupliquer, copier et supprimer depuis l'inspecteur ou le clic droit.
 - Export CSV des candidatures : colonnes `reference` et `canal` ajoutées.
 - Le lien de l'offre n'est plus exigé que pour une offre publiée ; il devient facultatif
   pour une candidature trouvée sur le site de l'entreprise ou par le réseau.

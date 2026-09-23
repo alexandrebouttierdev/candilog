@@ -114,7 +114,10 @@ par l'initialiseur de **chaque** connexion du pool.
 
 ## Contenu d'un CV (`resume_versions.content`)
 
-La table `resume_versions` stocke le JSON du CV dans `content`. Deux formes coexistent :
+La table `resume_versions` stocke le JSON du CV dans `content`. La liste en lit, par
+`json_extract`, le score ATS (`score.total`, ou `profile_score.total` pour une génération
+historique) et l'intitulé de l'offre ciblée (`job_offer.title`) : le contenu reste la seule
+source, sans colonne dérivée. Deux formes coexistent :
 
 | Forme | Discriminant | Rôle |
 | --- | --- | --- |

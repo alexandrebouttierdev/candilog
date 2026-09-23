@@ -8,7 +8,7 @@ import { documentsService } from "../../../services/documentsService";
 import { workspaceFixture } from "../../../model/resumeWorkspace";
 import type { ResumeWorkspace } from "@/shared/types/generated/documents";
 import { useUiStore } from "@/shared/lib/ui-store";
-import { ResumeLibraryPage } from "../ResumeLibraryPage";
+import { DocumentsPage } from "../DocumentsPage";
 import { ResumeGeneratorPage } from "../ResumeGeneratorPage";
 import { ResumeAnalysisPage } from "../ResumeAnalysisPage";
 import { LetterWriterPage } from "../LettersPages";
@@ -61,6 +61,17 @@ function emptyMatchScore(total: number) {
   };
 }
 
+/** Bibliothèque sans lettre : les décomptes des onglets interrogent aussi les lettres. */
+function sansLettres() {
+  vi.spyOn(documentsService, "listCoverLettersPage").mockResolvedValue({
+    items: [],
+    total: 0,
+    page: 1,
+    page_size: 50,
+    total_pages: 1,
+  });
+}
+
 beforeEach(() => {
   vi.restoreAllMocks();
   useAiOperationStore.setState({ active: null });
@@ -68,29 +79,54 @@ beforeEach(() => {
   useUiStore.setState({ toasts: [] });
 });
 
-describe("bibliothèque de CV paginée", () => {
-  it("recherche et change de page côté backend", async () => {
-    const paged = vi.spyOn(documentsService, "listResumePage").mockImplementation(({ page, page_size, search }) => Promise.resolve({
-      items: [{ id: `${search || "cv"}-${page}`, name: `${search || "CV"} page ${page}`, created_at: "2026-08-30T00:00:00Z" }],
-      total: search ? 1 : 9,
-      page,
-      page_size,
-      total_pages: search ? 1 : 2,
-    }));
+describe("bibliothèque de documents", () => {
+  it("recherche et charge la suite côté backend", async () => {
+    sansLettres();
+    const paged = vi.spyOn(documentsService, "listResumePage").mockImplementation(({ page, page_size, search }) =>
+      Promise.resolve({
+        items: [{ id: `${search || "cv"}-1`, name: `${search || "CV"} 1`, created_at: "2026-08-30T00:00:00Z", ats_score: null, target_title: null }],
+        total: search ? 1 : 60,
+        page,
+        page_size,
+        total_pages: 1,
+      }),
+    );
     vi.spyOn(documentsService, "getResume").mockImplementation((id) => Promise.resolve({ id, name: id, content: null, created_at: "2026-08-30T00:00:00Z" }));
 
-    render(<ResumeLibraryPage />, { wrapper });
-    await waitFor(() => expect(paged).toHaveBeenCalledWith({ page: 1, page_size: 8, search: "" }));
+    render(<DocumentsPage filter="resumes" />, { wrapper });
+    await waitFor(() =>
+      expect(paged).toHaveBeenCalledWith({ page: 1, page_size: 50, search: "", scored_only: false }),
+    );
 
-    await userEvent.click(screen.getByRole("button", { name: "Page suivante" }));
-    await waitFor(() => expect(paged).toHaveBeenCalledWith({ page: 2, page_size: 8, search: "" }));
+    await userEvent.click(await screen.findByRole("button", { name: /Afficher plus/ }));
+    await waitFor(() =>
+      expect(paged).toHaveBeenCalledWith({ page: 1, page_size: 100, search: "", scored_only: false }),
+    );
 
-    const search = screen.getByPlaceholderText("Rechercher une version…");
-    await userEvent.type(search, "cible");
-    await waitFor(() => expect(paged).toHaveBeenCalledWith({ page: 1, page_size: 8, search: "cible" }));
+    await userEvent.type(screen.getByRole("searchbox", { name: "Rechercher un document" }), "cible");
+    await waitFor(() =>
+      expect(paged).toHaveBeenCalledWith({ page: 1, page_size: 50, search: "cible", scored_only: false }),
+    );
     // La commande exhaustive n'existe plus : la pagination en base est le seul chemin de
     // chargement de la bibliothèque, et `commandes-ipc.test.ts` verrouille l'inventaire.
     expect(documentsService).not.toHaveProperty("listResume");
+  });
+
+  it("ne demande que les CV analysés dans l'onglet Analyses", async () => {
+    sansLettres();
+    const paged = vi.spyOn(documentsService, "listResumePage").mockResolvedValue({
+      items: [{ id: "cv-1", name: "CV ciblé", created_at: "2026-08-30T00:00:00Z", ats_score: 82, target_title: "Chargé d'exploitation" }],
+      total: 1,
+      page: 1,
+      page_size: 50,
+      total_pages: 1,
+    });
+    vi.spyOn(documentsService, "getResume").mockResolvedValue({ id: "cv-1", name: "CV ciblé", content: null, created_at: "2026-08-30T00:00:00Z" });
+
+    render(<DocumentsPage filter="analyses" />, { wrapper });
+
+    expect(await screen.findByText("ATS 82")).toBeInTheDocument();
+    expect(paged).toHaveBeenCalledWith({ page: 1, page_size: 50, search: "", scored_only: true });
   });
 });
 
@@ -211,7 +247,7 @@ describe("échecs d'enregistrement", () => {
   /// inchangé, et l'utilisateur croyait son document enregistré alors qu'il était perdu.
   it("signale le refus de duplication d'une version de CV", async () => {
     vi.spyOn(documentsService, "listResumePage").mockResolvedValue({
-      items: [{ id: "cv-1", name: "CV Produit", created_at: "2026-08-30T00:00:00Z" }],
+      items: [{ id: "cv-1", name: "CV Produit", created_at: "2026-08-30T00:00:00Z", ats_score: 70, target_title: "Dev" }],
       total: 1,
       page: 1,
       page_size: 8,
@@ -232,9 +268,11 @@ describe("échecs d'enregistrement", () => {
       new AppError({ code: "VALIDATION_ERROR", message: "Le contenu du CV est illisible" }),
     );
 
-    render(<ResumeLibraryPage />, { wrapper });
-    await waitFor(() => expect(screen.getByRole("button", { name: /Dupliquer/ })).toBeEnabled());
-    await userEvent.click(screen.getByRole("button", { name: /Dupliquer/ }));
+    sansLettres();
+    render(<DocumentsPage filter="resumes" />, { wrapper });
+    await waitFor(() => expect(screen.getByRole("button", { name: "PDF" })).toBeEnabled());
+    await userEvent.click(screen.getByRole("button", { name: "Autres actions" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Dupliquer" }));
 
     await waitFor(() =>
       expect(useUiStore.getState().toasts.map((toast) => toast.title)).toContain(
@@ -468,7 +506,7 @@ describe("itérations sur la lettre", () => {
 describe("bibliothèque CV workspace", () => {
   function listerWorkspace(workspace: ResumeWorkspace) {
     vi.spyOn(documentsService, "listResumePage").mockResolvedValue({
-      items: [{ id: "cv-ws", name: "CV Workspace", created_at: "2026-08-30T00:00:00Z" }],
+      items: [{ id: "cv-ws", name: "CV Workspace", created_at: "2026-08-30T00:00:00Z", ats_score: null, target_title: null }],
       total: 1,
       page: 1,
       page_size: 8,
@@ -482,22 +520,21 @@ describe("bibliothèque CV workspace", () => {
     });
   }
 
-  it("affiche ResumePaper, ouvre le workspace avec Modifier et exporte le document", async () => {
+  it("ouvre le workspace dans l'éditeur et exporte le document", async () => {
     const workspace = workspaceFixture({ profile: "Profil visible en bibliothèque." });
     listerWorkspace(workspace);
+    sansLettres();
     const exportPdf = vi.spyOn(documentsService, "exportPdf").mockResolvedValue(true);
 
-    render(<ResumeLibraryPage />, { wrapper });
-    expect(await screen.findByText("Profil visible en bibliothèque.")).toBeInTheDocument();
-    expect(screen.getByText("Aperçu")).toBeInTheDocument();
-    expect(screen.queryByText("Aperçu — CV Workspace")).not.toBeInTheDocument();
+    render(<DocumentsPage filter="resumes" />, { wrapper });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Ouvrir" })).toBeEnabled());
 
-    await userEvent.click(screen.getByRole("button", { name: /Modifier/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Ouvrir" }));
     expect(navigateMock).toHaveBeenCalledWith("/documents/generate-resume", {
       state: { workspace, name: "CV Workspace" },
     });
 
-    await userEvent.click(screen.getByRole("button", { name: /Exporter PDF/ }));
+    await userEvent.click(screen.getByRole("button", { name: "PDF" }));
     await waitFor(() =>
       expect(exportPdf).toHaveBeenCalledWith(workspace.document),
     );
@@ -513,7 +550,7 @@ describe("bibliothèque CV workspace", () => {
     };
     const prepared = workspaceFixture({ profile: "Document préparé à l'export." });
     vi.spyOn(documentsService, "listResumePage").mockResolvedValue({
-      items: [{ id: "cv-old", name: "CV Historique", created_at: "2026-08-30T00:00:00Z" }],
+      items: [{ id: "cv-old", name: "CV Historique", created_at: "2026-08-30T00:00:00Z", ats_score: 72, target_title: "Dev" }],
       total: 1,
       page: 1,
       page_size: 8,
@@ -529,11 +566,12 @@ describe("bibliothèque CV workspace", () => {
     const exportPdf = vi.spyOn(documentsService, "exportPdf").mockResolvedValue(true);
     const saveResume = vi.spyOn(documentsService, "saveResume");
 
-    render(<ResumeLibraryPage />, { wrapper });
-    expect(await screen.findByText("Résumé historique.")).toBeInTheDocument();
+    sansLettres();
+    render(<DocumentsPage filter="resumes" />, { wrapper });
+    await waitFor(() => expect(screen.getByRole("button", { name: "PDF" })).toBeEnabled());
     expect(prepareResume).not.toHaveBeenCalled();
 
-    await userEvent.click(screen.getByRole("button", { name: /Exporter PDF/ }));
+    await userEvent.click(screen.getByRole("button", { name: "PDF" }));
     await waitFor(() => expect(prepareResume).toHaveBeenCalledWith(generation));
     await waitFor(() =>
       expect(exportPdf).toHaveBeenCalledWith(prepared.document),

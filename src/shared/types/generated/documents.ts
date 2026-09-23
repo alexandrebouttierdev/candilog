@@ -70,7 +70,18 @@ export type ResumeSkillGroup = { id: string, name: string, items: Array<string>,
 /**
  * Résumé léger d'une version de CV.
  */
-export type ResumeSummary = { id: string, name: string, created_at: string, };
+export type ResumeSummary = { id: string, name: string, created_at: string, 
+/**
+ * Score ATS enregistré avec la version (0–100), s'il a été calculé.
+ *
+ * Lu dans le JSON à la volée : le contenu reste la seule source, et une ancienne
+ * génération (`profile_score`) comme un éditeur v1 (`score`) le portent.
+ */
+ats_score: number | null, 
+/**
+ * Intitulé de l'offre ciblée, s'il y en a une.
+ */
+target_title: string | null, };
 
 /**
  * Version complète de CV ; son contenu structuré reste extensible.

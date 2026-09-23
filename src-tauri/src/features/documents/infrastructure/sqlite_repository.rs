@@ -22,6 +22,17 @@ impl SqliteResumeRepository {
     }
 }
 
+/// Score ATS d'une version, lu dans son JSON : éditeur v1 (`score.total`) ou ancienne
+/// génération (`profile_score.total`). `json_valid` protège d'un contenu illisible, qui
+/// n'a alors simplement pas de score.
+const RESUME_SCORE: &str = "CASE WHEN json_valid(content) THEN CAST(round(coalesce( \
+                              json_extract(content, '$.score.total'), \
+                              json_extract(content, '$.profile_score.total'))) AS INTEGER) END";
+
+/// Intitulé de l'offre ciblée par une version de l'éditeur v1.
+const RESUME_TARGET: &str = "CASE WHEN json_valid(content) \
+                               THEN nullif(json_extract(content, '$.job_offer.title'), '') END";
+
 impl ResumeRepository for SqliteResumeRepository {
     fn save(&self, input: &NewResume) -> AppResult<ResumeVersion> {
         let conn = connection(&self.pool)?;
@@ -42,10 +53,23 @@ impl ResumeRepository for SqliteResumeRepository {
         })
     }
 
-    fn list_page(&self, page: u64, page_size: u64, search: &str) -> AppResult<Page<ResumeSummary>> {
+    fn list_page(
+        &self,
+        page: u64,
+        page_size: u64,
+        search: &str,
+        scored_only: bool,
+    ) -> AppResult<Page<ResumeSummary>> {
         let conn = connection(&self.pool)?;
         let pattern = like_contains(search);
-        let where_clause = format!("search_key(name) LIKE ?1 {LIKE_ESCAPE}");
+        let where_clause = format!(
+            "search_key(name) LIKE ?1 {LIKE_ESCAPE}{}",
+            if scored_only {
+                format!(" AND {RESUME_SCORE} IS NOT NULL")
+            } else {
+                String::new()
+            }
+        );
         let total: u64 = conn
             .query_row(
                 &format!("SELECT count(*) FROM resume_versions WHERE {where_clause}"),
@@ -57,7 +81,8 @@ impl ResumeRepository for SqliteResumeRepository {
         let offset = Page::<ResumeSummary>::offset(page, page_size);
         let mut query = conn
             .prepare(&format!(
-                "SELECT id, name, created_at FROM resume_versions WHERE {where_clause} \
+                "SELECT id, name, created_at, {RESUME_SCORE}, {RESUME_TARGET} \
+                 FROM resume_versions WHERE {where_clause} \
                  ORDER BY created_at DESC, rowid DESC LIMIT ?2 OFFSET ?3"
             ))
             .map_err(|error| translate_error(error, "versions de CV"))?;
@@ -67,6 +92,8 @@ impl ResumeRepository for SqliteResumeRepository {
                     id: uuid_column(row, 0)?,
                     name: row.get(1)?,
                     created_at: row.get(2)?,
+                    ats_score: row.get(3)?,
+                    target_title: row.get(4)?,
                 })
             })
             .map_err(|error| translate_error(error, "versions de CV"))?;

@@ -108,7 +108,7 @@ fn controle_de_volume_pagination_et_indexes() {
     assert_eq!(applications.total, 10_000);
     assert_eq!(applications.items.len(), 8);
     let resumes = SqliteResumeRepository::new(pool.clone())
-        .list_page(1, 8, "CV-09999")
+        .list_page(1, 8, "CV-09999", false)
         .unwrap();
     assert_eq!(resumes.total, 1);
     assert_eq!(resumes.items[0].name, "CV-09999");

@@ -1,247 +1,26 @@
 import type { ReactNode } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import type { CoverLetter } from "@/shared/types/generated/documents";
-import type { Identity } from "@/shared/types/generated/profile";
+import { useLocation } from "react-router-dom";
 import { AiStopButton } from "@/features/ai";
 import {
   Button,
   ConfirmDialog,
-  EmptyState,
   ErrorBanner,
   FormField,
   Icon,
   PageHeader,
-  Pager,
   Select,
   TextArea,
 } from "@/shared/ui";
-import { useLettersLibraryViewModel } from "../../viewmodel/useLettersLibraryViewModel";
 import { useLetterWriterViewModel } from "../../viewmodel/useLetterWriterViewModel";
-import { AiProgress, DocumentPanel, PreviewAction } from "../components/DocumentUi";
-import { LetterContent, LetterEditor } from "../components/LetterEditor";
-import { LetterPaper, type LetterPaperField } from "../components/LetterPaper";
+import { AiProgress, DocumentPanel } from "../components/DocumentUi";
+import { LetterEditor } from "../components/LetterEditor";
+import type { LetterPaperField } from "../components/LetterPaper";
 import {
   Champ,
   ChampOffre,
-  HeaderBadge,
   Screen,
   coverLetterFromNavigation,
-  date,
-  labelTone,
-  message,
 } from "./documentPageSupport";
-import { PATHS } from "@/shared/lib/paths";
-
-export function LettersLibraryPage() {
-  const navigate = useNavigate();
-  const vm = useLettersLibraryViewModel();
-
-  return (
-    <Screen
-      padded={false}
-      header={
-        <PageHeader
-          icon="mail"
-          title="Mes lettres de motivation"
-          subtitle="Bibliothèque"
-          badge={
-            vm.list.data ? (
-              <HeaderBadge>
-                {vm.list.data.total} lettre{vm.list.data.total > 1 ? "s" : ""}
-              </HeaderBadge>
-            ) : undefined
-          }
-          primary={
-            <Button
-              variant="primary"
-              icon="auto_awesome"
-              onClick={() => void navigate(PATHS.writeLetter)}
-            >
-              Rédiger une lettre
-            </Button>
-          }
-        />
-      }
-    >
-      <div className="flex min-h-0 flex-1">
-        <div className="flex w-[36%] min-w-[260px] flex-col border-r border-line bg-surface">
-          <div className="border-b border-line px-5 pt-4 pb-3">
-            <div className="mb-[11px] flex items-center justify-between">
-              <span className="text-section">Bibliothèque</span>
-              <span className="text-label text-ink-faint">
-                {vm.list.data?.total ?? 0} lettre{(vm.list.data?.total ?? 0) > 1 ? "s" : ""}
-              </span>
-            </div>
-            <label className="flex h-8 items-center gap-2 rounded-button border border-line bg-page px-2.5">
-              <Icon name="search" size={16} className="text-ink-faint" />
-              <input
-                type="search"
-                value={vm.search}
-                onChange={(e) => vm.updateSearch(e.target.value)}
-                placeholder="Rechercher une lettre…"
-                className="min-w-0 flex-1 bg-transparent text-body text-ink outline-none placeholder:text-ink-faint"
-              />
-            </label>
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto p-2.5">
-            {vm.list.error ? (
-              <ErrorBanner message={message(vm.list.error)} onRetry={() => void vm.list.refetch()} />
-            ) : vm.list.isLoading ? (
-              <p className="p-6 text-center text-ink-muted">Chargement…</p>
-            ) : vm.coverLetters.length ? (
-              <ul className="space-y-1.5">
-                {vm.coverLetters.map((letter) => (
-                  <li key={letter.id}>
-                    <button
-                      type="button"
-                      aria-pressed={vm.selectedId === letter.id}
-                      onClick={() => vm.setSelected(letter.id)}
-                      className={`w-full rounded-tile border px-3.5 py-3 text-left transition-colors ${
-                        vm.selectedId === letter.id
-                          ? "border-accent-border bg-accent-tint"
-                          : "border-transparent hover:bg-neutral-tint"
-                      }`}
-                    >
-                      <span className="flex items-center gap-2">
-                        <Icon
-                          name="mail"
-                          size={16}
-                          className={vm.selectedId === letter.id ? "text-accent" : "text-ink-faint"}
-                        />
-                        <span className="min-w-0 flex-1 truncate text-[13px] font-semibold">
-                          {letter.company ?? letter.name}
-                        </span>
-                        <span className="flex-none text-label text-ink-faint">
-                          {date(letter.created_at)}
-                        </span>
-                      </span>
-                      <span className="mt-1 block truncate pl-6 text-label text-ink-faint">
-                        {letter.job_title ?? "Candidature"} · {labelTone(letter.tone)}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : vm.search.trim() ? (
-              <EmptyState
-                icon="search"
-                title="Aucun résultat"
-                description="Aucune lettre ne correspond à cette recherche."
-                action={
-                  <Button icon="filter_alt_off" onClick={() => vm.updateSearch("")}>
-                    Tout effacer
-                  </Button>
-                }
-              />
-            ) : (
-              <EmptyState
-                icon="mail"
-                title="Aucune lettre enregistrée"
-                description="Rédigez une lettre puis enregistrez-la ici."
-                action={
-                  <Button
-                    icon="auto_awesome"
-                    onClick={() => void navigate(PATHS.writeLetter)}
-                  >
-                    Rédiger une lettre
-                  </Button>
-                }
-              />
-            )}
-          </div>
-          <Pager
-            page={vm.page}
-            page_size={vm.pageSize}
-            total={vm.list.data?.total ?? 0}
-            label="lettres"
-            dense
-            onPageChange={vm.setPage}
-          />
-        </div>
-        <div className="flex min-w-0 flex-1 flex-col bg-page">
-          <div className="flex flex-none items-center justify-between gap-3 border-b border-line bg-surface px-[22px] py-3">
-            <p className="truncate text-body font-mid">{vm.selectedLetter?.name ?? "Lecture"}</p>
-            {vm.selectedLetter ? (
-              <div className="flex items-center gap-1.5">
-                <PreviewAction
-                  icon="edit"
-                  onClick={() =>
-                    void navigate(PATHS.writeLetter, {
-                      state: { cover_letter: vm.selectedLetter },
-                    })
-                  }
-                >
-                  Modifier
-                </PreviewAction>
-                <PreviewAction icon="content_copy" onClick={() => void vm.copySelected()}>
-                  Copier
-                </PreviewAction>
-                <PreviewAction icon="download" onClick={() => void vm.exportSelectedPdf()}>
-                  Exporter le PDF
-                </PreviewAction>
-                <PreviewAction
-                  tone="danger"
-                  icon="delete"
-                  onClick={() => vm.setDeleteId(vm.selectedLetter?.id ?? null)}
-                >
-                  Supprimer
-                </PreviewAction>
-              </div>
-            ) : null}
-          </div>
-          <div className="min-h-0 flex-1 overflow-auto">
-            {vm.selectedLetter ? (
-              <LetterPreview letter={vm.selectedLetter} identity={vm.identity} />
-            ) : (
-              <EmptyState
-                icon="draft"
-                title="Sélectionnez une lettre"
-                description="Choisissez une lettre dans la bibliothèque pour l'apercevoir."
-              />
-            )}
-          </div>
-        </div>
-      </div>
-      <ConfirmDialog
-        open={vm.deleteId !== null}
-        title="Supprimer cette lettre ?"
-        description="La lettre sera retirée de la bibliothèque locale."
-        note="Le profil et les autres documents seront conservés."
-        busy={vm.isDeleting}
-        onCancel={() => vm.setDeleteId(null)}
-        onConfirm={() => {
-          if (vm.deleteId) vm.remove(vm.deleteId);
-        }}
-      />
-    </Screen>
-  );
-}
-
-/** Aperçu d'une lettre enregistrée : la même feuille que l'éditeur, donc que le PDF. */
-function LetterPreview({
-  letter,
-  identity,
-}: {
-  letter: CoverLetter;
-  identity: Identity | null;
-}) {
-  return (
-    <div className="flex justify-center bg-page p-[26px]">
-      <LetterPaper
-        identity={identity}
-        fields={{
-          company: letter.company,
-          job_title: letter.job_title,
-          recipient: letter.recipient,
-          recipient_address: letter.recipient_address,
-          job_reference: letter.job_reference,
-        }}
-      >
-        <LetterContent content={letter.content} />
-      </LetterPaper>
-    </div>
-  );
-}
 
 type Echange = { auteur: "vous" | "candilog"; texte: string };
 

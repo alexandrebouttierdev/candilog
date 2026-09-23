@@ -63,10 +63,7 @@ export const DESTINATIONS: readonly Destination[] = [
     path: PATHS.documents,
     goKey: "d",
     prefixes: ["/documents"],
-    tabs: [
-      { path: PATHS.documents, label: "CV" },
-      { path: PATHS.letters, label: "Lettres" },
-    ],
+    // Les onglets Tous / CV / Lettres / Analyses vivent dans la barre d'outils de l'écran.
   },
   { key: "ai", label: "Intelligence artificielle", icon: "ai", path: PATHS.ai, prefixes: ["/ai"] },
   { key: "profile", label: "Profil", icon: "profile", path: PATHS.profile, goKey: "p", prefixes: ["/profile"] },

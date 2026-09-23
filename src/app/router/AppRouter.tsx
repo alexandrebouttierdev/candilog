@@ -26,14 +26,11 @@ const RelationsPage = lazy(() =>
 const ProfilePage = lazy(() =>
   import("@/features/profile/view/pages/ProfilePage").then((m) => ({ default: m.ProfilePage })),
 );
-const ResumeLibraryPage = lazy(() =>
-  import("@/features/documents/view/pages/DocumentsPages").then((m) => ({ default: m.ResumeLibraryPage })),
+const DocumentsPage = lazy(() =>
+  import("@/features/documents/view/pages/DocumentsPages").then((m) => ({ default: m.DocumentsPage })),
 );
 const ResumeGeneratorPage = lazy(() =>
   import("@/features/documents/view/pages/DocumentsPages").then((m) => ({ default: m.ResumeGeneratorPage })),
-);
-const LettersLibraryPage = lazy(() =>
-  import("@/features/documents/view/pages/DocumentsPages").then((m) => ({ default: m.LettersLibraryPage })),
 );
 const LetterWriterPage = lazy(() =>
   import("@/features/documents/view/pages/DocumentsPages").then((m) => ({ default: m.LetterWriterPage })),
@@ -99,8 +96,10 @@ export const ROUTES: RouteObject[] = [
   { path: "applications/analytics", element: <AnalyticsPage /> },
   { path: "relations/companies", element: <RelationsPage kind="companies" /> },
   { path: "relations/contacts", element: <RelationsPage kind="contacts" /> },
-  { path: "documents", element: <ResumeLibraryPage /> },
-  { path: "documents/letters", element: <LettersLibraryPage /> },
+  { path: "documents", element: <DocumentsPage filter="all" /> },
+  { path: "documents/resumes", element: <DocumentsPage filter="resumes" /> },
+  { path: "documents/letters", element: <DocumentsPage filter="letters" /> },
+  { path: "documents/analyses", element: <DocumentsPage filter="analyses" /> },
   { path: "documents/generate-resume", element: <ResumeGeneratorPage /> },
   { path: "documents/write-cover-letter", element: <LetterWriterPage /> },
   { path: "documents/analyze", element: <ResumeAnalysisPage /> },

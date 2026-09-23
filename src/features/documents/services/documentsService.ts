@@ -17,8 +17,9 @@ export type * from "@/shared/types/generated/documents";
 export const documentsService = {
   /** Texte du presse-papiers : la webview ne sait pas le lire, le natif si. */
   readClipboard: () => ipc<string>("documents_read_clipboard"),
-  listResumePage: (params: { page: number; page_size: number; search: string }) =>
-    ipc<Page<ResumeSummary>>("documents_resume_list_page", params),
+  /** `scored_only` : seulement les CV qui portent un score ATS (onglet « Analyses »). */
+  listResumePage: (params: { page: number; page_size: number; search: string; scored_only?: boolean }) =>
+    ipc<Page<ResumeSummary>>("documents_resume_list_page", { scored_only: false, ...params }),
   getResume: (id: string) => ipc<ResumeVersion>("documents_resume_get", { id }),
   saveResume: (input: NewResume) => ipc<ResumeVersion>("documents_resume_save", { input }),
   deleteResume: (id: string) => ipc<void>("documents_resume_delete", { id }),

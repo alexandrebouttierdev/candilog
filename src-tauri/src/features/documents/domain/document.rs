@@ -12,6 +12,13 @@ pub struct ResumeSummary {
     pub id: Uuid,
     pub name: String,
     pub created_at: String,
+    /// Score ATS enregistré avec la version (0–100), s'il a été calculé.
+    ///
+    /// Lu dans le JSON à la volée : le contenu reste la seule source, et une ancienne
+    /// génération (`profile_score`) comme un éditeur v1 (`score`) le portent.
+    pub ats_score: Option<u32>,
+    /// Intitulé de l'offre ciblée, s'il y en a une.
+    pub target_title: Option<String>,
 }
 
 /// Version complète de CV ; son contenu structuré reste extensible.

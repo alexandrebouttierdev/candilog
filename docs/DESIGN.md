@@ -228,6 +228,19 @@ Réutiliser la recette du voisin plutôt que d’en inventer une.
   enregistrés, notes. `mailto:` et `tel:` restent des liens natifs ; un lien web passe par
   `openExternal`.
 
+### Documents
+
+- Un seul écran (`DocumentsPage`) : onglets Tous / CV / Lettres / Analyses dans la barre
+  d'outils (routes `/documents`, `/documents/resumes`, `/documents/letters`,
+  `/documents/analyses`), recherche `/`, actions Importer, Générer une lettre, Générer un
+  CV (`N`).
+- Liste groupée CV / Lettres de motivation, lignes de 40 px : feuille, nom et sous-titre,
+  score ATS en pastille (vert dès 80, accent dès 65, rouge en dessous), date, entreprise.
+  Clic droit : Dupliquer ou Copier le texte, Supprimer.
+- Inspecteur 300 px (dès 1060 px) : Ouvrir (éditeur A4, qui porte l'aperçu pleine page),
+  PDF (`⌘E`), score ATS et constats, détails. Une ancienne version sans contenu structuré
+  le dit au lieu d'offrir un export vide.
+
 ### Candidatures v2 (Liste, Kanban)
 
 ```
