@@ -241,6 +241,17 @@ Réutiliser la recette du voisin plutôt que d’en inventer une.
   PDF (`⌘E`), score ATS et constats, détails. Une ancienne version sans contenu structuré
   le dit au lieu d'offrir un export vide.
 
+### Profil
+
+- Colonne de 210 px : complétude (`serif`, segments par section), sections en onglets
+  verticaux (`↑ ↓`, `⏎` modifie) avec leur état — disque plein complet, demi-disque partiel,
+  cercle vide — et leur décompte, puis « Importer un CV » et « Réinitialiser mon profil ».
+- Contenu de la section : titre serif, phrase d'intention, pastille « Complet », puis champs
+  (grille 160 px) ou entrées (liseré gauche, période en mono, retrait `×` confirmé) et
+  « Ajouter » (`⌘N`). Chaque section s'édite dans son formulaire validé existant.
+- La photo se gère dans la section Identité ; Projets et Présence en ligne restent des
+  sections à part entière.
+
 ### Candidatures v2 (Liste, Kanban)
 
 ```

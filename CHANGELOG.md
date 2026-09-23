@@ -45,6 +45,9 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
 - Refonte v2 — Documents : CV et lettres réunis dans une bibliothèque à onglets (Tous, CV,
   Lettres, Analyses), score ATS affiché dans la liste et l'inspecteur ; Ouvrir, PDF,
   dupliquer, copier et supprimer depuis l'inspecteur ou le clic droit.
+- Refonte v2 — Profil : colonne des sections avec leur état et leur décompte, contenu de la
+  section à droite ; retrait d'une entrée en un clic (confirmé), import de CV et
+  réinitialisation sous les sections.
 - Export CSV des candidatures : colonnes `reference` et `canal` ajoutées.
 - Le lien de l'offre n'est plus exigé que pour une offre publiée ; il devient facultatif
   pour une candidature trouvée sur le site de l'entreprise ou par le réseau.

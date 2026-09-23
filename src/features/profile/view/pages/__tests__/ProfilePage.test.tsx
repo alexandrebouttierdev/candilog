@@ -76,16 +76,13 @@ describe("écran Profil — photo", () => {
     expect(screen.getByText("Camille Rivet")).toBeInTheDocument();
   });
 
-  it("place les actions de photo dans l'en-tête, avant les onglets", async () => {
-    // La photo se change là où on la voit : sur la pastille d'identité, et non dans une
-    // carte perdue en bas de la colonne de droite.
+  it("place les actions de photo dans la section Identité", async () => {
+    // La photo se change là où on la voit : à côté du nom, dans la section Identité.
     render(<ProfilePage />, { wrapper });
 
-    const ajouter = await screen.findByRole("button", { name: "Ajouter une photo" });
-    const onglets = screen.getByRole("tablist", { name: "Sections du profil" });
-
-    expect(ajouter.compareDocumentPosition(onglets) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(screen.queryByText("Photo", { exact: true })).not.toBeInTheDocument();
+    const panneau = await screen.findByRole("tabpanel");
+    expect(within(panneau).getByRole("button", { name: "Ajouter une photo" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Identité/ })).toHaveAttribute("aria-selected", "true");
   });
 
   it("affiche la photo enregistrée et permet de la remplacer", async () => {
@@ -128,28 +125,69 @@ describe("écran Profil — photo", () => {
   });
 });
 
-describe("écran Profil — onglets d'identité", () => {
+describe("écran Profil — sections", () => {
   it("n'expose plus le bouton Modifier le profil", async () => {
     render(<ProfilePage />, { wrapper });
     await screen.findByRole("tablist", { name: "Sections du profil" });
     expect(screen.queryByRole("button", { name: "Modifier le profil" })).not.toBeInTheDocument();
   });
 
-  it("ouvre la modale Identité depuis l'onglet dédié", async () => {
+  it("expose chaque section comme un véritable onglet, un seul panneau à la fois", async () => {
+    render(<ProfilePage />, { wrapper });
+
+    const contact = await screen.findByRole("tab", { name: /Contact/ });
+    expect(contact).toHaveAttribute("aria-selected", "false");
+    await userEvent.click(contact);
+
+    expect(contact).toHaveAttribute("aria-selected", "true");
+    expect(screen.getAllByRole("tabpanel")).toHaveLength(1);
+    expect(screen.getByRole("heading", { name: "Contact" })).toBeInTheDocument();
+    expect(screen.getByText("camille@example.fr")).toBeInTheDocument();
+  });
+
+  it("indique l'état et le décompte de chaque section", async () => {
+    render(<ProfilePage />, { wrapper });
+
+    // Contact : seul le courriel est renseigné sur quatre champs.
+    expect(await screen.findByRole("tab", { name: /Contact.*1\/4/ })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Expériences.*0/ })).toBeInTheDocument();
+  });
+
+  it("ouvre la modale Identité depuis la section dédiée", async () => {
     render(<ProfilePage />, { wrapper });
     await userEvent.click(await screen.findByRole("tab", { name: /Identité/ }));
     await userEvent.click(screen.getByRole("button", { name: "Modifier" }));
     expect(await screen.findByRole("dialog", { name: "Identité" })).toBeInTheDocument();
   });
+
+  it("retire une entrée après confirmation", async () => {
+    const avecExperience = payload();
+    avecExperience.profile.experiences = [
+      { title: "Technicien support", company: "Vallis", location: null, start_date: "2018-01", end_date: "2021-01", current: false, description: null },
+    ];
+    vi.spyOn(profileService, "load").mockResolvedValue(avecExperience);
+    const enregistrer = vi.spyOn(profileService, "save").mockResolvedValue(payload());
+
+    render(<ProfilePage />, { wrapper });
+    await userEvent.click(await screen.findByRole("tab", { name: /Expériences/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Retirer Technicien support" }));
+    const dialogue = screen.getByRole("alertdialog", { name: "Retirer cette entrée ?" });
+    await userEvent.click(within(dialogue).getByRole("button", { name: "Retirer" }));
+
+    await waitFor(() =>
+      expect(enregistrer).toHaveBeenCalledWith(expect.objectContaining({ experiences: [] })),
+    );
+  });
 });
 
 describe("écran Profil — import de CV", () => {
-  it("présente l'import comme action principale et ouvre la revue", async () => {
+  it("propose l'import sous les sections et ouvre la revue", async () => {
     render(<ProfilePage />, { wrapper });
 
     await screen.findByRole("tablist", { name: "Sections du profil" });
-    const bouton = screen.getByRole("button", { name: "Importer mon profil" });
-    expect(bouton).toHaveAttribute("data-variant", "primary");
+    const bouton = within(screen.getByRole("navigation", { name: "Profil" })).getByRole("button", {
+      name: "Importer un CV",
+    });
 
     await userEvent.click(bouton);
 
@@ -158,15 +196,13 @@ describe("écran Profil — import de CV", () => {
 });
 
 describe("écran Profil — réinitialisation", () => {
-  it("place le bloc de réinitialisation en haut à droite, avant les onglets", async () => {
+  it("place la réinitialisation sous les sections, après l'import", async () => {
     render(<ProfilePage />, { wrapper });
 
     const reset = await screen.findByRole("button", { name: "Réinitialiser mon profil" });
-    const onglets = screen.getByRole("tablist", { name: "Sections du profil" });
-    const identite = screen.getByRole("heading", { name: "Camille Rivet" });
+    const importer = screen.getByRole("button", { name: "Importer un CV" });
 
-    expect(identite.compareDocumentPosition(reset) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(reset.compareDocumentPosition(onglets) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(importer.compareDocumentPosition(reset) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("ne réinitialise rien tant que la confirmation n'est pas donnée", async () => {
