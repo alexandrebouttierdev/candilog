@@ -58,6 +58,9 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
 - Refonte v2 — Générateurs de CV et de lettre en surcouche plein écran : offre visée prise
   dans une candidature ou collée, feuille A4 au centre, étapes avec leur durée mesurée à
   droite ; corrections de la lettre sous la feuille, avec consignes rapides.
+- Refonte v2 — Analyse de CV face à une offre : chaque exigence de l'offre est listée,
+  couverte, partielle ou absente, avec la preuve trouvée dans le CV ; score et détail à
+  gauche.
 - Export CSV des candidatures : colonnes `reference` et `canal` ajoutées.
 - Le lien de l'offre n'est plus exigé que pour une offre publiée ; il devient facultatif
   pour une candidature trouvée sur le site de l'entreprise ou par le réseau.

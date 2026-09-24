@@ -78,6 +78,7 @@ export function ChampOffre({
   placeholder,
   onChange,
   readClipboard,
+  disabled = false,
 }: {
   label: string;
   value: string;
@@ -85,6 +86,8 @@ export function ChampOffre({
   required?: boolean;
   help?: string;
   placeholder?: string;
+  /** Figé pendant une génération : le texte envoyé ne doit plus bouger. */
+  disabled?: boolean;
   onChange: (value: string) => void;
   /** Lecture native du presse-papiers, fournie par le ViewModel. */
   readClipboard: () => Promise<string>;
@@ -116,6 +119,7 @@ export function ChampOffre({
             {...props}
             rows={rows}
             value={value}
+            disabled={disabled}
             placeholder={placeholder}
             onChange={(event) => onChange(event.target.value)}
           />
@@ -124,6 +128,7 @@ export function ChampOffre({
             size="dialog"
             icon="content_paste"
             className="self-end"
+            disabled={disabled}
             onClick={() => void coller()}
           >
             Coller

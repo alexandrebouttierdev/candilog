@@ -26,7 +26,8 @@ export function GeneratorFrame({
   title: string;
   actions: ReactNode;
   left: ReactNode;
-  right: ReactNode;
+  /** Colonne de droite ; absente, la feuille prend la place. */
+  right?: ReactNode;
   children: ReactNode;
   /** Barre d'état, à gauche : ce que fait la surcouche maintenant. */
   status: string;
@@ -88,9 +89,11 @@ export function GeneratorFrame({
       <div className="flex min-h-0 flex-1">
         <aside className="w-[260px] flex-none overflow-y-auto border-r border-bd-soft bg-app px-3 pt-3 pb-5">{left}</aside>
         <main className="flex min-w-0 flex-1 flex-col overflow-auto bg-canvas">{children}</main>
-        <aside className="hidden w-[270px] flex-none overflow-y-auto border-l border-bd-soft bg-app px-3.5 pt-3 pb-5 wide:block">
-          {right}
-        </aside>
+        {right ? (
+          <aside className="hidden w-[270px] flex-none overflow-y-auto border-l border-bd-soft bg-app px-3.5 pt-3 pb-5 wide:block">
+            {right}
+          </aside>
+        ) : null}
       </div>
 
       <footer className="flex h-statusbar flex-none items-center gap-3 border-t border-bd-soft px-3.5">

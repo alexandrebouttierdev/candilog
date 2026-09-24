@@ -265,6 +265,11 @@ Réutiliser la recette du voisin plutôt que d’en inventer une.
   (`useStepLog`), jamais estimée.
 - Aucun réglage que le backend ne sait pas honorer n'est affiché (pas de sections à
   exclure pour le CV, pas d'arguments autorisés pour la lettre).
+- Analyse de CV (`screens/09`) : même surcouche sans colonne droite. À gauche, le CV (PDF)
+  « face à » l'offre, puis le score calculé par Candilog et son détail ; au centre, chaque
+  exigence de l'offre (`score.evaluations`) — couverte, partielle, absente — avec la preuve
+  citée du CV ou « introuvable ». Une exigence manquante sans évaluation détaillée reste
+  listée comme absente. Le formulaire est figé, pas masqué, pendant l'analyse.
 - Lettre : entreprise, poste, destinataire, ton et longueur restent visibles ; la barre
   « Corrections » sous la feuille envoie une consigne libre ou rapide (« Plus court »…), les
   consignes se cumulent, l'historique vit à droite.

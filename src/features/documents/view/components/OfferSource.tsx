@@ -121,6 +121,7 @@ export function OfferSource({
             placeholder="Collez ici l’intitulé, les missions et les compétences recherchées…"
             onChange={onChange}
             readClipboard={readClipboard}
+            disabled={disabled}
           />
         </div>
       ) : null}

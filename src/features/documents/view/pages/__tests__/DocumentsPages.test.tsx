@@ -153,7 +153,7 @@ describe("analyse explicite d'un CV sélectionné", () => {
     });
 
     render(<ResumeAnalysisPage />, { wrapper });
-    expect(screen.getByText("Comparez un CV à l’offre ciblée")).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Analyse face à l’offre" })).toBeInTheDocument();
     expect(screen.queryByText("Lecture locale")).not.toBeInTheDocument();
     await userEvent.type(screen.getByLabelText(/Offre ciblée/), "Une offre");
     await userEvent.click(screen.getByRole("button", { name: "Choisir un fichier" }));
@@ -173,11 +173,16 @@ describe("analyse explicite d'un CV sélectionné", () => {
       await screen.findByText("Analysé en 18,4 s · 1 024 tokens"),
     ).toBeInTheDocument();
     expect(screen.getByText("Métier / fonction")).toBeInTheDocument();
-    expect(screen.getByText("Exigence absente : Java")).toBeInTheDocument();
+    // L'exigence manquante est citée dans la liste, sans preuve.
+    const exigences = screen.getByRole("region", { name: "Exigences de l’offre" });
+    const java = within(exigences).getByRole("listitem");
+    expect(java).toHaveTextContent("Java");
+    expect(java).toHaveTextContent("absente");
+    expect(java).toHaveTextContent("Aucune preuve trouvée dans le CV.");
     expect(screen.queryByText("À appliquer dans l’éditeur de CV")).not.toBeInTheDocument();
   });
 
-  it("masque le formulaire pendant l'analyse puis le restaure après un arrêt réel", async () => {
+  it("fige le formulaire pendant l'analyse puis le rend après un arrêt réel", async () => {
     vi.spyOn(aiService, "selectResumeFile").mockResolvedValue({ name: "cv.pdf" });
     let resolveAnalysis: ((value: AiExecution<ImportedResumeAnalysis>) => void) | undefined;
     vi.spyOn(aiService, "analyzeResume").mockReturnValue(
@@ -193,8 +198,8 @@ describe("analyse explicite d'un CV sélectionné", () => {
     await userEvent.click(screen.getByRole("button", { name: "Choisir un fichier" }));
     await userEvent.click(screen.getByRole("button", { name: "Analyser le CV" }));
 
-    expect(screen.queryByLabelText(/Offre ciblée/)).not.toBeInTheDocument();
-    expect(screen.queryByText("cv.pdf")).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/Offre ciblée/)).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Changer de fichier" })).toBeDisabled();
     expect(screen.queryByRole("button", { name: "Analyser le CV" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Arrêter" })).toBeInTheDocument();
 
@@ -208,6 +213,7 @@ describe("analyse explicite d'un CV sélectionné", () => {
       await Promise.resolve();
     });
     expect(await screen.findByLabelText(/Offre ciblée/)).toHaveValue("Une offre");
+    expect(screen.getByLabelText(/Offre ciblée/)).toBeEnabled();
     expect(screen.getByText("cv.pdf")).toBeInTheDocument();
 
     await act(async () => {
