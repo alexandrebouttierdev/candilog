@@ -22,6 +22,8 @@ export interface CalendarEvent {
   readonly detail: string | null;
   readonly icon: IconName;
   readonly tone: Tone;
+  /** Relance déclarée envoyée (« Faire » sur Aujourd'hui) : elle reste visible, atténuée. */
+  readonly done: boolean;
 }
 
 /** Convertit un entretien en événement. Tonalité verte : c'est un avancement. */
@@ -35,6 +37,7 @@ export function fromInterview(interview: Interview): CalendarEvent {
     detail: interview.company_name,
     icon: interviewIcon(interview.type),
     tone: "success",
+    done: false,
   };
 }
 
@@ -49,6 +52,7 @@ export function fromFollowUp(follow_up: FollowUp): CalendarEvent {
     detail: follow_up.company_name,
     icon: followUpIcon(follow_up.type),
     tone: "warning",
+    done: follow_up.done_at !== null,
   };
 }
 

@@ -1,20 +1,13 @@
 import type { GridDay } from "../../model/month";
-import { DAYS } from "../../model/month";
+import { DAYS, isoLocal } from "../../model/month";
 import type { CalendarEvent } from "../../model/event";
-import { Button, EmptyState, Icon } from "@/shared/ui";
-import type { Tone } from "@/shared/ui";
+import { Button, EmptyState, StatusGlyph } from "@/shared/ui";
 import { cn } from "@/shared/lib/cn";
-
-const PASTILLE: Record<Tone, string> = {
-  neutral: "bg-neutral-tint text-ink-muted",
-  accent: "bg-accent-tint text-accent",
-  success: "bg-success-tint text-success",
-  warning: "bg-warning-tint text-warning",
-  danger: "bg-danger-tint text-danger",
-};
+import { eventStyle, eventText } from "./eventStyle";
 
 /**
- * View semaine : une rangée de sept jours, mêmes pastilles que la grille mensuelle.
+ * Vue semaine : une rangée de sept jours, mêmes pastilles que la grille mensuelle, sans
+ * limite de nombre — une semaine a la hauteur de tout montrer.
  */
 export function ViewWeek({
   days,
@@ -29,11 +22,12 @@ export function ViewWeek({
   onDayClick: (iso: string) => void;
   onEventClick: (event: CalendarEvent) => void;
 }) {
+  const today = isoLocal(new Date());
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-card border border-line bg-surface">
-      <div className="grid flex-none grid-cols-7 border-b border-line bg-surface-alt">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="grid flex-none grid-cols-7 border-b border-bd-soft">
         {DAYS.map((day) => (
-          <div key={day} className="px-2 py-2 text-center text-eyebrow uppercase text-ink-faint">
+          <div key={day} className="px-2 py-1.5 text-caps tracking-[.04em] text-tx-6 uppercase">
             {day}
           </div>
         ))}
@@ -45,8 +39,8 @@ export function ViewWeek({
             <div
               key={day.iso}
               className={cn(
-                "flex min-h-0 flex-col gap-1 overflow-hidden border-r border-line p-2 last:border-r-0",
-                day.iso === selection ? "bg-accent-tint/40" : day.in_month ? "bg-surface" : "bg-surface-alt",
+                "flex min-h-0 flex-col gap-1 overflow-hidden border-r border-bd-soft p-2 last:border-r-0",
+                day.today ? "bg-sel" : day.iso === selection ? "bg-hover" : "bg-panel",
               )}
             >
               <button
@@ -55,34 +49,35 @@ export function ViewWeek({
                 aria-label={`Ajouter au ${day.number}`}
                 aria-pressed={day.iso === selection}
                 className={cn(
-                  "tabular flex size-6 flex-none items-center justify-center rounded-pill text-meta",
-                  day.today
-                    ? "bg-accent font-medium text-on-accent"
-                    : day.in_month
-                      ? "text-ink-muted hover:bg-neutral-tint hover:text-ink"
-                      : "text-ink-faint hover:bg-neutral-tint",
+                  "flex h-[18px] min-w-[18px] flex-none items-center justify-center self-start rounded-r5 px-1 font-mono text-caps",
+                  day.today ? "bg-ac font-semibold text-white" : "text-tx-3 hover:bg-hover",
                 )}
               >
                 {day.number}
               </button>
-              <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
-                {events.map((event) => (
-                  <button
-                    key={event.id}
-                    type="button"
-                    onClick={() => onEventClick(event)}
-                    title={`${event.label}${event.detail ? ` — ${event.detail}` : ""}`}
-                    className={cn(
-                      "flex w-full items-center gap-1 rounded-pill px-1.5 py-0.5 text-left text-meta",
-                      "transition-[filter] duration-150 hover:brightness-95",
-                      PASTILLE[event.tone],
-                    )}
-                  >
-                    <Icon name={event.icon} size={11} className="flex-none" />
-                    {event.time ? <span className="tabular flex-none">{event.time}</span> : null}
-                    <span className="truncate">{event.label}</span>
-                  </button>
-                ))}
+              <div className="flex min-h-0 flex-1 flex-col gap-[3px] overflow-y-auto">
+                {events.map((event) => {
+                  const style = eventStyle(event, today);
+                  return (
+                    <button
+                      key={event.id}
+                      type="button"
+                      onClick={() => onEventClick(event)}
+                      title={`${event.label}${event.detail ? ` — ${event.detail}` : ""}`}
+                      className={cn(
+                        "flex w-full flex-none flex-col items-start gap-0.5 rounded-r5 px-1.5 py-1 text-left text-tiny hover:brightness-95",
+                        style.pill,
+                      )}
+                    >
+                      <span className="flex w-full items-center gap-1.5">
+                        <StatusGlyph tone={style.glyph} small />
+                        <span className="min-w-0 flex-1 truncate">{eventText(event)}</span>
+                        {event.time ? <span className="flex-none font-mono text-[10px] opacity-80">{event.time}</span> : null}
+                      </span>
+                      {event.detail ? <span className="w-full truncate pl-[17px] opacity-75">{event.label}</span> : null}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           );
@@ -92,9 +87,7 @@ export function ViewWeek({
   );
 }
 
-/**
- * View jour : liste des événements de la journée sélectionnée.
- */
+/** Vue jour : liste des événements de la journée sélectionnée. */
 export function ViewDay({
   events,
   onDayClick,
@@ -106,52 +99,55 @@ export function ViewDay({
   onDayClick: (iso: string) => void;
   onEventClick: (event: CalendarEvent) => void;
 }) {
+  const today = isoLocal(new Date());
   if (events.length === 0) {
     return (
-      <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-card border border-line bg-surface">
+      <div className="flex min-h-0 flex-1 items-start justify-center overflow-hidden pt-[min(12vh,90px)]">
         <EmptyState
           icon="event_available"
           title="Rien de prévu"
           description="Ajoutez un entretien ou une relance pour cette journée."
-          action={<Button icon="add" onClick={() => onDayClick(day)}>Ajouter un entretien</Button>}
+          action={
+            <Button size="empty" onClick={() => onDayClick(day)}>
+              Ajouter un entretien
+            </Button>
+          }
         />
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-card border border-line bg-surface">
-      <ul className="min-h-0 flex-1 overflow-y-auto p-3">
-        {events.map((event) => (
-          <li key={event.id} className="mb-1.5">
-            <button
-              type="button"
-              onClick={() => onEventClick(event)}
-              className={cn(
-                "flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-left",
-                "transition-colors duration-150 hover:brightness-95",
-                PASTILLE[event.tone],
-              )}
-            >
-              <Icon name={event.icon} size={18} className="flex-none" />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-body font-medium">{event.label}</span>
-                {event.detail ? (
-                  <span className="mt-0.5 block truncate text-meta opacity-80">{event.detail}</span>
-                ) : null}
-              </span>
-              {event.time ? <span className="tabular flex-none text-meta">{event.time}</span> : null}
-            </button>
-          </li>
-        ))}
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <ul className="min-h-0 flex-1 overflow-y-auto px-3.5 py-3">
+        {events.map((event) => {
+          const style = eventStyle(event, today);
+          return (
+            <li key={event.id} className="mb-1.5">
+              <button
+                type="button"
+                onClick={() => onEventClick(event)}
+                className={cn("flex w-full items-center gap-3 rounded-r8 px-3 py-2.5 text-left hover:brightness-95", style.pill)}
+              >
+                <StatusGlyph tone={style.glyph} />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-row font-medium">
+                    {event.kind === "interview" ? "Entretien" : "Relance"} — {event.label}
+                  </span>
+                  {event.detail ? <span className="mt-0.5 block truncate text-sub opacity-80">{event.detail}</span> : null}
+                </span>
+                {event.time ? <span className="flex-none font-mono text-caps">{event.time}</span> : null}
+              </button>
+            </li>
+          );
+        })}
       </ul>
       <button
         type="button"
         onClick={() => onDayClick(day)}
-        className="flex h-11 flex-none items-center justify-center gap-1.5 border-t border-line text-body font-medium text-accent hover:bg-accent-tint"
+        className="flex h-10 flex-none items-center justify-center gap-1.5 border-t border-bd-soft text-small font-medium text-ac-tx hover:bg-hover"
       >
-        <Icon name="add" size={16} />
-        Ajouter un entretien
+        + Ajouter un entretien
       </button>
     </div>
   );

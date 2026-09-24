@@ -298,6 +298,15 @@ barre groupée 40 px dès qu'une case est cochée
   compactes (référence, échéance, intitulé, entreprise, contrat, date) ; chaque colonne est
   paginée côté SQLite (`ColumnPager`). Un changement de statut affiche `CAN-142 → Entretien`.
 
+### Calendrier
+
+- Barre d'outils : `‹ Mois ›` en serif, « Aujourd'hui », légende avec les décomptes, vues
+  Mois / Semaine / Jour (décision D6), « Programmer une relance », « Nouvel entretien ».
+- Grille plate à filets `bd-soft`, aujourd'hui sur `bg-sel` avec son numéro en pastille
+  `ac`. Pastilles (`eventStyle`) : l'entreprise d'abord, l'heure en mono ; entretien vert,
+  relance à venir neutre à glyphe ambre, relance en retard rouge, relance faite atténuée.
+  Deux pastilles par case, puis « +N ».
+
 ### Aujourd’hui
 
 - Bloc centré de 1 180 px : titre serif de la date, résumé mono, puis trois horizons (en
