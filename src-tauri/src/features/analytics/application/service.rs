@@ -82,6 +82,7 @@ impl<R: AnalyticsRepository> AnalyticsService<R> {
             activity: self.repo.activity_hebdomadaire(period.semaines())?,
             funnel,
             to_follow_up: self.repo.to_follow_up(&day, 7, 5)?,
+            channels: self.repo.channel_rates(from.as_deref())?,
         })
     }
 

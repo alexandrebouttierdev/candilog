@@ -35,6 +35,7 @@ const ANALYTICS: Analytics = {
     { label: "Entretiens", count: 3, percentage: 25 },
     { label: "Refus", count: 2, percentage: 17 },
   ],
+  channels: [],
   to_follow_up: [
     {
       id: "candidature-42",

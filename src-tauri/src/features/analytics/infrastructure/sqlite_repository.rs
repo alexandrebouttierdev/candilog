@@ -4,8 +4,8 @@ use crate::core::database::helpers::{connection, enum_from_text, translate_error
 use crate::core::database::SqlitePool;
 use crate::core::errors::AppResult;
 use crate::features::analytics::domain::{
-    ActivityWeek, AgendaItem, AgendaKind, AnalyticsRepository, Metrics, Performance, Step,
-    ToFollowUp, UpcomingItem,
+    ActivityWeek, AgendaItem, AgendaKind, AnalyticsRepository, ChannelRate, Metrics, Performance,
+    Step, ToFollowUp, UpcomingItem,
 };
 use crate::features::applications::domain::{
     Application, ApplicationFilter, ApplicationRepository, ApplicationSort,
@@ -90,6 +90,46 @@ impl AnalyticsRepository for SqliteAnalyticsRepository {
             response_rate: percentage(responses, applications),
             interview_rate: percentage(interviews, applications),
         })
+    }
+
+    fn channel_rates(&self, from: Option<&str>) -> AppResult<Vec<ChannelRate>> {
+        let conn = connection(&self.pool)?;
+        let mut query = conn
+            .prepare(
+                "SELECT c.channel, count(*),
+                    coalesce(sum(CASE WHEN
+                        c.status IN ('ENTRETIEN', 'REFUS')
+                        OR EXISTS (SELECT 1 FROM status_history h
+                                   WHERE h.application_id = c.id
+                                     AND h.status IN ('ENTRETIEN', 'REFUS'))
+                        OR EXISTS (SELECT 1 FROM interviews e WHERE e.application_id = c.id)
+                    THEN 1 ELSE 0 END), 0)
+                 FROM applications c
+                 WHERE ?1 IS NULL OR substr(c.sent_date, 1, 10) >= ?1
+                 GROUP BY c.channel
+                 ORDER BY count(*) DESC, c.channel",
+            )
+            .map_err(|e| translate_error(e, "taux par canal"))?;
+        let rows = query
+            .query_map(rusqlite::params![from], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, u64>(1)?,
+                    row.get::<_, u64>(2)?,
+                ))
+            })
+            .map_err(|e| translate_error(e, "taux par canal"))?;
+        let mut rates = Vec::new();
+        for row in rows {
+            let (channel, applications, responses) =
+                row.map_err(|e| translate_error(e, "taux par canal"))?;
+            rates.push(ChannelRate {
+                channel: enum_from_text(&channel)?,
+                applications,
+                responses,
+            });
+        }
+        Ok(rates)
     }
 
     fn performance(&self, from: Option<&str>) -> AppResult<Performance> {

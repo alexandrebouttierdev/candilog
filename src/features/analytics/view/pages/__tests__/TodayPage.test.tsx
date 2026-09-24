@@ -82,6 +82,7 @@ const ANALYTICS: Analytics = {
   performance: DASHBOARD.performance,
   activity: [],
   funnel: [],
+  channels: [],
   to_follow_up: [
     {
       id: "candidature-118",

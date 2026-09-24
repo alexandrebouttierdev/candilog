@@ -64,6 +64,8 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
 - Refonte v2 — Calendrier : barre d'outils compacte, grille plate, pastilles par
   entreprise ; les relances en retard ressortent en rouge et les relances faites
   s'atténuent.
+- Refonte v2 — Analyse : parcours des candidatures, taux de réponse par canal « Trouvée
+  via » et constats tirés des chiffres de la période.
 - Export CSV des candidatures : colonnes `reference` et `canal` ajoutées.
 - Le lien de l'offre n'est plus exigé que pour une offre publiée ; il devient facultatif
   pour une candidature trouvée sur le site de l'entreprise ou par le réseau.

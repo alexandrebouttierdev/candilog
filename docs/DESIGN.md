@@ -298,6 +298,17 @@ barre groupée 40 px dès qu'une case est cochée
   compactes (référence, échéance, intitulé, entreprise, contrat, date) ; chaque colonne est
   paginée côté SQLite (`ColumnPager`). Un changement de statut affiche `CAN-142 → Entretien`.
 
+### Analyse
+
+- Barre d'outils : période (30 j, 90 j, tout) et « Exporter en CSV ».
+- Quatre indicateurs (envoyées, taux de réponse, entretiens, délai moyen) sans flèche de
+  tendance : il n'existe pas de période de comparaison, une variation serait inventée.
+- Blocs sur `bg-group` : parcours des candidatures (part et perte à chaque étape), rythme
+  d'envoi, taux de réponse par canal (`Analytics.channels`, même définition d'une réponse
+  que les indicateurs), « Ce que disent ces chiffres » (`model/insights.ts` : constats
+  vérifiables dans les blocs voisins, jamais de projection), candidatures à relancer,
+  performance.
+
 ### Calendrier
 
 - Barre d'outils : `‹ Mois ›` en serif, « Aujourd'hui », légende avec les décomptes, vues

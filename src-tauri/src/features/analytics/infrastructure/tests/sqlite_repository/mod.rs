@@ -2,7 +2,7 @@
 
 use super::*;
 use crate::core::database::{open_pool, run_local_migrations};
-use crate::features::applications::domain::ApplicationStatus;
+use crate::features::applications::domain::{ApplicationChannel, ApplicationStatus};
 use uuid::Uuid;
 
 fn context() -> (SqliteAnalyticsRepository, Uuid) {
@@ -198,4 +198,41 @@ fn une_relance_faite_ne_compte_plus_en_retard() {
     relance(&repo, candidature, "2026-08-21", false);
 
     assert_eq!(repo.performance(None).unwrap().overdue_follow_ups, 1);
+}
+
+#[test]
+fn le_taux_par_canal_compte_les_reponses_comme_les_metriques() {
+    let (repo, company) = context();
+    let reseau = application(&repo, company, "ENTRETIEN", "2026-09-01");
+    let offre = application(&repo, company, "EN_ATTENTE", "2026-09-02");
+    application(&repo, company, "REFUS", "2026-09-03");
+    let conn = connection(&repo.pool).unwrap();
+    conn.execute(
+        "UPDATE applications SET channel = 'NETWORK' WHERE id = ?1",
+        [reseau.to_string()],
+    )
+    .unwrap();
+    // Une candidature revenue en attente après un refus a quand même reçu une réponse.
+    conn.execute(
+        "INSERT INTO status_history (id, application_id, status, changed_at)
+         VALUES ('h-refus', ?1, 'REFUS', '2026-09-05')",
+        [offre.to_string()],
+    )
+    .unwrap();
+
+    let taux = repo.channel_rates(None).unwrap();
+    let offre = taux
+        .iter()
+        .find(|rate| rate.channel == ApplicationChannel::Offer)
+        .unwrap();
+    assert_eq!((offre.applications, offre.responses), (2, 2));
+    let reseau = taux
+        .iter()
+        .find(|rate| rate.channel == ApplicationChannel::Network)
+        .unwrap();
+    assert_eq!((reseau.applications, reseau.responses), (1, 1));
+    // Le plus fourni d'abord.
+    assert_eq!(taux[0].channel, ApplicationChannel::Offer);
+    // La période borne aussi ce calcul.
+    assert!(repo.channel_rates(Some("2026-10-01")).unwrap().is_empty());
 }

@@ -1,6 +1,6 @@
 //! Metrics affichés par le tableau de bord et par les analyses.
 
-use crate::features::applications::domain::{Application, ApplicationStatus};
+use crate::features::applications::domain::{Application, ApplicationChannel, ApplicationStatus};
 use serde::Serialize;
 
 /// Compteur assorti de sa part du total.
@@ -153,6 +153,23 @@ pub struct Analytics {
     pub funnel: Vec<Step>,
     /// Applications sans réponse, les plus anciennes d'abord.
     pub to_follow_up: Vec<ToFollowUp>,
+    /// Taux de réponse par canal « Trouvée via », les plus fournis d'abord.
+    pub channels: Vec<ChannelRate>,
+}
+
+/// Réponses obtenues par un canal sur la période : même définition que `Metrics::responses`
+/// — une candidature passée par un entretien ou un refus a reçu une réponse.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, ts_rs::TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "analytics.ts")]
+pub struct ChannelRate {
+    pub channel: ApplicationChannel,
+    /// Candidatures envoyées par ce canal.
+    #[ts(type = "number")]
+    pub applications: u64,
+    /// Candidatures de ce canal ayant reçu une réponse.
+    #[ts(type = "number")]
+    pub responses: u64,
 }
 
 #[cfg(test)]

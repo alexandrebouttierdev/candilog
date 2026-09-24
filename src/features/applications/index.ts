@@ -6,5 +6,5 @@ export { applicationService } from "./services/applicationService";
 export { EMPTY_FILTER } from "./model/schemas/application-filter.schema";
 export { Statuses, status_meta } from "./model/statuses";
 export { ApplicationPicker } from "./view/components/ApplicationPicker";
-export { formatReference } from "./model/presentation";
+export { Channels, channelLabel, formatReference } from "./model/presentation";
 export { useScheduleFollowUp } from "./viewmodel/useScheduleFollowUp";
