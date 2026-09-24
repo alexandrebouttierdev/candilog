@@ -18,7 +18,7 @@ libre : ils doivent être exactement le nom issu du `ModelRegistry` sous `ai/mod
 
 ## Référentiels métier
 
-Le schéma courant (`PRAGMA user_version = 5`) porte
+Le schéma courant (`PRAGMA user_version = 6`) porte
 quatre catalogues **distincts**, semés par `init_schema.sql` en `INSERT OR IGNORE` :
 
 | Table | Clé | Rôle |
@@ -102,6 +102,15 @@ dans l'historique et au calendrier, mais ne compte plus en retard, ne devient pl
 prochaine échéance d'une candidature et sort de l'agenda d'Aujourd'hui
 (`analytics_agenda` : relances non faites datées d'ici sept jours, retards compris, et
 entretiens des sept prochains jours).
+
+## Vues enregistrées
+
+`saved_views` (migration 6) conserve les filtres nommés de Candidatures affichés dans la
+section « Vues » de la navigation. `filter` est l'`ApplicationFilter` tel qu'envoyé au
+backend, sérialisé en JSON et rejoué à l'ouverture : une vue ne fige pas de résultats, elle
+se recalcule sur les données du moment. `name` est borné à 60 caractères (service Rust et
+`CHECK`), `position` fixe l'ordre de la navigation. Dupliquer ajoute « (copie) » au nom. Une
+remise à zéro des données vide la table.
 
 ## Contraintes portées par le schéma
 

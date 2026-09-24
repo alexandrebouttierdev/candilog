@@ -3,9 +3,10 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useApplicationsViewModel } from "../../viewmodel/useApplicationsViewModel";
 import type { TrackingView } from "../../viewmodel/useApplicationsViewModel";
 import { useScheduleFollowUp } from "../../viewmodel/useScheduleFollowUp";
-import type { Application, ApplicationStatus } from "@/shared/types/generated/applications";
+import type { Application, ApplicationFilter, ApplicationStatus } from "@/shared/types/generated/applications";
 import { Statuses } from "../../model/statuses";
 import { formatReference } from "../../model/presentation";
+import { sameCriteria } from "../../model/filterFields";
 import { EMPTY_FILTER } from "../../model/schemas/application-filter.schema";
 import { ApplicationFormModal } from "../components/ApplicationFormModal";
 import { ApplicationToolbar } from "../components/ApplicationToolbar";
@@ -63,8 +64,27 @@ function centre(): Anchor {
  * ouvrir, `⌘⏎` modifier la fiche, `⌘D` dupliquer, `⌘⌫` supprimer — sur la candidature
  * sélectionnée ou focalisée. Sous 1060 px, l'inspecteur devient un panneau flottant.
  */
-export function ApplicationsPage({ view }: { view?: TrackingView } = {}) {
-  const vm = useApplicationsViewModel(view);
+/** Vue enregistrée ouverte depuis la navigation (fournie par la couche `app`). */
+export interface ActiveSavedView {
+  readonly id: string;
+  readonly name: string;
+  readonly filter: ApplicationFilter;
+}
+
+export function ApplicationsPage({
+  view,
+  savedView = null,
+  onSaveView,
+  onUpdateView,
+}: {
+  view?: TrackingView;
+  savedView?: ActiveSavedView | null;
+  /** Enregistrer le filtre courant comme nouvelle vue. */
+  onSaveView?: (filter: ApplicationFilter) => void;
+  /** Remplacer le filtre de la vue ouverte par le filtre courant. */
+  onUpdateView?: (filter: ApplicationFilter) => void;
+} = {}) {
+  const vm = useApplicationsViewModel(view, savedView?.filter);
   const navigate = useNavigate();
   const wide = useMediaQuery(WIDE_QUERY);
   const scheduleFollowUp = useScheduleFollowUp();
@@ -228,7 +248,7 @@ export function ApplicationsPage({ view }: { view?: TrackingView } = {}) {
   useRegisterCommands(commands);
 
   useChrome({
-    crumb: view === "kanban" ? "Kanban" : "Toutes",
+    crumb: savedView ? savedView.name : view === "kanban" ? "Kanban" : "Toutes",
     status: isFresh
       ? view === "kanban"
         ? "0 carte · 4 colonnes · le tableau se remplira tout seul"
@@ -281,6 +301,24 @@ export function ApplicationsPage({ view }: { view?: TrackingView } = {}) {
         }
         actions={
           <>
+            {savedView && onUpdateView && !sameCriteria(vm.filter, savedView.filter) ? (
+              <button
+                type="button"
+                onClick={() => onUpdateView(vm.filter)}
+                className="h-[23px] rounded-r6 px-2 text-small whitespace-nowrap text-ac-tx hover:bg-elev"
+              >
+                Mettre à jour la vue
+              </button>
+            ) : null}
+            {onSaveView && filtersActive ? (
+              <button
+                type="button"
+                onClick={() => onSaveView(vm.filter)}
+                className="h-[23px] rounded-r6 px-2 text-small whitespace-nowrap text-ac-tx hover:bg-elev"
+              >
+                Enregistrer la vue
+              </button>
+            ) : null}
             <Button size="compact" disabled={vm.isExporting} onClick={() => void exportRows()}>
               <LineIcon name="export-csv" size={13} />
               CSV

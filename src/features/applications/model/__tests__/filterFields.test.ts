@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { EMPTY_FILTER } from "../schemas/application-filter.schema";
-import { chipsOf, daysAgo, removeField, toggleExcluded, toggleValue } from "../filterFields";
+import type { ApplicationFilter } from "@/shared/types/generated/applications";
+import { chipsOf, daysAgo, removeField, sameCriteria, toggleExcluded, toggleValue } from "../filterFields";
 
 const label = (_key: string, value: string) => value;
 
@@ -45,5 +46,21 @@ describe("champs du menu de filtre", () => {
   it("calcule une date passée en jours calendaires locaux", () => {
     expect(daysAgo(14, new Date(2026, 8, 23))).toBe("2026-09-09");
     expect(daysAgo(30, new Date(2026, 2, 15))).toBe("2026-02-13");
+  });
+});
+
+describe("sameCriteria", () => {
+  const base: ApplicationFilter = { ...EMPTY_FILTER, search: "", sort: "date", descending: true, ids: [] };
+
+  it("ignore l'ordre des clés, des valeurs, le tri et les espaces de la recherche", () => {
+    const relu = JSON.parse(
+      JSON.stringify({ search: "dev ", ...EMPTY_FILTER, status: ["RELANCEE", "EN_ATTENTE"], sort: "date", descending: false, ids: [] }),
+    ) as ApplicationFilter;
+    expect(sameCriteria({ ...base, search: "dev", status: ["EN_ATTENTE", "RELANCEE"] }, relu)).toBe(true);
+  });
+
+  it("distingue un critère ajouté ou inversé", () => {
+    expect(sameCriteria(base, { ...base, status: ["REFUS"] })).toBe(false);
+    expect(sameCriteria({ ...base, status: ["REFUS"] }, { ...base, status: ["REFUS"], excluded: ["status"] })).toBe(false);
   });
 });

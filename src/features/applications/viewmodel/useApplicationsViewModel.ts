@@ -21,6 +21,16 @@ import { formatReference } from "../model/presentation";
 /** Root des clés de cache de la feature. */
 export const APPLICATIONS_KEY = ["candidatures"] as const;
 
+/** Critères d'un filtre complet, sans la recherche, le tri ni les identifiants. */
+function filterValuesOf(filter: ApplicationFilter): ApplicationFilterValues {
+  const { search: _search, sort: _sort, descending: _descending, ids: _ids, ...values } = filter;
+  void _search;
+  void _sort;
+  void _descending;
+  void _ids;
+  return { ...EMPTY_FILTER, ...values };
+}
+
 /** Mode d'affichage du suivi. */
 export type TrackingView = "kanban" | "list";
 
@@ -49,7 +59,7 @@ const INITIAL_GROUP_LIMITS: Record<ApplicationStatus, number> = {
  * est groupée par statut — chaque groupe charge ses 50 premières lignes, puis 50 de plus
  * à la demande ; le Kanban pagine chaque colonne indépendamment.
  */
-export function useApplicationsViewModel(controlledView?: TrackingView) {
+export function useApplicationsViewModel(controlledView?: TrackingView, initialFilter?: ApplicationFilter) {
   const queryClient = useQueryClient();
   const notify = useUiStore((state) => state.notify);
 
@@ -60,9 +70,12 @@ export function useApplicationsViewModel(controlledView?: TrackingView) {
   const view = controlledView ?? viewState;
   const [kanbanPages, setKanbanPages] = useState(INITIAL_KANBAN_PAGES);
   const [groupLimits, setGroupLimits] = useState(INITIAL_GROUP_LIMITS);
-  const [search, setSearchState] = useState("");
+  // Une vue enregistrée ouvre l'écran avec son filtre ; l'écran est remonté à chaque vue.
+  const [search, setSearchState] = useState(initialFilter?.search ?? "");
   const searchQuery = useDebounce(search);
-  const [filters, setFilters] = useState<ApplicationFilterValues>(EMPTY_FILTER);
+  const [filters, setFilters] = useState<ApplicationFilterValues>(() =>
+    initialFilter ? filterValuesOf(initialFilter) : EMPTY_FILTER,
+  );
   // Ordre dans un groupe ou une colonne : les plus récentes d'abord. La liste v2 n'a plus
   // d'en-têtes de colonnes triables — le groupement par statut les remplace.
   const sort: ApplicationSort = "date";
@@ -94,6 +107,16 @@ export function useApplicationsViewModel(controlledView?: TrackingView) {
     [searchQuery, filters, sort, descending],
   );
 
+  // Statuts retenus par le filtre : tous sans critère, ceux cochés, ou tous sauf eux quand
+  // le critère est inversé (« Statut n'est pas Refusée »).
+  const statusExcluded = filter.excluded.includes("status");
+  const retains = useCallback(
+    (status: ApplicationStatus) => filter.status.length === 0 || filter.status.includes(status) !== statusExcluded,
+    [filter.status, statusExcluded],
+  );
+  // Chaque colonne demande son seul statut : l'inversion est déjà résolue par `retains`.
+  const otherExclusions = filter.excluded.filter((field) => field !== "status");
+
   // Une requête par statut : SQLite applique le statut avant LIMIT/OFFSET, ce qui évite
   // de charger le pipeline complet et permet à chaque groupe d'avancer à son propre rythme.
   const kanbanQueries = useQueries({
@@ -105,8 +128,11 @@ export function useApplicationsViewModel(controlledView?: TrackingView) {
       return {
         queryKey: [...APPLICATIONS_KEY, view, status.value, { ...bornes, filter }],
         queryFn: () =>
-          applicationService.listPage({ ...bornes, filter: { ...filter, status: [status.value] } }),
-        enabled: filter.status.length === 0 || filter.status.includes(status.value),
+          applicationService.listPage({
+            ...bornes,
+            filter: { ...filter, status: [status.value], excluded: otherExclusions },
+          }),
+        enabled: retains(status.value),
       };
     }),
   });
@@ -372,7 +398,13 @@ export function useApplicationsViewModel(controlledView?: TrackingView) {
     descending,
     selection,
     selected_id,
-    isLoading: breakdown.isPending || kanbanQueries.some((query) => query.isPending),
+    // Une colonne que le filtre écarte n'est jamais interrogée : elle resterait « en attente ».
+    isLoading:
+      breakdown.isPending ||
+      kanbanQueries.some((query, index) => {
+        const status = Statuses[index];
+        return status !== undefined && retains(status.value) && query.isPending;
+      }),
     isLoadingDetail: selected_id !== null && detail.isPending,
     error: breakdown.error ?? kanbanError,
     isSaving: creation.isPending || modification.isPending,

@@ -12,10 +12,8 @@ const TodayPage = lazy(() =>
 const AnalyticsPage = lazy(() =>
   import("@/features/analytics/view/pages/AnalyticsPage").then((m) => ({ default: m.AnalyticsPage })),
 );
-const ApplicationsPage = lazy(() =>
-  import("@/features/applications/view/pages/ApplicationsPage").then((m) => ({
-    default: m.ApplicationsPage,
-  })),
+const ApplicationsRoute = lazy(() =>
+  import("./ApplicationsRoute").then((m) => ({ default: m.ApplicationsRoute })),
 );
 const CalendarPage = lazy(() =>
   import("@/features/calendar/view/pages/CalendarPage").then((m) => ({ default: m.CalendarPage })),
@@ -90,8 +88,8 @@ function LegacySettings() {
 /** Écrans de la v2, indexés par chemin (sans la barre oblique initiale). */
 export const ROUTES: RouteObject[] = [
   { index: true, element: <TodayPage /> },
-  { path: "applications", element: <ApplicationsPage view="list" /> },
-  { path: "applications/kanban", element: <ApplicationsPage view="kanban" /> },
+  { path: "applications", element: <ApplicationsRoute view="list" /> },
+  { path: "applications/kanban", element: <ApplicationsRoute view="kanban" /> },
   { path: "applications/calendar", element: <CalendarPage /> },
   { path: "applications/analytics", element: <AnalyticsPage /> },
   { path: "relations/companies", element: <RelationsPage kind="companies" /> },

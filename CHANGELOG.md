@@ -58,6 +58,11 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
 - Refonte v2 — Générateurs de CV et de lettre en surcouche plein écran : offre visée prise
   dans une candidature ou collée, feuille A4 au centre, étapes avec leur durée mesurée à
   droite ; corrections de la lettre sous la feuille, avec consignes rapides.
+- Refonte v2 — Vues enregistrées : un filtre de Candidatures s'enregistre sous un nom et
+  apparaît dans la section « Vues » de la navigation, avec son décompte. Une vue se met à
+  jour, se renomme, se duplique ou se supprime.
+- Candidatures : un filtre sur le statut ne laisse plus la liste en chargement, et
+  « Statut n'est pas … » affiche les autres groupes au lieu du statut écarté.
 - Refonte v2 — Analyse de CV face à une offre : chaque exigence de l'offre est listée,
   couverte, partielle ou absente, avec la preuve trouvée dans le CV ; score et détail à
   gauche.

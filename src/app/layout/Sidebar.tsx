@@ -8,6 +8,7 @@ import type { DestinationKey } from "@/app/router/routes";
 import { PATHS } from "@/shared/lib/paths";
 import { useNavCounts } from "./useNavCounts";
 import { useAiIndicator } from "./useAiIndicator";
+import { SavedViewsNav } from "./SavedViewsNav";
 
 const PUCE = { local: "bg-st-g", remote: "bg-st-a", none: "bg-tx-7" } as const;
 
@@ -94,6 +95,8 @@ export function Sidebar() {
           );
         })}
       </ul>
+
+      <SavedViewsNav />
 
       <div className="mt-auto flex-none pb-2">
         <button

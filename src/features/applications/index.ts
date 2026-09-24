@@ -1,4 +1,5 @@
 export { ApplicationsPage } from "./view/pages/ApplicationsPage";
+export type { ActiveSavedView } from "./view/pages/ApplicationsPage";
 export { useApplicationsViewModel, APPLICATIONS_KEY } from "./viewmodel/useApplicationsViewModel";
 export type { Application, NewApplication } from "./services/applicationService";
 export type { ApplicationFilter, ApplicationStatus } from "./services/applicationService";

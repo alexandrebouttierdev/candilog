@@ -248,6 +248,7 @@ pub fn reset_data(pool: &SqlitePool) -> AppResult<()> {
          DELETE FROM cover_letters;
          DELETE FROM profile;
          DELETE FROM settings;
+         DELETE FROM saved_views;
          DELETE FROM app_kv;",
     )?;
     transaction.commit()?;

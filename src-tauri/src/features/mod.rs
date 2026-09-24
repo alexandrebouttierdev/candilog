@@ -12,3 +12,4 @@ pub mod interviews;
 pub mod profile;
 pub mod referentials;
 pub mod settings;
+pub mod views;

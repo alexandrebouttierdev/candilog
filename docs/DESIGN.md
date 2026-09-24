@@ -194,6 +194,9 @@ les écrans v1 le temps de leur migration.
   `routes.ts` (`DESTINATIONS[].tabs`).
 - `Sidebar` : six destinations avec décompte (`useNavCounts`, requêtes rangées sous la clé
   racine de chaque feature), Réglages et indicateur d'IA en pied. `wide:` = ≥ 1060 px.
+  Sous les destinations, la section « Vues » (`SavedViewsNav`, masquée sous 1060 px) liste
+  les vues enregistrées de Candidatures avec leur décompte ; `⋯` ou clic droit : renommer,
+  dupliquer, supprimer (confirmé).
 - `StatusBar` : un écran y écrit son décompte et son contrat clavier par
   `useChrome({ crumb, aside, status, keys })` ; « Actions ⌘K » est toujours présent.
 - **Réglages** : surcouche (`SettingsOverlay`, état `settings` du `ui-store`), jamais une
@@ -295,6 +298,10 @@ barre groupée 40 px dès qu'une case est cochée
   de la v1 (domaine, type et taille d'entreprise, secteur, régime, heures, poste, ville,
   période). Une saisie invalide est signalée dans le menu et n'est jamais appliquée.
 - Recherche : `/` y place le focus, `Échap` l'efface puis la quitte.
+- **Vues enregistrées** : « Enregistrer la vue » nomme le filtre courant ; une vue ouverte
+  (`?view=<id>`, `ApplicationsRoute`) donne son nom au fil d'Ariane et propose « Mettre à
+  jour la vue » dès que le filtre s'en écarte. Le lien entre Candidatures et vues vit dans
+  la couche `app`, jamais d'une feature à l'autre.
 - **Barre groupée** (`BulkBar`) : changer le statut (`S`), exporter en CSV (`⌘E`),
   supprimer (`⌘⌫`), désélectionner (`Échap`). Elle agit sur les cases cochées, jamais sur
   la seule fiche ouverte.

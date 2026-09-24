@@ -192,6 +192,38 @@ describe("ViewModel des candidatures", () => {
     expect(result.current.groupLimits.RELANCEE).toBe(50);
   });
 
+  it("finit de charger quand le filtre ne retient que certains statuts", async () => {
+    const listPage = vi.spyOn(applicationService, "listPage").mockResolvedValue(page([cand("Développeur")]));
+    const initial = { ...EMPTY_FILTER, status: ["ENTRETIEN" as const], search: "", sort: "date" as const, descending: true, ids: [] };
+
+    const { result } = renderHook(() => useApplicationsViewModel("list", initial), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(listPage).toHaveBeenCalledTimes(1);
+    expect(listPage.mock.calls[0]?.[0].filter.status).toEqual(["ENTRETIEN"]);
+  });
+
+  it("interroge les autres statuts quand le statut est inversé", async () => {
+    const listPage = vi.spyOn(applicationService, "listPage").mockResolvedValue(page([cand("Développeur")]));
+    const initial = {
+      ...EMPTY_FILTER,
+      status: ["REFUS" as const],
+      excluded: ["status" as const],
+      search: "",
+      sort: "date" as const,
+      descending: true,
+      ids: [],
+    };
+
+    const { result } = renderHook(() => useApplicationsViewModel("list", initial), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    const demandes = listPage.mock.calls.map(([params]) => params.filter);
+    expect(demandes.map((filter) => filter.status[0]).sort()).toEqual(["ENTRETIEN", "EN_ATTENTE", "RELANCEE"]);
+    // Chaque colonne demande son statut tel quel : l'inversion ne s'applique qu'à la liste retenue.
+    expect(demandes.every((filter) => !filter.excluded.includes("status"))).toBe(true);
+  });
+
   it("duplique la candidature et sélectionne la copie", async () => {
     vi.spyOn(applicationService, "listPage").mockResolvedValue(page([cand("Développeur")]));
     const copie = { ...cand("Développeur"), id: "copie", reference_number: 143 };

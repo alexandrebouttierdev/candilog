@@ -1,4 +1,5 @@
-import type { FilterField } from "@/shared/types/generated/applications";
+import type { ApplicationFilter, FilterField } from "@/shared/types/generated/applications";
+import { EMPTY_FILTER } from "./schemas/application-filter.schema";
 import type { ApplicationFilterValues } from "./schemas/application-filter.schema";
 
 /**
@@ -215,4 +216,23 @@ export function daysAgo(days: number, today = new Date()): string {
   const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() - days);
   const pad = (value: number) => String(value).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+/**
+ * Deux filtres retiennent-ils les mêmes candidatures ? Le tri et les identifiants ne
+ * comptent pas, ni l'ordre des clés (un filtre relu depuis SQLite suit l'ordre des champs
+ * Rust) ni celui des valeurs d'une liste : c'est ce qu'une vue enregistrée compare.
+ */
+export function sameCriteria(a: ApplicationFilter, b: ApplicationFilter): boolean {
+  const canonical = (filter: ApplicationFilter) => {
+    const values: Record<string, unknown> = { ...EMPTY_FILTER, ...filter };
+    return JSON.stringify([
+      filter.search.trim(),
+      ...Object.keys(EMPTY_FILTER).map((key) => {
+        const value = values[key];
+        return Array.isArray(value) ? value.map(String).sort() : (value ?? null);
+      }),
+    ]);
+  };
+  return canonical(a) === canonical(b);
 }
