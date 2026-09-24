@@ -11,12 +11,20 @@ import { EmptySheet } from "../components/EmptySheet";
 import { StopGenerationDialog } from "../components/StopGenerationDialog";
 import { GeneratorFrame, PaneSection, RunMeter, StepList } from "../components/GeneratorFrame";
 import { OfferSource } from "../components/OfferSource";
+import { Segmented } from "../components/Segmented";
+import { SectionToggles } from "../components/SectionToggles";
 import { useStepLog } from "../../viewmodel/useStepLog";
 import { ProfileSkillChoiceDialog } from "../components/ProfileSkillChoiceDialog";
 import { ResumeAtsPanel } from "../components/ResumeAtsPanel";
 import { ResumePaper } from "../components/ResumePaper";
 import { useProfilePhoto } from "@/features/profile";
 import { generationFromNavigation } from "./documentPageSupport";
+
+const RESUME_TONES = [
+  { value: "sober", label: "Sobre" },
+  { value: "professional", label: "Professionnel" },
+  { value: "direct", label: "Direct" },
+] as const;
 
 /** Étapes annoncées par le backend pendant la génération d'un CV. */
 const CV_STEPS = ["Analyse de l'offre", "Adaptation du CV", "Relecture du français", "Analyse ATS"] as const;
@@ -43,6 +51,16 @@ export function ResumeGeneratorPage() {
     <>
       <PaneSection title="Offre visée">
         <OfferSource value={vm.jobOffer} onChange={vm.setJobOffer} readClipboard={vm.readClipboard} disabled={running} />
+      </PaneSection>
+      <SectionToggles
+        title="Ce que l’IA peut utiliser"
+        options={vm.sectionOptions}
+        excluded={vm.excludedSections}
+        disabled={running}
+        onToggle={vm.toggleSection}
+      />
+      <PaneSection title="Ton">
+        <Segmented label="Ton" value={vm.tone} options={RESUME_TONES} disabled={running} onChange={vm.setTone} />
       </PaneSection>
       {vm.error ? <ErrorBanner title="Génération impossible" message={vm.error} /> : null}
     </>

@@ -125,6 +125,7 @@ fn fact_kind_priority(kind: GroundedFactKind) -> u8 {
         GroundedFactKind::Project => 3,
         GroundedFactKind::Education => 4,
         GroundedFactKind::Certification => 5,
+        GroundedFactKind::Availability => 6,
     }
 }
 

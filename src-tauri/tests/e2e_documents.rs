@@ -31,7 +31,7 @@ use candilog_lib::features::ai::application::AiService;
 use candilog_lib::features::ai::domain::{
     profile_content_catalog, profile_score, AtsAnalysis, AtsContentRecommendation,
     ContentRelevance, CoverLetterRequest, GeneratedEducation, GeneratedExperience, GeneratedResume,
-    ResumeGeneration, ResumeGenerationRequest, StructuredListing,
+    ResumeGeneration, ResumeGenerationRequest, ResumeTone, StructuredListing,
 };
 use candilog_lib::features::documents::application::{
     build, build_cover_letter, prepare_workspace,
@@ -413,6 +413,8 @@ async fn obtenir_generation(
             ResumeGenerationRequest {
                 generation_id: format!("e2e-cv-{}", cas.slug),
                 job_offer: offre.to_owned(),
+                excluded_sections: Vec::new(),
+                tone: ResumeTone::default(),
             },
             |_| {},
         )
@@ -571,6 +573,7 @@ async fn obtenir_lettre(
                 context: Some(offre.to_owned()),
                 previous_cover_letter: None,
                 instruction: None,
+                excluded_sections: Vec::new(),
             },
             |_| {},
         )

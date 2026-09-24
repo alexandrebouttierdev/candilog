@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   aiService,
   isAiNotConfiguredError,
@@ -12,7 +12,10 @@ import {
 } from "@/features/ai";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
+import type { ProfileSection, ResumeTone } from "@/shared/types/generated/ai";
 import type { ResumeWorkspace } from "@/shared/types/generated/documents";
+import { RESUME_SECTIONS, sectionOptions, toggleSection } from "../model/profileSections";
+import { PROFILE_KEY, profileService } from "@/features/profile";
 import { documentsService } from "../services/documentsService";
 import { exportResumePdf } from "./documentExport";
 import { RESUME_KEY } from "./documentKeys";
@@ -37,6 +40,9 @@ export function useResumeGeneratorViewModel(initial: ResumeGeneratorInitial) {
   const queryClient = useQueryClient();
   const notify = useUiStore((state) => state.notify);
   const [jobOffer, setJobOffer] = useState("");
+  const [excludedSections, setExcludedSections] = useState<ProfileSection[]>([]);
+  const [tone, setTone] = useState<ResumeTone>("professional");
+  const profile = useQuery({ queryKey: PROFILE_KEY, queryFn: profileService.load });
   const { operation, stopping, start, stop, finish, isCurrent } = useAiOperation();
   const [error, setError] = useState<string | null>(null);
   const [historical] = useState(initial.result);
@@ -91,9 +97,14 @@ export function useResumeGeneratorViewModel(initial: ResumeGeneratorInitial) {
     setError(null);
     timer.start();
     try {
-      const execution = await aiService.generateResume({ generation_id: id, job_offer: jobOffer });
+      const execution = await aiService.generateResume({
+        generation_id: id,
+        job_offer: jobOffer,
+        excluded_sections: excludedSections,
+        tone,
+      });
       if (!mounted.current || !isCurrent(id)) return;
-      const prepared = await documentsService.prepareResume(execution.output);
+      const prepared = await documentsService.prepareResume(execution.output, excludedSections);
       if (!mounted.current || !isCurrent(id)) return;
       timer.stop();
       setWorkspace(prepared);
@@ -155,7 +166,13 @@ export function useResumeGeneratorViewModel(initial: ResumeGeneratorInitial) {
     durationMs: timer.durationMs,
     metrics,
     isSaving: save.isPending,
+    /** « Ce que l'IA peut utiliser », compté sur le profil courant. */
+    sectionOptions: sectionOptions(profile.data?.profile ?? null, RESUME_SECTIONS),
+    excludedSections,
+    tone,
     setJobOffer,
+    toggleSection: (section: ProfileSection) => setExcludedSections((current) => toggleSection(current, section)),
+    setTone,
     setName,
     openBrief: () => setBriefOpen(true),
     closeBrief: () => setBriefOpen(false),

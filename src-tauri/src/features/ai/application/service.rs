@@ -323,7 +323,7 @@ impl AiService {
                 ) =>
             {
                 tracing::warn!(error = %error, "génération de CV poursuivie en mode local");
-                let profile = self.profile()?;
+                let profile = profile_without(&self.profile()?, &request.excluded_sections);
                 validate_profile_input(&profile)?;
                 progres(
                     &notifier,
@@ -348,14 +348,26 @@ impl AiService {
         token: &CancellationToken,
         notifier: &impl Fn(AiProgress),
     ) -> AppResult<(ResumeGeneration, Option<u32>)> {
-        let profile = self.profile()?;
-        validate_profile_input(&profile)?;
-        if profile.identity.first_name.trim().is_empty()
-            && profile.experiences.is_empty()
-            && profile.skills.is_empty()
+        let full_profile = self.profile()?;
+        validate_profile_input(&full_profile)?;
+        if full_profile.identity.first_name.trim().is_empty()
+            && full_profile.experiences.is_empty()
+            && full_profile.skills.is_empty()
         {
             return Err(AppError::Validation(
                 "Complétez votre profil avant de générer un CV".into(),
+            ));
+        }
+        // Les sections écartées par l'utilisateur ne quittent jamais la machine : elles sont
+        // retirées avant le premier appel au modèle.
+        let profile = profile_without(&full_profile, &request.excluded_sections);
+        if profile.experiences.is_empty()
+            && profile.education.is_empty()
+            && profile.skills.is_empty()
+            && profile.projects.is_empty()
+        {
+            return Err(AppError::Validation(
+                "Laissez à l'IA au moins une section : expériences, formations, compétences ou projets".into(),
             ));
         }
         let provider = self.provider_for(AiTask::GenerateResume).await?;
@@ -388,12 +400,13 @@ impl AiService {
         );
         let context =
             serde_json::json!({"profile":profile,"offre":job_offer,"score":score}).to_string();
+        let resume_system = format!("{RESUME_SYSTEM}\n{}", request.tone.instruction());
         let (mut resume, call_tokens): (GeneratedResume, Option<u32>) = cancel(
             token,
             generate_json(
                 provider.clone(),
                 &bloc_donnees("contexte", &context),
-                RESUME_SYSTEM,
+                &resume_system,
             ),
         )
         .await?;
@@ -500,9 +513,14 @@ impl AiService {
             id: id.clone(),
             token: Arc::clone(&token),
         };
-        let profile = self.profile()?;
+        let profile = profile_without(&self.profile()?, &request.excluded_sections);
         validate_profile_input(&profile)?;
         let catalog = build_fact_catalog(&profile);
+        if catalog.is_empty() && !request.excluded_sections.is_empty() {
+            return Err(AppError::Validation(
+                "Autorisez au moins un argument : la lettre n'a rien sur quoi s'appuyer".into(),
+            ));
+        }
         // Sur une itération, on compacte le brief : la lettre précédente + la consigne
         // suffisent à réorienter la sélection de faits, sans renvoyer toute l'offre.
         let iterating = request
@@ -2298,6 +2316,80 @@ Anglais · lecture courante de documentation technique\n";
         assert_eq!(
             service.selected_resume_path().unwrap(),
             PathBuf::from("/tmp/second.pdf")
+        );
+    }
+
+    /// Service sur une base migrée, avec un profil qui a une expérience et une compétence.
+    fn service_with_profile() -> (AiService, tempfile::TempDir) {
+        let (service, directory) = test_service();
+        crate::core::database::run_local_migrations(&service.pool).unwrap();
+        let mut profile = Profile::default();
+        profile.identity.first_name = "Jean".into();
+        profile.identity.name = "Rivière".into();
+        profile.identity.email = "jean@exemple.fr".into();
+        profile
+            .experiences
+            .push(crate::features::profile::domain::Experience {
+                title: "Technicien".into(),
+                company: "Ker Informatique".into(),
+                start_date: "2020-01".into(),
+                ..Default::default()
+            });
+        profile
+            .skills
+            .push(crate::features::profile::domain::Skill {
+                name: "Linux".into(),
+                ..Default::default()
+            });
+        SqliteProfileRepository::new(service.pool.clone())
+            .save(&profile)
+            .unwrap();
+        (service, directory)
+    }
+
+    #[tokio::test]
+    async fn un_cv_sans_aucune_section_autorisee_est_refuse_avant_tout_appel() {
+        let (service, _directory) = service_with_profile();
+        let request = ResumeGenerationRequest {
+            generation_id: "cv".into(),
+            job_offer: "Technicien systèmes Linux, Rennes, CDI".into(),
+            excluded_sections: vec![ProfileSection::Experiences, ProfileSection::Skills],
+            tone: ResumeTone::default(),
+        };
+
+        let error = service
+            .generate_resume_interne(&request, &CancellationToken::new(), &|_| {})
+            .await
+            .unwrap_err();
+
+        assert!(
+            matches!(&error, AppError::Validation(message) if message.contains("au moins une section")),
+            "{error:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn une_lettre_sans_aucun_argument_autorise_est_refusee() {
+        let (service, _directory) = service_with_profile();
+        let request = CoverLetterRequest {
+            generation_id: "lettre".into(),
+            company: Some("Novéa".into()),
+            excluded_sections: vec![
+                ProfileSection::Summary,
+                ProfileSection::Experiences,
+                ProfileSection::Skills,
+            ],
+            ..CoverLetterRequest::default()
+        };
+
+        let error = service
+            .generate_cover_letter(request, |_| {})
+            .await
+            .unwrap_err();
+
+        assert!(
+            matches!(&error, AppError::Validation(message) if message.contains("au moins un argument")),
+            "{error:?}"
         );
     }
 

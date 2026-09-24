@@ -3,7 +3,7 @@
 use crate::core::errors::{AppError, AppResult};
 use crate::core::files::atomic_write;
 use crate::core::pagination::Page;
-use crate::features::ai::domain::ResumeGeneration;
+use crate::features::ai::domain::{profile_without, ProfileSection, ResumeGeneration};
 use crate::features::documents::application::{
     apply_proposal, build, build_cover_letter, prepare_workspace, recalculate, reject_proposal,
     validate_document,
@@ -54,10 +54,21 @@ impl<C: ResumeRepository, L: CoverLetterRepository, P: ProfileRepository>
     }
 
     /// Fige le profil et une génération IA dans un document de travail autonome.
-    pub fn resume_prepare(&self, generation: ResumeGeneration) -> AppResult<ResumeWorkspace> {
+    ///
+    /// Les sections que l'utilisateur a retirées de la génération ne reviennent ni dans le
+    /// document ni dans la bibliothèque de contenu proposée ensuite.
+    pub fn resume_prepare(
+        &self,
+        generation: ResumeGeneration,
+        excluded_sections: &[ProfileSection],
+    ) -> AppResult<ResumeWorkspace> {
         let payload = self.profile.load()?;
         let photo = self.profile.photo_bytes()?;
-        prepare_workspace(&payload.profile, generation, photo)
+        prepare_workspace(
+            &profile_without(&payload.profile, excluded_sections),
+            generation,
+            photo,
+        )
     }
 
     /// Revalide le document puis recalcule score et propositions après une édition manuelle.

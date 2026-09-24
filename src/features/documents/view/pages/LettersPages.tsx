@@ -8,6 +8,8 @@ import { EmptySheet } from "../components/EmptySheet";
 import { StopGenerationDialog } from "../components/StopGenerationDialog";
 import { GeneratorFrame, PaneSection, RunMeter, StepList } from "../components/GeneratorFrame";
 import { OfferSource } from "../components/OfferSource";
+import { Segmented } from "../components/Segmented";
+import { SectionToggles } from "../components/SectionToggles";
 import { LetterEditor } from "../components/LetterEditor";
 import type { LetterPaperField } from "../components/LetterPaper";
 import { Champ, coverLetterFromNavigation } from "./documentPageSupport";
@@ -31,41 +33,6 @@ const LENGTHS = [
 
 /** Consignes fréquentes, envoyées telles quelles comme correction. */
 const QUICK_FIXES = ["Plus court", "Moins formel", "Ajoute un chiffre", "Cite l'entreprise"] as const;
-
-function Segmented<T extends string>({
-  label,
-  value,
-  options,
-  disabled,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  options: ReadonlyArray<{ value: T; label: string }>;
-  disabled: boolean;
-  onChange: (value: T) => void;
-}) {
-  return (
-    <div role="radiogroup" aria-label={label} className="flex gap-px rounded-r7 bg-chip p-0.5">
-      {options.map((option) => (
-        <button
-          key={option.value}
-          type="button"
-          role="radio"
-          aria-checked={value === option.value}
-          disabled={disabled}
-          onClick={() => onChange(option.value)}
-          className={cn(
-            "h-6 flex-1 rounded-r5 text-small",
-            value === option.value ? "bg-panel font-medium text-tx" : "text-tx-4 hover:text-tx-2",
-          )}
-        >
-          {option.label}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 /**
  * Rédacteur de lettre (`screens/16-generator-letter.png`) : surcouche plein écran — offre,
@@ -151,6 +118,13 @@ export function LetterWriterPage() {
               Sans nom, la lettre utilisera « Madame, Monsieur ».
             </p>
           </PaneSection>
+          <SectionToggles
+            title="Arguments autorisés"
+            options={vm.argumentOptions}
+            excluded={vm.excludedSections}
+            disabled={running}
+            onToggle={vm.toggleSection}
+          />
           <PaneSection title="Ton">
             <Segmented label="Ton" value={vm.tone} options={TONES} disabled={running} onChange={vm.setTone} />
           </PaneSection>

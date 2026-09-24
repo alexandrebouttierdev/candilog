@@ -17,6 +17,7 @@ pub enum GroundedFactKind {
     Education,
     Project,
     Certification,
+    Availability,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -183,6 +184,18 @@ pub fn build_fact_catalog(profile: &Profile) -> Vec<GroundedFact> {
                 },
             }),
     );
+    if let Some(availability) = profile
+        .identity
+        .availability
+        .as_deref()
+        .filter(|value| !value.trim().is_empty())
+    {
+        facts.push(GroundedFact {
+            id: "availability:0".into(),
+            kind: GroundedFactKind::Availability,
+            text: format!("Disponibilité : {}", availability.trim()),
+        });
+    }
     facts.retain(|fact| !fact.text.trim().is_empty());
     facts
 }
@@ -322,6 +335,7 @@ fn fact_kind_priority(kind: GroundedFactKind) -> u8 {
         GroundedFactKind::Project => 3,
         GroundedFactKind::Education => 4,
         GroundedFactKind::Certification => 5,
+        GroundedFactKind::Availability => 6,
     }
 }
 
@@ -389,6 +403,8 @@ fn fact_sentence(fact: &GroundedFact, tone: &str, job: &str, company: &str) -> S
         (GroundedFactKind::Certification, _) => {
             format!("Je dispose aussi de la certification {text}")
         }
+        // Le fait porte déjà son intitulé (« Disponibilité : immédiate ») : il est repris tel quel.
+        (GroundedFactKind::Availability, _) => text,
     }
 }
 
@@ -448,6 +464,7 @@ mod tests {
             context: Some("Acme recherche une développeuse Rust pour ses APIs".into()),
             previous_cover_letter: None,
             instruction: None,
+            excluded_sections: Vec::new(),
         }
     }
 

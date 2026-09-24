@@ -73,6 +73,10 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
   « Écrire la lettre moi-même ».
 - Générateurs : la première étape n'est plus perdue quand le backend l'annonce avant que
   l'écran l'écoute, et les étapes restent dans leur ordre.
+- Générateurs : « Ce que l'IA peut utiliser » (CV) et « Arguments autorisés » (lettre)
+  retirent des sections du profil avant tout envoi au modèle ; le CV se rédige sur un ton
+  sobre, professionnel ou direct ; la lettre peut s'appuyer sur la disponibilité déclarée
+  dans le profil.
 - Refonte v2 — Analyse de CV face à une offre : chaque exigence de l'offre est listée,
   couverte, partielle ou absente, avec la preuve trouvée dans le CV ; score et détail à
   gauche.

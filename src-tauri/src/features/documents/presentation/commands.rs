@@ -6,7 +6,7 @@ use crate::core::errors::AppResult;
 use crate::core::files::select_save_target;
 use crate::core::pagination::Page;
 use crate::core::utils::blocking;
-use crate::features::ai::domain::ResumeGeneration;
+use crate::features::ai::domain::{ProfileSection, ResumeGeneration};
 use crate::features::documents::domain::{
     CoverLetter, CoverLetterExport, NewCoverLetter, NewResume, ResumeDocument, ResumeSummary,
     ResumeVersion, ResumeWorkspace,
@@ -62,9 +62,11 @@ pub async fn documents_resume_delete(state: State<'_, AppState>, id: Uuid) -> Ap
 pub async fn documents_resume_prepare(
     state: State<'_, AppState>,
     generation: ResumeGeneration,
+    excluded_sections: Option<Vec<ProfileSection>>,
 ) -> AppResult<ResumeWorkspace> {
     let service = state.documents.clone();
-    blocking::execute(move || service.resume_prepare(generation)).await
+    let excluded = excluded_sections.unwrap_or_default();
+    blocking::execute(move || service.resume_prepare(generation, &excluded)).await
 }
 
 /// Revalide le document puis recalcule score et propositions après une édition manuelle.

@@ -273,8 +273,11 @@ Réutiliser la recette du voisin plutôt que d’en inventer une.
   tokens rapportés. La barre d'état dit « génération en cours · étape 2 / 4 ».
 - « Arrêter » (`⌘.`) ouvre « Interrompre la génération ? » (`StopGenerationDialog`) :
   l'étape en cours, le temps écoulé, « Laisser finir » ou « Interrompre ».
-- Aucun réglage que le backend ne sait pas honorer n'est affiché (pas de sections à
-  exclure pour le CV, pas d'arguments autorisés pour la lettre).
+- « Ce que l'IA peut utiliser » (CV) et « Arguments autorisés » (lettre) — `SectionToggles` :
+  une ligne par section du profil avec son nombre d'éléments et un interrupteur ; une section
+  vide ne se règle pas ; l'en-tête compte les sections autorisées (« 5 / 6 »). Le CV a un
+  ton (Sobre, Professionnel, Direct) mais pas de longueur : il tient sur une page. Aucun
+  réglage que le backend ne sait pas honorer n'est affiché (pas de prétentions salariales).
 - Analyse de CV (`screens/09`) : même surcouche sans colonne droite. À gauche, le CV (PDF)
   « face à » l'offre, puis le score calculé par Candilog et son détail ; au centre, chaque
   exigence de l'offre (`score.evaluations`) — couverte, partielle, absente — avec la preuve

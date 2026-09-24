@@ -9,7 +9,7 @@ import type {
   ResumeWorkspace,
   ResumeDocument,
 } from "@/shared/types/generated/documents";
-import type { ResumeGeneration } from "@/shared/types/generated/ai";
+import type { ProfileSection, ResumeGeneration } from "@/shared/types/generated/ai";
 import type { Page } from "@/shared/types/page";
 
 export type * from "@/shared/types/generated/documents";
@@ -23,8 +23,9 @@ export const documentsService = {
   getResume: (id: string) => ipc<ResumeVersion>("documents_resume_get", { id }),
   saveResume: (input: NewResume) => ipc<ResumeVersion>("documents_resume_save", { input }),
   deleteResume: (id: string) => ipc<void>("documents_resume_delete", { id }),
-  prepareResume: (generation: ResumeGeneration) =>
-    ipc<ResumeWorkspace>("documents_resume_prepare", { generation }),
+  /** Les sections écartées de la génération restent hors du document et de sa bibliothèque. */
+  prepareResume: (generation: ResumeGeneration, excluded_sections: readonly ProfileSection[] = []) =>
+    ipc<ResumeWorkspace>("documents_resume_prepare", { generation, excluded_sections }),
   recalculateResume: (workspace: ResumeWorkspace) =>
     ipc<ResumeWorkspace>("documents_resume_recalculate", { workspace }),
   applyResumeProposal: (workspace: ResumeWorkspace, proposal_id: string) =>

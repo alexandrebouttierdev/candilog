@@ -9,6 +9,7 @@ mod models;
 mod normalization;
 mod profile_dates;
 mod profile_grounding;
+mod profile_sections;
 mod scoring;
 mod system_resources;
 mod user_benchmark;
@@ -27,6 +28,7 @@ pub use profile_grounding::{
     completer_formations_manquantes, completer_identite_noms, ground_imported_profile,
     ground_imported_profile_keep_free_text,
 };
+pub use profile_sections::{profile_without, ProfileSection};
 pub use scoring::{
     ground_ats_recommendations, ground_content_recommendations, ground_extracted_listing,
     ground_generated_resume, ground_imported_resume, profile_content_catalog, profile_score,

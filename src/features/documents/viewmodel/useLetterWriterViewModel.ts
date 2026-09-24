@@ -14,6 +14,8 @@ import type { CoverLetter } from "@/shared/types/generated/documents";
 import { applyLetterCorrection, letterCorrectionFields } from "../model/letterMarkup";
 import { PROFILE_KEY, profileService } from "@/features/profile";
 import type { Identity } from "@/shared/types/generated/profile";
+import type { ProfileSection } from "@/shared/types/generated/ai";
+import { LETTER_ARGUMENTS, sectionOptions, toggleSection } from "../model/profileSections";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 import { exportCoverLetterPdf } from "./documentExport";
@@ -53,6 +55,7 @@ export function useLetterWriterViewModel(initial: CoverLetter | null) {
   const [briefOpen, setBriefOpen] = useState(false);
   const [abandonOpen, setAbandonOpen] = useState(false);
   const [overflow, setOverflow] = useState(false);
+  const [excludedSections, setExcludedSections] = useState<ProfileSection[]>([]);
   const progress = useAiProgress(stopping ? null : (operation?.id ?? null));
   const timer = useAiTimer(operation !== null && !stopping);
   const inIteration = exchanges.length > 0 && !briefOpen;
@@ -103,6 +106,7 @@ export function useLetterWriterViewModel(initial: CoverLetter | null) {
         previous_cover_letter:
           nextInstruction !== null && output.trim().length > 0 ? output : null,
         instruction: suite.length > 0 ? suite.join(" ; ") : null,
+        excluded_sections: excludedSections,
       });
       if (!isCurrent(id)) return;
       timer.stop();
@@ -241,6 +245,10 @@ export function useLetterWriterViewModel(initial: CoverLetter | null) {
     elapsedMs: timer.elapsedMs,
     inIteration,
     identity,
+    /** Les arguments proposés, comptés sur le profil courant. */
+    argumentOptions: sectionOptions(profile.data?.profile ?? null, LETTER_ARGUMENTS),
+    excludedSections,
+    toggleSection: (section: ProfileSection) => setExcludedSections((current) => toggleSection(current, section)),
     saveIdentity: async (next: Identity): Promise<void> => {
       await saveIdentity.mutateAsync(next);
     },

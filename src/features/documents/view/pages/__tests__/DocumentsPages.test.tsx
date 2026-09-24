@@ -13,6 +13,8 @@ import { ResumeGeneratorPage } from "../ResumeGeneratorPage";
 import { ResumeAnalysisPage } from "../ResumeAnalysisPage";
 import { LetterWriterPage } from "../LettersPages";
 import { AppError } from "@/shared/types/app-error";
+import { profileService } from "@/features/profile";
+import type { ProfilePayload } from "@/shared/types/generated/profile";
 import {
   aiService,
   type AiExecution,
@@ -726,5 +728,83 @@ describe("arrêt d'une génération", () => {
     expect(cancel).not.toHaveBeenCalled();
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Arrêter" })).toBeEnabled();
+  });
+});
+
+describe("ce que l'IA peut utiliser", () => {
+  function profil(): ProfilePayload {
+    const experience = { title: "Technicien", company: "Ker", location: null, start_date: "2020-01", end_date: null, current: true, description: null };
+    return {
+      profile: {
+        identity: {
+          first_name: "Jean",
+          name: "Rivière",
+          email: "jean@exemple.fr",
+          phone: null,
+          address: null,
+          city: null,
+          title: null,
+          resume: "Chargé d'exploitation",
+          birth_date: null,
+          age: null,
+          availability: null,
+          desired_contracts: null,
+          linkedin: null,
+          github: null,
+          website: null,
+        },
+        photo: null,
+        experiences: [experience, experience],
+        skills: [{ name: "Linux", description: null }],
+        education: [],
+        languages: [],
+        projects: [],
+        certifications: [],
+        interests: [],
+      },
+      completion: 60,
+      incomplete_sections: [],
+      updated_at: null,
+    };
+  }
+
+  it("retire du CV les sections écartées et transmet le ton choisi", async () => {
+    vi.spyOn(profileService, "load").mockResolvedValue(profil());
+    const generation = {
+      resume: { resume: "", experiences: [], skills: [], education: [] },
+      analysis: { recap: "", recommendations: [], content_recommendations: [] },
+      job_offer: emptyJobOffer("Technicien"),
+      profile_score: emptyMatchScore(60),
+      recommendation_error: null,
+    };
+    const generate = vi.spyOn(aiService, "generateResume").mockResolvedValue(aiExecution(generation));
+    const prepare = vi.spyOn(documentsService, "prepareResume").mockResolvedValue(workspaceFixture());
+    render(<ResumeGeneratorPage />, { wrapper });
+    await choisirTexteColle();
+
+    // Une section vide ne se règle pas : il n'y a rien à retirer.
+    expect(await screen.findByRole("switch", { name: "Certifications" })).toBeDisabled();
+    await waitFor(() => expect(screen.getByRole("switch", { name: "Compétences" })).toBeEnabled());
+    await userEvent.click(screen.getByRole("switch", { name: "Compétences" }));
+    await userEvent.click(screen.getByRole("radio", { name: "Direct" }));
+    await userEvent.type(screen.getByLabelText(/Texte de l’offre/), "Une offre");
+    await userEvent.click(screen.getByRole("button", { name: /^Générer/ }));
+
+    await waitFor(() => expect(prepare).toHaveBeenCalledWith(generation, ["skills"]));
+    expect(generate).toHaveBeenCalledWith(expect.objectContaining({ excluded_sections: ["skills"], tone: "direct" }));
+  });
+
+  it("n'autorise à la lettre que les arguments cochés", async () => {
+    vi.spyOn(profileService, "load").mockResolvedValue(profil());
+    const generate = vi.spyOn(aiService, "generateCoverLetter").mockResolvedValue(aiExecution("Madame, Monsieur,"));
+    render(<LetterWriterPage />, { wrapper });
+    await choisirTexteColle();
+
+    await waitFor(() => expect(screen.getByRole("switch", { name: "Présentation" })).toBeEnabled());
+    await userEvent.click(screen.getByRole("switch", { name: "Présentation" }));
+    await userEvent.type(screen.getByLabelText("Contexte ou offre"), "Une offre");
+    await userEvent.click(screen.getByRole("button", { name: /Rédiger la lettre/ }));
+
+    await waitFor(() => expect(generate).toHaveBeenCalledWith(expect.objectContaining({ excluded_sections: ["summary"] })));
   });
 });

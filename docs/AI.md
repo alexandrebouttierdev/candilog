@@ -186,6 +186,19 @@ recommandations de contenu, elles, ne transportent que des identifiants du catal
 profil, une justification et une pertinence qualitative. `ground_content_recommendations`
 écarte les identifiants inconnus et les doublons avant l'éditeur.
 
+**Sections exclues.** `ResumeGenerationRequest.excluded_sections` et
+`CoverLetterRequest.excluded_sections` (`ProfileSection` : présentation, disponibilité,
+expériences, formations, compétences, langues, projets, certifications, centres d'intérêt)
+retirent ces sections du profil (`profile_without`) **avant** le premier appel au modèle :
+elles ne quittent pas la machine. Pour le CV, `documents_resume_prepare` reçoit la même liste,
+si bien qu'elles ne reviennent ni dans le document ni dans sa bibliothèque de contenu. Un CV
+sans expériences, formations, compétences ni projets, ou une lettre sans aucun fait
+autorisé, est refusé avant tout appel. Le CV a un ton (`ResumeTone` : sobre, professionnel,
+direct), ajouté à la consigne de rédaction. Il n'a pas de choix de longueur : le document et
+son export tiennent sur une page. La disponibilité de l'identité est un fait du catalogue
+de la lettre (`GroundedFactKind::Availability`) ; les prétentions salariales n'existent pas
+dans le profil.
+
 La lettre de motivation est **assemblée**, pas rédigée librement : le modèle ne renvoie
 qu'une sélection d'identifiants du catalogue de faits et des mots-clés du brief
 (`domain/cover_letter.rs`). Les invites système détaillent la priorité des faits
