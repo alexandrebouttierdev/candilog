@@ -1,12 +1,12 @@
+import { useState } from "react";
 import { useLocation } from "react-router-dom";
-import { AiStopButton } from "@/features/ai";
 import { Button, ConfirmDialog, ErrorBanner } from "@/shared/ui";
 import { cn } from "@/shared/lib/cn";
-import { formatElapsed } from "@/shared/lib/duration";
 import { useLetterWriterViewModel } from "../../viewmodel/useLetterWriterViewModel";
 import { useStepLog } from "../../viewmodel/useStepLog";
-import { AiProgress } from "../components/DocumentUi";
-import { GeneratorFrame, PaneSection, StepList } from "../components/GeneratorFrame";
+import { EmptySheet } from "../components/EmptySheet";
+import { StopGenerationDialog } from "../components/StopGenerationDialog";
+import { GeneratorFrame, PaneSection, RunMeter, StepList } from "../components/GeneratorFrame";
 import { OfferSource } from "../components/OfferSource";
 import { LetterEditor } from "../components/LetterEditor";
 import type { LetterPaperField } from "../components/LetterPaper";
@@ -82,6 +82,12 @@ export function LetterWriterPage() {
   const hasLetter = vm.output.trim() !== "";
   const corrections = vm.exchanges.filter((exchange: Echange) => exchange.auteur === "vous").length;
   const canSave = hasLetter && !vm.isSaving && !vm.overflow && !running;
+  // Avant toute rédaction, une feuille neutre (`screens/16`) ; l'éditeur apparaît avec la
+  // lettre, ou tout de suite si l'on préfère l'écrire soi-même.
+  const [manual, setManual] = useState(false);
+  const [askStop, setAskStop] = useState(false);
+  const currentStep = steps.findIndex((step) => step.state === "running") + 1;
+  const showEditor = hasLetter || manual;
 
   const sendInstruction = (instruction: string) => {
     const value = instruction.trim();
@@ -93,7 +99,9 @@ export function LetterWriterPage() {
       title="Générer une lettre"
       actions={
         running ? (
-          <AiStopButton stopping={vm.stopping} onStop={() => void vm.stop()} />
+          <Button size="bar" shortcut="mod+." disabled={vm.stopping} onClick={() => setAskStop(true)}>
+            {vm.stopping ? "Arrêt…" : "Arrêter"}
+          </Button>
         ) : hasLetter ? (
           <>
             <Button variant="ghost" size="bar" onClick={() => vm.setAbandonOpen(true)}>
@@ -163,8 +171,15 @@ export function LetterWriterPage() {
       }
       right={
         <>
-          <PaneSection title={running || !hasLetter ? "Étapes" : "Terminé"}>
+          <PaneSection title={running ? "En cours" : hasLetter ? "Terminé" : "Étapes"}>
             <StepList steps={steps} />
+            {running ? <RunMeter steps={steps} elapsedMs={vm.elapsedMs} tokens={vm.progress?.tokens_used ?? null} /> : null}
+            {!running && !hasLetter ? (
+              <p className="mt-5 text-small leading-[1.55] text-tx-4">
+                Candilog rédige à partir de l'offre et de votre profil, puis relit le français. Vous corrigez ensuite
+                en quelques mots — rien n'est envoyé à l'entreprise.
+              </p>
+            ) : null}
           </PaneSection>
           {vm.exchanges.length > 0 ? (
             <PaneSection title="Historique" aside={`${corrections} correction${corrections > 1 ? "s" : ""}`}>
@@ -187,23 +202,38 @@ export function LetterWriterPage() {
       }
       status={
         running
-          ? `${vm.progress?.step ?? "Préparation"} · ${formatElapsed(vm.elapsedMs)}`
+          ? `rédaction en cours · étape ${Math.max(currentStep, 1)} / ${steps.length}`
           : hasLetter
             ? `lettre prête · ${corrections} correction${corrections > 1 ? "s" : ""}${vm.overflow ? " · trop longue pour une page" : ""}`
             : "renseignez l'offre, puis rédigez"
       }
-      keys={hasLetter ? [{ label: "Enregistrer", shortcut: "mod+s" }] : [{ label: "Rédiger", shortcut: "mod+enter" }]}
+      keys={
+        running
+          ? [{ label: "Arrêter", shortcut: "mod+." }]
+          : hasLetter
+            ? [{ label: "Enregistrer", shortcut: "mod+s" }]
+            : [{ label: "Rédiger", shortcut: "mod+enter" }]
+      }
+      {...(running ? { onStop: () => setAskStop(true) } : {})}
       closeDisabled={running}
       onSave={() => {
         if (canSave) vm.save();
       }}
       {...(!hasLetter && !running ? { onSubmit: () => void vm.run(null) } : {})}
     >
-      {running && !vm.stopping ? (
-        <div className="px-[26px] pt-4">
-          <AiProgress progress={vm.progress} elapsedMs={vm.elapsedMs} />
+      {showEditor ? null : (
+        <div className="flex min-h-0 flex-1 flex-col overflow-auto">
+          <EmptySheet busy={running} />
+          {running ? null : (
+            <p className="-mt-2 pb-5 text-center">
+              <Button variant="link" onClick={() => setManual(true)}>
+                Écrire la lettre moi-même
+              </Button>
+            </p>
+          )}
         </div>
-      ) : null}
+      )}
+      {showEditor ? (
       <div className="min-h-0 flex-1 overflow-auto p-4">
         <LetterEditor
           value={vm.output}
@@ -228,6 +258,7 @@ export function LetterWriterPage() {
           onOverflowChange={vm.setOverflow}
         />
       </div>
+      ) : null}
       {hasLetter ? (
         <section aria-label="Corrections" className="flex-none border-t border-bd-soft bg-app px-4 pt-2.5 pb-3">
           <div className="mb-1.5 flex items-baseline gap-2">
@@ -271,6 +302,16 @@ export function LetterWriterPage() {
           </div>
         </section>
       ) : null}
+      <StopGenerationDialog
+        open={askStop && running && !vm.stopping}
+        step={vm.progress?.step ?? null}
+        elapsedMs={vm.elapsedMs}
+        onKeepGoing={() => setAskStop(false)}
+        onStop={() => {
+          setAskStop(false);
+          void vm.stop();
+        }}
+      />
       <ConfirmDialog
         open={vm.abandonOpen}
         title="Abandonner cette lettre ?"
@@ -278,7 +319,10 @@ export function LetterWriterPage() {
         note="Le brief, lui, est conservé : vous pourrez relancer une rédaction."
         confirmLabel="Abandonner"
         onCancel={() => vm.setAbandonOpen(false)}
-        onConfirm={vm.abandon}
+        onConfirm={() => {
+          setManual(false);
+          vm.abandon();
+        }}
       />
     </GeneratorFrame>
   );

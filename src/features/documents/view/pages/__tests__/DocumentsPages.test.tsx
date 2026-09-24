@@ -79,6 +79,14 @@ beforeEach(() => {
   useUiStore.setState({ toasts: [] });
 });
 
+/**
+ * Les générateurs s'ouvrent sur les candidatures, comme la maquette : une offre saisie à la
+ * main se colle dans l'onglet « Texte collé ».
+ */
+async function choisirTexteColle() {
+  await userEvent.click(screen.getByRole("tab", { name: "Texte collé" }));
+}
+
 describe("bibliothèque de documents", () => {
   it("recherche et charge la suite côté backend", async () => {
     sansLettres();
@@ -153,6 +161,8 @@ describe("analyse explicite d'un CV sélectionné", () => {
     });
 
     render(<ResumeAnalysisPage />, { wrapper });
+
+    await choisirTexteColle();
     expect(screen.getByRole("dialog", { name: "Analyse face à l’offre" })).toBeInTheDocument();
     expect(screen.queryByText("Lecture locale")).not.toBeInTheDocument();
     await userEvent.type(screen.getByLabelText(/Offre ciblée/), "Une offre");
@@ -194,6 +204,8 @@ describe("analyse explicite d'un CV sélectionné", () => {
     );
 
     render(<ResumeAnalysisPage />, { wrapper });
+
+    await choisirTexteColle();
     await userEvent.type(screen.getByLabelText(/Offre ciblée/), "Une offre");
     await userEvent.click(screen.getByRole("button", { name: "Choisir un fichier" }));
     await userEvent.click(screen.getByRole("button", { name: "Analyser le CV" }));
@@ -204,6 +216,8 @@ describe("analyse explicite d'un CV sélectionné", () => {
     expect(screen.getByRole("button", { name: "Arrêter" })).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Arrêter" }));
+    // Arrêter demande confirmation : le document en cours serait perdu.
+    await userEvent.click(within(screen.getByRole("alertdialog", { name: "Interrompre la génération ?" })).getByRole("button", { name: "Interrompre" }));
     expect(cancel).toHaveBeenCalledOnce();
     expect(screen.getByRole("button", { name: "Arrêt…" })).toBeDisabled();
     expect(screen.queryByText("Préparation du traitement…")).not.toBeInTheDocument();
@@ -237,6 +251,8 @@ describe("analyse explicite d'un CV sélectionné", () => {
     );
 
     render(<ResumeAnalysisPage />, { wrapper });
+
+    await choisirTexteColle();
     await userEvent.type(screen.getByLabelText(/Offre ciblée/), "Une offre");
     await userEvent.click(screen.getByRole("button", { name: "Choisir un fichier" }));
     await userEvent.click(screen.getByRole("button", { name: "Analyser le CV" }));
@@ -295,6 +311,8 @@ describe("échecs d'enregistrement", () => {
 
     render(<LetterWriterPage />, { wrapper });
 
+    await choisirTexteColle();
+
     const contexte = screen.getByLabelText("Contexte ou offre");
     await userEvent.type(contexte, "Une offre");
     await userEvent.click(screen.getByRole("button", { name: /Rédiger la lettre/ }));
@@ -317,6 +335,8 @@ describe("collage d'une offre depuis le presse-papiers", () => {
     );
 
     render(<LetterWriterPage />, { wrapper });
+
+    await choisirTexteColle();
     await userEvent.click(screen.getByRole("button", { name: "Coller" }));
 
     await waitFor(() =>
@@ -332,6 +352,8 @@ describe("collage d'une offre depuis le presse-papiers", () => {
     );
 
     render(<LetterWriterPage />, { wrapper });
+
+    await choisirTexteColle();
     await userEvent.click(screen.getByRole("button", { name: "Coller" }));
 
     await waitFor(() =>
@@ -359,6 +381,7 @@ describe("retouche de la lettre sur la page", () => {
       created_at: "2026-08-30T00:00:00Z",
     });
     render(<LetterWriterPage />, { wrapper });
+    await choisirTexteColle();
     await userEvent.type(screen.getByLabelText("Contexte ou offre"), "Une offre");
     await userEvent.click(screen.getByRole("button", { name: /Rédiger la lettre/ }));
     const corps = await screen.findByLabelText("Contenu de la lettre");
@@ -419,6 +442,7 @@ describe("itérations sur la lettre", () => {
   async function redigerUneLettre(contenu = "Madame, Monsieur,") {
     vi.spyOn(aiService, "generateCoverLetter").mockResolvedValue(aiExecution(contenu));
     render(<LetterWriterPage />, { wrapper });
+    await choisirTexteColle();
     await userEvent.type(screen.getByLabelText("Contexte ou offre"), "Une offre");
     await userEvent.click(screen.getByRole("button", { name: /Rédiger la lettre/ }));
   }
@@ -444,10 +468,13 @@ describe("itérations sur la lettre", () => {
       new Promise((resolve) => { resolveCancel = resolve; }),
     );
     render(<LetterWriterPage />, { wrapper });
+    await choisirTexteColle();
     await userEvent.type(screen.getByLabelText("Contexte ou offre"), "Une offre");
     await userEvent.click(screen.getByRole("button", { name: /Rédiger la lettre/ }));
 
     await userEvent.click(screen.getByRole("button", { name: "Arrêter" }));
+    // Arrêter demande confirmation : le document en cours serait perdu.
+    await userEvent.click(within(screen.getByRole("alertdialog", { name: "Interrompre la génération ?" })).getByRole("button", { name: "Interrompre" }));
     expect(cancel).toHaveBeenCalledOnce();
     expect(screen.getByRole("button", { name: "Arrêt…" })).toBeDisabled();
     expect(screen.queryByText("Préparation du traitement…")).not.toBeInTheDocument();
@@ -623,6 +650,8 @@ describe("décisions ATS et confirmation profil dans le générateur de CV", () 
     vi.spyOn(documentsService, "prepareResume").mockResolvedValue(workspace);
 
     render(<ResumeGeneratorPage />, { wrapper });
+
+    await choisirTexteColle();
     await userEvent.type(screen.getByLabelText(/Texte de l’offre/), "Une offre");
     await userEvent.click(screen.getByRole("button", { name: /^Générer/ }));
 
@@ -645,6 +674,8 @@ describe("décisions ATS et confirmation profil dans le générateur de CV", () 
     vi.spyOn(documentsService, "prepareResume").mockResolvedValue(missingSkillWorkspace());
 
     render(<ResumeGeneratorPage />, { wrapper });
+
+    await choisirTexteColle();
     await userEvent.type(screen.getByLabelText(/Texte de l’offre/), "Une offre");
     await userEvent.click(screen.getByRole("button", { name: /^Générer/ }));
 
@@ -657,5 +688,43 @@ describe("décisions ATS et confirmation profil dans le générateur de CV", () 
 
     await userEvent.click(screen.getByRole("button", { name: /Revenir au CV/ }));
     expect(screen.queryByLabelText(/Texte de l’offre/)).not.toBeInTheDocument();
+  });
+});
+
+describe("feuille de la lettre avant rédaction", () => {
+  it("montre une feuille neutre, puis l'éditeur si l'on écrit soi-même", async () => {
+    render(<LetterWriterPage />, { wrapper });
+    await choisirTexteColle();
+
+    expect(screen.queryByLabelText("Contenu de la lettre")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Écrire la lettre moi-même" }));
+
+    expect(screen.getByLabelText("Contenu de la lettre")).toBeInTheDocument();
+  });
+});
+
+describe("offre visée", () => {
+  it("s'ouvre sur les candidatures, comme la maquette", () => {
+    render(<ResumeGeneratorPage />, { wrapper });
+
+    expect(screen.getByRole("tab", { name: "Une candidature" })).toHaveAttribute("aria-selected", "true");
+  });
+});
+
+describe("arrêt d'une génération", () => {
+  it("laisse finir la rédaction quand on renonce à l'interrompre", async () => {
+    vi.spyOn(aiService, "generateCoverLetter").mockReturnValue(new Promise(() => undefined));
+    const cancel = vi.spyOn(aiService, "cancel");
+    render(<LetterWriterPage />, { wrapper });
+    await choisirTexteColle();
+    await userEvent.type(screen.getByLabelText("Contexte ou offre"), "Une offre");
+    await userEvent.click(screen.getByRole("button", { name: /Rédiger la lettre/ }));
+
+    await userEvent.click(screen.getByRole("button", { name: "Arrêter" }));
+    await userEvent.click(screen.getByRole("button", { name: "Laisser finir" }));
+
+    expect(cancel).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Arrêter" })).toBeEnabled();
   });
 });

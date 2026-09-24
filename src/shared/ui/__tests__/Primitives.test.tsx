@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { StatusGlyph } from "../StatusGlyph";
 import { Switch } from "../Switch";
+import { RunMeter, StepList } from "../WorkSurface";
 import { avatarInitials, avatarTone } from "../Avatar";
 
 describe("primitives v2", () => {
@@ -30,5 +31,40 @@ describe("primitives v2", () => {
     expect(avatarInitials("Novéa Services")).toBe("NS");
     expect(avatarInitials("Linaïa")).toBe("LI");
     expect(avatarTone("Novéa Services")).toBe(avatarTone("Novéa Services"));
+  });
+});
+
+describe("avancement d'un traitement", () => {
+  it("affiche le temps écoulé et les tokens rapportés", () => {
+    render(
+      <RunMeter
+        steps={[
+          { label: "Lecture de l'offre", state: "done", ms: 2100 },
+          { label: "Rédaction", state: "running", ms: null },
+        ]}
+        elapsedMs={6_000}
+        tokens={1272}
+      />,
+    );
+
+    const avancement = screen.getByRole("status", { name: "Avancement" });
+    expect(avancement).toHaveTextContent("écoulé 00:06");
+    expect(avancement).toHaveTextContent(/1\s272 tokens/);
+  });
+});
+
+describe("déroulé des étapes", () => {
+  it("affiche les durées en secondes entières", () => {
+    render(
+      <StepList
+        steps={[
+          { label: "Rédaction", state: "done", ms: 3000 },
+          { label: "Relecture", state: "done", ms: 400 },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText("3 s")).toBeInTheDocument();
+    expect(screen.getByText("< 1 s")).toBeInTheDocument();
   });
 });

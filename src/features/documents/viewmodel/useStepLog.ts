@@ -9,8 +9,8 @@ interface Entry {
 }
 
 /**
- * Déroulé d'une génération pour la colonne « Étapes » : les étapes prévues, puis celles
- * réellement traversées avec leur durée mesurée. La durée vient du chronomètre de
+ * Déroulé d'une génération pour la colonne « Étapes » : les étapes prévues, dans leur
+ * ordre, avec la durée mesurée de celles réellement traversées. La durée vient du chronomètre de
  * l'opération (`elapsedMs`) relevé à chaque changement d'étape, jamais d'une estimation.
  *
  * Ajusté pendant le rendu, sans effet : l'état ne fait que suivre les props reçues.
@@ -41,15 +41,22 @@ export function useStepLog(
     ]);
   }
 
-  const seen = new Set(entries.map((entry) => entry.label));
+  const toStep = (entry: Entry): GeneratorStep => ({
+    label: entry.label,
+    state: entry.endMs === null ? "running" : "done",
+    ms: entry.endMs === null ? null : Math.max(0, entry.endMs - entry.startMs),
+  });
+  const byLabel = new Map(entries.map((entry) => [entry.label, entry]));
+  // Une étape prévue dont l'événement a été manqué (émis avant l'écoute) est forcément
+  // passée si une étape suivante a été reçue : elle est faite, sans durée inventée.
+  const reached = Math.max(-1, ...planned.map((label, index) => (byLabel.has(label) ? index : -1)));
   return [
-    ...entries.map(
-      (entry): GeneratorStep => ({
-        label: entry.label,
-        state: entry.endMs === null ? "running" : "done",
-        ms: entry.endMs === null ? null : Math.max(0, entry.endMs - entry.startMs),
-      }),
-    ),
-    ...planned.filter((label) => !seen.has(label)).map((label): GeneratorStep => ({ label, state: "pending", ms: null })),
+    ...planned.map((label, index): GeneratorStep => {
+      const entry = byLabel.get(label);
+      if (entry) return toStep(entry);
+      return { label, state: index < reached ? "done" : "pending", ms: null };
+    }),
+    // Étapes annoncées par le backend hors du plan : à la suite, dans l'ordre reçu.
+    ...entries.filter((entry) => !planned.includes(entry.label)).map(toStep),
   ];
 }

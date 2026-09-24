@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useDismissable } from "@/shared/hooks/useDismissable";
 import { Kbd } from "./Kbd";
 import { cn } from "@/shared/lib/cn";
+import { formatElapsed, formatTokens } from "@/shared/lib/duration";
 
 /**
  * Surcouche de travail plein écran (générateurs, analyse, import de CV — `screens/15` à
@@ -22,6 +23,7 @@ export function WorkSurface({
   closeDisabled = false,
   onSubmit,
   onSave,
+  onStop,
 }: {
   /** Racine du fil d'Ariane : l'écran d'où la surcouche a été ouverte. */
   crumbRoot: string;
@@ -42,6 +44,8 @@ export function WorkSurface({
   onSubmit?: () => void;
   /** `⌘S` : enregistrer le document. */
   onSave?: () => void;
+  /** `⌘.` : demander l'arrêt du traitement en cours. */
+  onStop?: () => void;
 }) {
   const close = () => {
     if (!closeDisabled) onClose();
@@ -63,6 +67,10 @@ export function WorkSurface({
         if (onSave && (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
           event.preventDefault();
           onSave();
+        }
+        if (onStop && (event.metaKey || event.ctrlKey) && event.key === ".") {
+          event.preventDefault();
+          onStop();
         }
       }}
       className="fixed inset-0 z-50 flex flex-col bg-app"
@@ -148,6 +156,14 @@ export interface GeneratorStep {
   readonly ms: number | null;
 }
 
+/**
+ * Durée d'une étape en secondes entières : le chronomètre des traitements avance par
+ * seconde, un dixième affiché serait une précision inventée.
+ */
+function stepDuration(ms: number): string {
+  return ms < 1000 ? "< 1 s" : `${Math.round(ms / 1000)} s`;
+}
+
 export function StepList({ steps }: { steps: readonly GeneratorStep[] }) {
   return (
     <ol className="flex flex-col gap-2.5">
@@ -164,7 +180,7 @@ export function StepList({ steps }: { steps: readonly GeneratorStep[] }) {
           />
           <span className={step.state === "pending" ? "text-tx-4" : "text-tx-2"}>{step.label}</span>
           {step.ms !== null ? (
-            <span className="ml-auto font-mono text-caps text-tx-5">{(step.ms / 1000).toFixed(1).replace(".", ",")} s</span>
+            <span className="ml-auto font-mono text-caps text-tx-5">{stepDuration(step.ms)}</span>
           ) : null}
           <span className="sr-only">
             {step.state === "done" ? "terminée" : step.state === "running" ? "en cours" : "à venir"}
@@ -172,5 +188,34 @@ export function StepList({ steps }: { steps: readonly GeneratorStep[] }) {
         </li>
       ))}
     </ol>
+  );
+}
+
+/**
+ * Avancement d'un traitement, sous ses étapes (`states/generator-running.png`) : la barre
+ * suit les étapes réellement terminées, jamais un pourcentage estimé ; dessous, le temps
+ * écoulé et les tokens quand le fournisseur les rapporte.
+ */
+export function RunMeter({
+  steps,
+  elapsedMs,
+  tokens,
+}: {
+  steps: readonly GeneratorStep[];
+  elapsedMs: number;
+  tokens: number | null;
+}) {
+  const done = steps.filter((step) => step.state === "done").length;
+  const share = steps.length > 0 ? done / steps.length : 0;
+  return (
+    <div role="status" aria-label="Avancement" className="mt-4">
+      <div aria-hidden className="h-[3px] overflow-hidden rounded-r2 bg-chip">
+        <div className="h-full rounded-r2 bg-ac transition-[width]" style={{ width: `${Math.max(share * 100, 4)}%` }} />
+      </div>
+      <p className="mt-2 flex justify-between gap-2 font-mono text-caps text-tx-5">
+        <span>écoulé {formatElapsed(elapsedMs)}</span>
+        {tokens !== null ? <span>{formatTokens(tokens)} tokens</span> : null}
+      </p>
+    </div>
   );
 }

@@ -31,7 +31,9 @@ export function OfferSource({
   /** Candidature choisie : la lettre en reprend l'entreprise et le poste. */
   onPick?: (application: Application) => void;
 }) {
-  const [mode, setMode] = useState<"application" | "text">("text");
+  // Comme la maquette, on part des candidatures ; une offre déjà fournie (reprise depuis
+  // une fiche ou une version précédente) s'ouvre sur son texte.
+  const [mode, setMode] = useState<"application" | "text">(() => (value.trim() === "" ? "application" : "text"));
   const [picked, setPicked] = useState<string | null>(null);
   const candidates = useOfferCandidates(mode === "application");
 

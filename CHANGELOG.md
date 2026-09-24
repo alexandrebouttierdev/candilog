@@ -67,6 +67,12 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
   le moteur puis le modèle (débit, temps restant) et vérifier par une phrase de test dont la
   durée de réponse est affichée. Les modèles installés s'affichent en lignes dans
   Intelligence artificielle.
+- Refonte v2 — Générateurs : colonne « En cours » avec barre d'avancement, temps écoulé et
+  tokens ; « Arrêter » (`⌘.`) demande confirmation et laisse finir si l'on renonce ;
+  l'offre visée s'ouvre sur les candidatures ; la lettre part d'une feuille neutre, avec
+  « Écrire la lettre moi-même ».
+- Générateurs : la première étape n'est plus perdue quand le backend l'annonce avant que
+  l'écran l'écoute, et les étapes restent dans leur ordre.
 - Refonte v2 — Analyse de CV face à une offre : chaque exigence de l'offre est listée,
   couverte, partielle ou absente, avec la preuve trouvée dans le CV ; score et détail à
   gauche.

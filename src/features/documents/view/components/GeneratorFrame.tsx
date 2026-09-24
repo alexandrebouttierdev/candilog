@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { PATHS } from "@/shared/lib/paths";
 import { WorkSurface } from "@/shared/ui";
 
-export { PaneSection, StepList } from "@/shared/ui";
+export { PaneSection, RunMeter, StepList } from "@/shared/ui";
 export type { GeneratorStep } from "@/shared/ui";
 
 /**

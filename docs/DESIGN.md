@@ -263,10 +263,16 @@ Réutiliser la recette du voisin plutôt que d’en inventer une.
   (260 px), feuille A4 sur le bureau `bg-canvas`, déroulé (270 px, dès 1060 px) — et barre
   d'état. `⌘⏎` génère, `⌘S` enregistre : la surcouche porte ses propres raccourcis, ceux
   d'écran se taisant sous une surface.
-- « Offre visée » (`OfferSource`) : une candidature ouverte du suivi — son texte est
-  prérempli avec ce que Candilog en sait, sans rien inventer — ou le texte collé.
-- « Étapes » : les étapes annoncées par le backend, avec la durée **mesurée** de chacune
-  (`useStepLog`), jamais estimée.
+- « Offre visée » (`OfferSource`) : s'ouvre sur les candidatures ouvertes du suivi — le
+  texte est prérempli avec ce que Candilog en sait, sans rien inventer — sauf si une offre
+  est déjà fournie ; sinon le texte collé.
+- « Étapes », puis « En cours » et « Terminé » : les étapes annoncées par le backend, dans
+  l'ordre prévu, avec la durée **mesurée** de chacune en secondes entières (`useStepLog`) ;
+  une étape dont l'annonce a été manquée mais qui est dépassée est faite, sans durée. Sous
+  les étapes pendant le traitement, `RunMeter` : barre des étapes terminées, temps écoulé,
+  tokens rapportés. La barre d'état dit « génération en cours · étape 2 / 4 ».
+- « Arrêter » (`⌘.`) ouvre « Interrompre la génération ? » (`StopGenerationDialog`) :
+  l'étape en cours, le temps écoulé, « Laisser finir » ou « Interrompre ».
 - Aucun réglage que le backend ne sait pas honorer n'est affiché (pas de sections à
   exclure pour le CV, pas d'arguments autorisés pour la lettre).
 - Analyse de CV (`screens/09`) : même surcouche sans colonne droite. À gauche, le CV (PDF)
@@ -278,7 +284,8 @@ Réutiliser la recette du voisin plutôt que d’en inventer une.
   gauche, phases au centre (choix du fichier, analyse, revue élément par élément éditable,
   bilan), « Importer les éléments sélectionnés » (`⌘S`) en haut. « Annuler » arrête aussi
   une analyse en cours ; rien n'est écrit avant validation.
-- Lettre : entreprise, poste, destinataire, ton et longueur restent visibles ; la barre
+- Lettre : avant rédaction, feuille neutre et lien « Écrire la lettre moi-même » qui ouvre
+  l'éditeur ; entreprise, poste, destinataire, ton et longueur restent visibles ; la barre
   « Corrections » sous la feuille envoie une consigne libre ou rapide (« Plus court »…), les
   consignes se cumulent, l'historique vit à droite.
 

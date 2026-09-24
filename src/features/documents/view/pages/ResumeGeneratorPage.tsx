@@ -4,43 +4,22 @@ import { formatElapsed, formatTokens } from "@/shared/lib/duration";
 import { useUiStore } from "@/shared/lib/ui-store";
 import type { ResumeWorkspace } from "@/shared/types/generated/documents";
 import { Button, ErrorBanner, FormField, TextInput } from "@/shared/ui";
-import { cn } from "@/shared/lib/cn";
 import { useResumeEditor } from "../../viewmodel/useResumeEditor";
 import { useResumeGeneratorViewModel } from "../../viewmodel/useResumeGeneratorViewModel";
-import { AiProgress, OverflowStatus, UndoRedoControls } from "../components/DocumentUi";
-import { GeneratorFrame, PaneSection, StepList } from "../components/GeneratorFrame";
+import { OverflowStatus, UndoRedoControls } from "../components/DocumentUi";
+import { EmptySheet } from "../components/EmptySheet";
+import { StopGenerationDialog } from "../components/StopGenerationDialog";
+import { GeneratorFrame, PaneSection, RunMeter, StepList } from "../components/GeneratorFrame";
 import { OfferSource } from "../components/OfferSource";
 import { useStepLog } from "../../viewmodel/useStepLog";
 import { ProfileSkillChoiceDialog } from "../components/ProfileSkillChoiceDialog";
 import { ResumeAtsPanel } from "../components/ResumeAtsPanel";
 import { ResumePaper } from "../components/ResumePaper";
 import { useProfilePhoto } from "@/features/profile";
-import { AiStopButton } from "@/features/ai";
 import { generationFromNavigation } from "./documentPageSupport";
 
 /** Étapes annoncées par le backend pendant la génération d'un CV. */
 const CV_STEPS = ["Analyse de l'offre", "Adaptation du CV", "Relecture du français", "Analyse ATS"] as const;
-
-/** Feuille vide aux proportions A4, en attendant le document. */
-function EmptySheet({ busy }: { busy: boolean }) {
-  return (
-    <div className="flex flex-1 justify-center p-[26px]">
-      <div
-        aria-hidden
-        className="flex aspect-[210/297] w-full max-w-[520px] flex-col gap-6 rounded-[2px] bg-paper px-[8%] pt-[7%] shadow-sheet"
-      >
-        {[0, 1, 2, 3, 4].map((block) => (
-          <div key={block} className="flex flex-col gap-2">
-            <span className={cn("h-2 w-1/4 rounded-r2 bg-chip", busy && "animate-pulse")} />
-            <span className={cn("h-1.5 w-full rounded-r2 bg-chip", busy && "animate-pulse")} />
-            <span className={cn("h-1.5 w-4/5 rounded-r2 bg-chip", busy && "animate-pulse")} />
-            <span className={cn("h-1.5 w-3/5 rounded-r2 bg-chip", busy && "animate-pulse")} />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 /**
  * Générateur de CV (`screens/15-generator-resume.png`) : surcouche plein écran, offre visée à
@@ -55,6 +34,10 @@ export function ResumeGeneratorPage() {
   const vm = useResumeGeneratorViewModel(initiale);
   const running = vm.operation !== null;
   const steps = useStepLog(CV_STEPS, vm.progress?.step ?? null, running, vm.elapsedMs);
+  const [askStop, setAskStop] = useState(false);
+  const requestStop = () => setAskStop(true);
+  const currentStep = steps.findIndex((step) => step.state === "running") + 1;
+  const runningStatus = `génération en cours · étape ${Math.max(currentStep, 1)} / ${steps.length}`;
 
   const offerPane = (
     <>
@@ -66,7 +49,9 @@ export function ResumeGeneratorPage() {
   );
 
   const generateButton = running ? (
-    <AiStopButton stopping={vm.stopping} onStop={() => void vm.stop()} />
+    <Button size="bar" shortcut="mod+." disabled={vm.stopping} onClick={requestStop}>
+      {vm.stopping ? "Arrêt…" : "Arrêter"}
+    </Button>
   ) : (
     <Button variant="primary" size="bar" shortcut="mod+enter" onClick={() => void vm.generate()}>
       {vm.workspace ? "Générer un nouveau CV" : "Générer"}
@@ -74,8 +59,9 @@ export function ResumeGeneratorPage() {
   );
 
   const stepsPane = (
-    <PaneSection title={running ? "Étapes" : vm.metrics ? "Terminé" : "Étapes"}>
+    <PaneSection title={running ? "En cours" : vm.metrics ? "Terminé" : "Étapes"}>
       <StepList steps={steps} />
+      {running ? <RunMeter steps={steps} elapsedMs={vm.elapsedMs} tokens={vm.progress?.tokens_used ?? null} /> : null}
       {!running && !vm.workspace ? (
         <p className="mt-5 text-small leading-[1.55] text-tx-4">
           Candilog lit l'offre, choisit les expériences les plus proches et rédige. Vous relisez tout avant
@@ -83,6 +69,19 @@ export function ResumeGeneratorPage() {
         </p>
       ) : null}
     </PaneSection>
+  );
+
+  const stopDialog = (
+    <StopGenerationDialog
+      open={askStop && running && !vm.stopping}
+      step={vm.progress?.step ?? null}
+      elapsedMs={vm.elapsedMs}
+      onKeepGoing={() => setAskStop(false)}
+      onStop={() => {
+        setAskStop(false);
+        void vm.stop();
+      }}
+    />
   );
 
   if (vm.workspace) {
@@ -102,6 +101,9 @@ export function ResumeGeneratorPage() {
         onGenerate={vm.briefOpen ? () => void vm.generate() : undefined}
         stepsPane={stepsPane}
         running={running}
+        runningStatus={runningStatus}
+        onStopRequest={running ? requestStop : undefined}
+        stopDialog={stopDialog}
         metrics={vm.operation === null ? vm.metrics : null}
       />
     );
@@ -115,21 +117,17 @@ export function ResumeGeneratorPage() {
       right={stepsPane}
       status={
         running
-          ? `${vm.progress?.step ?? "Préparation"} · ${formatElapsed(vm.elapsedMs)}`
+          ? runningStatus
           : vm.jobOffer.trim()
             ? "prêt · l'offre sera lue par le modèle de la tâche « Générer un CV ciblé »"
             : "collez une offre ou choisissez une candidature"
       }
-      keys={running ? [] : [{ label: "Générer", shortcut: "mod+enter" }]}
+      keys={running ? [{ label: "Arrêter", shortcut: "mod+." }] : [{ label: "Générer", shortcut: "mod+enter" }]}
       closeDisabled={running}
-      {...(running ? {} : { onSubmit: () => void vm.generate() })}
+      {...(running ? { onStop: requestStop } : { onSubmit: () => void vm.generate() })}
     >
-      {running ? (
-        <div className="px-[26px] pt-5">
-          <AiProgress progress={vm.progress} elapsedMs={vm.elapsedMs} />
-        </div>
-      ) : null}
       <EmptySheet busy={running} />
+      {stopDialog}
     </GeneratorFrame>
   );
 }
@@ -154,6 +152,9 @@ function ResumeEditorScreen({
   onGenerate,
   stepsPane,
   running,
+  runningStatus,
+  onStopRequest,
+  stopDialog,
   metrics,
 }: {
   initial: ResumeWorkspace;
@@ -169,6 +170,9 @@ function ResumeEditorScreen({
   onGenerate: (() => void) | undefined;
   stepsPane: ReactNode;
   running: boolean;
+  runningStatus: string;
+  onStopRequest: (() => void) | undefined;
+  stopDialog: ReactNode;
   metrics: { elapsed_ms: number; tokens_used: number | null } | null;
 }) {
   const notify = useUiStore((s) => s.notify);
@@ -251,6 +255,7 @@ function ResumeEditorScreen({
         </>
       }
       status={[
+        running ? runningStatus : null,
         metrics ? `terminé en ${formatElapsed(metrics.elapsed_ms)}` : null,
         metrics && metrics.tokens_used !== null ? `${formatTokens(metrics.tokens_used)} tokens` : null,
         `score ${score}/100`,
@@ -258,11 +263,13 @@ function ResumeEditorScreen({
       ]
         .filter(Boolean)
         .join(" · ")}
-      keys={[{ label: "Enregistrer", shortcut: "mod+s" }]}
+      keys={running ? [{ label: "Arrêter", shortcut: "mod+." }] : [{ label: "Enregistrer", shortcut: "mod+s" }]}
       closeDisabled={running}
       onSave={save}
       {...(onGenerate ? { onSubmit: onGenerate } : {})}
+      {...(onStopRequest ? { onStop: onStopRequest } : {})}
     >
+      {stopDialog}
       <div className="flex flex-none items-center gap-2 border-b border-bd-soft bg-app px-4 py-1.5">
         <UndoRedoControls canUndo={editor.canUndo} canRedo={editor.canRedo} onUndo={editor.undo} onRedo={editor.redo} />
         {overflow ? <OverflowStatus overflow /> : null}

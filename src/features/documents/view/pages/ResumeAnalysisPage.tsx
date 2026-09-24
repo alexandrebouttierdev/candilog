@@ -1,13 +1,15 @@
+import { useState } from "react";
 import { formatAiSummary, formatElapsed } from "@/shared/lib/duration";
 import { Button, EmptyState, ErrorBanner, StatusGlyph } from "@/shared/ui";
 import type { GlyphTone } from "@/shared/ui";
 import { cn } from "@/shared/lib/cn";
-import { AiStopButton, type MatchScore } from "@/features/ai";
+import type { MatchScore } from "@/features/ai";
 import type { RequirementEvaluation, RequirementMatchKind } from "@/shared/types/generated/ai";
 import { useResumeAnalysisViewModel } from "../../viewmodel/useResumeAnalysisViewModel";
 import { AiProgress } from "../components/DocumentUi";
 import { GeneratorFrame, PaneSection } from "../components/GeneratorFrame";
 import { OfferSource } from "../components/OfferSource";
+import { StopGenerationDialog } from "../components/StopGenerationDialog";
 import { labelSection, TexteNonVerifie } from "./documentPageSupport";
 
 /** Verdict d'une exigence, tel que la liste l'affiche. */
@@ -39,6 +41,7 @@ function scoreVerdict(total: number): { label: string; chip: string; text: strin
 export function ResumeAnalysisPage() {
   const vm = useResumeAnalysisViewModel();
   const running = vm.operation !== null;
+  const [askStop, setAskStop] = useState(false);
   const result = vm.result;
   const canRun = !vm.selecting && vm.selectedFile !== null && vm.jobOffer.trim() !== "" && !running;
   // Les exigences manquantes que le score liste sans évaluation détaillée restent visibles :
@@ -67,7 +70,9 @@ export function ResumeAnalysisPage() {
       title="Analyse face à l’offre"
       actions={
         running ? (
-          <AiStopButton stopping={vm.stopping} onStop={() => void vm.stop()} />
+          <Button size="bar" shortcut="mod+." disabled={vm.stopping} onClick={() => setAskStop(true)}>
+            {vm.stopping ? "Arrêt…" : "Arrêter"}
+          </Button>
         ) : (
           <>
             {vm.canReset ? (
@@ -127,7 +132,8 @@ export function ResumeAnalysisPage() {
             ? `${formatAiSummary("analysé", vm.metrics.elapsed_ms, vm.metrics.tokens_used)} · lecture ${result.method_used === "vision" ? "visuelle" : "du texte"}${result.fallback_used ? " (repli)" : ""}`
             : "choisissez un CV et une offre"
       }
-      keys={running ? [] : [{ label: "Analyser", shortcut: "mod+enter" }]}
+      keys={running ? [{ label: "Arrêter", shortcut: "mod+." }] : [{ label: "Analyser", shortcut: "mod+enter" }]}
+      {...(running ? { onStop: () => setAskStop(true) } : {})}
       closeDisabled={running}
       {...(canRun ? { onSubmit: () => void vm.run() } : {})}
     >
@@ -235,6 +241,16 @@ export function ResumeAnalysisPage() {
           )}
         </div>
       </div>
+      <StopGenerationDialog
+        open={askStop && running && !vm.stopping}
+        step={vm.progress?.step ?? null}
+        elapsedMs={vm.elapsedMs}
+        onKeepGoing={() => setAskStop(false)}
+        onStop={() => {
+          setAskStop(false);
+          void vm.stop();
+        }}
+      />
     </GeneratorFrame>
   );
 }
