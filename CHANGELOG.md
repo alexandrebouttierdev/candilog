@@ -68,6 +68,8 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
   via » et constats tirés des chiffres de la période.
 - Refonte v2 — Réglages : la surcouche occupe toute la fenêtre ; Données, Mises à jour et
   À propos passent à la présentation en lignes des autres sections.
+- Refonte v2 — Import de CV en surcouche plein écran, la revue élément par élément gagnant
+  toute la largeur.
 - Export CSV des candidatures : colonnes `reference` et `canal` ajoutées.
 - Le lien de l'offre n'est plus exigé que pour une offre publiée ; il devient facultatif
   pour une candidature trouvée sur le site de l'entreprise ou par le réseau.

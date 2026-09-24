@@ -254,7 +254,8 @@ Réutiliser la recette du voisin plutôt que d’en inventer une.
 
 ### Générateurs (CV, lettre)
 
-- Surcouche plein écran (`GeneratorFrame`) : `×` ou `Échap` ferme (sauf pendant une
+- Surcouche plein écran (`WorkSurface` dans `shared/ui`, `GeneratorFrame` pour Documents) :
+  `×` ou `Échap` ferme (sauf pendant une
   génération), fil « Documents › Générer … », actions à droite, trois colonnes — réglages
   (260 px), feuille A4 sur le bureau `bg-canvas`, déroulé (270 px, dès 1060 px) — et barre
   d'état. `⌘⏎` génère, `⌘S` enregistre : la surcouche porte ses propres raccourcis, ceux
@@ -270,6 +271,10 @@ Réutiliser la recette du voisin plutôt que d’en inventer une.
   exigence de l'offre (`score.evaluations`) — couverte, partielle, absente — avec la preuve
   citée du CV ou « introuvable ». Une exigence manquante sans évaluation détaillée reste
   listée comme absente. Le formulaire est figé, pas masqué, pendant l'analyse.
+- Import de CV (`screens/17`) : même surcouche rattachée au Profil — méthode d'analyse à
+  gauche, phases au centre (choix du fichier, analyse, revue élément par élément éditable,
+  bilan), « Importer les éléments sélectionnés » (`⌘S`) en haut. « Annuler » arrête aussi
+  une analyse en cours ; rien n'est écrit avant validation.
 - Lettre : entreprise, poste, destinataire, ton et longueur restent visibles ; la barre
   « Corrections » sous la feuille envoie une consigne libre ou rapide (« Plus court »…), les
   consignes se cumulent, l'historique vit à droite.

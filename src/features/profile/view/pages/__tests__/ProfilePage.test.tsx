@@ -191,7 +191,7 @@ describe("écran Profil — import de CV", () => {
 
     await userEvent.click(bouton);
 
-    expect(await screen.findByRole("dialog", { name: "Importer depuis un CV" })).toBeInTheDocument();
+    expect(await screen.findByRole("dialog", { name: "Importer un CV" })).toBeInTheDocument();
   });
 });
 

@@ -41,3 +41,5 @@ export { TimelineList } from "./TimelineList";
 export type { TimelineEntry } from "./TimelineList";
 export { Toolbar } from "./Toolbar";
 export { Toaster } from "./Toaster";
+export { WorkSurface, PaneSection, StepList } from "./WorkSurface";
+export type { GeneratorStep } from "./WorkSurface";

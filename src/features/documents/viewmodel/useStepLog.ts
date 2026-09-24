@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { GeneratorStep } from "../view/components/GeneratorFrame";
+import type { GeneratorStep } from "@/shared/ui";
 
 interface Entry {
   readonly label: string;

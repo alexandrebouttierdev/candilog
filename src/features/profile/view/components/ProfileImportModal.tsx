@@ -16,13 +16,7 @@ import {
   useAiRailStatusStore,
 } from "@/features/ai";
 import { AppError } from "@/shared/types/app-error";
-import {
-  Button,
-  ConfirmDialog,
-  ErrorBanner,
-  Icon,
-  ModalHost,
-} from "@/shared/ui";
+import { Button, ConfirmDialog, ErrorBanner, Icon, WorkSurface } from "@/shared/ui";
 import { formatAiSummary } from "@/shared/lib/duration";
 import {
   countMarked,
@@ -242,6 +236,8 @@ export function ProfileImportModal({
     }
   };
 
+  const submitReview = () => void form.handleSubmit(apply, refuse)();
+
   const subtitle =
     view === "review"
       ? metrics
@@ -255,30 +251,65 @@ export function ProfileImportModal({
 
   return (
     <>
-      <ModalHost
-        open={open}
-        icon="upload_file"
-        title="Importer depuis un CV"
-        subtitle={subtitle}
-        cancelLabel={view === "done" ? "Fermer" : "Annuler"}
-        submitLabel="Importer les éléments sélectionnés"
-        submitIcon="playlist_add_check"
-        submitDisabled={view !== "review" || marked === 0}
-        busy={busy}
+      {open ? (
+      <WorkSurface
+        crumbRoot="Profil"
+        title="Importer un CV"
         onClose={close}
-        {...(view === "review"
-          ? { onSubmit: () => void form.handleSubmit(apply, refuse)(), flush: true }
-          : {})}
-        width={view === "review" ? "880px" : "720px"}
+        actions={
+          view === "review" ? (
+            <>
+              <Button variant="ghost" size="bar" onClick={close}>
+                Annuler
+              </Button>
+              <Button
+                variant="primary"
+                size="bar"
+                shortcut="mod+s"
+                disabled={marked === 0 || busy}
+                onClick={submitReview}
+              >
+                Importer les éléments sélectionnés
+              </Button>
+            </>
+          ) : view === "done" ? (
+            <Button variant="primary" size="bar" onClick={close}>
+              Fermer
+            </Button>
+          ) : (
+            // Annuler arrête aussi une analyse en cours : aucune écriture n'a eu lieu.
+            <Button variant="ghost" size="bar" onClick={close}>
+              Annuler
+            </Button>
+          )
+        }
+        left={
+          <>
+            <div className="mb-4">
+              <AnalysisMethodPicker
+                method={method}
+                visionAvailable={visionAvailable}
+                disabled={view !== "pick"}
+                onChange={chooseMethod}
+              />
+            </div>
+            <p className="rounded-r8 bg-tint-ac-bg px-3 py-2.5 text-small leading-[1.5] text-tint-ac-tx">
+              Rien n'est enregistré sans votre accord : choisissez élément par élément ce qui entre dans
+              votre profil.
+            </p>
+          </>
+        }
+        status={subtitle}
+        {...(view === "review" ? { keys: [{ label: "Importer", shortcut: "mod+s" }], onSave: submitReview } : {})}
       >
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-panel px-6 py-5">
         {view === "pick" || view === "picking" ? (
-          <div className="space-y-4 pt-3">
-            <AnalysisMethodPicker
-              method={method}
-              visionAvailable={visionAvailable}
-              disabled={view === "picking"}
-              onChange={chooseMethod}
-            />
+          <div className="mx-auto w-full max-w-[640px] space-y-3 pt-[8vh]">
+            <h1 className="serif-title text-[21px] text-tx">Importer un CV</h1>
+            <p className="text-small leading-[1.55] text-tx-4">
+              Candilog lit votre CV et compare chaque rubrique à votre profil. Vous validez ensuite ce qui
+              entre, élément par élément.
+            </p>
             <PickFile waiting={view === "picking"} onChoose={() => void analyze()} />
           </div>
         ) : null}
@@ -345,7 +376,9 @@ export function ProfileImportModal({
         {view === "done" && result ? (
           <ImportDonePanel result={result} totalMs={totalMs} aiMetrics={metrics} />
         ) : null}
-      </ModalHost>
+        </div>
+      </WorkSurface>
+      ) : null}
       <ConfirmDialog
         open={confirmOpen}
         title="Confirmer l'import"
@@ -378,7 +411,7 @@ function AnalysisMethodPicker({
 }) {
   return (
     <fieldset className="space-y-2" disabled={disabled}>
-      <legend className="text-label font-semibold text-ink">Méthode d'analyse</legend>
+      <legend className="caps mb-2">Méthode d'analyse</legend>
       <label className="flex cursor-pointer gap-3 rounded-button border border-line px-3 py-2.5 has-[:disabled]:cursor-default">
         <input
           type="radio"
