@@ -82,6 +82,8 @@ export function useSavedViews() {
 
   return {
     views,
+    /** La liste est connue : avant, « aucune vue » serait une affirmation fausse. */
+    isLoaded: list.isSuccess,
     countOf: (id: string): number | undefined => {
       const index = views.findIndex((view) => view.id === id);
       return index >= 0 ? counts[index]?.data : undefined;

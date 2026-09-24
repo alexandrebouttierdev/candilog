@@ -108,6 +108,19 @@ export type LanguageCorrectionResult = { fields: Array<LanguageCorrectionField>,
 
 export type ListingAnalysis = { job_offer: StructuredListing, score: MatchScore, };
 
+/**
+ * Réponse du modèle local actif à la phrase de test de l'installation.
+ */
+export type LocalModelProbe = { 
+/**
+ * Tag Ollama du modèle qui a répondu.
+ */
+model: string, 
+/**
+ * Aller-retour mesuré, chargement du modèle en mémoire compris.
+ */
+latency_ms: number, };
+
 export type MachineFit = "recommended" | "compatible" | "may_be_slow" | "insufficient_memory";
 
 export type ManagedDownloadKind = "runtime" | "model";

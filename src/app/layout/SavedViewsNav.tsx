@@ -31,7 +31,7 @@ export function SavedViewsNav() {
   return (
     <section aria-label="Vues enregistrées" className="mt-4 hidden wide:block">
       <h2 className="caps flex items-center px-2 pb-1">Vues</h2>
-      {views.views.length === 0 ? (
+      {!views.isLoaded ? null : views.views.length === 0 ? (
         <p className="px-2 text-tiny leading-[1.45] text-tx-6">
           Filtrez Candidatures, puis « Enregistrer la vue » pour la retrouver ici.
         </p>

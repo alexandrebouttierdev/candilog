@@ -27,6 +27,7 @@ import {
   type ProviderOption,
 } from "../../model/providers";
 import { ManagedOllamaPanel } from "../components/ManagedOllamaPanel";
+import { LocalInstallOverlay } from "../components/LocalInstallOverlay";
 import { AiTaskRouting } from "../components/AiTaskRouting";
 import { AI_TASKS, assignmentOf, mainLabel } from "../../model/taskRouting";
 import { RemoteModelPicker } from "../components/RemoteModelPicker";
@@ -58,6 +59,7 @@ export function AiPage() {
   const [test, setTestState] = useState<ConnectionTest>("idle");
   const [testMessage, setTestMessage] = useState<string | null>(null);
   const [benchmarkOpen, setBenchmarkOpen] = useState(false);
+  const [installOpen, setInstallOpen] = useState(false);
   const [benchmarkModelLabel, setBenchmarkModelLabel] = useState("");
   const form = draft ?? vm.data ?? null;
   const tab: AiTab =
@@ -360,7 +362,11 @@ export function AiPage() {
 
           <div className="mt-5 border-t border-bd-soft pt-4">
             {tab === "local" ? (
-              <ManagedOllamaPanel vm={managedVm} onTestModel={(model) => void testerModeleLocal(model)} />
+              <ManagedOllamaPanel
+                vm={managedVm}
+                onInstall={() => setInstallOpen(true)}
+                onTestModel={(model) => void testerModeleLocal(model)}
+              />
             ) : (
               <div className="flex flex-col gap-5">
                 {principalId !== selectedId ? (
@@ -525,6 +531,8 @@ export function AiPage() {
           />
         </div>
       </div>
+
+      {installOpen ? <LocalInstallOverlay vm={managedVm} onClose={() => setInstallOpen(false)} /> : null}
 
       <AiBenchmarkModal
         open={benchmarkOpen}

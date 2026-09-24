@@ -118,6 +118,17 @@ pub struct UserBenchmarkSummary {
     pub measured_at: String,
 }
 
+/// Réponse du modèle local actif à la phrase de test de l'installation.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "ai.ts")]
+pub struct LocalModelProbe {
+    /// Tag Ollama du modèle qui a répondu.
+    pub model: String,
+    /// Aller-retour mesuré, chargement du modèle en mémoire compris.
+    pub latency_ms: u32,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "ai.ts")]

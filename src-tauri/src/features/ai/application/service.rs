@@ -27,6 +27,24 @@ Une exigence = une seule idée. Déduplique les répétitions. `minimum_years` e
 
 Conserve aussi les champs simples pour compatibilité : `competences` pour les savoir-faire/outils/qualifications demandés, `savoirEtre`, `experience`, `motsCles` pour les missions sans doublon.
 Réponds uniquement avec ce JSON : {"titre":"","competences":[],"savoirEtre":[],"experience":null,"motsCles":[],"requirements":[{"name":"","category":"hard_skill","importance":"important","mandatory":false,"minimum_years":null,"transferable_from":[]}],"location":null}."#;
+const PROBE_SYSTEM: &str = "Tu réponds en une phrase courte, en français.";
+const PROBE_PROMPT: &str = "Confirme que tu es prêt à aider à rédiger un CV.";
+
+/// Envoie la phrase de test et mesure l'aller-retour.
+async fn probe(provider: &dyn LlmGenerator, model: String) -> AppResult<LocalModelProbe> {
+    let started = std::time::Instant::now();
+    let output = provider.generate(PROBE_PROMPT, PROBE_SYSTEM, false).await?;
+    if output.text.trim().is_empty() {
+        return Err(AppError::Provider(
+            "Le modèle local n'a rien répondu à la phrase de test.".into(),
+        ));
+    }
+    Ok(LocalModelProbe {
+        model,
+        latency_ms: u32::try_from(started.elapsed().as_millis()).unwrap_or(u32::MAX),
+    })
+}
+
 const RESUME_SYSTEM: &str = r#"Adapte le socle d'un CV à une offre en JSON. Reformule uniquement les faits du profil, sans ajouter compétence, entreprise, diplôme ou expérience. Conserve toutes les expériences et formations. Laisse toujours competences vide : les contenus optionnels seront choisis ensuite par l'utilisateur. Réponds avec {"resume":"","experiences":[{"intitule":"","entreprise":"","description":""}],"competences":[],"formations":[{"diplome":"","etablissement":""}]}. JSON uniquement."#;
 const ATS_SYSTEM: &str = r#"Compare le CV et l'offre fournis. Réponds en français, uniquement en JSON : {"recap":"","recommendations":[{"section":"profile","item_index":null,"original_text":"","proposed_text":"","target_requirement":"","reason":"","source_evidence":[]}],"content_recommendations":[{"item_id":"","reason":"","relevance":"very_relevant"}]}.
 Le champ `score_candilog` est le résultat déterministe et explicable calculé par l'application. Le récapitulatif doit être cohérent avec son total, son détail et ses correspondances ; ne calcule et n'annonce aucun autre score.
@@ -1111,6 +1129,34 @@ impl AiService {
         )
         .await?;
         Ok((profile, tokens))
+    }
+
+    /// Phrase de test de l'installation locale : le modèle actif répond-il, et en combien
+    /// de temps ? Un seul appel court, rien n'est enregistré.
+    ///
+    /// # Errors
+    /// `Provider` si aucun modèle local n'est actif, si le moteur ne démarre pas ou si le
+    /// modèle ne répond rien.
+    pub async fn probe_local_model(&self) -> AppResult<LocalModelProbe> {
+        let model = self
+            .managed_ollama
+            .active_ollama_tag()?
+            .ok_or_else(|| AppError::Provider("Aucun modèle local n'est installé.".into()))?;
+        let config = load_config(&self.pool)?;
+        let provider = self
+            .build(
+                LlmConfig {
+                    provider: ProviderKind::CandilogLocal,
+                    api_key: None,
+                    endpoint: None,
+                    model: model.clone(),
+                    temperature: config.temperature,
+                    mode: config.mode,
+                },
+                false,
+            )
+            .await?;
+        probe(provider.as_ref(), model).await
     }
 
     /// Benchmark utilisateur sur `CV_BENCHMARK.pdf` : pipeline réel, aucune persistance.
@@ -2253,6 +2299,38 @@ Anglais · lecture courante de documentation technique\n";
             service.selected_resume_path().unwrap(),
             PathBuf::from("/tmp/second.pdf")
         );
+    }
+
+    #[tokio::test]
+    async fn la_phrase_de_test_mesure_la_reponse_du_modele_local() {
+        let provider = FakeProvider::provider(vec![("Prêt à vous aider.", None)]);
+
+        let result = probe(provider.as_ref(), "ministral-3:3b".into())
+            .await
+            .unwrap();
+
+        assert_eq!(result.model, "ministral-3:3b");
+    }
+
+    #[tokio::test]
+    async fn une_reponse_vide_a_la_phrase_de_test_est_un_echec() {
+        let provider = FakeProvider::provider(vec![("   ", None)]);
+
+        let error = probe(provider.as_ref(), "ministral-3:3b".into())
+            .await
+            .unwrap_err();
+
+        assert!(matches!(error, AppError::Provider(_)), "{error:?}");
+    }
+
+    #[tokio::test]
+    async fn la_phrase_de_test_exige_un_modele_local_installe() {
+        let (service, _directory) = test_service();
+        crate::core::database::run_local_migrations(&service.pool).unwrap();
+
+        let error = service.probe_local_model().await.unwrap_err();
+
+        assert!(matches!(error, AppError::Provider(_)), "{error:?}");
     }
 
     #[tokio::test]

@@ -63,6 +63,10 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
   jour, se renomme, se duplique ou se supprime.
 - Candidatures : un filtre sur le statut ne laisse plus la liste en chargement, et
   « Statut n'est pas … » affiche les autres groupes au lieu du statut écarté.
+- Refonte v2 — Installer l'IA locale : surcouche plein écran pour choisir le modèle, suivre
+  le moteur puis le modèle (débit, temps restant) et vérifier par une phrase de test dont la
+  durée de réponse est affichée. Les modèles installés s'affichent en lignes dans
+  Intelligence artificielle.
 - Refonte v2 — Analyse de CV face à une offre : chaque exigence de l'offre est listée,
   couverte, partielle ou absente, avec la preuve trouvée dans le CV ; score et détail à
   gauche.

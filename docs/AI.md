@@ -81,6 +81,16 @@ Le catalogue des modèles, les pulls, l'activation et le benchmark utilisateur p
 `managed-ollama://download-progress`, `managed-ollama://download-completed` et
 `managed-ollama://download-error`.
 
+L'installation se fait dans la surcouche **Installer l'IA locale** (`LocalInstallOverlay`,
+`screens/14`) : choix du modèle, puis trois étapes — moteur (événements `kind: runtime`),
+modèle (`kind: model`, débit et temps restant calculés sur les octets reçus), vérification.
+La vérification appelle `probe_managed_ollama_model` : une phrase de test courte envoyée au
+modèle actif, dont l'aller-retour est mesuré (`LocalModelProbe.latency_ms`, chargement en
+mémoire compris). Rien n'est enregistré. Fermer la surcouche n'interrompt pas le
+téléchargement : `ManagedOllamaPanel` en suit la progression et un toast annonce la fin.
+Les jauges vitesse / qualité / mémoire des cartes dessinent la catégorie du catalogue et la
+RAM recommandée ; ce ne sont pas des mesures.
+
 Les anciens réglages `mistral_local` (llama.cpp) sont migrés automatiquement vers
 `candilog_local` au chargement ; le bloc `local_ai` est ignoré. Les fichiers `.gguf` restent
 sur le disque mais ne sont plus gérés.

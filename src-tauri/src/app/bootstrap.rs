@@ -102,6 +102,7 @@ pub fn run() {
             managed_ollama::remove_managed_ollama_model,
             managed_ollama::activate_managed_ollama_model,
             managed_ollama::run_user_cv_benchmark,
+            managed_ollama::probe_managed_ollama_model,
             system_resources::system_resource_snapshot,
             settings::settings_load,
             settings::settings_save,
