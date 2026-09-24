@@ -1,54 +1,37 @@
-import { Button, ConfirmDialog, PageHeader } from "@/shared/ui";
+import { Button, ConfirmDialog } from "@/shared/ui";
 import { useBackupsViewModel } from "../../viewmodel/useBackupsViewModel";
-import { ActionCard, SettingsBody, SettingsCard, SettingsHero } from "../components/SettingsUi";
+import { SettingsRow, SettingsSection } from "../components/SettingsSection";
 
-/** Export, restauration et réinitialisation de la base locale. */
+/** Données : sauvegarde, restauration et remise à zéro de la base locale. */
 export function BackupsPage() {
   const vm = useBackupsViewModel();
 
   return (
-    <div className="flex h-full flex-col">
-<PageHeader icon="save" title="Données" subtitle="Export, restauration et maintenance" />
-      <SettingsBody>
-        <SettingsHero
-          kicker="Vos données"
-          title="Une copie sûre, quand vous le décidez."
-          description="Exportez ou restaurez toute votre base Candilog depuis un fichier local."
-        />
-        <div className="grid gap-4 md:grid-cols-2">
-          <ActionCard
-            icon="download"
-            title="Créer une sauvegarde"
-            description="Générez une archive complète et conservez-la où vous le souhaitez."
-          >
-            <Button variant="primary" icon="download" disabled={vm.busy !== null} onClick={() => void vm.exportBackup()}>
-              Export
-            </Button>
-          </ActionCard>
-          <ActionCard
-            icon="upload"
-            title="Restaurer une sauvegarde"
-            description="Choisissez un fichier Candilog existant avant de confirmer la restauration."
-          >
-            <Button variant="secondary" icon="folder_open" disabled={vm.busy !== null} onClick={vm.openRestore}>
-              Restaurer
-            </Button>
-          </ActionCard>
-        </div>
-        <SettingsCard icon="settings" title="Maintenance locale">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="text-body text-ink">Réinitialiser les données</p>
-              <p className="text-meta text-ink-muted">
-                Efface candidatures, profil et documents. Le référentiel des secteurs est conservé.
-              </p>
-            </div>
-            <Button variant="danger" icon="delete" onClick={vm.openReset}>
-              Réinitialiser
-            </Button>
-          </div>
-        </SettingsCard>
-      </SettingsBody>
+    <SettingsSection
+      title="Données"
+      description="Tout reste sur cet ordinateur. Une copie de sauvegarde se fait quand vous le décidez, dans le dossier de votre choix."
+    >
+      <SettingsRow label="Créer une sauvegarde" hint="Une archive complète de la base, à conserver où vous voulez.">
+        <Button variant="primary" size="compact" disabled={vm.busy !== null} onClick={() => void vm.exportBackup()}>
+          {vm.busy === "export" ? "Export…" : "Exporter"}
+        </Button>
+      </SettingsRow>
+      <SettingsRow
+        label="Restaurer une sauvegarde"
+        hint="Remplace la base actuelle par un fichier Candilog ; une copie de secours est prise avant."
+      >
+        <Button size="compact" disabled={vm.busy !== null} onClick={vm.openRestore}>
+          Restaurer…
+        </Button>
+      </SettingsRow>
+      <SettingsRow
+        label="Réinitialiser les données"
+        hint="Efface candidatures, profil et documents. Le référentiel des secteurs est conservé."
+      >
+        <Button variant="danger" size="compact" disabled={vm.busy !== null} onClick={vm.openReset}>
+          Réinitialiser…
+        </Button>
+      </SettingsRow>
 
       <ConfirmDialog
         open={vm.restoreOpen}
@@ -70,6 +53,6 @@ export function BackupsPage() {
         onCancel={vm.closeReset}
         onConfirm={() => void vm.resetData()}
       />
-    </div>
+    </SettingsSection>
   );
 }

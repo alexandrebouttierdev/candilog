@@ -1,65 +1,43 @@
-import { Button, InspectorRow, PageHeader } from "@/shared/ui";
+import { Button } from "@/shared/ui";
 import logoCandilog from "@/assets/logo-candilog.svg";
-import { useAboutViewModel } from "../../viewmodel/useAboutViewModel";
-import { SettingsBody, SettingsCard } from "../components/SettingsUi";
+import { openExternal } from "@/shared/services/external-link";
 import { useUiStore } from "@/shared/lib/ui-store";
+import { useAboutViewModel } from "../../viewmodel/useAboutViewModel";
+import { SettingsRow, SettingsSection } from "../components/SettingsSection";
 
 /** Identité du produit : qui l'a fait, où vivent les données, comment mettre à jour. */
 export function AboutPage() {
   const openSettings = useUiStore((state) => state.openSettings);
   const about = useAboutViewModel();
-  const version = about.version;
 
   return (
-    <div className="flex h-full flex-col">
-<PageHeader icon="info" title="À propos" subtitle="Candilog, un produit indépendant" />
-      <SettingsBody>
-        <div className="mx-auto flex w-full max-w-[720px] flex-col gap-4">
-          <div className="flex items-start gap-4 py-1">
-            <span className="flex size-11 flex-none items-center justify-center rounded-control bg-fill">
-              <img src={logoCandilog} alt="" width={26} height={26} className="size-[26px]" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-eyebrow uppercase text-ink-label">Application</p>
-              <p className="mt-1 text-title text-ink">Candilog</p>
-              <p className="mt-1 text-note text-ink-faint">
-                Candidatures, réseau et documents — tout reste ici.
-              </p>
-            </div>
-            <p className="tabular flex-none pt-5 text-item font-semibold text-ink">{version}</p>
-          </div>
-
-          <SettingsCard icon="inventory_2" title="Sur cet appareil">
-            <InspectorRow label="Données">Conservées sur cet ordinateur</InspectorRow>
-            <InspectorRow label="IA">Vous choisissez le fournisseur et le modèle</InspectorRow>
-          </SettingsCard>
-
-
-          <SettingsCard icon="badge" title="Conçu et développé par">
-            <div className="flex flex-wrap items-center gap-3">
-              <p className="min-w-0 flex-1 text-section text-ink">Alexandre Bouttier</p>
-              <Button
-                variant="secondary"
-                icon="open_in_new"
-                onClick={() => {
-                  void import("@tauri-apps/plugin-opener").then(({ openUrl }) =>
-                    openUrl("https://www.alexandrebouttier.fr"),
-                  );
-                }}
-              >
-                Visiter le site
-              </Button>
-              <Button
-                variant="primary"
-                icon="system_update"
-                onClick={() => openSettings("updates")}
-              >
-                Vérifier les mises à jour
-              </Button>
-            </div>
-          </SettingsCard>
+    <SettingsSection title="À propos" description="Candilog, un produit indépendant. Candidatures, réseau et documents — tout reste ici.">
+      <div className="flex items-center gap-3.5 border-b border-bd-soft py-3">
+        <span className="flex size-11 flex-none items-center justify-center rounded-r9 bg-group">
+          <img src={logoCandilog} alt="" width={26} height={26} className="size-[26px]" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-row font-medium text-tx">Candilog</p>
+          <p className="text-sub text-tx-5">Application de bureau</p>
         </div>
-      </SettingsBody>
-    </div>
+        <p className="flex-none font-mono text-caps text-tx-3">{about.version}</p>
+      </div>
+      <SettingsRow label="Données" hint="Conservées sur cet ordinateur, jamais sur un serveur Candilog.">
+        <span className="text-small text-tx-4">Locales</span>
+      </SettingsRow>
+      <SettingsRow label="Intelligence artificielle" hint="Vous choisissez le fournisseur et le modèle de chaque tâche.">
+        <span className="text-small text-tx-4">Sous votre contrôle</span>
+      </SettingsRow>
+      <SettingsRow label="Conçu et développé par" hint="Alexandre Bouttier">
+        <span className="flex gap-1.5">
+          <Button size="compact" onClick={() => void openExternal("https://www.alexandrebouttier.fr")}>
+            Visiter le site
+          </Button>
+          <Button variant="primary" size="compact" onClick={() => openSettings("updates")}>
+            Vérifier les mises à jour
+          </Button>
+        </span>
+      </SettingsRow>
+    </SettingsSection>
   );
 }

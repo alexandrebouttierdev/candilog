@@ -6,7 +6,7 @@ import type { SettingsSection as Section } from "@/shared/lib/ui-store";
 import { useDismissable } from "@/shared/hooks/useDismissable";
 import { useFocusTrap } from "@/shared/hooks/useFocusTrap";
 import { PATHS } from "@/shared/lib/paths";
-import { Button, IconButton, Kbd } from "@/shared/ui";
+import { Button, Kbd } from "@/shared/ui";
 import {
   AboutPage,
   AppearanceSettings,
@@ -19,12 +19,12 @@ import { SETTINGS_LABELS, SETTINGS_ORDER } from "./settingsSections";
 import { SHORTCUTS } from "./shortcutList";
 
 /**
- * Surcouche Réglages (`DECISIONS.md` B7) : plein cadre sous la barre de titre, ouverte par
+ * Surcouche Réglages (`DECISIONS.md` B7) : toute la fenêtre, ouverte par
  * `⌘,` ou le pied de navigation. Ce n'est pas une destination : la fermer (`Échap`, `✕`)
  * rend l'écran précédent intact.
  *
- * Données, Mises à jour et À propos reprennent encore leurs écrans v1 le temps de leur
- * refonte (étape Réglages du plan) ; leurs fonctions restent donc toutes disponibles.
+ * Chaque section suit la même grammaire (`SettingsSection`, `SettingsRow`) : titre serif,
+ * phrase d'effet, puis une ligne par réglage — libellé et conséquence, contrôle à droite.
  */
 export function SettingsOverlay() {
   const section = useUiStore((state) => state.settings);
@@ -43,11 +43,30 @@ export function SettingsOverlay() {
       role="dialog"
       aria-modal="true"
       aria-label="Réglages"
-      className="absolute inset-0 z-50 flex animate-pop flex-col bg-app"
+      className="fixed inset-0 z-50 flex animate-pop flex-col bg-app"
     >
-      <header className="flex h-overlay-head flex-none items-center gap-2.5 border-b border-bd-soft px-3.5">
-        <IconButton icon="close" label="Fermer les réglages" onClick={close} size={13} />
-        <h1 className="text-ui font-medium text-tx">Réglages</h1>
+      {/* Comme la maquette, la surcouche prend toute la fenêtre, barre de titre comprise :
+          la croix et le fil « Réglages › section » remplacent ceux de l'écran recouvert. */}
+      <header
+        data-tauri-drag-region
+        className="flex h-titlebar flex-none items-center gap-3 border-b border-bd-soft pr-3.5 pl-[84px]"
+      >
+        <button
+          type="button"
+          aria-label="Fermer les réglages"
+          aria-keyshortcuts="Escape"
+          onClick={close}
+          className="flex size-[22px] flex-none items-center justify-center rounded-r6 bg-chip text-tiny text-tx-4 hover:text-tx"
+        >
+          ✕
+        </button>
+        <h1 className="flex items-center gap-2 text-ui">
+          <span className="text-tx-4">Réglages</span>
+          <span aria-hidden className="text-tx-6">
+            ›
+          </span>
+          <span className="font-medium text-tx">{SETTINGS_LABELS[section]}</span>
+        </h1>
         {about.isLoading || about.error ? null : (
           <span className="ml-auto font-mono text-caps text-tx-6">Candilog {about.version}</span>
         )}

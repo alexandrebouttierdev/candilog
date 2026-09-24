@@ -338,16 +338,18 @@ barre groupée 40 px dès qu'une case est cochée
   proches pour une deutéranopie.
 - États vides gérés par le graphique lui-même (`EmptyState`), pas par l’écran appelant.
 
-### Réglages (IA, Sauvegardes, Mises à jour, À propos)
+### Réglages (surcouche `⌘,`)
 
-- `PageHeader` + `SettingsBody` (padding 18 / 16 / 22, gap 4, scroll).
-- Colonne de contenu **max 720 px** quand c’est une fiche (À propos).
-- `SettingsCard` : en-tête à filet, icône tertiaire 17 px, titre `text-item`.
-- `ActionCard` : **une action** (export, rechercher une MAJ) — pas une grille de bénéfices produit.
-- `SettingsHero` : écrans de **maintenance** (version, sauvegarde), pas un slogan.
-- À propos : identité (logo + nom + version) + faits (`InspectorRow`) + auteur. **Pas** de hero, **pas** de pile technique.
+- Surcouche plein écran (`screens/18-settings.png`) : `✕` et fil « Réglages › section » dans
+  la barre de titre, version à droite, sections à gauche, barre d'état « appliqué
+  immédiatement · propre à cet ordinateur ».
+- Chaque section : `SettingsSection` (titre serif, phrase qui dit l'**effet**) puis des
+  `SettingsRow` — libellé et conséquence à gauche, contrôle à droite, filet bas. Apparence,
+  Données (sauvegarder, restaurer, réinitialiser — chacune confirmée), Raccourcis, Mises à
+  jour (état, version installée et nouvelle, action, progression, nouveautés), À propos.
+- Rien sur le mécanisme de téléchargement d'une mise à jour : cela n'aide pas à décider.
+
 - IA (`screens/12`, `13`) : colonne **Fournisseurs** de 190 px (onglets verticaux : état « Local · n modèles », « Clé enregistrée », « Aucune clé », point vert quand le fournisseur est prêt, mention « principal »), puis le détail : nom en serif, description **factuelle** et trois jauges — confidentialité, coût, hors connexion ; jamais une promesse de qualité. L'IA locale affiche son catalogue (`ManagedOllamaPanel`), un fournisseur distant sa configuration (modèle et `RemoteModelPicker` après Actualiser, endpoint, clé jamais rendue en clair, mode, température) avec « Tester la connexion » (`T`) et « Enregistrer », qui en fait le fournisseur principal. En bas, **Qui fait quoi** (`AiTaskRouting`, `reference_design/AI_TASK_ROUTING.md`) : cinq tâches, le modèle de chacune, point vert (local), ambre (distant) ou gris (désactivée) ; le sélecteur propose le fournisseur principal, les modèles installés, les fournisseurs distants configurés et « Aucun » ; le choix est enregistré aussitôt, sans repli. Le fournisseur local s’appelle **« IA locale »**, jamais d’après une famille de modèles. La liste **Profils disponibles** reprend les `evaluations` du backend (`compatibility` + `reason`) : un profil `unsupported` est étiqueté « Incompatible » et son installation est désactivée. Un benchmark `too_slow` avertit **toujours**, y compris sur le plus petit profil où aucun repli n’existe. Le résultat d'un test de connexion est un message fixe : la prose du modèle n’est pas un état.
-- Mises à jour : colonne bornée à 760 px, une carte de surface unique — vignette d’état, phrase, pastille et action en tête, puis les versions sous un filet, puis la progression. Les notes de version, quand il y en a, forment une `SettingsCard` `Nouveautés`. Rien sur le mécanisme de téléchargement — cela n’aide pas à décider.
 
 ### Formulaires
 
