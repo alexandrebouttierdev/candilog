@@ -12,6 +12,8 @@
 
 :root {
   --bg-app: #F1F0EC;
+  /* Bureau sous la feuille A4 des générateurs (`tokens.json` paper.desk). */
+  --bg-desk: #DEDCD6;
   --bg-panel: #FCFBF9;
   --bg-elev: #E4E2DC;
   --bg-hover: #F4F2EC;
@@ -214,6 +216,7 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg-app: #101114;
+    --bg-desk: #0B0C0E;
     --bg-panel: #16171B;
     --bg-elev: #1C1E24;
     --bg-hover: #191B21;
@@ -261,6 +264,7 @@
 
 :root[data-theme="dark"] {
   --bg-app: #101114;
+  --bg-desk: #0B0C0E;
   --bg-panel: #16171B;
   --bg-elev: #1C1E24;
   --bg-hover: #191B21;
@@ -359,6 +363,7 @@
 
   /* ── Couleurs v2 ─────────────────────────────────────────────────────── */
   --color-app: var(--bg-app);
+  --color-canvas: var(--bg-desk);
   --color-panel: var(--bg-panel);
   --color-elev: var(--bg-elev);
   --color-hover: var(--bg-hover);

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -417,14 +417,15 @@ describe("itérations sur la lettre", () => {
     await userEvent.click(screen.getByRole("button", { name: /Rédiger la lettre/ }));
   }
 
-  it("remplace le brief par les itérations et annonce la durée de rédaction", async () => {
+  it("ouvre les corrections et annonce la durée de rédaction", async () => {
     await redigerUneLettre();
 
     expect(
       await screen.findByText("Lettre rédigée en 18,4 s · 1 024 tokens"),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Que faut-il changer ?")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Contexte ou offre")).not.toBeInTheDocument();
+    // Le brief reste visible : changer le ton ou l'offre ne demande aucun aller-retour.
+    expect(screen.getByLabelText("Contexte ou offre")).toBeInTheDocument();
   });
 
   it("arrête la première rédaction et ignore son résultat tardif", async () => {
@@ -465,7 +466,7 @@ describe("itérations sur la lettre", () => {
     const generate = vi.mocked(aiService.generateCoverLetter);
 
     await userEvent.type(await screen.findByLabelText("Que faut-il changer ?"), "Plus court");
-    await userEvent.click(screen.getByRole("button", { name: /Régénérer avec cette consigne/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Envoyer" }));
     await waitFor(() => expect(screen.getByText(/Lettre régénérée en/)).toBeInTheDocument());
     await waitFor(() =>
       expect(generate.mock.lastCall?.[0]).toMatchObject({
@@ -474,11 +475,11 @@ describe("itérations sur la lettre", () => {
       }),
     );
 
-    await userEvent.type(screen.getByLabelText("Que faut-il changer ?"), "Plus formel");
-    await userEvent.click(screen.getByRole("button", { name: /Régénérer avec cette consigne/ }));
+    // Consigne rapide : envoyée telle quelle, cumulée avec la précédente.
+    await userEvent.click(await screen.findByRole("button", { name: "Moins formel" }));
 
     await waitFor(() =>
-      expect(generate.mock.lastCall?.[0].instruction).toBe("Plus court ; Plus formel"),
+      expect(generate.mock.lastCall?.[0].instruction).toBe("Plus court ; Moins formel"),
     );
     expect(generate.mock.lastCall?.[0].previous_cover_letter).toBeTruthy();
   });
@@ -486,20 +487,22 @@ describe("itérations sur la lettre", () => {
   it("abandonne la lettre et rend le brief après confirmation", async () => {
     await redigerUneLettre();
 
-    await userEvent.click(await screen.findByRole("button", { name: "Annuler" }));
-    await userEvent.click(screen.getByRole("button", { name: "Abandonner" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Abandonner…" }));
+    await userEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Abandonner" }));
 
     expect(screen.getByLabelText("Contexte ou offre")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Rédiger la lettre/ })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Enregistrer/ })).not.toBeInTheDocument();
   });
 
-  it("laisse rouvrir le brief pour changer le ton ou l'offre", async () => {
+  it("relance une nouvelle lettre avec le ton changé, sans quitter l'écran", async () => {
     await redigerUneLettre();
+    const generate = vi.mocked(aiService.generateCoverLetter);
 
-    await userEvent.click(await screen.findByRole("button", { name: "Revenir au brief" }));
+    await userEvent.click(await screen.findByRole("radio", { name: "Naturel" }));
+    await userEvent.click(screen.getByRole("button", { name: "Rédiger une nouvelle lettre" }));
 
-    expect(screen.getByLabelText("Contexte ou offre")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Revenir aux itérations" })).toBeInTheDocument();
+    await waitFor(() => expect(generate.mock.lastCall?.[0]).toMatchObject({ tone: "casual" }));
   });
 });
 
@@ -615,10 +618,10 @@ describe("décisions ATS et confirmation profil dans le générateur de CV", () 
 
     render(<ResumeGeneratorPage />, { wrapper });
     await userEvent.type(screen.getByLabelText(/Texte de l’offre/), "Une offre");
-    await userEvent.click(screen.getByRole("button", { name: /Générer le CV ciblé/ }));
+    await userEvent.click(screen.getByRole("button", { name: /^Générer/ }));
 
     expect(await screen.findByText("Docker")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "CV ciblé" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Générer un CV" })).toBeInTheDocument();
     expect(screen.queryByText("Analysez une offre, générez un CV ciblé, exportez en PDF")).not.toBeInTheDocument();
     expect(screen.getByText(/absentes de votre profil/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Accepter Docker" })).not.toBeInTheDocument();
@@ -637,7 +640,7 @@ describe("décisions ATS et confirmation profil dans le générateur de CV", () 
 
     render(<ResumeGeneratorPage />, { wrapper });
     await userEvent.type(screen.getByLabelText(/Texte de l’offre/), "Une offre");
-    await userEvent.click(screen.getByRole("button", { name: /Générer le CV ciblé/ }));
+    await userEvent.click(screen.getByRole("button", { name: /^Générer/ }));
 
     // L'offre laisse la place à l'aperçu : sans cela le papier A4 restait comprimé.
     const revenir = await screen.findByRole("button", { name: /Modifier l’offre/ });

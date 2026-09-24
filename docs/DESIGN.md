@@ -252,6 +252,23 @@ Réutiliser la recette du voisin plutôt que d’en inventer une.
 - La photo se gère dans la section Identité ; Projets et Présence en ligne restent des
   sections à part entière.
 
+### Générateurs (CV, lettre)
+
+- Surcouche plein écran (`GeneratorFrame`) : `×` ou `Échap` ferme (sauf pendant une
+  génération), fil « Documents › Générer … », actions à droite, trois colonnes — réglages
+  (260 px), feuille A4 sur le bureau `bg-canvas`, déroulé (270 px, dès 1060 px) — et barre
+  d'état. `⌘⏎` génère, `⌘S` enregistre : la surcouche porte ses propres raccourcis, ceux
+  d'écran se taisant sous une surface.
+- « Offre visée » (`OfferSource`) : une candidature ouverte du suivi — son texte est
+  prérempli avec ce que Candilog en sait, sans rien inventer — ou le texte collé.
+- « Étapes » : les étapes annoncées par le backend, avec la durée **mesurée** de chacune
+  (`useStepLog`), jamais estimée.
+- Aucun réglage que le backend ne sait pas honorer n'est affiché (pas de sections à
+  exclure pour le CV, pas d'arguments autorisés pour la lettre).
+- Lettre : entreprise, poste, destinataire, ton et longueur restent visibles ; la barre
+  « Corrections » sous la feuille envoie une consigne libre ou rapide (« Plus court »…), les
+  consignes se cumulent, l'historique vit à droite.
+
 ### Candidatures v2 (Liste, Kanban)
 
 ```

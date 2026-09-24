@@ -1,273 +1,213 @@
-import type { ReactNode } from "react";
 import { useLocation } from "react-router-dom";
 import { AiStopButton } from "@/features/ai";
-import {
-  Button,
-  ConfirmDialog,
-  ErrorBanner,
-  FormField,
-  Icon,
-  PageHeader,
-  Select,
-  TextArea,
-} from "@/shared/ui";
+import { Button, ConfirmDialog, ErrorBanner } from "@/shared/ui";
+import { cn } from "@/shared/lib/cn";
+import { formatElapsed } from "@/shared/lib/duration";
 import { useLetterWriterViewModel } from "../../viewmodel/useLetterWriterViewModel";
-import { AiProgress, DocumentPanel } from "../components/DocumentUi";
+import { useStepLog } from "../../viewmodel/useStepLog";
+import { AiProgress } from "../components/DocumentUi";
+import { GeneratorFrame, PaneSection, StepList } from "../components/GeneratorFrame";
+import { OfferSource } from "../components/OfferSource";
 import { LetterEditor } from "../components/LetterEditor";
 import type { LetterPaperField } from "../components/LetterPaper";
-import {
-  Champ,
-  ChampOffre,
-  Screen,
-  coverLetterFromNavigation,
-} from "./documentPageSupport";
+import { Champ, coverLetterFromNavigation } from "./documentPageSupport";
 
 type Echange = { auteur: "vous" | "candilog"; texte: string };
 
-/**
- * Suite du travail une fois la première lettre écrite.
- *
- * Le brief n'a plus rien à demander à ce stade : ce qui reste à faire, c'est demander des
- * ajustements. Les consignes s'accumulent — « plus court » puis « plus formel » doivent
- * valoir ensemble — et chaque régénération journalise le temps qu'elle a pris, à l'endroit
- * où l'utilisateur regarde.
- */
-function IterationPanel({
-  echanges,
-  consigne,
-  busy,
-  stopping,
-  error,
-  progress,
-  onConsigneChange,
-  onSubmit,
-  onCancel,
-  onReopenBrief,
+/** Étapes annoncées par le backend pendant la rédaction d'une lettre. */
+const LETTER_STEPS = ["Rédaction", "Relecture du français"] as const;
+
+const TONES = [
+  { value: "formal", label: "Formel" },
+  { value: "casual", label: "Naturel" },
+  { value: "creative", label: "Créatif" },
+] as const;
+
+const LENGTHS = [
+  { value: "short", label: "Courte" },
+  { value: "medium", label: "Moyenne" },
+  { value: "long", label: "Longue" },
+] as const;
+
+/** Consignes fréquentes, envoyées telles quelles comme correction. */
+const QUICK_FIXES = ["Plus court", "Moins formel", "Ajoute un chiffre", "Cite l'entreprise"] as const;
+
+function Segmented<T extends string>({
+  label,
+  value,
+  options,
+  disabled,
+  onChange,
 }: {
-  echanges: Echange[];
-  consigne: string;
-  busy: boolean;
-  stopping: boolean;
-  error: string | null;
-  progress: ReactNode;
-  onConsigneChange: (value: string) => void;
-  onSubmit: () => void;
-  onCancel: () => void;
-  onReopenBrief: () => void;
+  label: string;
+  value: string;
+  options: ReadonlyArray<{ value: T; label: string }>;
+  disabled: boolean;
+  onChange: (value: T) => void;
 }) {
   return (
-    <DocumentPanel title="Itérations" icon="forum" className="flex min-h-0 flex-col">
-      <div className="flex min-h-0 flex-1 flex-col">
-        <ol className="min-h-0 flex-1 space-y-2 overflow-y-auto p-4">
-          {echanges.map((echange, index) => (
-            <li
-              key={`${echange.auteur}-${index}`}
-              className={echange.auteur === "vous" ? "flex justify-end" : "flex justify-start"}
-            >
-              <span
-                className={
-                  echange.auteur === "vous"
-                    ? "max-w-[85%] rounded-card bg-accent-tint px-3 py-2 text-body text-ink"
-                    : "inline-flex max-w-[85%] items-center gap-1.5 rounded-card bg-fill px-3 py-2 text-meta text-ink-muted"
-                }
-              >
-                {echange.auteur === "candilog" ? <Icon name="schedule" size={14} className="flex-none" /> : null}
-                {echange.texte}
-              </span>
-            </li>
-          ))}
-        </ol>
-        <div className="space-y-3 border-t border-line p-4">
-          {error ? <ErrorBanner title="Rédaction impossible" message={error} /> : null}
-          {busy ? (
-            <>
-              {progress}
-              <AiStopButton stopping={stopping} onStop={onCancel} />
-            </>
-          ) : (
-            <>
-              <FormField label="Que faut-il changer ?">
-                {(props) => (
-                  <TextArea
-                    {...props}
-                    rows={3}
-                    value={consigne}
-                    placeholder="Ex. « Mets en avant ma dernière expérience » ou « Va droit au but »"
-                    onChange={(event) => onConsigneChange(event.target.value)}
-                  />
-                )}
-              </FormField>
-              <Button
-                variant="primary"
-                icon="auto_awesome"
-                className="w-full"
-                disabled={consigne.trim() === ""}
-                onClick={onSubmit}
-              >
-                Régénérer avec cette consigne
-              </Button>
-              <Button variant="ghost" icon="target" className="w-full" onClick={onReopenBrief}>
-                Revenir au brief
-              </Button>
-            </>
+    <div role="radiogroup" aria-label={label} className="flex gap-px rounded-r7 bg-chip p-0.5">
+      {options.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          role="radio"
+          aria-checked={value === option.value}
+          disabled={disabled}
+          onClick={() => onChange(option.value)}
+          className={cn(
+            "h-6 flex-1 rounded-r5 text-small",
+            value === option.value ? "bg-panel font-medium text-tx" : "text-tx-4 hover:text-tx-2",
           )}
-        </div>
-      </div>
-    </DocumentPanel>
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
   );
 }
 
+/**
+ * Rédacteur de lettre (`screens/16-generator-letter.png`) : surcouche plein écran — offre,
+ * destinataire, ton et longueur à gauche, lettre éditable au centre avec la barre de
+ * corrections, déroulé et historique à droite. Le brief reste visible : changer le ton ou
+ * l'offre puis relancer ne demande aucun aller-retour.
+ */
 export function LetterWriterPage() {
   const location = useLocation();
   const coverLetterInitiale = coverLetterFromNavigation(location.state);
   const vm = useLetterWriterViewModel(coverLetterInitiale);
+  const running = vm.operation !== null;
+  const steps = useStepLog(LETTER_STEPS, vm.progress?.step ?? null, running, vm.elapsedMs);
+  const hasLetter = vm.output.trim() !== "";
+  const corrections = vm.exchanges.filter((exchange: Echange) => exchange.auteur === "vous").length;
+  const canSave = hasLetter && !vm.isSaving && !vm.overflow && !running;
+
+  const sendInstruction = (instruction: string) => {
+    const value = instruction.trim();
+    if (value && !running) void vm.run(value);
+  };
 
   return (
-    <Screen
-      padded={false}
-      header={
-        <PageHeader
-          icon="edit_note"
-          title="Lettre de motivation"
-          subtitle="Rédigez, itérez et enregistrez"
-          secondary={
-            vm.output ? (
-              <>
-                <Button
-                  icon={vm.operation?.kind === "correction" ? "progress_activity" : "edit_note"}
-                  disabled={vm.operation !== null}
-                  onClick={() => void vm.correct()}
-                >
-                  {vm.operation?.kind === "correction"
-                    ? "Correction en cours…"
-                    : "Corriger l’orthographe"}
-                </Button>
-                <Button
-                  icon="download"
-                  disabled={vm.overflow || vm.operation !== null}
-                  onClick={() => void vm.exportPdf()}
-                >
-                  Exporter le PDF
-                </Button>
-                <Button
-                  icon="close"
-                  disabled={vm.operation !== null}
-                  onClick={() => vm.setAbandonOpen(true)}
-                >
-                  Annuler
-                </Button>
-              </>
-            ) : undefined
-          }
-          primary={
-            vm.output ? (
-              <Button
-                variant="primary"
-                icon={vm.isSaving ? "progress_activity" : "save"}
-                disabled={vm.isSaving || vm.overflow || vm.operation !== null}
-                onClick={() => vm.save()}
-              >
-                {vm.isSaving ? "Enregistrement…" : "Enregistrer"}
-              </Button>
-            ) : undefined
-          }
-        />
-      }
-    >
-      <div className="grid min-h-0 flex-1 gap-4 overflow-hidden p-5 min-[1200px]:p-6 xl:grid-cols-[350px_minmax(480px,1fr)]">
-        {vm.inIteration ? (
-          <IterationPanel
-            echanges={vm.exchanges}
-            consigne={vm.instruction}
-            busy={vm.operation !== null}
-            stopping={vm.stopping}
-            error={vm.error}
-            progress={
-              vm.operation && !vm.stopping ? (
-                <AiProgress progress={vm.progress} elapsedMs={vm.elapsedMs} />
-              ) : null
-            }
-            onConsigneChange={vm.setInstruction}
-            onSubmit={() => void vm.run(vm.instruction.trim())}
-            onCancel={() => void vm.stop()}
-            onReopenBrief={() => vm.setBriefOpen(true)}
-          />
+    <GeneratorFrame
+      title="Générer une lettre"
+      actions={
+        running ? (
+          <AiStopButton stopping={vm.stopping} onStop={() => void vm.stop()} />
+        ) : hasLetter ? (
+          <>
+            <Button variant="ghost" size="bar" onClick={() => vm.setAbandonOpen(true)}>
+              Abandonner…
+            </Button>
+            <Button size="bar" onClick={() => void vm.correct()}>
+              Corriger l’orthographe
+            </Button>
+            <Button size="bar" disabled={vm.overflow} onClick={() => void vm.exportPdf()}>
+              Exporter en PDF
+            </Button>
+            <Button variant="primary" size="bar" shortcut="mod+s" disabled={!canSave} onClick={() => vm.save()}>
+              {vm.isSaving ? "Enregistrement…" : "Enregistrer"}
+            </Button>
+          </>
         ) : (
-          <DocumentPanel title="Brief de rédaction" icon="target" className="flex min-h-0 flex-col">
-            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
+          <Button variant="primary" size="bar" shortcut="mod+enter" onClick={() => void vm.run(null)}>
+            Rédiger la lettre
+          </Button>
+        )
+      }
+      left={
+        <>
+          <PaneSection title="Offre visée">
+            <OfferSource
+              value={vm.context}
+              onChange={vm.setContext}
+              readClipboard={vm.readClipboard}
+              disabled={running}
+              textLabel="Contexte ou offre"
+              required={false}
+              onPick={(application) => {
+                vm.setCompany(application.company_name ?? "");
+                vm.setJobTitle(application.job_title);
+              }}
+            />
+          </PaneSection>
+          <PaneSection title="Entreprise et poste">
+            <div className="flex flex-col gap-2.5">
               <Champ label="Entreprise" value={vm.company} onChange={vm.setCompany} />
               <Champ label="Poste ciblé" value={vm.jobTitle} onChange={vm.setJobTitle} />
-              <div className="grid grid-cols-2 gap-3">
-                <FormField label="Ton">
-                  {(props) => (
-                    <Select
-                      {...props}
-                      value={vm.tone}
-                      onChange={(e) => vm.setTone(e.target.value)}
-                    >
-                      <option value="formal">Formel</option>
-                      <option value="casual">Naturel</option>
-                      <option value="creative">Créatif</option>
-                    </Select>
-                  )}
-                </FormField>
-                <FormField label="Longueur">
-                  {(props) => (
-                    <Select
-                      {...props}
-                      value={vm.length}
-                      onChange={(e) => vm.setLength(e.target.value)}
-                    >
-                      <option value="short">Courte</option>
-                      <option value="medium">Moyenne</option>
-                      <option value="long">Longue</option>
-                    </Select>
-                  )}
-                </FormField>
-              </div>
-              <ChampOffre
-                label="Contexte ou offre"
-                rows={10}
-                value={vm.context}
-                onChange={vm.setContext}
-                readClipboard={vm.readClipboard}
-              />
-              {vm.error ? <ErrorBanner title="Rédaction impossible" message={vm.error} /> : null}
-              {vm.operation ? (
-                <>
-                  {vm.stopping ? null : (
-                    <AiProgress progress={vm.progress} elapsedMs={vm.elapsedMs} />
-                  )}
-                  <AiStopButton stopping={vm.stopping} onStop={() => void vm.stop()} />
-                </>
-              ) : (
-                <div className="flex flex-col gap-2">
-                  <Button
-                    variant="primary"
-                    icon="auto_awesome"
-                    className="w-full"
-                    onClick={() => void vm.run(null)}
-                  >
-                    {vm.exchanges.length > 0 ? "Rédiger une nouvelle lettre" : "Rédiger la lettre"}
-                  </Button>
-                  {vm.exchanges.length > 0 ? (
-                    <Button
-                      variant="ghost"
-                      icon="forum"
-                      className="w-full"
-                      onClick={() => vm.setBriefOpen(false)}
-                    >
-                      Revenir aux itérations
-                    </Button>
-                  ) : null}
-                </div>
-              )}
             </div>
-          </DocumentPanel>
-        )}
+          </PaneSection>
+          <PaneSection title="Destinataire">
+            <Champ label="Nom du recruteur — facultatif" value={vm.recipient} onChange={vm.setRecipient} />
+            <p className="mt-1.5 text-tiny leading-[1.45] text-tx-5">
+              Sans nom, la lettre utilisera « Madame, Monsieur ».
+            </p>
+          </PaneSection>
+          <PaneSection title="Ton">
+            <Segmented label="Ton" value={vm.tone} options={TONES} disabled={running} onChange={vm.setTone} />
+          </PaneSection>
+          <PaneSection title="Longueur">
+            <Segmented label="Longueur" value={vm.length} options={LENGTHS} disabled={running} onChange={vm.setLength} />
+          </PaneSection>
+          {hasLetter && !running ? (
+            <Button className="w-full" size="compact" onClick={() => void vm.run(null)}>
+              Rédiger une nouvelle lettre
+            </Button>
+          ) : null}
+          {vm.error ? (
+            <div className="mt-3">
+              <ErrorBanner title="Rédaction impossible" message={vm.error} />
+            </div>
+          ) : null}
+        </>
+      }
+      right={
+        <>
+          <PaneSection title={running || !hasLetter ? "Étapes" : "Terminé"}>
+            <StepList steps={steps} />
+          </PaneSection>
+          {vm.exchanges.length > 0 ? (
+            <PaneSection title="Historique" aside={`${corrections} correction${corrections > 1 ? "s" : ""}`}>
+              <ol className="flex flex-col gap-1.5">
+                {vm.exchanges.map((exchange: Echange, index: number) => (
+                  <li
+                    key={`${exchange.auteur}-${index}`}
+                    className={cn(
+                      "rounded-r7 px-2.5 py-1.5 text-small leading-[1.45]",
+                      exchange.auteur === "vous" ? "bg-sel text-tx-2" : "bg-group text-tx-4",
+                    )}
+                  >
+                    {exchange.texte}
+                  </li>
+                ))}
+              </ol>
+            </PaneSection>
+          ) : null}
+        </>
+      }
+      status={
+        running
+          ? `${vm.progress?.step ?? "Préparation"} · ${formatElapsed(vm.elapsedMs)}`
+          : hasLetter
+            ? `lettre prête · ${corrections} correction${corrections > 1 ? "s" : ""}${vm.overflow ? " · trop longue pour une page" : ""}`
+            : "renseignez l'offre, puis rédigez"
+      }
+      keys={hasLetter ? [{ label: "Enregistrer", shortcut: "mod+s" }] : [{ label: "Rédiger", shortcut: "mod+enter" }]}
+      closeDisabled={running}
+      onSave={() => {
+        if (canSave) vm.save();
+      }}
+      {...(!hasLetter && !running ? { onSubmit: () => void vm.run(null) } : {})}
+    >
+      {running && !vm.stopping ? (
+        <div className="px-[26px] pt-4">
+          <AiProgress progress={vm.progress} elapsedMs={vm.elapsedMs} />
+        </div>
+      ) : null}
+      <div className="min-h-0 flex-1 overflow-auto p-4">
         <LetterEditor
           value={vm.output}
-          readOnly={vm.operation !== null}
+          readOnly={running}
           identity={vm.identity}
           onSaveIdentity={vm.saveIdentity}
           fields={{
@@ -288,6 +228,49 @@ export function LetterWriterPage() {
           onOverflowChange={vm.setOverflow}
         />
       </div>
+      {hasLetter ? (
+        <section aria-label="Corrections" className="flex-none border-t border-bd-soft bg-app px-4 pt-2.5 pb-3">
+          <div className="mb-1.5 flex items-baseline gap-2">
+            <h2 className="caps">Corrections</h2>
+            <span className="font-mono text-caps text-tx-6">
+              {corrections} échange{corrections > 1 ? "s" : ""}
+            </span>
+            <span className="ml-auto text-tiny text-tx-5">Dites ce que vous voulez changer, en français courant.</span>
+          </div>
+          <form
+            className="flex gap-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              sendInstruction(vm.instruction);
+            }}
+          >
+            <input
+              aria-label="Que faut-il changer ?"
+              value={vm.instruction}
+              disabled={running}
+              placeholder="Raccourcis le deuxième paragraphe…"
+              onChange={(event) => vm.setInstruction(event.target.value)}
+              className="h-8 min-w-0 flex-1 rounded-r7 border border-bd-menu bg-panel px-2.5 text-ui text-tx outline-none placeholder:text-tx-6 focus:border-ac"
+            />
+            <Button type="submit" size="compact" disabled={running || vm.instruction.trim() === ""}>
+              Envoyer
+            </Button>
+          </form>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {QUICK_FIXES.map((fix) => (
+              <button
+                key={fix}
+                type="button"
+                disabled={running}
+                onClick={() => sendInstruction(fix)}
+                className="h-6 rounded-r6 bg-chip px-2 text-small text-tx-3 hover:text-tx disabled:opacity-50"
+              >
+                {fix}
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
       <ConfirmDialog
         open={vm.abandonOpen}
         title="Abandonner cette lettre ?"
@@ -297,6 +280,6 @@ export function LetterWriterPage() {
         onCancel={() => vm.setAbandonOpen(false)}
         onConfirm={vm.abandon}
       />
-    </Screen>
+    </GeneratorFrame>
   );
 }
