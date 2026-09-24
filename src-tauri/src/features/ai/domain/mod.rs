@@ -3,6 +3,7 @@
 mod config;
 mod cover_letter;
 mod cv_analysis;
+mod letter_fit;
 mod letter_natural;
 mod managed_ollama;
 mod models;
@@ -19,6 +20,7 @@ pub use crate::core::utils::text::search_key;
 pub use config::*;
 pub use cover_letter::*;
 pub use cv_analysis::*;
+pub use letter_fit::{letter_fit, LetterFit, LetterFitRequest, LetterRecommendation};
 pub use letter_natural::*;
 pub use managed_ollama::*;
 pub use models::*;

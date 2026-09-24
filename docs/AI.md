@@ -199,6 +199,16 @@ son export tiennent sur une page. La disponibilité de l'identité est un fait d
 de la lettre (`GroundedFactKind::Availability`) ; les prétentions salariales n'existent pas
 dans le profil.
 
+**Adéquation de la lettre.** Une fois la lettre rédigée, l'offre est structurée une fois
+par la tâche « Extraire une offre » (`ai_analyze_listing`), puis chaque version de la
+lettre est mesurée **localement** par `ai_evaluate_cover_letter` (`domain/letter_fit.rs`,
+sans appel au modèle). Le score est la part des exigences de l'offre que la lettre aborde,
+pondérée comme le score ATS (`requirement_weight`). Une recommandation ne naît que d'une
+exigence absente de la lettre **et** présente dans un fait du catalogue autorisé ; elle
+porte ce fait et un gain en points. « Appliquer » envoie sa consigne à la correction de la
+lettre, qui reste bornée aux faits vérifiés : le modèle ne réécrit jamais librement. Les
+exigences que le profil ne prouve pas sont listées, jamais proposées.
+
 La lettre de motivation est **assemblée**, pas rédigée librement : le modèle ne renvoie
 qu'une sélection d'identifiants du catalogue de faits et des mots-clés du brief
 (`domain/cover_letter.rs`). Les invites système détaillent la priorité des faits

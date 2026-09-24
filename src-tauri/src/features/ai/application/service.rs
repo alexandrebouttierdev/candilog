@@ -27,6 +27,9 @@ Une exigence = une seule idée. Déduplique les répétitions. `minimum_years` e
 
 Conserve aussi les champs simples pour compatibilité : `competences` pour les savoir-faire/outils/qualifications demandés, `savoirEtre`, `experience`, `motsCles` pour les missions sans doublon.
 Réponds uniquement avec ce JSON : {"titre":"","competences":[],"savoirEtre":[],"experience":null,"motsCles":[],"requirements":[{"name":"","category":"hard_skill","importance":"important","mandatory":false,"minimum_years":null,"transferable_from":[]}],"location":null}."#;
+/// Borne d'une lettre évaluée : une lettre tient sur une page, bien en deçà.
+const MAX_LETTER_FIT_CHARS: usize = 20_000;
+
 const PROBE_SYSTEM: &str = "Tu réponds en une phrase courte, en français.";
 const PROBE_PROMPT: &str = "Confirme que tu es prêt à aider à rédiger un CV.";
 
@@ -294,6 +297,29 @@ impl AiService {
             started_at,
             ListingAnalysis { job_offer, score },
             tokens,
+        ))
+    }
+
+    /// Adéquation de la lettre à l'offre (`screens/16`), recalculée localement à chaque
+    /// version : aucun appel au modèle, les recommandations ne viennent que du profil.
+    ///
+    /// # Errors
+    /// `Validation` si la lettre ou l'offre transmises dépassent les bornes.
+    pub fn evaluate_cover_letter(&self, request: LetterFitRequest) -> AppResult<LetterFit> {
+        if request.letter.chars().count() > MAX_LETTER_FIT_CHARS {
+            return Err(AppError::Validation(
+                "La lettre est trop longue pour être évaluée.".into(),
+            ));
+        }
+        request
+            .job_offer
+            .validate_ai_output()
+            .map_err(|_| AppError::Validation("L'offre transmise est invalide.".into()))?;
+        let profile = profile_without(&self.profile()?, &request.excluded_sections);
+        Ok(letter_fit(
+            &request.letter,
+            &request.job_offer,
+            &build_fact_catalog(&profile),
         ))
     }
 
@@ -2391,6 +2417,48 @@ Anglais · lecture courante de documentation technique\n";
             matches!(&error, AppError::Validation(message) if message.contains("au moins un argument")),
             "{error:?}"
         );
+    }
+
+    #[test]
+    fn l_evaluation_de_la_lettre_ignore_les_arguments_exclus() {
+        let (service, _directory) = service_with_profile();
+        let offre = StructuredListing {
+            requirements: vec![JobRequirement {
+                name: "Linux".into(),
+                category: RequirementCategory::HardSkill,
+                ..JobRequirement::default()
+            }],
+            ..StructuredListing::default()
+        };
+        let request = |excluded_sections| LetterFitRequest {
+            letter: "Madame, Monsieur,".into(),
+            job_offer: offre.clone(),
+            excluded_sections,
+        };
+
+        let libre = service.evaluate_cover_letter(request(Vec::new())).unwrap();
+        let sans_competences = service
+            .evaluate_cover_letter(request(vec![ProfileSection::Skills]))
+            .unwrap();
+
+        assert_eq!(libre.recommendations.len(), 1);
+        assert!(sans_competences.recommendations.is_empty());
+        assert_eq!(sans_competences.unsupported, vec!["Linux".to_owned()]);
+    }
+
+    #[test]
+    fn une_lettre_demesuree_n_est_pas_evaluee() {
+        let (service, _directory) = service_with_profile();
+
+        let error = service
+            .evaluate_cover_letter(LetterFitRequest {
+                letter: "a".repeat(MAX_LETTER_FIT_CHARS + 1),
+                job_offer: StructuredListing::default(),
+                excluded_sections: Vec::new(),
+            })
+            .unwrap_err();
+
+        assert!(matches!(error, AppError::Validation(_)), "{error:?}");
     }
 
     #[tokio::test]

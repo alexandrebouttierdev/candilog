@@ -4,6 +4,9 @@ import { Button, ConfirmDialog, ErrorBanner } from "@/shared/ui";
 import { cn } from "@/shared/lib/cn";
 import { useLetterWriterViewModel } from "../../viewmodel/useLetterWriterViewModel";
 import { useStepLog } from "../../viewmodel/useStepLog";
+import { useLetterFit } from "../../viewmodel/useLetterFit";
+import { toPlainText } from "../../model/letterMarkup";
+import { LetterFitPanel } from "../components/LetterFitPanel";
 import { EmptySheet } from "../components/EmptySheet";
 import { StopGenerationDialog } from "../components/StopGenerationDialog";
 import { GeneratorFrame, PaneSection, RunMeter, StepList } from "../components/GeneratorFrame";
@@ -53,6 +56,12 @@ export function LetterWriterPage() {
   // lettre, ou tout de suite si l'on préfère l'écrire soi-même.
   const [manual, setManual] = useState(false);
   const [askStop, setAskStop] = useState(false);
+  const letterFit = useLetterFit({
+    letter: toPlainText(vm.output),
+    context: vm.context,
+    excludedSections: vm.excludedSections,
+    enabled: hasLetter && !running,
+  });
   const currentStep = steps.findIndex((step) => step.state === "running") + 1;
   const showEditor = hasLetter || manual;
 
@@ -155,6 +164,18 @@ export function LetterWriterPage() {
               </p>
             ) : null}
           </PaneSection>
+          {hasLetter && !running && letterFit.available ? (
+            <LetterFitPanel
+              reading={letterFit.reading}
+              fit={letterFit.fit}
+              potential={letterFit.potential}
+              recommendations={letterFit.recommendations}
+              error={letterFit.error}
+              busy={running}
+              onApply={(recommendation) => sendInstruction(recommendation.instruction)}
+              onIgnore={letterFit.ignore}
+            />
+          ) : null}
           {vm.exchanges.length > 0 ? (
             <PaneSection title="Historique" aside={`${corrections} correction${corrections > 1 ? "s" : ""}`}>
               <ol className="flex flex-col gap-1.5">

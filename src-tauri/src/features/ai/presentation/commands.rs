@@ -5,9 +5,9 @@ use crate::core::errors::{AppError, AppResult};
 use crate::core::files::select_source;
 use crate::features::ai::domain::{
     ActiveModelCapabilities, AiExecution, AiProgress, CoverLetterRequest, ImportedResumeAnalysis,
-    LanguageCorrectionRequest, LanguageCorrectionResult, ListingAnalysis, ProfileImportAnalysis,
-    ProfileImportProgress, ProfileImportRequest, ResumeAnalysisRequest, ResumeGeneration,
-    ResumeGenerationRequest, SelectedResumeFile,
+    LanguageCorrectionRequest, LanguageCorrectionResult, LetterFit, LetterFitRequest,
+    ListingAnalysis, ProfileImportAnalysis, ProfileImportProgress, ProfileImportRequest,
+    ResumeAnalysisRequest, ResumeGeneration, ResumeGenerationRequest, SelectedResumeFile,
 };
 use tauri::{AppHandle, Emitter, State};
 
@@ -33,6 +33,15 @@ pub async fn ai_analyze_listing(
     text: String,
 ) -> AppResult<AiExecution<ListingAnalysis>> {
     state.ai.analyze_listing(text).await
+}
+
+/// Adéquation d'une lettre à l'offre, calculée localement.
+#[tauri::command(rename_all = "snake_case")]
+pub async fn ai_evaluate_cover_letter(
+    state: State<'_, AppState>,
+    request: LetterFitRequest,
+) -> AppResult<LetterFit> {
+    state.ai.evaluate_cover_letter(request)
 }
 
 #[tauri::command(rename_all = "snake_case")]

@@ -287,6 +287,11 @@ Réutiliser la recette du voisin plutôt que d’en inventer une.
   gauche, phases au centre (choix du fichier, analyse, revue élément par élément éditable,
   bilan), « Importer les éléments sélectionnés » (`⌘S`) en haut. « Annuler » arrête aussi
   une analyse en cours ; rien n'est écrit avant validation.
+- Lettre, colonne droite après rédaction (`LetterFitPanel`) : « 62 / 100 · adéquation »,
+  « jusqu'à 81 » (score si toutes les recommandations restantes étaient suivies), barre à
+  deux teintes ; recommandations « Aborder « … » » avec le fait du profil cité, gain `+n`,
+  « Appliquer » (consigne envoyée aux corrections) et « Ignorer » ; puis « Absent de votre
+  profil ». Sans offre, le panneau n'apparaît pas.
 - Lettre : avant rédaction, feuille neutre et lien « Écrire la lettre moi-même » qui ouvre
   l'éditeur ; entreprise, poste, destinataire, ton et longueur restent visibles ; la barre
   « Corrections » sous la feuille envoie une consigne libre ou rapide (« Plus court »…), les

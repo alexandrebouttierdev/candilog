@@ -110,6 +110,51 @@ export type LanguageCorrectionRequest = { generation_id: string, fields: Array<L
 
 export type LanguageCorrectionResult = { fields: Array<LanguageCorrectionField>, };
 
+export type LetterFit = { 
+/**
+ * Part pondérée des exigences de l'offre que la lettre aborde, sur 100.
+ */
+score: number, 
+/**
+ * Score atteint si toutes les recommandations étaient suivies.
+ */
+potential: number, 
+/**
+ * Nombre d'exigences pondérées lues dans l'offre ; 0 : rien à mesurer.
+ */
+requirements: number, addressed: Array<string>, recommendations: Array<LetterRecommendation>, 
+/**
+ * Exigences que ni la lettre ni le profil n'abordent : à ne pas inventer.
+ */
+unsupported: Array<string>, };
+
+export type LetterFitRequest = { letter: string, 
+/**
+ * Offre structurée par `ai_analyze_listing`.
+ */
+job_offer: StructuredListing, 
+/**
+ * Arguments exclus de la lettre : ils ne fondent aucune recommandation.
+ */
+excluded_sections: Array<ProfileSection>, };
+
+/**
+ * Ajout proposé : une exigence que la lettre n'aborde pas et qu'un fait du profil prouve.
+ */
+export type LetterRecommendation = { id: string, requirement: string, importance: RequirementImportance, 
+/**
+ * Le fait du profil qui permet de l'aborder, tel qu'il y est écrit.
+ */
+evidence: string, 
+/**
+ * Consigne envoyée à la correction de lettre, qui reste bornée aux faits vérifiés.
+ */
+instruction: string, 
+/**
+ * Points gagnés si la lettre l'aborde.
+ */
+impact: number, };
+
 export type ListingAnalysis = { job_offer: StructuredListing, score: MatchScore, };
 
 /**

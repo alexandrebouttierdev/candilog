@@ -77,6 +77,9 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
   retirent des sections du profil avant tout envoi au modèle ; le CV se rédige sur un ton
   sobre, professionnel ou direct ; la lettre peut s'appuyer sur la disponibilité déclarée
   dans le profil.
+- Lettre : score d'adéquation à l'offre (part des exigences abordées) et recommandations
+  tirées de votre profil, à appliquer ou ignorer ; les exigences que le profil ne prouve pas
+  sont signalées, jamais inventées.
 - Refonte v2 — Analyse de CV face à une offre : chaque exigence de l'offre est listée,
   couverte, partielle ou absente, avec la preuve trouvée dans le CV ; score et détail à
   gauche.

@@ -788,7 +788,7 @@ fn token_coverage(evidence: &str, requirement: &str) -> u8 {
     .unwrap_or(0)
 }
 
-const fn requirement_weight(
+pub(super) const fn requirement_weight(
     category: RequirementCategory,
     importance: RequirementImportance,
 ) -> u16 {

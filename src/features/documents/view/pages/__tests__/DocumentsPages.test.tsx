@@ -808,3 +808,44 @@ describe("ce que l'IA peut utiliser", () => {
     await waitFor(() => expect(generate).toHaveBeenCalledWith(expect.objectContaining({ excluded_sections: ["summary"] })));
   });
 });
+
+describe("adéquation de la lettre", () => {
+  it("mesure la lettre, retire une recommandation ignorée et applique l'autre par la correction", async () => {
+    const generate = vi.spyOn(aiService, "generateCoverLetter").mockResolvedValue(aiExecution("Madame, Monsieur, je pratique Linux."));
+    vi.spyOn(aiService, "analyzeListing").mockResolvedValue(
+      aiExecution({ job_offer: emptyJobOffer("Technicien"), score: emptyMatchScore(50) }),
+    );
+    const recommandation = (requirement: string, impact: number) => ({
+      id: `experience:0:${requirement}`,
+      requirement,
+      importance: "important" as const,
+      evidence: `Technicien chez Ker : ${requirement} de 400 postes`,
+      instruction: `Aborde « ${requirement} » en t'appuyant uniquement sur ce fait de mon profil`,
+      impact,
+    });
+    vi.spyOn(aiService, "evaluateCoverLetter").mockResolvedValue({
+      score: 45,
+      potential: 80,
+      requirements: 4,
+      addressed: ["Linux"],
+      recommendations: [recommandation("Supervision", 27), recommandation("Astreinte", 8)],
+      unsupported: ["Kubernetes"],
+    });
+    render(<LetterWriterPage />, { wrapper });
+    await choisirTexteColle();
+    await userEvent.type(screen.getByLabelText("Contexte ou offre"), "Technicien Linux, supervision, astreinte");
+    await userEvent.click(screen.getByRole("button", { name: /Rédiger la lettre/ }));
+
+    expect(await screen.findByText("jusqu’à 80")).toBeInTheDocument();
+    expect(screen.getByText(/Kubernetes/)).toBeInTheDocument();
+
+    const astreinte = screen.getByText("Aborder « Astreinte »").closest("li");
+    if (!astreinte) throw new Error("Recommandation introuvable");
+    await userEvent.click(within(astreinte).getByRole("button", { name: "Ignorer" }));
+    expect(screen.queryByText("Aborder « Astreinte »")).not.toBeInTheDocument();
+    expect(screen.getByText("jusqu’à 72")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Appliquer" }));
+    await waitFor(() => expect(generate.mock.calls.at(-1)?.[0].instruction).toContain("Aborde « Supervision »"));
+  });
+});
