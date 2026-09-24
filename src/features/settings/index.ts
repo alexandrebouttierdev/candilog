@@ -37,3 +37,5 @@ export { SettingsRow, SettingsSection } from "./view/components/SettingsSection"
 export { BackupsPage } from "./view/pages/BackupsPage";
 export { UpdatesPage } from "./view/pages/UpdatesPage";
 export { AboutPage } from "./view/pages/AboutPage";
+export { AI_TASKS, assignmentOf, mainLabel } from "./model/taskRouting";
+export type { Assignment } from "./model/taskRouting";

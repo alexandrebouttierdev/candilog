@@ -20,12 +20,11 @@ export function useShellCommands() {
   const ai = useAiIndicator();
   const counts = useNavCounts();
 
-  // La localité est imprimée sur chaque action IA : l'utilisateur sait, avant de lancer,
-  // si ses données quittent la machine (`DECISIONS.md` D3).
-  const localite =
-    ai.locality === "none"
-      ? "IA non configurée"
-      : `${ai.model ?? ai.label} · ${ai.locality === "local" ? "sur votre ordinateur" : "envoi distant"}`;
+  // Le modèle et la localité de la tâche sont imprimés sur chaque action IA : l'utilisateur
+  // sait, avant de lancer, qui la fera et si ses données quittent la machine (`DECISIONS.md` D3).
+  const resumeDetail = ai.taskDetail("generate_resume");
+  const letterDetail = ai.taskDetail("write_letter");
+  const analysisDetail = ai.taskDetail("analyze_resume");
 
   const commands = useMemo<readonly Command[]>(() => {
     const go = (path: string) => () => void navigate(path);
@@ -33,9 +32,9 @@ export function useShellCommands() {
       value === undefined ? undefined : `${value} ${suffixe}`;
     const list: Command[] = [
       { id: "create-application", group: "create", glyph: "+", label: "Nouvelle candidature", run: go(applicationsPath({ create: true })) },
-      { id: "generate-resume", group: "create", glyph: "✦", label: "Générer un CV ciblé", detail: localite, keywords: "ia cv", run: go(PATHS.generateResume) },
-      { id: "write-letter", group: "create", glyph: "✦", label: "Rédiger une lettre de motivation", detail: localite, keywords: "ia lettre", run: go(PATHS.writeLetter) },
-      { id: "analyze-resume", group: "create", glyph: "◫", label: "Analyser un CV face à une offre", detail: localite, keywords: "ats score", run: go(PATHS.analyzeResume) },
+      { id: "generate-resume", group: "create", glyph: "✦", label: "Générer un CV ciblé", detail: resumeDetail, keywords: "ia cv", run: go(PATHS.generateResume) },
+      { id: "write-letter", group: "create", glyph: "✦", label: "Rédiger une lettre de motivation", detail: letterDetail, keywords: "ia lettre", run: go(PATHS.writeLetter) },
+      { id: "analyze-resume", group: "create", glyph: "◫", label: "Analyser un CV face à une offre", detail: analysisDetail, keywords: "ats score", run: go(PATHS.analyzeResume) },
       { id: "go-today", group: "goto", glyph: "◷", label: "Aujourd'hui", detail: nombre(counts.today, "échéances"), shortcut: "g a", run: go(PATHS.today) },
       { id: "go-applications", group: "goto", glyph: "▤", label: "Candidatures", detail: nombre(counts.applications, "suivies"), shortcut: "g c", run: go(PATHS.applications) },
       { id: "go-kanban", group: "goto", glyph: "▤", label: "Candidatures — Kanban", run: go(PATHS.applicationsKanban) },
@@ -55,7 +54,7 @@ export function useShellCommands() {
       { id: "settings-about", group: "settings", glyph: "◫", label: "À propos", run: () => openSettings("about") },
     ];
     return list;
-  }, [navigate, openSettings, localite, counts.today, counts.applications, counts.profile]);
+  }, [navigate, openSettings, resumeDetail, letterDetail, analysisDetail, counts.today, counts.applications, counts.profile]);
 
   useRegisterCommands(commands);
 }

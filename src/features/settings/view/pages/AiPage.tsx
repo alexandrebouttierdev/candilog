@@ -27,7 +27,8 @@ import {
   type ProviderOption,
 } from "../../model/providers";
 import { ManagedOllamaPanel } from "../components/ManagedOllamaPanel";
-import { AI_TASKS, AiTaskRouting, assignmentOf, mainLabel } from "../components/AiTaskRouting";
+import { AiTaskRouting } from "../components/AiTaskRouting";
+import { AI_TASKS, assignmentOf, mainLabel } from "../../model/taskRouting";
 import { RemoteModelPicker } from "../components/RemoteModelPicker";
 import { cn } from "@/shared/lib/cn";
 import { type ConnectionTest } from "../../model/aiStatus";

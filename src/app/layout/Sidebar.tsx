@@ -113,15 +113,19 @@ export function Sidebar() {
         </button>
         <NavLink
           to={PATHS.ai}
-          title={`${ai.label}${ai.model ? ` · ${ai.model}` : ""}`}
+          title={ai.routing ? `Routage IA · ${ai.routing}` : `${ai.label}${ai.model ? ` · ${ai.model}` : ""}`}
           className="flex h-6 items-center justify-center gap-[9px] rounded-r6 px-2 hover:bg-elev wide:justify-start"
         >
           <span className="flex w-[15px] flex-none justify-center">
             <span aria-hidden className={cn("size-1.5 rounded-full", PUCE[ai.locality])} />
           </span>
-          <span className="hidden text-tiny whitespace-nowrap text-tx-4 wide:inline">{ai.label}</span>
-          {ai.model ? (
-            <span className="ml-auto hidden truncate font-mono text-kbd text-tx-7 wide:inline">{ai.model}</span>
+          {/* Dès qu'une tâche a son propre modèle, le pied résume le routage plutôt que le
+              seul fournisseur principal, qui ne dit plus où vont toutes les données. */}
+          <span className="hidden text-tiny whitespace-nowrap text-tx-4 wide:inline">
+            {ai.routing ? "Routage IA" : ai.label}
+          </span>
+          {(ai.routing ?? ai.model) ? (
+            <span className="ml-auto hidden truncate font-mono text-kbd text-tx-7 wide:inline">{ai.routing ?? ai.model}</span>
           ) : null}
         </NavLink>
       </div>

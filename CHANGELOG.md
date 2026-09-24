@@ -68,6 +68,9 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
   via » et constats tirés des chiffres de la période.
 - Refonte v2 — Réglages : la surcouche occupe toute la fenêtre ; Données, Mises à jour et
   À propos passent à la présentation en lignes des autres sections.
+- Palette `⌘K` : chaque action IA indique le modèle qui fera la tâche et s'il tourne sur
+  l'ordinateur ou part vers un service distant ; le pied de navigation résume le routage
+  (« Routage IA · 3 loc · 1 dist ») dès qu'une tâche a son propre modèle.
 - Refonte v2 — Import de CV en surcouche plein écran, la revue élément par élément gagnant
   toute la largeur.
 - Export CSV des candidatures : colonnes `reference` et `canal` ajoutées.
