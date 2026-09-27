@@ -66,6 +66,19 @@ désinstallé ou qui est désactivée **s'arrête et le dit** (`load_task_config
 celui choisi. Le benchmark utilisateur mesure le fournisseur principal. Toute route est
 revalidée en Rust à l'enregistrement (modèle non vide).
 
+**Premier envoi distant (décision D4).** Avant d'envoyer une tâche, l'écran appelle
+`useRemoteSendGuard` : la destination (`taskDestination`) est la route de la tâche, sinon le
+fournisseur principal, et elle est **distante dès que son adresse l'est** (D13 : un Ollama ou
+un fournisseur personnalisé sur une autre machine compte comme distant). Pour un
+fournisseur distant pas encore accepté, `RemoteSendDialog` dit qui reçoit quoi et pour
+combien de tâches ; « Annuler » n'envoie rien. « Ne plus demander pour … » (désactivé par
+défaut) ajoute l'identifiant du fournisseur à `settings.remote_send_consents`, revalidé en
+Rust (fournisseurs distants connus seulement) ; Réglages → Intelligence artificielle le
+remet à zéro. Les cinq tâches passent par cette garde, corrections comprises ; le benchmark,
+qui n'envoie que le CV de référence, non. Des réglages illisibles laissent passer la garde :
+le backend lit les mêmes réglages pour choisir son fournisseur et échoue alors sans rien
+envoyer.
+
 ## IA locale Candilog (détails)
 
 `candilog_local` est le seul fournisseur dont le modèle actif ne vit pas dans `llm.model` :

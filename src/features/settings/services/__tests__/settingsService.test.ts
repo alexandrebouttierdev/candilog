@@ -15,6 +15,7 @@ const settings: Settings = {
   },
   llm_presets: {},
   ai_routes: {},
+  remote_send_consents: [],
   theme: "system",
   language: "fr",
 };

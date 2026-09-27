@@ -205,6 +205,8 @@ function ResumeEditorScreen({
   };
   const correctFrench = async () => {
     const result = await editor.correctFrench();
+    // Envoi refusé : rien n'a été tenté, il n'y a rien à annoncer.
+    if (result === "declined") return;
     notify(result === "failed" ? {
       tone: "error",
       title: "Correction impossible",

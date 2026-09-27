@@ -4,6 +4,7 @@ import {
   getProvider,
   idProvider,
   isAiConfigured,
+  isLocalEndpoint,
   useManagedOllamaViewModel,
   useSettingsViewModel,
 } from "@/features/settings";
@@ -11,27 +12,6 @@ import type { AiTask } from "@/shared/types/generated/settings";
 
 /** Localité d'un point de terminaison : la puce suit l'adresse, pas le fournisseur. */
 export type Locality = "local" | "remote" | "none";
-
-/**
- * Une adresse de cette machine ? `localhost`, `127.0.0.1`, `[::1]`, `*.local` sont locales ;
- * toute autre adresse — y compris une IP de réseau privé — est distante, car les données
- * quittent la machine (`reference_design/DECISIONS.md` D13, volontairement prudent).
- */
-export function isLocalEndpoint(endpoint: string | null | undefined): boolean {
-  if (!endpoint) return false;
-  try {
-    const host = new URL(endpoint).hostname.toLowerCase();
-    return (
-      host === "localhost" ||
-      host === "127.0.0.1" ||
-      host === "[::1]" ||
-      host === "::1" ||
-      host.endsWith(".local")
-    );
-  } catch {
-    return false;
-  }
-}
 
 export interface AiIndicator {
   readonly label: string;

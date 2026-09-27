@@ -11,6 +11,7 @@ import {
   AboutPage,
   AppearanceSettings,
   BackupsPage,
+  RemoteSendConsents,
   SettingsSection,
   UpdatesPage,
   useAboutViewModel,
@@ -137,6 +138,9 @@ function SectionContent({ section }: { section: Section }) {
           >
             Ouvrir Intelligence artificielle
           </Button>
+          <div className="mt-5">
+            <RemoteSendConsents />
+          </div>
         </SettingsSection>
       );
     case "shortcuts":

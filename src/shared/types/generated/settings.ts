@@ -36,7 +36,11 @@ export type Settings = { llm: LlmForm, llm_presets: { [key in string]: LlmProvid
 /**
  * Routage des tâches IA ; une tâche absente suit le fournisseur principal.
  */
-ai_routes: { [key in AiTask]?: TaskRoute | null }, theme: ThemePref, language: string, };
+ai_routes: { [key in AiTask]?: TaskRoute | null }, 
+/**
+ * Fournisseurs distants dont le premier envoi n'est plus confirmé.
+ */
+remote_send_consents: Array<string>, theme: ThemePref, language: string, };
 
 /**
  * Modèle assigné à une tâche : un fournisseur et l'un de ses modèles.

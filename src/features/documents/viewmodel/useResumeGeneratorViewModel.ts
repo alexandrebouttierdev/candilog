@@ -16,6 +16,7 @@ import type { ProfileSection, ResumeTone } from "@/shared/types/generated/ai";
 import type { ResumeWorkspace } from "@/shared/types/generated/documents";
 import { RESUME_SECTIONS, sectionOptions, toggleSection } from "../model/profileSections";
 import { PROFILE_KEY, profileService } from "@/features/profile";
+import { useRemoteSendGuard } from "@/features/settings";
 import { documentsService } from "../services/documentsService";
 import { exportResumePdf } from "./documentExport";
 import { RESUME_KEY } from "./documentKeys";
@@ -43,6 +44,7 @@ export function useResumeGeneratorViewModel(initial: ResumeGeneratorInitial) {
   const [excludedSections, setExcludedSections] = useState<ProfileSection[]>([]);
   const [tone, setTone] = useState<ResumeTone>("professional");
   const profile = useQuery({ queryKey: PROFILE_KEY, queryFn: profileService.load });
+  const confirmSend = useRemoteSendGuard();
   const { operation, stopping, start, stop, finish, isCurrent } = useAiOperation();
   const [error, setError] = useState<string | null>(null);
   const [historical] = useState(initial.result);
@@ -86,6 +88,8 @@ export function useResumeGeneratorViewModel(initial: ResumeGeneratorInitial) {
       setError("Collez le texte de l’offre à cibler.");
       return;
     }
+    // Premier envoi à un service distant : confirmé avant que rien ne parte (D4).
+    if (!(await confirmSend("generate_resume", "Votre profil et le texte de l’offre"))) return;
     let id: string;
     try {
       id = start("generation");

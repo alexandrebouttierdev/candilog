@@ -13,6 +13,7 @@ import { documentsService } from "../services/documentsService";
 import type { CoverLetter } from "@/shared/types/generated/documents";
 import { applyLetterCorrection, letterCorrectionFields } from "../model/letterMarkup";
 import { PROFILE_KEY, profileService } from "@/features/profile";
+import { useRemoteSendGuard } from "@/features/settings";
 import type { Identity } from "@/shared/types/generated/profile";
 import type { ProfileSection } from "@/shared/types/generated/ai";
 import { LETTER_ARGUMENTS, sectionOptions, toggleSection } from "../model/profileSections";
@@ -61,6 +62,7 @@ export function useLetterWriterViewModel(initial: CoverLetter | null) {
   const inIteration = exchanges.length > 0 && !briefOpen;
 
   const profile = useQuery({ queryKey: PROFILE_KEY, queryFn: profileService.load });
+  const confirmSend = useRemoteSendGuard();
   const identity = profile.data?.profile.identity ?? null;
 
   const saveIdentity = useMutation({
@@ -75,6 +77,7 @@ export function useLetterWriterViewModel(initial: CoverLetter | null) {
   });
 
   async function run(nextInstruction: string | null): Promise<void> {
+    if (!(await confirmSend("write_letter", "Votre profil et le texte de l’offre"))) return;
     let id: string;
     try {
       id = start("generation");
@@ -136,6 +139,7 @@ export function useLetterWriterViewModel(initial: CoverLetter | null) {
   async function correct(): Promise<void> {
     const fields = letterCorrectionFields(output);
     if (fields.length === 0) return;
+    if (!(await confirmSend("write_letter", "Le texte de la lettre"))) return;
     let id: string;
     try {
       id = start("correction");

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { aiService } from "@/features/ai";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { AppError } from "@/shared/types/app-error";
+import { useRemoteSendGuard } from "@/features/settings";
 import type { LetterRecommendation, ProfileSection } from "@/shared/types/generated/ai";
 
 const LETTER_FIT_KEY = ["lettre-adequation"] as const;
@@ -25,9 +26,15 @@ export function useLetterFit({
   enabled: boolean;
 }) {
   const offerText = context.trim();
+  const confirmSend = useRemoteSendGuard();
   const listing = useQuery({
     queryKey: [...LETTER_FIT_KEY, "offre", offerText],
-    queryFn: () => aiService.analyzeListing(offerText),
+    queryFn: async () => {
+      if (!(await confirmSend("extract_offer", "Le texte de l’offre"))) {
+        throw new AppError({ code: "CANCELLED", message: "vous avez refusé l’envoi de l’offre, rien n’est parti." });
+      }
+      return aiService.analyzeListing(offerText);
+    },
     enabled: enabled && offerText !== "",
     staleTime: Number.POSITIVE_INFINITY,
     retry: false,

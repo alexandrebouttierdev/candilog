@@ -51,6 +51,7 @@ function reglages(llm: Partial<LlmForm> = {}): Settings {
     },
     llm_presets: {},
     ai_routes: {},
+    remote_send_consents: [],
     theme: "system",
     language: "fr",
   };

@@ -80,6 +80,11 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
 - Lettre : score d'adéquation à l'offre (part des exigences abordées) et recommandations
   tirées de votre profil, à appliquer ou ignorer ; les exigences que le profil ne prouve pas
   sont signalées, jamais inventées.
+- IA — confirmation du premier envoi à un service distant : avant qu'une tâche parte vers
+  un service hors de l'ordinateur, Candilog dit qui reçoit quoi ; « Annuler » n'envoie rien.
+  « Ne plus demander » se règle par service et se remet à zéro dans Réglages. Un Ollama ou un
+  service personnalisé sur une autre machine compte comme distant, y compris dans « Qui
+  fait quoi ».
 - Refonte v2 — Analyse de CV face à une offre : chaque exigence de l'offre est listée,
   couverte, partielle ou absente, avec la preuve trouvée dans le CV ; score et détail à
   gauche.

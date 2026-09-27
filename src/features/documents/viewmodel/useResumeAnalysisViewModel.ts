@@ -12,6 +12,7 @@ import {
 } from "@/features/ai";
 import { documentsService } from "../services/documentsService";
 import { AppError } from "@/shared/types/app-error";
+import { useRemoteSendGuard } from "@/features/settings";
 
 function message(error: unknown): string {
   return error instanceof AppError ? error.message : "Une erreur inattendue s’est produite.";
@@ -23,6 +24,7 @@ export function useResumeAnalysisViewModel() {
   const [selectedFile, setSelectedFile] = useState<SelectedResumeFile | null>(null);
   const [selecting, setSelecting] = useState(false);
   const { operation, stopping, start, stop, finish, isCurrent } = useAiOperation();
+  const confirmSend = useRemoteSendGuard();
   const [result, setResult] = useState<ImportedResumeAnalysis | null>(null);
   const [metrics, setMetrics] = useState<Pick<
     AiExecution<unknown>,
@@ -67,6 +69,7 @@ export function useResumeAnalysisViewModel() {
       setError("Collez l’offre ciblée avant de lancer l’analyse.");
       return;
     }
+    if (!(await confirmSend("analyze_resume", "Votre CV et le texte de l’offre"))) return;
     let id: string;
     try {
       id = start("analyse");

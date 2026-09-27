@@ -4,6 +4,7 @@ import { ChromeProvider } from "@/shared/lib/chrome";
 import { CommandProvider } from "@/shared/lib/commands";
 import { AiConfigBridge, AiRequiredModal } from "@/features/ai";
 import { SettingsOverlay } from "@/app/overlays/SettingsOverlay";
+import { RemoteSendDialog } from "@/features/settings";
 import { CommandPalette } from "@/app/palette/CommandPalette";
 import { useShellCommands } from "@/app/palette/useShellCommands";
 import { AiNavigationGuard } from "./AiNavigationGuard";
@@ -69,6 +70,7 @@ function ShellFrame() {
         <StatusBar />
         <SettingsOverlay />
       </div>
+      <RemoteSendDialog />
       <CommandPalette />
     </div>
   );

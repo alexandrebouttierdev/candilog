@@ -320,11 +320,29 @@ fn non_empty_secret(secret: Option<String>) -> Option<String> {
     secret.filter(|value| !value.trim().is_empty())
 }
 
+/// Fournisseurs qui peuvent recevoir un consentement d'envoi : tous sauf l'IA locale.
+/// Ollama et « personnalisé » y figurent — ils sont distants dès que leur adresse l'est.
+const REMOTE_PROVIDER_IDS: [&str; 7] = [
+    "ollama", "claude", "openai", "gemini", "mistral", "deepseek", "custom",
+];
+
 fn validate(settings: &Settings, api_key_configured: bool) -> AppResult<()> {
     let config = LlmConfig::from(settings.llm.clone());
     validate_llm(&config, api_key_configured)?;
     // Une route nomme toujours un modèle : une route vide n'est ni « suivre le principal »
     // (route absente) ni « désactivée » (`null`), et la tâche échouerait sans explication.
+    // Un consentement ne vaut que pour un fournisseur distant connu : une liste forgée ne
+    // doit ni grossir les réglages, ni nommer l'IA locale, qui n'envoie rien.
+    if settings.remote_send_consents.len() > REMOTE_PROVIDER_IDS.len()
+        || settings
+            .remote_send_consents
+            .iter()
+            .any(|id| !REMOTE_PROVIDER_IDS.contains(&id.as_str()))
+    {
+        return Err(AppError::Validation(
+            "Les confirmations d'envoi distant enregistrées sont invalides.".into(),
+        ));
+    }
     for (task, route) in &settings.ai_routes {
         if let Some(route) = route {
             let model = route.model.trim();
@@ -455,6 +473,7 @@ mod tests {
             llm,
             llm_presets: Default::default(),
             ai_routes: Default::default(),
+            remote_send_consents: Default::default(),
             theme: ThemePref::System,
             language: "fr".into(),
         }
@@ -468,6 +487,31 @@ mod tests {
             model: "llama3.2:3b".into(),
             temperature: 0.7,
             mode: AnalysisMode::Auto,
+        }
+    }
+
+    #[test]
+    fn les_consentements_d_envoi_distant_sont_persistes() {
+        let service = service();
+        let mut settings = form(ollama());
+        settings.remote_send_consents.insert("claude".into());
+
+        service.save(settings, None).unwrap();
+
+        let relu = service.load().unwrap();
+        assert!(relu.remote_send_consents.contains("claude"));
+    }
+
+    #[test]
+    fn un_consentement_pour_l_ia_locale_ou_un_inconnu_est_refuse() {
+        for id in ["candilog_local", "fournisseur-inconnu"] {
+            let service = service();
+            let mut settings = form(ollama());
+            settings.remote_send_consents.insert(id.into());
+
+            let error = service.save(settings, None).unwrap_err();
+
+            assert!(matches!(error, AppError::Validation(_)), "{id} : {error:?}");
         }
     }
 

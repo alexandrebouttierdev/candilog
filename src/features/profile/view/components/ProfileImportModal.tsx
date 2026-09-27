@@ -16,6 +16,7 @@ import {
   useAiRailStatusStore,
 } from "@/features/ai";
 import { AppError } from "@/shared/types/app-error";
+import { useRemoteSendGuard } from "@/features/settings";
 import { Button, ConfirmDialog, ErrorBanner, Icon, WorkSurface } from "@/shared/ui";
 import { formatAiSummary } from "@/shared/lib/duration";
 import {
@@ -55,6 +56,7 @@ export function ProfileImportModal({
 }) {
   const formId = useId();
   const { operation, stopping, start, stop, finish, isCurrent } = useAiOperation();
+  const confirmSend = useRemoteSendGuard();
   const [phase, setPhase] = useState<Phase>("pick");
   const [preview, setPreview] = useState<ImportProfilePreview | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -124,6 +126,8 @@ export function ProfileImportModal({
   };
 
   const analyze = async () => {
+    // Un CV contient tout le profil : son envoi distant se confirme d'abord (D4).
+    if (!(await confirmSend("import_resume", "Le CV que vous allez choisir"))) return;
     let id: string;
     try {
       id = start("import");

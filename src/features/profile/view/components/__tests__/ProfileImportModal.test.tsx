@@ -7,6 +7,11 @@ import { AppError } from "@/shared/types/app-error";
 import { ProfileImportModal } from "../ProfileImportModal";
 import { useAiOperationStore } from "@/features/ai";
 
+// Le consentement d'envoi distant a ses propres tests : ici, l'IA est locale.
+vi.mock("@/features/settings", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/settings")>()),
+  useRemoteSendGuard: () => () => Promise.resolve(true),
+}));
 vi.mock("@/features/ai/services/aiService", () => ({
   aiService: {
     importProfile: vi.fn(),
