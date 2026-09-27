@@ -82,7 +82,7 @@ export function LetterFitPanel({
                     <StatusGlyph tone="a" small />
                   </span>
                   <span className="flex-1 text-small font-medium text-tx">
-                    Aborder « {recommendation.requirement} »
+                    {`Aborder «\u00a0${recommendation.requirement}\u00a0»`}
                   </span>
                   <span className="rounded-r5 bg-tint-ac-bg px-1.5 font-mono text-caps text-tint-ac-tx">
                     +{recommendation.impact}
