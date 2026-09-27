@@ -224,6 +224,42 @@ describe("ViewModel des candidatures", () => {
     expect(demandes.every((filter) => !filter.excluded.includes("status"))).toBe(true);
   });
 
+  it("groupe la liste par entreprise sans interroger les groupes repliés", async () => {
+    const groupes = Array.from({ length: 10 }, (_, index) => ({ key: `e${index}`, label: `Entreprise ${index}`, count: 10 - index }));
+    const groups = vi.spyOn(applicationService, "groups").mockResolvedValue(groupes);
+    const listPage = vi.spyOn(applicationService, "listPage").mockResolvedValue(page([cand("Développeur")]));
+
+    const { result } = renderHook(() => useApplicationsViewModel("list"), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    listPage.mockClear();
+
+    act(() => result.current.cycleGrouping());
+
+    await waitFor(() => expect(result.current.customGroups).toHaveLength(10));
+    await waitFor(() => expect(listPage).toHaveBeenCalledTimes(8));
+    expect(groups).toHaveBeenCalledWith(expect.objectContaining({ search: "" }), "company");
+    const filtres = listPage.mock.calls.map(([params]) => params.filter);
+    expect(filtres.map((filter) => filter.company_id).sort()).toEqual(["e0", "e1", "e2", "e3", "e4", "e5", "e6", "e7"]);
+    // Le décompte vient de SQLite, pas des lignes chargées.
+    expect(result.current.customGroups[9]?.page.total).toBe(1);
+    expect(result.current.customGroups[9]?.open).toBe(false);
+
+    act(() => result.current.toggleCustomGroup("e9"));
+    await waitFor(() => expect(listPage).toHaveBeenCalledTimes(9));
+  });
+
+  it("revient au statut après entreprise et contrat", () => {
+    vi.spyOn(applicationService, "groups").mockResolvedValue([]);
+    vi.spyOn(applicationService, "listPage").mockResolvedValue(page([]));
+    const { result } = renderHook(() => useApplicationsViewModel("list"), { wrapper });
+
+    act(() => result.current.cycleGrouping());
+    act(() => result.current.cycleGrouping());
+    expect(result.current.grouping).toBe("contract");
+    act(() => result.current.cycleGrouping());
+    expect(result.current.grouping).toBe("status");
+  });
+
   it("duplique la candidature et sélectionne la copie", async () => {
     vi.spyOn(applicationService, "listPage").mockResolvedValue(page([cand("Développeur")]));
     const copie = { ...cand("Développeur"), id: "copie", reference_number: 143 };

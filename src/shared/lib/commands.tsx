@@ -5,7 +5,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState } from 
  * Groupe d'une commande de la palette (`screens/20-command-palette.png`) : les actions sur
  * la sélection d'abord, puis créer, aller à, réglages.
  */
-export type CommandGroup = "selection" | "create" | "goto" | "settings";
+export type CommandGroup = "selection" | "create" | "goto" | "view" | "settings";
 
 export interface Command {
   readonly id: string;

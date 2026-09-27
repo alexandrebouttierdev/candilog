@@ -4,6 +4,7 @@ import type { Application, ApplicationStatus } from "@/shared/types/generated/ap
 import type { Page } from "@/shared/types/page";
 import { cn } from "@/shared/lib/cn";
 import { Avatar, Skeleton, StatusGlyph, StatusPill, Tag } from "@/shared/ui";
+import type { GlyphTone } from "@/shared/ui";
 import { Statuses } from "../../model/statuses";
 import { channelLabel, dueOf, formatReference, shortDate } from "../../model/presentation";
 
@@ -30,11 +31,27 @@ export interface ApplicationListHandlers {
   readonly onStatusMenu: (application: Application, anchor: Anchor) => void;
   readonly onKey: (application: Application, event: KeyboardEvent) => boolean;
   readonly onCreate: (status: ApplicationStatus) => void;
-  readonly onShowMore: (status: ApplicationStatus) => void;
+  readonly onShowMore: (key: string) => void;
+}
+
+/** Groupe de la liste : un statut, une entreprise ou un contrat (« Grouper : … »). */
+export interface ListGroup {
+  readonly key: string;
+  readonly label: string;
+  /** Glyphe de statut ; absent pour une entreprise ou un contrat. */
+  readonly glyph?: GlyphTone;
+  /** Lignes chargées, et `total` : le décompte du filtre, pas de la page. */
+  readonly page: Page<Application>;
+  readonly open: boolean;
+  /** Groupe ouvert dont les lignes arrivent. */
+  readonly loading: boolean;
+  /** Statut d'une candidature créée depuis l'en-tête ; sans lui, pas de « + ». */
+  readonly createStatus?: ApplicationStatus;
 }
 
 /**
- * Liste groupée par statut (`screens/02-applications-list.png`), l'écran de référence.
+ * Liste groupée (`screens/02-applications-list.png`), l'écran de référence : par statut par
+ * défaut, ou par entreprise ou contrat (« Grouper : statut ▾ »).
  *
  * Une seule tabulation entre dans la liste (composite ARIA), puis `↑ ↓` parcourent les
  * lignes **visibles** — groupes repliés exclus. Le focus clavier est un liseré gauche
@@ -43,16 +60,14 @@ export interface ApplicationListHandlers {
  */
 export function ApplicationGroupList({
   groups,
-  collapsed,
   onToggleGroup,
   selectedId,
   checkedIds,
   loading,
   handlers,
 }: {
-  groups: Record<ApplicationStatus, Page<Application>>;
-  collapsed: ReadonlySet<ApplicationStatus>;
-  onToggleGroup: (status: ApplicationStatus) => void;
+  groups: readonly ListGroup[];
+  onToggleGroup: (key: string) => void;
   selectedId: string | null;
   checkedIds: ReadonlySet<string>;
   loading: boolean;
@@ -62,8 +77,8 @@ export function ApplicationGroupList({
   const container = useRef<HTMLDivElement>(null);
 
   const visibles = useMemo(
-    () => Statuses.flatMap((status) => (collapsed.has(status.value) ? [] : groups[status.value].items)),
-    [collapsed, groups],
+    () => groups.flatMap((group) => (group.open ? group.page.items : [])),
+    [groups],
   );
   const focused = visibles.find((item) => item.id === focusId) ?? null;
 
@@ -132,36 +147,39 @@ export function ApplicationGroupList({
       }}
       className="@container min-h-0 flex-1 overflow-y-auto outline-none"
     >
-      {Statuses.map((status) => {
-        const page = groups[status.value];
-        const replie = collapsed.has(status.value);
+      {groups.map((group) => {
+        const page = group.page;
+        const replie = !group.open;
         const restantes = page.total - page.items.length;
+        const createStatus = group.createStatus;
         return (
-          <section key={status.value} aria-label={`${status.label}, ${page.total}`}>
+          <section key={group.key} aria-label={`${group.label}, ${page.total}`}>
             <div className="sticky top-0 z-[1] flex h-group-head items-center gap-[9px] bg-group px-3.5">
               <button
                 type="button"
                 tabIndex={-1}
                 aria-expanded={!replie}
-                aria-label={`${replie ? "Déplier" : "Replier"} ${status.label}`}
-                onClick={() => onToggleGroup(status.value)}
+                aria-label={`${replie ? "Déplier" : "Replier"} ${group.label}`}
+                onClick={() => onToggleGroup(group.key)}
                 className="flex w-3 justify-center text-[8px] text-tx-5"
               >
                 {replie ? "▸" : "▾"}
               </button>
-              <StatusGlyph tone={status.glyph} />
-              <span className="text-small font-medium text-tx">{status.label}</span>
+              {group.glyph ? <StatusGlyph tone={group.glyph} /> : null}
+              <span className="truncate text-small font-medium text-tx">{group.label}</span>
               <span className="font-mono text-caps text-tx-5">{page.total}</span>
-              <button
-                type="button"
-                tabIndex={-1}
-                aria-label={`Ajouter une candidature ${status.label.toLowerCase()}`}
-                title="Ajouter une candidature"
-                onClick={() => handlers.onCreate(status.value)}
-                className="ml-auto flex size-[18px] items-center justify-center rounded-r5 text-small text-tx-5 hover:bg-elev hover:text-tx-2"
-              >
-                +
-              </button>
+              {createStatus ? (
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  aria-label={`Ajouter une candidature ${group.label.toLowerCase()}`}
+                  title="Ajouter une candidature"
+                  onClick={() => handlers.onCreate(createStatus)}
+                  className="ml-auto flex size-[18px] items-center justify-center rounded-r5 text-small text-tx-5 hover:bg-elev hover:text-tx-2"
+                >
+                  +
+                </button>
+              ) : null}
             </div>
             {replie
               ? null
@@ -176,11 +194,16 @@ export function ApplicationGroupList({
                     onPointer={() => setFocusId(application.id)}
                   />
                 ))}
-            {!replie && restantes > 0 ? (
+            {!replie && group.loading ? (
+              <div role="status" aria-label={`Chargement de ${group.label}`} className="flex h-row-app items-center gap-[11px] px-3.5">
+                <Skeleton className="size-3" />
+                <Skeleton className="h-[9px] w-48" />
+              </div>
+            ) : !replie && restantes > 0 ? (
               <button
                 type="button"
                 tabIndex={-1}
-                onClick={() => handlers.onShowMore(status.value)}
+                onClick={() => handlers.onShowMore(group.key)}
                 className="flex h-row-app w-full items-center px-3.5 text-left text-small text-ac-tx hover:bg-hover"
               >
                 Afficher {Math.min(restantes, 50)} de plus

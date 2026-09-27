@@ -1,6 +1,7 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/shared/lib/cn";
 import { useChromeValue } from "@/shared/lib/chrome";
+import { useCommands } from "@/shared/lib/commands";
 import { currentPlatform } from "@/shared/lib/platform";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { activeTab, destinationForPath } from "@/app/router/routes";
@@ -18,6 +19,7 @@ import { SETTINGS_LABELS } from "@/app/overlays/settingsSections";
 export function TitleBar() {
   const { pathname } = useLocation();
   const destination = destinationForPath(pathname);
+  const commands = useCommands();
   const tab = activeTab(destination, pathname);
   const chrome = useChromeValue();
   const settings = useUiStore((state) => state.settings);
@@ -70,6 +72,15 @@ export function TitleBar() {
             );
           })}
         </div>
+      ) : null}
+      {chrome.action && !settings ? (
+        <button
+          type="button"
+          onClick={() => commands.find((command) => command.id === chrome.action?.command)?.run()}
+          className="inline-flex h-6 flex-none items-center rounded-r6 bg-elev px-[9px] text-small whitespace-nowrap text-tx-3 hover:text-tx"
+        >
+          {chrome.action.label}
+        </button>
       ) : null}
       {chrome.aside && !settings ? (
         <span className="inline-flex h-6 flex-none items-center rounded-r6 bg-elev px-[9px] text-small whitespace-nowrap text-tx-4">

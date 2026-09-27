@@ -47,6 +47,7 @@ pub fn run() {
             analytics::analytics_export_csv,
             applications::applications_list_page,
             applications::applications_breakdown,
+            applications::applications_groups,
             applications::applications_get,
             applications::applications_create,
             applications::applications_update,

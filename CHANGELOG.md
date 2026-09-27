@@ -85,6 +85,8 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
   « Ne plus demander » se règle par service et se remet à zéro dans Réglages. Un Ollama ou un
   service personnalisé sur une autre machine compte comme distant, y compris dans « Qui
   fait quoi ».
+- Candidatures — « Grouper : statut ▾ » : la liste se groupe aussi par entreprise ou par
+  contrat, avec des décomptes exacts sur tout le filtre.
 - Refonte v2 — Analyse de CV face à une offre : chaque exigence de l'offre est listée,
   couverte, partielle ou absente, avec la preuve trouvée dans le CV ; score et détail à
   gauche.

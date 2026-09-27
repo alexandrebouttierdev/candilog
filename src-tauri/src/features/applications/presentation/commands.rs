@@ -7,8 +7,8 @@ use crate::core::pagination::Page;
 use crate::core::utils::blocking;
 use crate::features::applications::application::export;
 use crate::features::applications::domain::{
-    Application, ApplicationFilter, ApplicationStatus, DeletionImpact, NewApplication,
-    PipelineBreakdown, StatusChange,
+    Application, ApplicationFilter, ApplicationGroup, ApplicationGrouping, ApplicationStatus,
+    DeletionImpact, NewApplication, PipelineBreakdown, StatusChange,
 };
 use std::sync::Arc;
 use tauri::{AppHandle, State};
@@ -33,6 +33,17 @@ pub async fn applications_breakdown(
 ) -> AppResult<PipelineBreakdown> {
     let service = Arc::clone(&state.applications);
     blocking::execute(move || service.breakdown(&filter)).await
+}
+
+/// Groupes de la liste (« Grouper : entreprise / contrat »), comptés sur tout le filtre.
+#[tauri::command(rename_all = "snake_case")]
+pub async fn applications_groups(
+    state: State<'_, AppState>,
+    filter: ApplicationFilter,
+    by: ApplicationGrouping,
+) -> AppResult<Vec<ApplicationGroup>> {
+    let service = Arc::clone(&state.applications);
+    blocking::execute(move || service.groups(&filter, by)).await
 }
 
 /// Récupère une candidature par identifiant.

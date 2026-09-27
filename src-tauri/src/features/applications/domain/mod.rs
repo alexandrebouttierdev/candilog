@@ -11,7 +11,8 @@ pub use application::{Application, DeletionImpact, NewApplication, StatusChange}
 pub use application_type::ApplicationType;
 pub use channel::ApplicationChannel;
 pub use repository::{
-    ApplicationFilter, ApplicationRepository, ApplicationSort, FilterField, PipelineBreakdown,
+    ApplicationFilter, ApplicationGroup, ApplicationGrouping, ApplicationRepository,
+    ApplicationSort, FilterField, PipelineBreakdown,
 };
 pub use schedule::{WeeklyWorkSchedule, MAX_WEEKLY_HOURS};
 pub use status::ApplicationStatus;

@@ -7,11 +7,12 @@ import type { Application, ApplicationFilter, ApplicationStatus } from "@/shared
 import { Statuses } from "../../model/statuses";
 import { formatReference } from "../../model/presentation";
 import { sameCriteria } from "../../model/filterFields";
+import { groupingLabel, nextGrouping } from "../../model/grouping";
 import { EMPTY_FILTER } from "../../model/schemas/application-filter.schema";
 import { ApplicationFormModal } from "../components/ApplicationFormModal";
 import { ApplicationToolbar } from "../components/ApplicationToolbar";
 import { ApplicationGroupList } from "../components/ApplicationGroupList";
-import type { Anchor } from "../components/ApplicationGroupList";
+import type { Anchor, ListGroup } from "../components/ApplicationGroupList";
 import { ApplicationInspector } from "../components/ApplicationInspector";
 import { DeleteApplicationDialog } from "../components/DeleteApplicationDialog";
 import { applicationMenu } from "../components/applicationActions";
@@ -104,6 +105,18 @@ export function ApplicationsPage({
   // « Refusée » replié par défaut, comme dans la maquette : ce qui est clos se consulte,
   // il ne s'impose pas en tête de liste.
   const [collapsed, setCollapsed] = useState<Set<ApplicationStatus>>(() => new Set(["REFUS"]));
+  const listGroups: readonly ListGroup[] =
+    vm.grouping === "status"
+      ? Statuses.map((status) => ({
+          key: status.value,
+          label: status.label,
+          glyph: status.glyph,
+          page: vm.kanbanColumns[status.value],
+          open: !collapsed.has(status.value),
+          loading: false,
+          createStatus: status.value,
+        }))
+      : vm.customGroups;
   const [menu, setMenu] = useState<OpenMenu | null>(null);
   const [followUpFor, setFollowUpFor] = useState<Application | null>(null);
   const [floating, setFloating] = useState(false);
@@ -245,10 +258,22 @@ export function ApplicationsPage({
         { id: "app-delete", group: "selection", glyph: "▤", label: "Supprimer…", detail: selectionLabel, shortcut: "mod+backspace", run: on(handlers.remove) },
       ]
     : [];
-  useRegisterCommands(commands);
+  // « Grouper : statut ▾ » (`INTERACTIONS.md` §3.2) : cycle en place, sur la Liste seulement.
+  const groupCommand: Command | null =
+    view === "list"
+      ? {
+          id: "app-group",
+          group: "view",
+          label: `Grouper par ${groupingLabel(nextGrouping(vm.grouping))}`,
+          detail: `actuellement : ${groupingLabel(vm.grouping)}`,
+          run: vm.cycleGrouping,
+        }
+      : null;
+  useRegisterCommands(groupCommand ? [...commands, groupCommand] : commands);
 
   useChrome({
     crumb: savedView ? savedView.name : view === "kanban" ? "Kanban" : "Toutes",
+    ...(view === "list" ? { action: { label: `Grouper : ${groupingLabel(vm.grouping)} ▾`, command: "app-group" } } : {}),
     status: isFresh
       ? view === "kanban"
         ? "0 carte · 4 colonnes · le tableau se remplira tout seul"
@@ -408,16 +433,20 @@ export function ApplicationsPage({
             />
           ) : (
             <ApplicationGroupList
-              groups={vm.kanbanColumns}
-              collapsed={collapsed}
-              onToggleGroup={(status) =>
+              groups={listGroups}
+              onToggleGroup={(key) => {
+                const status = Statuses.find((entry) => entry.value === key)?.value;
+                if (vm.grouping !== "status" || !status) {
+                  vm.toggleCustomGroup(key);
+                  return;
+                }
                 setCollapsed((current) => {
                   const next = new Set(current);
                   if (next.has(status)) next.delete(status);
                   else next.add(status);
                   return next;
-                })
-              }
+                });
+              }}
               selectedId={vm.selected_id}
               checkedIds={checkedIds}
               loading={vm.isLoading}
@@ -427,7 +456,11 @@ export function ApplicationsPage({
                 onMenu: openActions,
                 onStatusMenu: statusMenu,
                 onCreate: (status) => openCreate(status),
-                onShowMore: vm.showMore,
+                onShowMore: (key) => {
+                  const status = Statuses.find((entry) => entry.value === key)?.value;
+                  if (vm.grouping === "status" && status) vm.showMore(status);
+                  else vm.showMoreInGroup(key);
+                },
                 onKey: (application, event) => {
                   const mod = event.metaKey || event.ctrlKey;
                   const key = event.key.toLowerCase();

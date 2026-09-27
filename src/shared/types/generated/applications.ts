@@ -246,6 +246,17 @@ ids: Array<string>,
 excluded: Array<FilterField>, };
 
 /**
+ * Groupe de la liste : sa clé (identifiant d'entreprise ou code de contrat), son libellé et
+ * le nombre de candidatures retenues par tout le filtre, calculé par `SQLite`.
+ */
+export type ApplicationGroup = { key: string, label: string, count: number, };
+
+/**
+ * Regroupement de la liste en plus du statut (« Grouper : … », `INTERACTIONS.md` §3.2).
+ */
+export type ApplicationGrouping = "company" | "contract";
+
+/**
  * Colonne de tri de la vue Liste.
  *
  * Enum et non chaîne libre : la valeur est interpolée dans le `ORDER BY`, où une chaîne

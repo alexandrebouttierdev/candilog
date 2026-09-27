@@ -139,6 +139,27 @@ pub struct ApplicationFilter {
     pub excluded: Vec<FilterField>,
 }
 
+/// Regroupement de la liste en plus du statut (« Grouper : … », `INTERACTIONS.md` §3.2).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ts_rs::TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "applications.ts")]
+pub enum ApplicationGrouping {
+    Company,
+    Contract,
+}
+
+/// Groupe de la liste : sa clé (identifiant d'entreprise ou code de contrat), son libellé et
+/// le nombre de candidatures retenues par tout le filtre, calculé par `SQLite`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, ts_rs::TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "applications.ts")]
+pub struct ApplicationGroup {
+    pub key: String,
+    pub label: String,
+    #[ts(type = "number")]
+    pub count: u64,
+}
+
 /// Répartition du pipeline par statut, calculée par `SQLite`.
 #[derive(Debug, Clone, Default, Serialize, ts_rs::TS)]
 #[serde(rename_all = "snake_case")]
@@ -188,6 +209,16 @@ pub trait ApplicationRepository: Send + Sync {
     /// # Errors
     /// Retourne `AppError::Database` si la requête échoue.
     fn breakdown(&self, filter: &ApplicationFilter) -> AppResult<PipelineBreakdown>;
+
+    /// Groupes de la liste filtrée, les plus fournis d'abord.
+    ///
+    /// # Errors
+    /// Retourne `AppError::Database` si la requête échoue.
+    fn groups(
+        &self,
+        filter: &ApplicationFilter,
+        by: ApplicationGrouping,
+    ) -> AppResult<Vec<ApplicationGroup>>;
 
     /// Crée une candidature et ouvre son historique de statut.
     ///

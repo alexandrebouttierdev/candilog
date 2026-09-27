@@ -101,6 +101,13 @@ impl ApplicationRepository for StubRepo {
     fn breakdown(&self, _filter: &ApplicationFilter) -> AppResult<PipelineBreakdown> {
         Ok(PipelineBreakdown::default())
     }
+    fn groups(
+        &self,
+        _filter: &ApplicationFilter,
+        _by: ApplicationGrouping,
+    ) -> AppResult<Vec<ApplicationGroup>> {
+        Ok(vec![])
+    }
     fn create(&self, input: &NewApplication) -> AppResult<Application> {
         self.retenir(input);
         Ok(cand(&input.job_title, input.status))

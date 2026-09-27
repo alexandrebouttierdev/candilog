@@ -10,13 +10,15 @@ import {
   EMPTY_FILTER,
   type ApplicationFilterValues,
 } from "../model/schemas/application-filter.schema";
-import type { ApplicationSort } from "@/shared/types/generated/applications";
+import type { ApplicationGrouping, ApplicationSort } from "@/shared/types/generated/applications";
 import { PAGE_SIZE, type Page } from "@/shared/types/page";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { Statuses } from "../model/statuses";
 import { formatReference } from "../model/presentation";
+import { groupFilter, nextGrouping, OPEN_GROUPS } from "../model/grouping";
+import type { ListGrouping } from "../model/grouping";
 
 /** Root des clés de cache de la feature. */
 export const APPLICATIONS_KEY = ["candidatures"] as const;
@@ -117,6 +119,14 @@ export function useApplicationsViewModel(controlledView?: TrackingView, initialF
   // Chaque colonne demande son seul statut : l'inversion est déjà résolue par `retains`.
   const otherExclusions = filter.excluded.filter((field) => field !== "status");
 
+  // « Grouper : statut ▾ » : hors statut, la liste suit les groupes comptés par SQLite et
+  // les requêtes par statut se taisent. Le Kanban reste par nature en statuts.
+  const [grouping, setGrouping] = useState<ListGrouping>("status");
+  const customBy: ApplicationGrouping | null = view === "list" && grouping !== "status" ? grouping : null;
+  const [customLimits, setCustomLimits] = useState<Readonly<Record<string, number>>>({});
+  // Groupes dont l'ouverture diffère du défaut (ouverts : les `OPEN_GROUPS` premiers).
+  const [toggledGroups, setToggledGroups] = useState<ReadonlySet<string>>(new Set());
+
   // Une requête par statut : SQLite applique le statut avant LIMIT/OFFSET, ce qui évite
   // de charger le pipeline complet et permet à chaque groupe d'avancer à son propre rythme.
   const kanbanQueries = useQueries({
@@ -132,10 +142,59 @@ export function useApplicationsViewModel(controlledView?: TrackingView, initialF
             ...bornes,
             filter: { ...filter, status: [status.value], excluded: otherExclusions },
           }),
-        enabled: retains(status.value),
+        enabled: retains(status.value) && customBy === null,
       };
     }),
   });
+
+  const groupsQuery = useQuery({
+    queryKey: [...APPLICATIONS_KEY, "groupes", customBy, { filter }],
+    queryFn: () => {
+      if (customBy === null) throw new Error("Regroupement par statut");
+      return applicationService.groups(filter, customBy);
+    },
+    enabled: customBy !== null,
+  });
+  const groupList = useMemo(() => groupsQuery.data ?? [], [groupsQuery.data]);
+  const isGroupOpen = useCallback(
+    (key: string, index: number) => index < OPEN_GROUPS !== toggledGroups.has(key),
+    [toggledGroups],
+  );
+  // Un groupe replié n'est pas interrogé : une liste par entreprise peut en compter des dizaines.
+  const customQueries = useQueries({
+    queries: groupList.map((group, index) => {
+      const limit = customLimits[group.key] ?? GROUP_STEP;
+      return {
+        queryKey: [...APPLICATIONS_KEY, "groupe", customBy, group.key, limit, { filter }],
+        queryFn: () => {
+          if (customBy === null) throw new Error("Regroupement par statut");
+          return applicationService.listPage({ page: 1, page_size: limit, filter: groupFilter(filter, customBy, group.key) });
+        },
+        enabled: customBy !== null && isGroupOpen(group.key, index),
+      };
+    }),
+  });
+  const customGroups = useMemo(
+    () =>
+      groupList.map((group, index) => {
+        const open = isGroupOpen(group.key, index);
+        const query = customQueries[index];
+        return {
+          key: group.key,
+          label: group.label,
+          open,
+          loading: open && (query?.isPending ?? true),
+          page: query?.data ?? {
+            items: [],
+            total: group.count,
+            page: 1,
+            page_size: customLimits[group.key] ?? GROUP_STEP,
+            total_pages: 1,
+          },
+        };
+      }),
+    [groupList, customQueries, customLimits, isGroupOpen],
+  );
 
   const kanbanColumns = useMemo<Record<ApplicationStatus, Page<Application>>>(() => {
     const columns = {} as Record<ApplicationStatus, Page<Application>>;
@@ -365,6 +424,23 @@ export function useApplicationsViewModel(controlledView?: TrackingView, initialF
       breakdown.data.rejected
     : 0;
 
+  const cycleGrouping = () => {
+    setGrouping((current) => nextGrouping(current));
+    setCustomLimits({});
+    setToggledGroups(new Set());
+  };
+  const toggleCustomGroup = (key: string) => {
+    setToggledGroups((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+  const showMoreInGroup = (key: string) => {
+    setCustomLimits((current) => ({ ...current, [key]: (current[key] ?? GROUP_STEP) + GROUP_STEP }));
+  };
+
   // Un `?id=` pointant sur une candidature supprimée ou inconnue ne doit pas laisser
   // l'URL mentir : le paramètre est retiré et l'échec annoncé une seule fois.
   const detailError = detail.error;
@@ -401,12 +477,20 @@ export function useApplicationsViewModel(controlledView?: TrackingView, initialF
     // Une colonne que le filtre écarte n'est jamais interrogée : elle resterait « en attente ».
     isLoading:
       breakdown.isPending ||
-      kanbanQueries.some((query, index) => {
-        const status = Statuses[index];
-        return status !== undefined && retains(status.value) && query.isPending;
-      }),
+      (customBy === null
+        ? kanbanQueries.some((query, index) => {
+            const status = Statuses[index];
+            return status !== undefined && retains(status.value) && query.isPending;
+          })
+        : groupsQuery.isPending),
+    grouping,
+    /** Passe au regroupement suivant : statut → entreprise → contrat. */
+    cycleGrouping,
+    customGroups,
+    toggleCustomGroup,
+    showMoreInGroup,
     isLoadingDetail: selected_id !== null && detail.isPending,
-    error: breakdown.error ?? kanbanError,
+    error: breakdown.error ?? (customBy === null ? kanbanError : groupsQuery.error),
     isSaving: creation.isPending || modification.isPending,
     isDeleting: suppression.isPending || suppressionMultiple.isPending,
     isExporting: exportCsv.isPending,

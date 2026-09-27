@@ -1,5 +1,5 @@
 import { ipc } from "@/shared/services/ipc";
-import type {
+import type { ApplicationGroup, ApplicationGrouping,
   Application,
   ApplicationFilter,
   NewApplication,
@@ -26,6 +26,10 @@ export type {
 export const applicationService = {
   listPage: (params: { page: number; page_size: number; filter: ApplicationFilter }) =>
     ipc<Page<Application>>("applications_list_page", params),
+
+  /** Groupes de la liste par entreprise ou par contrat, comptés par SQLite sur tout le filtre. */
+  groups: (filter: ApplicationFilter, by: ApplicationGrouping) =>
+    ipc<ApplicationGroup[]>("applications_groups", { filter, by }),
 
   /** Compteurs des quatre colonnes du Kanban, calculés par SQLite. */
   breakdown: (filter: ApplicationFilter) =>

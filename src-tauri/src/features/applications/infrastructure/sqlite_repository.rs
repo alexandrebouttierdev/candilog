@@ -8,8 +8,9 @@ use crate::core::database::SqlitePool;
 use crate::core::errors::{AppError, AppResult};
 use crate::core::pagination::{clamp_page_size, Page};
 use crate::features::applications::domain::{
-    Application, ApplicationFilter, ApplicationRepository, ApplicationSort, ApplicationStatus,
-    DeletionImpact, FilterField, NewApplication, PipelineBreakdown, StatusChange,
+    Application, ApplicationFilter, ApplicationGroup, ApplicationGrouping, ApplicationRepository,
+    ApplicationSort, ApplicationStatus, DeletionImpact, FilterField, NewApplication,
+    PipelineBreakdown, StatusChange,
 };
 use rusqlite::types::Value;
 use uuid::Uuid;
@@ -575,6 +576,42 @@ impl ApplicationRepository for SqliteApplicationRepository {
             })
         })
         .map_err(|e| translate_error(e, "répartition du pipeline"))
+    }
+
+    fn groups(
+        &self,
+        filter: &ApplicationFilter,
+        by: ApplicationGrouping,
+    ) -> AppResult<Vec<ApplicationGroup>> {
+        let conn = connection(&self.pool)?;
+        // Contrairement à la répartition du Kanban, le filtre de statut s'applique : la liste
+        // ne montre que les statuts retenus.
+        let (where_sql, values) = clauses(filter)?;
+        let (key, label) = match by {
+            ApplicationGrouping::Company => ("c.company_id", "coalesce(e.name, '')"),
+            ApplicationGrouping::Contract => (
+                "c.contract_type_code",
+                "coalesce(ct.name, c.contract_type_code)",
+            ),
+        };
+        let sql = format!(
+            "SELECT {key}, {label}, count(*) {FROM_SQL}{where_sql}
+             GROUP BY {key} ORDER BY count(*) DESC, lower({label})"
+        );
+        let mut statement = conn
+            .prepare(&sql)
+            .map_err(|e| translate_error(e, "groupes de candidatures"))?;
+        let rows = statement
+            .query_map(rusqlite::params_from_iter(values.iter()), |row| {
+                Ok(ApplicationGroup {
+                    key: row.get(0)?,
+                    label: row.get(1)?,
+                    count: row.get(2)?,
+                })
+            })
+            .map_err(|e| translate_error(e, "groupes de candidatures"))?;
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(|e| translate_error(e, "groupes de candidatures"))
     }
 
     fn create(&self, input: &NewApplication) -> AppResult<Application> {

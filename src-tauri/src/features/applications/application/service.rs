@@ -4,8 +4,9 @@ use crate::core::errors::{AppError, AppResult};
 use crate::core::pagination::{Page, MAX_PAGE_SIZE};
 use crate::core::utils::validation::validate_optional_http_url;
 use crate::features::applications::domain::{
-    Application, ApplicationChannel, ApplicationFilter, ApplicationRepository, ApplicationStatus,
-    DeletionImpact, NewApplication, PipelineBreakdown, StatusChange, MAX_WEEKLY_HOURS,
+    Application, ApplicationChannel, ApplicationFilter, ApplicationGroup, ApplicationGrouping,
+    ApplicationRepository, ApplicationStatus, DeletionImpact, NewApplication, PipelineBreakdown,
+    StatusChange, MAX_WEEKLY_HOURS,
 };
 use uuid::Uuid;
 
@@ -92,6 +93,19 @@ impl<R: ApplicationRepository> ApplicationService<R> {
     pub fn breakdown(&self, filter: &ApplicationFilter) -> AppResult<PipelineBreakdown> {
         Self::validate_filter(filter)?;
         self.repo.breakdown(filter)
+    }
+
+    /// Groupes de la liste filtrée, par entreprise ou par contrat.
+    ///
+    /// # Errors
+    /// `Validation` si le filtre est invalide ; propage l'erreur du dépôt.
+    pub fn groups(
+        &self,
+        filter: &ApplicationFilter,
+        by: ApplicationGrouping,
+    ) -> AppResult<Vec<ApplicationGroup>> {
+        Self::validate_filter(filter)?;
+        self.repo.groups(filter, by)
     }
 
     /// Valide, normalise puis crée la candidature.

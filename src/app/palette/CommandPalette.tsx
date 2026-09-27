@@ -14,6 +14,7 @@ const GROUPES: ReadonlyArray<{ key: CommandGroup; label: string }> = [
   { key: "selection", label: "Actions sur la sélection" },
   { key: "create", label: "Créer" },
   { key: "goto", label: "Aller à" },
+  { key: "view", label: "Affichage" },
   { key: "settings", label: "Réglages" },
 ];
 

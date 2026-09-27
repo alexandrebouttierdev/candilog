@@ -18,6 +18,11 @@ export interface StatusKey {
 export interface Chrome {
   readonly crumb?: string;
   readonly aside?: string;
+  /**
+   * Bouton de la barre de titre (« Grouper : statut ▾ ») : il exécute une commande inscrite
+   * par l'écran. Le chrome est sérialisé, il nomme donc la commande au lieu de la porter.
+   */
+  readonly action?: { readonly label: string; readonly command: string };
   readonly status?: string;
   readonly keys?: readonly StatusKey[];
 }

@@ -312,6 +312,11 @@ barre groupée 40 px dès qu'une case est cochée
   `←` revient aux champs. Tous les critères backend y figurent, y compris les critères fins
   de la v1 (domaine, type et taille d'entreprise, secteur, régime, heures, poste, ville,
   période). Une saisie invalide est signalée dans le menu et n'est jamais appliquée.
+- **« Grouper : statut ▾ »** (barre de titre, Liste seulement) : cycle en place statut →
+  entreprise → contrat, aussi dans `⌘K` (« Affichage »). Hors statut, les groupes et leurs
+  décomptes viennent de SQLite (`applications_groups`, tout le filtre) ; les huit premiers
+  sont ouverts, un groupe replié n'est pas chargé. Une action de barre de titre est une
+  commande nommée (`useChrome({ action })`), le chrome étant sérialisé.
 - Recherche : `/` y place le focus, `Échap` l'efface puis la quitte.
 - **Vues enregistrées** : « Enregistrer la vue » nomme le filtre courant ; une vue ouverte
   (`?view=<id>`, `ApplicationsRoute`) donne son nom au fil d'Ariane et propose « Mettre à
