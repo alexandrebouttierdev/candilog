@@ -178,6 +178,10 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
 
 ### Retiré
 
+- Composants de la v1 que plus aucun écran n'affichait : tableau, tiroir de détail, barre de
+  filtres, liste maître, en-tête de fiche, chronologie, surface vitrée, sélecteur rapide
+  d'IA. La planche de vérification `/_design` montre désormais les primitives v2.
+
 - Tri par colonne de la table des candidatures : la liste v2 est groupée par statut, les
   plus récentes d'abord.
 - Tour d'accueil : le premier lancement ouvre directement Aujourd'hui, dont l'état vide

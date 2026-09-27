@@ -170,8 +170,8 @@ Vue (features/<domaine>/view)
 Les vues et ViewModels n'importent **jamais** `invoke`. ESLint l'interdit. Tout passe par
 `ipc()`.
 
-**UI partagée vs UI de feature :** `Button`, `ModalHost`, `Inspector`, `SplitPane`,
-`DataTable` restent dans `shared/ui`. `ApplicationDetail`, `KanbanBoard`, `ProfileUi`
+**UI partagée vs UI de feature :** `Button`, `ModalHost`, `Menu`, `SplitPane`,
+`WorkSurface` restent dans `shared/ui`. `ApplicationDetail`, `KanbanBoard`, `ProfileUi`
 restent dans leur feature. Ne pas tout pousser dans `shared` « au cas où ».
 
 Zustand ne duplique pas les données serveur. TanStack Query est la cache métier.

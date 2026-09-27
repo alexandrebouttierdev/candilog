@@ -1,6 +1,5 @@
 export { AiBenchmarkModal } from "./view/components/AiBenchmarkModal";
 export { AiConfigBridge } from "./view/components/AiConfigBridge";
-export { AiQuickSelector } from "./view/components/AiQuickSelector";
 export { AiRequiredModal } from "./view/components/AiRequiredModal";
 export { AiStopButton } from "./view/components/AiStopButton";
 

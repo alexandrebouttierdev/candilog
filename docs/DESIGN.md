@@ -49,7 +49,6 @@ Ne pas :
 - multiplier les ombres : `shadow-1` et `shadow-accent` sont `none` ; l’ombre n’existe que sur overlays (modale, menu, palette) ;
 - agrandir les rayons (pas de `rounded-2xl` / `rounded-3xl` décoratifs) ;
 - recréer un bouton, un champ, une pastille, une barre de filtres ou une modale « pour cet écran » ;
-- mettre la recherche d’une liste paginée dans la topbar (`ContextSearch`) si l’écran a déjà une `FilterBar` (Candidatures, Entreprises, Réseau) ;
 - exposer la pile technique à l’utilisateur (Tauri, React, SQLite, IPC…) ;
 - écrire un slogan ou un hero marketing (À propos n’est **pas** une landing) ;
 - laisser un état vide sans issue (action ou `Tout effacer`) ;
@@ -426,25 +425,24 @@ Toujours importer depuis `@/shared/ui` (sauf `SettingsUi`, propre aux réglages)
 
 | Besoin | Composant |
 | --- | --- |
-| Action | `Button` (`primary` \| `secondary` \| `ghost` \| `danger`), `h-control` 30 px |
-| Icône seule | `IconButton` 30×30, `aria-label` obligatoire |
-| Recherche d’outil | `SearchInput variant="toolbar"` dans une `FilterBar` |
-| Recherche topbar (docs, etc.) | `ContextSearch` via `ContextBarAccessory` |
-| Filtres d’une liste | `FilterBar` + `FilterMenu` + chips |
-| Titre d’écran | `PageHeader` (h1 `text-section`) |
-| Bascule Kanban/Liste | `SegmentedControl` |
-| Statut | `StatusPill` + `Tone` |
-| Attribut sans statut | `Tag` |
-| Liste maître | `MasterList` / `MasterListItem` / `MasterListTag` |
-| Tableau | `DataTable` |
-| Fiche latérale | `Inspector` + `InspectorRow` + `InspectorSectionLabel` |
-| Split redimensionnable | `SplitPane` / `TripleSplitPane` |
-| Modale métier | `ModalHost` |
-| Date / heure | `DateInput` / `TimeInput` (saisie **ou** picker, format FR) |
+| Action | `Button` (`primary` \| `secondary` \| `ghost` \| `danger` \| `link`), raccourci par `shortcut` |
+| Touche imprimée | `Kbd` (`⌘K` sous macOS, `Ctrl K` ailleurs) |
+| Statut | `StatusGlyph` (`n` · `a` · `g` · `c`) ; pastille sans statut : `Tag` |
+| Entreprise, personne | `Avatar` |
+| Interrupteur | `Switch` |
+| Choix court (2 à 4 options) | `SegmentedControl` |
+| Menu (clic droit, `⋯`, « + Filtre ») | `Menu` (entrées, sections, second niveau avec `onBack`) |
+| Confirmation | `ConfirmDialog` (registres destruction, confirmation, information) |
+| Formulaire | `ModalHost` + `FormField` / `TextInput` / `Select` / `DateInput` / `EntityPicker` |
+| Surcouche plein écran | `WorkSurface` + `PaneSection` / `StepList` / `RunMeter` |
+| Split redimensionnable | `SplitPane` |
 | Pagination | `Pager` / `ColumnPager` |
-| KPI compact (Analyses) | `StatCard` — pas en bandeau de chaque écran |
+| Chargement, vide, erreur | `Skeleton`, `EmptyState`, `ErrorBanner` |
+| Icônes de la navigation et des listes | `LineIcon` |
 | Graphique | `analytics/view/components/charts` — primitives du design, liste `sr-only` des valeurs |
-| Surface glass overlay | classes `glass-popover`, `glass-modal` |
+
+La planche `/_design` (`src/app/dev/DesignGallery.tsx`, développement seulement) montre ces
+primitives dans les deux thèmes.
 
 `Card` existe pour des blocs denses déjà dans le design ; ne pas s’en servir pour recréer un dashboard de widgets.
 
