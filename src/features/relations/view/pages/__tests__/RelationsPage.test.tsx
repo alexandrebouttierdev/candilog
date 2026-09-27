@@ -6,6 +6,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import type { ReactNode } from "react";
 import { RelationsPage } from "../RelationsPage";
+import { relationsService } from "../../../services/relationsService";
 import { companyService } from "@/features/companies";
 import type { Company } from "@/features/companies";
 import { contactService } from "@/features/contacts";
@@ -210,5 +211,28 @@ describe("Relations — contacts", () => {
     await userEvent.keyboard("{Meta>}{Enter}{/Meta}");
 
     await waitFor(() => expect(contactService.create).toHaveBeenCalled());
+  });
+});
+
+describe("Relations — export CSV", () => {
+  it("annonce les deux fichiers puis exporte entreprises et contacts", async () => {
+    const exportCsv = vi.spyOn(relationsService, "exportCsv").mockResolvedValue({
+      companies: 2,
+      contacts: 2,
+      companies_file: "entreprises-2026-09-27.csv",
+      contacts_file: "contacts-2026-09-27.csv",
+    });
+    render(<RelationsPage kind="companies" />, { wrapper });
+
+    await userEvent.click(await screen.findByRole("button", { name: "CSV" }));
+    const dialogue = screen.getByRole("dialog", { name: "Exporter les relations" });
+    await waitFor(() => expect(dialogue).toHaveTextContent(/entreprises-\d{4}-\d{2}-\d{2}\.csv\s*2 lignes · 9 colonnes/));
+    expect(dialogue).toHaveTextContent(/contacts-\d{4}-\d{2}-\d{2}\.csv/);
+    await userEvent.click(within(dialogue).getByRole("button", { name: "Exporter les fichiers" }));
+
+    await waitFor(() => expect(exportCsv).toHaveBeenCalledOnce());
+    await waitFor(() =>
+      expect(useUiStore.getState().toasts.map((toast) => toast.title)).toContain("Relations exportées"),
+    );
   });
 });

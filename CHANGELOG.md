@@ -87,6 +87,9 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
   fait quoi ».
 - Candidatures — « Grouper : statut ▾ » : la liste se groupe aussi par entreprise ou par
   contrat, avec des décomptes exacts sur tout le filtre.
+- Relations — export CSV : entreprises et contacts dans deux fichiers côte à côte, 9 colonnes
+  chacun (état de la relation, candidatures, dernière interaction), lisibles tels quels dans
+  un tableur.
 - Refonte v2 — Analyse de CV face à une offre : chaque exigence de l'offre est listée,
   couverte, partielle ou absente, avec la preuve trouvée dans le CV ; score et détail à
   gauche.

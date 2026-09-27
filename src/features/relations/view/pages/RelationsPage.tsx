@@ -13,10 +13,11 @@ import { useShortcut } from "@/shared/hooks/useShortcut";
 import { useDismissable } from "@/shared/hooks/useDismissable";
 import { useMediaQuery, WIDE_QUERY } from "@/shared/hooks/useMediaQuery";
 import { AppError } from "@/shared/types/app-error";
-import { Button, ConfirmDialog, EmptyState, ErrorBanner, Kbd, Menu } from "@/shared/ui";
+import { Button, ConfirmDialog, EmptyState, ErrorBanner, Kbd, LineIcon, Menu } from "@/shared/ui";
 import type { MenuAnchor } from "@/shared/ui";
 import { cn } from "@/shared/lib/cn";
 import { useRelationsViewModel } from "../../viewmodel/useRelationsViewModel";
+import { useRelationsExport } from "../../viewmodel/useRelationsExport";
 import type { RelationKind } from "../../viewmodel/useRelationsViewModel";
 import { RelationList, companyRow, contactRow } from "../components/RelationList";
 import { RelationInspector } from "../components/RelationInspector";
@@ -36,6 +37,7 @@ type Form =
  */
 export function RelationsPage({ kind }: { kind: RelationKind }) {
   const vm = useRelationsViewModel(kind);
+  const exporter = useRelationsExport();
   const navigate = useNavigate();
   const wide = useMediaQuery(WIDE_QUERY);
   const scheduleFollowUp = useScheduleFollowUp();
@@ -153,10 +155,32 @@ export function RelationsPage({ kind }: { kind: RelationKind }) {
         <div className="flex min-w-0 flex-1 items-center gap-[7px] overflow-x-auto">
           <RelationFilters kind={kind} criteria={vm.criteria} onChange={vm.setCriteria} />
         </div>
+        <Button size="compact" disabled={exporter.isExporting} onClick={exporter.ask}>
+          <LineIcon name="export-csv" size={13} />
+          CSV
+        </Button>
         <Button variant="primary" size="compact" shortcut="n" onClick={openCreate}>
           {companies ? "Nouvelle entreprise" : "Nouveau contact"}
         </Button>
       </div>
+      <ConfirmDialog
+        open={exporter.open}
+        register="information"
+        title="Exporter les relations"
+        description="Entreprises et contacts sont exportés dans deux fichiers distincts, chacun avec ses propres colonnes. Tout est exporté, sans tenir compte de la recherche en cours."
+        consequences={[
+          { label: `entreprises-${exporter.date}.csv`, value: `${vm.counts.companies ?? "…"} lignes · 9 colonnes` },
+          { label: `contacts-${exporter.date}.csv`, value: `${vm.counts.contacts ?? "…"} lignes · 9 colonnes` },
+          { label: "Séparateur", value: "point-virgule" },
+          { label: "Encodage", value: "UTF-8" },
+        ]}
+        footnote="deux fichiers dans le dossier choisi"
+        cancelLabel="Annuler"
+        confirmLabel="Exporter les fichiers"
+        busy={exporter.isExporting}
+        onCancel={exporter.cancel}
+        onConfirm={exporter.confirm}
+      />
 
       <div className="relative flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col">

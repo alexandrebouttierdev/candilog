@@ -58,6 +58,7 @@ pub fn run() {
             applications::applications_duplicate,
             applications::applications_export_csv,
             companies::companies_list,
+            companies::relations_export_csv,
             companies::companies_list_page,
             companies::companies_get,
             companies::companies_create,

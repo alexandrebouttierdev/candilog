@@ -230,6 +230,10 @@ Réutiliser la recette du voisin plutôt que d’en inventer une.
   Note ; Écrire, Relancer, Note), champs, candidatures rattachées, historique des faits
   enregistrés, notes. `mailto:` et `tel:` restent des liens natifs ; un lien web passe par
   `openExternal`.
+- « CSV » (`states/dialog-csv-rel.png`) : dialogue d'information qui annonce les deux
+  fichiers (`entreprises-<date>.csv`, `contacts-<date>.csv`), leurs lignes et 9 colonnes,
+  le séparateur et l'encodage ; puis le dialogue natif. Tout est exporté, sans la recherche
+  (`DECISIONS.md` E10) ; le fichier des contacts est écrit à côté de celui des entreprises.
 
 ### Documents
 

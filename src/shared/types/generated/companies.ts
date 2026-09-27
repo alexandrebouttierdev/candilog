@@ -177,3 +177,8 @@ notes: string | null, };
  * État d'une entreprise dans le suivi, groupes de l'écran Relations.
  */
 export type RelationState = "active" | "watch" | "closed";
+
+/**
+ * Bilan d'un export des relations : ce qui a été écrit, et où.
+ */
+export type RelationsExport = { companies: number, contacts: number, companies_file: string, contacts_file: string, };
