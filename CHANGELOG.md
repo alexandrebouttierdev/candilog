@@ -90,6 +90,8 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
 - Relations — export CSV : entreprises et contacts dans deux fichiers côte à côte, 9 colonnes
   chacun (état de la relation, candidatures, dernière interaction), lisibles tels quels dans
   un tableur.
+- Analyse — « Rythme d'envoi » est dessiné avec les primitives du design ; la bibliothèque
+  Recharts est retirée.
 - Refonte v2 — Analyse de CV face à une offre : chaque exigence de l'offre est listée,
   couverte, partielle ou absente, avec la preuve trouvée dans le CV ; score et détail à
   gauche.

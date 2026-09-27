@@ -365,9 +365,10 @@ barre groupée 40 px dès qu'une case est cochée
 
 ### Graphiques (Aujourd’hui, Analyses)
 
-- Une seule bibliothèque : **Recharts**, en SVG, dans `analytics/view/components/charts`.
-- Couleurs prises dans `chartTheme.ts`, qui ne contient que des `var(--candilog-…)` :
-  le SVG résout la variable au rendu, un changement de thème repeint donc sans re-render.
+- Aucune bibliothèque de graphiques (décision D7) : des primitives du design dans
+  `analytics/view/components/charts` — barres en blocs aux jetons de couleur (`bg-ac`,
+  `bg-chip` pour un zéro), repère de la valeur maximale, étiquettes espacées sur une série
+  longue. Les jetons suivent le thème sans re-render.
 - Aucune valeur accessible par le seul survol : axe visible ou liste `sr-only` équivalente.
 - Une seule série → pas de légende, la carte la nomme. Deux séries ou plus → légende
   systématique, avec libellé **et** compte, car les teintes de statut vert et rouge sont
@@ -442,7 +443,7 @@ Toujours importer depuis `@/shared/ui` (sauf `SettingsUi`, propre aux réglages)
 | Date / heure | `DateInput` / `TimeInput` (saisie **ou** picker, format FR) |
 | Pagination | `Pager` / `ColumnPager` |
 | KPI compact (Analyses) | `StatCard` — pas en bandeau de chaque écran |
-| Graphique | `analytics/view/components/charts` (Recharts) — jamais des `div` à largeur calculée |
+| Graphique | `analytics/view/components/charts` — primitives du design, liste `sr-only` des valeurs |
 | Surface glass overlay | classes `glass-popover`, `glass-modal` |
 
 `Card` existe pour des blocs denses déjà dans le design ; ne pas s’en servir pour recréer un dashboard de widgets.
