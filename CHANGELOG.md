@@ -92,6 +92,9 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
   un tableur.
 - Analyse — « Rythme d'envoi » est dessiné avec les primitives du design ; la bibliothèque
   Recharts est retirée.
+- Refonte v2 — la police d'icônes Material Symbols est retirée : icônes au trait dessinées
+  pour Candilog, glyphes typographiques des maquettes (`‹ › ▾ ✕ ✓`) et glyphes de statut.
+  Le paquet perd la sous-police (~130 Kio) et sa licence Apache 2.0.
 - Refonte v2 — Analyse de CV face à une offre : chaque exigence de l'offre est listée,
   couverte, partielle ou absente, avec la preuve trouvée dans le CV ; score et détail à
   gauche.

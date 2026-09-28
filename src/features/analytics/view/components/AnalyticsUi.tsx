@@ -24,7 +24,6 @@ export function FollowUpList({
   if (items.length === 0) {
     return (
       <EmptyState
-        icon="task_alt"
         title="Aucune relance nécessaire"
         description="Toutes les candidatures récentes ont été traitées."
       />
@@ -50,7 +49,7 @@ export function FollowUpList({
           <StatusPill tone={item.days >= 15 ? "danger" : "warning"} compact>
             {item.days} j
           </StatusPill>
-          <Button icon="send" className="h-pager px-2.5 text-label" onClick={() => onFollowUp(item)}>
+          <Button className="h-pager px-2.5 text-label" onClick={() => onFollowUp(item)}>
             Relancer
           </Button>
         </li>

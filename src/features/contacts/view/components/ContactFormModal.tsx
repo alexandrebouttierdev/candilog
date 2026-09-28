@@ -75,7 +75,6 @@ export function ContactFormModal({
   return (
     <ModalHost
       open={open}
-      icon="person_add"
       title={contact ? "Modifier le contact" : "Nouveau contact"}
       subtitle={
         contact

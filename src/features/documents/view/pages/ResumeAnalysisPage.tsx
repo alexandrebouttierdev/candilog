@@ -233,7 +233,6 @@ export function ResumeAnalysisPage() {
           ) : running ? null : (
             <div className="pt-[10vh]">
               <EmptyState
-                icon="query_stats"
                 title="Prêt à analyser"
                 description="Choisissez votre CV en PDF et l’offre visée : chaque exigence sera confrontée au CV, preuve à l’appui."
               />

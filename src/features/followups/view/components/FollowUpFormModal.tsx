@@ -81,7 +81,6 @@ export function FollowUpFormModal({
   return (
     <ModalHost
       open={open}
-      icon="send"
       title={follow_up ? "Modifier la relance" : "Nouvelle relance"}
       subtitle={
         follow_up

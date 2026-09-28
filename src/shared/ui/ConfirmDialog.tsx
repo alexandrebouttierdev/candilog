@@ -5,7 +5,6 @@ import { StatusGlyph } from "./StatusGlyph";
 import { useDismissable } from "@/shared/hooks/useDismissable";
 import { useFocusTrap } from "@/shared/hooks/useFocusTrap";
 import { cn } from "@/shared/lib/cn";
-import type { IconName } from "./icon-names";
 
 /**
  * Registre d'un dialogue (`COMPONENTS.md` §10 du design) : la couleur du glyphe est la
@@ -38,7 +37,6 @@ export interface DialogConsequence {
  * surcouches (z 70). `⏎` confirme, `Échap` annule ; le focus est piégé dans le dialogue et
  * rendu à l'élément déclencheur à la fermeture.
  *
- * `confirmIcon` est conservé pour les écrans pas encore migrés ; le design n'en affiche pas.
  */
 export function ConfirmDialog({
   open,
@@ -71,7 +69,6 @@ export function ConfirmDialog({
   register?: DialogRegister;
   confirmLabel?: string;
   cancelLabel?: string;
-  confirmIcon?: IconName;
   busy?: boolean;
   cancelDisabled?: boolean;
   dismissDisabled?: boolean;

@@ -1,7 +1,5 @@
 import type { ReactNode } from "react";
-import { Icon } from "./Icon";
 import { cn } from "@/shared/lib/cn";
-import type { IconName } from "./icon-names";
 
 /**
  * État vide (`COMPONENTS.md` §15 du design).
@@ -12,7 +10,6 @@ import type { IconName } from "./icon-names";
  * `compact` donne la variante en bandeau des sections de profil vides.
  */
 export function EmptyState({
-  icon = "inbox",
   title,
   description,
   action,
@@ -21,7 +18,6 @@ export function EmptyState({
   bordered = false,
   className,
 }: {
-  icon?: IconName;
   title: string;
   description?: string | undefined;
   action?: ReactNode;
@@ -37,7 +33,7 @@ export function EmptyState({
         role="status"
         className={cn("flex items-center gap-3.5 rounded-r8 bg-app px-[18px] py-[22px]", className)}
       >
-        <Circle icon={icon} good={good} size="size-8" />
+        <Circle good={good} size="size-8" />
         <div className="min-w-0 flex-1">
           <p className="text-row font-medium text-tx">{title}</p>
           {description ? <p className="mt-0.5 text-small text-tx-4">{description}</p> : null}
@@ -56,7 +52,7 @@ export function EmptyState({
         className,
       )}
     >
-      <Circle icon={icon} good={good} size="size-[38px]" />
+      <Circle good={good} size="size-[38px]" />
       <p className="serif-title mt-2.5 text-empty text-tx">{title}</p>
       {description ? (
         <p className="max-w-[400px] text-row leading-[1.55] text-pretty text-tx-4">{description}</p>
@@ -66,7 +62,8 @@ export function EmptyState({
   );
 }
 
-function Circle({ icon, good, size }: { icon: IconName; good: boolean; size: string }) {
+/** Pastille de l'état vide : un carré en creux, ou une coche quand le vide est bon signe. */
+function Circle({ good, size }: { good: boolean; size: string }) {
   return (
     <span
       aria-hidden
@@ -76,7 +73,11 @@ function Circle({ icon, good, size }: { icon: IconName; good: boolean; size: str
         good ? "bg-st-g text-white" : "border-[1.6px] border-dashed border-tx-6 text-tx-5",
       )}
     >
-      <Icon name={icon} size={15} />
+      {good ? (
+        <span className="text-small leading-none">✓</span>
+      ) : (
+        <span className="size-2.5 rounded-[2px] border-[1.4px] border-tx-5" />
+      )}
     </span>
   );
 }

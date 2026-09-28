@@ -8,7 +8,7 @@ function ouvrir(props: Partial<Parameters<typeof ModalHost>[0]> = {}) {
   const onClose = vi.fn();
   const onSubmit = vi.fn();
   render(
-    <ModalHost open icon="work" title="Nouvelle candidature" onClose={onClose} onSubmit={onSubmit} {...props}>
+    <ModalHost open title="Nouvelle candidature" onClose={onClose} onSubmit={onSubmit} {...props}>
       <TextInput aria-label="Poste" />
     </ModalHost>,
   );
@@ -19,7 +19,7 @@ describe("ModalHost", () => {
   it("ne rend rien tant qu'elle est fermée", () => {
     const onClose = vi.fn();
     render(
-      <ModalHost open={false} icon="work" title="Nouvelle candidature" onClose={onClose}>
+      <ModalHost open={false} title="Nouvelle candidature" onClose={onClose}>
         <TextInput aria-label="Poste" />
       </ModalHost>,
     );
@@ -53,7 +53,7 @@ describe("ModalHost", () => {
 
   it("permet de renommer l'action secondaire", () => {
     render(
-      <ModalHost open icon="check" title="Profil importé" cancelLabel="Fermer" onClose={vi.fn()}>
+      <ModalHost open title="Profil importé" cancelLabel="Fermer" onClose={vi.fn()}>
         <p>Terminé</p>
       </ModalHost>,
     );
@@ -63,7 +63,7 @@ describe("ModalHost", () => {
 
   it("n'affiche pas d'action primaire quand il n'y a rien à soumettre", () => {
     render(
-      <ModalHost open icon="visibility" title="Détail" onClose={vi.fn()}>
+      <ModalHost open title="Détail" onClose={vi.fn()}>
         <p>Lecture seule</p>
       </ModalHost>,
     );

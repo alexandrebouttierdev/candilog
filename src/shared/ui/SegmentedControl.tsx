@@ -1,5 +1,3 @@
-import { Icon } from "./Icon";
-import type { IconName } from "./icon-names";
 
 /**
  * Groupe segmenté (`COMPONENTS.md` §3.1 du design) : piste `bg-chip`, segment actif
@@ -14,7 +12,7 @@ export function SegmentedControl<TValue extends string>({
   dense = false,
 }: {
   value: TValue;
-  options: readonly { readonly value: TValue; readonly label: string; readonly icon?: IconName }[];
+  options: readonly { readonly value: TValue; readonly label: string }[];
   onChange: (value: TValue) => void;
   label: string;
   dense?: boolean;
@@ -39,7 +37,6 @@ export function SegmentedControl<TValue extends string>({
               actif ? "bg-panel font-medium text-tx" : "text-tx-4 hover:text-tx-2",
             ].join(" ")}
           >
-            {option.icon ? <Icon name={option.icon} size={15} /> : null}
             {option.label}
           </button>
         );

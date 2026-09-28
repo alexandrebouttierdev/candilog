@@ -234,7 +234,6 @@ export function DocumentsPage({ filter }: { filter: DocumentFilter }) {
           ) : empty ? (
             <div className="flex min-h-0 flex-1 items-start justify-center pt-[min(12vh,90px)]">
               <EmptyState
-                icon="description"
                 title={vm.search ? "Aucun document ne correspond" : filter === "analyses" ? "Aucune analyse pour l'instant" : "Aucun document pour l'instant"}
                 description={
                   vm.search

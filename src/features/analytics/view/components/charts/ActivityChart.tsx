@@ -27,7 +27,6 @@ export function ActivityChart({
   if (activity.every((week) => week.count === 0)) {
     return (
       <EmptyState
-        icon="bar_chart"
         title="Pas encore d’activité"
         description="Les candidatures envoyées apparaîtront ici semaine après semaine."
       />

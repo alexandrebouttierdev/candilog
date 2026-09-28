@@ -1,7 +1,5 @@
 import type { ReactNode } from "react";
-import { Icon } from "./Icon";
 import { cn } from "@/shared/lib/cn";
-import type { IconName } from "./icon-names";
 
 /**
  * Surface de contenu des maquettes : filet 1 px, rayon 12 px, ombre de niveau 1.
@@ -36,20 +34,15 @@ export function Card({
 }
 
 /**
- * Title de section interne à une carte sans filet : icône 17 px tertiaire, libellé
- * 13,5 px/600, méta optionnelle poussée à droite.
+ * Title de section interne à une carte sans filet : libellé 13,5 px/600, méta optionnelle
+ * poussée à droite.
  */
 export function CardTitle({
-  icon,
-  iconClassName,
   children,
   meta,
   compact = false,
   className,
 }: {
-  icon?: IconName;
-  /** Teinte de l'icône lorsqu'elle porte un sens (ambre pour les relances). */
-  iconClassName?: string;
   children: ReactNode;
   meta?: ReactNode;
   /** Title 12,5 px des fiches Relations, au lieu des 13,5 px des cartes de tableau de bord. */
@@ -58,18 +51,9 @@ export function CardTitle({
 }) {
   return (
     <div className={cn("flex items-center justify-between gap-3", className)}>
-      <div className="flex min-w-0 items-center gap-2">
-        {icon ? (
-          <Icon
-            name={icon}
-            size={17}
-            className={cn("flex-none", iconClassName ?? "text-ink-faint")}
-          />
-        ) : null}
-        <span className={cn("truncate text-ink", compact ? "text-body font-semibold" : "text-section")}>
-          {children}
-        </span>
-      </div>
+      <span className={cn("truncate text-ink", compact ? "text-body font-semibold" : "text-section")}>
+        {children}
+      </span>
       {meta}
     </div>
   );
@@ -80,22 +64,16 @@ export function CardTitle({
  * dans sa variante compacte, celle des fiches Relations.
  */
 export function CardHeader({
-  icon,
-  iconClassName,
   children,
   meta,
   compact = false,
 }: {
-  icon?: IconName;
-  iconClassName?: string;
   children: ReactNode;
   meta?: ReactNode;
   compact?: boolean;
 }) {
   return (
     <CardTitle
-      {...(icon ? { icon } : {})}
-      {...(iconClassName ? { iconClassName } : {})}
       {...(meta ? { meta } : {})}
       compact={compact}
       className={cn(
@@ -111,34 +89,4 @@ export function CardHeader({
 /** Métadonnée grise à droite d'un titre de carte (« 3 à venir », « 7 derniers jours »). */
 export function CardMeta({ children }: { children: ReactNode }) {
   return <span className="flex-none text-label text-ink-faint">{children}</span>;
-}
-
-/**
- * Url discret « Tout voir » des en-têtes de carte.
- *
- * `compact` donne la variante des fiches Relations : 11,5 px et pas de chevron, là où les
- * cartes du tableau de bord affichent le lien en 12,5 px suivi d'un chevron.
- */
-export function CardLink({
-  onClick,
-  compact = false,
-  children,
-}: {
-  onClick: () => void;
-  compact?: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "inline-flex flex-none items-center gap-1 rounded-pill font-medium text-accent transition-opacity duration-150 hover:opacity-80",
-        compact ? "text-label" : "text-body",
-      )}
-    >
-      {children}
-      {compact ? null : <Icon name="chevron_right" size={16} />}
-    </button>
-  );
 }

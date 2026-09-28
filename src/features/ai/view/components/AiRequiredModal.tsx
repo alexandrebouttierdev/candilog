@@ -12,12 +12,10 @@ export function AiRequiredModal() {
   return (
     <ModalHost
       open={open}
-      icon="smart_toy"
       title="IA non configurée"
       subtitle="Un fournisseur est requis pour cette action"
       cancelLabel="Fermer"
       submitLabel="Configurer l’IA"
-      submitIcon="settings"
       onClose={hide}
       onSubmit={() => {
         hide();

@@ -56,7 +56,6 @@ export function AiNavigationGuard() {
       title="Quitter cet écran ?"
       description={active ? DESCRIPTIONS[active.kind] : "Le traitement en cours sera arrêté."}
       confirmLabel="Quitter et arrêter"
-      confirmIcon="stop"
       busy={waiting || active?.stopping === true}
       cancelDisabled={waiting || active?.stopping === true}
       dismissDisabled={waiting || active?.stopping === true}

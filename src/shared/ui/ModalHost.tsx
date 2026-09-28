@@ -1,10 +1,9 @@
 import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { Button, IconButton } from "./Button";
+import { Button, GlyphButton } from "./Button";
 import { useDismissable } from "@/shared/hooks/useDismissable";
 import { useFocusTrap } from "@/shared/hooks/useFocusTrap";
-import type { IconName } from "./icon-names";
 
 /**
  * Profondeur d'imbrication des modales.
@@ -26,8 +25,7 @@ const ProfondeurModale = createContext(0);
  * garde le pied et son action visibles quelle que soit la longueur du formulaire.
  *
  * Le focus entre dans le formulaire (premier champ), y reste piégé, et revient au
- * déclencheur à la fermeture. `icon` et `submitIcon` restent acceptés pour les écrans pas
- * encore migrés ; le design n'en affiche pas.
+ * déclencheur à la fermeture.
  */
 export function ModalHost({
   open,
@@ -47,15 +45,12 @@ export function ModalHost({
   children,
 }: {
   open: boolean;
-  icon?: IconName;
   title: string;
   subtitle?: string | undefined;
   /** Contrat clavier ou précision, en mono à gauche du pied (`⏎ créer · ⇧⏎ …`). */
   footer_note?: string | undefined;
-  footerIcon?: IconName;
   footerTone?: "neutral" | "danger";
   submitLabel?: string;
-  submitIcon?: IconName;
   submitDisabled?: boolean;
   /** Raccourci imprimé dans le bouton principal. */
   submitShortcut?: string;
@@ -119,14 +114,7 @@ export function ModalHost({
             <h2 className="serif-title truncate text-form text-tx">{title}</h2>
             {subtitle ? <p className="mt-1 text-small text-tx-5">{subtitle}</p> : null}
           </div>
-          <IconButton
-            icon="close"
-            label="Fermer"
-            onClick={onClose}
-            disabled={busy}
-            size={13}
-            className="size-[22px]"
-          />
+          <GlyphButton glyph="✕" label="Fermer" onClick={onClose} disabled={busy} />
         </header>
 
         <div
@@ -165,29 +153,5 @@ export function ModalHost({
       </div>
     </div>,
     document.body,
-  );
-}
-
-/**
- * Section d'un formulaire : en-tête capitalisé et filet occupant le reste. `icon` est
- * conservé pour les écrans pas encore migrés.
- */
-export function ModalSection({
-  icon,
-  title,
-  children,
-}: {
-  icon: IconName;
-  title: string;
-  children: ReactNode;
-}) {
-  return (
-    <section className="pt-4" data-icon={icon}>
-      <div className="mb-2.5 flex items-center gap-2">
-        <span className="caps">{title}</span>
-        <span aria-hidden className="h-px flex-1 bg-bd-soft" />
-      </div>
-      {children}
-    </section>
   );
 }

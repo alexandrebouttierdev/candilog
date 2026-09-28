@@ -8,7 +8,6 @@ import {
   type Ref,
 } from "react";
 import { controlClasses } from "./FormField";
-import { Icon } from "./Icon";
 import { cn } from "@/shared/lib/cn";
 import { toDisplayDate, toIsoDate } from "@/shared/lib/dates";
 import { useDismissable } from "@/shared/hooks/useDismissable";
@@ -130,7 +129,9 @@ export function DateInput({
         }}
         className={declencheur(dense)}
       >
-        <Icon name="calendar_month" size={dense ? 14 : 17} />
+        <span aria-hidden className="text-[11px] leading-none">
+          ▾
+        </span>
       </button>
       {open ? (
         <div
@@ -145,7 +146,9 @@ export function DateInput({
               onClick={() => setCurseur((c) => shiftMonth(c.year, c.month, -1))}
               className="flex size-7 items-center justify-center rounded-button text-ink-muted hover:bg-fill-hover hover:text-ink"
             >
-              <Icon name="chevron_left" size={18} />
+              <span aria-hidden className="text-[18px] leading-none">
+                ‹
+              </span>
             </button>
             <p className="min-w-0 flex-1 text-center text-note font-semibold capitalize text-ink">
               {monthLabel(curseur.year, curseur.month)}
@@ -156,7 +159,9 @@ export function DateInput({
               onClick={() => setCurseur((c) => shiftMonth(c.year, c.month, 1))}
               className="flex size-7 items-center justify-center rounded-button text-ink-muted hover:bg-fill-hover hover:text-ink"
             >
-              <Icon name="chevron_right" size={18} />
+              <span aria-hidden className="text-[18px] leading-none">
+                ›
+              </span>
             </button>
           </div>
           <div className="grid grid-cols-7">
@@ -249,7 +254,9 @@ export function TimeInput({
         onClick={() => setOpen((actuel) => !actuel)}
         className={declencheur(dense)}
       >
-        <Icon name="schedule" size={dense ? 14 : 17} />
+        <span aria-hidden className="text-[11px] leading-none">
+          ▾
+        </span>
       </button>
       {open ? (
         <div

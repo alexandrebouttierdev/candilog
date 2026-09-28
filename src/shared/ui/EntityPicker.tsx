@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Icon } from "./Icon";
+import { LineIcon } from "./LineIcon";
 import { controlClasses } from "./FormField";
 import { Pager } from "./Pager";
 import { cn } from "@/shared/lib/cn";
@@ -104,9 +104,9 @@ export function EntityPicker({
   return (
     <div ref={container} className="relative">
       <div className="relative">
-        <Icon
+        <LineIcon
           name="search"
-          size={16}
+          size={15}
           className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink-faint"
         />
         <input
@@ -143,7 +143,9 @@ export function EntityPicker({
             onClick={() => onChange(null)}
             className="absolute top-1/2 right-2 -translate-y-1/2 rounded-button p-1 text-ink-faint transition-colors duration-150 hover:bg-neutral-tint hover:text-ink"
           >
-            <Icon name="close" size={15} />
+            <span aria-hidden className="block size-[15px] text-center text-[12px] leading-[15px]">
+              ✕
+            </span>
           </button>
         ) : null}
       </div>
@@ -192,7 +194,9 @@ export function EntityPicker({
                       ) : null}
                     </span>
                     {option.id === value ? (
-                      <Icon name="check" size={15} className="flex-none text-accent" />
+                      <span aria-hidden className="flex-none text-accent">
+                        ✓
+                      </span>
                     ) : null}
                   </button>
                 </li>
@@ -210,7 +214,9 @@ export function EntityPicker({
               }}
               className="flex w-full items-center gap-2 border-t border-line px-3 py-2 text-left text-body text-accent-text transition-colors duration-150 hover:bg-accent-tint"
             >
-              <Icon name="add" size={15} className="flex-none" />
+              <span aria-hidden className="w-[15px] flex-none text-center">
+                +
+              </span>
               <span className="min-w-0 flex-1 truncate">{`${createLabel ?? "Créer"} « ${toCreate} »`}</span>
             </button>
           ) : null}

@@ -161,6 +161,5 @@ dernière version publiée.
    plateforme, et présence de `SHA256SUMS` — sans lui, la mise à jour in-app refusera
    d'ouvrir l'installateur.
 4. Installer au moins un paquet sur une machine propre et vérifier que
-   `/usr/lib/Candilog/LICENSE`, `NOTICE`, `THIRD_PARTY_NOTICES.md` et les trois fichiers de
-   `/usr/lib/Candilog/licenses/` (`ibm-plex-OFL-1.1.txt`, `material-symbols-Apache-2.0.txt`)
-   y figurent.
+   `/usr/lib/Candilog/LICENSE`, `NOTICE`, `THIRD_PARTY_NOTICES.md` et
+   `/usr/lib/Candilog/licenses/ibm-plex-OFL-1.1.txt` y figurent.

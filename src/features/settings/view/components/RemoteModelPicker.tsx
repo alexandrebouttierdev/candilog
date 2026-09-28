@@ -1,5 +1,5 @@
 import { cn } from "@/shared/lib/cn";
-import { Icon } from "@/shared/ui";
+import { LineIcon } from "@/shared/ui";
 import type { ProviderOption } from "../../model/providers";
 import { providerLogo } from "./ProviderGrid";
 
@@ -65,7 +65,7 @@ export function RemoteModelPicker({
                   className={cn("size-4 object-contain", logo.mono && "dark:invert")}
                 />
               ) : (
-                <Icon name="smart_toy" size={16} className="text-ink-muted" />
+                <LineIcon name="ai" size={15} className="text-ink-muted" />
               )}
             </span>
             <span
@@ -77,7 +77,9 @@ export function RemoteModelPicker({
               {model}
             </span>
             {selected ? (
-              <Icon name="check_circle" size={16} filled className="flex-none text-accent" />
+              <span aria-hidden className="flex-none text-accent">
+                ✓
+              </span>
             ) : null}
           </button>
         );

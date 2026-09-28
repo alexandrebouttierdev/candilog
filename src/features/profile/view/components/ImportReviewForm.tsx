@@ -5,7 +5,7 @@ import { cn } from "@/shared/lib/cn";
 import {
   EmptyState,
   ErrorBanner,
-  Icon,
+  StatusGlyph,
   SplitPane,
 } from "@/shared/ui";
 import {
@@ -19,7 +19,7 @@ import {
 } from "../../model/import-review.schema";
 import type { ImportJournalEntry } from "../../viewmodel/useProfileImportProgress";
 import { ImportJournal } from "./ImportJournal";
-import { blockId, catalogOf, SECTION_ARIA, SECTION_ICONS, SECTION_LABELS } from "./import-review/catalog";
+import { blockId, catalogOf, SECTION_ARIA, SECTION_LABELS } from "./import-review/catalog";
 import { ImportDraft } from "./import-review/ImportDraft";
 
 /** Revue maître-détail : cocher à gauche, aperçu éditable de l'import à droite. */
@@ -152,11 +152,6 @@ export function ImportReviewForm({
                         label={`Importer ${SECTION_ARIA[section]}`}
                         onChange={(next) => selectSection(section, next)}
                       />
-                      <Icon
-                        name={SECTION_ICONS[section]}
-                        size={14}
-                        className="flex-none text-ink-faint"
-                      />
                       <h3 className="min-w-0 flex-1 truncate text-eyebrow font-semibold tracking-wide text-ink-faint uppercase">
                         {SECTION_LABELS[section]}
                       </h3>
@@ -207,11 +202,9 @@ export function ImportReviewForm({
                                 ) : null}
                               </span>
                               {row.conflict ? (
-                                <Icon
-                                  name="warning"
-                                  size={14}
-                                  className="mt-0.5 flex-none text-warning"
-                                />
+                                <span className="mt-[5px] flex-none">
+                                  <StatusGlyph tone="a" small label="Entrée similaire déjà présente" />
+                                </span>
                               ) : null}
                             </span>
                           </button>
@@ -239,7 +232,6 @@ export function ImportReviewForm({
               {checkedRows.length === 0 ? (
                 <EmptyState
                   bordered
-                  icon="playlist_add_check"
                   title="Rien à importer"
                   description="Cochez des éléments à gauche pour les voir ici et les corriger avant enregistrement."
                 />

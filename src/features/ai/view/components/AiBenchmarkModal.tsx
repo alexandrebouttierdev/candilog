@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { cancelAiOperation, runUserBenchmark } from "../../viewmodel/importProfile";
 import type { UserBenchmarkResult } from "@/shared/types/generated/ai";
-import { Button, Icon, ModalHost, StatusPill } from "@/shared/ui";
+import { Button, ModalHost, StatusGlyph, StatusPill } from "@/shared/ui";
 import type { Tone } from "@/shared/ui";
 import { AppError } from "@/shared/types/app-error";
 import {
@@ -45,7 +45,6 @@ export function AiBenchmarkModal({
   return (
     <ModalHost
       open={open}
-      icon="bolt"
       title="Tester l'IA"
       subtitle={busy ? modelLabel : undefined}
       onClose={onClose}
@@ -179,7 +178,7 @@ function RunningPanel({
     <div className="flex flex-col gap-4 p-4">
       <div role="status" className="rounded-card border border-accent-border bg-accent-tint p-4">
         <div className="flex items-center gap-2">
-          <Icon name="progress_activity" size={17} className="animate-spin text-accent" />
+          <span aria-hidden className="size-3 flex-none animate-spin-ring rounded-full border-[1.5px] border-accent border-t-transparent" />
           <p className="flex-1 text-label font-medium text-ink">Analyse du CV de référence…</p>
           <span className="tabular text-meta text-accent">{formatElapsed(elapsedMs)}</span>
         </div>
@@ -203,15 +202,21 @@ function RunningPanel({
 
       <ul className="space-y-1.5 rounded-button border border-line bg-surface-alt px-3 py-2.5 text-note text-ink-muted">
         <li className="flex gap-2">
-          <Icon name="description" size={14} className="mt-0.5 flex-none text-ink-faint" />
+          <span aria-hidden className="flex-none text-ink-faint">
+            ·
+          </span>
           Lecture du PDF de référence
         </li>
         <li className="flex gap-2">
-          <Icon name="visibility" size={14} className="mt-0.5 flex-none text-ink-faint" />
+          <span aria-hidden className="flex-none text-ink-faint">
+            ·
+          </span>
           Extraction Vision ou Texte selon le modèle
         </li>
         <li className="flex gap-2">
-          <Icon name="check_circle" size={14} className="mt-0.5 flex-none text-ink-faint" />
+          <span aria-hidden className="flex-none text-ink-faint">
+            ·
+          </span>
           Comparaison au résultat attendu
         </li>
       </ul>
@@ -226,14 +231,16 @@ function ErrorPanel({ error, onRetry }: { error: string; onRetry: () => void }) 
     <div className="flex flex-col gap-4 p-4">
       <div className="rounded-card border border-danger-border bg-danger-tint px-3 py-3">
         <div className="flex items-start gap-2">
-          <Icon name="error" size={17} className="mt-0.5 flex-none text-danger" />
+          <span className="mt-[5px] flex-none">
+            <StatusGlyph tone="c" small />
+          </span>
           <div className="min-w-0 space-y-1">
             <p className="text-label font-semibold text-danger">Le test n&apos;a pas abouti</p>
             <p className="text-body text-ink-muted">{error}</p>
           </div>
         </div>
       </div>
-      <Button variant="secondary" icon="refresh" onClick={onRetry}>
+      <Button variant="secondary" onClick={onRetry}>
         Réessayer
       </Button>
     </div>
@@ -345,7 +352,7 @@ function ResultPanel({
         <span>Parse {formatDuration(result.metrics.parse_ms)}</span>
       </div>
 
-      <Button variant="secondary" icon="refresh" onClick={onRetest}>
+      <Button variant="secondary" onClick={onRetest}>
         Retester
       </Button>
     </div>

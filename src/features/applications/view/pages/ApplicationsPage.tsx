@@ -372,7 +372,6 @@ export function ApplicationsPage({
             <div className="flex min-h-0 flex-1 items-start justify-center pt-[min(12vh,90px)]">
               {isFresh ? (
                 <EmptyState
-                  icon="work"
                   title={view === "kanban" ? "Le tableau est vide" : "Votre suivi commence ici"}
                   description={
                     view === "kanban"
@@ -392,7 +391,6 @@ export function ApplicationsPage({
                 />
               ) : (
                 <EmptyState
-                  icon="filter_alt_off"
                   title="Aucune candidature ne correspond"
                   description={
                     vm.search

@@ -146,16 +146,19 @@ Focus clavier : `outline 1px accent-focus`, offset 0 — déjà sur `:focus-visi
 
 ## 6. Icônes
 
-**Material Symbols Rounded**, police locale, `wght` 300, jamais FILL sauf `filled`.
+Aucune police d’icônes (décision D7). Trois moyens, dans cet ordre :
 
-Composant : `Icon` (`src/shared/ui/Icon.tsx`). Tailles usuelles : 14 (pastille), 15–16 (bouton, nav), 17 (header de carte), 20 (empty).
+- **`LineIcon`** (`src/shared/ui/LineIcon.tsx`) : les 11 tracés dessinés pour Candilog
+  (navigation, signet, export, import, recherche) — grille 16, trait 1,4 px, `currentColor`.
+  N’en ajouter qu’à partir d’un tracé livré dans `reference_design/assets/icons/`.
+- **Glyphes typographiques** des maquettes : `‹ ›` (précédent, suivant), `▾` (liste,
+  dépliable), `✕` (fermer, retirer), `✓` (choisi, terminé), `+`, `→`, `↶ ↷` ; en bouton
+  seul, `GlyphButton`, qui exige un `label`.
+- **`StatusGlyph`** quand l’icône portait un état (attention, erreur, réussite).
 
-La police embarquée est une **sous-police** réduite aux icônes de `src/shared/ui/icon-names.ts`, qui est aussi le type `IconName` du composant : une icône hors de cette liste est refusée par `tsc` plutôt qu'affichée en toutes lettres. Ajouter une icône : voir `docs/DEVELOPMENT.md`.
-
-Icônes v2 de la navigation et des listes : `LineIcon` (`src/shared/ui/LineIcon.tsx`), les
-11 tracés dessinés pour Candilog (grille 16, trait 1,4 px, `currentColor`) ; marque :
-`BrandMark` (tuile `#5B62F0` fixe dans les deux thèmes). Material Symbols reste employé par
-les écrans v1 le temps de leur migration.
+Sinon, pas d’icône : le libellé suffit. Une icône purement décorative à côté d’un titre ou
+d’une ligne n’est pas remplacée. Marque : `BrandMark` (tuile `#5B62F0` fixe dans les deux
+thèmes).
 
 ---
 
@@ -421,7 +424,7 @@ barre groupée 40 px dès qu'une case est cochée
 
 ## 10. Composants — quand les prendre
 
-Toujours importer depuis `@/shared/ui` (sauf `SettingsUi`, propre aux réglages).
+Toujours importer depuis `@/shared/ui`.
 
 | Besoin | Composant |
 | --- | --- |
@@ -438,7 +441,7 @@ Toujours importer depuis `@/shared/ui` (sauf `SettingsUi`, propre aux réglages)
 | Split redimensionnable | `SplitPane` |
 | Pagination | `Pager` / `ColumnPager` |
 | Chargement, vide, erreur | `Skeleton`, `EmptyState`, `ErrorBanner` |
-| Icônes de la navigation et des listes | `LineIcon` |
+| Icônes | `LineIcon`, glyphe typographique ou `GlyphButton` (§6) |
 | Graphique | `analytics/view/components/charts` — primitives du design, liste `sr-only` des valeurs |
 
 La planche `/_design` (`src/app/dev/DesignGallery.tsx`, développement seulement) montre ces

@@ -1,8 +1,6 @@
-import type { ButtonHTMLAttributes, ComponentPropsWithRef, ReactNode } from "react";
+import type { ComponentPropsWithRef, ReactNode } from "react";
 import { cn } from "@/shared/lib/cn";
-import { Icon } from "./Icon";
 import { Kbd } from "./Kbd";
-import type { IconName } from "./icon-names";
 
 /**
  * Variantes du design (`COMPONENTS.md` §1) :
@@ -39,7 +37,6 @@ const SIZES = {
 interface ButtonProps extends ComponentPropsWithRef<"button"> {
   variant?: ButtonVariant;
   size?: keyof typeof SIZES;
-  icon?: IconName;
   /** Raccourci imprimé à droite du libellé (`mod+enter`, `n`…), notation de la plateforme. */
   shortcut?: string;
   children?: ReactNode;
@@ -48,7 +45,6 @@ interface ButtonProps extends ComponentPropsWithRef<"button"> {
 export function Button({
   variant = "secondary",
   size = "control",
-  icon,
   shortcut,
   children,
   className,
@@ -74,13 +70,6 @@ export function Button({
       )}
       {...props}
     >
-      {icon ? (
-        <Icon
-          name={icon}
-          size={15}
-          {...(icon === "progress_activity" ? { className: "animate-spin" } : {})}
-        />
-      ) : null}
       {children}
       {shortcut ? (
         // Décorative : le raccourci est annoncé par `aria-keyshortcuts`, pas dans le nom du
@@ -108,44 +97,8 @@ function ariaShortcut(shortcut: string): string {
 }
 
 /**
- * Bouton carré d'icône (`✕`, `⋯`, `+`) : 24 px par défaut, fond `bg-chip`, rayon 7.
- *
- * Le libellé est obligatoire : c'est le nom accessible et l'infobulle d'un contrôle sans
- * texte.
- */
-export function IconButton({
-  icon,
-  label,
-  size = 15,
-  className,
-  type = "button",
-  ...props
-}: Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> & {
-  icon: IconName;
-  label: string;
-  size?: number;
-}) {
-  return (
-    <button
-      type={type}
-      aria-label={label}
-      title={label}
-      className={cn(
-        "flex size-6 flex-none items-center justify-center rounded-r7",
-        "bg-chip text-tx-4 transition-color hover:bg-elev hover:text-tx-2",
-        "disabled:pointer-events-none disabled:text-tx-6",
-        className,
-      )}
-      {...props}
-    >
-      <Icon name={icon} size={size} />
-    </button>
-  );
-}
-
-/**
  * Bouton carré à glyphe typographique (`✕`, `⋯`, `+`, `✎`) — les micro-icônes que le design
- * garde en texte (`DESIGN_SYSTEM.md` §7). Même gabarit qu'`IconButton`, sans police d'icônes.
+ * garde en texte (`DESIGN_SYSTEM.md` §7). Rien ne passe par une police d'icônes.
  */
 export function GlyphButton({
   glyph,

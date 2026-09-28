@@ -6,7 +6,6 @@ import {
   Button,
   ErrorBanner,
   FormField,
-  Icon,
   SegmentedControl,
   Skeleton,
   TextInput,
@@ -400,12 +399,11 @@ export function AiPage() {
                             />
                           )}
                         </FormField>
-                        <Button variant="secondary" icon="refresh" onClick={() => void actualiserModels()}>
+                        <Button variant="secondary" onClick={() => void actualiserModels()}>
                           Actualiser
                         </Button>
                         <Button
                           variant="secondary"
-                          icon="bolt"
                           disabled={!llm.model.trim()}
                           onClick={() => ouvrirBenchmark(llm.model.trim())}
                         >
@@ -471,7 +469,6 @@ export function AiPage() {
                             {llm.api_key_configured ? (
                               <Button
                                 variant="ghost"
-                                icon="delete"
                                 disabled={vm.isClearingApiKey}
                                 onClick={() => void clearApiKey()}
                               >
@@ -484,7 +481,6 @@ export function AiPage() {
                     ) : (
                       <div className="max-w-[380px] rounded-r8 bg-group px-3 py-2.5">
                         <p className="flex items-center gap-1.5 text-small font-medium text-tx-2">
-                          <Icon name="info" size={14} className="flex-none text-tx-5" />
                           Modèle local : aucune clé, aucune connexion
                         </p>
                         <p className="mt-1 text-sub leading-relaxed text-tx-4">

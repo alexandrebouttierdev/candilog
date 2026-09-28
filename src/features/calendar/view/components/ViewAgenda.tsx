@@ -104,7 +104,6 @@ export function ViewDay({
     return (
       <div className="flex min-h-0 flex-1 items-start justify-center overflow-hidden pt-[min(12vh,90px)]">
         <EmptyState
-          icon="event_available"
           title="Rien de prévu"
           description="Ajoutez un entretien ou une relance pour cette journée."
           action={

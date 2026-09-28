@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import "./shared/ui/material-symbols.css";
 
 /*
  * Jetons Candilog v2 — valeurs de `reference_design/tokens.json` (source de vérité
@@ -838,27 +837,13 @@
     color: var(--resume-warning-text);
   }
 
-  /* Toute surface « papier » — aperçu de CV comme feuille de lettre — porte sa propre
+  /* La feuille de lettre, surface « papier », porte sa propre
      sélection : elle reste blanche en thème sombre et ne peut donc pas hériter de celle de
      l'application, qui y écrirait en encre claire sur fond clair. */
-  .paper-preview ::selection,
-  .paper-preview::selection,
   .letter-paper ::selection,
   .letter-paper::selection {
     background: var(--paper-selection);
     color: var(--paper-ink);
-  }
-
-  .paper-preview {
-    width: 100%;
-    max-width: 560px;
-    height: fit-content;
-    padding: 38px 42px;
-    border: 1px solid var(--paper-border);
-    border-radius: var(--radius-paper);
-    background: var(--paper-bg);
-    color: var(--paper-ink);
-    box-shadow: var(--candilog-shadow-paper);
   }
 
   /*

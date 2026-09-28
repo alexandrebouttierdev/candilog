@@ -18,6 +18,5 @@ describe("AiStopButton", () => {
     render(<AiStopButton stopping onStop={vi.fn()} />);
 
     expect(screen.getByRole("button", { name: "Arrêt…" })).toBeDisabled();
-    expect(screen.getByText("progress_activity")).toBeInTheDocument();
   });
 });

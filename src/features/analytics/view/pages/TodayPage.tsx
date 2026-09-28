@@ -124,7 +124,6 @@ export function TodayPage() {
           ) : fresh ? (
             <div className="flex min-h-[min(60vh,600px)] items-center justify-center">
               <EmptyState
-                icon="today"
                 title="Votre suivi commence ici"
                 description="Commencez par enregistrer une candidature, ou importez votre CV pour remplir votre profil."
                 action={
@@ -143,7 +142,6 @@ export function TodayPage() {
             <div className="flex min-h-[min(60vh,600px)] items-center justify-center">
               <EmptyState
                 good
-                icon="check"
                 title="Rien à faire aujourd'hui"
                 description="Aucune relance en retard, aucun entretien prévu cette semaine."
                 action={

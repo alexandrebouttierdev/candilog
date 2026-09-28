@@ -1,8 +1,7 @@
 import type { ReactNode } from "react";
-import { Icon } from "./Icon";
+import { StatusGlyph } from "./StatusGlyph";
 import { Button } from "./Button";
 import { cn } from "@/shared/lib/cn";
-import type { IconName } from "./icon-names";
 
 /**
  * Bandeau d'erreur non bloquant.
@@ -24,9 +23,9 @@ export function ErrorBanner({
   onRetry?: () => void;
 }) {
   return (
-    <Banner tone="danger" icon="error" title={title} message={message}>
+    <Banner tone="danger" title={title} message={message}>
       {onRetry ? (
-        <Button variant="secondary" icon="refresh" onClick={onRetry}>
+        <Button variant="secondary" onClick={onRetry}>
           Réessayer
         </Button>
       ) : null}
@@ -34,17 +33,18 @@ export function ErrorBanner({
   );
 }
 
+/** Glyphe de statut du bandeau : la teinte seule ne porte jamais l'information. */
+const GLYPHS = { danger: "c", success: "g", accent: "n" } as const;
+
 /** Bandeau d'information, de succès ou d'erreur, aux trois teintes des maquettes. */
 export function Banner({
   tone,
-  icon,
   title,
   message,
   children,
   className,
 }: {
   tone: "danger" | "success" | "accent";
-  icon: IconName;
   title: string;
   message?: ReactNode;
   children?: ReactNode;
@@ -65,7 +65,9 @@ export function Banner({
         className,
       )}
     >
-      <Icon name={icon} size={18} className="mt-px flex-none" />
+      <span className="mt-[3px] flex-none">
+        <StatusGlyph tone={GLYPHS[tone]} />
+      </span>
       <div className="min-w-0 flex-1">
         <p className="text-body font-semibold">{title}</p>
         {message ? (

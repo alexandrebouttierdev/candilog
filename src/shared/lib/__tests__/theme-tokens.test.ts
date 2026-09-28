@@ -10,7 +10,6 @@ const styles = readFileSync(
 const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../../features/documents/view");
 const documentSources = [
   "components/DocumentUi.tsx",
-  "components/PaperPreview.tsx",
   "pages/DocumentsPages.tsx",
   "components/ResumePaper.tsx",
   "components/ResumeEditableText.tsx",
@@ -66,7 +65,6 @@ describe("jetons Tailwind", () => {
     // Chaque surface papier doit être couverte : la lettre a changé de conteneur une fois,
     // et la sélection est redevenue illisible sans que rien ne le signale.
     const regle = styles.match(/([^}]*)::selection\s*{\s*background:\s*var\(--paper-selection\)/);
-    expect(regle?.[1]).toContain(".paper-preview");
     expect(regle?.[1]).toContain(".letter-paper");
   });
 

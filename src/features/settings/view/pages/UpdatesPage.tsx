@@ -1,4 +1,4 @@
-import { Button, Icon } from "@/shared/ui";
+import { Button, StatusGlyph } from "@/shared/ui";
 import { cn } from "@/shared/lib/cn";
 import type { UpdateInfo } from "@/shared/types/generated/settings";
 import { useUpdatesViewModel } from "../../viewmodel/useUpdatesViewModel";
@@ -94,22 +94,22 @@ function Vignette({
 }) {
   const apparence =
     error !== null
-      ? { icon: "warning" as const, classes: "bg-tint-c-bg text-tint-c-tx" }
+      ? { glyph: "!", classes: "bg-tint-c-bg text-tint-c-tx" }
       : installerOpened || update
-        ? { icon: "new_releases" as const, classes: "bg-tint-g-bg text-tint-g-tx" }
+        ? { glyph: "↓", classes: "bg-tint-g-bg text-tint-g-tx" }
         : update === null
-          ? { icon: "check_circle" as const, classes: "bg-tint-g-bg text-tint-g-tx" }
-          : { icon: "system_update" as const, classes: "bg-group text-tx-4" };
+          ? { glyph: "✓", classes: "bg-tint-g-bg text-tint-g-tx" }
+          : { glyph: "↻", classes: "bg-group text-tx-4" };
 
   return (
     <span
       aria-hidden
       className={cn(
-        "flex size-10 flex-none items-center justify-center rounded-r9",
+        "flex size-10 flex-none items-center justify-center rounded-r9 text-[18px] font-medium",
         apparence.classes,
       )}
     >
-      <Icon name={apparence.icon} size={22} />
+      {apparence.glyph}
     </span>
   );
 }
@@ -157,7 +157,9 @@ function Message({
   if (error !== null) {
     return (
       <p role="status" className="flex items-start gap-2 text-small leading-relaxed text-tint-c-tx">
-        <Icon name="warning" size={16} className="mt-px flex-none" />
+        <span className="mt-[4px] flex-none">
+          <StatusGlyph tone="c" small />
+        </span>
         {error}
       </p>
     );

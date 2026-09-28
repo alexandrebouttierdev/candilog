@@ -194,7 +194,6 @@ export function RelationsPage({ kind }: { kind: RelationKind }) {
           ) : !vm.isLoading && vm.total === 0 ? (
             <div className="flex min-h-0 flex-1 items-start justify-center pt-[min(12vh,90px)]">
               <EmptyState
-                icon={companies ? "apartment" : "person"}
                 title={
                   fresh
                     ? companies

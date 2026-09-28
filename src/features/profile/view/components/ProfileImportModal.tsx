@@ -17,7 +17,7 @@ import {
 } from "@/features/ai";
 import { AppError } from "@/shared/types/app-error";
 import { useRemoteSendGuard } from "@/features/settings";
-import { Button, ConfirmDialog, ErrorBanner, Icon, WorkSurface } from "@/shared/ui";
+import { Button, ConfirmDialog, ErrorBanner, LineIcon, WorkSurface } from "@/shared/ui";
 import { formatAiSummary } from "@/shared/lib/duration";
 import {
   countMarked,
@@ -470,11 +470,7 @@ function PickFile({
       onClick={onChoose}
       className="flex w-full flex-col items-center gap-2 rounded-card border border-dashed border-line px-6 py-6 text-center disabled:cursor-default"
     >
-      <Icon
-        name="upload_file"
-        size={22}
-        className="text-ink-faint"
-      />
+      <LineIcon name="import" size={20} className="text-ink-faint" />
       <span className="text-body font-medium text-ink">
         {waiting ? "Sélection du fichier…" : "Choisir et analyser un CV PDF"}
       </span>
