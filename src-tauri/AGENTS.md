@@ -40,7 +40,7 @@ pas de couche DTO parallèle. `.cargo/config.toml` fixe
 cargo test --manifest-path src-tauri/Cargo.toml
 ```
 
-régénère les types TypeScript. Un DTO modifié sans régénération casse `npm run build`.
+régénère les types TypeScript. Un DTO modifié sans régénération casse `yarn build`.
 
 ## SQL
 

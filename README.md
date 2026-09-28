@@ -123,18 +123,18 @@ l'entrée de trousseau ci-dessus : les retirer à la main les efface définitive
 
 ## Développer
 
-Prérequis : Node.js LTS, Rust 1.91, et les dépendances système de Tauri 2. Détails dans
+Prérequis : Node.js LTS avec Yarn (`corepack enable`), Rust 1.91, et les dépendances système de Tauri 2. Détails dans
 [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md).
 
 ```bash
-npm install
-npm run tauri dev
+yarn install
+yarn tauri dev
 ```
 
 Le frontend seul (sans fenêtre native, IPC indisponible) :
 
 ```bash
-npm run dev
+yarn dev
 ```
 
 ## Validations
@@ -144,9 +144,9 @@ publication au premier échec. Ils restent à lancer localement avant de termine
 attendre un push sur `master` pour découvrir un défaut rendrait la release inutilement rouge.
 
 ```bash
-npm run lint
-npm test
-npm run build            # inclut tsc --noEmit
+yarn lint
+yarn test
+yarn build            # inclut tsc --noEmit
 
 cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check
 cargo clippy --manifest-path src-tauri/Cargo.toml --locked --all-targets -- -D warnings
@@ -211,7 +211,7 @@ Les types TypeScript des DTO sont **générés** depuis Rust par `ts-rs` dans
 cargo test --manifest-path src-tauri/Cargo.toml
 ```
 
-Un DTO Rust modifié sans régénération fait échouer `npm run build`.
+Un DTO Rust modifié sans régénération fait échouer `yarn build`.
 
 ### Erreurs
 

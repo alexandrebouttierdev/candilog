@@ -8,6 +8,7 @@ Installer, lancer, régénérer, valider. Les règles de code sont dans
 | Outil | Version | Vérifié par |
 | --- | --- | --- |
 | Node.js | LTS | la CI utilise `node-version: lts/*` |
+| Yarn | 4.9.1, via Corepack | `packageManager` de `package.json` |
 | Rust | 1.91 | `rust-version` de `src-tauri/Cargo.toml` |
 | Cargo | fourni par la toolchain Rust | — |
 Dépendances système Linux (liste appliquée par le workflow de release sur Ubuntu 22.04 ;
@@ -29,19 +30,22 @@ Outils facultatifs : `cargo-deny` (audit des dépendances Rust, non installé pa
 ## Installation
 
 ```bash
-npm install
+yarn install
 ```
 
-`.npmrc` fixe `cache=.npm-cache` : le cache npm est local au dépôt et ignoré par Git.
+Le dépôt utilise **Yarn** (`yarn.lock` fait foi), dans la version épinglée par le champ
+`packageManager` de `package.json` : `corepack enable` une fois suffit à l'obtenir. Les
+dépendances sont installées dans `node_modules/` (`nodeLinker: node-modules`,
+`.yarnrc.yml`). Le site `website/` reste un projet npm autonome.
 
 ## Lancer
 
 ```bash
-npm run tauri dev     # fenêtre native + backend Rust : le mode de travail normal
-npm run dev           # frontend seul sur http://localhost:1420
+yarn tauri dev     # fenêtre native + backend Rust : le mode de travail normal
+yarn dev           # frontend seul sur http://localhost:1420
 ```
 
-`npm run dev` n'a **pas** d'IPC : tout écran qui charge des données échoue. C'est utile
+`yarn dev` n'a **pas** d'IPC : tout écran qui charge des données échoue. C'est utile
 pour le style et la galerie de composants, pas pour tester un comportement métier.
 
 Le port 1420 est en `strictPort` : s'il est occupé, Vite échoue au lieu de basculer
@@ -76,7 +80,7 @@ cargo test --manifest-path src-tauri/Cargo.toml
 `.cargo/config.toml` pointe `TS_RS_EXPORT_DIR` vers ce dossier, à la racine du projet et
 non sous `src-tauri/`, pour que la génération fonctionne aussi bien depuis la racine que
 depuis `src-tauri/` (ce que fait la CLI Tauri). Un DTO Rust modifié sans régénération fait
-échouer `npm run build`.
+échouer `yarn build`.
 
 Lancer la commande **sans filtre** : `cargo test … <motif>` n'exécute que les tests
 d'export retenus par le motif, et laisse les autres fichiers de `generated/` amputés. Un
@@ -89,9 +93,9 @@ Elles restent obligatoires localement avant de terminer une tâche : le workflow
 publication, il ne sert pas de boucle de développement.
 
 ```bash
-npm run lint
-npm test
-npm run build          # inclut tsc --noEmit
+yarn lint
+yarn test
+yarn build          # inclut tsc --noEmit
 
 cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check
 cargo clippy --manifest-path src-tauri/Cargo.toml --locked --all-targets -- -D warnings
@@ -103,7 +107,7 @@ exerce le bundler. Le workflow l'exécute ensuite sur chaque plateforme uniqueme
 `quality` est vert :
 
 ```bash
-npm run tauri build
+yarn tauri build
 ```
 
 Il doit sortir en 0 et produire exactement les cibles de `bundle.targets`
@@ -115,8 +119,8 @@ Après un changement de dépendance Rust :
 cargo deny --manifest-path src-tauri/Cargo.toml check
 ```
 
-Il n'existe ni `npm run format`, ni `npm run typecheck` à la racine : `cargo fmt` couvre
-le formatage Rust, `npm run build` couvre le typage TypeScript.
+Il n'existe ni `yarn format`, ni `yarn typecheck` à la racine : `cargo fmt` couvre
+le formatage Rust, `yarn build` couvre le typage TypeScript.
 
 ## Scénario de bout en bout des documents
 
@@ -160,9 +164,9 @@ en image. Le banc ne fait pas partie du bundle — `vite build` n'a qu'une entr�
 `index.html`.
 
 ```bash
-npx playwright install chromium   # une fois
-npm run e2e                       # lance le serveur Vite au besoin
-npm run e2e:typecheck
+yarn playwright install chromium   # une fois
+yarn e2e                       # lance le serveur Vite au besoin
+yarn e2e:typecheck
 ```
 
 Prérequis : `poppler-utils` (`pdfinfo`, `pdftotext`, `pdftoppm`). Les artefacts et les

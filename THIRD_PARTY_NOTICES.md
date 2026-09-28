@@ -51,7 +51,7 @@ exacte et vérifiable.
 | Écosystème | Inventaire | Licences autorisées |
 | --- | --- | --- |
 | Rust | `src-tauri/Cargo.lock` | `deny.toml`, section `[licenses]` |
-| JavaScript | `package-lock.json` | — |
+| JavaScript | `yarn.lock` | — |
 
 La conformité des licences Rust est contrôlée à chaque changement de dépendance :
 

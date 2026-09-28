@@ -8,9 +8,9 @@ Aucune CI ne rejoue ces contrôles : ce qui n'est pas lancé ici ne l'est nulle 
 (`docs/CODE_RULES.md` §20). Cocher ce qui a **réellement** été exécuté, et dire ce qui ne
 l'a pas été.
 
-- [ ] `npm run lint`
-- [ ] `npm test`
-- [ ] `npm run build`
+- [ ] `yarn lint`
+- [ ] `yarn test`
+- [ ] `yarn build`
 - [ ] `cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check`
 - [ ] `cargo clippy --manifest-path src-tauri/Cargo.toml --locked --all-targets -- -D warnings`
 - [ ] `cargo test --manifest-path src-tauri/Cargo.toml --locked --all-targets`

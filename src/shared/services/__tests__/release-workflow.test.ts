@@ -7,10 +7,10 @@ describe("contrat du workflow de release", () => {
   it("bloque les builds tant que tous les contrôles qualité ne passent pas", () => {
     expect(workflow).toMatch(/^ {2}quality:\s*$/m);
     for (const command of [
-      "npm ci",
-      "npm run lint",
-      "npm test",
-      "npm run build",
+      "yarn install --immutable",
+      "yarn lint",
+      "yarn test",
+      "yarn build",
       "cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check",
       "cargo clippy --manifest-path src-tauri/Cargo.toml --locked --all-targets -- -D warnings",
       "cargo test --manifest-path src-tauri/Cargo.toml --locked --all-targets",

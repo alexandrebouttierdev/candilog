@@ -100,14 +100,14 @@ impact documentaire ne doit provoquer aucun changement Markdown.
 ## Validation avant de terminer
 
 Exécuter ce que la modification touche. Ces commandes existent réellement — il n'y a ni
-`npm run format`, ni `npm run typecheck` à la racine, ni CI de qualité.
+`yarn format`, ni `yarn typecheck` à la racine, ni CI de qualité.
 
 Frontend (`src/`) :
 
 ```bash
-npm run lint
-npm test
-npm run build          # inclut tsc --noEmit
+yarn lint
+yarn test
+yarn build          # inclut tsc --noEmit
 ```
 
 Natif (`src-tauri/`) :
@@ -129,7 +129,7 @@ de la composition — la chaîne complète est décrite dans `docs/DEVELOPMENT.m
 
 ```bash
 CANDILOG_E2E=1 cargo test --manifest-path src-tauri/Cargo.toml --locked --test e2e_documents
-npm run e2e
+yarn e2e
 ```
 
 Site (`website/`) : `npm run lint`, `npm run typecheck`, `npm run build` depuis `website/`.

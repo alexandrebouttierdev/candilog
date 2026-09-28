@@ -147,7 +147,7 @@ dernière version publiée.
 
 ## Procédure de release
 
-0. Lancer les validations de `docs/CODE_RULES.md` §20 **plus** `npm run tauri build`.
+0. Lancer les validations de `docs/CODE_RULES.md` §20 **plus** `yarn tauri build`.
    Le workflow les rejoue avant les builds, mais ce filet de publication ne remplace pas la
    vérification locale. Un `git status --short` doit être vide après `cargo test` (types
    ts-rs à jour).
