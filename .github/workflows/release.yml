@@ -244,8 +244,80 @@ jobs:
           path: release-assets/*
           if-no-files-found: error
 
-  publish:
+  # Tauri ne produit pas de paquet pacman : ce job reconditionne le `.deb` du job Linux
+  # avec `packaging/arch/PKGBUILD`, dans un conteneur Arch officiel. Rien n'est recompilé,
+  # le binaire est celui du `.deb`. `makepkg` refuse de tourner en root, d'où l'utilisateur
+  # dédié ; `--nodeps` parce que les dépendances d'exécution (WebKitGTK…) n'ont pas à être
+  # installées pour empaqueter.
+  arch:
     needs: [prepare, build]
+    if: needs.prepare.outputs.should_release == 'true'
+    runs-on: ubuntu-24.04
+    container: archlinux:base-devel
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Télécharger le paquet Debian
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: candilog-linux
+          path: linux-assets
+
+      - name: Construire le paquet Arch Linux
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          deb="linux-assets/candilog-ubuntu-${VERSION}.deb"
+          if [ ! -f "$deb" ]; then
+            echo "Artefact manquant : $deb" >&2
+            exit 1
+          fi
+          # pacman n'accepte pas de tiret dans pkgver (1.0.0-beta → 1.0.0_beta).
+          pkgver="${VERSION//-/_}"
+          work="$(mktemp -d)"
+          cp packaging/arch/PKGBUILD "$work/PKGBUILD"
+          cp "$deb" "$work/candilog.deb"
+          sed -i "s/^pkgver=.*/pkgver=${pkgver}/" "$work/PKGBUILD"
+          useradd --create-home builder
+          chown -R builder "$work"
+          su builder -c "cd '$work' && makepkg --nodeps --noconfirm"
+
+          pkg="$(ls -1 "$work"/candilog-"${pkgver}"-*-x86_64.pkg.tar.zst | head -n1)"
+          if [ -z "$pkg" ]; then
+            echo "makepkg n'a produit aucun paquet" >&2
+            exit 1
+          fi
+          # Le paquet doit porter les licences redistribuées, comme le .deb. La liste est
+          # lue d'abord : `bsdtar | grep -q` échouerait sous pipefail (SIGPIPE).
+          contenu="$(bsdtar -tf "$pkg")"
+          for attendu in \
+            usr/lib/Candilog/LICENSE \
+            usr/lib/Candilog/licenses/ibm-plex-OFL-1.1.txt \
+            usr/share/licenses/candilog/LICENSE; do
+            if ! grep -qx "$attendu" <<< "$contenu"; then
+              echo "Absent du paquet Arch : $attendu" >&2
+              exit 1
+            fi
+          done
+
+          mkdir -p release-assets
+          cp "$pkg" "release-assets/candilog-arch-${VERSION}.pkg.tar.zst"
+          cp "$pkg" "release-assets/candilog-arch-latest.pkg.tar.zst"
+          ls -la release-assets
+
+      - name: Publier l'artefact Arch Linux
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: candilog-arch
+          path: release-assets/*
+          if-no-files-found: error
+
+  publish:
+    needs: [prepare, build, arch]
     if: needs.prepare.outputs.should_release == 'true'
     runs-on: ubuntu-22.04
     permissions:
@@ -303,6 +375,7 @@ jobs:
           - macOS : \`candilog-macos-latest.dmg\`
           - Ubuntu / Debian : \`candilog-ubuntu-latest.deb\`
           - Fedora : \`candilog-fedora-latest.rpm\`
+          - Arch Linux : \`candilog-arch-latest.pkg.tar.zst\` (\`sudo pacman -U candilog-arch-latest.pkg.tar.zst\`)
 
           Des copies versionnées (\`candilog-*-${VERSION}.*\`) sont aussi jointes.
 

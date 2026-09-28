@@ -112,5 +112,5 @@ L'export statique interdit toute route serveur : pas de `/api/download/[platform
 
 Les liens de `lib/data/plateformes.ts` pointent sur
 `…/releases/latest/download/candilog-<plateforme>-latest.<ext>` (Windows `.exe`,
-macOS `.dmg`, Ubuntu `.deb`, Fedora `.rpm`). GitHub sert toujours l'asset du même nom
+macOS `.dmg`, Ubuntu `.deb`, Fedora `.rpm`, Arch Linux `.pkg.tar.zst`). GitHub sert toujours l'asset du même nom
 sur la dernière release publiée.

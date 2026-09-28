@@ -123,6 +123,7 @@ Les installateurs sont publiés dans les
 | macOS (Apple Silicon et Intel) | `candilog-macos-latest.dmg` | Ouvrir l'image, glisser Candilog dans *Applications* |
 | Ubuntu, Debian | `candilog-ubuntu-latest.deb` | `sudo apt install ./candilog-ubuntu-latest.deb` |
 | Fedora, RHEL | `candilog-fedora-latest.rpm` | `sudo dnf install ./candilog-fedora-latest.rpm` |
+| Arch Linux | `candilog-arch-latest.pkg.tar.zst` | `sudo pacman -U ./candilog-arch-latest.pkg.tar.zst` |
 
 > [!NOTE]
 > Les binaires ne portent pas encore de signature de code commerciale. Au premier

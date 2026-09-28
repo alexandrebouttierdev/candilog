@@ -53,7 +53,7 @@ export const FAQ: readonly EntreeFaq[] = [
   {
     question: "Sur quels systèmes Candilog est-il disponible\u00a0?",
     reponse:
-      "Candilog est conçu pour fonctionner sur Windows, macOS et Linux, avec notamment une prise en charge de distributions comme Ubuntu et Fedora.",
+      "Candilog est conçu pour fonctionner sur Windows, macOS et Linux, avec des paquets pour Ubuntu et Debian, Fedora et Arch Linux.",
   },
   {
     question: "Le code source est-il disponible et puis-je le modifier\u00a0?",

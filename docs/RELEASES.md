@@ -49,12 +49,21 @@ job `publish`.
 | Windows | `windows-latest` | `.exe` (NSIS) |
 | Ubuntu / Debian | `ubuntu-22.04` | `.deb` |
 | Fedora / RHEL | même job Ubuntu (bundler Tauri) | `.rpm` |
+| Arch Linux | job `arch`, conteneur `archlinux:base-devel` | `.pkg.tar.zst` |
 
 `bundle.targets` (`src-tauri/tauri.conf.json`) énumère exactement ces cibles — `deb`, `rpm`,
 `nsis`, `app`, `dmg` — et non `"all"`. Aucun **AppImage** n'est produit : le workflow ne le
 publie pas, et `tauri build` sortait en erreur si `linuxdeploy` échouait, ce qui faisait
 échouer le job `build` et sauter la publication entière. Une cible non publiée n'a pas à
 pouvoir annuler une release.
+
+Tauri ne produit pas de paquet pacman. Le job `arch` reconditionne donc le `.deb` du job
+Linux avec [`packaging/arch/PKGBUILD`](../packaging/arch/PKGBUILD) (`makepkg --nodeps`,
+sous un utilisateur dédié : `makepkg` refuse de tourner en root). Rien n'est recompilé,
+le binaire est celui du `.deb`. Le job vérifie que le paquet porte `LICENSE` et les
+licences redistribuées, et ajoute `/usr/share/licenses/candilog/LICENSE`, l'emplacement
+attendu par pacman. `publish` attend ce job : une release n'est jamais publiée sans le
+paquet Arch.
 
 Chaque paquet embarque `LICENSE`, `NOTICE`, `THIRD_PARTY_NOTICES.md` et, sous
 `licenses/`, le texte intégral des licences des composants redistribués : OFL 1.1 des
@@ -84,6 +93,10 @@ Candilog interroge l'API GitHub (`releases/latest` de `candilog`) pour comparer 
 distante à la version locale, choisit l'asset adapté au système (`.deb` ou `.rpm` selon
 la famille Linux, `.exe` Windows, `.dmg` macOS), le télécharge dans le dossier
 Téléchargements puis le lance avec le programme d'installation par défaut du système.
+
+Sur Arch Linux (et toute distribution hors familles Debian et Red Hat), l'application ne
+retient aucun installateur et ouvre la page de la release : un paquet pacman ne s'ouvre
+pas d'un double-clic, il s'installe par `sudo pacman -U`.
 
 Le frontend ne désigne ni l'URL ni le nom du fichier : `settings_download_update` ne prend
 aucun argument et re-résout l'asset côté Rust. Le paquet est retenu en mémoire (plafonné à
@@ -158,7 +171,7 @@ dernière version publiée.
    ne déclenche aucune release.
    Alternative : lancer manuellement **Release** depuis l'onglet Actions.
 3. Vérifier la release créée : tag `v<version>`, assets `-latest` et versionnés pour chaque
-   plateforme, et présence de `SHA256SUMS` — sans lui, la mise à jour in-app refusera
+   plateforme (Arch Linux compris), et présence de `SHA256SUMS` — sans lui, la mise à jour in-app refusera
    d'ouvrir l'installateur.
 4. Installer au moins un paquet sur une machine propre et vérifier que
    `/usr/lib/Candilog/LICENSE`, `NOTICE`, `THIRD_PARTY_NOTICES.md` et

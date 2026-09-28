@@ -1,0 +1,36 @@
+# Paquet Arch Linux de Candilog.
+#
+# Tauri ne produit pas de paquet pacman : ce PKGBUILD reconditionne le `.deb` construit
+# par le job Linux du workflow de release (`.github/workflows/release.yml`, job `arch`).
+# Rien n'est recompilé : le binaire est celui du `.deb`, à l'octet près.
+#
+# La CI remplace `pkgver` par la version de `src-tauri/Cargo.toml` et dépose le `.deb`
+# à côté de ce fichier sous le nom `candilog.deb`. L'intégrité de la chaîne repose sur
+# `SHA256SUMS` et l'attestation de provenance de la release, pas sur `sha256sums` ici.
+#
+# Construction locale, depuis un dossier contenant ce fichier et `candilog.deb` :
+#   makepkg -si
+
+pkgname=candilog
+pkgver=0.0.1
+pkgrel=1
+pkgdesc="Suivi de candidatures, CV et lettres ciblés, avec assistance IA locale ou distante"
+arch=('x86_64')
+url="https://candilog.fr"
+license=('LicenseRef-PolyForm-Noncommercial-1.0.0')
+depends=('webkit2gtk-4.1' 'gtk3' 'hicolor-icon-theme')
+optdepends=("gnome-keyring: coffre système pour les clés d'API (ou tout service Secret Service)")
+# Le binaire est déjà optimisé par Cargo : ni strip ni paquet de débogage.
+options=('!strip' '!debug')
+source=("candilog.deb")
+noextract=("candilog.deb")
+sha256sums=('SKIP')
+
+package() {
+  bsdtar -xf "$srcdir/candilog.deb" -C "$srcdir" 'data.tar.*'
+  bsdtar -xf "$srcdir"/data.tar.* -C "$pkgdir"
+
+  # Emplacement attendu par pacman pour une licence non répertoriée (`LicenseRef-`).
+  install -Dm644 "$pkgdir/usr/lib/Candilog/LICENSE" \
+    "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

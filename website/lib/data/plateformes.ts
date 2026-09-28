@@ -9,7 +9,7 @@ export type Plateforme = {
   readonly libelle: string;
   readonly extension: string;
   /** `windows` = tuile à quatre carreaux en CSS ; sinon nom du SVG de public/brand. */
-  readonly logo: "windows" | "apple" | "ubuntu" | "fedora";
+  readonly logo: "windows" | "apple" | "ubuntu" | "fedora" | "archlinux";
   readonly href: string;
 };
 
@@ -41,5 +41,12 @@ export const PLATEFORMES: readonly Plateforme[] = [
     extension: ".rpm",
     logo: "fedora",
     href: `${DOWNLOAD}/candilog-fedora-latest.rpm`,
+  },
+  {
+    groupe: "Linux",
+    libelle: "Arch Linux",
+    extension: ".pkg.tar.zst",
+    logo: "archlinux",
+    href: `${DOWNLOAD}/candilog-arch-latest.pkg.tar.zst`,
   },
 ];

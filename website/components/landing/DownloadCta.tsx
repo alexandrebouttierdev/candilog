@@ -37,19 +37,24 @@ export function DownloadCta() {
             usage personnel, sans compte.
           </p>
         </div>
-        <ul aria-label="Téléchargements" className="m-0 grid w-full max-w-[1000px] list-none gap-3 p-0 text-left sm:grid-cols-2 xl:grid-cols-4">
-          {PLATEFORMES.map((p) => (
-            <li key={p.href}>
+        {/* Une ligne par paquet, comme une liste de l'application : cinq paquets ne
+            tiennent pas dans une grille sans rangée orpheline. */}
+        <ul
+          aria-label="Téléchargements"
+          className="m-0 w-full max-w-[720px] list-none overflow-hidden rounded-r12 border border-bd-menu bg-panel p-0 text-left"
+        >
+          {PLATEFORMES.map((p, i) => (
+            <li key={p.href} className={i > 0 ? "border-t border-bd-soft" : undefined}>
               <a
                 href={p.href}
-                className="group flex min-h-[64px] items-center gap-[14px] rounded-r10 border border-bd-menu bg-panel px-5 py-4 text-tx transition-colors duration-[120ms] hover:border-ac hover:bg-hover hover:text-tx"
+                className="flex min-h-[64px] items-center gap-[14px] px-5 py-3 text-tx transition-colors duration-[120ms] hover:bg-hover hover:text-tx"
               >
-                <span className="text-tx-3">
-                  {p.logo === "windows" ? <LogoWindows /> : <BrandIcon name={p.logo} size={15} />}
+                <span className="grid size-[18px] flex-none place-items-center text-tx-3">
+                  {p.logo === "windows" ? <LogoWindows /> : <BrandIcon name={p.logo} size={16} />}
                 </span>
-                <span className="flex flex-1 flex-col gap-[3px]">
+                <span className="flex min-w-0 flex-1 flex-col gap-[2px] sm:flex-row sm:items-baseline sm:gap-3">
                   <span className="text-[15px] font-semibold">{p.groupe}</span>
-                  <span className="text-[12.5px] text-tx-4">{p.libelle}</span>
+                  <span className="text-[13px] text-tx-4">{p.libelle}</span>
                 </span>
                 <span className="font-mono text-[11px] text-tx-4">{p.extension}</span>
                 <span className="text-ac-tx">
