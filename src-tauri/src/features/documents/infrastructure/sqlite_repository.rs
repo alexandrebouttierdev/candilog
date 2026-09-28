@@ -1,4 +1,5 @@
-//! Persistance dans les tables historiques `resume_versions` et `cover_letters_motivation`.
+//! Persistance dans les tables historiques `resume_versions` et `cover_letters`, versionnées
+//! depuis la migration 8 : une ligne par version, reliées par `document_id`.
 
 use crate::core::database::helpers::{
     connection, like_contains, now_iso, translate_error, uuid_column, LIKE_ESCAPE,
@@ -7,10 +8,138 @@ use crate::core::database::SqlitePool;
 use crate::core::errors::{AppError, AppResult};
 use crate::core::pagination::{clamp_page_size, Page};
 use crate::features::documents::domain::{
-    CoverLetter, CoverLetterRepository, NewCoverLetter, NewResume, ResumeRepository, ResumeSummary,
-    ResumeVersion,
+    CoverLetter, CoverLetterRepository, DocumentVersion, NewCoverLetter, NewResume,
+    ResumeRepository, ResumeSummary, ResumeVersion,
 };
 use uuid::Uuid;
+
+/// Bibliothèque versionnée : chaque ligne est une version, `document_id` relie celles d'un
+/// même document et `is_current` désigne celle que la bibliothèque affiche (migration 8).
+#[derive(Clone, Copy)]
+enum Library {
+    Resumes,
+    Letters,
+}
+
+impl Library {
+    const fn table(self) -> &'static str {
+        match self {
+            Self::Resumes => "resume_versions",
+            Self::Letters => "cover_letters",
+        }
+    }
+
+    const fn label(self) -> &'static str {
+        match self {
+            Self::Resumes => "CV",
+            Self::Letters => "lettre de motivation",
+        }
+    }
+}
+
+/// Document auquel appartient la version `id`.
+fn document_of(conn: &rusqlite::Connection, library: Library, id: Uuid) -> AppResult<String> {
+    conn.query_row(
+        &format!(
+            "SELECT coalesce(document_id, id) FROM {} WHERE id = ?1",
+            library.table()
+        ),
+        [id.to_string()],
+        |row| row.get(0),
+    )
+    .map_err(|e| translate_error(e, &format!("{} {id}", library.label())))
+}
+
+/// Document et numéro de la version à insérer : v1 d'un nouveau document, ou la suivante
+/// de celui que l'on révise, dont les autres versions cessent alors d'être courantes.
+fn next_version(
+    conn: &rusqlite::Connection,
+    library: Library,
+    id: Uuid,
+    revises: Option<Uuid>,
+) -> AppResult<(String, u32)> {
+    let Some(revised) = revises else {
+        return Ok((id.to_string(), 1));
+    };
+    let table = library.table();
+    let document = document_of(conn, library, revised)?;
+    let next: u32 = conn
+        .query_row(
+            &format!("SELECT max(version_number) + 1 FROM {table} WHERE document_id = ?1"),
+            [&document],
+            |row| row.get(0),
+        )
+        .map_err(|e| translate_error(e, library.label()))?;
+    conn.execute(
+        &format!("UPDATE {table} SET is_current = 0 WHERE document_id = ?1"),
+        [&document],
+    )
+    .map_err(|e| translate_error(e, library.label()))?;
+    Ok((document, next))
+}
+
+fn list_versions(
+    conn: &rusqlite::Connection,
+    library: Library,
+    id: Uuid,
+) -> AppResult<Vec<DocumentVersion>> {
+    let document = document_of(conn, library, id)?;
+    let mut query = conn
+        .prepare(&format!(
+            "SELECT id, version_number, version_note, created_at, is_current FROM {} \
+             WHERE document_id = ?1 ORDER BY version_number DESC",
+            library.table()
+        ))
+        .map_err(|e| translate_error(e, library.label()))?;
+    let rows = query
+        .query_map([&document], |row| {
+            Ok(DocumentVersion {
+                id: uuid_column(row, 0)?,
+                version_number: row.get(1)?,
+                note: row.get(2)?,
+                created_at: row.get(3)?,
+                is_current: row.get(4)?,
+            })
+        })
+        .map_err(|e| translate_error(e, library.label()))?;
+    rows.collect::<Result<Vec<_>, _>>()
+        .map_err(|e| translate_error(e, library.label()))
+}
+
+fn restore_version(pool: &SqlitePool, library: Library, id: Uuid) -> AppResult<()> {
+    let mut conn = connection(pool)?;
+    let transaction = conn
+        .transaction()
+        .map_err(|e| translate_error(e, library.label()))?;
+    let document = document_of(&transaction, library, id)?;
+    let table = library.table();
+    transaction
+        .execute(
+            &format!("UPDATE {table} SET is_current = 0 WHERE document_id = ?1"),
+            [&document],
+        )
+        .map_err(|e| translate_error(e, library.label()))?;
+    transaction
+        .execute(
+            &format!("UPDATE {table} SET is_current = 1 WHERE id = ?1"),
+            [id.to_string()],
+        )
+        .map_err(|e| translate_error(e, library.label()))?;
+    transaction
+        .commit()
+        .map_err(|e| translate_error(e, library.label()))
+}
+
+fn delete_document(pool: &SqlitePool, library: Library, id: Uuid) -> AppResult<()> {
+    let conn = connection(pool)?;
+    let document = document_of(&conn, library, id)?;
+    conn.execute(
+        &format!("DELETE FROM {} WHERE document_id = ?1", library.table()),
+        [&document],
+    )
+    .map_err(|e| translate_error(e, library.label()))?;
+    Ok(())
+}
 
 pub struct SqliteResumeRepository {
     pool: SqlitePool,
@@ -35,16 +164,34 @@ const RESUME_TARGET: &str = "CASE WHEN json_valid(content) \
 
 impl ResumeRepository for SqliteResumeRepository {
     fn save(&self, input: &NewResume) -> AppResult<ResumeVersion> {
-        let conn = connection(&self.pool)?;
+        let mut conn = connection(&self.pool)?;
         let id = Uuid::new_v4();
         let created_at = now_iso();
         let content = serde_json::to_string(&input.content)
             .map_err(|e| AppError::Serialization(e.to_string()))?;
-        conn.execute(
-            "INSERT INTO resume_versions (id, name, content, created_at) VALUES (?1, ?2, ?3, ?4)",
-            rusqlite::params![id.to_string(), input.name, content, created_at],
-        )
-        .map_err(|e| translate_error(e, "version de CV"))?;
+        let transaction = conn
+            .transaction()
+            .map_err(|e| translate_error(e, "version de CV"))?;
+        let (document, number) = next_version(&transaction, Library::Resumes, id, input.revises)?;
+        transaction
+            .execute(
+                "INSERT INTO resume_versions \
+                 (id, name, content, created_at, document_id, version_number, is_current, version_note) \
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, 1, ?7)",
+                rusqlite::params![
+                    id.to_string(),
+                    input.name,
+                    content,
+                    created_at,
+                    document,
+                    number,
+                    input.version_note
+                ],
+            )
+            .map_err(|e| translate_error(e, "version de CV"))?;
+        transaction
+            .commit()
+            .map_err(|e| translate_error(e, "version de CV"))?;
         Ok(ResumeVersion {
             id,
             name: input.name.clone(),
@@ -63,7 +210,7 @@ impl ResumeRepository for SqliteResumeRepository {
         let conn = connection(&self.pool)?;
         let pattern = like_contains(search);
         let where_clause = format!(
-            "search_key(name) LIKE ?1 {LIKE_ESCAPE}{}",
+            "is_current = 1 AND search_key(name) LIKE ?1 {LIKE_ESCAPE}{}",
             if scored_only {
                 format!(" AND {RESUME_SCORE} IS NOT NULL")
             } else {
@@ -122,18 +269,17 @@ impl ResumeRepository for SqliteResumeRepository {
         })
     }
 
-    fn delete(&self, id: Uuid) -> AppResult<()> {
+    fn versions(&self, id: Uuid) -> AppResult<Vec<DocumentVersion>> {
         let conn = connection(&self.pool)?;
-        let count = conn
-            .execute(
-                "DELETE FROM resume_versions WHERE id = ?1",
-                [id.to_string()],
-            )
-            .map_err(|e| translate_error(e, "version de CV"))?;
-        if count == 0 {
-            return Err(AppError::NotFound(format!("version de CV {id}")));
-        }
-        Ok(())
+        list_versions(&conn, Library::Resumes, id)
+    }
+
+    fn restore(&self, id: Uuid) -> AppResult<()> {
+        restore_version(&self.pool, Library::Resumes, id)
+    }
+
+    fn delete(&self, id: Uuid) -> AppResult<()> {
+        delete_document(&self.pool, Library::Resumes, id)
     }
 }
 
@@ -166,27 +312,39 @@ fn cover_letter_row(row: &rusqlite::Row) -> rusqlite::Result<CoverLetter> {
 
 impl CoverLetterRepository for SqliteCoverLetterRepository {
     fn save(&self, input: &NewCoverLetter) -> AppResult<CoverLetter> {
-        let conn = connection(&self.pool)?;
+        let mut conn = connection(&self.pool)?;
         let id = Uuid::new_v4();
         let created_at = now_iso();
-        conn.execute(
-            "INSERT INTO cover_letters (id, name, company, job_title, recipient, recipient_address, job_reference, tone, length, content, created_at) \
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
-            rusqlite::params![
-                id.to_string(),
-                input.name,
-                input.company,
-                input.job_title,
-                input.recipient,
-                input.recipient_address,
-                input.job_reference,
-                input.tone,
-                input.length,
-                input.content,
-                created_at
-            ],
-        )
-        .map_err(|e| translate_error(e, "lettre de motivation"))?;
+        let transaction = conn
+            .transaction()
+            .map_err(|e| translate_error(e, "lettre de motivation"))?;
+        let (document, number) = next_version(&transaction, Library::Letters, id, input.revises)?;
+        transaction
+            .execute(
+                "INSERT INTO cover_letters (id, name, company, job_title, recipient, recipient_address, job_reference, tone, length, content, created_at, \
+                 document_id, version_number, is_current, version_note) \
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, 1, ?14)",
+                rusqlite::params![
+                    id.to_string(),
+                    input.name,
+                    input.company,
+                    input.job_title,
+                    input.recipient,
+                    input.recipient_address,
+                    input.job_reference,
+                    input.tone,
+                    input.length,
+                    input.content,
+                    created_at,
+                    document,
+                    number,
+                    input.version_note
+                ],
+            )
+            .map_err(|e| translate_error(e, "lettre de motivation"))?;
+        transaction
+            .commit()
+            .map_err(|e| translate_error(e, "lettre de motivation"))?;
         Ok(CoverLetter {
             id,
             name: input.name.clone(),
@@ -206,7 +364,7 @@ impl CoverLetterRepository for SqliteCoverLetterRepository {
         let conn = connection(&self.pool)?;
         let pattern = like_contains(search);
         let where_clause = format!(
-            "(search_key(name) LIKE ?1 {LIKE_ESCAPE} \
+            "is_current = 1 AND (search_key(name) LIKE ?1 {LIKE_ESCAPE} \
              OR search_key(coalesce(company, '')) LIKE ?1 {LIKE_ESCAPE} \
              OR search_key(coalesce(job_title, '')) LIKE ?1 {LIKE_ESCAPE})"
         );
@@ -247,14 +405,17 @@ impl CoverLetterRepository for SqliteCoverLetterRepository {
             .map_err(|e| translate_error(e, &format!("lettre de motivation {id}")))
     }
 
+    fn versions(&self, id: Uuid) -> AppResult<Vec<DocumentVersion>> {
+        let conn = connection(&self.pool)?;
+        list_versions(&conn, Library::Letters, id)
+    }
+
+    fn restore(&self, id: Uuid) -> AppResult<()> {
+        restore_version(&self.pool, Library::Letters, id)
+    }
+
     fn delete(&self, id: Uuid) -> AppResult<()> {
-        let count = connection(&self.pool)?
-            .execute("DELETE FROM cover_letters WHERE id = ?1", [id.to_string()])
-            .map_err(|e| translate_error(e, "lettre de motivation"))?;
-        if count == 0 {
-            return Err(AppError::NotFound(format!("lettre de motivation {id}")));
-        }
-        Ok(())
+        delete_document(&self.pool, Library::Letters, id)
     }
 }
 

@@ -293,8 +293,12 @@ Réutiliser la recette du voisin plutôt que d’en inventer une.
   score ATS en pastille (vert dès 80, accent dès 65, rouge en dessous), date, entreprise.
   Clic droit : Dupliquer ou Copier le texte, Supprimer.
 - Inspecteur 300 px (dès 1060 px) : Ouvrir (éditeur A4, qui porte l'aperçu pleine page),
-  PDF (`⌘E`), score ATS et constats, détails. Une ancienne version sans contenu structuré
-  le dit au lieu d'offrir un export vide.
+  PDF (`⌘E`), score ATS et constats, détails, **Versions** (`v3`, mention, date ; la
+  courante est marquée). Cliquer une autre version ouvre « Revenir à la version vN ? »
+  (registre confirmation : version courante, version restaurée, versions conservées) ;
+  rien n'est effacé. Enregistrer un document rouvert depuis l'inspecteur en ajoute une
+  version. La comparaison de versions est hors v2. Une ancienne version sans contenu
+  structuré le dit au lieu d'offrir un export vide.
 
 ### Profil
 

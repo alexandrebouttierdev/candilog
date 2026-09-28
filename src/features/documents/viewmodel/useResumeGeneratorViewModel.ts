@@ -25,6 +25,8 @@ export interface ResumeGeneratorInitial {
   result: ResumeGeneration | null;
   workspace: ResumeWorkspace | null;
   name: string;
+  /** Document rouvert depuis la bibliothèque : l'enregistrer en ajoute une version. */
+  documentId?: string | null;
 }
 
 function errorMessage(error: unknown): string {
@@ -141,11 +143,20 @@ export function useResumeGeneratorViewModel(initial: ResumeGeneratorInitial) {
     }
   }
 
+  // Document que le prochain enregistrement révise : celui rouvert, puis celui enregistré ici,
+  // pour qu'un second ⌘S ajoute une version plutôt qu'un nouveau CV.
+  const [revises, setRevises] = useState<string | null>(initial.documentId ?? null);
   const save = useMutation({
-    mutationFn: (content: ResumeWorkspace) => documentsService.saveResume({ name, content }),
-    onSuccess: async () => {
+    mutationFn: (content: ResumeWorkspace) =>
+      documentsService.saveResume({
+        name,
+        content,
+        ...(revises ? { revises, version_note: "Modifiée dans le générateur" } : { version_note: "Première génération" }),
+      }),
+    onSuccess: async (saved) => {
       await queryClient.invalidateQueries({ queryKey: RESUME_KEY });
-      notify({ tone: "success", title: "CV ajouté à la bibliothèque" });
+      notify({ tone: "success", title: revises ? "Nouvelle version enregistrée" : "CV ajouté à la bibliothèque" });
+      setRevises(saved.id);
     },
     onError: (caught: unknown) => {
       notify({

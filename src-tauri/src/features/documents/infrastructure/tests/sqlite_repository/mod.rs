@@ -14,6 +14,7 @@ fn cv_est_restitue_avec_son_json_et_son_resume() {
         .save(&NewResume {
             name: "CV Produit".into(),
             content: serde_json::json!({"cv":{"summary":"Bonjour"}}),
+            ..Default::default()
         })
         .unwrap();
     assert_eq!(
@@ -40,6 +41,7 @@ fn lettre_est_enregistree_et_supprimee() {
             tone: "formal".into(),
             length: "medium".into(),
             content: "Madame, Monsieur…".into(),
+            ..Default::default()
         })
         .unwrap();
     assert_eq!(repo.list_page(1, 8, "").unwrap().items, vec![saved.clone()]);
@@ -60,6 +62,7 @@ fn cv_pagination_filtre_avant_la_limite() {
                 format!("CV Autre {index:02}")
             },
             content: serde_json::json!({}),
+            ..Default::default()
         })
         .unwrap();
     }
@@ -89,6 +92,7 @@ fn lettres_pagination_filtre_avant_la_limite() {
             tone: "formal".into(),
             length: "medium".into(),
             content: "Contenu".into(),
+            ..Default::default()
         })
         .unwrap();
     }
@@ -109,6 +113,7 @@ fn la_recherche_des_bibliotheques_ignore_les_accents() {
     cvs.save(&NewResume {
         name: "CV ÉCOLE".into(),
         content: serde_json::json!({}),
+        ..Default::default()
     })
     .unwrap();
     let lettres = SqliteCoverLetterRepository::new(pool());
@@ -123,6 +128,7 @@ fn la_recherche_des_bibliotheques_ignore_les_accents() {
             tone: "formal".into(),
             length: "medium".into(),
             content: "Contenu".into(),
+            ..Default::default()
         })
         .unwrap();
 
@@ -150,16 +156,19 @@ fn cv_expose_son_score_ats_et_son_offre_et_filtre_les_analyses() {
             "score": { "total": 81.6 },
             "job_offer": { "title": "Chargé d'exploitation" }
         }),
+        ..Default::default()
     })
     .unwrap();
     repo.save(&NewResume {
         name: "CV ancien".into(),
         content: serde_json::json!({ "resume": {}, "analysis": {}, "profile_score": { "total": 61 } }),
+        ..Default::default()
     })
     .unwrap();
     repo.save(&NewResume {
         name: "CV socle".into(),
         content: serde_json::json!({ "cv": {} }),
+        ..Default::default()
     })
     .unwrap();
 
@@ -181,4 +190,101 @@ fn cv_expose_son_score_ats_et_son_offre_et_filtre_les_analyses() {
 
     let analyses = repo.list_page(1, 8, "", true).unwrap();
     assert_eq!(analyses.total, 2);
+}
+
+fn cv(name: &str, revises: Option<Uuid>, note: &str) -> NewResume {
+    NewResume {
+        name: name.into(),
+        content: serde_json::json!({ "cv": { "summary": name } }),
+        revises,
+        version_note: Some(note.into()),
+    }
+}
+
+#[test]
+fn reviser_un_cv_ajoute_une_version_courante_sans_doubler_la_bibliotheque() {
+    let repo = SqliteResumeRepository::new(pool());
+    let v1 = repo
+        .save(&cv("CV — Exploitation", None, "Première génération"))
+        .unwrap();
+    let v2 = repo
+        .save(&cv(
+            "CV — Exploitation",
+            Some(v1.id),
+            "Modifiée dans le générateur",
+        ))
+        .unwrap();
+
+    let library = repo.list_page(1, 8, "", false).unwrap();
+    assert_eq!(library.total, 1);
+    assert_eq!(library.items[0].id, v2.id);
+
+    let versions = repo.versions(v1.id).unwrap();
+    assert_eq!(
+        versions
+            .iter()
+            .map(|version| (version.version_number, version.is_current))
+            .collect::<Vec<_>>(),
+        vec![(2, true), (1, false)]
+    );
+    assert_eq!(versions[1].note.as_deref(), Some("Première génération"));
+}
+
+#[test]
+fn restaurer_une_version_la_rend_courante_et_garde_les_autres() {
+    let repo = SqliteResumeRepository::new(pool());
+    let v1 = repo.save(&cv("CV", None, "Première génération")).unwrap();
+    let v2 = repo.save(&cv("CV", Some(v1.id), "Relecture")).unwrap();
+    // Réviser depuis une version ancienne continue la numérotation du document.
+    let v3 = repo.save(&cv("CV", Some(v1.id), "Relecture 2")).unwrap();
+
+    repo.restore(v1.id).unwrap();
+
+    assert_eq!(repo.list_page(1, 8, "", false).unwrap().items[0].id, v1.id);
+    let versions = repo.versions(v2.id).unwrap();
+    assert_eq!(versions.len(), 3);
+    assert_eq!(versions[0].id, v3.id);
+    assert_eq!(versions[0].version_number, 3);
+    assert!(versions[2].is_current);
+
+    repo.delete(v2.id).unwrap();
+    assert_eq!(repo.list_page(1, 8, "", false).unwrap().total, 0);
+    assert!(matches!(repo.get(v3.id), Err(AppError::NotFound(_))));
+}
+
+#[test]
+fn une_lettre_se_versionne_comme_un_cv() {
+    let repo = SqliteCoverLetterRepository::new(pool());
+    let lettre = |revises: Option<Uuid>| NewCoverLetter {
+        name: "Lettre — Novéa".into(),
+        tone: "formal".into(),
+        length: "medium".into(),
+        content: "Madame, Monsieur,".into(),
+        revises,
+        ..Default::default()
+    };
+    let v1 = repo.save(&lettre(None)).unwrap();
+    let v2 = repo.save(&lettre(Some(v1.id))).unwrap();
+
+    assert_eq!(repo.list_page(1, 8, "").unwrap().items[0].id, v2.id);
+    repo.restore(v1.id).unwrap();
+    assert_eq!(repo.list_page(1, 8, "").unwrap().items[0].id, v1.id);
+    assert_eq!(repo.versions(v2.id).unwrap().len(), 2);
+}
+
+#[test]
+fn reviser_ou_restaurer_une_version_inconnue_est_signale() {
+    let repo = SqliteResumeRepository::new(pool());
+    assert!(matches!(
+        repo.save(&cv("CV", Some(Uuid::new_v4()), "Relecture")),
+        Err(AppError::NotFound(_))
+    ));
+    assert!(matches!(
+        repo.restore(Uuid::new_v4()),
+        Err(AppError::NotFound(_))
+    ));
+    assert!(matches!(
+        repo.versions(Uuid::new_v4()),
+        Err(AppError::NotFound(_))
+    ));
 }

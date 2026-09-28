@@ -92,6 +92,11 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
   un tableur.
 - Analyse — « Rythme d'envoi » est dessiné avec les primitives du design ; la bibliothèque
   Recharts est retirée.
+- Documents — versions : enregistrer un CV ou une lettre rouverts depuis la bibliothèque
+  ajoute une version au lieu d'un nouveau document. L'inspecteur liste les versions (v1,
+  v2…) et « Revenir à la version » rend l'une d'elles courante sans rien effacer. Supprimer
+  un document supprime ses versions. Chaque document existant devient sa v1 (migration 8,
+  additive).
 - Relations — historique complet dans la fiche d'une entreprise ou d'un contact :
   candidatures envoyées, changements de statut, entretiens, relances faites et ajout de la
   fiche, du plus récent au plus ancien. « Note » y ajoute un fait daté (un appel, une

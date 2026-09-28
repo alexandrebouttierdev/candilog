@@ -34,13 +34,22 @@ pub struct ResumeVersion {
 }
 
 /// Entrée d'enregistrement d'un CV.
-#[derive(Debug, Clone, Deserialize, TS)]
+#[derive(Debug, Clone, Default, Deserialize, TS)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "documents.ts")]
 pub struct NewResume {
     pub name: String,
     #[ts(type = "unknown")]
     pub content: serde_json::Value,
+    /// Document que cet enregistrement révise (l'une quelconque de ses versions) : il en
+    /// devient la version suivante, courante. Absent : un nouveau document, en v1.
+    #[serde(default)]
+    #[ts(optional)]
+    pub revises: Option<Uuid>,
+    /// Ce qui distingue cette version (« Première génération », « Modifiée dans l'éditeur »).
+    #[serde(default)]
+    #[ts(optional)]
+    pub version_note: Option<String>,
 }
 
 /// CoverLetter enregistrée dans la bibliothèque locale.
@@ -65,7 +74,7 @@ pub struct CoverLetter {
 }
 
 /// Entrée d'enregistrement d'une lettre générée ou remaniée.
-#[derive(Debug, Clone, Deserialize, TS)]
+#[derive(Debug, Clone, Default, Deserialize, TS)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "documents.ts")]
 pub struct NewCoverLetter {
@@ -81,6 +90,29 @@ pub struct NewCoverLetter {
     pub tone: String,
     pub length: String,
     pub content: String,
+    /// Document que cet enregistrement révise (l'une quelconque de ses versions) : il en
+    /// devient la version suivante, courante. Absent : un nouveau document, en v1.
+    #[serde(default)]
+    #[ts(optional)]
+    pub revises: Option<Uuid>,
+    /// Ce qui distingue cette version (« Première génération », « Modifiée dans l'éditeur »).
+    #[serde(default)]
+    #[ts(optional)]
+    pub version_note: Option<String>,
+}
+
+/// Version d'un document, telle que la liste l'inspecteur (`screens/07`, « Versions »).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "documents.ts")]
+pub struct DocumentVersion {
+    pub id: Uuid,
+    /// Rang dans le document : 1 pour v1.
+    pub version_number: u32,
+    pub note: Option<String>,
+    pub created_at: String,
+    /// Version que la bibliothèque affiche.
+    pub is_current: bool,
 }
 
 /// Contenu d'une lettre à exporter en PDF (enregistrée ou encore à l'écran).

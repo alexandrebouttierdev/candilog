@@ -18,7 +18,7 @@ libre : ils doivent être exactement le nom issu du `ModelRegistry` sous `ai/mod
 
 ## Référentiels métier
 
-Le schéma courant (`PRAGMA user_version = 7`) porte
+Le schéma courant (`PRAGMA user_version = 8`) porte
 quatre catalogues **distincts**, semés par `init_schema.sql` en `INSERT OR IGNORE` :
 
 | Table | Clé | Rôle |
@@ -135,6 +135,22 @@ Le service Rust valide, mais n'est pas la seule barrière : `CHECK` sur `company
 l'exclusion d'un `job_url` pour une candidature `SPONTANEE`. Les
 clés étrangères vers les référentiels sont réelles — `PRAGMA foreign_keys = ON` est posé
 par l'initialiseur de **chaque** connexion du pool.
+
+## Versions des documents
+
+Depuis la migration 8, chaque ligne de `resume_versions` et de `cover_letters` est une
+**version** d'un document : `document_id` relie les versions d'un même document
+(l'identifiant de sa première), `version_number` les numérote (v1, v2…), `is_current`
+désigne celle que la bibliothèque affiche — un index unique partiel en garantit une seule
+par document — et `version_note` dit ce qui la distingue (« Première génération »,
+« Modifiée dans le générateur », 120 caractères au plus). Chaque document antérieur est
+devenu sa propre v1, courante.
+
+Un enregistrement qui porte `revises` (l'identifiant de n'importe quelle version) ajoute la
+version suivante du document et la rend courante, en transaction ; sans `revises`, il crée
+un nouveau document en v1. Restaurer (`documents_*_restore`) déplace `is_current` sans rien
+effacer. Les listes et leurs décomptes ne lisent que les versions courantes ; supprimer un
+document supprime toutes ses versions.
 
 ## Contenu d'un CV (`resume_versions.content`)
 

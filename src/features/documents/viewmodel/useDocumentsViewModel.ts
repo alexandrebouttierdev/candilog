@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { documentsService } from "../services/documentsService";
 import { normalizeResumeWorkspace } from "../model/resumeWorkspace";
-import type { CoverLetter, ResumeSummary, ResumeVersion } from "@/shared/types/generated/documents";
+import type { CoverLetter, DocumentVersion, ResumeSummary, ResumeVersion } from "@/shared/types/generated/documents";
 import type { ResumeGeneration } from "@/features/ai";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { useUiStore } from "@/shared/lib/ui-store";
@@ -29,8 +29,9 @@ function isLegacyGeneration(value: unknown): value is ResumeGeneration {
 
 /**
  * Orchestration de l'écran Documents : CV et lettres groupés, filtres Tous / CV / Lettres /
- * Analyses, et l'inspecteur du document ouvert (export PDF, duplication, copie,
- * suppression). Chaque groupe est une requête bornée côté SQLite, recherche comprise.
+ * Analyses, et l'inspecteur du document ouvert (export PDF, duplication, copie, versions,
+ * suppression). Chaque groupe est une requête bornée côté SQLite, recherche comprise ; la
+ * bibliothèque ne montre que la version courante de chaque document.
  */
 export function useDocumentsViewModel(filter: DocumentFilter) {
   const queryClient = useQueryClient();
@@ -40,6 +41,7 @@ export function useDocumentsViewModel(filter: DocumentFilter) {
   const [limits, setLimits] = useState({ resume: DOCUMENT_STEP, letter: DOCUMENT_STEP });
   const [selected, setSelected] = useState<DocumentSelection | null>(null);
   const [pendingDelete, setPendingDelete] = useState<DocumentSelection | null>(null);
+  const [pendingRestore, setPendingRestore] = useState<DocumentVersion | null>(null);
 
   const showResumes = filter !== "letters";
   const showLetters = filter === "all" || filter === "letters";
@@ -90,6 +92,18 @@ export function useDocumentsViewModel(filter: DocumentFilter) {
   const resumeSummary = current?.kind === "resume" ? (resumeItems.find((item) => item.id === current.id) ?? null) : null;
   const letter = current?.kind === "letter" ? (letterItems.find((item) => item.id === current.id) ?? null) : null;
 
+  const versions = useQuery({
+    queryKey: [...(current?.kind === "letter" ? COVER_LETTERS_KEY : RESUME_KEY), "versions", current?.id ?? null],
+    queryFn: () => {
+      // `enabled` garantit la sélection : la requête ne part pas sans elle.
+      if (current === null) throw new Error("Aucun document ouvert");
+      return current.kind === "letter"
+        ? documentsService.coverLetterVersions(current.id)
+        : documentsService.resumeVersions(current.id);
+    },
+    enabled: current !== null,
+  });
+
   const invalidate = () =>
     Promise.all([
       queryClient.invalidateQueries({ queryKey: RESUME_KEY }),
@@ -107,9 +121,27 @@ export function useDocumentsViewModel(filter: DocumentFilter) {
     onError: (error) => notify({ tone: "error", title: "Suppression impossible", detail: detail(error) }),
   });
 
+  const restore = useMutation({
+    mutationFn: (target: { kind: DocumentSelection["kind"]; version: DocumentVersion }) =>
+      target.kind === "resume"
+        ? documentsService.restoreResume(target.version.id)
+        : documentsService.restoreCoverLetter(target.version.id),
+    onSuccess: async (_result, target) => {
+      await invalidate();
+      // La version restaurée devient la ligne de la bibliothèque : l'inspecteur la suit.
+      setSelected({ kind: target.kind, id: target.version.id });
+      notify({ tone: "success", title: `v${target.version.version_number} est la version courante` });
+    },
+    onError: (error) => notify({ tone: "error", title: "Restauration impossible", detail: detail(error) }),
+  });
+
   const duplicate = useMutation({
     mutationFn: (source: ResumeVersion) =>
-      documentsService.saveResume({ name: `${source.name} (copie)`, content: source.content }),
+      documentsService.saveResume({
+        name: `${source.name} (copie)`,
+        content: source.content,
+        version_note: `Copie de « ${source.name} »`,
+      }),
     onSuccess: async (copy) => {
       await invalidate();
       setSelected({ kind: "resume", id: copy.id });
@@ -187,6 +219,15 @@ export function useDocumentsViewModel(filter: DocumentFilter) {
       if (version) duplicate.mutate(version);
     },
     isDuplicating: duplicate.isPending,
+    versions: versions.data ?? [],
+    versionsError: versions.error ? (detail(versions.error) ?? "Les versions n'ont pas pu être lues.") : null,
+    pendingRestore,
+    askRestore: setPendingRestore,
+    confirmRestore: () => {
+      if (pendingRestore && current) restore.mutate({ kind: current.kind, version: pendingRestore });
+      setPendingRestore(null);
+    },
+    isRestoring: restore.isPending,
     pendingDelete,
     askDelete: setPendingDelete,
     confirmDelete: () => {

@@ -12,14 +12,45 @@ export type CoverLetter = { id: string, name: string, company: string | null, jo
 export type CoverLetterExport = { name: string, company: string | null, job_title: string | null, recipient: string | null, recipient_address: string | null, job_reference: string | null, content: string, };
 
 /**
+ * Version d'un document, telle que la liste l'inspecteur (`screens/07`, « Versions »).
+ */
+export type DocumentVersion = { id: string, 
+/**
+ * Rang dans le document : 1 pour v1.
+ */
+version_number: number, note: string | null, created_at: string, 
+/**
+ * Version que la bibliothèque affiche.
+ */
+is_current: boolean, };
+
+/**
  * Entrée d'enregistrement d'une lettre générée ou remaniée.
  */
-export type NewCoverLetter = { name: string, company: string | null, job_title: string | null, recipient: string | null, recipient_address: string | null, job_reference: string | null, tone: string, length: string, content: string, };
+export type NewCoverLetter = { name: string, company: string | null, job_title: string | null, recipient: string | null, recipient_address: string | null, job_reference: string | null, tone: string, length: string, content: string, 
+/**
+ * Document que cet enregistrement révise (l'une quelconque de ses versions) : il en
+ * devient la version suivante, courante. Absent : un nouveau document, en v1.
+ */
+revises?: string, 
+/**
+ * Ce qui distingue cette version (« Première génération », « Modifiée dans l'éditeur »).
+ */
+version_note?: string, };
 
 /**
  * Entrée d'enregistrement d'un CV.
  */
-export type NewResume = { name: string, content: unknown, };
+export type NewResume = { name: string, content: unknown, 
+/**
+ * Document que cet enregistrement révise (l'une quelconque de ses versions) : il en
+ * devient la version suivante, courante. Absent : un nouveau document, en v1.
+ */
+revises?: string, 
+/**
+ * Ce qui distingue cette version (« Première génération », « Modifiée dans l'éditeur »).
+ */
+version_note?: string, };
 
 export type ResumeCertificationBlock = { id: string, name: string, issuer: string | null, date: string | null, description: string | null, };
 

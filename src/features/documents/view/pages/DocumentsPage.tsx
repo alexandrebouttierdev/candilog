@@ -93,11 +93,14 @@ export function DocumentsPage({ filter }: { filter: DocumentFilter }) {
   };
 
   const open = () => {
-    if (vm.workspace) void navigate(PATHS.generateResume, { state: { workspace: vm.workspace, name: vm.version?.name } });
-    else if (vm.generation) void navigate(PATHS.generateResume, { state: { generation: vm.generation, name: vm.version?.name } });
+    // `documentId` : enregistrer depuis le générateur ajoute une version à ce document.
+    const documentId = vm.version?.id;
+    if (vm.workspace) void navigate(PATHS.generateResume, { state: { workspace: vm.workspace, name: vm.version?.name, documentId } });
+    else if (vm.generation) void navigate(PATHS.generateResume, { state: { generation: vm.generation, name: vm.version?.name, documentId } });
     else if (vm.letter) void navigate(PATHS.writeLetter, { state: { cover_letter: vm.letter } });
   };
   const canOpen = Boolean(vm.workspace ?? vm.generation ?? vm.letter);
+  const currentVersion = vm.versions.find((version) => version.is_current) ?? null;
 
   useShortcut("n", () => void navigate(PATHS.generateResume));
   useShortcut("/", () => searchInput.current?.focus());
@@ -370,6 +373,48 @@ export function DocumentsPage({ filter }: { filter: DocumentFilter }) {
                 ) : null}
               </dl>
             </Section>
+
+            <Section title="Versions" count={vm.versions.length}>
+              {vm.versionsError ? (
+                <p className="text-sub text-tx-6">{vm.versionsError}</p>
+              ) : (
+                <ul>
+                  {vm.versions.map((version) => {
+                    const label = (
+                      <>
+                        <span className="w-6 flex-none font-mono text-caps text-tx-5">v{version.version_number}</span>
+                        <span className={cn("min-w-0 flex-1 truncate", version.is_current ? "text-tx" : "text-tx-3")}>
+                          {version.note ?? "Version enregistrée"}
+                        </span>
+                        {version.is_current ? (
+                          <span className="flex-none text-tiny text-tx-5">courante</span>
+                        ) : null}
+                        <span className="w-10 flex-none text-right font-mono text-caps text-tx-6">
+                          {shortDate(version.created_at)}
+                        </span>
+                      </>
+                    );
+                    return (
+                      <li key={version.id}>
+                        {version.is_current ? (
+                          <div className="-mx-2 flex h-7 items-center gap-2 px-2 text-small">{label}</div>
+                        ) : (
+                          <button
+                            type="button"
+                            title={`Revenir à la version v${version.version_number}`}
+                            disabled={vm.isRestoring}
+                            onClick={() => vm.askRestore(version)}
+                            className="-mx-2 flex h-7 w-[calc(100%+16px)] items-center gap-2 rounded-r6 px-2 text-left text-small hover:bg-hover"
+                          >
+                            {label}
+                          </button>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </Section>
             <div className="h-4 flex-none" />
           </aside>
         ) : null}
@@ -380,12 +425,37 @@ export function DocumentsPage({ filter }: { filter: DocumentFilter }) {
       <ConfirmDialog
         open={vm.pendingDelete !== null}
         title={vm.pendingDelete?.kind === "letter" ? "Supprimer cette lettre ?" : "Supprimer ce CV ?"}
-        description="Le document disparaît définitivement de la bibliothèque locale."
+        description={
+          vm.pendingDelete?.id === vm.current?.id && vm.versions.length > 1
+            ? `Le document et ses ${vm.versions.length} versions disparaissent définitivement de la bibliothèque locale.`
+            : "Le document disparaît définitivement de la bibliothèque locale."
+        }
         note="Votre profil et vos autres documents sont conservés."
         footnote="action définitive"
         busy={vm.isDeleting}
         onCancel={() => vm.askDelete(null)}
         onConfirm={vm.confirmDelete}
+      />
+
+      <ConfirmDialog
+        open={vm.pendingRestore !== null}
+        register="confirmation"
+        title={`Revenir à la version v${vm.pendingRestore?.version_number ?? ""} ?`}
+        description={`La version v${vm.pendingRestore?.version_number ?? ""} deviendra la version courante du document. Les autres versions ne sont pas supprimées : elles restent dans l'historique.`}
+        consequences={[
+          ...(currentVersion
+            ? [{ label: "Version courante", value: `v${currentVersion.version_number} · ${shortDate(currentVersion.created_at)}` }]
+            : []),
+          ...(vm.pendingRestore
+            ? [{ label: "Version restaurée", value: `v${vm.pendingRestore.version_number} · ${shortDate(vm.pendingRestore.created_at)}` }]
+            : []),
+          { label: "Versions conservées", value: String(vm.versions.length) },
+        ]}
+        footnote={currentVersion ? `réversible : v${currentVersion.version_number} reste dans l'historique` : undefined}
+        confirmLabel={`Restaurer v${vm.pendingRestore?.version_number ?? ""}`}
+        busy={vm.isRestoring}
+        onCancel={() => vm.askRestore(null)}
+        onConfirm={vm.confirmRestore}
       />
     </div>
   );
@@ -613,10 +683,13 @@ function Detail({ label, value, mono = false }: { label: string; value: string |
   );
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({ title, count, children }: { title: string; count?: number; children: ReactNode }) {
   return (
     <section className="mt-4 border-t border-bd-soft pt-3">
-      <h3 className="caps mb-2">{title}</h3>
+      <h3 className="caps mb-2 flex items-center">
+        {title}
+        {count !== undefined ? <span className="ml-auto font-mono text-tx-7">{count}</span> : null}
+      </h3>
       {children}
     </section>
   );

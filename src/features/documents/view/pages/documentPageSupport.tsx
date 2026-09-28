@@ -122,15 +122,18 @@ export function generationFromNavigation(state: unknown): {
   result: ResumeGeneration | null;
   workspace: ResumeWorkspace | null;
   name: string;
+  documentId: string | null;
 } {
-  if (typeof state !== "object" || state === null) return { result: null, workspace: null, name: "" };
-  const payload = state as { generation?: ResumeGeneration; workspace?: unknown; name?: string };
+  if (typeof state !== "object" || state === null) return { result: null, workspace: null, name: "", documentId: null };
+  const payload = state as { generation?: ResumeGeneration; workspace?: unknown; name?: string; documentId?: string };
+  const documentId = typeof payload.documentId === "string" ? payload.documentId : null;
   const workspace = normalizeResumeWorkspace(payload.workspace);
   if (workspace) {
     return {
       result: null,
       workspace,
       name: payload.name ?? `CV — ${workspace.job_offer.title || "Version ciblée"}`,
+      documentId,
     };
   }
   if (payload.generation) {
@@ -138,9 +141,10 @@ export function generationFromNavigation(state: unknown): {
       result: payload.generation,
       workspace: null,
       name: payload.name ?? `CV — ${payload.generation.job_offer.title || "Version ciblée"}`,
+      documentId,
     };
   }
-  return { result: null, workspace: null, name: "" };
+  return { result: null, workspace: null, name: "", documentId: null };
 }
 export function coverLetterFromNavigation(state: unknown): CoverLetter | null {
   if (typeof state !== "object" || state === null || !("cover_letter" in state)) return null;

@@ -187,11 +187,21 @@ export function useLetterWriterViewModel(initial: CoverLetter | null) {
     };
   }
 
+  // Lettre que le prochain enregistrement révise : celle rouverte, puis celle enregistrée
+  // ici, pour qu'un second ⌘S ajoute une version plutôt qu'une nouvelle lettre.
+  const [revises, setRevises] = useState<string | null>(initial?.id ?? null);
   const save = useMutation({
-    mutationFn: () => documentsService.saveCoverLetter({ ...letterExport(), tone, length }),
-    onSuccess: async () => {
+    mutationFn: () =>
+      documentsService.saveCoverLetter({
+        ...letterExport(),
+        tone,
+        length,
+        ...(revises ? { revises, version_note: "Modifiée dans l'éditeur" } : { version_note: "Première version" }),
+      }),
+    onSuccess: async (saved) => {
       await queryClient.invalidateQueries({ queryKey: COVER_LETTERS_KEY });
-      notify({ tone: "success", title: "Lettre enregistrée" });
+      notify({ tone: "success", title: revises ? "Nouvelle version enregistrée" : "Lettre enregistrée" });
+      setRevises(saved.id);
     },
     onError: (caught) =>
       notify({ tone: "error", title: "Enregistrement impossible", detail: detail(caught) }),

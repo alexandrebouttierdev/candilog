@@ -558,6 +558,34 @@ describe("bibliothèque CV workspace", () => {
     });
   }
 
+  it("liste les versions du CV et restaure une version antérieure après confirmation", async () => {
+    listerWorkspace(workspaceFixture());
+    sansLettres();
+    const versions = vi.spyOn(documentsService, "resumeVersions").mockResolvedValue([
+      { id: "cv-ws", version_number: 2, note: "Modifiée dans le générateur", created_at: "2026-09-09T10:00:00Z", is_current: true },
+      { id: "cv-v1", version_number: 1, note: "Première génération", created_at: "2026-09-08T10:00:00Z", is_current: false },
+    ]);
+    const restore = vi.spyOn(documentsService, "restoreResume").mockResolvedValue(undefined);
+
+    render(<DocumentsPage filter="resumes" />, { wrapper });
+    const fiche = await screen.findByRole("complementary", { name: "Fiche du document" });
+    expect(await within(fiche).findByText("Modifiée dans le générateur")).toBeInTheDocument();
+    expect(versions).toHaveBeenCalledWith("cv-ws");
+    // La version courante n'est pas une action : seule une autre version se restaure.
+    expect(within(fiche).queryByTitle("Revenir à la version v2")).not.toBeInTheDocument();
+
+    await userEvent.click(within(fiche).getByTitle("Revenir à la version v1"));
+    const dialogue = await screen.findByRole("alertdialog", { name: "Revenir à la version v1 ?" });
+    expect(dialogue).toHaveTextContent("v2 · 09-09");
+    expect(dialogue).toHaveTextContent("réversible : v2 reste dans l'historique");
+    await userEvent.click(within(dialogue).getByRole("button", { name: "Restaurer v1" }));
+
+    await waitFor(() => expect(restore).toHaveBeenCalledWith("cv-v1"));
+    await waitFor(() =>
+      expect(useUiStore.getState().toasts.map((toast) => toast.title)).toContain("v1 est la version courante"),
+    );
+  });
+
   it("ouvre le workspace dans l'éditeur et exporte le document", async () => {
     const workspace = workspaceFixture({ profile: "Profil visible en bibliothèque." });
     listerWorkspace(workspace);
@@ -569,7 +597,7 @@ describe("bibliothèque CV workspace", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Ouvrir" }));
     expect(navigateMock).toHaveBeenCalledWith("/documents/generate-resume", {
-      state: { workspace, name: "CV Workspace" },
+      state: { workspace, name: "CV Workspace", documentId: "cv-ws" },
     });
 
     await userEvent.click(screen.getByRole("button", { name: "PDF" }));

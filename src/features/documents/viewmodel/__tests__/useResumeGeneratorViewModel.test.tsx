@@ -186,7 +186,26 @@ describe("ViewModel du générateur de CV", () => {
 
     await act(async () => { await result.current.saveResume(workspace); });
 
-    expect(saveResume).toHaveBeenCalledWith({ name: "CV Produit", content: workspace });
+    expect(saveResume).toHaveBeenCalledWith({ name: "CV Produit", content: workspace, version_note: "Première génération" });
     expect(useUiStore.getState().toasts.at(-1)?.title).toBe("CV ajouté à la bibliothèque");
+  });
+
+  it("enregistre une version du CV rouvert, puis de la version qu'il vient d'enregistrer", async () => {
+    const workspace = workspaceFixture();
+    const saveResume = vi
+      .spyOn(documentsService, "saveResume")
+      .mockResolvedValueOnce({ id: "resume-v2", name: "CV Produit", content: workspace, created_at: "2026-09-02T00:00:00Z" })
+      .mockResolvedValueOnce({ id: "resume-v3", name: "CV Produit", content: workspace, created_at: "2026-09-02T00:01:00Z" });
+    const { result } = renderHook(
+      () => useResumeGeneratorViewModel({ result: null, workspace, name: "CV Produit", documentId: "resume-v1" }),
+      { wrapper },
+    );
+
+    await act(async () => { await result.current.saveResume(workspace); });
+    await act(async () => { await result.current.saveResume(workspace); });
+
+    expect(saveResume.mock.calls.map(([input]) => input.revises)).toEqual(["resume-v1", "resume-v2"]);
+    expect(saveResume.mock.calls[0]?.[0].version_note).toBe("Modifiée dans le générateur");
+    expect(useUiStore.getState().toasts.at(-1)?.title).toBe("Nouvelle version enregistrée");
   });
 });
