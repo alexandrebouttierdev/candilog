@@ -23,15 +23,15 @@ const FONCTIONS: readonly Fonction[] = [
     ecran: "Générer un CV",
     titre: "Le CV qui répond à cette offre-là.",
     texte:
-      "Choisissez la candidature, décidez ce que l'IA peut utiliser, puis générez. La page s'édite directement ; les propositions s'ajoutent ou s'ignorent une par une.",
+      "Choisissez la candidature, décidez ce que l'IA peut utiliser, puis générez. La page s'édite directement\u00a0; les propositions s'ajoutent ou s'ignorent une par une.",
     points: [
-      { ton: "g", texte: "Expériences et formations toujours présentes ; seuls l'ordre et la mise en avant changent." },
+      { ton: "g", texte: "Expériences et formations toujours présentes\u00a0; seuls l'ordre et la mise en avant changent." },
       { ton: "a", texte: "Les compétences demandées mais absentes de votre profil restent signalées, jamais ajoutées." },
       { ton: "n", texte: "Une seule page A4. Si le contenu déborde, l'export est bloqué et la cause est nommée." },
     ],
     apercu: <GenerateurCv />,
     legende:
-      "Générateur de CV de Candilog : la candidature Designer produit senior chez Atelier Nord est choisie, le CV de Camille Berthier s'affiche sur une page A4, avec les étapes terminées en 16,2 secondes, un score de 84 sur 100 et deux propositions d'ajout.",
+      "Générateur de CV de Candilog\u00a0: la candidature Designer produit senior chez Atelier Nord est choisie, le CV de Camille Berthier s'affiche sur une page A4, avec les étapes terminées en 16,2\u00a0secondes, un score de 84 sur 100 et deux propositions d'ajout.",
   },
   {
     ecran: "Analyser un CV",
@@ -45,21 +45,21 @@ const FONCTIONS: readonly Fonction[] = [
     ],
     apercu: <AnalyseOffre />,
     legende:
-      "Analyse face à l'offre dans Candilog : 4 exigences couvertes sur 7, un score de 78 sur 100, et pour chaque exigence la preuve citée du CV ou la mention « introuvable ».",
+      "Analyse face à l'offre dans Candilog\u00a0: 4 exigences couvertes sur 7, un score de 78 sur 100, et pour chaque exigence la preuve citée du CV ou la mention «\u00a0introuvable\u00a0».",
   },
   {
     ecran: "Générer une lettre",
     titre: "Une lettre assemblée à partir de votre parcours.",
     texte:
-      "Le modèle choisit parmi les faits de votre profil ; il n'en invente pas. Candilog mesure ensuite ce qui répond vraiment à l'offre et propose quoi aborder.",
+      "Le modèle choisit parmi les faits de votre profil\u00a0; il n'en invente pas. Candilog mesure ensuite ce qui répond vraiment à l'offre et propose quoi aborder.",
     points: [
       { ton: "g", texte: "Des recommandations appuyées sur un fait cité de votre profil, avec leur gain estimé." },
-      { ton: "a", texte: "Des consignes qui se cumulent : « plus court », puis « moins formel »." },
+      { ton: "a", texte: "Des consignes qui se cumulent\u00a0: «\u00a0plus court\u00a0», puis «\u00a0moins formel\u00a0»." },
       { ton: "n", texte: "Ton, longueur et arguments autorisés restent à vous." },
     ],
     apercu: <GenerateurLettre />,
     legende:
-      "Générateur de lettre de Candilog : une lettre adressée à Atelier Nord sur une page A4, un score d'adéquation de 68 sur 100 pouvant atteindre 84, et des recommandations à appliquer ou ignorer.",
+      "Générateur de lettre de Candilog\u00a0: une lettre adressée à Atelier Nord sur une page A4, un score d'adéquation de 68 sur 100 pouvant atteindre 84, et des recommandations à appliquer ou ignorer.",
   },
 ];
 

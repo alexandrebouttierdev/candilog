@@ -31,7 +31,7 @@ function Coche() {
 const ETAPES: ReadonlyArray<{ titre: string; texte: string; ou: string; apercu: ReactNode }> = [
   {
     titre: "Importer son CV",
-    texte: "L'IA lit votre CV et propose chaque élément. Vous validez un par un : rien n'est enregistré avant.",
+    texte: "L'IA lit votre CV et propose chaque élément. Vous validez un par un\u00a0: rien n'est enregistré avant.",
     ou: "Profil › Importer un CV",
     apercu: (
       <Cadre>
@@ -60,7 +60,7 @@ const ETAPES: ReadonlyArray<{ titre: string; texte: string; ou: string; apercu: 
   },
   {
     titre: "Ajouter une offre",
-    texte: "Une candidature : poste, entreprise, contrat, lien de l'offre. Son texte se colle ensuite dans « Offre visée ».",
+    texte: "Une candidature\u00a0: poste, entreprise, contrat, lien de l'offre. Son texte se colle ensuite dans «\u00a0Offre visée\u00a0».",
     ou: "Candidatures › Ajouter",
     apercu: (
       <Cadre>
@@ -184,7 +184,7 @@ export function Workflow() {
             </>
           }
         >
-          Votre profil est la source : chaque document en est une sélection. L&apos;IA choisit et
+          Votre profil est la source&nbsp;: chaque document en est une sélection. L&apos;IA choisit et
           reformule, elle n&apos;ajoute pas ce que vous n&apos;avez pas fait.
         </EnTeteSection>
         {/* Sous 1280 px, les étapes défilent horizontalement : une frise qu'on parcourt

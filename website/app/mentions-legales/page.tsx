@@ -81,8 +81,8 @@ export default function Page() {
         <LegalSection titre="Licence du logiciel">
           <P>Candilog est un logiciel source available.</P>
           <P>
-            Les usages autorisés non commerciaux sont régis par la PolyForm Noncommercial License
-            1.0.0.
+            Les usages autorisés non commerciaux sont régis par la licence PolyForm Noncommercial
+            License 1.0.0.
           </P>
           <P>
             Toute utilisation commerciale nécessitant des droits qui ne sont pas accordés par cette

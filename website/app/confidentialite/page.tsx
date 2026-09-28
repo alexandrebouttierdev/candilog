@@ -36,7 +36,7 @@ const FOURNISSEURS = [
   { nom: "Anthropic", detail: "Fonctions assistées par IA, si vous connectez ce fournisseur avec votre propre clé." },
   { nom: "Google Gemini", detail: "Fonctions assistées par IA, si vous connectez ce fournisseur avec votre propre clé." },
   { nom: "Mistral AI", detail: "Fonctions assistées par IA, si vous connectez ce fournisseur avec votre propre clé." },
-  { nom: "Ollama", detail: "Modèle exécuté localement sur votre appareil : ce mode ne nécessite pas de transmettre vos informations à un service externe." },
+  { nom: "Ollama", detail: "Modèle exécuté localement sur votre appareil\u00a0: ce mode ne nécessite pas de transmettre vos informations à un service externe." },
 ] as const;
 
 export default function Page() {
@@ -95,7 +95,7 @@ export default function Page() {
           <TableauFournisseurs
             entete="Fournisseurs pouvant être configurés dans l'application"
             lignes={FOURNISSEURS}
-            note="Les catégories d'informations transmises dépendent de la fonctionnalité utilisée : selon le cas, le texte d'une offre, le contenu d'un document que vous soumettez à l'analyse ou les éléments de votre profil nécessaires à la demande. Les conditions et politiques de confidentialité de chaque fournisseur s'appliquent à ces traitements. Le choix du fournisseur, la fourniture de la clé et le déclenchement de chaque traitement restent à votre initiative."
+            note="Les catégories d'informations transmises dépendent de la fonctionnalité utilisée&nbsp;: selon le cas, le texte d'une offre, le contenu d'un document que vous soumettez à l'analyse ou les éléments de votre profil nécessaires à la demande. Les conditions et politiques de confidentialité de chaque fournisseur s'appliquent à ces traitements. Le choix du fournisseur, la fourniture de la clé et le déclenchement de chaque traitement restent à votre initiative."
           />
         </LegalSection>
 
@@ -105,11 +105,11 @@ export default function Page() {
             aux données enregistrées localement dans votre application.
           </P>
           <P>
-            Les polices et les icônes utilisées par le site sont servies depuis le site lui-même :
-            leur affichage n&apos;entraîne pas de requête vers un service tiers. Aucun outil de
-            mesure d&apos;audience ni formulaire de collecte n&apos;est utilisé sur le site. Les
-            liens vers des services externes, comme le dépôt du code source ou le texte de la
-            licence, ne sont suivis que si vous les activez.
+            Les polices et les icônes utilisées par le site sont chargées depuis le site
+            lui-même&nbsp;: leur affichage n&apos;entraîne pas de requête vers un service tiers.
+            Aucun outil de mesure d&apos;audience ni formulaire de collecte n&apos;est utilisé sur
+            le site. Les liens vers des services externes, comme le dépôt du code source ou le
+            texte de la licence, ne sont suivis que si vous les activez.
           </P>
           <P>
             Le site est hébergé par GitHub Pages (GitHub, Inc.). À ce titre, l&apos;infrastructure de
@@ -150,8 +150,8 @@ export default function Page() {
           </P>
           <P>
             Lorsque l&apos;éditeur traite directement des données personnelles dans le cadre du site,
-            d&apos;un échange de support ou d&apos;un service externe, vous pouvez exercer les droits
-            applicables prévus par la réglementation relative à la protection des données.
+            d&apos;une demande d&apos;assistance ou d&apos;un service externe, vous pouvez exercer
+            les droits applicables prévus par la réglementation relative à la protection des données.
           </P>
           <LigneContact email={CONTACT_EMAIL} />
         </LegalSection>

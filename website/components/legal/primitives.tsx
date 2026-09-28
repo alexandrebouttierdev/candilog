@@ -27,7 +27,7 @@ export function LegalHero({
       <p className="mt-[18px] text-pretty text-[16px] leading-[1.7] text-ink-muted">{chapo}</p>
       {miseAJour ? (
         <div className="mt-[22px] border-t border-line pt-[18px] font-mono text-[11.5px] text-ink-faint">
-          Dernière mise à jour : {miseAJour}
+          Dernière mise à jour&nbsp;: {miseAJour}
         </div>
       ) : null}
     </div>

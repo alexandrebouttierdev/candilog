@@ -33,7 +33,7 @@ export function Faq() {
             rel="noopener noreferrer"
             className="inline-flex min-h-[44px] items-center gap-[6px] text-[14px] text-tx-3 hover:text-tx md:min-h-0"
           >
-            Une autre question ? Les discussions GitHub sont ouvertes
+            Une autre question&nbsp;? Les discussions GitHub sont ouvertes
             <LineIcon name="arrow-up-right" size={13} />
           </a>
         </div>

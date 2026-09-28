@@ -9,5 +9,5 @@ export type ClePageLegale = (typeof PAGES_LEGALES)[number]["cle"];
 
 /* Une date par page : les deux textes n'évoluent pas ensemble, et une constante
    partagée re-daterait à tort la page qu'on n'a pas touchée. */
-export const MISE_A_JOUR_CONFIDENTIALITE = "29 août 2026";
+export const MISE_A_JOUR_CONFIDENTIALITE = "28 septembre 2026";
 export const MISE_A_JOUR_CONDITIONS = "29 août 2026";

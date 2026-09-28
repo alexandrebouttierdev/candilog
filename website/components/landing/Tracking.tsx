@@ -61,7 +61,7 @@ export function Tracking() {
             }
           >
             Glissez une carte pour changer son statut. Les colonnes signalent d&apos;elles-mêmes ce
-            qui attend depuis plus de 14 jours et les entretiens du jour. Filtres, vues
+            qui attend depuis plus de 14&nbsp;jours et les entretiens du jour. Filtres, vues
             enregistrées et export CSV sont dans la même barre.
           </EnTeteSection>
           <ul aria-label="Les quatre statuts" className="m-0 flex list-none flex-col border-t border-bd p-0">
@@ -77,7 +77,7 @@ export function Tracking() {
 
         <figure className="m-0 flex flex-col gap-[14px]">
           <figcaption className="sr-only">
-            Kanban des candidatures de Candilog : quatorze candidatures réparties en quatre
+            Kanban des candidatures de Candilog&nbsp;: quatorze candidatures réparties en quatre
             colonnes — En attente, Relancée, Entretien, Refusée. Chaque carte ouvre la fiche de
             la candidature.
           </figcaption>

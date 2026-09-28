@@ -174,13 +174,13 @@ export function AiSection() {
           }
         >
           Installez l&apos;IA locale depuis l&apos;application, ou connectez le fournisseur dont
-          vous avez la clé : Mistral, OpenAI, Gemini, Claude, DeepSeek, ou tout service compatible
+          vous avez la clé&nbsp;: Mistral, OpenAI, Gemini, Claude, DeepSeek, ou tout service compatible
           OpenAI. Chaque tâche peut ensuite utiliser un modèle différent.
         </EnTeteSection>
         <figure className="m-0">
           <figcaption className="sr-only">
-            Écran Intelligence artificielle de Candilog : l&apos;IA locale avec deux modèles
-            installés, et la section « Qui fait quoi » qui attribue un modèle à chacune des cinq
+            Écran Intelligence artificielle de Candilog&nbsp;: l&apos;IA locale avec deux modèles
+            installés, et la section «&nbsp;Qui fait quoi&nbsp;» qui attribue un modèle à chacune des cinq
             tâches — trois en local, l&apos;analyse de CV chez un fournisseur distant, une non
             configurée.
           </figcaption>

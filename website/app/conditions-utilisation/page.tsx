@@ -174,8 +174,8 @@ export default function Page() {
             conditions de licence applicables.
           </P>
           <P>
-            Les usages autorisés non commerciaux sont régis par la PolyForm Noncommercial License
-            1.0.0.
+            Les usages autorisés non commerciaux sont régis par la licence PolyForm Noncommercial
+            License 1.0.0.
           </P>
           <P>
             Les droits commerciaux nécessitent une licence commerciale séparée lorsqu&apos;ils ne

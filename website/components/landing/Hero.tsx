@@ -41,7 +41,7 @@ export function Hero() {
         </h1>
         <div className="grid gap-7 lg:grid-cols-[560px_minmax(0,1fr)] lg:items-end lg:gap-20">
           <p className="text-pretty text-[16.5px] leading-[1.6] text-tx-3 md:text-[17.5px]">
-            Candilog est une application de bureau pour mener votre recherche d&apos;emploi :
+            Candilog est une application de bureau pour mener votre recherche d&apos;emploi&nbsp;:
             candidatures, relances, entretiens, CV et lettres au même endroit. L&apos;IA — locale,
             ou le fournisseur de votre choix — part des faits de votre profil pour adapter chaque
             document à l&apos;offre.
@@ -71,7 +71,7 @@ export function Hero() {
         <Reveal className="mx-auto max-w-[1200px] px-4 md:px-8 xl:px-0">
           <figure className="m-0">
             <figcaption className="sr-only">
-              Écran Aujourd&apos;hui de Candilog : une relance en retard, un entretien à 14 h 30,
+              Écran Aujourd&apos;hui de Candilog&nbsp;: une relance en retard, un entretien à 14&nbsp;h&nbsp;30,
               trois échéances cette semaine, et la répartition des 14 candidatures par statut.
             </figcaption>
             <div aria-hidden="true" className="window-lift">

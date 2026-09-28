@@ -91,9 +91,9 @@ export function Privacy() {
         </div>
         <figure className="m-0 flex justify-center rounded-r12 bg-desk px-4 py-8 md:px-8 md:py-11">
           <figcaption className="sr-only">
-            Dialogue affiché par Candilog avant le premier envoi à un service distant : il
+            Dialogue affiché par Candilog avant le premier envoi à un service distant&nbsp;: il
             indique le destinataire, la tâche et ce qui quitte l&apos;ordinateur, avec
-            l&apos;option « Ne plus demander » désactivée par défaut.
+            l&apos;option «&nbsp;Ne plus demander&nbsp;» désactivée par défaut.
           </figcaption>
           <div aria-hidden="true" className="flex w-full justify-center">
             <DialogueEnvoi />

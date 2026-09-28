@@ -15,7 +15,7 @@ const ONGLETS = [
     cle: "candidatures",
     libelle: "Candidatures",
     aide: "Liste groupée par statut, filtres en tête de liste.",
-    alt: "Liste des candidatures de Candilog groupée par statut, avec le filtre « Statut n'est pas Refusée » et la fiche de la candidature Product designer chez Studio Halage.",
+    alt: "Liste des candidatures de Candilog groupée par statut, avec le filtre «\u00a0Statut n'est pas Refusée\u00a0» et la fiche de la candidature Product designer chez Studio Halage.",
     fil: ["Candidatures", "Toutes"] as const,
     nav: "applications" as const,
     etat: "11 candidatures sur 14 · filtre actif · 1 sélectionnée",
@@ -25,7 +25,7 @@ const ONGLETS = [
     cle: "documents",
     libelle: "Documents",
     aide: "CV et lettres, avec leur score et leurs versions.",
-    alt: "Bibliothèque de documents de Candilog : trois CV avec leur score ATS, trois lettres, et le détail du CV Designer produit senior noté 84 sur 100 avec ses versions.",
+    alt: "Bibliothèque de documents de Candilog\u00a0: trois CV avec leur score ATS, trois lettres, et le détail du CV Designer produit senior noté 84 sur 100 avec ses versions.",
     fil: ["Documents", "Tous"] as const,
     nav: "documents" as const,
     etat: "6 documents · 3 CV · 3 lettres · dernier export il y a 2 j",
@@ -35,7 +35,7 @@ const ONGLETS = [
     cle: "analyse",
     libelle: "Analyse",
     aide: "Des chiffres vérifiables, sans projection.",
-    alt: "Analyse des candidatures dans Candilog : 14 envoyées, 43 % de réponses, 3 entretiens, 9 jours de délai moyen, rythme d'envoi hebdomadaire et taux de réponse par canal.",
+    alt: "Analyse des candidatures dans Candilog\u00a0: 14 envoyées, 43\u00a0% de réponses, 3 entretiens, 9\u00a0jours de délai moyen, rythme d'envoi hebdomadaire et taux de réponse par canal.",
     fil: ["Candidatures", "Toutes"] as const,
     nav: "applications" as const,
     etat: "14 candidatures analysées · août → septembre 2026",
@@ -94,7 +94,7 @@ export function ProductTour() {
             </>
           }
         >
-          Pas de tableau de bord à widgets : une liste pour trier, une fiche pour décider, une
+          Pas de tableau de bord à widgets&nbsp;: une liste pour trier, une fiche pour décider, une
           barre d&apos;état qui dit ce qui se passe. Tout se pilote au clavier, et{" "}
           <span className="font-mono text-[13px]">⌘K</span> ouvre toutes les actions.
         </EnTeteSection>

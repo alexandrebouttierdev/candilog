@@ -19,7 +19,7 @@ import { CONTACT_EMAIL, GITHUB_REPO, LICENCE_POLYFORM } from "@/lib/data/liens";
 export const metadata: Metadata = {
   title: "Licence — Candilog",
   description:
-    "Candilog est un projet source available : usages non commerciaux sous PolyForm Noncommercial 1.0.0, usage commercial sur licence séparée.",
+    "Candilog est un projet source available\u00a0: usages non commerciaux sous PolyForm Noncommercial 1.0.0, usage commercial sur licence séparée.",
 };
 
 const BOUTON_SECONDAIRE = "mt-5 h-[34px] px-[14px] text-[13px]";
@@ -70,7 +70,7 @@ export default function Page() {
         <LegalSection titre="Usage non commercial">
           <P>
             Pour les usages autorisés non commerciaux, Candilog est mis à disposition sous la
-            PolyForm Noncommercial License 1.0.0.
+            licence PolyForm Noncommercial License 1.0.0.
           </P>
           <P>
             Cette licence définit précisément les droits accordés et les conditions applicables. Son
@@ -107,7 +107,7 @@ export default function Page() {
           </CarteInfo>
         </LegalSection>
 
-        <LegalSection titre="Quand une licence commerciale peut-elle être nécessaire ?">
+        <LegalSection titre="Quand une licence commerciale peut-elle être nécessaire&nbsp;?">
           <P>
             Une licence commerciale peut notamment être nécessaire pour commercialiser Candilog,
             distribuer une version dans le cadre d&apos;une offre commerciale, intégrer Candilog à un
@@ -144,7 +144,7 @@ export default function Page() {
           <P>Copyright © 2026 Alexandre Bouttier</P>
           <P>
             Cette page explique le modèle de licence de Candilog. Elle ne remplace pas le texte
-            officiel de la PolyForm Noncommercial License 1.0.0, qui seul fait foi.
+            officiel de la licence PolyForm Noncommercial License 1.0.0, qui seul fait foi.
           </P>
         </LegalSection>
       </LegalCorps>
