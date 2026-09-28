@@ -38,6 +38,8 @@ AUDIT_TECHNIQUE.md
 # Procédure d'audit et rapports locaux — documents de travail, pas de documentation
 # publique : ils décrivent la méthode et l'état interne, pas le produit.
 AUDIT_APP_PROMPT.md
+# Rapport produit par la procédure `AUDIT_APP.md` (la procédure, elle, est versionnée).
+/RAPPORT_AUDIT.md
 docs/AUDIT_REPORT.md
 docs/AUDIT.md
 docs/audits/
