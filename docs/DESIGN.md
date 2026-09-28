@@ -16,13 +16,16 @@ Sources dans le code :
 
 Ne pas inventer de couleur, de rayon, de gabarit de bouton ou de composant déjà présent dans `shared/ui`.
 
-> **Refonte v2 en cours.** La référence visuelle est désormais `reference_design/`
-> (`tokens.json` pour les valeurs, `DECISIONS.md` pour les arbitrages). `styles.css` porte les
-> jetons v2 sous leurs noms du handoff (`--bg-app`, `--tx-3`, `--ac`, `--st-g`…) et les
-> utilitaires correspondants (`bg-panel`, `text-tx-4`, `bg-ac`, `rounded-r7`, `h-row-app`…).
-> Les jetons v1 (`bg-surface`, `text-ink`, `border-line`…) sont **repointés** sur la palette
-> v2 le temps que chaque écran soit refondu : un écran neuf ou refondu n'emploie que les
-> jetons v2. Les sections ci-dessous marquées « v1 » décrivent les écrans pas encore migrés.
+La référence visuelle est `reference_design/` : `tokens.json` pour les valeurs,
+`DECISIONS.md` pour les arbitrages, `screens/` pour les écrans. `styles.css` porte ces
+jetons sous leurs noms du handoff (`--bg-app`, `--tx-3`, `--ac`, `--st-g`…) et les expose
+en utilitaires Tailwind (`bg-panel`, `text-tx-4`, `bg-ac`, `rounded-r7`, `h-row-app`…).
+
+> **Jetons v1 hérités.** `bg-surface`, `text-ink`, `border-line`, `text-accent`,
+> `rounded-card`, `text-body`… existent encore : ils sont **repointés** sur la palette v2
+> (table en §3) et une trentaine de composants les emploient toujours. Tout code neuf ou
+> retouché n'emploie que les jetons v2 ; un composant qu'on modifie en profondeur passe
+> aux jetons v2 au passage.
 
 ---
 
@@ -42,103 +45,143 @@ L’interface est en **français**. Les identifiants de code sont en **anglais**
 
 Ne pas :
 
-- ressembler à un dashboard web (grosses cards, KPI en héros, dégradés, blobs) ;
-- poser des hexadécimaux ou des `rgb()` dans un composant — uniquement les classes Tailwind du thème (`bg-surface`, `text-ink`, `border-line`, `text-accent`, …) ;
-- changer l’accent (indigo `#4f5fe8` / `#6b7cff` en sombre) ni introduire un second accent (orange, vert néon, terracotta) ;
-- utiliser une police d’affichage (serif, Inter, Geist, etc.) : **system-ui** partout, **JetBrains Mono** seulement pour les identifiants, chemins et valeurs chiffrées ;
-- multiplier les ombres : `shadow-1` et `shadow-accent` sont `none` ; l’ombre n’existe que sur overlays (modale, menu, palette) ;
-- agrandir les rayons (pas de `rounded-2xl` / `rounded-3xl` décoratifs) ;
+- ressembler à un dashboard web (grosses cartes, KPI en héros, dégradés, blobs) ;
+- poser des hexadécimaux ou des `rgb()` dans un composant — uniquement les utilitaires du
+  thème (`bg-panel`, `text-tx-3`, `border-bd`, `bg-ac`…) ; seule exception, la tuile de
+  marque `bg-brand` ;
+- changer l’accent (indigo `#4A51DF`, `#5B62F0` en sombre) ni introduire un second accent ;
+- utiliser une autre police que les trois du design : **system-ui** pour l’interface,
+  **IBM Plex Serif** pour les titres d’écran, de dialogue et les scores (≥ 15 px,
+  `serif-title`), **IBM Plex Mono** pour les références (`CAN-142`), dates courtes, durées,
+  compteurs et touches ;
+- multiplier les ombres : une seule (`shadow-pop`), réservée aux menus, dialogues et
+  formulaires modaux ; `shadow-sheet` pour la feuille A4 des aperçus ;
+- agrandir les rayons au-delà de `rounded-r11` (fenêtre modale) ;
+- ajouter une police d’icônes ou une bibliothèque de graphiques (décision D7, §6) ;
 - recréer un bouton, un champ, une pastille, une barre de filtres ou une modale « pour cet écran » ;
 - exposer la pile technique à l’utilisateur (Tauri, React, SQLite, IPC…) ;
 - écrire un slogan ou un hero marketing (À propos n’est **pas** une landing) ;
 - laisser un état vide sans issue (action ou `Tout effacer`) ;
-- porter l’information par la couleur seule : toute pastille a un libellé.
+- porter l’information par la couleur seule : un statut a un libellé et un `StatusGlyph`,
+  dont la forme (vide, demi, trois quarts, plein) se lit sans couleur.
 
 ---
 
 ## 3. Couleur
 
-Thème **clair par défaut**, sombre via `data-theme` / préférence système. Les classes Tailwind mappent les CSS variables.
+Thème **clair par défaut** (papier chaud), sombre par `data-theme="dark"` ou le mode
+« Système » (`prefers-color-scheme`). Chaque jeton existe dans les deux thèmes ; un
+composant n’a jamais de variante `dark:` de couleur.
 
 ### Surfaces
 
-| Classe | Rôle |
+| Utilitaire | Rôle |
 | --- | --- |
-| `bg-page` | Fond de fenêtre `#f2f3f6` / `#08090c` |
-| `bg-surface` | Panneau, liste, carte à filet |
-| `bg-surface-alt` | Pied de liste, pied de modale |
-| `bg-surface-elevated` | Overlay sans glass |
-| `bg-fill` / `hover:bg-fill-hover` | Contrôle au repos |
-| `bg-accent-tint` / `accent-tint-08` / `accent-tint-12` | Sélection, pastille, item actif |
+| `bg-app` | Fond de fenêtre, navigation, barres de titre et d’état |
+| `bg-panel` | Zone de travail : liste, fiche, inspecteur |
+| `bg-group` | Bloc dans un panneau, en-tête de groupe, section de réglage |
+| `bg-chip` | Pastille, touche, piste de jauge, barre à zéro |
+| `bg-elev` | Contrôle segmenté, surface surélevée |
+| `bg-hover` / `bg-sel` | Survol / sélection d’une ligne (`row-focus`, `row-selected`) |
+| `bg-modal` / `bg-menu` / `bg-input` | Dialogue / menu / champ |
+| `bg-canvas` | Bureau sous la feuille A4 des générateurs |
 
 ### Filets
 
-| Classe | Rôle |
-| --- | --- |
-| `border-line` | Séparation de panneau |
-| `border-line-soft` | Filet d’écran (header, FilterBar) |
-| `border-control` / `border-control-strong` | Bouton, champ, trigger |
-| `border-accent-border` | Chip actif, item sélectionné **dont les voisins sont sans filet** |
-| `border-accent` (plein) | Item sélectionné parmi des voisins **déjà bordés** — voir `ProviderGrid` |
-| `border-field` | Rangée d’inspecteur |
-
-La hiérarchie = **filet 1 px** + contraste de surface. Pas de drop-shadow sur les cartes de contenu.
+`border-bd` sépare deux panneaux ; `border-bd-soft` sépare deux lignes ou une barre d’outils
+de son contenu ; `border-bd-menu` borde un menu, un champ, un contrôle. La hiérarchie vient
+du contraste de surface et du filet 1 px, jamais d’une ombre.
 
 ### Texte
 
-| Classe | Usage |
+Sept encres, de la plus forte à la plus faible :
+
+| Utilitaire | Usage |
 | --- | --- |
-| `text-ink` | Titre, corps principal |
-| `text-ink-strong` | Valeur d’inspecteur |
-| `text-ink-muted` / `text-ink-tertiary` | Secondaire |
-| `text-ink-faint` / `text-ink-subtle` | Meta, placeholder, icône tertiaire |
-| `text-ink-label` | Eyebrow de sous-nav (`uppercase`) |
-| `text-accent` / `text-accent-text` / `text-accent-text-soft` | Accent lisible (pas le bleu brut sur fond blanc en long texte) |
-| `text-on-accent` | Sur bouton primary |
-| `text-success` / `text-warning` / `text-danger` | Statut sémantique |
+| `text-tx` | Titre, valeur, ligne sélectionnée |
+| `text-tx-2` / `text-tx-3` | Corps, libellé de ligne |
+| `text-tx-4` / `text-tx-5` | Secondaire, méta, compteur |
+| `text-tx-6` | En-tête `caps`, placeholder, désactivé |
+| `text-tx-7` | Filigrane, séparateur typographique |
+| `text-ac-tx` | Lien, accent lisible sur fond clair |
 
-### Sémantique (`Tone`)
+### Accent, statuts, teintes
 
-Vert = avancement · ambre = à traiter · rouge = échec · accent = mis en avant · neutre = attente. Composant : `StatusPill`.
+- `bg-ac` : action primaire, barre de graphique, élément actif ; `text-ac-tx` pour le texte ;
+  `bg-ac-soft` pour une surface accentuée.
+- `st-n` · `st-a` · `st-g` · `st-c` : neutre (attente), ambre (à traiter), vert
+  (avancement), rouge (échec). Portés par `StatusGlyph` ; jamais un aplat de fond.
+- Teintes de pastille, fond et encre appariés : `bg-tint-ac-bg text-tint-ac-tx`,
+  `bg-tint-g-bg text-tint-g-tx`, `bg-tint-c-bg text-tint-c-tx`.
+- Avatars : `bg-av1` à `bg-av3` avec `text-av-tx`, choisis par `Avatar`.
+
+### Correspondance des jetons v1
+
+| v1 (hérité) | v2 |
+| --- | --- |
+| `bg-page` | `bg-app` |
+| `bg-surface` | `bg-panel` |
+| `bg-surface-alt` | `bg-group` |
+| `bg-surface-elevated` / `bg-fill` | `bg-elev` / `bg-chip` |
+| `border-line` / `border-line-soft` | `border-bd` / `border-bd-soft` |
+| `border-control`, `border-field` | `border-bd-menu` |
+| `text-ink` / `text-ink-muted` / `text-ink-faint` | `text-tx` / `text-tx-3` / `text-tx-5` |
+| `text-accent`, `text-accent-text` / `bg-accent` | `text-ac-tx` / `bg-ac` |
+| `bg-accent-tint` | `bg-tint-ac-bg` |
+| `text-success` / `text-warning` / `text-danger` | `st-g` / `st-a` / `st-c` (`StatusGlyph`, teintes) |
 
 ---
 
 ## 4. Typographie
 
-`font-sans` = system-ui. Corps de page : `text-body` (12,5 px), `letter-spacing: 0.005em`.
+Interface en `font-sans` (system-ui), 12,5 px par défaut. Titres et scores en
+`serif-title` (IBM Plex Serif 600, interlettrage resserré). Données en `font-mono` (IBM Plex
+Mono). Nombres qui se rafraîchissent : `tabular`.
 
-| Classe | Taille | Poids | Où |
+| Utilitaire | Taille | Famille | Où |
 | --- | --- | --- | --- |
-| `text-display` | 23 px | 600 | Rare (chiffre fort, pas un titre de page) |
-| `text-heading` / `text-kpi` | 18 px | 600 | KPI, titre de modale |
-| `text-title` | 14,5 px | 600 | Identité d’écran (nom produit, fournisseur) |
-| `text-section` | 13,5 px | 600 | `PageHeader` h1, nom d’auteur |
-| `text-item` | 13 px | 600 | Bouton, titre de carte, ligne de liste |
-| `text-body` | 12,5 px | 400 | Corps, item de sous-nav |
-| `text-note` | 12 px | — | Sous-titre, total de FilterBar |
-| `text-label` | 11,5 px | — | Chip, aide, compteur de liste |
-| `text-meta` | 11 px | — | Erreur sous champ, note |
-| `text-eyebrow` | 10,5 px | 600, tracking 0.07em, uppercase | Labels de groupe (Filtres, sous-nav) |
-
-Nombres : classe `tabular`. Aucun raccourci clavier de navigation : la coque n’en expose pas, et rien ne les annonce.
+| `text-hero` · `text-score` · `text-stat` · `text-doc-score` | 32 · 26 · 25 · 22 px | serif | Scores, chiffres d’analyse |
+| `text-screen` | 21 px | serif | Titre d’écran, nom d’une fiche |
+| `text-overlay-title` · `text-empty` | 20 · 19 px | serif | Surcouche plein écran, état vide |
+| `text-form` · `text-dialog` · `text-lead` | 17 · 16,5 · 15 px | serif | Formulaire modal, dialogue, mois du calendrier |
+| `text-entry` | 13,5 px | sans 500 | Titre de carte, d’entrée |
+| `text-row` | 13 px | sans | Ligne de liste, corps de lecture |
+| `text-ui` | 12,5 px | sans | Défaut de l’interface, bouton |
+| `text-small` · `text-sub` · `text-tiny` | 12 · 11,5 · 11 px | sans | Méta, aide, note |
+| `caps` | 10,5 px | sans 500, capitales, `.04em`, `tx-6` | En-tête de section, de colonne |
+| `text-caps` + `font-mono` | 10,5 px | mono | Référence, date courte, compteur |
+| `text-kbd` | 9,5 px | mono | Touche (`Kbd`) |
 
 ---
 
-## 5. Densité et rayons
+## 5. Densité, dimensions, rayons
 
-Candilog est **dense**. Contrôles à **30 px** (`h-control`). Topbar **46 px**. Rail **68 px**. Sous-nav **186 px**.
+Candilog est **dense**. Fenêtre utilisable dès **940 × 560 px** ; la navigation se réduit
+sous **1060 px** (préfixe `wide:`).
 
-| Jeton | Valeur | Usage |
+| Élément | Utilitaire | Valeur |
 | --- | --- | --- |
-| `rounded-card` | 12 px | Carte à filet (`SettingsCard`) |
-| `rounded-tile` | 10 px | Tuile, pastille d’empty state |
-| `rounded-field` | 9 px | Champ formulaire |
-| `rounded-button` / `rounded-control` | 8 px | Bouton, item de sous-nav, FilterTrigger |
-| `rounded-chip` | 7 px | Chip, option de filtre |
-| `rounded-pill` | 6 px | StatusPill |
-| `rounded-overlay` | 14 px | Modale, popover Filtres, confirmation |
+| Barre de titre | `h-titlebar` | 40 px |
+| Barre d’outils d’écran | `h-toolbar` | 38 px |
+| Barre d’état | `h-statusbar` | 34 px |
+| Navigation | `w-nav` / `w-nav-sm` | 202 px / 52 px |
+| Contrôle | `h-control` | 30 px |
+| Ligne de candidature · relation · document | `h-row-app` · `h-row-rel` · `h-row-doc` | 34 · 38 · 40 px (30 · 34 · 36 en densité compacte) |
 
-Hover : `duration-hover` (120 ms), couleur seulement. `prefers-reduced-motion` : pas d’entrée de palette.
+Les hauteurs de ligne suivent la préférence de densité (`data-density`, Réglages →
+Apparence) : ne jamais les coder en pixels dans un composant.
+
+| Rayon | Usage |
+| --- | --- |
+| `rounded-r2` · `r3` | Barre de graphique, jauge · case à cocher, feuille A4 |
+| `rounded-r4` · `r5` | Touche · badge, pastille |
+| `rounded-r6` · `r7` | Chip · contrôle (bouton, champ) |
+| `rounded-r8` · `r9` | Carte · bloc, section |
+| `rounded-r10` · `r11` | Carte de modèle IA · dialogue, formulaire modal |
+
+Mouvement : couleur au survol en `duration-hover` (120 ms) ; entrée des menus et
+dialogues `animate-pop` ; squelette `animate-sk`. La réduction de mouvement ramène toutes
+les durées à 0,01 ms.
 
 Focus clavier : `outline 1px accent-focus`, offset 0 — déjà sur `:focus-visible` global.
 
@@ -398,10 +441,10 @@ barre groupée 40 px dès qu'une case est cochée
 
 ### Formulaires
 
-- Toujours `ModalHost` (620 px par défaut, overlay `rounded-overlay`, pied fixe visible).
+- Toujours `ModalHost` (620 px par défaut, `rounded-r11`, pied fixe visible).
 - Champs : `FormField` + `TextInput` / `Select` / `TextArea` / `DateInput` / `TimeInput` / `EntityPicker`.
 - Erreur **sous** le champ (`aria-invalid`, `aria-describedby`), jamais une infobulle seule.
-- Requis : astérisque danger sur le libellé.
+- Requis : mention `obligatoire` en ambre (`st-a`) tant que le champ est vide, pas de contour rouge.
 
 ### Destruction
 
@@ -555,12 +598,13 @@ Fermeture : `useDismissable` (Escape + clic extérieur) — calendrier, FilterMe
 
 ## 12. Accessibilité (plancher)
 
-- Un `h1` par écran (`PageHeader`).
+- Chaque écran est nommé : fil d’Ariane de la barre de titre, `h1` en serif pour une fiche,
+  une surcouche ou un générateur.
 - Focus visible global. Pas de `outline-none` sans remplacement.
 - Bouton Filtres : `aria-label` « Filtres » ou « Filtres, n actifs ».
 - Chips : `aria-label` « Retirer le filtre … ».
 - Empty / loading : `role="status"` ou `alert` selon le cas.
-- Contraste : ne pas poser `text-accent` (bleu saturé) sur de longs paragraphes ; préférer `text-accent-text`.
+- Contraste : pas de `bg-ac` sous un long texte ; texte accentué en `text-ac-tx`.
 - `prefers-reduced-motion` respecté (palette).
 
 ---
@@ -571,11 +615,11 @@ Avant de merger un changement d’UI :
 
 1. J’ai réutilisé un composant de `shared/ui` plutôt que d’en créer un visuellement proche.
 2. Aucun hex / `rgb()` nouveau dans le TSX.
-3. Contrôles à 30 px, filets 1 px, pas d’ombre sur le contenu.
+3. Contrôles à 30 px, filets 1 px, pas d’ombre sur le contenu, jetons v2 seulement.
 4. Libellés français, identifiants anglais.
-5. Liste paginée : filtre et recherche côté backend + FilterBar (si Candidatures / Relations).
+5. Liste paginée : filtre et recherche côté backend, barre d’outils d’écran (`Toolbar`, « + Filtre »).
 6. Pas de pile technique ni de hero marketing.
 7. États vide, erreur, chargement traités.
 8. Vérifié clair **et** sombre (classes sémantiques, pas de `bg-white`).
 
-En cas de doute, copier **Candidatures** (outil), **Entreprises** (maître-détail) ou **À propos** (fiche réglages) — pas un template externe.
+En cas de doute, copier **Candidatures** (liste groupée), **Relations** (maître-détail) ou une section des **Réglages** — pas un template externe.
