@@ -3,38 +3,38 @@ import type { ComponentProps, ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
 
-/* Les trois hauteurs de contrôle du §5 : 30px compact (en-tête), 38px principal
-   (hero, bloc de téléchargement). Les paddings asymétriques viennent du design. */
+/* Hauteurs de contrôle : 32 px compact (en-tête), 40 px principal (hero, bloc de
+   téléchargement), 48 px tactile (mobile, cible ≥ 44 px). */
 const TAILLES = {
-  compact: "h-[30px] text-[12.5px] gap-[7px]",
-  principal: "h-[38px] text-[13.5px] gap-2",
+  compact: "h-[32px] px-3 text-[13px] gap-[7px]",
+  principal: "h-[40px] px-4 text-[14px] gap-2",
+  tactile: "h-[48px] px-[18px] text-[15px] gap-2",
 } as const;
 
+/* Primaire = l'accent de l'application ; secondaire = contrôle sur panneau. */
 const VARIANTES = {
-  accent:
-    "border border-accent-strong bg-accent text-on-accent hover:bg-accent-strong",
+  accent: "border border-transparent bg-ac text-on-accent hover:bg-ac-h hover:text-on-accent",
   secondaire:
-    "border border-control bg-surface text-ink hover:border-control-strong hover:bg-surface-alt",
+    "border border-bd-menu bg-panel text-tx hover:border-bd-strong hover:bg-hover hover:text-tx",
 } as const;
 
-/* Le design ne met pas le même padding horizontal sur les deux variantes :
-   l'accent compact est à 13px, le secondaire compact à 12px. */
-const PADDINGS = {
-  "accent-compact": "px-[13px]",
-  "accent-principal": "px-[15px]",
-  "secondaire-compact": "px-[12px]",
-  "secondaire-principal": "px-[15px]",
+/* La classe `display` vit ici : un `hidden` passé par l'appelant entrerait en conflit
+   avec `inline-flex` (pas de `tailwind-merge`). */
+const AFFICHAGE = {
+  toujours: "inline-flex",
+  sm: "hidden sm:inline-flex",
+  md: "hidden md:inline-flex",
 } as const;
 
 export type Variante = keyof typeof VARIANTES;
 export type Taille = keyof typeof TAILLES;
 
-function classes(variante: Variante, taille: Taille, className?: string) {
+function classes(variante: Variante, taille: Taille, visible: keyof typeof AFFICHAGE, className?: string) {
   return cn(
-    "inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-control font-semibold transition-colors duration-[120ms]",
+    AFFICHAGE[visible],
+    "shrink-0 items-center justify-center whitespace-nowrap rounded-r7 font-medium transition-colors duration-[120ms]",
     TAILLES[taille],
     VARIANTES[variante],
-    PADDINGS[`${variante}-${taille}`],
     className,
   );
 }
@@ -43,6 +43,8 @@ type BaseProps = {
   children: ReactNode;
   variante?: Variante;
   taille?: Taille;
+  /** Largeur à partir de laquelle le bouton apparaît. */
+  visible?: keyof typeof AFFICHAGE;
   className?: string;
 };
 
@@ -51,12 +53,13 @@ export function ButtonLink({
   children,
   variante = "accent",
   taille = "principal",
+  visible = "toujours",
   className,
   href,
   ...rest
 }: BaseProps & Omit<ComponentProps<typeof Link>, "className" | "children">) {
   return (
-    <Link href={href} className={classes(variante, taille, className)} {...rest}>
+    <Link href={href} className={classes(variante, taille, visible, className)} {...rest}>
       {children}
     </Link>
   );
@@ -67,12 +70,13 @@ export function Button({
   children,
   variante = "accent",
   taille = "principal",
+  visible = "toujours",
   className,
   type = "button",
   ...rest
 }: BaseProps & Omit<ComponentProps<"button">, "className" | "children">) {
   return (
-    <button type={type} className={classes(variante, taille, className)} {...rest}>
+    <button type={type} className={classes(variante, taille, visible, className)} {...rest}>
       {children}
     </button>
   );

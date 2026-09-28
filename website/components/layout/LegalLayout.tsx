@@ -1,10 +1,10 @@
-import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
+import { BrandMark } from "@/components/ui/BrandMark";
 import { ButtonLink } from "@/components/ui/Button";
-import { Icon } from "@/components/ui/Icon";
+import { LineIcon } from "@/components/ui/LineIcon";
 import { LICENCE_POLYFORM } from "@/lib/data/liens";
 import { PAGES_LEGALES, type ClePageLegale } from "@/lib/data/legal";
 
@@ -14,12 +14,12 @@ function LegalHeader() {
   return (
     <header className="sticky top-0 z-40 flex h-[56px] items-center gap-6 border-b border-line bg-page-glass px-[clamp(16px,4vw,40px)] backdrop-blur-[18px]">
       <Link href="/" className="mr-auto flex items-center gap-[9px] text-ink hover:text-ink">
-        <Image src="/logo-candilog.svg" alt="" width={27} height={27} className="block shrink-0" />
-        <span className="text-[16px] font-semibold tracking-[-0.012em]">Candilog</span>
+        <BrandMark size={24} />
+        <span className="text-[15px] font-semibold tracking-[-0.01em]">Candilog</span>
       </Link>
       <ThemeToggle />
       <ButtonLink href="/" variante="secondaire" taille="compact">
-        <Icon name="arrow_back" size={16} />
+        <LineIcon name="arrow-left" size={14} />
         Retour au site
       </ButtonLink>
     </header>

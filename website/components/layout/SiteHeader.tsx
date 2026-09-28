@@ -1,57 +1,62 @@
-import Image from "next/image";
 import Link from "next/link";
 
+import { MobileNav } from "@/components/layout/MobileNav";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { BrandIcon } from "@/components/ui/BrandIcon";
+import { BrandMark } from "@/components/ui/BrandMark";
 import { ButtonLink } from "@/components/ui/Button";
-import { NAV_SECTIONS } from "@/lib/data/navigation";
 import { GITHUB_REPO } from "@/lib/data/liens";
+import { NAV_SECTIONS } from "@/lib/data/navigation";
 
 /**
- * Barre sticky du site (§7.1).
+ * Barre collante du site : marque, sections, GitHub, Télécharger, thème.
  *
- * Elle passe sur deux lignes sous ~700px grâce au `flex-wrap` : le logo et la nav
- * défilante tiennent la première, les actions passent dessous. La nav garde son
- * `overflow-x-auto` — sans lui la page déborde sur mobile (§6).
+ * Dès 1024 px les sections tiennent sur une ligne ; en dessous elles passent dans un
+ * menu déroulant (`MobileNav`), et Télécharger reste visible dès 640 px.
  */
 export function SiteHeader() {
   return (
-    <header className="sticky top-0 z-40 flex min-h-[56px] flex-wrap items-center gap-x-6 gap-y-[10px] border-b border-line bg-page-glass px-[clamp(16px,4vw,40px)] py-[10px] backdrop-blur-[18px]">
-      <Link href="/" className="flex shrink-0 items-center gap-[9px] text-ink hover:text-ink">
-        <Image src="/logo-candilog.svg" alt="" width={27} height={27} className="block shrink-0" />
-        <span className="text-[16px] font-semibold tracking-[-0.012em] text-ink">Candilog</span>
-      </Link>
-
-      <nav
-        aria-label="Sections du site"
-        className="no-scrollbar flex min-w-0 flex-[1_1_230px] items-center gap-[22px] overflow-x-auto"
-      >
-        {NAV_SECTIONS.map(({ libelle, href }) => (
-          <a
-            key={href}
-            href={href}
-            className="inline-flex min-h-[44px] items-center md:min-h-0 whitespace-nowrap text-[12.5px] text-ink-muted hover:text-accent-text"
-          >
-            {libelle}
-          </a>
-        ))}
-      </nav>
-
-      <div className="ml-auto flex shrink-0 items-center gap-2">
-        <ButtonLink
-          href={GITHUB_REPO}
-          target="_blank"
-          rel="noopener noreferrer"
-          variante="secondaire"
-          taille="compact"
+    <header className="sticky top-0 z-40 border-b border-bd bg-app-glass backdrop-blur-[18px]">
+      <div className="mx-auto flex h-[60px] max-w-[1200px] items-center gap-6 px-4 md:px-8 xl:px-0">
+        <Link
+          href="/"
+          aria-label="Candilog, accueil"
+          className="flex shrink-0 items-center gap-[9px] text-tx hover:text-tx"
         >
-          <BrandIcon name="github" size={14} />
-          GitHub
-        </ButtonLink>
-        <ButtonLink href="#telecharger" taille="compact">
-          Télécharger
-        </ButtonLink>
-        <ThemeToggle />
+          <BrandMark size={24} />
+          <span className="text-[15px] font-semibold tracking-[-0.01em]">Candilog</span>
+        </Link>
+
+        <nav aria-label="Sections" className="hidden flex-1 justify-center gap-7 lg:flex">
+          {NAV_SECTIONS.map(({ libelle, href }) => (
+            <a
+              key={href}
+              href={`/${href}`}
+              className="whitespace-nowrap text-[13.5px] text-tx-3 hover:text-tx"
+            >
+              {libelle}
+            </a>
+          ))}
+        </nav>
+
+        <div className="ml-auto flex shrink-0 items-center gap-2 lg:ml-0">
+          <ButtonLink
+            href={GITHUB_REPO}
+            target="_blank"
+            rel="noopener noreferrer"
+            variante="secondaire"
+            taille="compact"
+            visible="md"
+          >
+            <BrandIcon name="github" size={14} />
+            GitHub
+          </ButtonLink>
+          <ButtonLink href="/#telecharger" taille="compact" visible="sm">
+            Télécharger
+          </ButtonLink>
+          <ThemeToggle />
+          <MobileNav />
+        </div>
       </div>
     </header>
   );

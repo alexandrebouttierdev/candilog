@@ -2,109 +2,78 @@
 
 import { useId, useState } from "react";
 
-import { Icon } from "@/components/ui/Icon";
+import { LineIcon } from "@/components/ui/LineIcon";
 import { Reveal } from "@/components/ui/Reveal";
 import { cn } from "@/lib/cn";
 import { FAQ } from "@/lib/data/faq";
 import { GITHUB_DISCUSSIONS } from "@/lib/data/liens";
 
 /**
- * FAQ (§7.9) : une seule question ouverte à la fois, ouverte sur la première au
- * chargement.
+ * FAQ : une seule question ouverte à la fois, la première au chargement.
  *
- * L'ouverture passe par `grid-template-rows: 0fr → 1fr`, ce qui anime une hauteur
- * inconnue sans la mesurer. Le prototype utilisait des `<div onClick>` : ici de
- * vrais `<button>` avec `aria-expanded` et `aria-controls` (§9).
+ * Vrais `<button>` avec `aria-expanded` et `aria-controls`. L'ouverture passe par
+ * `grid-template-rows: 0fr → 1fr` (hauteur inconnue animée sans mesure) ; le panneau
+ * fermé porte `inert` pour que ses liens ne restent pas atteignables au clavier.
  */
-export function Faq({
-  ouverteInitiale = 0,
-}: {
-  ouverteInitiale?: number | null;
-}) {
-  const [ouverte, setOuverte] = useState<number | null>(ouverteInitiale);
+export function Faq() {
+  const [ouverte, setOuverte] = useState<number | null>(0);
   const id = useId();
 
   return (
-    <section id="faq" className="border-b border-line bg-page">
-      <Reveal className="mx-auto max-w-[1240px] px-[clamp(16px,4vw,40px)] py-[clamp(48px,6vw,88px)]">
-        <div className="mb-[34px] text-center">
-          <h2 className="text-[clamp(24px,2.6vw,34px)] font-semibold leading-[1.14] tracking-[-0.02em] text-ink">
-            Questions fréquentes
+    <section id="faq" aria-labelledby="faq-titre" className="border-y border-bd bg-panel">
+      <Reveal className="mx-auto grid max-w-[1200px] gap-8 px-4 py-16 md:px-8 md:py-24 lg:grid-cols-[340px_minmax(0,1fr)] lg:gap-20 xl:px-0 xl:py-28">
+        <div className="flex flex-col gap-4">
+          <span className="eyebrow">Questions</span>
+          <h2 id="faq-titre" className="serif-title text-[30px] leading-[1.1] tracking-[-0.025em] md:text-[36px]">
+            Avant d&apos;installer.
           </h2>
-          <p className="mx-auto mt-3 max-w-[420px] text-[14px] leading-[1.65] text-ink-tertiary">
-            Ce qu&apos;il faut savoir avant d&apos;installer Candilog.
-          </p>
+          <a
+            href={GITHUB_DISCUSSIONS}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex min-h-[44px] items-center gap-[6px] text-[14px] text-tx-3 hover:text-tx md:min-h-0"
+          >
+            Une autre question ? Les discussions GitHub sont ouvertes
+            <LineIcon name="arrow-up-right" size={13} />
+          </a>
         </div>
 
-        <div className="mx-auto max-w-[800px] overflow-hidden rounded-panel border border-control bg-surface">
+        <div className="border-t border-bd">
           {FAQ.map((entree, index) => {
             const estOuverte = ouverte === index;
             const idReponse = `${id}-reponse-${String(index)}`;
             return (
-              <div
-                key={entree.question}
-                className={cn(index > 0 && "border-t border-line-soft")}
-              >
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOuverte(estOuverte ? null : index);
-                  }}
-                  aria-expanded={estOuverte}
-                  aria-controls={idReponse}
-                  className={cn(
-                    "flex w-full cursor-pointer items-center gap-4 py-[19px] pr-5 text-left transition-[padding-left,background] duration-[220ms] ease-out-soft hover:bg-surface-alt",
-                    estOuverte ? "pl-7" : "pl-5",
-                  )}
-                >
-                  <span
-                    aria-hidden="true"
-                    className={cn(
-                      "w-[3px] shrink-0 self-stretch rounded-[2px] bg-accent transition-opacity duration-[220ms]",
-                      estOuverte ? "opacity-100" : "opacity-0",
-                    )}
-                  />
-                  <span
-                    className={cn(
-                      "text-pretty text-[15.5px] font-semibold leading-[1.4] transition-colors duration-[200ms]",
-                      estOuverte ? "text-ink" : "text-ink-body",
-                    )}
+              <div key={entree.question} className="border-b border-bd">
+                <h3 className="m-0">
+                  <button
+                    type="button"
+                    onClick={() => setOuverte(estOuverte ? null : index)}
+                    aria-expanded={estOuverte}
+                    aria-controls={idReponse}
+                    className="flex min-h-[60px] w-full cursor-pointer items-center gap-6 py-4 text-left text-[16px] font-medium text-tx md:text-[17px]"
                   >
-                    {entree.question}
-                  </span>
-                  <span
-                    className={cn(
-                      "ml-auto block shrink-0 transition-[transform,color] duration-[180ms] ease-out-soft",
-                      estOuverte
-                        ? "rotate-180 text-accent-text"
-                        : "rotate-0 text-ink-faint",
-                    )}
-                  >
-                    <Icon name="expand_more" size={20} />
-                  </span>
-                </button>
-
+                    <span className="flex-1 text-pretty">{entree.question}</span>
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        "block flex-none text-tx-4 transition-transform duration-[220ms] ease-out-soft",
+                        estOuverte && "rotate-45",
+                      )}
+                    >
+                      <LineIcon name="close" size={14} className="rotate-45" />
+                    </span>
+                  </button>
+                </h3>
                 <div
                   id={idReponse}
-                  /* Replié, le panneau garde une hauteur nulle mais reste dans le
-                     flux : sans `inert`, le lien de la réponse « Candilog est-il
-                     gratuit ? » resterait atteignable au clavier alors qu'il est
-                     invisible. */
                   inert={!estOuverte}
                   className={cn(
                     "grid transition-[grid-template-rows,opacity] duration-[320ms] ease-out-soft",
-                    estOuverte
-                      ? "grid-rows-[1fr] opacity-100"
-                      : "grid-rows-[0fr] opacity-0",
+                    estOuverte ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
                   )}
                 >
                   <div className="overflow-hidden">
-                    <p
-                      className={cn(
-                        "max-w-[640px] text-pretty pb-[22px] pl-5 pr-14 text-[14px] leading-[1.75] text-ink-muted transition-transform duration-[320ms] ease-out-soft",
-                        estOuverte ? "translate-y-0" : "-translate-y-[6px]",
-                      )}
-                    >
+                    <p className="max-w-[760px] text-pretty pb-6 text-[15px] leading-[1.7] text-tx-3">
                       {entree.reponse}
                     </p>
                   </div>
@@ -112,18 +81,6 @@ export function Faq({
               </div>
             );
           })}
-        </div>
-
-        <div className="mt-[22px] text-center">
-          <a
-            href={GITHUB_DISCUSSIONS}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-[7px] text-[13px] text-ink-muted hover:text-accent-text"
-          >
-            Une autre question ? Les discussions GitHub sont ouvertes
-            <Icon name="arrow_outward" size={16} />
-          </a>
         </div>
       </Reveal>
     </section>

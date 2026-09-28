@@ -17,7 +17,8 @@ ici : elles vivent dans `AGENTS.md`, importé ci-dessous.
 - **Lancer l'application** : `yarn tauri dev` ouvre la fenêtre native (requiert un
   environnement graphique). `yarn dev` sert le frontend seul sur le port 1420 — l'IPC
   est indisponible, donc les écrans dépendant des données échouent. `.claude/launch.json`
-  déclare cette cible sous le nom `candilog-web`.
+  déclare cette cible sous le nom `candilog-web`, et le site `website/` (`next dev`,
+  port 3000) sous le nom `candilog-site`.
 - **Git** : ne jamais commiter ni pousser sans demande explicite. En cas de commit
   demandé, message en français avec préfixe Conventional Commits
   (`feat:`, `fix:`, `refactor:`, `test:`, `docs:`).

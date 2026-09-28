@@ -36,6 +36,11 @@ export const FAQ: readonly EntreeFaq[] = [
       "L'analyse ATS vous aide à comparer votre CV avec une offre d'emploi, à identifier les compétences et mots-clés importants et à repérer les éléments qui pourraient être améliorés. Il s'agit d'une aide à la préparation de votre candidature, pas d'une garantie de passer un système ATS ou d'obtenir un entretien.",
   },
   {
+    question: "Faut-il une IA pour utiliser Candilog ?",
+    reponse:
+      "Non. Le suivi des candidatures, des relances et des entretiens, le répertoire d'entreprises et de contacts et les statistiques fonctionnent sans IA. L'IA sert à générer et analyser les documents, et à importer un CV dans votre profil.",
+  },
+  {
     question: "Quel rôle joue l'IA dans Candilog ?",
     reponse:
       "L'IA intervient comme un assistant pour certaines tâches, notamment l'analyse d'offres, l'adaptation de documents et la génération de suggestions. Elle ne remplace pas vos décisions : vous gardez le contrôle sur le contenu utilisé dans vos candidatures.",

@@ -13,7 +13,7 @@ import {
 } from "@/components/legal/primitives";
 import { BrandIcon } from "@/components/ui/BrandIcon";
 import { ButtonLink } from "@/components/ui/Button";
-import { Icon } from "@/components/ui/Icon";
+import { LineIcon } from "@/components/ui/LineIcon";
 import { CONTACT_EMAIL, GITHUB_REPO, LICENCE_POLYFORM } from "@/lib/data/liens";
 
 export const metadata: Metadata = {
@@ -83,7 +83,7 @@ export default function Page() {
             variante="secondaire"
             className={BOUTON_SECONDAIRE}
           >
-            <Icon name="gavel" size={16} />
+            <LineIcon name="scale" size={15} />
             Consulter la licence complète
           </ButtonLink>
         </LegalSection>
@@ -101,7 +101,7 @@ export default function Page() {
               href={`mailto:${CONTACT_EMAIL}`}
               className="mt-1 inline-flex items-center gap-2 text-[14px]"
             >
-              <Icon name="mail" size={17} />
+              <LineIcon name="mail" size={15} />
               {CONTACT_EMAIL}
             </a>
           </CarteInfo>

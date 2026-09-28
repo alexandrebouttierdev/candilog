@@ -31,8 +31,10 @@ générales de comportement et de la sécurité Git.
 4. `style={{}}` réservé au dynamique, jamais à une couleur ou un espacement fixe.
 5. Les variantes vivent dans un objet, pas dans des ternaires imbriqués.
 
-La bande CV/ATS a son propre jeu de tokens `--band-*` : ne pas la repeindre avec les
-tokens de page.
+Les jetons sont ceux du design system v2 de l'application (`../docs/DESIGN.md`) : le
+site n'en invente pas. La feuille A4 des aperçus a ses jetons `--paper-*`, identiques
+dans les deux thèmes. Les aperçus ne montrent que ce que l'application fait
+(`DESIGN.md` §10) et tirent leurs données fictives de `lib/data/demo.ts`.
 
 ## Contraintes
 

@@ -1,207 +1,177 @@
 # Design system — candilog.fr
 
-Référence des valeurs du site. Ce document remplace le dossier de handoff
-`design_handoff_candilog_landing/` (prototypes `.dc.html` et README d'intégration),
-qui n'a pas vocation à vivre dans le dépôt : tout ce qu'il fallait en retenir est ici.
+Référence visuelle du site. **Le site n'a pas de design system propre** : il applique
+celui de l'application desktop v2 (`../docs/DESIGN.md`, `../reference_design/tokens.json`,
+`../src/styles.css`). Une valeur qui n'existe pas dans l'application n'existe pas ici.
 
-Le design est **haute fidélité** : les valeurs ci-dessous sont des décisions, pas des
-approximations. `19px` n'est pas `h-5`, `13,5px` n'est pas `text-sm`.
+Le design est **haute fidélité** : `13,5px` n'est pas `text-sm`, `r9` n'est pas
+`rounded-lg`.
 
 ---
 
 ## 1. Le principe
 
 Les couleurs ne sont pas écrites dans les classes, elles sont **exposées à Tailwind
-depuis des variables CSS** (`app/globals.css`, bloc `@theme inline`). `bg-surface` rend
-blanc en clair et `#0f1116` en sombre, sans une seule variante `dark:`.
+depuis des variables CSS** (`app/globals.css`, bloc `@theme inline`), sous les noms du
+handoff de l'application : `bg-panel`, `text-tx-3`, `border-bd`, `bg-ac`, `bg-st-g`…
+`bg-panel` rend `#FCFBF9` en clair et `#16171B` en sombre, sans une seule variante `dark:`.
 
 ```tsx
 // ✅ une seule écriture, les deux thèmes
-<div className="rounded-card border border-line bg-surface text-ink">
+<div className="rounded-r9 border border-bd bg-panel text-tx">
 
 // ❌ double maintenance, et ce n'est pas la palette
 <div className="rounded-xl border border-gray-200 bg-white dark:bg-gray-900">
 ```
 
-### Les cinq règles
+### Les six règles
 
 1. **Aucune couleur Tailwind par défaut.** Pas de `bg-white`, `text-gray-500`,
-   `bg-indigo-600`. Si une couleur manque, c'est qu'elle n'existe pas dans le design.
-2. **Aucune variante `dark:`.** Elle entre en conflit avec les tokens et casse le thème.
-3. **Les valeurs hifi passent par les crochets** : `h-[19px]`, `text-[13.5px]`,
-   `px-[7px]`, `gap-[9px]`.
-4. **`style={{}}` uniquement pour le dynamique** — largeur calculée, rotation d'état,
-   dégradé de marque. Jamais une couleur ou un espacement fixe.
-5. **Les variantes dans un objet**, pas dans des ternaires imbriqués. Voir `STATUT`
-   (`lib/data/suivi.ts`) et `VARIANTES` (`components/ui/Button.tsx`).
+   `bg-indigo-600`, ni d'hexadécimal en crochets. Si une couleur manque, elle n'existe pas.
+2. **Aucune variante `dark:`.** Elle entre en conflit avec les jetons.
+3. **Les valeurs hifi passent par les crochets** : `h-[34px]`, `text-[12.5px]`.
+4. **`style={{}}` uniquement pour le dynamique** — une largeur calculée depuis une donnée
+   (barre de graphique, segment de répartition). Jamais une couleur ou un espacement fixe.
+5. **Les variantes dans un objet**, pas dans des ternaires imbriqués (`GLYPHE`, `TEINTE`,
+   `BOUTON`, `AFFICHAGE`…).
+6. **Pas de `tailwind-merge`** (`lib/cn.ts`) : un composant ne reçoit jamais une classe
+   qui concurrence la sienne. Sa visibilité responsive passe par une prop typée
+   (`visible="md"`, `affichage="des-sm"`), sa taille par `taille`/`petit`. `className`
+   sert au positionnement.
 
 ---
 
-## 2. Tokens
+## 2. Jetons
 
-Définis en clair sur `:root` et en sombre sur `:root[data-theme="dark"]`.
+Définis sur `:root` (clair, papier chaud) et `:root[data-theme="dark"]`.
 
 | Famille | Utilitaires |
 | --- | --- |
-| Surfaces | `bg-page` `bg-surface` `bg-surface-alt` `bg-surface-sunken` `bg-overlay` |
-| Filets | `border-line` `border-line-soft` `border-control` `border-control-strong` |
-| Texte | `text-ink` `text-ink-body` `text-ink-muted` `text-ink-tertiary` `text-ink-faint` |
-| Accent | `bg-accent` `bg-accent-strong` `text-accent-text` `text-on-accent` |
-| Teintes | `bg-tint-03` → `bg-tint-12`, `border-tint-border`, `border-tint-border-strong` |
-| Sémantique | `{bg,text,border}-{success,warning,danger}[-tint\|-text\|-border]` |
-| Bande ATS | `bg-band` `bg-band-surface` `bg-band-alt` `bg-band-elevated` `text-band-ink…` |
+| Surfaces | `bg-app` (fond de page), `bg-panel`, `bg-group`, `bg-elev`, `bg-chip`, `bg-hover`, `bg-sel`, `bg-modal`, `bg-field`, `bg-desk` (bureau sous les fenêtres) |
+| Filets | `border-bd`, `border-bd-soft`, `border-bd-menu`, `border-frame`, `border-bd-strong` |
+| Encres | `text-tx` → `text-tx-7` (sept niveaux) |
+| Accent | `bg-ac`, `bg-ac-h` (survol), `text-ac-tx`, `text-on-accent`, `fill-brand` |
+| Statuts | `st-n` · `st-a` · `st-g` · `st-c` — neutre, ambre, vert, rouge |
+| Teintes | `bg-tint-{ac,g,c}-bg` + `text-tint-{ac,g,c}-tx` |
+| Avatars | `bg-av1` → `bg-av3`, `text-av-tx` |
+| Feuille A4 | `bg-paper`, `text-paper-ink{,-2,-3}`, `bg-paper-rule`, `bg-paper-sk`, `bg-paper-side`, `bg-paper-mark` — **identiques dans les deux thèmes** |
+| Fenêtre | `bg-wc1` → `bg-wc3` (feux macOS, gris en sombre) |
 
-**La bande CV/ATS a son propre jeu `--band-*`** : claire en thème clair, légèrement plus
-profonde que la page en thème sombre. Ne pas la repeindre avec les tokens de page — son
-contraste est différent volontairement.
+**Jetons v1 hérités.** `bg-page`, `bg-surface`, `text-ink*`, `border-line`,
+`border-control`, `text-accent*`… sont **repointés** sur la palette v2 : les pages
+légales et la 404 les emploient encore. Tout code neuf utilise les noms v2.
 
 | Rayons | Ombres | Courbes |
 | --- | --- | --- |
-| `rounded-pill` 6px | `shadow-menu` | `ease-out-soft` — `cubic-bezier(.2,.7,.2,1)` |
-| `rounded-control` 8px | `shadow-tile` | `ease-reveal` — `cubic-bezier(.16,1,.3,1)` |
-| `rounded-tile` 10px | `shadow-tile-hover` | |
-| `rounded-card` 12px | | |
-| `rounded-panel` 14px | | |
-| `rounded-app` 22px | | |
+| `rounded-r2` → `rounded-r12` (px) | `shadow-window` (fenêtres d'aperçu) | `ease-out-soft` — `cubic-bezier(.2,.7,.2,1)` |
+| | `shadow-pop` (menus, dialogues, fiche flottante) | `ease-reveal` — `cubic-bezier(.16,1,.3,1)` |
+| | `shadow-sheet` (feuille A4) | |
 
-**Aucune ombre sur le contenu.** Elles sont réservées aux overlays (menus) et aux
-pastilles IA.
+**Aucune ombre sur le contenu.** La hiérarchie vient des surfaces et des filets de 1 px.
 
 ---
 
 ## 3. Thème clair / sombre
 
-- Piloté par `data-theme="light" | "dark"` sur `<html>`, mémorisé sous la clé
-  `candilog-theme`, avec `prefers-color-scheme` en repli au premier chargement.
-- **Le script anti-flash de `app/layout.tsx` est obligatoire** : il pose l'attribut avant
-  le premier paint. Sans lui, un visiteur en mode sombre voit un flash blanc.
-- `ThemeToggle` : bouton carré de 30px, dernier élément des actions de l'en-tête, icône
-  `dark_mode` ↔ `light_mode` avec rotation de 180° sur 320 ms.
-- Les logos de marque monochromes passent par `BrandIcon`, qui utilise le SVG en
-  `mask-image` avec `bg-current` : le logo prend le token de texte de son conteneur et
-  suit le thème seul. C'est ce que le prototype encodait en dur dans ses URL
-  `cdn.simpleicons.org/<marque>/<couleur>`.
+- Piloté par `data-theme="light" | "dark"` sur `<html>`, mémorisé sous `candilog-theme`,
+  `prefers-color-scheme` en repli au premier chargement.
+- **Le script anti-flash de `app/layout.tsx` est obligatoire** : il pose l'attribut
+  avant le premier paint.
+- `ThemeToggle` : bouton carré de 32 px, icônes au trait `sun` / `moon`.
+- La feuille A4 reste claire en sombre : elle prévisualise une page imprimée.
 
 ---
 
 ## 4. Typographie et icônes
 
-| Usage | Valeur |
+| Usage | Famille |
 | --- | --- |
-| Texte courant | `system-ui, -apple-system, "Segoe UI", sans-serif` |
-| Métadonnées, chiffres, codes | **JetBrains Mono** 400/500/600, via `next/font` |
-| Icônes | **Material Symbols Rounded**, `opsz 20..48, wght 300, FILL 0, GRAD 0` |
+| Texte courant, interface | `system-ui, -apple-system, "Segoe UI"` |
+| Titres (H1, H2, titres d'écran, scores) | **IBM Plex Serif** 600, `serif-title` (interlettrage `-0.02em`) |
+| Références, dates, compteurs, touches | **IBM Plex Mono** (`font-mono`) |
+| Feuille A4 (CV, lettre) | **IBM Plex Sans** (`font-plex`), comme le PDF exporté |
 
-Les deux polices sont auto-hébergées. Le composant `Icon` fixe les
-`font-variation-settings` ; ne pas écrire de `<span className="material-symbols-rounded">`
-à la main.
-
-**Échelle de tailles réellement utilisée (px)** : 9,5 · 10 · 10,5 · 11 · 11,5 · 12 ·
-12,5 · 13 · 13,5 · 14 · 14,5 · 15 · 15,5 · 16 · 17 · 19 · 20 · 36, puis les titres en
-`clamp()`.
+Les trois familles passent par `next/font/google` : téléchargées au build, servies
+depuis le site.
 
 | Titre | Valeur |
 | --- | --- |
-| H1 landing | `clamp(30px, 3.6vw, 44px)` · 600 · `-0.022em` · `1.1` |
-| H2 sections | `clamp(24px, 2.6vw, 34px)` · 600 · `-0.02em` · `1.14` |
-| H2 bande ATS | `clamp(24px, 2.8vw, 36px)` |
-| H2 téléchargement | `clamp(25px, 2.8vw, 38px)` |
-| H1 pages légales | `clamp(28px, 3.2vw, 40px)` · `1.12` |
-| H2 pages légales | 20px · `-0.014em` · `1.3` |
+| H1 | 40 → 52 → 66 px, `leading-[1.02]`, `-0.03em` |
+| H2 de section | 32 → 40 → 44 px, `-0.025em` |
+| H3 éditorial | 24 → 28 px |
+| Sur-titre (`eyebrow`) | 12 px, capitales, `0.08em`, `tx-4` |
+| En-tête d'aperçu (`caps`) | 10,5 px, capitales, `0.04em`, `tx-6` — celui de l'application |
+
+**Icônes : aucune police d'icônes** (décision D7 de l'application). `LineIcon` porte les
+onze tracés de l'application (grille 16, trait 1,4 px, `currentColor`) et quelques
+tracés propres au site dessinés sur la même grille. Les logos de marque passent par
+`BrandIcon` (SVG en `mask-image`, couleur du texte). La marque est `BrandMark`, la
+tuile `#5B62F0` de l'application ; `app/icon.svg` en est la copie.
 
 ---
 
-## 5. Layout
+## 5. Layout et responsive
 
-- Contenu : **1240px** centré, gouttières `clamp(16px, 4vw, 40px)`.
-- Pages légales : colonne unique de **800px** centrée.
-- Hauteurs de contrôles : **30px** compact · **34–36px** secondaire · **38–40px**
-  principal. Jamais moins de 30px.
-- Filets : `border-line` en séparateur de section, `border-line-soft` dans les cartes.
-- Transitions : **120 ms** boutons et liens · **160–220 ms** états · **320 ms**
-  ouvertures · **640/720 ms** apparitions au scroll.
-- Groupes de frères : `flex` + `gap`. Jamais de marges individuelles.
+- Contenu : **1200 px** centré ; gouttières 16 px (mobile), 32 px (dès 768 px).
+- Sections : 64 → 96 → 128 px de marge verticale. En-tête de section éditorial
+  (`EnTeteSection`) : titre à gauche, chapô à droite dès 1024 px.
+- Contrôles : 32 px compact, 40 px principal, **48 px tactile** sous 640 px.
 
----
+Les aperçus ne sont **pas réduits** : ils se recomposent.
 
-## 6. Responsive — comportements à ne pas perdre
-
-Vérifié à 360 / 390 / 430 / 768 / 1024 / 1440 px sur les 5 pages : aucun débordement
-horizontal. **Les `overflow-x` ci-dessous sont structurels, pas décoratifs.**
-
-| Bloc | Comportement |
+| Largeur | Fenêtre d'aperçu |
 | --- | --- |
-| En-tête | Deux à trois lignes sous ~700px, une seule ligne de 56px dès la tablette. Nav en `overflow-x-auto` + `no-scrollbar`. |
-| Fenêtre du hero | `min-w-[760px]` sur la zone de contenu, `overflow-hidden` sur la fenêtre : elle se **coupe** au bord droit au lieu d'exposer une barre de défilement dans une maquette décorative. Déborde à droite au-delà de 1180px via `mr-[calc(-1*clamp(0px,(100vw-1180px)*0.35,110px))]`. |
-| Frise des 5 étapes | `grid-flow-col` + `overflow-x-auto`, colonnes de 158px minimum. |
-| Kanban de suivi | `repeat(auto-fit,minmax(min(240px,100%),1fr))`, 4 colonnes — la géométrie de `KanbanBoard`. |
-| Vue liste | `overflow-x-auto` + `min-w-[940px]` : ses **huit** colonnes `2.2fr 1.3fr .9fr .7fr 1fr .8fr 1.1fr .8fr` — celles de `ApplicationsPage` — deviennent illisibles en dessous. |
-| Grille des 4 faits | `repeat(2, minmax(0,1fr))` **fixe**. Ne pas repasser en `auto-fit` : les filets se désalignent. |
-| Pastilles IA | `flex-wrap`, **sept** pastilles. Décalages alternés 26/4 : à sept, la ligne se replie selon la largeur et une vague irrégulière ferait des marches au point de repli. |
+| < 768 px | Pas de navigation latérale ni de feux : un recadrage de l'écran, hauteur libre. Colonnes secondaires masquées, CV et lettre montrés en haut de feuille puis le panneau de score dessous. |
+| 768–1023 px | Navigation repliée en icônes (52 px), comme l'application sous 1060 px. |
+| ≥ 1024 px | Navigation complète (202 px), hauteur fixe. Fiche latérale dès 1280 px. |
 
-> ⚠️ Le hero porte `overflow-x-clip`, et c'est **`clip`, pas `hidden`**. Sans clip, le
-> débordement volontaire de la fenêtre crée une barre horizontale sur toute la page. Et
-> `overflow-x: hidden` forcerait `overflow-y` à `auto`, transformant la section en
-> conteneur de défilement — une barre verticale de 15px apparaît alors dans le hero.
+Défilements horizontaux **structurels** : Kanban sous 1024 px (colonnes aimantées),
+frise du parcours sous 1280 px. Aucun débordement horizontal de page (vérifié à 375,
+768, 1024 et 1440 px).
 
 ---
 
-## 7. Animations
+## 6. Animations
 
-Quatre blocs. Les trois pilotés par JavaScript sont **tous** conditionnés à
-`prefers-reduced-motion: reduce`, et aucun n'est une animation CSS infinie : ils s'arrêtent
-et se nettoient au démontage.
+Sobres, bornées, jamais infinies. Toutes neutralisées par `prefers-reduced-motion`.
 
 | Où | Comportement |
 | --- | --- |
-| `useScrollReveal` | Montée de 16px + fondu, 80 ms entre enfants, seuil 0.08. Appliqué via `<Reveal>` sur le conteneur de chaque section. |
-| `useAtsReveal` | Score ATS de 0 à **84**, +3 toutes les **26 ms**, à l'entrée dans le viewport (`IntersectionObserver`, seuil **0.35**), une seule fois. Le gain cumulé (**+13**) est posé d'emblée : l'application l'affiche, elle ne l'anime pas. |
-| `animate-caret` | Caret du champ « Texte de l'offre » (écran 01 du parcours) : `steps(1)`, 1,1 s, infini. Seule animation purement CSS du site, sur un élément `aria-hidden` de 1px. |
-| `TrackingBoard` | La carte « Designer produit » **change de colonne** toutes les **2 600 ms** : En attente → Relancée → Entretien, avec `animate-depose` (320 ms) à l'arrivée et le compteur d'en-tête qui suit. Dans l'application une carte ne porte pas son statut — c'est la colonne qui le porte, et on en change en glissant la carte : l'animation reproduit ce geste, elle ne repeint pas une pastille inexistante. |
+| `Reveal` / `useScrollReveal` | Montée de 16 px + fondu, 80 ms entre enfants, seuil 0,08. Le rendu serveur sort visible. |
+| `window-lift` | Fenêtre d'aperçu soulevée de 4 px au survol (pointeur fin seulement). |
+| `animate-pop` | Changement d'écran de la visite produit, ouverture de la fiche du Kanban (240 ms). |
+| FAQ | `grid-template-rows: 0fr → 1fr`, 320 ms. |
 
-Le rendu serveur sort **sans** les classes `.reveal` : sans JavaScript, tout reste
-visible.
-
-> ⚠️ `.reveal-in` **libère** le `will-change` posé par `.reveal`, et ce n'est pas une
-> optimisation. Sous Chromium, `will-change: opacity | transform` fait de l'élément une
-> *backdrop root* : tant que le drapeau tient, le `backdrop-filter` de ses descendants n'a
-> plus rien à flouter. Le menu de téléchargement — seul verre dépoli posé à l'intérieur
-> d'un `.reveal` — laissait alors lire le texte du hero au travers de sa première bande.
-> Ne pas remettre `will-change` sur `.reveal-in`.
+> ⚠️ `.reveal-in` **libère** le `will-change` posé par `.reveal` : sous Chromium il fait
+> de l'élément une *backdrop root*. Ne pas le remettre.
 
 ---
 
-## 8. Accessibilité — acquis à conserver
+## 7. Accessibilité — acquis à conserver
 
-- `:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px }` global.
-- Cibles ≥ 30px, et **≥ 44px sur mobile** pour les liens de nav (`min-h-[44px] md:min-h-0`).
-- Le parcours est un vrai `role="tablist"` : `aria-selected`, roving `tabindex`,
-  navigation aux flèches + `Home`/`End`.
-- La bascule board/liste est un `role="group"` de deux boutons avec `aria-pressed`.
-- FAQ et menus de téléchargement sont des *disclosures* : `aria-expanded` +
-  `aria-controls`. **Leur panneau fermé porte `inert`** — sans ça, les liens qu'il
-  contient restent atteignables au clavier alors qu'ils sont invisibles.
-- Les deux `DownloadMenu` (hero et CTA) ne sont jamais ouverts en même temps
-  (`lib/menuOuvert.ts`). Fermeture au clic extérieur et à `Échap`, focus rendu au
-  déclencheur. Le conteneur `.reveal-in` qui possède un menu ouvert est élevé au-dessus des
-  sections suivantes : son `transform` crée un contexte d’empilement que le `z-index` du
-  panneau ne peut pas traverser seul.
-- La fenêtre du hero est décorative : `aria-hidden`, zéro élément focusable.
-- Icônes décoratives : `aria-hidden="true"` (posé par `Icon` et `BrandIcon`).
+- Lien d'évitement « Aller au contenu », un seul `h1`, un `h2` par section.
+- `:focus-visible { outline: 1px solid var(--ac) }` global.
+- Cibles ≥ 44 px sur mobile (menu, liens de pied de page, onglets).
+- Aperçus décoratifs : `aria-hidden`, zéro élément focusable ; leur contenu est décrit
+  par un `figcaption` masqué. **Exception : le Kanban**, dont les cartes sont de vrais
+  boutons (`aria-pressed`) ouvrant une fiche (`aside` nommée) ; `Échap` ou « ✕ »
+  referment et rendent le focus à la carte.
+- Visite produit : vrai `tablist`, tabindex itinérant, flèches et Début/Fin.
+- Menus (téléchargement, navigation mobile) et FAQ : *disclosures* avec `aria-expanded`
+  + `aria-controls`, panneau fermé `inert`, fermeture à `Échap` et au clic extérieur.
+- Statuts : glyphe de forme (vide, demi, trois quarts, plein) **et** libellé, jamais la
+  couleur seule.
 
-### Contrastes mesurés en thème sombre
+---
 
-| Paire | Ratio |
-| --- | --- |
-| `--ink` sur `--page` (titres) | 16,40 |
-| `--ink-body` sur `--surface` (texte courant) | 11,88 |
-| `--on-accent` sur `--accent` (boutons accent) | **3,53** |
-| `--control-strong` sur `--surface` (numéros d'étape inactifs) | **1,80** |
-| `--ink-faint` sur `--surface-alt` (sur-titres mono) | **3,73** |
+## 8. SEO
 
-Les trois dernières sont sous les seuils WCAG AA. Ce sont des **choix de palette**, pas
-des accidents d'intégration : le prototype donnait exactement les mêmes valeurs. Les
-corriger implique de toucher aux tokens.
+- Métadonnées dans `app/layout.tsx` (titre, description, mots-clés, Open Graph,
+  Twitter, `theme-color`) et `app/page.tsx` (canonique `/`).
+- Données structurées `SoftwareApplication` (JSON-LD) dans le layout.
+- `public/og-image.png` (1200 × 630) : image de partage statique — un fichier à
+  extension, servi avec le bon type MIME par GitHub Pages.
+- `app/robots.ts`, `app/sitemap.ts` : générés au build.
 
 ---
 
@@ -210,11 +180,12 @@ corriger implique de toucher aux tokens.
 > ⚠️ Les textes des 4 pages légales, et les réponses de FAQ portant sur la
 > confidentialité, la licence et l'ATS, sont **calibrés**. Ils ne promettent ni
 > « aucune donnée ne quitte votre ordinateur », ni un résultat de recrutement. Ne pas
-> les reformuler sans relecture.
+> les reformuler sans relecture. La section Confidentialité de la landing reprend la
+> réponse calibrée de la FAQ.
 
 Mentions obligatoires à conserver telles quelles :
 
-- « Une analyse est une indication, pas une garantie de sélection. » (bande CV/ATS)
+- « Une analyse est une indication, pas une garantie de sélection. » (section Documents)
 - Le § « Site internet » de la politique de confidentialité affirme que le site ne fait
   aucune requête vers un service tiers. **Ajouter une ressource externe rend ce texte
   faux** — mettre le texte à jour, ou renoncer à la ressource.
@@ -223,79 +194,44 @@ Mentions obligatoires à conserver telles quelles :
 
 ## 10. Fidélité des aperçus
 
-Les maquettes d'écran du site — fenêtre du hero, cinq écrans du parcours, Kanban et liste
-de la section Suivi, trois panneaux de la bande ATS — ne sont pas des illustrations
-libres. **Elles ne montrent que ce que l'application fait.** Un site qui met en scène une
-fonctionnalité absente est une promesse cassée au premier lancement.
+Les aperçus — Aujourd'hui, Candidatures, Documents, Analyse, Kanban, générateurs de CV
+et de lettre, analyse face à l'offre, écran IA, dialogue d'envoi distant — ne sont pas
+des illustrations libres. **Ils ne montrent que ce que l'application fait.**
 
 ### La règle
 
-`src/` fait foi. Avant de modifier un aperçu, lire le composant réel qu'il représente et
-en reprendre la structure, les libellés, les colonnes et les états.
+`../src/` et `../reference_design/screens/` font foi. Avant de modifier un aperçu, lire
+le composant réel et en reprendre la structure, les libellés et les états.
 
-| Aperçu | Source de vérité dans `src/` |
+| Aperçu (`components/landing/app/`) | Source de vérité |
 | --- | --- |
-| Fenêtre du hero | `app/layout/{AppShell,NavRail,TopBar,SubNav}.tsx`, `features/applications/view/pages/ApplicationsPage.tsx` |
-| Statuts (`lib/data/suivi.ts`) | `features/applications/model/statuses.ts` |
-| Kanban et cartes | `features/applications/view/components/{KanbanBoard,ApplicationCard}.tsx` |
-| Vue liste | les colonnes de `ApplicationsPage.tsx` |
-| Écrans 01 et 02 du parcours | `features/documents/view/pages/ResumeGeneratorPage.tsx`, `view/components/ResumeAtsPanel.tsx` |
-| Écran 03 | `features/documents/view/pages/ResumeLibraryPage.tsx` |
-| Écran 04 | `features/applications/view/components/ApplicationFormModal.tsx` |
-| Écran 05 | `features/calendar/view/pages/CalendarPage.tsx`, `view/components/GridMonth.tsx` |
-| Bande ATS | `features/documents/view/components/{ResumeAtsPanel,DocumentUi}.tsx` |
-| Fournisseurs IA | `features/settings/model/providers.ts` |
+| `Fenetre` (coque, navigation, barres) | `src/app/layout/`, `docs/DESIGN.md` §8 |
+| `primitives` (glyphe, pastille, avatar, touche) | `src/shared/ui/{StatusGlyph,Tag,Avatar,Kbd}.tsx` |
+| `EcranAujourdhui` | `screens/01-today-light.png` |
+| `EcranListe`, Kanban (`Tracking`) | `screens/02`, `03`, `19` ; `features/applications/model/statuses.ts` |
+| `EcranDocuments` | `screens/07-resumes.png` |
+| `EcranAnalyse` | `screens/10-analytics.png` |
+| `Generateurs` | `screens/15`, `09`, `16` |
+| Écran IA (`AiSection`) | `screens/13` ; `features/settings/model/{providers,taskRouting}.ts` |
+| Dialogue d'envoi (`Privacy`) | `features/settings/view/components/RemoteSendDialog.tsx` |
 
 ### Ce que l'application ne fait pas
 
-À ne pas remettre en scène, quelle que soit la qualité graphique du résultat :
+À ne pas mettre en scène, quelle que soit la qualité graphique du résultat :
 
-- **Pas de section « Offres »**, pas d'import d'annonce par URL, pas d'extraction
-  automatique du poste et de l'entreprise. Une offre entre par son **texte collé**, dans
-  « Générer un CV » ou « Analyser ».
-- **Pas de cinquième statut.** Il y en a quatre : En attente, Relancée, Entretien,
-  Refusée. Aucun statut « offre reçue ».
-- **Pas de pièces jointes** sur une candidature : les CV et lettres vivent dans la
-  bibliothèque de documents.
-- **Pas de jauge de lisibilité, pas de verdict global.** L'analyse ATS rend un score sur
-  100, un gain cumulé et des propositions à décider une par une.
-- **Pas de barre de titre dessinée** : `tauri.conf.json` garde les décorations natives,
-  donc ni pastilles macOS ni boutons Windows dans la maquette.
+- **Pas de cinquième statut.** Quatre : En attente, Relancée, Entretien, Refusée. Ni
+  « À postuler » ni « Offre reçue ».
+- **Pas d'import d'annonce par URL** : une offre entre par son texte collé.
+- **Pas de pièces jointes** sur une candidature : les documents vivent dans Documents.
+- **Pas de pourcentage de progression** sur un traitement IA, pas de flèche de tendance
+  dans l'analyse (aucune période de comparaison n'existe).
+- L'IA locale s'appelle **« IA locale »**, jamais d'après une famille de modèles.
 
 ### Le jeu de données
 
-Un seul persona sur tout le site : **Camille Berthier**, designer produit à Lyon, avec
-Atelier Nord, Studio Halage, Cobalt Bureau, Groupe Vallée, Sablé Industries, Éditions
-Sillon, Nord Réseaux, Maison Rivet, Laurier & Pons et Verrières & Cie. Les dates suivent
-le format de l'application (**JJ-MM-AAAA**), les entretiens et relances tombent des jours
-ouvrés, et les compteurs sont cohérents entre les sections : **14 candidatures**,
-réparties 5 / 3 / 3 / 3.
-
----
-
-## 11. Écarts assumés par rapport au prototype
-
-Le prototype ayant disparu du dépôt, voici ce qui a été fait différemment et pourquoi.
-Sans cette liste, ces choix ressemblent à des erreurs.
-
-| Écart | Raison |
-| --- | --- |
-| Icônes et polices auto-hébergées (`material-symbols` en npm, `next/font`) au lieu des CDN Google | Aucune dépendance réseau tierce ; cohérent avec l'app desktop. C'est ce qu'affirme la politique de confidentialité. |
-| Logos de marque en `mask-image` + `currentColor` au lieu de `filter: invert(1) hue-rotate(180deg)` | Le logo suit le token de texte, donc le thème, sans variante conditionnelle. |
-| Vrai logo OpenAI au lieu du cercle CSS | Le prototype n'avait pas d'URL CDN valide ; le SVG existe dans l'app desktop. |
-| Les boutons « GitHub » sortent vers le dépôt au lieu de l'ancre `#opensource` | Un bouton qui annonce GitHub et fait défiler la page est une promesse cassée. |
-| « Voir sur GitHub » (section Code source) en `text-page` au lieu de `--on-accent` | Le prototype donnait du blanc sur `--ink`, soit **blanc sur blanc en thème sombre** (1,1:1). |
-| Boutons « Enregistrer » / « Exporter en PDF » (bande ATS) au lieu d'« Adapter à l'offre » | L'éditeur de CV n'a pas de bouton « Adapter à l'offre » : il enregistre la version et l'exporte en PDF. Le bouton accent garde `--on-accent`, comme tous les autres. |
-| Pastille « En attente » en `--page` | Le prototype peignait le statut neutre en `--page` plutôt qu'en `--surface-alt` ; on le garde. Le statut neutre se creuse dans la carte en sombre — c'est voulu. |
-| `ThemeToggle` en `useSyncExternalStore` | Le thème est un attribut posé hors de React ; le recopier dans un `useState` depuis un `useEffect` viole `react-hooks/set-state-in-effect`. |
-| Pas de route `/api/download/[platform]` | Export statique : aucune route serveur n'est possible. |
-| Sur-titre du hero (« Application desktop · Windows · macOS · Linux ») supprimé | Demande de l'auteur. |
-
-### Provenance des assets
-
-- `public/providers/*.svg` — repris de `src/assets/providers/` de l'application desktop.
-- `public/brand/*.svg` — extraits du paquet npm `simple-icons` au moment de
-  l'intégration, puis vendorisés. Le paquet n'est plus une dépendance : pour ajouter une
-  marque, `npx simple-icons@latest` ou copier depuis simpleicons.org.
-- `public/logo-candilog*.svg` — fournis par l'auteur. `logo-candilog-dark.svg` n'est pas
-  utilisé (le monogramme dégradé tient sur les deux fonds), il est conservé au cas où.
+Tout vient de `lib/data/demo.ts`. Un seul persona — **Camille Berthier**, designer
+produit à Lyon — et des entreprises fictives (Atelier Nord, Studio Halage, Cobalt
+Bureau, Groupe Vallée, Sablé Industries, Éditions Sillon, Nord Réseaux, Maison Rivet,
+Laurier & Pons, Verrières & Cie). Date du jour des aperçus : lundi 28 septembre 2026.
+Compteurs cohérents entre sections : **14 candidatures**, 5 / 3 / 3 / 3. Contact sur
+`exemple.fr`, téléphone de fiction.

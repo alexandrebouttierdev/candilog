@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 
-import { Icon } from "@/components/ui/Icon";
+import { LineIcon } from "@/components/ui/LineIcon";
 
 const KEY = "candilog-theme";
 
@@ -44,13 +44,13 @@ export function ThemeToggle() {
       onClick={toggle}
       aria-label={label}
       title={label}
-      className="grid size-[30px] shrink-0 place-items-center rounded-control border border-control bg-surface text-ink-muted transition-colors duration-[120ms] hover:border-control-strong hover:bg-surface-alt hover:text-ink"
+      className="grid size-[32px] shrink-0 place-items-center rounded-r7 border border-bd-menu bg-panel text-tx-3 transition-colors duration-[120ms] hover:border-bd-strong hover:bg-hover hover:text-tx"
     >
       <span
         className="block transition-transform duration-[320ms] ease-out-soft"
         style={{ transform: dark ? "rotate(180deg)" : "rotate(0deg)" }}
       >
-        <Icon name={dark ? "light_mode" : "dark_mode"} size={17} />
+        <LineIcon name={dark ? "sun" : "moon"} size={15} />
       </span>
     </button>
   );

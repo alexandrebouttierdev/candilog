@@ -1,26 +1,13 @@
-import { GITHUB_REPO } from "./liens";
-
+/** Sections de la landing, dans l'ordre de la page : en-tête, menu mobile, 404. */
 export const NAV_SECTIONS = [
+  { libelle: "Produit", href: "#produit" },
   { libelle: "Parcours", href: "#parcours" },
   { libelle: "Suivi", href: "#suivi" },
-  { libelle: "CV et analyse", href: "#cv" },
+  { libelle: "Documents", href: "#documents" },
   { libelle: "IA", href: "#ia" },
-  { libelle: "Code source", href: "#opensource" },
+  { libelle: "Confidentialité", href: "#confidentialite" },
   { libelle: "FAQ", href: "#faq" },
 ] as const;
-
-/** Le pied de page reprend la nav mais remplace « Code source » par
- *  « Télécharger » puis un lien GitHub sortant. */
-export const NAV_PIED = [
-  { libelle: "Parcours", href: "#parcours" },
-  { libelle: "Suivi", href: "#suivi" },
-  { libelle: "CV et analyse", href: "#cv" },
-  { libelle: "IA", href: "#ia" },
-  { libelle: "FAQ", href: "#faq" },
-  { libelle: "Télécharger", href: "#telecharger" },
-] as const;
-
-export const LIEN_GITHUB_PIED = { libelle: "GitHub", href: GITHUB_REPO } as const;
 
 export const NAV_LEGALE = [
   { libelle: "Mentions légales", href: "/mentions-legales" },

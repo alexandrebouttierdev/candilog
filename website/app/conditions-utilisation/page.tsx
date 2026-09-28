@@ -11,7 +11,7 @@ import {
   Sommaire,
 } from "@/components/legal/primitives";
 import { ButtonLink } from "@/components/ui/Button";
-import { Icon } from "@/components/ui/Icon";
+import { LineIcon } from "@/components/ui/LineIcon";
 import { CONTACT_EMAIL } from "@/lib/data/liens";
 import { MISE_A_JOUR_CONDITIONS } from "@/lib/data/legal";
 
@@ -186,7 +186,7 @@ export default function Page() {
             variante="secondaire"
             className="mt-5 h-[34px] px-[14px] text-[13px]"
           >
-            <Icon name="gavel" size={16} />
+            <LineIcon name="scale" size={15} />
             Consulter la licence
           </ButtonLink>
         </LegalSection>

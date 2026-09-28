@@ -10,7 +10,7 @@ import {
   P,
 } from "@/components/legal/primitives";
 import { ButtonLink } from "@/components/ui/Button";
-import { Icon } from "@/components/ui/Icon";
+import { LineIcon } from "@/components/ui/LineIcon";
 import { CONTACT_EMAIL } from "@/lib/data/liens";
 
 export const metadata: Metadata = {
@@ -93,7 +93,7 @@ export default function Page() {
             variante="secondaire"
             className="mt-5 h-[34px] px-[14px] text-[13px]"
           >
-            <Icon name="gavel" size={16} />
+            <LineIcon name="scale" size={15} />
             Consulter la licence
           </ButtonLink>
         </LegalSection>

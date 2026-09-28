@@ -1,143 +1,265 @@
 /* Candilog — app/globals.css
    Tailwind v4 : tout le thème est déclaré ici, pas de tailwind.config.
    Le mode sombre est piloté par data-theme="dark" sur <html> ; les variables
-   changent, les classes utilitaires restent identiques (bg-page, text-ink, ...). */
+   changent, les classes utilitaires restent identiques (bg-panel, text-tx-3, ...).
+
+   Les valeurs sont celles du design system v2 de l'application desktop
+   (`reference_design/tokens.json`, `src/styles.css`) : le site est une extension
+   de l'application, pas un second système. */
 
 @import "tailwindcss";
-/* Material Symbols Rounded auto-hébergé (paquet npm), comme dans l'application
-   desktop : aucune requête vers un hôte tiers au chargement. */
-@import "material-symbols/rounded.css";
 
-/* ── 1. Tokens brutes clair / sombre ─────────────────────────────────────── */
+/* ── 1. Jetons v2 — clair (papier chaud) / sombre ─────────────────────────── */
 :root {
-    --page: #f2f3f6; --page-glass: rgba(242,243,246,0.86);
-    --surface: #ffffff; --surface-alt: #f7f8fa; --surface-sunken: #fafbfc; --overlay: rgba(255,255,255,0.92);
-    --line: #e2e4ea; --line-soft: #eaecf1; --control: #d7dae2; --control-strong: #c4c8d4;
-    --ink: #1a1c22; --ink-body: #3a3d47; --ink-muted: #5b6070; --ink-tertiary: #757a8a; --ink-faint: #9297a6;
-    --accent: #4f5fe8; --accent-strong: #4451d6; --accent-text: #3d4bc7;
-    --tint-03: rgba(79,95,232,0.03); --tint-06: rgba(79,95,232,0.06); --tint-08: rgba(79,95,232,0.08);
-    --tint-10: rgba(79,95,232,0.10); --tint-12: rgba(79,95,232,0.12);
-    --tint-border: rgba(79,95,232,0.25); --tint-border-strong: rgba(79,95,232,0.35);
-    --success: #1f9254; --success-text: #14713f; --success-tint: rgba(31,146,84,0.10); --success-border: rgba(31,146,84,0.22);
-    --warning: #b06f00; --warning-text: #8a5800; --warning-tint: rgba(176,111,0,0.10); --warning-border: rgba(176,111,0,0.22);
-    --danger: #c8352f; --danger-text: #a52a25; --danger-tint: rgba(200,53,47,0.09); --danger-border: rgba(200,53,47,0.22);
-    --shadow-overlay: rgba(16,18,24,0.13); --on-accent: #ffffff;
-    --band: #f2f3f6; --band-surface: #ffffff; --band-alt: #f7f8fa; --band-elevated: #f7f8fa;
-    --band-line: #e2e4ea; --band-line-accent: rgba(79,95,232,0.25); --band-control: #d7dae2;
-    --band-ink-strong: #1a1c22; --band-ink: #1a1c22; --band-ink-body: #3a3d47; --band-ink-muted: #5b6070; --band-ink-faint: #9297a6;
-    --band-accent: #4f5fe8; --band-accent-soft: #3d4bc7; --band-underline: #4f5fe8;
-    color-scheme: light;
-  }
-  :root[data-theme="dark"] {
-    --page: #08090c; --page-glass: rgba(8,9,12,0.82);
-    --surface: #0f1116; --surface-alt: #12141a; --surface-sunken: #0c0e13; --overlay: rgba(18,20,26,0.94);
-    --line: #1e2129; --line-soft: #191c23; --control: #2a2e39; --control-strong: #3a3f4d;
-    --ink: #e7e9ef; --ink-body: #c9cdd8; --ink-muted: #9ca2b3; --ink-tertiary: #8a90a0; --ink-faint: #6b7080;
-    --accent: #6b7cff; --accent-strong: #7d8cff; --accent-text: #aab0ff;
-    --tint-03: rgba(107,124,255,0.05); --tint-06: rgba(107,124,255,0.09); --tint-08: rgba(107,124,255,0.12);
-    --tint-10: rgba(107,124,255,0.14); --tint-12: rgba(107,124,255,0.17);
-    --tint-border: rgba(107,124,255,0.32); --tint-border-strong: rgba(107,124,255,0.45);
-    --success: #4fc27a; --success-text: #6fd193; --success-tint: rgba(79,194,122,0.14); --success-border: rgba(79,194,122,0.30);
-    --warning: #d99a2b; --warning-text: #e2b05a; --warning-tint: rgba(217,154,43,0.14); --warning-border: rgba(217,154,43,0.30);
-    --danger: #e0655f; --danger-text: #eb8b86; --danger-tint: rgba(224,101,95,0.13); --danger-border: rgba(224,101,95,0.30);
-    --shadow-overlay: rgba(0,0,0,0.5); --on-accent: #ffffff;
-    --band: #0c0e13; --band-surface: #12141a; --band-alt: #171b23; --band-elevated: #1a1e28;
-    --band-line: #22262f; --band-line-accent: #333a63; --band-control: #343a47;
-    --band-ink-strong: #ffffff; --band-ink: #e7e9ef; --band-ink-body: #c9cdd8; --band-ink-muted: #9ca2b3; --band-ink-faint: #6b7080;
-    --band-accent: #6b7cff; --band-accent-soft: #aab0ff; --band-underline: #6b7cff;
-    color-scheme: dark;
-  }
+  /* Surfaces */
+  --desk: #dedcd6;        /* bureau sous les fenêtres et la feuille A4 */
+  --app: #f1f0ec;         /* fond de page, chrome des fenêtres */
+  --app-glass: rgb(241 240 236 / 0.86);
+  --panel: #fcfbf9;       /* zone de travail, sections claires */
+  --elev: #e4e2dc;
+  --hover: #f4f2ec;
+  --sel: #ecedfb;
+  --group: #f5f3ee;
+  --chip: #eae7e0;
+  --modal: #ffffff;
+  --field: #f5f3ee;
+  --paper: #ffffff;       /* feuille A4 : blanche dans les deux thèmes */
+  /* Encres de la feuille A4 (`documentPaper` de tokens.json) : identiques dans les
+     deux thèmes, la feuille prévisualise une page imprimée. */
+  --paper-ink: #1a1a1c;
+  --paper-ink-2: #4b4843;
+  --paper-ink-3: #8b8781;
+  --paper-rule: #dfdcd5;
+  --paper-sk: #c9c6c0;
+  --paper-side: #f5f3ee;
+  --paper-mark: #ecedfb;  /* surlignage d'un élément ajouté ou recommandé */
+
+  /* Filets */
+  --bd: #e7e4dd;
+  --bd-soft: #efede7;
+  --bd-menu: #e4e0d8;
+  --frame: #dfdcd5;
+  --bd-strong: #d3cfc6;
+
+  /* Encres, de la plus forte à la plus faible */
+  --tx: #1a1a1c;
+  --tx-2: #2c2a27;
+  --tx-3: #4b4843;
+  --tx-4: #767069;
+  --tx-5: #84807a;
+  --tx-6: #a8a39c;
+  --tx-7: #bdb9b1;
+
+  /* Accent — un seul, indigo */
+  --ac: #4a51df;
+  --ac-h: #3b41c4;
+  --ac-tx: #3b41c4;
+  --on-accent: #ffffff;
+  --brand: #5b62f0;       /* tuile de marque, fixe dans les deux thèmes */
+
+  /* Statuts : neutre, ambre, vert, rouge */
+  --st-n: #8c877f;
+  --st-a: #a8761c;
+  --st-g: #2f8c5b;
+  --st-c: #b03a2e;
+
+  /* Teintes appariées fond / encre */
+  --tint-ac-bg: #dedff6;
+  --tint-ac-tx: #33356b;
+  --tint-g-bg: #d3e8db;
+  --tint-g-tx: #256647;
+  --tint-c-bg: #f6deda;
+  --tint-c-tx: #a5342a;
+
+  /* Avatars */
+  --av1: #c9cbee;
+  --av2: #c7ddd0;
+  --av3: #dccfe2;
+  --av-tx: #33356b;
+
+  /* Feux de fenêtre macOS */
+  --wc1: #df6a5e;
+  --wc2: #e0a33d;
+  --wc3: #4fb07a;
+
+  /* Ombres : fenêtres de l'aperçu, menus, dialogues — jamais le contenu */
+  --sh-window: 0 1px 2px rgb(58 48 32 / 0.06), 0 30px 70px -24px rgb(58 48 32 / 0.24);
+  --sh-pop: 0 18px 48px -12px rgb(58 48 32 / 0.3);
+  --sh-sheet: 0 1px 2px rgb(0 0 0 / 0.1), 0 8px 24px -8px rgb(0 0 0 / 0.15);
+
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --desk: #0a0b0d;
+  --app: #101114;
+  --app-glass: rgb(16 17 20 / 0.84);
+  --panel: #16171b;
+  --elev: #1c1e24;
+  --hover: #191b21;
+  --sel: #1e2029;
+  --group: #1a1c21;
+  --chip: #26282f;
+  --modal: #23252c;
+  --field: #1a1c21;
+  --paper: #f7f6f3;
+
+  --bd: #212329;
+  --bd-soft: #1d1f25;
+  --bd-menu: #2c2f37;
+  --frame: #23252c;
+  --bd-strong: #3a3d45;
+
+  --tx: #e8e9ed;
+  --tx-2: #d8dbe2;
+  --tx-3: #a8adb8;
+  --tx-4: #7b808c;
+  --tx-5: #6a6f7a;
+  --tx-6: #5a5f69;
+  --tx-7: #4a4e58;
+
+  --ac: #5b62f0;
+  --ac-h: #4a51df;
+  --ac-tx: #8e94ff;
+
+  --st-n: #8a8f9a;
+  --st-a: #d2a24a;
+  --st-g: #4fb07a;
+  --st-c: #e0776a;
+
+  --tint-ac-bg: #252842;
+  --tint-ac-tx: #a9aeff;
+  --tint-g-bg: #1f3329;
+  --tint-g-tx: #6fc795;
+  --tint-c-bg: #33232a;
+  --tint-c-tx: #e0776a;
+
+  --av1: #3a3f6b;
+  --av2: #2f4a3e;
+  --av3: #4a3a56;
+  --av-tx: #c5c9d2;
+
+  --wc1: #3a3d45;
+  --wc2: #3a3d45;
+  --wc3: #3a3d45;
+
+  --sh-window: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 40px 90px -30px rgb(0 0 0 / 0.8);
+  --sh-pop: 0 18px 48px -12px rgb(0 0 0 / 0.6);
+  --sh-sheet: 0 8px 24px -8px rgb(0 0 0 / 0.5);
+
+  color-scheme: dark;
+}
 
 /* ── 2. Exposition à Tailwind ────────────────────────────────────────────────
-   @theme inline lit les variables ci-dessus au lieu de les figer,
-   donc bg-surface suit automatiquement le thème actif. */
+   @theme inline lit les variables ci-dessus au lieu de les figer : bg-panel suit
+   automatiquement le thème actif. */
 @theme inline {
-  --color-page: var(--page);
-  --color-page-glass: var(--page-glass);
-  --color-surface: var(--surface);
-  --color-surface-alt: var(--surface-alt);
-  --color-surface-sunken: var(--surface-sunken);
-  --color-overlay: var(--overlay);
+  --color-desk: var(--desk);
+  --color-app: var(--app);
+  --color-app-glass: var(--app-glass);
+  --color-panel: var(--panel);
+  --color-elev: var(--elev);
+  --color-hover: var(--hover);
+  --color-sel: var(--sel);
+  --color-group: var(--group);
+  --color-chip: var(--chip);
+  --color-modal: var(--modal);
+  --color-field: var(--field);
+  --color-paper: var(--paper);
+  --color-paper-ink: var(--paper-ink);
+  --color-paper-ink-2: var(--paper-ink-2);
+  --color-paper-ink-3: var(--paper-ink-3);
+  --color-paper-rule: var(--paper-rule);
+  --color-paper-sk: var(--paper-sk);
+  --color-paper-side: var(--paper-side);
+  --color-paper-mark: var(--paper-mark);
 
-  --color-line: var(--line);
-  --color-line-soft: var(--line-soft);
-  --color-control: var(--control);
-  --color-control-strong: var(--control-strong);
+  --color-bd: var(--bd);
+  --color-bd-soft: var(--bd-soft);
+  --color-bd-menu: var(--bd-menu);
+  --color-frame: var(--frame);
+  --color-bd-strong: var(--bd-strong);
 
-  --color-ink: var(--ink);
-  --color-ink-body: var(--ink-body);
-  --color-ink-muted: var(--ink-muted);
-  --color-ink-tertiary: var(--ink-tertiary);
-  --color-ink-faint: var(--ink-faint);
+  --color-tx: var(--tx);
+  --color-tx-2: var(--tx-2);
+  --color-tx-3: var(--tx-3);
+  --color-tx-4: var(--tx-4);
+  --color-tx-5: var(--tx-5);
+  --color-tx-6: var(--tx-6);
+  --color-tx-7: var(--tx-7);
 
-  --color-accent: var(--accent);
-  --color-accent-strong: var(--accent-strong);
-  --color-accent-text: var(--accent-text);
+  --color-ac: var(--ac);
+  --color-ac-h: var(--ac-h);
+  --color-ac-tx: var(--ac-tx);
   --color-on-accent: var(--on-accent);
+  --color-brand: var(--brand);
 
-  --color-tint-03: var(--tint-03);
-  --color-tint-06: var(--tint-06);
-  --color-tint-08: var(--tint-08);
-  --color-tint-10: var(--tint-10);
-  --color-tint-12: var(--tint-12);
-  --color-tint-border: var(--tint-border);
-  --color-tint-border-strong: var(--tint-border-strong);
+  --color-st-n: var(--st-n);
+  --color-st-a: var(--st-a);
+  --color-st-g: var(--st-g);
+  --color-st-c: var(--st-c);
 
-  --color-success: var(--success);
-  --color-success-text: var(--success-text);
-  --color-success-tint: var(--success-tint);
-  --color-success-border: var(--success-border);
-  --color-warning: var(--warning);
-  --color-warning-text: var(--warning-text);
-  --color-warning-tint: var(--warning-tint);
-  --color-warning-border: var(--warning-border);
-  --color-danger: var(--danger);
-  --color-danger-text: var(--danger-text);
-  --color-danger-tint: var(--danger-tint);
-  --color-danger-border: var(--danger-border);
+  --color-tint-ac-bg: var(--tint-ac-bg);
+  --color-tint-ac-tx: var(--tint-ac-tx);
+  --color-tint-g-bg: var(--tint-g-bg);
+  --color-tint-g-tx: var(--tint-g-tx);
+  --color-tint-c-bg: var(--tint-c-bg);
+  --color-tint-c-tx: var(--tint-c-tx);
 
-  --color-band: var(--band);
-  --color-band-surface: var(--band-surface);
-  --color-band-alt: var(--band-alt);
-  --color-band-elevated: var(--band-elevated);
-  --color-band-line: var(--band-line);
-  --color-band-line-accent: var(--band-line-accent);
-  --color-band-control: var(--band-control);
-  --color-band-ink-strong: var(--band-ink-strong);
-  --color-band-ink: var(--band-ink);
-  --color-band-ink-body: var(--band-ink-body);
-  --color-band-ink-muted: var(--band-ink-muted);
-  --color-band-ink-faint: var(--band-ink-faint);
-  --color-band-accent: var(--band-accent);
-  --color-band-accent-soft: var(--band-accent-soft);
-  --color-band-underline: var(--band-underline);
+  --color-av1: var(--av1);
+  --color-av2: var(--av2);
+  --color-av3: var(--av3);
+  --color-av-tx: var(--av-tx);
+
+  --color-wc1: var(--wc1);
+  --color-wc2: var(--wc2);
+  --color-wc3: var(--wc3);
+
+  /* Jetons v1 hérités, repointés sur la palette v2. Les pages légales et la 404 les
+     emploient encore ; tout code neuf utilise les noms v2 ci-dessus. */
+  --color-page: var(--app);
+  --color-page-glass: var(--app-glass);
+  --color-surface: var(--panel);
+  --color-surface-alt: var(--group);
+  --color-line: var(--bd);
+  --color-line-soft: var(--bd-soft);
+  --color-control: var(--bd-menu);
+  --color-control-strong: var(--bd-strong);
+  --color-ink: var(--tx);
+  --color-ink-body: var(--tx-2);
+  --color-ink-muted: var(--tx-3);
+  --color-ink-tertiary: var(--tx-4);
+  --color-ink-faint: var(--tx-5);
+  --color-accent: var(--ac);
+  --color-accent-strong: var(--ac-h);
+  --color-accent-text: var(--ac-tx);
 
   /* Polices — variables posées par next/font dans app/layout.tsx */
   --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+  --font-serif: var(--font-plex-serif), Georgia, serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, Menlo, monospace;
+  --font-plex: var(--font-plex-sans), system-ui, sans-serif;
 
-  /* Échelle de texte réellement utilisée par le design */
-  --text-2xs: 0.656rem;    /* 10.5px — sur-titres mono */
-  --text-xs: 0.719rem;     /* 11.5px */
-  --text-13: 0.813rem;     /* 13px */
-  --text-sm2: 0.844rem;    /* 13.5px */
-  --text-15: 0.938rem;     /* 15px */
-  --text-155: 0.969rem;    /* 15.5px */
+  /* Rayons du design (r2 → r11) */
+  --radius-r2: 2px;
+  --radius-r3: 3px;
+  --radius-r4: 4px;
+  --radius-r5: 5px;
+  --radius-r6: 6px;
+  --radius-r7: 7px;
+  --radius-r8: 8px;
+  --radius-r9: 9px;
+  --radius-r10: 10px;
+  --radius-r11: 11px;
+  --radius-r12: 12px;
+  /* v1 hérités */
+  --radius-control: 7px;
+  --radius-card: 9px;
 
-  /* Rayons du design system */
-  --radius-pill: 6px;
-  --radius-control: 8px;
-  --radius-tile: 10px;
-  --radius-card: 12px;
-  --radius-panel: 14px;
-  --radius-app: 22px;
+  --shadow-window: var(--sh-window);
+  --shadow-pop: var(--sh-pop);
+  --shadow-sheet: var(--sh-sheet);
 
-  /* Ombres — overlays uniquement */
-  --shadow-menu: 0 14px 38px var(--shadow-overlay);
-  --shadow-tile: inset 0 1.5px 0 rgb(255 255 255 / 0.28), 0 10px 22px rgb(16 18 24 / 0.26);
-  --shadow-tile-hover: inset 0 1.5px 0 rgb(255 255 255 / 0.3), 0 18px 34px rgb(16 18 24 / 0.32);
-
-  /* Courbes d'animation */
   --ease-out-soft: cubic-bezier(0.2, 0.7, 0.2, 1);
   --ease-reveal: cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -145,39 +267,63 @@
 /* ── 3. Resets ───────────────────────────────────────────────────────────── */
 @layer base {
   body {
-    @apply bg-page text-ink font-sans antialiased;
+    @apply bg-app text-tx font-sans antialiased;
     transition: background 220ms ease, color 220ms ease;
   }
   a {
-    @apply text-accent-text no-underline transition-colors duration-[120ms];
+    @apply text-ac-tx no-underline transition-colors duration-[120ms];
   }
-  a:hover { @apply text-accent; }
-  ::selection { background: var(--tint-border); }
+  a:hover {
+    @apply text-ac;
+  }
+  ::selection {
+    background: var(--tint-ac-bg);
+  }
   :focus-visible {
-    outline: 1px solid var(--accent);
+    outline: 1px solid var(--ac);
     outline-offset: 2px;
   }
-  section[id] { scroll-margin-top: 84px; }
+  section[id] {
+    scroll-margin-top: 72px;
+  }
 }
 
-/* ── 4. Keyframes du design ──────────────────────────────────────────────── */
-@theme {
-  --animate-caret: candi-caret 1.1s steps(1) infinite;
-  @keyframes candi-caret {
-    0%, 45% { opacity: 1; }
-    55%, 100% { opacity: 0; }
+/* ── 4. Composants typographiques du design ──────────────────────────────── */
+@layer components {
+  /* Titres : IBM Plex Serif 600, interlettrage resserré (`serif-title` de l'app). */
+  .serif-title {
+    font-family: var(--font-serif);
+    font-weight: 600;
+    letter-spacing: -0.02em;
   }
+  /* En-tête de section de l'application : 10,5 px, capitales, tx-6. */
+  .caps {
+    font-size: 10.5px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--tx-6);
+  }
+  /* Sur-titre du site : même geste que `caps`, contrasté pour du texte de page. */
+  .eyebrow {
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--tx-4);
+  }
+}
 
-  /* Dépôt d'une carte dans une colonne du Kanban : l'arrivée d'un glisser-déposer,
-     pas une pastille qui change de couleur. Bornée, jouée une fois par déplacement. */
-  --animate-depose: candi-depose 320ms var(--ease-out-soft) both;
-  @keyframes candi-depose {
-    from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+/* ── 5. Keyframes ────────────────────────────────────────────────────────── */
+@theme {
+  --animate-pop: candi-pop 240ms var(--ease-out-soft) both;
+  @keyframes candi-pop {
+    from { opacity: 0; transform: translateY(6px) scale(0.99); }
     to   { opacity: 1; transform: none; }
   }
 }
 
-/* ── 5. Utilitaires d'apparition au scroll (voir reference/useScrollReveal.ts) ── */
+/* ── 6. Apparition au scroll (useScrollReveal) et utilitaires ────────────── */
 @layer utilities {
   .reveal {
     opacity: 0;
@@ -187,28 +333,46 @@
   .reveal-in {
     opacity: 1;
     transform: translateY(0);
-    /* Le `will-change` de `.reveal` est **libéré** dès la révélation, et ce n'est pas
-       une optimisation : sous Chromium, `will-change: opacity | transform` fait de
-       l'élément une *backdrop root*. Tant qu'il tient, le `backdrop-filter` de ses
-       descendants n'a plus rien à flouter — le menu de téléchargement, seul verre
-       dépoli posé dans un `.reveal`, laissait alors lire le texte du hero au travers.
-       Le fondu reste fluide sans le drapeau : opacité et transform sont déjà
-       composités. */
+    /* Le `will-change` de `.reveal` est libéré dès la révélation : sous Chromium il
+       fait de l'élément une *backdrop root*, et le `backdrop-filter` du menu de
+       téléchargement n'aurait plus rien à flouter. */
     will-change: auto;
     transition:
       opacity 640ms var(--ease-reveal),
       transform 720ms var(--ease-reveal);
   }
-  /* `transform` fait de chaque bloc révélé un contexte d'empilement. Lorsqu'un menu
-     dépasse verticalement de ce bloc, la section suivante serait sinon peinte par-dessus. */
+  /* `transform` fait de chaque bloc révélé un contexte d'empilement : un menu ouvert
+     qui en dépasse serait sinon peint sous la section suivante. */
   .reveal-in:has(button[aria-expanded="true"][aria-controls$="-panneau"]) {
     position: relative;
     z-index: 50;
   }
-  /* Barre de nav défilante sans scrollbar visible (en-tête mobile) */
   .no-scrollbar {
     scrollbar-width: none;
     -ms-overflow-style: none;
   }
-  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  /* Fenêtre d'aperçu : léger soulèvement au survol, jamais en mouvement permanent. */
+  .window-lift {
+    transition: transform 600ms var(--ease-reveal);
+  }
+  @media (hover: hover) {
+    .window-lift:hover {
+      transform: translateY(-4px);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+  .window-lift:hover {
+    transform: none;
+  }
 }
