@@ -16,6 +16,17 @@ Sources dans le code :
 
 Ne pas inventer de couleur, de rayon, de gabarit de bouton ou de composant déjà présent dans `shared/ui`.
 
+La référence visuelle est `reference_design/` : `tokens.json` pour les valeurs,
+`DECISIONS.md` pour les arbitrages, `screens/` pour les écrans. `styles.css` porte ces
+jetons sous leurs noms du handoff (`--bg-app`, `--tx-3`, `--ac`, `--st-g`…) et les expose
+en utilitaires Tailwind (`bg-panel`, `text-tx-4`, `bg-ac`, `rounded-r7`, `h-row-app`…).
+
+> **Jetons v1 hérités.** `bg-surface`, `text-ink`, `border-line`, `text-accent`,
+> `rounded-card`, `text-body`… existent encore : ils sont **repointés** sur la palette v2
+> (table en §3) et une trentaine de composants les emploient toujours. Tout code neuf ou
+> retouché n'emploie que les jetons v2 ; un composant qu'on modifie en profondeur passe
+> aux jetons v2 au passage.
+
 ---
 
 ## 1. Produit
@@ -34,104 +45,143 @@ L’interface est en **français**. Les identifiants de code sont en **anglais**
 
 Ne pas :
 
-- ressembler à un dashboard web (grosses cards, KPI en héros, dégradés, blobs) ;
-- poser des hexadécimaux ou des `rgb()` dans un composant — uniquement les classes Tailwind du thème (`bg-surface`, `text-ink`, `border-line`, `text-accent`, …) ;
-- changer l’accent (indigo `#4f5fe8` / `#6b7cff` en sombre) ni introduire un second accent (orange, vert néon, terracotta) ;
-- utiliser une police d’affichage (serif, Inter, Geist, etc.) : **system-ui** partout, **JetBrains Mono** seulement pour les identifiants, chemins et valeurs chiffrées ;
-- multiplier les ombres : `shadow-1` et `shadow-accent` sont `none` ; l’ombre n’existe que sur overlays (modale, menu, palette) ;
-- agrandir les rayons (pas de `rounded-2xl` / `rounded-3xl` décoratifs) ;
+- ressembler à un dashboard web (grosses cartes, KPI en héros, dégradés, blobs) ;
+- poser des hexadécimaux ou des `rgb()` dans un composant — uniquement les utilitaires du
+  thème (`bg-panel`, `text-tx-3`, `border-bd`, `bg-ac`…) ; seule exception, la tuile de
+  marque `bg-brand` ;
+- changer l’accent (indigo `#4A51DF`, `#5B62F0` en sombre) ni introduire un second accent ;
+- utiliser une autre police que les trois du design : **system-ui** pour l’interface,
+  **IBM Plex Serif** pour les titres d’écran, de dialogue et les scores (≥ 15 px,
+  `serif-title`), **IBM Plex Mono** pour les références (`CAN-142`), dates courtes, durées,
+  compteurs et touches ;
+- multiplier les ombres : une seule (`shadow-pop`), réservée aux menus, dialogues et
+  formulaires modaux ; `shadow-sheet` pour la feuille A4 des aperçus ;
+- agrandir les rayons au-delà de `rounded-r11` (fenêtre modale) ;
+- ajouter une police d’icônes ou une bibliothèque de graphiques (décision D7, §6) ;
 - recréer un bouton, un champ, une pastille, une barre de filtres ou une modale « pour cet écran » ;
-- mettre la recherche d’une liste paginée dans la topbar (`ContextSearch`) si l’écran a déjà une `FilterBar` (Candidatures, Entreprises, Réseau) ;
 - exposer la pile technique à l’utilisateur (Tauri, React, SQLite, IPC…) ;
 - écrire un slogan ou un hero marketing (À propos n’est **pas** une landing) ;
 - laisser un état vide sans issue (action ou `Tout effacer`) ;
-- porter l’information par la couleur seule : toute pastille a un libellé.
+- porter l’information par la couleur seule : un statut a un libellé et un `StatusGlyph`,
+  dont la forme (vide, demi, trois quarts, plein) se lit sans couleur.
 
 ---
 
 ## 3. Couleur
 
-Thème **clair par défaut**, sombre via `data-theme` / préférence système. Les classes Tailwind mappent les CSS variables.
+Thème **clair par défaut** (papier chaud), sombre par `data-theme="dark"` ou le mode
+« Système » (`prefers-color-scheme`). Chaque jeton existe dans les deux thèmes ; un
+composant n’a jamais de variante `dark:` de couleur.
 
 ### Surfaces
 
-| Classe | Rôle |
+| Utilitaire | Rôle |
 | --- | --- |
-| `bg-page` | Fond de fenêtre `#f2f3f6` / `#08090c` |
-| `bg-surface` | Panneau, liste, carte à filet |
-| `bg-surface-alt` | Pied de liste, pied de modale |
-| `bg-surface-elevated` | Overlay sans glass |
-| `bg-fill` / `hover:bg-fill-hover` | Contrôle au repos |
-| `bg-accent-tint` / `accent-tint-08` / `accent-tint-12` | Sélection, pastille, item actif |
+| `bg-app` | Fond de fenêtre, navigation, barres de titre et d’état |
+| `bg-panel` | Zone de travail : liste, fiche, inspecteur |
+| `bg-group` | Bloc dans un panneau, en-tête de groupe, section de réglage |
+| `bg-chip` | Pastille, touche, piste de jauge, barre à zéro |
+| `bg-elev` | Contrôle segmenté, surface surélevée |
+| `bg-hover` / `bg-sel` | Survol / sélection d’une ligne (`row-focus`, `row-selected`) |
+| `bg-modal` / `bg-menu` / `bg-input` | Dialogue / menu / champ |
+| `bg-canvas` | Bureau sous la feuille A4 des générateurs |
 
 ### Filets
 
-| Classe | Rôle |
-| --- | --- |
-| `border-line` | Séparation de panneau |
-| `border-line-soft` | Filet d’écran (header, FilterBar) |
-| `border-control` / `border-control-strong` | Bouton, champ, trigger |
-| `border-accent-border` | Chip actif, item sélectionné **dont les voisins sont sans filet** |
-| `border-accent` (plein) | Item sélectionné parmi des voisins **déjà bordés** — voir `ProviderGrid` |
-| `border-field` | Rangée d’inspecteur |
-
-La hiérarchie = **filet 1 px** + contraste de surface. Pas de drop-shadow sur les cartes de contenu.
+`border-bd` sépare deux panneaux ; `border-bd-soft` sépare deux lignes ou une barre d’outils
+de son contenu ; `border-bd-menu` borde un menu, un champ, un contrôle. La hiérarchie vient
+du contraste de surface et du filet 1 px, jamais d’une ombre.
 
 ### Texte
 
-| Classe | Usage |
+Sept encres, de la plus forte à la plus faible :
+
+| Utilitaire | Usage |
 | --- | --- |
-| `text-ink` | Titre, corps principal |
-| `text-ink-strong` | Valeur d’inspecteur |
-| `text-ink-muted` / `text-ink-tertiary` | Secondaire |
-| `text-ink-faint` / `text-ink-subtle` | Meta, placeholder, icône tertiaire |
-| `text-ink-label` | Eyebrow de sous-nav (`uppercase`) |
-| `text-accent` / `text-accent-text` / `text-accent-text-soft` | Accent lisible (pas le bleu brut sur fond blanc en long texte) |
-| `text-on-accent` | Sur bouton primary |
-| `text-success` / `text-warning` / `text-danger` | Statut sémantique |
+| `text-tx` | Titre, valeur, ligne sélectionnée |
+| `text-tx-2` / `text-tx-3` | Corps, libellé de ligne |
+| `text-tx-4` / `text-tx-5` | Secondaire, méta, compteur |
+| `text-tx-6` | En-tête `caps`, placeholder, désactivé |
+| `text-tx-7` | Filigrane, séparateur typographique |
+| `text-ac-tx` | Lien, accent lisible sur fond clair |
 
-### Sémantique (`Tone`)
+### Accent, statuts, teintes
 
-Vert = avancement · ambre = à traiter · rouge = échec · accent = mis en avant · neutre = attente. Composant : `StatusPill`.
+- `bg-ac` : action primaire, barre de graphique, élément actif ; `text-ac-tx` pour le texte ;
+  `bg-ac-soft` pour une surface accentuée.
+- `st-n` · `st-a` · `st-g` · `st-c` : neutre (attente), ambre (à traiter), vert
+  (avancement), rouge (échec). Portés par `StatusGlyph` ; jamais un aplat de fond.
+- Teintes de pastille, fond et encre appariés : `bg-tint-ac-bg text-tint-ac-tx`,
+  `bg-tint-g-bg text-tint-g-tx`, `bg-tint-c-bg text-tint-c-tx`.
+- Avatars : `bg-av1` à `bg-av3` avec `text-av-tx`, choisis par `Avatar`.
+
+### Correspondance des jetons v1
+
+| v1 (hérité) | v2 |
+| --- | --- |
+| `bg-page` | `bg-app` |
+| `bg-surface` | `bg-panel` |
+| `bg-surface-alt` | `bg-group` |
+| `bg-surface-elevated` / `bg-fill` | `bg-elev` / `bg-chip` |
+| `border-line` / `border-line-soft` | `border-bd` / `border-bd-soft` |
+| `border-control`, `border-field` | `border-bd-menu` |
+| `text-ink` / `text-ink-muted` / `text-ink-faint` | `text-tx` / `text-tx-3` / `text-tx-5` |
+| `text-accent`, `text-accent-text` / `bg-accent` | `text-ac-tx` / `bg-ac` |
+| `bg-accent-tint` | `bg-tint-ac-bg` |
+| `text-success` / `text-warning` / `text-danger` | `st-g` / `st-a` / `st-c` (`StatusGlyph`, teintes) |
 
 ---
 
 ## 4. Typographie
 
-`font-sans` = system-ui. Corps de page : `text-body` (12,5 px), `letter-spacing: 0.005em`.
+Interface en `font-sans` (system-ui), 12,5 px par défaut. Titres et scores en
+`serif-title` (IBM Plex Serif 600, interlettrage resserré). Données en `font-mono` (IBM Plex
+Mono). Nombres qui se rafraîchissent : `tabular`.
 
-| Classe | Taille | Poids | Où |
+| Utilitaire | Taille | Famille | Où |
 | --- | --- | --- | --- |
-| `text-display` | 23 px | 600 | Rare (chiffre fort, pas un titre de page) |
-| `text-heading` / `text-kpi` | 18 px | 600 | KPI, titre de modale |
-| `text-title` | 14,5 px | 600 | Identité d’écran (nom produit, fournisseur) |
-| `text-section` | 13,5 px | 600 | `PageHeader` h1, nom d’auteur |
-| `text-item` | 13 px | 600 | Bouton, titre de carte, ligne de liste |
-| `text-body` | 12,5 px | 400 | Corps, item de sous-nav |
-| `text-note` | 12 px | — | Sous-titre, total de FilterBar |
-| `text-label` | 11,5 px | — | Chip, aide, compteur de liste |
-| `text-meta` | 11 px | — | Erreur sous champ, note |
-| `text-eyebrow` | 10,5 px | 600, tracking 0.07em, uppercase | Labels de groupe (Filtres, sous-nav) |
-
-Nombres : classe `tabular`. Aucun raccourci clavier de navigation : la coque n’en expose pas, et rien ne les annonce.
+| `text-hero` · `text-score` · `text-stat` · `text-doc-score` | 32 · 26 · 25 · 22 px | serif | Scores, chiffres d’analyse |
+| `text-screen` | 21 px | serif | Titre d’écran, nom d’une fiche |
+| `text-overlay-title` · `text-empty` | 20 · 19 px | serif | Surcouche plein écran, état vide |
+| `text-form` · `text-dialog` · `text-lead` | 17 · 16,5 · 15 px | serif | Formulaire modal, dialogue, mois du calendrier |
+| `text-entry` | 13,5 px | sans 500 | Titre de carte, d’entrée |
+| `text-row` | 13 px | sans | Ligne de liste, corps de lecture |
+| `text-ui` | 12,5 px | sans | Défaut de l’interface, bouton |
+| `text-small` · `text-sub` · `text-tiny` | 12 · 11,5 · 11 px | sans | Méta, aide, note |
+| `caps` | 10,5 px | sans 500, capitales, `.04em`, `tx-6` | En-tête de section, de colonne |
+| `text-caps` + `font-mono` | 10,5 px | mono | Référence, date courte, compteur |
+| `text-kbd` | 9,5 px | mono | Touche (`Kbd`) |
 
 ---
 
-## 5. Densité et rayons
+## 5. Densité, dimensions, rayons
 
-Candilog est **dense**. Contrôles à **30 px** (`h-control`). Topbar **46 px**. Rail **68 px**. Sous-nav **186 px**.
+Candilog est **dense**. Fenêtre utilisable dès **940 × 560 px** ; la navigation se réduit
+sous **1060 px** (préfixe `wide:`).
 
-| Jeton | Valeur | Usage |
+| Élément | Utilitaire | Valeur |
 | --- | --- | --- |
-| `rounded-card` | 12 px | Carte à filet (`SettingsCard`) |
-| `rounded-tile` | 10 px | Tuile, pastille d’empty state |
-| `rounded-field` | 9 px | Champ formulaire |
-| `rounded-button` / `rounded-control` | 8 px | Bouton, item de sous-nav, FilterTrigger |
-| `rounded-chip` | 7 px | Chip, option de filtre |
-| `rounded-pill` | 6 px | StatusPill |
-| `rounded-overlay` | 14 px | Modale, popover Filtres, confirmation |
+| Barre de titre | `h-titlebar` | 40 px |
+| Barre d’outils d’écran | `h-toolbar` | 38 px |
+| Barre d’état | `h-statusbar` | 34 px |
+| Navigation | `w-nav` / `w-nav-sm` | 202 px / 52 px |
+| Contrôle | `h-control` | 30 px |
+| Ligne de candidature · relation · document | `h-row-app` · `h-row-rel` · `h-row-doc` | 34 · 38 · 40 px (30 · 34 · 36 en densité compacte) |
 
-Hover : `duration-hover` (120 ms), couleur seulement. `prefers-reduced-motion` : pas d’entrée de palette.
+Les hauteurs de ligne suivent la préférence de densité (`data-density`, Réglages →
+Apparence) : ne jamais les coder en pixels dans un composant.
+
+| Rayon | Usage |
+| --- | --- |
+| `rounded-r2` · `r3` | Barre de graphique, jauge · case à cocher, feuille A4 |
+| `rounded-r4` · `r5` | Touche · badge, pastille |
+| `rounded-r6` · `r7` | Chip · contrôle (bouton, champ) |
+| `rounded-r8` · `r9` | Carte · bloc, section |
+| `rounded-r10` · `r11` | Carte de modèle IA · dialogue, formulaire modal |
+
+Mouvement : couleur au survol en `duration-hover` (120 ms) ; entrée des menus et
+dialogues `animate-pop` ; squelette `animate-sk`. La réduction de mouvement ramène toutes
+les durées à 0,01 ms.
 
 Focus clavier : `outline 1px accent-focus`, offset 0 — déjà sur `:focus-visible` global.
 
@@ -139,13 +189,19 @@ Focus clavier : `outline 1px accent-focus`, offset 0 — déjà sur `:focus-visi
 
 ## 6. Icônes
 
-**Material Symbols Rounded**, police locale, `wght` 300, jamais FILL sauf `filled`.
+Aucune police d’icônes (décision D7). Trois moyens, dans cet ordre :
 
-Composant : `Icon` (`src/shared/ui/Icon.tsx`). Tailles usuelles : 14 (pastille), 15–16 (bouton, nav), 17 (header de carte), 20 (empty).
+- **`LineIcon`** (`src/shared/ui/LineIcon.tsx`) : les 11 tracés dessinés pour Candilog
+  (navigation, signet, export, import, recherche) — grille 16, trait 1,4 px, `currentColor`.
+  N’en ajouter qu’à partir d’un tracé livré dans `reference_design/assets/icons/`.
+- **Glyphes typographiques** des maquettes : `‹ ›` (précédent, suivant), `▾` (liste,
+  dépliable), `✕` (fermer, retirer), `✓` (choisi, terminé), `+`, `→`, `↶ ↷` ; en bouton
+  seul, `GlyphButton`, qui exige un `label`.
+- **`StatusGlyph`** quand l’icône portait un état (attention, erreur, réussite).
 
-La police embarquée est une **sous-police** réduite aux icônes de `src/shared/ui/icon-names.ts`, qui est aussi le type `IconName` du composant : une icône hors de cette liste est refusée par `tsc` plutôt qu'affichée en toutes lettres. Ajouter une icône : voir `docs/DEVELOPMENT.md`.
-
-Noms d’icônes des sections : `src/app/router/routes.ts`. Logo produit : `src/assets/logo-candilog.svg` (36×36 dans le rail ; variante sombre `logo-candilog-dark.svg` ; coche `#4FC27A`).
+Sinon, pas d’icône : le libellé suffit. Une icône purement décorative à côté d’un titre ou
+d’une ligne n’est pas remplacée. Marque : `BrandMark` (tuile `#5B62F0` fixe dans les deux
+thèmes).
 
 ---
 
@@ -160,104 +216,242 @@ Noms d’icônes des sections : `src/app/router/routes.ts`. Logo produit : `src/
 
 ---
 
-## 8. Coque (ne pas recréer)
+## 8. Coque v2 (ne pas recréer)
 
 ```
-┌──────┬──────────────────────────────────────────────┐
-│ Rail │ Topbar (accessoires / IA)                   │
-│ 68px │──────────────────────────────────────────────│
-│      │ SubNav 186px │  main  (#contenu)             │
-│      │ (si >1 route)│                               │
-└──────┴──────────────┴───────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│ Barre de titre 40 px : fil d'Ariane · onglets de vue · mention│
+├──────────┬───────────────────────────────────────────────────┤
+│ Nav      │ main (#contenu) — panneau `bg-panel`, rayon 9      │
+│ 202 px   │ (barre d'outils 38 px de l'écran, contenu)        │
+│ (52 px   │                                                   │
+│ < 1060)  │                                                   │
+├──────────┴───────────────────────────────────────────────────┤
+│ Barre d'état 34 px : décompte (mono) · contrat clavier       │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-- `AppShell` : `h-screen overflow-hidden`, glass sur rail / topbar / sous-nav (`glass-rail`, `glass-topbar`, `glass-subnav`).
-- `NavRail` : 7 sections, tooltip = `long_label`, item actif en teinte accent. Pas de raccourcis clavier de navigation (cf. §4).
-- `SubNav` : eyebrow = `short_label` uppercase ; item 30 px ; actif `bg-accent-tint-12 text-accent-text-soft`.
-- `TopBar` : accessoires à droite via `ContextBarAccessory` (sélecteur IA `AiQuickSelector`, note, ou recherche **seulement** si l’écran n’a pas de FilterBar). Le titre de section vit dans le `PageHeader` de l’écran, pas dans la topbar.
-
-Le workspace (`main`) est un **outil plein cadre** : header d’écran + contenu, sans padding de page type site web (sauf Réglages, voir §10).
-
----
+- `AppShell` : fournit le registre de commandes (`shared/lib/commands.tsx`) et le chrome
+  (`shared/lib/chrome.tsx`). Les barres ne défilent jamais ; seule la zone de contenu défile.
+- `TitleBar` : zone de glissement (`data-tauri-drag-region`). Sous macOS la fenêtre est en
+  `titleBarStyle: Overlay` et la barre réserve 68 px aux feux natifs ; sous Windows et Linux
+  la barre système est conservée et cette barre se place dessous. Onglets de vue issus de
+  `routes.ts` (`DESTINATIONS[].tabs`).
+- `Sidebar` : six destinations avec décompte (`useNavCounts`, requêtes rangées sous la clé
+  racine de chaque feature), Réglages et indicateur d'IA en pied. `wide:` = ≥ 1060 px.
+  Sous les destinations, la section « Vues » (`SavedViewsNav`, masquée sous 1060 px) liste
+  les vues enregistrées de Candidatures avec leur décompte ; `⋯` ou clic droit : renommer,
+  dupliquer, supprimer (confirmé).
+- `StatusBar` : un écran y écrit son décompte et son contrat clavier par
+  `useChrome({ crumb, aside, status, keys })` ; « Actions ⌘K » est toujours présent.
+- **Réglages** : surcouche (`SettingsOverlay`, état `settings` du `ui-store`), jamais une
+  route. `⌘,` l'ouvre, `Échap` la ferme en rendant l'écran intact.
+- **Palette** `⌘K` : `CommandPalette` ; la coque inscrit créer / aller à / réglages
+  (`useShellCommands`), chaque écran ajoute ses actions sur la sélection par
+  `useRegisterCommands`. Aucune commande qui n'aboutit pas.
+- **Raccourcis** : `useShortcut` (`shared/hooks/`) ignore la frappe dans un champ et se tait
+  quand une surface est ouverte (`hasOpenSurface`). `G` puis `A/C/R/D/P` change de
+  destination. N'inscrire dans Réglages → Raccourcis (`app/overlays/shortcutList.ts`) qu'un
+  raccourci réellement câblé. Notation imprimée par `Kbd` / `formatShortcut` : `⌘K` sous
+  macOS, `Ctrl K` ailleurs.
+- Pas de tour d'accueil (décision D1) : le premier lancement ouvre Aujourd'hui, dont l'état
+  vide porte l'amorce.
 
 ## 9. Recettes d’écrans
 
 Réutiliser la recette du voisin plutôt que d’en inventer une.
 
-### Liste filtrée (Candidatures, Entreprises, Réseau)
+### Relations (Entreprises, Contacts)
+
+- Un seul écran (`features/relations`) : bascule Entreprises / Contacts dans la barre
+  d'outils (et non dans la barre de titre), recherche `/`, « + Filtre » (`F`) pour les
+  critères fins de la v1 (secteur, type, taille ; rôle), action « Nouvelle entreprise » /
+  « Nouveau contact » (`N`).
+- Liste groupée, une requête SQLite par groupe : entreprises **En cours** (une candidature
+  non refusée), **Repérées** (aucune), **Clôturées** (toutes refusées) ; contacts
+  **Recruteurs et managers** (interlocuteurs d'une candidature) et **Réseau**. Lignes de
+  38 px : avatar, nom et sous-titre, rattachement, dernière référence, date.
+- Inspecteur 300 px (flottant sous 1060 px) : trois actions (Nouvelle candidature, Site web,
+  Note ; Écrire, Relancer, Note), champs, candidatures rattachées, **Historique** (faits
+  enregistrés lus par le backend : candidatures, statuts, entretiens, relances faites, notes,
+  ajout de la fiche ; date `JJ-MM` en mono, candidature concernée sous le fait), notes de la
+  fiche. « Note » et le `+` de l'historique ouvrent « Ajouter une note » (texte et date du
+  fait) ; une note se supprime par son `✕`, après confirmation. `mailto:` et `tel:` restent
+  des liens natifs ; un lien web passe par `openExternal`.
+- « CSV » (`states/dialog-csv-rel.png`) : dialogue d'information qui annonce les deux
+  fichiers (`entreprises-<date>.csv`, `contacts-<date>.csv`), leurs lignes et 9 colonnes,
+  le séparateur et l'encodage ; puis le dialogue natif. Tout est exporté, sans la recherche
+  (`DECISIONS.md` E10) ; le fichier des contacts est écrit à côté de celui des entreprises.
+
+### Documents
+
+- Un seul écran (`DocumentsPage`) : onglets Tous / CV / Lettres / Analyses dans la barre
+  d'outils (routes `/documents`, `/documents/resumes`, `/documents/letters`,
+  `/documents/analyses`), recherche `/`, actions Importer, Générer une lettre, Générer un
+  CV (`N`).
+- Liste groupée CV / Lettres de motivation, lignes de 40 px : feuille, nom et sous-titre,
+  score ATS en pastille (vert dès 80, accent dès 65, rouge en dessous), date, entreprise.
+  Clic droit : Dupliquer ou Copier le texte, Supprimer.
+- Inspecteur 300 px (dès 1060 px) : Ouvrir (éditeur A4, qui porte l'aperçu pleine page),
+  PDF (`⌘E`), score ATS et constats, détails, **Versions** (`v3`, mention, date ; la
+  courante est marquée). Cliquer une autre version ouvre « Revenir à la version vN ? »
+  (registre confirmation : version courante, version restaurée, versions conservées) ;
+  rien n'est effacé. Enregistrer un document rouvert depuis l'inspecteur en ajoute une
+  version. La comparaison de versions est hors v2. Une ancienne version sans contenu
+  structuré le dit au lieu d'offrir un export vide.
+
+### Profil
+
+- Colonne de 210 px : complétude (`serif`, segments par section), sections en onglets
+  verticaux (`↑ ↓`, `⏎` modifie) avec leur état — disque plein complet, demi-disque partiel,
+  cercle vide — et leur décompte, puis « Importer un CV » et « Réinitialiser mon profil ».
+- Contenu de la section : titre serif, phrase d'intention, pastille « Complet », puis champs
+  (grille 160 px) ou entrées (liseré gauche, période en mono, retrait `×` confirmé) et
+  « Ajouter » (`⌘N`). Chaque section s'édite dans son formulaire validé existant.
+- La photo se gère dans la section Identité ; Projets et Présence en ligne restent des
+  sections à part entière.
+
+### Générateurs (CV, lettre)
+
+- Surcouche plein écran (`WorkSurface` dans `shared/ui`, `GeneratorFrame` pour Documents) :
+  `×` ou `Échap` ferme (sauf pendant une
+  génération), fil « Documents › Générer … », actions à droite, trois colonnes — réglages
+  (260 px), feuille A4 sur le bureau `bg-canvas`, déroulé (270 px, dès 1060 px) — et barre
+  d'état. `⌘⏎` génère, `⌘S` enregistre : la surcouche porte ses propres raccourcis, ceux
+  d'écran se taisant sous une surface.
+- « Offre visée » (`OfferSource`) : s'ouvre sur les candidatures ouvertes du suivi — le
+  texte est prérempli avec ce que Candilog en sait, sans rien inventer — sauf si une offre
+  est déjà fournie ; sinon le texte collé.
+- « Étapes », puis « En cours » et « Terminé » : les étapes annoncées par le backend, dans
+  l'ordre prévu, avec la durée **mesurée** de chacune en secondes entières (`useStepLog`) ;
+  une étape dont l'annonce a été manquée mais qui est dépassée est faite, sans durée. Sous
+  les étapes pendant le traitement, `RunMeter` : barre des étapes terminées, temps écoulé,
+  tokens rapportés. La barre d'état dit « génération en cours · étape 2 / 4 ».
+- « Arrêter » (`⌘.`) ouvre « Interrompre la génération ? » (`StopGenerationDialog`) :
+  l'étape en cours, le temps écoulé, « Laisser finir » ou « Interrompre ».
+- « Ce que l'IA peut utiliser » (CV) et « Arguments autorisés » (lettre) — `SectionToggles` :
+  une ligne par section du profil avec son nombre d'éléments et un interrupteur ; une section
+  vide ne se règle pas ; l'en-tête compte les sections autorisées (« 5 / 6 »). Le CV a un
+  ton (Sobre, Professionnel, Direct) mais pas de longueur : il tient sur une page. Aucun
+  réglage que le backend ne sait pas honorer n'est affiché (pas de prétentions salariales).
+- Analyse de CV (`screens/09`) : même surcouche sans colonne droite. À gauche, le CV (PDF)
+  « face à » l'offre, puis le score calculé par Candilog et son détail ; au centre, chaque
+  exigence de l'offre (`score.evaluations`) — couverte, partielle, absente — avec la preuve
+  citée du CV ou « introuvable ». Une exigence manquante sans évaluation détaillée reste
+  listée comme absente. Le formulaire est figé, pas masqué, pendant l'analyse.
+- Import de CV (`screens/17`) : même surcouche rattachée au Profil — méthode d'analyse à
+  gauche, phases au centre (choix du fichier, analyse, revue élément par élément éditable,
+  bilan), « Importer les éléments sélectionnés » (`⌘S`) en haut. « Annuler » arrête aussi
+  une analyse en cours ; rien n'est écrit avant validation.
+- Lettre, colonne droite après rédaction (`LetterFitPanel`) : « 62 / 100 · adéquation »,
+  « jusqu'à 81 » (score si toutes les recommandations restantes étaient suivies), barre à
+  deux teintes ; recommandations « Aborder « … » » avec le fait du profil cité, gain `+n`,
+  « Appliquer » (consigne envoyée aux corrections) et « Ignorer » ; puis « Absent de votre
+  profil ». Sans offre, le panneau n'apparaît pas.
+- Lettre : avant rédaction, feuille neutre et lien « Écrire la lettre moi-même » qui ouvre
+  l'éditeur ; entreprise, poste, destinataire, ton et longueur restent visibles ; la barre
+  « Corrections » sous la feuille envoie une consigne libre ou rapide (« Plus court »…), les
+  consignes se cumulent, l'historique vit à droite.
+
+### Candidatures v2 (Liste, Kanban)
 
 ```
-PageHeader (titre + sous-titre, sans search ni primary si la barre les porte)
-FilterBar : SearchInput toolbar 300px · Filtres · chips · Tout effacer · {n} nom(s) · actions à droite
-contenu (Kanban/table ou MasterList + fiche)
+Barre d'outils 38 px : puces · + Filtre F · Tout effacer ……… n / total · Rechercher / · CSV · Ajouter N
+contenu (liste groupée par statut ou Kanban) + inspecteur 380 px (flottant sous 1060 px)
+barre groupée 40 px dès qu'une case est cochée
 ```
 
-- `SearchInput variant="toolbar"` : placeholder **« Rechercher… »**.
-- `FilterMenu` + `FilterGroup` + `FilterOption` (pastilles, `aria-pressed`) : largeur
-  automatique selon la densité ; au-delà de 6 options, chaque groupe affiche
-  « Voir plus » / « Voir moins ».
-- Un critère = un `ActiveFilterChip` « Champ · Valeur ».
-- `activeFilterCount` **exclut** la recherche libre (pastille du bouton Filtres).
-- La recherche et les filtres sont des **paramètres de requête backend**, jamais un `.filter()` sur la page affichée.
-- Action primaire (« Nouvelle », « Nouveau contact ») **dans** `FilterBar.actions`, pas dans le `PageHeader`.
-- Vide + critères : « Aucun résultat » + bouton Tout effacer.
+- **Puces** (`ApplicationToolbar`) : une par critère, « Champ est / n'est pas Valeurs ».
+  Un clic inverse la condition (`excluded` côté backend), la croix retire le critère. Les
+  bornes (heures, période d'envoi) ne s'inversent pas.
+- **« + Filtre »** (`ApplicationFilterMenu`, sur `Menu`) : deux niveaux, champ puis valeur ;
+  `←` revient aux champs. Tous les critères backend y figurent, y compris les critères fins
+  de la v1 (domaine, type et taille d'entreprise, secteur, régime, heures, poste, ville,
+  période). Une saisie invalide est signalée dans le menu et n'est jamais appliquée.
+- **« Grouper : statut ▾ »** (barre de titre, Liste seulement) : cycle en place statut →
+  entreprise → contrat, aussi dans `⌘K` (« Affichage »). Hors statut, les groupes et leurs
+  décomptes viennent de SQLite (`applications_groups`, tout le filtre) ; les huit premiers
+  sont ouverts, un groupe replié n'est pas chargé. Une action de barre de titre est une
+  commande nommée (`useChrome({ action })`), le chrome étant sérialisé.
+- Recherche : `/` y place le focus, `Échap` l'efface puis la quitte.
+- **Vues enregistrées** : « Enregistrer la vue » nomme le filtre courant ; une vue ouverte
+  (`?view=<id>`, `ApplicationsRoute`) donne son nom au fil d'Ariane et propose « Mettre à
+  jour la vue » dès que le filtre s'en écarte. Le lien entre Candidatures et vues vit dans
+  la couche `app`, jamais d'une feature à l'autre.
+- **Barre groupée** (`BulkBar`) : changer le statut (`S`), exporter en CSV (`⌘E`),
+  supprimer (`⌘⌫`), désélectionner (`Échap`). Elle agit sur les cases cochées, jamais sur
+  la seule fiche ouverte.
+- **Kanban** : colonnes élastiques 236–340 px sur `bg-group`, défilement horizontal ;
+  bandeaux « sans réponse depuis plus de 14 jours » et « entretien aujourd'hui » ; cartes
+  compactes (référence, échéance, intitulé, entreprise, contrat, date) ; chaque colonne est
+  paginée côté SQLite (`ColumnPager`). Un changement de statut affiche `CAN-142 → Entretien`.
 
-Références : `ApplicationFilters`, `CompanyFilters`, `ContactFilters`.
+### Analyse
 
-### Maître-détail (Entreprises, Réseau)
+- Barre d'outils : période (30 j, 90 j, tout) et « Exporter en CSV ».
+- Quatre indicateurs (envoyées, taux de réponse, entretiens, délai moyen) sans flèche de
+  tendance : il n'existe pas de période de comparaison, une variation serait inventée.
+- Blocs sur `bg-group` : parcours des candidatures (part et perte à chaque étape), rythme
+  d'envoi, taux de réponse par canal (`Analytics.channels`, même définition d'une réponse
+  que les indicateurs), « Ce que disent ces chiffres » (`model/insights.ts` : constats
+  vérifiables dans les blocs voisins, jamais de projection), candidatures à relancer,
+  performance.
 
-- `MasterList` : 37 % largeur, min 300 px, `bg-surface`, filet droit.
-- Item : `MasterListItem` (initiales, titre, sous-titre, `MasterListTag`).
-- Fiche à droite ; si rien de sélectionné et liste non vide, ouvrir le premier item.
-- Pagination : `Pager` dense dans le pied de liste — dix fiches par page pour Entreprises
-  (`COMPANIES_PAGE_SIZE`), `PAGE_SIZE` ailleurs.
+### Calendrier
 
-### Table / Kanban (Candidatures)
+- Barre d'outils : `‹ Mois ›` en serif, « Aujourd'hui », légende avec les décomptes, vues
+  Mois / Semaine / Jour (décision D6), « Programmer une relance », « Nouvel entretien ».
+- Grille plate à filets `bd-soft`, aujourd'hui sur `bg-sel` avec son numéro en pastille
+  `ac`. Pastilles (`eventStyle`) : l'entreprise d'abord, l'heure en mono ; entretien vert,
+  relance à venir neutre à glyphe ambre, relance en retard rouge, relance faite atténuée.
+  Deux pastilles par case, puis « +N ».
 
-- `FilterBar` identique.
-- Liste : `DataTable` + `CellIdentity` + `StatusPill` + `Pager`.
-- Kanban : colonnes denses, chacune paginée indépendamment côté SQLite par `ColumnPager` ;
-  sélection multiple → actions dans la FilterBar (pas une barre flottante SaaS).
-- Fiche : `Inspector` (380 px, redimensionnable 320–460, glass), rangées `InspectorRow`.
+### Aujourd’hui
 
-### Tableau de bord (Aujourd’hui)
-
-- Blocs sur `bg-surface` dans des `TodayCard` (`analytics/view/components/TodayUi.tsx`) :
-  intitulé en eyebrow, pastille de compte ou action à droite, contenu dessous. Pas de
-  bandes posées à même le fond de page ni de filet vertical entre les colonnes.
-- Bandeau de compteurs pleine largeur, puis deux colonnes : `Prochainement` et `À faire`
-  à gauche, `Candidatures récentes`, `Activité` et `Pipeline` à droite.
-- Chaque panneau est une région nommée : `aria-label` égal à son intitulé.
-- Bureau entièrement vide : `TodayEmpty` prend l’écran, sans panneau.
+- Bloc centré de 1 180 px : titre serif de la date, résumé mono, puis trois horizons (en
+  retard, aujourd'hui, cette semaine) sur `bg-group` ; lignes de 44 px (34 px pour la
+  semaine). `⏎` fait la relance focalisée, `R` la reporte.
+- Colonne Situation de 290 px (dès 1060 px) : répartition des statuts, 30 derniers jours,
+  candidatures sans réponse.
+- Base neuve : « Votre suivi commence ici » ; rien de dû : « Rien à faire aujourd'hui ».
 
 ### Graphiques (Aujourd’hui, Analyses)
 
-- Une seule bibliothèque : **Recharts**, en SVG, dans `analytics/view/components/charts`.
-- Couleurs prises dans `chartTheme.ts`, qui ne contient que des `var(--candilog-…)` :
-  le SVG résout la variable au rendu, un changement de thème repeint donc sans re-render.
+- Aucune bibliothèque de graphiques (décision D7) : des primitives du design dans
+  `analytics/view/components/charts` — barres en blocs aux jetons de couleur (`bg-ac`,
+  `bg-chip` pour un zéro), repère de la valeur maximale, étiquettes espacées sur une série
+  longue. Les jetons suivent le thème sans re-render.
 - Aucune valeur accessible par le seul survol : axe visible ou liste `sr-only` équivalente.
 - Une seule série → pas de légende, la carte la nomme. Deux séries ou plus → légende
   systématique, avec libellé **et** compte, car les teintes de statut vert et rouge sont
   proches pour une deutéranopie.
 - États vides gérés par le graphique lui-même (`EmptyState`), pas par l’écran appelant.
 
-### Réglages (IA, Sauvegardes, Mises à jour, À propos)
+### Réglages (surcouche `⌘,`)
 
-- `PageHeader` + `SettingsBody` (padding 18 / 16 / 22, gap 4, scroll).
-- Colonne de contenu **max 720 px** quand c’est une fiche (À propos).
-- `SettingsCard` : en-tête à filet, icône tertiaire 17 px, titre `text-item`.
-- `ActionCard` : **une action** (export, rechercher une MAJ) — pas une grille de bénéfices produit.
-- `SettingsHero` : écrans de **maintenance** (version, sauvegarde), pas un slogan.
-- À propos : identité (logo + nom + version) + faits (`InspectorRow`) + auteur. **Pas** de hero, **pas** de pile technique.
-- IA : colonne bornée à 1000 px, blocs sur `bg-surface` — bandeau fournisseur `AiHero` (logo, nom, modèle, état, test), **aussi pour l’IA locale** (icône générique `smart_toy` tant qu’aucune famille n’est active, sinon logo Mistral ou Qwen selon `family`, libellé « Tester l’IA », état dérivé du cycle local), puis les `SettingsCard` `Fournisseur`, `Configuration`, `Génération`. L’apparence (thème) vit dans **Personnalisation**. Champs plafonnés à 380 px : un « Endpoint » de 600 px de large ne se lit pas mieux. L’état distant vient de `model/aiStatus.ts` (`aiStatus`) et existe **avant** tout test manuel ; la clé API n’est jamais rendue en clair. Le fournisseur local s’appelle **« IA locale »** dans l’interface, jamais d’après une famille de modèles : il retient l’artefact adapté à la machine. Sa tuile porte l’icône générique `smart_toy` (pas de pile Mistral+Qwen) — Qwen n’est jamais une carte fournisseur. Le logo du modèle actif vient de la propriété `family` renvoyée par le backend — jamais d’une recherche de sous-chaîne dans le nom affiché. Les cartes du catalogue local (`ManagedOllamaPanel`) et les tuiles de modèles distants (`RemoteModelPicker`, après Actualiser) partagent le même langage : filet, `bg-accent-tint-12` à la sélection, coche `check_circle`, pied d’actions sur `bg-surface-alt` pour le local. Le sélecteur rapide topbar (`AiQuickSelector`) reprend ce couple bordure/teinte pour fournisseurs et modèles. La liste **Profils disponibles** reprend les `evaluations` du backend (`compatibility` + `reason`) : un profil `unsupported` est étiqueté « Incompatible » et son installation est désactivée. Le profil **Ultra léger** (Qwen) affiche un bandeau informatif « Mode ultra léger », jamais une alerte d'erreur. Un benchmark `too_slow` avertit **toujours**, y compris sur le plus petit profil où aucun repli n’existe : l’avertissement dépend du fait mesuré, pas de la disponibilité d’une solution. Enfin, le résultat de « Tester l’IA » est un message fixe : la prose du modèle n’est pas un état — interrogé sur « l’assistance locale », il annonçait qu’une « équipe d’assistance » était opérationnelle. La `ProviderGrid` échappe au couple `accent-border` / `accent-tint` des listes : ses huit tuiles étant toutes bordées et remplies, ce couple ne produisait qu'un écart de contraste de 1,20:1 en clair et 1,09:1 en sombre entre la tuile choisie et ses voisines — invisible. Elle emploie donc un filet accent plein, `bg-accent-tint-12`, et une pastille `check_circle` : un repère non chromatique, seul garant que le choix reste lisible dans les deux thèmes et sans distinguer les couleurs.
-- Mises à jour : colonne bornée à 760 px, une carte de surface unique — vignette d’état, phrase, pastille et action en tête, puis les versions sous un filet, puis la progression. Les notes de version, quand il y en a, forment une `SettingsCard` `Nouveautés`. Rien sur le mécanisme de téléchargement — cela n’aide pas à décider.
+- Surcouche plein écran (`screens/18-settings.png`) : `✕` et fil « Réglages › section » dans
+  la barre de titre, version à droite, sections à gauche, barre d'état « appliqué
+  immédiatement · propre à cet ordinateur ».
+- Chaque section : `SettingsSection` (titre serif, phrase qui dit l'**effet**) puis des
+  `SettingsRow` — libellé et conséquence à gauche, contrôle à droite, filet bas. Apparence,
+  Données (sauvegarder, restaurer, réinitialiser — chacune confirmée), Raccourcis, Mises à
+  jour (état, version installée et nouvelle, action, progression, nouveautés), À propos.
+- Rien sur le mécanisme de téléchargement d'une mise à jour : cela n'aide pas à décider.
+- Section Intelligence artificielle : renvoi vers l'écran IA et ligne « Confirmation avant
+  envoi distant » (`RemoteSendConsents`) — les services dispensés, « Redemander ».
+- Premier envoi distant (`RemoteSendDialog`, `states/dialog-confirm-remote-send.png`) :
+  registre confirmation, « Cette tâche sera envoyée à Anthropic », ce qui part et pour quelle
+  tâche, conséquences (destinataire, tâche, « 1 sur 5 »), interrupteur « Ne plus demander
+  pour … » **désactivé** par défaut, « Annuler » / « Envoyer ». Monté une fois dans la coque.
+
+- IA (`screens/12`, `13`) : colonne **Fournisseurs** de 190 px (onglets verticaux : état « Local · n modèles », « Clé enregistrée », « Aucune clé », point vert quand le fournisseur est prêt, mention « principal »), puis le détail : nom en serif, description **factuelle** et trois jauges — confidentialité, coût, hors connexion ; jamais une promesse de qualité. L'IA locale affiche ses modèles installés en lignes (`ManagedOllamaPanel` : Utiliser, Tester, Supprimer) et ouvre **Installer l'IA locale** (`LocalInstallOverlay`, `screens/14`, sur `WorkSurface`) : à gauche les trois étapes et la fiche du modèle choisi, au centre les modèles en boutons radio avec jauges, puis le déroulé et « Installation terminée » ; annulation et échec s'affichent en place, jamais par toast, un fournisseur distant sa configuration (modèle et `RemoteModelPicker` après Actualiser, endpoint, clé jamais rendue en clair, mode, température) avec « Tester la connexion » (`T`) et « Enregistrer », qui en fait le fournisseur principal. En bas, **Qui fait quoi** (`AiTaskRouting`, `reference_design/AI_TASK_ROUTING.md`) : cinq tâches, le modèle de chacune, point vert (local), ambre (distant) ou gris (désactivée) ; le sélecteur propose le fournisseur principal, les modèles installés, les fournisseurs distants configurés et « Aucun » ; le choix est enregistré aussitôt, sans repli. Le fournisseur local s’appelle **« IA locale »**, jamais d’après une famille de modèles. La liste **Profils disponibles** reprend les `evaluations` du backend (`compatibility` + `reason`) : un profil `unsupported` est étiqueté « Incompatible » et son installation est désactivée. Un benchmark `too_slow` avertit **toujours**, y compris sur le plus petit profil où aucun repli n’existe. Le résultat d'un test de connexion est un message fixe : la prose du modèle n’est pas un état.
 
 ### Formulaires
 
-- Toujours `ModalHost` (620 px par défaut, overlay `rounded-overlay`, pied fixe visible).
+- Toujours `ModalHost` (620 px par défaut, `rounded-r11`, pied fixe visible).
 - Champs : `FormField` + `TextInput` / `Select` / `TextArea` / `DateInput` / `TimeInput` / `EntityPicker`.
 - Erreur **sous** le champ (`aria-invalid`, `aria-describedby`), jamais une infobulle seule.
-- Requis : astérisque danger sur le libellé.
+- Requis : mention `obligatoire` en ambre (`st-a`) tant que le champ est vide, pas de contour rouge.
 
 ### Destruction
 
@@ -280,29 +474,28 @@ Références : `ApplicationFilters`, `CompanyFilters`, `ContactFilters`.
 
 ## 10. Composants — quand les prendre
 
-Toujours importer depuis `@/shared/ui` (sauf `SettingsUi`, propre aux réglages).
+Toujours importer depuis `@/shared/ui`.
 
 | Besoin | Composant |
 | --- | --- |
-| Action | `Button` (`primary` \| `secondary` \| `ghost` \| `danger`), `h-control` 30 px |
-| Icône seule | `IconButton` 30×30, `aria-label` obligatoire |
-| Recherche d’outil | `SearchInput variant="toolbar"` dans une `FilterBar` |
-| Recherche topbar (docs, etc.) | `ContextSearch` via `ContextBarAccessory` |
-| Filtres d’une liste | `FilterBar` + `FilterMenu` + chips |
-| Titre d’écran | `PageHeader` (h1 `text-section`) |
-| Bascule Kanban/Liste | `SegmentedControl` |
-| Statut | `StatusPill` + `Tone` |
-| Attribut sans statut | `Tag` |
-| Liste maître | `MasterList` / `MasterListItem` / `MasterListTag` |
-| Tableau | `DataTable` |
-| Fiche latérale | `Inspector` + `InspectorRow` + `InspectorSectionLabel` |
-| Split redimensionnable | `SplitPane` / `TripleSplitPane` |
-| Modale métier | `ModalHost` |
-| Date / heure | `DateInput` / `TimeInput` (saisie **ou** picker, format FR) |
+| Action | `Button` (`primary` \| `secondary` \| `ghost` \| `danger` \| `link`), raccourci par `shortcut` |
+| Touche imprimée | `Kbd` (`⌘K` sous macOS, `Ctrl K` ailleurs) |
+| Statut | `StatusGlyph` (`n` · `a` · `g` · `c`) ; pastille sans statut : `Tag` |
+| Entreprise, personne | `Avatar` |
+| Interrupteur | `Switch` |
+| Choix court (2 à 4 options) | `SegmentedControl` |
+| Menu (clic droit, `⋯`, « + Filtre ») | `Menu` (entrées, sections, second niveau avec `onBack`) |
+| Confirmation | `ConfirmDialog` (registres destruction, confirmation, information) |
+| Formulaire | `ModalHost` + `FormField` / `TextInput` / `Select` / `DateInput` / `EntityPicker` |
+| Surcouche plein écran | `WorkSurface` + `PaneSection` / `StepList` / `RunMeter` |
+| Split redimensionnable | `SplitPane` |
 | Pagination | `Pager` / `ColumnPager` |
-| KPI compact (Analyses) | `StatCard` — pas en bandeau de chaque écran |
-| Graphique | `analytics/view/components/charts` (Recharts) — jamais des `div` à largeur calculée |
-| Surface glass overlay | classes `glass-popover`, `glass-modal` |
+| Chargement, vide, erreur | `Skeleton`, `EmptyState`, `ErrorBanner` |
+| Icônes | `LineIcon`, glyphe typographique ou `GlyphButton` (§6) |
+| Graphique | `analytics/view/components/charts` — primitives du design, liste `sr-only` des valeurs |
+
+La planche `/_design` (`src/app/dev/DesignGallery.tsx`, développement seulement) montre ces
+primitives dans les deux thèmes.
 
 `Card` existe pour des blocs denses déjà dans le design ; ne pas s’en servir pour recréer un dashboard de widgets.
 
@@ -316,22 +509,6 @@ Sans `backdrop-filter`, fallback `glass-fallback` / `surface-elevated` (déjà d
 
 Fermeture : `useDismissable` (Escape + clic extérieur) — calendrier, FilterMenu, inspecteur, modale.
 
-### Tour d'accueil
-
-`features/onboarding` : `OnboardingTour`, affiché une fois au premier lancement
-(`localStorage`, comme la préférence de son — pas la base, ce n'est pas une donnée de
-recherche d'emploi). Volontairement **non-fermable** avant la dernière étape : ni Escape,
-ni clic extérieur, ni croix — un composant autonome plutôt qu'un `ModalHost` détourné, qui
-impose ces deux raccourcis à toute modale. Une étape par section du rail, plus une
-ouverture et une clôture ; l'aperçu (`OnboardingPreview`) est une miniature de l'écran
-présenté, avec ses libellés réels — « En attente », « Taux de réponse », les logos des
-fournisseurs — dessinée avec les jetons du thème plutôt qu'une capture d'écran : lisible en
-clair comme en sombre, sans double jeu d'images à maintenir, et une maquette abstraite se
-lirait comme un squelette de chargement.
-
-Deux façons de le revoir : le bouton « Revoir la présentation » de Réglages → À propos, qui
-ne touche à aucune donnée, et Réinitialiser les données (Réglages → Sauvegardes), qui remet
-le tour à l'état « jamais vu » — une base vidée, c'est une application neuve.
 
 ---
 
@@ -428,12 +605,13 @@ le tour à l'état « jamais vu » — une base vidée, c'est une application ne
 
 ## 12. Accessibilité (plancher)
 
-- Un `h1` par écran (`PageHeader`).
+- Chaque écran est nommé : fil d’Ariane de la barre de titre, `h1` en serif pour une fiche,
+  une surcouche ou un générateur.
 - Focus visible global. Pas de `outline-none` sans remplacement.
 - Bouton Filtres : `aria-label` « Filtres » ou « Filtres, n actifs ».
 - Chips : `aria-label` « Retirer le filtre … ».
 - Empty / loading : `role="status"` ou `alert` selon le cas.
-- Contraste : ne pas poser `text-accent` (bleu saturé) sur de longs paragraphes ; préférer `text-accent-text`.
+- Contraste : pas de `bg-ac` sous un long texte ; texte accentué en `text-ac-tx`.
 - `prefers-reduced-motion` respecté (palette).
 
 ---
@@ -444,11 +622,11 @@ Avant de merger un changement d’UI :
 
 1. J’ai réutilisé un composant de `shared/ui` plutôt que d’en créer un visuellement proche.
 2. Aucun hex / `rgb()` nouveau dans le TSX.
-3. Contrôles à 30 px, filets 1 px, pas d’ombre sur le contenu.
+3. Contrôles à 30 px, filets 1 px, pas d’ombre sur le contenu, jetons v2 seulement.
 4. Libellés français, identifiants anglais.
-5. Liste paginée : filtre et recherche côté backend + FilterBar (si Candidatures / Relations).
+5. Liste paginée : filtre et recherche côté backend, barre d’outils d’écran (`Toolbar`, « + Filtre »).
 6. Pas de pile technique ni de hero marketing.
 7. États vide, erreur, chargement traités.
 8. Vérifié clair **et** sombre (classes sémantiques, pas de `bg-white`).
 
-En cas de doute, copier **Candidatures** (outil), **Entreprises** (maître-détail) ou **À propos** (fiche réglages) — pas un template externe.
+En cas de doute, copier **Candidatures** (liste groupée), **Relations** (maître-détail) ou une section des **Réglages** — pas un template externe.

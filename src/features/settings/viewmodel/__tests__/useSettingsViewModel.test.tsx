@@ -19,6 +19,8 @@ function reglages(theme: Settings["theme"] = "system"): Settings {
       mode: "auto",
     },
     llm_presets: {},
+    ai_routes: {},
+    remote_send_consents: [],
     theme,
     language: "fr",
   };

@@ -10,15 +10,31 @@ import { useEffect } from "react";
  */
 const stack: symbol[] = [];
 
+/**
+ * Une surface superposée (modale, dialogue, menu, palette) est-elle ouverte ? Les
+ * raccourcis d'écran à une lettre (`N`, `R`, `G`…) se taisent alors : la touche appartient
+ * à la surface la plus haute.
+ */
+export function hasOpenSurface(): boolean {
+  return stack.length > 0;
+}
+
 export function useDismissable({
   open,
   onDismiss,
   onSubmit,
+  onEnter,
   dismissDisabled = false,
 }: {
   open: boolean;
   onDismiss: () => void;
   onSubmit?: () => void;
+  /**
+   * `⏎` seul confirme (contrat clavier des dialogues du design). Ignoré quand le focus est
+   * sur un bouton, un lien ou une zone de texte : leur comportement natif prime — `⏎` sur
+   * « Annuler » annule, et `⏎` dans une zone de texte reste un retour à la ligne.
+   */
+  onEnter?: () => void;
   dismissDisabled?: boolean;
 }) {
   useEffect(() => {
@@ -40,6 +56,19 @@ export function useDismissable({
       if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && onSubmit) {
         event.preventDefault();
         onSubmit();
+        return;
+      }
+      if (
+        event.key === "Enter" &&
+        !event.metaKey &&
+        !event.ctrlKey &&
+        !event.shiftKey &&
+        !event.altKey &&
+        onEnter &&
+        !enterBelongsToFocusedControl(document.activeElement)
+      ) {
+        event.preventDefault();
+        onEnter();
       }
     };
 
@@ -49,5 +78,16 @@ export function useDismissable({
       const i = stack.indexOf(token);
       if (i >= 0) stack.splice(i, 1);
     };
-  }, [dismissDisabled, open, onDismiss, onSubmit]);
+  }, [dismissDisabled, open, onDismiss, onSubmit, onEnter]);
+}
+
+/** `⏎` a déjà un sens natif sur ce contrôle : bouton, lien, zone de texte, contenu éditable. */
+function enterBelongsToFocusedControl(element: Element | null): boolean {
+  if (!(element instanceof HTMLElement)) return false;
+  return (
+    element instanceof HTMLButtonElement ||
+    element instanceof HTMLAnchorElement ||
+    element instanceof HTMLTextAreaElement ||
+    element.isContentEditable
+  );
 }

@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Icon } from "@/shared/ui";
 import { formatJournalTime } from "../../model/journalTime";
 import type { ImportJournalEntry } from "../../viewmodel/useProfileImportProgress";
 
@@ -21,7 +20,9 @@ export function ImportJournal({
         onClick={() => setOpen((current) => !current)}
         className="inline-flex items-center gap-1 text-label font-medium text-ink-muted hover:text-ink"
       >
-        <Icon name={open ? "expand_more" : "chevron_right"} size={16} />
+        <span aria-hidden className="w-3 text-center">
+          {open ? "▾" : "›"}
+        </span>
         Journal d'import
       </button>
       {open ? (

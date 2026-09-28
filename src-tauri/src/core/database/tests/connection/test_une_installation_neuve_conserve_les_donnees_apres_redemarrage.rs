@@ -5,7 +5,8 @@
 
 use super::*;
 use crate::features::applications::domain::{
-    ApplicationRepository, ApplicationStatus, ApplicationType, NewApplication, WeeklyWorkSchedule,
+    ApplicationChannel, ApplicationRepository, ApplicationStatus, NewApplication,
+    WeeklyWorkSchedule,
 };
 use crate::features::applications::infrastructure::SqliteApplicationRepository;
 use crate::features::companies::domain::{CompanyRepository, CompanySize, NewCompany};
@@ -52,7 +53,7 @@ fn une_installation_neuve_conserve_les_donnees_apres_redemarrage() {
             job_title: "Développeur Rust".into(),
             company_id: company.id,
             contact_id: None,
-            application_type: ApplicationType::JobOffer,
+            channel: ApplicationChannel::Offer,
             contract_type_code: "MIS".into(),
             weekly_work_schedule: WeeklyWorkSchedule::PartTime,
             weekly_hours: Some(24.5),

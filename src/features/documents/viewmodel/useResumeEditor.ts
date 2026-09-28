@@ -5,6 +5,7 @@ import type { ResumeField, ResumeSectionKind } from "../model/resumeWorkspace";
 import { documentsService } from "../services/documentsService";
 import type { ResumeWorkspace } from "@/shared/types/generated/documents";
 import { PROFILE_KEY, profileService } from "@/features/profile";
+import { useRemoteSendGuard } from "@/features/settings";
 import { AppError } from "@/shared/types/app-error";
 import { runResumeRecalculation } from "./resumeRecalculation";
 import {
@@ -42,6 +43,7 @@ function errorMessage(error: unknown): string {
 export function useResumeEditor(initial: ResumeWorkspace) {
   const queryClient = useQueryClient();
   const aiOperation = useAiOperation();
+  const confirmSend = useRemoteSendGuard();
   const [workspace, setWorkspace] = useState(initial);
   const [undoStack, setUndoStack] = useState<ResumeWorkspace[]>([]);
   const [redoStack, setRedoStack] = useState<ResumeWorkspace[]>([]);
@@ -153,9 +155,11 @@ export function useResumeEditor(initial: ResumeWorkspace) {
   }
 
   /** Relecture à la demande : la réponse est ignorée si l'utilisateur a modifié le CV entre-temps. */
-  async function correctFrench(): Promise<"corrected" | "unchanged" | "failed"> {
+  /** `declined` : l'utilisateur a refusé l'envoi distant, rien n'est parti. */
+  async function correctFrench(): Promise<"corrected" | "unchanged" | "failed" | "declined"> {
     const fields = model.resumeCorrectionFields(workspace.document);
     if (fields.length === 0) return "unchanged";
+    if (!(await confirmSend("write_letter", "Le texte du CV"))) return "declined";
     invalidatePendingRecalculation();
     const requested = revision.current;
     let id: string;

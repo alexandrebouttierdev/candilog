@@ -23,7 +23,7 @@ impl SqliteFollowUpRepository {
 
 /// Columns lues par [`row_vers_follow_up`], dans l'ordre.
 const COLUMNS: &str = "r.id, r.application_id, c.job_title, e.name, r.follow_up_date, r.type, \
-                        r.notes, r.created_at";
+                        r.notes, r.created_at, r.done_at";
 
 /// Source des colonnes : jointures pour afficher le poste et l'entreprise au calendrier.
 const FROM_SQL: &str = "FROM follow_ups r \
@@ -40,6 +40,7 @@ fn row_vers_follow_up(row: &rusqlite::Row) -> rusqlite::Result<FollowUp> {
         follow_up_date: row.get(4)?,
         channel: row.get(5)?,
         notes: row.get(6)?,
+        done_at: row.get(8)?,
         created_at: row.get(7)?,
     })
 }
@@ -148,6 +149,21 @@ impl FollowUpRepository for SqliteFollowUpRepository {
             return Err(AppError::NotFound(format!("relance {id}")));
         }
         Ok(())
+    }
+
+    fn set_done(&self, id: Uuid, done: bool) -> AppResult<FollowUp> {
+        let conn = connection(&self.pool)?;
+        let done_at = done.then(now_iso);
+        let modifiees = conn
+            .execute(
+                "UPDATE follow_ups SET done_at = ?2 WHERE id = ?1",
+                rusqlite::params![id.to_string(), done_at],
+            )
+            .map_err(|e| translate_error(e, "relance"))?;
+        if modifiees == 0 {
+            return Err(AppError::NotFound(format!("relance {id}")));
+        }
+        self.get(id)
     }
 }
 

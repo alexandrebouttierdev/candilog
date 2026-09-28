@@ -10,6 +10,7 @@ describe("AnalyticsUi", () => {
       company_name: "Nova Digital",
       sent_date: "2026-08-10",
       days: 18,
+      reference_number: 97,
     };
     render(<FollowUpList items={[item]} onFollowUp={onFollowUp} />);
 

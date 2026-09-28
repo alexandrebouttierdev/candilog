@@ -13,7 +13,9 @@ use crate::features::followups::presentation::commands as followups;
 use crate::features::interviews::presentation::commands as interviews;
 use crate::features::profile::presentation::commands as profile;
 use crate::features::referentials::presentation::commands as referentials;
+use crate::features::relations::presentation::commands as relations;
 use crate::features::settings::presentation::commands as settings;
+use crate::features::views::presentation::commands as views;
 use tauri::Manager;
 
 pub fn run() {
@@ -41,17 +43,23 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             analytics::analytics_dashboard,
+            analytics::analytics_agenda,
             analytics::analytics_load,
             analytics::analytics_export_csv,
             applications::applications_list_page,
             applications::applications_breakdown,
+            applications::applications_groups,
             applications::applications_get,
             applications::applications_create,
             applications::applications_update,
             applications::applications_change_status,
             applications::applications_delete,
+            applications::applications_deletion_impact,
+            applications::applications_status_history,
+            applications::applications_duplicate,
             applications::applications_export_csv,
             companies::companies_list,
+            companies::relations_export_csv,
             companies::companies_list_page,
             companies::companies_get,
             companies::companies_create,
@@ -74,6 +82,10 @@ pub fn run() {
             documents::documents_resume_reject_proposal,
             documents::documents_resume_export_pdf,
             documents::documents_cover_letters_list_page,
+            documents::documents_resume_versions,
+            documents::documents_resume_restore,
+            documents::documents_cover_letter_versions,
+            documents::documents_cover_letter_restore,
             documents::documents_cover_letter_get,
             documents::documents_cover_letter_save,
             documents::documents_cover_letter_delete,
@@ -83,6 +95,7 @@ pub fn run() {
             interviews::interviews_save,
             interviews::interviews_delete,
             ai::ai_analyze_listing,
+            ai::ai_evaluate_cover_letter,
             ai::ai_generate_resume,
             ai::ai_generate_cover_letter,
             ai::ai_correct_french,
@@ -97,6 +110,7 @@ pub fn run() {
             managed_ollama::remove_managed_ollama_model,
             managed_ollama::activate_managed_ollama_model,
             managed_ollama::run_user_cv_benchmark,
+            managed_ollama::probe_managed_ollama_model,
             system_resources::system_resource_snapshot,
             settings::settings_load,
             settings::settings_save,
@@ -122,6 +136,15 @@ pub fn run() {
             followups::follow_ups_create,
             followups::follow_ups_update,
             followups::follow_ups_delete,
+            followups::follow_ups_set_done,
+            views::saved_views_list,
+            views::saved_views_create,
+            views::saved_views_update,
+            views::saved_views_duplicate,
+            views::saved_views_delete,
+            relations::relations_history,
+            relations::relations_add_note,
+            relations::relations_delete_note,
             referentials::referentials_load,
         ])
         .run(tauri::generate_context!())

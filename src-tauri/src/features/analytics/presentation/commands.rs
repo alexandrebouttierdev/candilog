@@ -4,7 +4,7 @@ use crate::app::AppState;
 use crate::core::errors::{AppError, AppResult};
 use crate::core::files::{atomic_write, select_save_target};
 use crate::core::utils::blocking;
-use crate::features::analytics::domain::{Analytics, Dashboard, Period};
+use crate::features::analytics::domain::{AgendaItem, Analytics, Dashboard, Period};
 use std::sync::Arc;
 use tauri::{AppHandle, State};
 
@@ -13,6 +13,13 @@ use tauri::{AppHandle, State};
 pub async fn analytics_dashboard(state: State<'_, AppState>) -> AppResult<Dashboard> {
     let service = Arc::clone(&state.analytics);
     blocking::execute(move || service.dashboard(chrono::Local::now().date_naive())).await
+}
+
+/// Échéances de l'écran Aujourd'hui, à la date locale courante.
+#[tauri::command(rename_all = "snake_case")]
+pub async fn analytics_agenda(state: State<'_, AppState>) -> AppResult<Vec<AgendaItem>> {
+    let service = Arc::clone(&state.analytics);
+    blocking::execute(move || service.agenda(chrono::Local::now().date_naive())).await
 }
 
 /// Payload l'écran Analytics pour la période choisie.

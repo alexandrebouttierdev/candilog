@@ -320,9 +320,41 @@ fn non_empty_secret(secret: Option<String>) -> Option<String> {
     secret.filter(|value| !value.trim().is_empty())
 }
 
+/// Fournisseurs qui peuvent recevoir un consentement d'envoi : tous sauf l'IA locale.
+/// Ollama et « personnalisé » y figurent — ils sont distants dès que leur adresse l'est.
+const REMOTE_PROVIDER_IDS: [&str; 7] = [
+    "ollama", "claude", "openai", "gemini", "mistral", "deepseek", "custom",
+];
+
 fn validate(settings: &Settings, api_key_configured: bool) -> AppResult<()> {
     let config = LlmConfig::from(settings.llm.clone());
-    validate_llm(&config, api_key_configured)
+    validate_llm(&config, api_key_configured)?;
+    // Une route nomme toujours un modèle : une route vide n'est ni « suivre le principal »
+    // (route absente) ni « désactivée » (`null`), et la tâche échouerait sans explication.
+    // Un consentement ne vaut que pour un fournisseur distant connu : une liste forgée ne
+    // doit ni grossir les réglages, ni nommer l'IA locale, qui n'envoie rien.
+    if settings.remote_send_consents.len() > REMOTE_PROVIDER_IDS.len()
+        || settings
+            .remote_send_consents
+            .iter()
+            .any(|id| !REMOTE_PROVIDER_IDS.contains(&id.as_str()))
+    {
+        return Err(AppError::Validation(
+            "Les confirmations d'envoi distant enregistrées sont invalides.".into(),
+        ));
+    }
+    for (task, route) in &settings.ai_routes {
+        if let Some(route) = route {
+            let model = route.model.trim();
+            if model.is_empty() || model.len() > 200 {
+                return Err(AppError::Validation(format!(
+                    "Choisissez un modèle pour « {} ».",
+                    task.label()
+                )));
+            }
+        }
+    }
+    Ok(())
 }
 
 fn validate_llm(llm: &LlmConfig, api_key_configured: bool) -> AppResult<()> {
@@ -370,7 +402,7 @@ mod tests {
     use crate::core::database::helpers::connection;
     use crate::core::database::{open_pool, run_local_migrations};
     use crate::core::secrets::SecretStoreContract;
-    use crate::features::ai::domain::{AnalysisMode, ProviderKind};
+    use crate::features::ai::domain::{AiTask, AnalysisMode, ProviderKind, TaskRoute};
     use crate::features::settings::domain::ThemePref;
     use std::collections::HashMap;
     use std::sync::Mutex;
@@ -440,6 +472,8 @@ mod tests {
         Settings {
             llm,
             llm_presets: Default::default(),
+            ai_routes: Default::default(),
+            remote_send_consents: Default::default(),
             theme: ThemePref::System,
             language: "fr".into(),
         }
@@ -454,6 +488,74 @@ mod tests {
             temperature: 0.7,
             mode: AnalysisMode::Auto,
         }
+    }
+
+    #[test]
+    fn les_consentements_d_envoi_distant_sont_persistes() {
+        let service = service();
+        let mut settings = form(ollama());
+        settings.remote_send_consents.insert("claude".into());
+
+        service.save(settings, None).unwrap();
+
+        let relu = service.load().unwrap();
+        assert!(relu.remote_send_consents.contains("claude"));
+    }
+
+    #[test]
+    fn un_consentement_pour_l_ia_locale_ou_un_inconnu_est_refuse() {
+        for id in ["candilog_local", "fournisseur-inconnu"] {
+            let service = service();
+            let mut settings = form(ollama());
+            settings.remote_send_consents.insert(id.into());
+
+            let error = service.save(settings, None).unwrap_err();
+
+            assert!(matches!(error, AppError::Validation(_)), "{id} : {error:?}");
+        }
+    }
+
+    #[test]
+    fn les_routes_des_taches_sont_persistees() {
+        let service = service();
+        let mut settings = form(ollama());
+        settings.ai_routes.insert(
+            AiTask::AnalyzeResume,
+            Some(TaskRoute {
+                provider: ProviderKind::Ollama,
+                model: "qwen2.5:7b".into(),
+            }),
+        );
+        settings.ai_routes.insert(AiTask::ExtractOffer, None);
+
+        let enregistre = service.save(settings, None).unwrap();
+        assert_eq!(enregistre.ai_routes.len(), 2);
+        let relu = service.load().unwrap();
+        assert_eq!(relu.ai_routes.get(&AiTask::ExtractOffer), Some(&None));
+        assert_eq!(
+            relu.ai_routes
+                .get(&AiTask::AnalyzeResume)
+                .cloned()
+                .flatten()
+                .map(|route| route.model),
+            Some("qwen2.5:7b".into())
+        );
+    }
+
+    #[test]
+    fn une_route_sans_modele_est_refusee() {
+        let mut settings = form(ollama());
+        settings.ai_routes.insert(
+            AiTask::WriteLetter,
+            Some(TaskRoute {
+                provider: ProviderKind::Ollama,
+                model: "  ".into(),
+            }),
+        );
+        assert!(matches!(
+            service().save(settings, None),
+            Err(AppError::Validation(_))
+        ));
     }
 
     #[test]

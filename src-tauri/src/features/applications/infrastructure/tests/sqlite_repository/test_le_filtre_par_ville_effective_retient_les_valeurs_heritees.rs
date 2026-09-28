@@ -130,7 +130,7 @@ fn les_filtres_se_cumulent() {
     let mut interim = entree(company_id, "Intérimaire", "2026-08-20");
     interim.contract_type_code = "MIS".into();
     interim.professional_domain_id = Some("M18".into());
-    interim.application_type = ApplicationType::Unsolicited;
+    interim.channel = ApplicationChannel::Spontaneous;
     interim.job_url = None;
     repo.create(&interim).unwrap();
     repo.create(&entree(company_id, "Développeur", "2026-08-20"))

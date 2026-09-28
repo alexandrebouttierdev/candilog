@@ -35,6 +35,7 @@ const ANALYTICS: Analytics = {
     { label: "Entretiens", count: 3, percentage: 25 },
     { label: "Refus", count: 2, percentage: 17 },
   ],
+  channels: [],
   to_follow_up: [
     {
       id: "candidature-42",
@@ -42,6 +43,7 @@ const ANALYTICS: Analytics = {
       company_name: "Nova Digital",
       sent_date: "2026-08-10",
       days: 18,
+      reference_number: 97,
     },
   ],
 };
@@ -55,6 +57,10 @@ function candidature(): Application {
     company_size: "PME",
     contact_id: null,
     application_type: "OFFRE",
+    channel: "OFFER",
+    reference_number: 142,
+    next_follow_up_date: null,
+    next_interview_at: null,
     contract_type_code: "CDI",
     contract_type_name: "CDI",
     weekly_work_schedule: "FULL_TIME",
@@ -104,6 +110,7 @@ describe("écran Analyses — candidatures à relancer", () => {
       follow_up_date: "2026-09-03",
       type: "Email",
       notes: null,
+      done_at: null,
       created_at: "2026-09-03T00:00:00Z",
     });
 

@@ -1,13 +1,14 @@
 import type { ReactNode } from "react";
 import { useId } from "react";
-import { Icon } from "./Icon";
 import { cn } from "@/shared/lib/cn";
 
 /**
- * Libellé, champ, aide et erreur d'un champ de formulaire.
+ * Libellé, champ, aide et erreur d'un champ de formulaire (`COMPONENTS.md` §2 du design).
  *
- * Géométrie des maquettes : libellé 11,5 px/550 gris moyen à 6 px du champ, astérisque
- * rouge pour le requis, aide ou erreur en 11 px précédée d'une icône de 14 px.
+ * Libellé 11,5 px `tx-4` à 5 px du champ ; aide contextuelle à droite du libellé en
+ * 10,5 px `tx-6` (`JJ-MM-AAAA`) ; un champ requis encore vide affiche la mention
+ * `obligatoire` en `st-a` — pas de contour rouge. Une erreur de validation reste écrite
+ * sous le champ, en clair : elle dit ce qui bloque et quoi faire.
  *
  * L'erreur est rendue **sous le champ** et non dans une infobulle : le guide l'exige, et une
  * infobulle seule est invisible au clavier comme au lecteur d'écran. `aria-describedby` et
@@ -17,6 +18,8 @@ import { cn } from "@/shared/lib/cn";
 export function FormField({
   label,
   required = false,
+  missing = false,
+  hint,
   help,
   error,
   className,
@@ -24,6 +27,10 @@ export function FormField({
 }: {
   label: string;
   required?: boolean;
+  /** Champ requis encore vide : affiche la mention `obligatoire`. */
+  missing?: boolean;
+  /** Aide contextuelle courte, à droite du libellé (`JJ-MM-AAAA`, `vide si en poste`). */
+  hint?: string | undefined;
   help?: string | undefined;
   error?: string | undefined;
   className?: string;
@@ -39,30 +46,33 @@ export function FormField({
 
   return (
     <div className={cn("flex min-w-0 flex-col", className)}>
-      <label
-        htmlFor={id}
-        className="mb-1.5 flex items-center gap-[5px] text-label font-mid text-ink-muted"
-      >
-        {label}
-        {required ? <span className="font-normal text-danger">*</span> : null}
-      </label>
+      <div className="mb-[5px] flex items-baseline gap-1.5">
+        <label htmlFor={id} className="text-sub text-tx-4">
+          {label}
+          {required ? <span className="sr-only"> (obligatoire)</span> : null}
+        </label>
+        {required && missing ? (
+          <span aria-hidden className="text-caps text-st-a">
+            obligatoire
+          </span>
+        ) : null}
+        {hint ? <span className="ml-auto text-caps text-tx-6">{hint}</span> : null}
+      </div>
 
       {children({ id, "aria-describedby": describedBy, "aria-invalid": Boolean(error) })}
 
       {error ? (
         <p
           id={`${id}-error`}
-          className="mt-1.5 flex items-center gap-[5px] text-meta leading-[1.45] text-danger"
+          className="mt-1.5 text-tiny leading-[1.45] text-st-c"
         >
-          <Icon name="error" size={14} className="flex-none" />
           {error}
         </p>
       ) : help ? (
         <p
           id={`${id}-help`}
-          className="mt-1.5 flex items-center gap-[5px] text-meta leading-[1.45] text-ink-faint"
+          className="mt-1.5 text-tiny leading-[1.45] text-tx-5"
         >
-          <Icon name="info" size={14} className="flex-none" />
           {help}
         </p>
       ) : null}
@@ -71,20 +81,19 @@ export function FormField({
 }
 
 /**
- * Classes communes aux contrôles de saisie.
- *
- * Les maquettes posent le champ sur le fond de page, pas sur la surface : dans une modale
- * blanche, un champ blanc ne se distinguerait que par son filet. Le focus remonte le fond
- * en surface, passe le filet en accent et ajoute un halo de 3 px en teinte accent.
+ * Classes communes aux contrôles de saisie : 30 px, rayon 7, fond `field-bg`, contour
+ * `bd-menu` passant à `ac` au focus. Le texte indicatif montre un **format**
+ * (`JJ-MM-AAAA`), jamais un nom propre crédible qu'on confondrait avec une donnée saisie.
  */
 export function controlClasses(invalid = false, extra?: string): string {
   return cn(
-    "min-h-field w-full rounded-field border bg-page px-3 text-body text-ink",
-    "placeholder:text-ink-disabled",
-    "transition-[border-color,background-color] duration-hover",
-    "disabled:cursor-not-allowed disabled:bg-fill disabled:text-ink-faint",
-    "focus:bg-accent-tint-08 focus:outline-none",
-    invalid ? "border-danger focus:border-danger" : "border-control focus:border-accent-focus",
+    "min-h-input w-full rounded-r7 border bg-input px-2.5 text-ui text-tx",
+    "placeholder:text-tx-6",
+    "transition-color",
+    "disabled:cursor-not-allowed disabled:text-tx-5",
+    "read-only:text-tx-4",
+    "focus:outline-none",
+    invalid ? "border-st-c focus:border-st-c" : "border-bd-menu focus:border-ac",
     extra,
   );
 }

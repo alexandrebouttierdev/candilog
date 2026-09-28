@@ -27,7 +27,7 @@ existe.
   convertir `job_title` en `jobTitle`.
 - Les types viennent de `@/shared/types/generated/` : lecture seule, régénérés par
   `cargo test --manifest-path src-tauri/Cargo.toml`. Un DTO Rust modifié sans
-  régénération fait échouer `npm run build`.
+  régénération fait échouer `yarn build`.
 - Les erreurs arrivent déjà normalisées en `AppError { code, message }` : brancher sur
   `code`, afficher `message`.
 
@@ -68,7 +68,7 @@ lieu de produire un écran vide à l'exécution. Ne pas contourner ce test.
 ## Validation
 
 ```bash
-npm run lint
-npm test
-npm run build
+yarn lint
+yarn test
+yarn build
 ```

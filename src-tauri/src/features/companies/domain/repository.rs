@@ -24,6 +24,22 @@ pub struct CompanyFilter {
     pub company_type_id: Option<String>,
     /// Taille retenue.
     pub company_size: Option<CompanySize>,
+    /// État de la relation retenu ; absent = toutes.
+    #[serde(default)]
+    pub relation_state: Option<RelationState>,
+}
+
+/// État d'une entreprise dans le suivi, groupes de l'écran Relations.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ts_rs::TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "companies.ts")]
+pub enum RelationState {
+    /// Au moins une candidature non refusée.
+    Active,
+    /// Aucune candidature envoyée : entreprise repérée.
+    Watch,
+    /// Des candidatures, toutes refusées.
+    Closed,
 }
 
 /// Accès au répertoire des entreprises.

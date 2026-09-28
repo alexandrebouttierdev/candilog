@@ -10,21 +10,25 @@ export interface ToastMessage {
   readonly detail?: string | undefined;
 }
 
+/**
+ * Sections de la surcouche Réglages (`reference_design/INTERACTIONS.md` §3.7). Les
+ * Réglages ne sont pas une destination : les fermer rend l'écran précédent intact.
+ */
+export type SettingsSection = "appearance" | "data" | "ai" | "shortcuts" | "updates" | "about";
+
 interface UiState {
   theme: ThemePref;
+  /** Surcouche Réglages ouverte, et sa section. */
+  settings: SettingsSection | null;
+  /** Palette de commandes `⌘K` ouverte. */
+  palette: boolean;
+  openSettings: (section?: SettingsSection) => void;
+  closeSettings: () => void;
+  setPalette: (open: boolean) => void;
   toasts: ToastMessage[];
-  /**
-   * Le tour d'accueil est-il affiché ?
-   *
-   * Ici plutôt que dans `App` : les Réglages doivent pouvoir le rouvrir après une remise à
-   * zéro. Le store ignore volontairement *où* l'état « déjà vu » est rangé — c'est la
-   * feature `onboarding` qui le lit et l'écrit, `shared` ne dépend pas d'elle.
-   */
-  onboarding: boolean;
   setTheme: (theme: ThemePref) => void;
   notify: (toast: Omit<ToastMessage, "id">) => void;
   dismissToast: (id: string) => void;
-  setOnboarding: (open: boolean) => void;
 }
 
 /**
@@ -41,16 +45,18 @@ interface UiState {
 export const useUiStore = create<UiState>((set) => ({
   theme: "system",
   toasts: [],
-  onboarding: false,
+  settings: null,
+  palette: false,
+
+  openSettings: (section = "appearance") => set({ settings: section, palette: false }),
+  closeSettings: () => set({ settings: null }),
+  setPalette: (palette) => set({ palette }),
 
   setTheme: (theme) => set({ theme }),
 
-  setOnboarding: (onboarding) => set({ onboarding }),
-
-  notify: (toast) =>
-    set((state) => ({
-      toasts: [...state.toasts, { ...toast, id: crypto.randomUUID() }],
-    })),
+  // Un seul toast à la fois (décision E15 du design) : le nouveau remplace le précédent
+  // immédiatement, sans file ni pile. Deux actions rapides n'empilent jamais deux bandeaux.
+  notify: (toast) => set({ toasts: [{ ...toast, id: crypto.randomUUID() }] }),
 
   dismissToast: (id) =>
     set((state) => ({ toasts: state.toasts.filter((toast) => toast.id !== id) })),

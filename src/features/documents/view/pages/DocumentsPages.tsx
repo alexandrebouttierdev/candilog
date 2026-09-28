@@ -1,4 +1,4 @@
-export { ResumeLibraryPage } from "./ResumeLibraryPage";
+export { DocumentsPage } from "./DocumentsPage";
 export { ResumeGeneratorPage } from "./ResumeGeneratorPage";
-export { LettersLibraryPage, LetterWriterPage } from "./LettersPages";
+export { LetterWriterPage } from "./LettersPages";
 export { ResumeAnalysisPage } from "./ResumeAnalysisPage";

@@ -59,6 +59,9 @@ export const applicationFilterSchema = z
   .object({
     status: z.array(z.enum(["EN_ATTENTE", "RELANCEE", "ENTRETIEN", "REFUS"])).default([]),
     application_type: z.array(z.enum(["OFFRE", "SPONTANEE"])).default([]),
+    channel: z
+      .array(z.enum(["OFFER", "COMPANY_SITE", "NETWORK", "SPONTANEOUS"]))
+      .default([]),
     contract_type_code: z.array(z.string()).default([]),
     professional_domain_id: z.array(z.string()).default([]),
     company_type_id: z.array(z.string()).default([]),
@@ -76,10 +79,25 @@ export const applicationFilterSchema = z
       .transform((value) => (value === "" ? null : value))
       .nullable()
       .default(null),
+    contact_id: z
+      .string()
+      .transform((value) => (value === "" ? null : value))
+      .nullable()
+      .default(null),
     city: z.string().trim().default(""),
     job_title: z.string().trim().default(""),
     start_date: borneFacultative(),
     end_date: borneFacultative(),
+    /** Critères inversés (« n'est pas ») : une puce cliquée inverse sa condition. */
+    excluded: z
+      .array(
+        z.enum([
+          "status", "application_type", "channel", "contract_type", "professional_domain",
+          "company_type", "company_size", "sector", "weekly_work_schedule", "company", "city",
+          "job_title",
+        ]),
+      )
+      .default([]),
   })
   .superRefine((filter, ctx) => {
     // Une période inversée ne renvoie jamais rien : sans ce contrôle, l'écran afficherait
@@ -112,6 +130,7 @@ export type ApplicationFilterInput = z.input<typeof applicationFilterSchema>;
 export const EMPTY_FILTER: ApplicationFilterValues = {
   status: [],
   application_type: [],
+  channel: [],
   contract_type_code: [],
   professional_domain_id: [],
   company_type_id: [],
@@ -121,8 +140,10 @@ export const EMPTY_FILTER: ApplicationFilterValues = {
   min_weekly_hours: null,
   max_weekly_hours: null,
   company_id: null,
+  contact_id: null,
   city: "",
   job_title: "",
   start_date: null,
   end_date: null,
+  excluded: [],
 };

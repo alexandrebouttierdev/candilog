@@ -6,10 +6,10 @@ use crate::core::errors::AppResult;
 use crate::core::files::select_save_target;
 use crate::core::pagination::Page;
 use crate::core::utils::blocking;
-use crate::features::ai::domain::ResumeGeneration;
+use crate::features::ai::domain::{ProfileSection, ResumeGeneration};
 use crate::features::documents::domain::{
-    CoverLetter, CoverLetterExport, NewCoverLetter, NewResume, ResumeDocument, ResumeSummary,
-    ResumeVersion, ResumeWorkspace,
+    CoverLetter, CoverLetterExport, DocumentVersion, NewCoverLetter, NewResume, ResumeDocument,
+    ResumeSummary, ResumeVersion, ResumeWorkspace,
 };
 use tauri::{AppHandle, State};
 use uuid::Uuid;
@@ -26,9 +26,13 @@ pub async fn documents_resume_list_page(
     page: u64,
     page_size: u64,
     search: String,
+    scored_only: Option<bool>,
 ) -> AppResult<Page<ResumeSummary>> {
     let service = state.documents.clone();
-    blocking::execute(move || service.resume_list_page(page, page_size, &search)).await
+    blocking::execute(move || {
+        service.resume_list_page(page, page_size, &search, scored_only.unwrap_or(false))
+    })
+    .await
 }
 #[tauri::command(rename_all = "snake_case")]
 pub async fn documents_resume_get(
@@ -52,15 +56,34 @@ pub async fn documents_resume_delete(state: State<'_, AppState>, id: Uuid) -> Ap
     blocking::execute(move || service.resume_delete(id)).await
 }
 
+/// Versions du CV auquel appartient `id`, de la plus récente à la plus ancienne.
+#[tauri::command(rename_all = "snake_case")]
+pub async fn documents_resume_versions(
+    state: State<'_, AppState>,
+    id: Uuid,
+) -> AppResult<Vec<DocumentVersion>> {
+    let service = state.documents.clone();
+    blocking::execute(move || service.resume_versions(id)).await
+}
+
+/// Fait d'une version la version courante de son CV.
+#[tauri::command(rename_all = "snake_case")]
+pub async fn documents_resume_restore(state: State<'_, AppState>, id: Uuid) -> AppResult<()> {
+    let service = state.documents.clone();
+    blocking::execute(move || service.resume_restore(id)).await
+}
+
 /// Fige le profil et une génération IA dans un document de travail autonome, propositions
 /// d'amélioration comprises.
 #[tauri::command(rename_all = "snake_case")]
 pub async fn documents_resume_prepare(
     state: State<'_, AppState>,
     generation: ResumeGeneration,
+    excluded_sections: Option<Vec<ProfileSection>>,
 ) -> AppResult<ResumeWorkspace> {
     let service = state.documents.clone();
-    blocking::execute(move || service.resume_prepare(generation)).await
+    let excluded = excluded_sections.unwrap_or_default();
+    blocking::execute(move || service.resume_prepare(generation, &excluded)).await
 }
 
 /// Revalide le document puis recalcule score et propositions après une édition manuelle.
@@ -171,4 +194,21 @@ pub async fn documents_cover_letter_save(
 pub async fn documents_cover_letter_delete(state: State<'_, AppState>, id: Uuid) -> AppResult<()> {
     let service = state.documents.clone();
     blocking::execute(move || service.cover_letter_delete(id)).await
+}
+
+/// Versions de la lettre à laquelle appartient `id`, de la plus récente à la plus ancienne.
+#[tauri::command(rename_all = "snake_case")]
+pub async fn documents_cover_letter_versions(
+    state: State<'_, AppState>,
+    id: Uuid,
+) -> AppResult<Vec<DocumentVersion>> {
+    let service = state.documents.clone();
+    blocking::execute(move || service.cover_letter_versions(id)).await
+}
+
+/// Fait d'une version la version courante de sa lettre.
+#[tauri::command(rename_all = "snake_case")]
+pub async fn documents_cover_letter_restore(state: State<'_, AppState>, id: Uuid) -> AppResult<()> {
+    let service = state.documents.clone();
+    blocking::execute(move || service.cover_letter_restore(id)).await
 }

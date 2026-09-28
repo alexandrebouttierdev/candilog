@@ -37,10 +37,10 @@ describe("grille des fournisseurs", () => {
     render(<ProviderGrid value="openai" onChange={() => undefined} />);
 
     expect(
-      within(screen.getByRole("radio", { name: "OpenAI" })).getByText("check_circle"),
+      within(screen.getByRole("radio", { name: "OpenAI" })).getByText("✓"),
     ).toBeInTheDocument();
     expect(
-      within(screen.getByRole("radio", { name: "Mistral" })).queryByText("check_circle"),
+      within(screen.getByRole("radio", { name: "Mistral" })).queryByText("✓"),
     ).not.toBeInTheDocument();
   });
 

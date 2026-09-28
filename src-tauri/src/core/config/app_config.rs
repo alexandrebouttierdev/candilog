@@ -56,7 +56,7 @@ impl AppPaths {
     ///
     /// Un binaire de développement ne doit jamais ouvrir la base utilisateur : il écrit sous
     /// le projet, ancré sur le manifeste Cargo et non sur le répertoire courant — `cargo run`
-    /// depuis `src-tauri/` et `npm run tauri dev` depuis la racine n'ont pas le même `cwd`,
+    /// depuis `src-tauri/` et `yarn tauri dev` depuis la racine n'ont pas le même `cwd`,
     /// et ouvriraient sinon deux bases de développement distinctes, un écran vide après
     /// saisie que rien de visible n'expliquerait.
     fn resoudre_dossier() -> AppResult<PathBuf> {

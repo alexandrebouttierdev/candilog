@@ -1,8 +1,9 @@
-import type { DragEvent } from "react";
+import type { DragEvent, MouseEvent } from "react";
 import type { Application } from "@/shared/types/generated/applications";
-import { daysFrom, toDisplayDate } from "@/shared/lib/dates";
-import { Icon, Tag } from "@/shared/ui";
+import { toDisplayDate } from "@/shared/lib/dates";
+import { Avatar } from "@/shared/ui";
 import { cn } from "@/shared/lib/cn";
+import { dueOf, formatReference, shortDate } from "../../model/presentation";
 
 /** Géométrie du fantôme de glisse, calée sur la carte d'origine. */
 export interface DragPreview {
@@ -14,12 +15,20 @@ export interface DragPreview {
   readonly y: number;
 }
 
+/** Teinte de la pastille d'échéance, par nature (entretien, relance, silence). */
+const DUE_TINT = {
+  success: "bg-tint-g-bg text-tint-g-tx",
+  accent: "bg-tint-ac-bg text-tint-ac-tx",
+  danger: "bg-tint-c-bg text-tint-c-tx",
+} as const;
+
 /**
- * Carte d'une candidature dans le Kanban.
+ * Carte d'une candidature dans le Kanban (`screens/19-kanban.png`).
  *
- * Géométrie des maquettes : rayon 10 px, padding 12 px / 13 px, pastille d'initiales de
- * 26 px, intitulé 12,5 px/600 sur 1,35 d'interligne, puis une ligne d'attributs — contrat,
- * ville, ancienneté. Le survol passe le filet en accent.
+ * Trois lignes : référence et échéance en pastille ; intitulé ; entreprise, contrat et
+ * date d'envoi. La sélection passe la carte en `bg-sel` avec un liseré `ac` ; la case à
+ * cocher n'apparaît qu'au survol ou dès qu'une carte est cochée, pour garder la sélection
+ * multiple sans charger toutes les cartes.
  *
  * Composant **métier** : il reste dans sa feature, pas dans `shared/ui` (docs/CODE_RULES.md §4).
  */
@@ -27,28 +36,36 @@ export function ApplicationCard({
   application,
   selected = false,
   checked = false,
+  showCheck = false,
   draggable = false,
   dragging = false,
   onSelect,
   onToggleSelect,
+  onMenu,
   onDragStart,
   onDragEnd,
 }: {
   application: Application;
   selected?: boolean;
   checked?: boolean;
+  /** Montre la case même sans survol (une autre carte est déjà cochée). */
+  showCheck?: boolean;
   draggable?: boolean;
   dragging?: boolean;
   onSelect?: () => void;
   onToggleSelect?: () => void;
+  onMenu?: (event: MouseEvent) => void;
   onDragStart?: (preview: DragPreview) => void;
   onDragEnd?: () => void;
 }) {
-  const days = daysFrom(application.sent_date);
+  const due = dueOf(application);
+  const company = application.company_name ?? "Entreprise inconnue";
+  const reference = formatReference(application.reference_number);
 
   return (
     <article
       draggable={draggable}
+      aria-label={`${reference}, ${application.job_title}, ${company}`}
       onDragStart={(event) => {
         // Un input dans un parent draggable annule le geste sur WebKit ; on le
         // laisse à la case, et on pose l'id dans dataTransfer pour le drop.
@@ -70,6 +87,7 @@ export function ApplicationCard({
         });
       }}
       onDragEnd={onDragEnd}
+      onContextMenu={onMenu}
       // Le clavier doit pouvoir ce que la souris peut : la carte est atteignable en
       // tabulation et s'ouvre sur Entrée, le glisser-déposer restant un raccourci.
       tabIndex={onSelect ? 0 : undefined}
@@ -78,75 +96,70 @@ export function ApplicationCard({
         if (event.key === "Enter" && onSelect) onSelect();
       }}
       className={cn(
-        "min-w-0 rounded-tile border bg-surface px-3 py-2.5",
-        "transition-[border-color,background-color,box-shadow] duration-hover",
+        "group min-w-0 rounded-r8 border px-2.5 pt-[9px] pb-2.5 outline-none",
+        "transition-[border-color,background-color] duration-100 focus-visible:border-tx-6",
         draggable && "cursor-grab active:cursor-grabbing",
         dragging && "opacity-40",
         selected
-          ? "row-selected border-accent-border"
-          : "border-line hover:border-control-strong",
+          ? "border-ac bg-sel text-tx shadow-[inset_2px_0_0_var(--ac)]"
+          : "border-bd-soft bg-elev text-tx-2 hover:border-bd-menu",
       )}
     >
-      <div className="mb-[9px] flex items-start gap-[9px]">
+      <div className="flex h-[18px] items-center gap-2">
         {onToggleSelect ? (
           <input
             type="checkbox"
             checked={checked}
             draggable={false}
-            aria-label={`Sélectionner ${application.job_title}`}
+            aria-label={`Cocher ${reference}`}
             onClick={(event) => event.stopPropagation()}
             onPointerDown={(event) => event.stopPropagation()}
             onKeyDown={(event) => event.stopPropagation()}
             onChange={onToggleSelect}
-            className="mt-1.5 flex-none"
+            className={cn(
+              "flex-none",
+              checked || showCheck
+                ? ""
+                : "hidden group-focus-within:block group-hover:block",
+            )}
           />
         ) : null}
-        <span
-          aria-hidden="true"
-          className="flex size-[26px] flex-none items-center justify-center rounded-control bg-neutral-tint text-eyebrow font-strong tracking-normal text-ink-muted"
-        >
-          {initials(application.company_name ?? application.job_title)}
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-body leading-[1.35] font-semibold text-ink">{application.job_title}</p>
-          <p className="mt-0.5 truncate text-meta text-ink-faint">
-            {application.company_name ?? "Entreprise inconnue"}
-          </p>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-1.5">
-        <Tag>{application.contract_type_name ?? application.contract_type_code}</Tag>
-        {application.effective_city ? (
-          <span className="truncate text-eyebrow font-normal tracking-normal text-ink-faint">
-            {application.effective_city}
+        <span className="font-mono text-caps text-tx-5">{reference}</span>
+        {due ? (
+          <span
+            title={due.title}
+            className={cn(
+              "ml-auto inline-flex h-[18px] flex-none items-center rounded-r5 px-1.5 font-mono text-[10px]",
+              DUE_TINT[due.tone],
+            )}
+          >
+            {due.label}
           </span>
         ) : null}
-        <span className="flex-1" />
+      </div>
+      <p
+        className={cn(
+          "mt-[5px] text-ui leading-[1.35] text-pretty",
+          selected ? "font-medium" : "font-normal",
+        )}
+      >
+        {application.job_title}
+      </p>
+      <div className="mt-[9px] flex items-center gap-2">
+        <Avatar name={company} kind="company" size={18} />
+        <span className="min-w-0 truncate text-[11px] text-tx-4">{company}</span>
+        <span className="ml-auto inline-flex h-[17px] max-w-[45%] flex-none items-center truncate rounded-r4 bg-chip px-1.5 text-[10.5px] text-tx-4">
+          {application.contract_type_name ?? application.contract_type_code}
+        </span>
         <span
-          className={cn(
-            "inline-flex flex-none items-center gap-1 text-eyebrow font-normal tracking-normal",
-            days >= 15 ? "text-warning" : "text-ink-faint",
-          )}
+          className="flex-none font-mono text-[10px] text-tx-6"
           title={`Envoyée le ${toDisplayDate(application.sent_date)}`}
         >
-          <Icon name={days >= 15 ? "schedule" : "event"} size={13} />
-          {days} j
+          {shortDate(application.sent_date)}
         </span>
       </div>
     </article>
   );
-}
-
-/** Initials de l'entreprise, pour la pastille de la carte. */
-function initials(value: string): string {
-  return value
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((mot) => mot[0])
-    .join("")
-    .toUpperCase();
 }
 
 /**

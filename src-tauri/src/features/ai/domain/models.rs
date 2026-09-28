@@ -1,5 +1,6 @@
 //! Types échangés avec React pour les workflows IA.
 
+use super::ProfileSection;
 use serde::{Deserialize, Deserializer, Serialize};
 use ts_rs::TS;
 
@@ -395,6 +396,36 @@ pub struct ResumeGeneration {
 pub struct ResumeGenerationRequest {
     pub generation_id: String,
     pub job_offer: String,
+    /// Sections du profil que l'IA ne doit pas utiliser (« Ce que l'IA peut utiliser »).
+    #[serde(default)]
+    pub excluded_sections: Vec<ProfileSection>,
+    #[serde(default)]
+    pub tone: ResumeTone,
+}
+
+/// Ton de rédaction d'un CV (`screens/15`).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "ai.ts")]
+pub enum ResumeTone {
+    /// Factuel, sans adjectif valorisant.
+    Sober,
+    #[default]
+    Professional,
+    /// Verbes d'action et résultats en tête.
+    Direct,
+}
+
+impl ResumeTone {
+    /// Consigne ajoutée au prompt de rédaction ; le ton professionnel est celui par défaut.
+    #[must_use]
+    pub fn instruction(self) -> &'static str {
+        match self {
+            Self::Sober => "Ton sobre : phrases courtes et factuelles, aucun adjectif valorisant.",
+            Self::Professional => "Ton professionnel et neutre.",
+            Self::Direct => "Ton direct : chaque puce commence par un verbe d'action et place le résultat en tête.",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default, Deserialize, TS)]
@@ -409,6 +440,9 @@ pub struct CoverLetterRequest {
     pub context: Option<String>,
     pub previous_cover_letter: Option<String>,
     pub instruction: Option<String>,
+    /// Arguments que la lettre ne doit pas utiliser (« Arguments autorisés »).
+    #[serde(default)]
+    pub excluded_sections: Vec<ProfileSection>,
 }
 
 /// Champ textuel isolé pour une relecture linguistique. L'identifiant est opaque pour le

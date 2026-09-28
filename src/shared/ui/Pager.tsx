@@ -1,6 +1,4 @@
-import { Icon } from "./Icon";
 import { cn } from "@/shared/lib/cn";
-import type { IconName } from "./icon-names";
 
 /** Bounds d'une page, calculées une fois pour l'affichage et pour les tests. */
 export function page_bounds(page: number, page_size: number, total: number) {
@@ -83,18 +81,16 @@ export function Pager({
                 </option>
               ))}
             </select>
-            <Icon
-              name="expand_more"
-              size={15}
-              className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 text-ink-faint"
-            />
+            <span aria-hidden className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 text-ink-faint text-[11px]">
+              ▾
+            </span>
           </div>
         </div>
       ) : null}
 
       <div className="flex flex-none items-center gap-1">
         <PagerArrow
-          icon="chevron_left"
+          glyph="‹"
           label="Page précédente"
           disabled={!hasPrev}
           onClick={() => onPageChange(page - 1)}
@@ -117,7 +113,7 @@ export function Pager({
         ))}
         {page_count > 3 ? <span className="px-1 text-note text-ink-faint">…</span> : null}
         <PagerArrow
-          icon="chevron_right"
+          glyph="›"
           label="Page suivante"
           disabled={!hasNext}
           accent
@@ -129,13 +125,13 @@ export function Pager({
 }
 
 function PagerArrow({
-  icon,
+  glyph,
   label,
   disabled,
   accent = false,
   onClick,
 }: {
-  icon: IconName;
+  glyph: "‹" | "›";
   label: string;
   disabled: boolean;
   /** La flèche « suivant » est en accent lorsqu'elle est active, comme dans les maquettes. */
@@ -155,7 +151,9 @@ function PagerArrow({
           : cn("bg-surface hover:bg-neutral-tint", accent ? "text-accent" : "text-ink-muted"),
       )}
     >
-      <Icon name={icon} size={16} />
+      <span aria-hidden className="text-[16px] leading-none">
+        {glyph}
+      </span>
     </button>
   );
 }
@@ -181,7 +179,7 @@ export function ColumnPager({
   return (
     <div className="flex items-center justify-between gap-2 border-t border-line px-3 py-2">
       <ColumnArrow
-        icon="chevron_left"
+        glyph="‹"
         label={`Page précédente de ${label}`}
         disabled={!hasPrev}
         onClick={() => onPageChange(page - 1)}
@@ -190,7 +188,7 @@ export function ColumnPager({
         {from}–{to} sur {total}
       </span>
       <ColumnArrow
-        icon="chevron_right"
+        glyph="›"
         label={`Page suivante de ${label}`}
         disabled={!hasNext}
         accent
@@ -201,13 +199,13 @@ export function ColumnPager({
 }
 
 function ColumnArrow({
-  icon,
+  glyph,
   label,
   disabled,
   accent = false,
   onClick,
 }: {
-  icon: IconName;
+  glyph: "‹" | "›";
   label: string;
   disabled: boolean;
   accent?: boolean;
@@ -226,7 +224,9 @@ function ColumnArrow({
           : cn("bg-surface hover:bg-neutral-tint", accent ? "text-accent" : "text-ink-muted"),
       )}
     >
-      <Icon name={icon} size={15} />
+      <span aria-hidden className="text-[15px] leading-none">
+        {glyph}
+      </span>
     </button>
   );
 }

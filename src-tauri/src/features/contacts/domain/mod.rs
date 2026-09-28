@@ -3,5 +3,5 @@
 pub mod contact;
 pub mod repository;
 
-pub use contact::{Contact, ContactUpdate, NewContact};
+pub use contact::{Contact, ContactActivity, ContactUpdate, NewContact};
 pub use repository::ContactRepository;

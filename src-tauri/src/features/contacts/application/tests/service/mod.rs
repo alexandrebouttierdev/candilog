@@ -1,6 +1,6 @@
 //! Helpers communs et déclaration des cas de test.
 use super::*;
-use crate::features::contacts::domain::Contact;
+use crate::features::contacts::domain::{Contact, ContactActivity};
 
 /// Contact de test, renvoyé par le dépôt double.
 fn ct(first_name: &str, name: &str) -> Contact {
@@ -18,6 +18,7 @@ fn ct(first_name: &str, name: &str) -> Contact {
         notes: None,
         created_at: "now".into(),
         updated_at: "now".into(),
+        activity: ContactActivity::default(),
     }
 }
 
@@ -55,6 +56,7 @@ impl ContactRepository for StubRepo {
         page_size: u64,
         _search: &str,
         _tracking_role: Option<&str>,
+        _linked: Option<bool>,
     ) -> AppResult<crate::core::pagination::Page<Contact>> {
         Ok(crate::core::pagination::Page::new(
             vec![],

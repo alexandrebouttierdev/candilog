@@ -4,7 +4,7 @@ import type { ProviderKind } from "@/shared/types/generated/settings";
 import type { ManagedModelPublisher } from "@/shared/types/generated/ai";
 
 export { getProvider };
-import { Icon, Tag } from "@/shared/ui";
+import { LineIcon, Tag } from "@/shared/ui";
 import logoOllama from "@/assets/providers/ollama.svg";
 import logoClaude from "@/assets/providers/claude.svg";
 import logoOpenai from "@/assets/providers/openai.svg";
@@ -104,12 +104,9 @@ export function ProviderGrid({
             )}
           >
             {selected ? (
-              <Icon
-                name="check_circle"
-                size={16}
-                filled
-                className="absolute right-1.5 top-1.5 text-accent"
-              />
+              <span aria-hidden className="absolute right-2 top-1 text-accent">
+                ✓
+              </span>
             ) : null}
             <span className="relative flex size-10 flex-none items-center justify-center rounded-tile bg-surface">
               {logo ? (
@@ -121,7 +118,7 @@ export function ProviderGrid({
                   className={cn("size-5", logo.mono && "dark:invert")}
                 />
               ) : (
-                <Icon name="smart_toy" size={20} className="text-ink-muted" />
+                <LineIcon name="ai" size={18} className="text-ink-muted" />
               )}
             </span>
             <span

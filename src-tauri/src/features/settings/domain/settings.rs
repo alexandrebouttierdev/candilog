@@ -1,8 +1,10 @@
 //! Modèle persisté (JSON Iced) et DTO IPC camelCase.
 
-use crate::features::ai::domain::{AnalysisMode, LlmConfig, ManagedOllamaSettings, ProviderKind};
+use crate::features::ai::domain::{
+    AiRoutes, AnalysisMode, LlmConfig, ManagedOllamaSettings, ProviderKind,
+};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use ts_rs::TS;
 
 /// Préférence de thème, identique à l'enum historique.
@@ -78,6 +80,13 @@ pub struct AppSettings {
     pub llm_presets: BTreeMap<String, LlmProviderPreset>,
     #[serde(default)]
     pub managed_ollama: ManagedOllamaSettings,
+    /// Routage des tâches IA ; une tâche absente suit le fournisseur principal.
+    #[serde(default)]
+    pub ai_routes: AiRoutes,
+    /// Fournisseurs distants pour lesquels l'utilisateur a demandé de ne plus confirmer le
+    /// premier envoi (`reference_design/DECISIONS.md` D4), par identifiant (`claude`, …).
+    #[serde(default)]
+    pub remote_send_consents: BTreeSet<String>,
     #[serde(default)]
     pub theme: ThemePref,
     #[serde(default = "language_fr")]
@@ -129,6 +138,8 @@ impl Default for AppSettings {
             llm: LlmConfig::default(),
             llm_presets: BTreeMap::new(),
             managed_ollama: ManagedOllamaSettings::default(),
+            ai_routes: AiRoutes::new(),
+            remote_send_consents: BTreeSet::new(),
             theme: ThemePref::System,
             language: language_fr(),
         }
@@ -152,6 +163,12 @@ pub struct Settings {
     pub llm: LlmForm,
     #[serde(default)]
     pub llm_presets: BTreeMap<String, LlmProviderPresetForm>,
+    /// Routage des tâches IA ; une tâche absente suit le fournisseur principal.
+    #[serde(default)]
+    pub ai_routes: AiRoutes,
+    /// Fournisseurs distants dont le premier envoi n'est plus confirmé.
+    #[serde(default)]
+    pub remote_send_consents: BTreeSet<String>,
     pub theme: ThemePref,
     pub language: String,
 }
@@ -200,6 +217,8 @@ impl Settings {
         Self {
             llm: LlmForm::from_config(value.llm, api_key_configured),
             llm_presets,
+            ai_routes: value.ai_routes,
+            remote_send_consents: value.remote_send_consents,
             theme: value.theme,
             language: value.language,
         }
@@ -216,6 +235,8 @@ impl From<Settings> for AppSettings {
                 .map(|(id, preset)| (id, LlmProviderPreset::from(preset)))
                 .collect(),
             managed_ollama: ManagedOllamaSettings::default(),
+            ai_routes: value.ai_routes,
+            remote_send_consents: value.remote_send_consents,
             theme: value.theme,
             language: value.language,
         };

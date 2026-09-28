@@ -9,6 +9,7 @@ export default tseslint.config(
     ignores: [
       "dist",
       "src-tauri/target",
+      "test-output",
       "src/shared/types/generated",
       "src-tauri/**",
       // `website/` est un projet Next.js autonome, avec son propre `eslint.config.mjs` et
@@ -16,6 +17,9 @@ export default tseslint.config(
       "website/**",
       "vendor/**",
       "docs/**",
+      // Handoff de design : prototype HTML généré par un outil, référence de rendu et non
+      // code de l'application.
+      "reference_design/**",
       ".npm-cache/**",
       ".pnp.cjs",
       ".pnp.loader.mjs",

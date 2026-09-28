@@ -28,7 +28,7 @@ export default defineConfig({
     deviceScaleFactor: 2,
   },
   webServer: {
-    command: "npm run dev",
+    command: "yarn dev",
     cwd: racine,
     url: "http://localhost:1420",
     reuseExistingServer: true,

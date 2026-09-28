@@ -2,7 +2,7 @@
 
 use crate::core::errors::AppResult;
 use crate::features::analytics::domain::metrics::{
-    ActivityWeek, Metrics, Performance, Step, ToFollowUp, UpcomingItem,
+    ActivityWeek, AgendaItem, ChannelRate, Metrics, Performance, Step, ToFollowUp, UpcomingItem,
 };
 use crate::features::applications::domain::Application;
 
@@ -17,6 +17,12 @@ pub trait AnalyticsRepository: Send + Sync {
     /// # Errors
     /// Retourne `AppError::Database` si la requête échoue.
     fn metrics(&self, from: Option<&str>) -> AppResult<Metrics>;
+
+    /// Candidatures et réponses par canal, depuis une date ou sur tout l'historique.
+    ///
+    /// # Errors
+    /// Retourne `AppError::Database` si la requête échoue.
+    fn channel_rates(&self, from: Option<&str>) -> AppResult<Vec<ChannelRate>>;
 
     /// Rythme et délais depuis une date.
     ///
@@ -53,4 +59,12 @@ pub trait AnalyticsRepository: Send + Sync {
     /// # Errors
     /// Retourne `AppError::Database` si la requête échoue.
     fn recent(&self, limite: u64) -> AppResult<Vec<Application>>;
+
+    /// Échéances jusqu'à `until` inclus : toutes les relances **encore à faire** (en retard
+    /// comprises, quel que soit leur âge) et les entretiens à partir de `today`, dans l'ordre
+    /// chronologique.
+    ///
+    /// # Errors
+    /// Retourne `AppError::Database` si la requête échoue.
+    fn agenda(&self, today: &str, until: &str) -> AppResult<Vec<AgendaItem>>;
 }

@@ -15,4 +15,7 @@ export const followUpService = {
     ipc<FollowUp>("follow_ups_update", { id, input }),
 
   delete: (id: string) => ipc<void>("follow_ups_delete", { id }),
+
+  /** Marque la relance faite, ou la rouvre (`done = false`) pour annuler. */
+  setDone: (id: string, done: boolean) => ipc<FollowUp>("follow_ups_set_done", { id, done }),
 };

@@ -13,7 +13,10 @@ import { documentsService } from "../services/documentsService";
 import type { CoverLetter } from "@/shared/types/generated/documents";
 import { applyLetterCorrection, letterCorrectionFields } from "../model/letterMarkup";
 import { PROFILE_KEY, profileService } from "@/features/profile";
+import { useRemoteSendGuard } from "@/features/settings";
 import type { Identity } from "@/shared/types/generated/profile";
+import type { ProfileSection } from "@/shared/types/generated/ai";
+import { LETTER_ARGUMENTS, sectionOptions, toggleSection } from "../model/profileSections";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 import { exportCoverLetterPdf } from "./documentExport";
@@ -53,11 +56,13 @@ export function useLetterWriterViewModel(initial: CoverLetter | null) {
   const [briefOpen, setBriefOpen] = useState(false);
   const [abandonOpen, setAbandonOpen] = useState(false);
   const [overflow, setOverflow] = useState(false);
+  const [excludedSections, setExcludedSections] = useState<ProfileSection[]>([]);
   const progress = useAiProgress(stopping ? null : (operation?.id ?? null));
   const timer = useAiTimer(operation !== null && !stopping);
   const inIteration = exchanges.length > 0 && !briefOpen;
 
   const profile = useQuery({ queryKey: PROFILE_KEY, queryFn: profileService.load });
+  const confirmSend = useRemoteSendGuard();
   const identity = profile.data?.profile.identity ?? null;
 
   const saveIdentity = useMutation({
@@ -72,6 +77,7 @@ export function useLetterWriterViewModel(initial: CoverLetter | null) {
   });
 
   async function run(nextInstruction: string | null): Promise<void> {
+    if (!(await confirmSend("write_letter", "Votre profil et le texte de l’offre"))) return;
     let id: string;
     try {
       id = start("generation");
@@ -103,6 +109,7 @@ export function useLetterWriterViewModel(initial: CoverLetter | null) {
         previous_cover_letter:
           nextInstruction !== null && output.trim().length > 0 ? output : null,
         instruction: suite.length > 0 ? suite.join(" ; ") : null,
+        excluded_sections: excludedSections,
       });
       if (!isCurrent(id)) return;
       timer.stop();
@@ -132,6 +139,7 @@ export function useLetterWriterViewModel(initial: CoverLetter | null) {
   async function correct(): Promise<void> {
     const fields = letterCorrectionFields(output);
     if (fields.length === 0) return;
+    if (!(await confirmSend("write_letter", "Le texte de la lettre"))) return;
     let id: string;
     try {
       id = start("correction");
@@ -179,11 +187,21 @@ export function useLetterWriterViewModel(initial: CoverLetter | null) {
     };
   }
 
+  // Lettre que le prochain enregistrement révise : celle rouverte, puis celle enregistrée
+  // ici, pour qu'un second ⌘S ajoute une version plutôt qu'une nouvelle lettre.
+  const [revises, setRevises] = useState<string | null>(initial?.id ?? null);
   const save = useMutation({
-    mutationFn: () => documentsService.saveCoverLetter({ ...letterExport(), tone, length }),
-    onSuccess: async () => {
+    mutationFn: () =>
+      documentsService.saveCoverLetter({
+        ...letterExport(),
+        tone,
+        length,
+        ...(revises ? { revises, version_note: "Modifiée dans l'éditeur" } : { version_note: "Première version" }),
+      }),
+    onSuccess: async (saved) => {
       await queryClient.invalidateQueries({ queryKey: COVER_LETTERS_KEY });
-      notify({ tone: "success", title: "Lettre enregistrée" });
+      notify({ tone: "success", title: revises ? "Nouvelle version enregistrée" : "Lettre enregistrée" });
+      setRevises(saved.id);
     },
     onError: (caught) =>
       notify({ tone: "error", title: "Enregistrement impossible", detail: detail(caught) }),
@@ -241,6 +259,10 @@ export function useLetterWriterViewModel(initial: CoverLetter | null) {
     elapsedMs: timer.elapsedMs,
     inIteration,
     identity,
+    /** Les arguments proposés, comptés sur le profil courant. */
+    argumentOptions: sectionOptions(profile.data?.profile ?? null, LETTER_ARGUMENTS),
+    excludedSections,
+    toggleSection: (section: ProfileSection) => setExcludedSections((current) => toggleSection(current, section)),
     saveIdentity: async (next: Identity): Promise<void> => {
       await saveIdentity.mutateAsync(next);
     },

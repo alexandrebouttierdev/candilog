@@ -19,6 +19,10 @@ function cand(job_title: string, status: Application["status"] = "EN_ATTENTE"): 
     company_size: "PME",
     contact_id: null,
     application_type: "OFFRE",
+    channel: "OFFER",
+    reference_number: 142,
+    next_follow_up_date: null,
+    next_interview_at: null,
     contract_type_code: "CDI",
     contract_type_name: "CDI",
     weekly_work_schedule: "FULL_TIME",
@@ -149,7 +153,7 @@ describe("ViewModel des candidatures", () => {
     ).toBe(false);
   });
 
-  it("transmet la recherche au backend et revient en première page", async () => {
+  it("transmet la recherche au backend et repart de la première page de chaque groupe", async () => {
     const listPage = vi
       .spyOn(applicationService, "listPage")
       .mockResolvedValue(page([cand("Développeur")], 40));
@@ -157,40 +161,118 @@ describe("ViewModel des candidatures", () => {
     const { result } = renderHook(() => useApplicationsViewModel(), { wrapper });
     await waitFor(() => expect(listPage).toHaveBeenCalled());
 
-    act(() => result.current.setPage(3));
-    await waitFor(() => expect(result.current.page).toBe(3));
-
+    act(() => result.current.setKanbanPage("REFUS", 3));
     act(() => result.current.setSearch("nova"));
 
-    await waitFor(() => expect(result.current.page).toBe(1));
+    await waitFor(() => expect(result.current.kanbanPages.REFUS).toBe(1));
     await waitFor(() => expect(listPage.mock.calls.at(-1)?.[0].filter.search).toBe("nova"));
   });
 
-  it("inverse la direction quand on retrie la colonne courante", async () => {
-    vi.spyOn(applicationService, "listPage").mockResolvedValue(page([cand("Développeur")]));
+  it("charge 50 lignes par groupe dans la liste, puis 50 de plus à la demande", async () => {
+    // La liste v2 est groupée par statut : chaque groupe interroge SQLite séparément,
+    // sans pagination globale qui couperait un groupe en deux.
+    const listPage = vi
+      .spyOn(applicationService, "listPage")
+      .mockResolvedValue(page([cand("Développeur")], 120));
 
-    const { result } = renderHook(() => useApplicationsViewModel(), { wrapper });
-    await waitFor(() => expect(result.current.items).toHaveLength(1));
-    expect(result.current.sort).toBe("date");
-    expect(result.current.descending).toBe(true);
+    const { result } = renderHook(() => useApplicationsViewModel("list"), { wrapper });
+    await waitFor(() => expect(listPage).toHaveBeenCalledTimes(4));
+    expect(listPage.mock.calls.every(([params]) => params.page === 1 && params.page_size === 50)).toBe(true);
+    listPage.mockClear();
 
-    act(() => result.current.sortBy("date"));
-    expect(result.current.descending).toBe(false);
+    act(() => result.current.showMore("EN_ATTENTE"));
+
+    await waitFor(() =>
+      expect(
+        listPage.mock.calls.some(
+          ([params]) => params.page_size === 100 && params.filter.status[0] === "EN_ATTENTE",
+        ),
+      ).toBe(true),
+    );
+    expect(result.current.groupLimits.RELANCEE).toBe(50);
   });
 
-  it("repart en descendant sur une nouvelle colonne de tri", async () => {
-    // Conserver la direction précédente donnerait un premier clic dont l'effet dépend de
-    // l'historique des clics sur une autre colonne.
+  it("finit de charger quand le filtre ne retient que certains statuts", async () => {
+    const listPage = vi.spyOn(applicationService, "listPage").mockResolvedValue(page([cand("Développeur")]));
+    const initial = { ...EMPTY_FILTER, status: ["ENTRETIEN" as const], search: "", sort: "date" as const, descending: true, ids: [] };
+
+    const { result } = renderHook(() => useApplicationsViewModel("list", initial), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(listPage).toHaveBeenCalledTimes(1);
+    expect(listPage.mock.calls[0]?.[0].filter.status).toEqual(["ENTRETIEN"]);
+  });
+
+  it("interroge les autres statuts quand le statut est inversé", async () => {
+    const listPage = vi.spyOn(applicationService, "listPage").mockResolvedValue(page([cand("Développeur")]));
+    const initial = {
+      ...EMPTY_FILTER,
+      status: ["REFUS" as const],
+      excluded: ["status" as const],
+      search: "",
+      sort: "date" as const,
+      descending: true,
+      ids: [],
+    };
+
+    const { result } = renderHook(() => useApplicationsViewModel("list", initial), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    const demandes = listPage.mock.calls.map(([params]) => params.filter);
+    expect(demandes.map((filter) => filter.status[0]).sort()).toEqual(["ENTRETIEN", "EN_ATTENTE", "RELANCEE"]);
+    // Chaque colonne demande son statut tel quel : l'inversion ne s'applique qu'à la liste retenue.
+    expect(demandes.every((filter) => !filter.excluded.includes("status"))).toBe(true);
+  });
+
+  it("groupe la liste par entreprise sans interroger les groupes repliés", async () => {
+    const groupes = Array.from({ length: 10 }, (_, index) => ({ key: `e${index}`, label: `Entreprise ${index}`, count: 10 - index }));
+    const groups = vi.spyOn(applicationService, "groups").mockResolvedValue(groupes);
+    const listPage = vi.spyOn(applicationService, "listPage").mockResolvedValue(page([cand("Développeur")]));
+
+    const { result } = renderHook(() => useApplicationsViewModel("list"), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    listPage.mockClear();
+
+    act(() => result.current.cycleGrouping());
+
+    await waitFor(() => expect(result.current.customGroups).toHaveLength(10));
+    await waitFor(() => expect(listPage).toHaveBeenCalledTimes(8));
+    expect(groups).toHaveBeenCalledWith(expect.objectContaining({ search: "" }), "company");
+    const filtres = listPage.mock.calls.map(([params]) => params.filter);
+    expect(filtres.map((filter) => filter.company_id).sort()).toEqual(["e0", "e1", "e2", "e3", "e4", "e5", "e6", "e7"]);
+    // Le décompte vient de SQLite, pas des lignes chargées.
+    expect(result.current.customGroups[9]?.page.total).toBe(1);
+    expect(result.current.customGroups[9]?.open).toBe(false);
+
+    act(() => result.current.toggleCustomGroup("e9"));
+    await waitFor(() => expect(listPage).toHaveBeenCalledTimes(9));
+  });
+
+  it("revient au statut après entreprise et contrat", () => {
+    vi.spyOn(applicationService, "groups").mockResolvedValue([]);
+    vi.spyOn(applicationService, "listPage").mockResolvedValue(page([]));
+    const { result } = renderHook(() => useApplicationsViewModel("list"), { wrapper });
+
+    act(() => result.current.cycleGrouping());
+    act(() => result.current.cycleGrouping());
+    expect(result.current.grouping).toBe("contract");
+    act(() => result.current.cycleGrouping());
+    expect(result.current.grouping).toBe("status");
+  });
+
+  it("duplique la candidature et sélectionne la copie", async () => {
     vi.spyOn(applicationService, "listPage").mockResolvedValue(page([cand("Développeur")]));
+    const copie = { ...cand("Développeur"), id: "copie", reference_number: 143 };
+    const duplicate = vi.spyOn(applicationService, "duplicate").mockResolvedValue(copie);
 
     const { result } = renderHook(() => useApplicationsViewModel(), { wrapper });
-    await waitFor(() => expect(result.current.items).toHaveLength(1));
+    await act(async () => {
+      await result.current.duplicate("original");
+    });
 
-    act(() => result.current.sortBy("date"));
-    act(() => result.current.sortBy("job_title"));
-
-    expect(result.current.sort).toBe("job_title");
-    expect(result.current.descending).toBe(true);
+    expect(duplicate).toHaveBeenCalledWith("original");
+    expect(result.current.selected_id).toBe("copie");
+    expect(useUiStore.getState().toasts.at(-1)?.title).toBe("CAN-143 créée par duplication");
   });
 
   it("compte les filtres actifs sans la recherche libre", async () => {
@@ -216,9 +298,9 @@ describe("ViewModel des candidatures", () => {
     expect(result.current.activeFilterCount).toBe(4);
   });
 
-  it("n'annonce pas de succès après un changement de statut", async () => {
-    // Le déplacement de la carte est déjà la confirmation visible du geste : un toast à
-    // chaque glisser-déposer noierait les messages qui comptent.
+  it("annonce un changement de statut par un toast court « référence → statut »", async () => {
+    // `INTERACTIONS.md` §3.2 : le geste peut venir d'une glisse, du menu ou du clavier, et
+    // la ligne peut quitter l'écran en changeant de groupe — le toast confirme où elle va.
     vi.spyOn(applicationService, "listPage").mockResolvedValue(page([cand("Développeur")]));
     vi.spyOn(applicationService, "changeStatus").mockResolvedValue(
       cand("Développeur", "ENTRETIEN"),
@@ -231,7 +313,7 @@ describe("ViewModel des candidatures", () => {
       await result.current.changeStatus({ id: "Développeur", status: "ENTRETIEN" });
     });
 
-    expect(useUiStore.getState().toasts).toHaveLength(0);
+    expect(useUiStore.getState().toasts.map((toast) => toast.title)).toEqual(["CAN-142 → Entretien"]);
   });
 
   it("annonce l'échec d'un changement de statut", async () => {

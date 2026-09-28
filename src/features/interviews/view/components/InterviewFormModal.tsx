@@ -97,7 +97,6 @@ export function InterviewFormModal({
   return (
     <ModalHost
       open={open}
-      icon="event"
       title={interview ? "Modifier l'entretien" : "Nouvel entretien"}
       subtitle={
         interview

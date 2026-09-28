@@ -23,10 +23,31 @@ const MIGRATIONS: &[(i64, &str)] = &[
         2,
         include_str!("../../../migrations/002_cover_letter_layout.sql"),
     ),
+    (
+        3,
+        include_str!("../../../migrations/003_applications_reference_channel.sql"),
+    ),
+    (
+        4,
+        include_str!("../../../migrations/004_follow_up_done.sql"),
+    ),
+    (
+        5,
+        include_str!("../../../migrations/005_application_reference_counter.sql"),
+    ),
+    (6, include_str!("../../../migrations/006_saved_views.sql")),
+    (
+        7,
+        include_str!("../../../migrations/007_relation_notes.sql"),
+    ),
+    (
+        8,
+        include_str!("../../../migrations/008_document_versions.sql"),
+    ),
 ];
 
 /// Version de schéma atteinte après la dernière migration.
-pub const LATEST_SCHEMA_VERSION: i64 = 2;
+pub const LATEST_SCHEMA_VERSION: i64 = 8;
 
 /// Vérifie qu'un fichier existant appartient à la génération de schéma prise en charge.
 ///

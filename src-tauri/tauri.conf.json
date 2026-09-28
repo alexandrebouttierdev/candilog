@@ -4,9 +4,9 @@
   "version": "0.0.1",
   "identifier": "fr.candilog.desktop",
   "build": {
-    "beforeDevCommand": "npm run dev",
+    "beforeDevCommand": "yarn dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "npm run build",
+    "beforeBuildCommand": "yarn build",
     "frontendDist": "../dist"
   },
   "app": {
@@ -15,8 +15,10 @@
         "title": "Candilog",
         "width": 1440,
         "height": 900,
-        "minWidth": 1024,
-        "minHeight": 700,
+        "minWidth": 940,
+        "minHeight": 560,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
         "resizable": true,
         "dragDropEnabled": true
       }
@@ -50,8 +52,7 @@
       "../LICENSE": "LICENSE",
       "../NOTICE": "NOTICE",
       "../THIRD_PARTY_NOTICES.md": "THIRD_PARTY_NOTICES.md",
-      "assets/fonts/ibm-plex/LICENSE.txt": "licenses/ibm-plex-OFL-1.1.txt",
-      "assets/licenses/material-symbols-Apache-2.0.txt": "licenses/material-symbols-Apache-2.0.txt"
+      "assets/fonts/ibm-plex/LICENSE.txt": "licenses/ibm-plex-OFL-1.1.txt"
     },
     "licenseFile": "../LICENSE"
   }

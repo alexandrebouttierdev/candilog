@@ -23,6 +23,7 @@ describe("aiService", () => {
       context: "Une offre",
       previous_cover_letter: null,
       instruction: null,
+      excluded_sections: [],
     });
 
     expect(playCompletionSound).toHaveBeenCalledOnce();
@@ -84,6 +85,7 @@ describe("aiService", () => {
       context: null,
       previous_cover_letter: null,
       instruction: null,
+      excluded_sections: [],
     });
     await aiService.cancel("gen-late");
     resolveGeneration?.("Résultat tardif");

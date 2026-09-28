@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -8,11 +8,13 @@ import { documentsService } from "../../../services/documentsService";
 import { workspaceFixture } from "../../../model/resumeWorkspace";
 import type { ResumeWorkspace } from "@/shared/types/generated/documents";
 import { useUiStore } from "@/shared/lib/ui-store";
-import { ResumeLibraryPage } from "../ResumeLibraryPage";
+import { DocumentsPage } from "../DocumentsPage";
 import { ResumeGeneratorPage } from "../ResumeGeneratorPage";
 import { ResumeAnalysisPage } from "../ResumeAnalysisPage";
 import { LetterWriterPage } from "../LettersPages";
 import { AppError } from "@/shared/types/app-error";
+import { profileService } from "@/features/profile";
+import type { ProfilePayload } from "@/shared/types/generated/profile";
 import {
   aiService,
   type AiExecution,
@@ -61,6 +63,17 @@ function emptyMatchScore(total: number) {
   };
 }
 
+/** Bibliothèque sans lettre : les décomptes des onglets interrogent aussi les lettres. */
+function sansLettres() {
+  vi.spyOn(documentsService, "listCoverLettersPage").mockResolvedValue({
+    items: [],
+    total: 0,
+    page: 1,
+    page_size: 50,
+    total_pages: 1,
+  });
+}
+
 beforeEach(() => {
   vi.restoreAllMocks();
   useAiOperationStore.setState({ active: null });
@@ -68,29 +81,62 @@ beforeEach(() => {
   useUiStore.setState({ toasts: [] });
 });
 
-describe("bibliothèque de CV paginée", () => {
-  it("recherche et change de page côté backend", async () => {
-    const paged = vi.spyOn(documentsService, "listResumePage").mockImplementation(({ page, page_size, search }) => Promise.resolve({
-      items: [{ id: `${search || "cv"}-${page}`, name: `${search || "CV"} page ${page}`, created_at: "2026-08-30T00:00:00Z" }],
-      total: search ? 1 : 9,
-      page,
-      page_size,
-      total_pages: search ? 1 : 2,
-    }));
+/**
+ * Les générateurs s'ouvrent sur les candidatures, comme la maquette : une offre saisie à la
+ * main se colle dans l'onglet « Texte collé ».
+ */
+async function choisirTexteColle() {
+  await userEvent.click(screen.getByRole("tab", { name: "Texte collé" }));
+}
+
+describe("bibliothèque de documents", () => {
+  it("recherche et charge la suite côté backend", async () => {
+    sansLettres();
+    const paged = vi.spyOn(documentsService, "listResumePage").mockImplementation(({ page, page_size, search }) =>
+      Promise.resolve({
+        items: [{ id: `${search || "cv"}-1`, name: `${search || "CV"} 1`, created_at: "2026-08-30T00:00:00Z", ats_score: null, target_title: null }],
+        total: search ? 1 : 60,
+        page,
+        page_size,
+        total_pages: 1,
+      }),
+    );
     vi.spyOn(documentsService, "getResume").mockImplementation((id) => Promise.resolve({ id, name: id, content: null, created_at: "2026-08-30T00:00:00Z" }));
 
-    render(<ResumeLibraryPage />, { wrapper });
-    await waitFor(() => expect(paged).toHaveBeenCalledWith({ page: 1, page_size: 8, search: "" }));
+    render(<DocumentsPage filter="resumes" />, { wrapper });
+    await waitFor(() =>
+      expect(paged).toHaveBeenCalledWith({ page: 1, page_size: 50, search: "", scored_only: false }),
+    );
 
-    await userEvent.click(screen.getByRole("button", { name: "Page suivante" }));
-    await waitFor(() => expect(paged).toHaveBeenCalledWith({ page: 2, page_size: 8, search: "" }));
+    await userEvent.click(await screen.findByRole("button", { name: /Afficher plus/ }));
+    await waitFor(() =>
+      expect(paged).toHaveBeenCalledWith({ page: 1, page_size: 100, search: "", scored_only: false }),
+    );
 
-    const search = screen.getByPlaceholderText("Rechercher une version…");
-    await userEvent.type(search, "cible");
-    await waitFor(() => expect(paged).toHaveBeenCalledWith({ page: 1, page_size: 8, search: "cible" }));
+    await userEvent.type(screen.getByRole("searchbox", { name: "Rechercher un document" }), "cible");
+    await waitFor(() =>
+      expect(paged).toHaveBeenCalledWith({ page: 1, page_size: 50, search: "cible", scored_only: false }),
+    );
     // La commande exhaustive n'existe plus : la pagination en base est le seul chemin de
     // chargement de la bibliothèque, et `commandes-ipc.test.ts` verrouille l'inventaire.
     expect(documentsService).not.toHaveProperty("listResume");
+  });
+
+  it("ne demande que les CV analysés dans l'onglet Analyses", async () => {
+    sansLettres();
+    const paged = vi.spyOn(documentsService, "listResumePage").mockResolvedValue({
+      items: [{ id: "cv-1", name: "CV ciblé", created_at: "2026-08-30T00:00:00Z", ats_score: 82, target_title: "Chargé d'exploitation" }],
+      total: 1,
+      page: 1,
+      page_size: 50,
+      total_pages: 1,
+    });
+    vi.spyOn(documentsService, "getResume").mockResolvedValue({ id: "cv-1", name: "CV ciblé", content: null, created_at: "2026-08-30T00:00:00Z" });
+
+    render(<DocumentsPage filter="analyses" />, { wrapper });
+
+    expect(await screen.findByText("ATS 82")).toBeInTheDocument();
+    expect(paged).toHaveBeenCalledWith({ page: 1, page_size: 50, search: "", scored_only: true });
   });
 });
 
@@ -117,7 +163,9 @@ describe("analyse explicite d'un CV sélectionné", () => {
     });
 
     render(<ResumeAnalysisPage />, { wrapper });
-    expect(screen.getByText("Comparez un CV à l’offre ciblée")).toBeInTheDocument();
+
+    await choisirTexteColle();
+    expect(screen.getByRole("dialog", { name: "Analyse face à l’offre" })).toBeInTheDocument();
     expect(screen.queryByText("Lecture locale")).not.toBeInTheDocument();
     await userEvent.type(screen.getByLabelText(/Offre ciblée/), "Une offre");
     await userEvent.click(screen.getByRole("button", { name: "Choisir un fichier" }));
@@ -137,11 +185,16 @@ describe("analyse explicite d'un CV sélectionné", () => {
       await screen.findByText("Analysé en 18,4 s · 1 024 tokens"),
     ).toBeInTheDocument();
     expect(screen.getByText("Métier / fonction")).toBeInTheDocument();
-    expect(screen.getByText("Exigence absente : Java")).toBeInTheDocument();
+    // L'exigence manquante est citée dans la liste, sans preuve.
+    const exigences = screen.getByRole("region", { name: "Exigences de l’offre" });
+    const java = within(exigences).getByRole("listitem");
+    expect(java).toHaveTextContent("Java");
+    expect(java).toHaveTextContent("absente");
+    expect(java).toHaveTextContent("Aucune preuve trouvée dans le CV.");
     expect(screen.queryByText("À appliquer dans l’éditeur de CV")).not.toBeInTheDocument();
   });
 
-  it("masque le formulaire pendant l'analyse puis le restaure après un arrêt réel", async () => {
+  it("fige le formulaire pendant l'analyse puis le rend après un arrêt réel", async () => {
     vi.spyOn(aiService, "selectResumeFile").mockResolvedValue({ name: "cv.pdf" });
     let resolveAnalysis: ((value: AiExecution<ImportedResumeAnalysis>) => void) | undefined;
     vi.spyOn(aiService, "analyzeResume").mockReturnValue(
@@ -153,16 +206,20 @@ describe("analyse explicite d'un CV sélectionné", () => {
     );
 
     render(<ResumeAnalysisPage />, { wrapper });
+
+    await choisirTexteColle();
     await userEvent.type(screen.getByLabelText(/Offre ciblée/), "Une offre");
     await userEvent.click(screen.getByRole("button", { name: "Choisir un fichier" }));
     await userEvent.click(screen.getByRole("button", { name: "Analyser le CV" }));
 
-    expect(screen.queryByLabelText(/Offre ciblée/)).not.toBeInTheDocument();
-    expect(screen.queryByText("cv.pdf")).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/Offre ciblée/)).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Changer de fichier" })).toBeDisabled();
     expect(screen.queryByRole("button", { name: "Analyser le CV" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Arrêter" })).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Arrêter" }));
+    // Arrêter demande confirmation : le document en cours serait perdu.
+    await userEvent.click(within(screen.getByRole("alertdialog", { name: "Interrompre la génération ?" })).getByRole("button", { name: "Interrompre" }));
     expect(cancel).toHaveBeenCalledOnce();
     expect(screen.getByRole("button", { name: "Arrêt…" })).toBeDisabled();
     expect(screen.queryByText("Préparation du traitement…")).not.toBeInTheDocument();
@@ -172,6 +229,7 @@ describe("analyse explicite d'un CV sélectionné", () => {
       await Promise.resolve();
     });
     expect(await screen.findByLabelText(/Offre ciblée/)).toHaveValue("Une offre");
+    expect(screen.getByLabelText(/Offre ciblée/)).toBeEnabled();
     expect(screen.getByText("cv.pdf")).toBeInTheDocument();
 
     await act(async () => {
@@ -195,6 +253,8 @@ describe("analyse explicite d'un CV sélectionné", () => {
     );
 
     render(<ResumeAnalysisPage />, { wrapper });
+
+    await choisirTexteColle();
     await userEvent.type(screen.getByLabelText(/Offre ciblée/), "Une offre");
     await userEvent.click(screen.getByRole("button", { name: "Choisir un fichier" }));
     await userEvent.click(screen.getByRole("button", { name: "Analyser le CV" }));
@@ -211,7 +271,7 @@ describe("échecs d'enregistrement", () => {
   /// inchangé, et l'utilisateur croyait son document enregistré alors qu'il était perdu.
   it("signale le refus de duplication d'une version de CV", async () => {
     vi.spyOn(documentsService, "listResumePage").mockResolvedValue({
-      items: [{ id: "cv-1", name: "CV Produit", created_at: "2026-08-30T00:00:00Z" }],
+      items: [{ id: "cv-1", name: "CV Produit", created_at: "2026-08-30T00:00:00Z", ats_score: 70, target_title: "Dev" }],
       total: 1,
       page: 1,
       page_size: 8,
@@ -232,9 +292,11 @@ describe("échecs d'enregistrement", () => {
       new AppError({ code: "VALIDATION_ERROR", message: "Le contenu du CV est illisible" }),
     );
 
-    render(<ResumeLibraryPage />, { wrapper });
-    await waitFor(() => expect(screen.getByRole("button", { name: /Dupliquer/ })).toBeEnabled());
-    await userEvent.click(screen.getByRole("button", { name: /Dupliquer/ }));
+    sansLettres();
+    render(<DocumentsPage filter="resumes" />, { wrapper });
+    await waitFor(() => expect(screen.getByRole("button", { name: "PDF" })).toBeEnabled());
+    await userEvent.click(screen.getByRole("button", { name: "Autres actions" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Dupliquer" }));
 
     await waitFor(() =>
       expect(useUiStore.getState().toasts.map((toast) => toast.title)).toContain(
@@ -250,6 +312,8 @@ describe("échecs d'enregistrement", () => {
     );
 
     render(<LetterWriterPage />, { wrapper });
+
+    await choisirTexteColle();
 
     const contexte = screen.getByLabelText("Contexte ou offre");
     await userEvent.type(contexte, "Une offre");
@@ -273,6 +337,8 @@ describe("collage d'une offre depuis le presse-papiers", () => {
     );
 
     render(<LetterWriterPage />, { wrapper });
+
+    await choisirTexteColle();
     await userEvent.click(screen.getByRole("button", { name: "Coller" }));
 
     await waitFor(() =>
@@ -288,6 +354,8 @@ describe("collage d'une offre depuis le presse-papiers", () => {
     );
 
     render(<LetterWriterPage />, { wrapper });
+
+    await choisirTexteColle();
     await userEvent.click(screen.getByRole("button", { name: "Coller" }));
 
     await waitFor(() =>
@@ -315,6 +383,7 @@ describe("retouche de la lettre sur la page", () => {
       created_at: "2026-08-30T00:00:00Z",
     });
     render(<LetterWriterPage />, { wrapper });
+    await choisirTexteColle();
     await userEvent.type(screen.getByLabelText("Contexte ou offre"), "Une offre");
     await userEvent.click(screen.getByRole("button", { name: /Rédiger la lettre/ }));
     const corps = await screen.findByLabelText("Contenu de la lettre");
@@ -375,18 +444,20 @@ describe("itérations sur la lettre", () => {
   async function redigerUneLettre(contenu = "Madame, Monsieur,") {
     vi.spyOn(aiService, "generateCoverLetter").mockResolvedValue(aiExecution(contenu));
     render(<LetterWriterPage />, { wrapper });
+    await choisirTexteColle();
     await userEvent.type(screen.getByLabelText("Contexte ou offre"), "Une offre");
     await userEvent.click(screen.getByRole("button", { name: /Rédiger la lettre/ }));
   }
 
-  it("remplace le brief par les itérations et annonce la durée de rédaction", async () => {
+  it("ouvre les corrections et annonce la durée de rédaction", async () => {
     await redigerUneLettre();
 
     expect(
       await screen.findByText("Lettre rédigée en 18,4 s · 1 024 tokens"),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Que faut-il changer ?")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Contexte ou offre")).not.toBeInTheDocument();
+    // Le brief reste visible : changer le ton ou l'offre ne demande aucun aller-retour.
+    expect(screen.getByLabelText("Contexte ou offre")).toBeInTheDocument();
   });
 
   it("arrête la première rédaction et ignore son résultat tardif", async () => {
@@ -399,10 +470,13 @@ describe("itérations sur la lettre", () => {
       new Promise((resolve) => { resolveCancel = resolve; }),
     );
     render(<LetterWriterPage />, { wrapper });
+    await choisirTexteColle();
     await userEvent.type(screen.getByLabelText("Contexte ou offre"), "Une offre");
     await userEvent.click(screen.getByRole("button", { name: /Rédiger la lettre/ }));
 
     await userEvent.click(screen.getByRole("button", { name: "Arrêter" }));
+    // Arrêter demande confirmation : le document en cours serait perdu.
+    await userEvent.click(within(screen.getByRole("alertdialog", { name: "Interrompre la génération ?" })).getByRole("button", { name: "Interrompre" }));
     expect(cancel).toHaveBeenCalledOnce();
     expect(screen.getByRole("button", { name: "Arrêt…" })).toBeDisabled();
     expect(screen.queryByText("Préparation du traitement…")).not.toBeInTheDocument();
@@ -427,7 +501,7 @@ describe("itérations sur la lettre", () => {
     const generate = vi.mocked(aiService.generateCoverLetter);
 
     await userEvent.type(await screen.findByLabelText("Que faut-il changer ?"), "Plus court");
-    await userEvent.click(screen.getByRole("button", { name: /Régénérer avec cette consigne/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Envoyer" }));
     await waitFor(() => expect(screen.getByText(/Lettre régénérée en/)).toBeInTheDocument());
     await waitFor(() =>
       expect(generate.mock.lastCall?.[0]).toMatchObject({
@@ -436,11 +510,11 @@ describe("itérations sur la lettre", () => {
       }),
     );
 
-    await userEvent.type(screen.getByLabelText("Que faut-il changer ?"), "Plus formel");
-    await userEvent.click(screen.getByRole("button", { name: /Régénérer avec cette consigne/ }));
+    // Consigne rapide : envoyée telle quelle, cumulée avec la précédente.
+    await userEvent.click(await screen.findByRole("button", { name: "Moins formel" }));
 
     await waitFor(() =>
-      expect(generate.mock.lastCall?.[0].instruction).toBe("Plus court ; Plus formel"),
+      expect(generate.mock.lastCall?.[0].instruction).toBe("Plus court ; Moins formel"),
     );
     expect(generate.mock.lastCall?.[0].previous_cover_letter).toBeTruthy();
   });
@@ -448,27 +522,29 @@ describe("itérations sur la lettre", () => {
   it("abandonne la lettre et rend le brief après confirmation", async () => {
     await redigerUneLettre();
 
-    await userEvent.click(await screen.findByRole("button", { name: "Annuler" }));
-    await userEvent.click(screen.getByRole("button", { name: "Abandonner" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Abandonner…" }));
+    await userEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Abandonner" }));
 
     expect(screen.getByLabelText("Contexte ou offre")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Rédiger la lettre/ })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Enregistrer/ })).not.toBeInTheDocument();
   });
 
-  it("laisse rouvrir le brief pour changer le ton ou l'offre", async () => {
+  it("relance une nouvelle lettre avec le ton changé, sans quitter l'écran", async () => {
     await redigerUneLettre();
+    const generate = vi.mocked(aiService.generateCoverLetter);
 
-    await userEvent.click(await screen.findByRole("button", { name: "Revenir au brief" }));
+    await userEvent.click(await screen.findByRole("radio", { name: "Naturel" }));
+    await userEvent.click(screen.getByRole("button", { name: "Rédiger une nouvelle lettre" }));
 
-    expect(screen.getByLabelText("Contexte ou offre")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Revenir aux itérations" })).toBeInTheDocument();
+    await waitFor(() => expect(generate.mock.lastCall?.[0]).toMatchObject({ tone: "casual" }));
   });
 });
 
 describe("bibliothèque CV workspace", () => {
   function listerWorkspace(workspace: ResumeWorkspace) {
     vi.spyOn(documentsService, "listResumePage").mockResolvedValue({
-      items: [{ id: "cv-ws", name: "CV Workspace", created_at: "2026-08-30T00:00:00Z" }],
+      items: [{ id: "cv-ws", name: "CV Workspace", created_at: "2026-08-30T00:00:00Z", ats_score: null, target_title: null }],
       total: 1,
       page: 1,
       page_size: 8,
@@ -482,22 +558,49 @@ describe("bibliothèque CV workspace", () => {
     });
   }
 
-  it("affiche ResumePaper, ouvre le workspace avec Modifier et exporte le document", async () => {
+  it("liste les versions du CV et restaure une version antérieure après confirmation", async () => {
+    listerWorkspace(workspaceFixture());
+    sansLettres();
+    const versions = vi.spyOn(documentsService, "resumeVersions").mockResolvedValue([
+      { id: "cv-ws", version_number: 2, note: "Modifiée dans le générateur", created_at: "2026-09-09T10:00:00Z", is_current: true },
+      { id: "cv-v1", version_number: 1, note: "Première génération", created_at: "2026-09-08T10:00:00Z", is_current: false },
+    ]);
+    const restore = vi.spyOn(documentsService, "restoreResume").mockResolvedValue(undefined);
+
+    render(<DocumentsPage filter="resumes" />, { wrapper });
+    const fiche = await screen.findByRole("complementary", { name: "Fiche du document" });
+    expect(await within(fiche).findByText("Modifiée dans le générateur")).toBeInTheDocument();
+    expect(versions).toHaveBeenCalledWith("cv-ws");
+    // La version courante n'est pas une action : seule une autre version se restaure.
+    expect(within(fiche).queryByTitle("Revenir à la version v2")).not.toBeInTheDocument();
+
+    await userEvent.click(within(fiche).getByTitle("Revenir à la version v1"));
+    const dialogue = await screen.findByRole("alertdialog", { name: "Revenir à la version v1 ?" });
+    expect(dialogue).toHaveTextContent("v2 · 09-09");
+    expect(dialogue).toHaveTextContent("réversible : v2 reste dans l'historique");
+    await userEvent.click(within(dialogue).getByRole("button", { name: "Restaurer v1" }));
+
+    await waitFor(() => expect(restore).toHaveBeenCalledWith("cv-v1"));
+    await waitFor(() =>
+      expect(useUiStore.getState().toasts.map((toast) => toast.title)).toContain("v1 est la version courante"),
+    );
+  });
+
+  it("ouvre le workspace dans l'éditeur et exporte le document", async () => {
     const workspace = workspaceFixture({ profile: "Profil visible en bibliothèque." });
     listerWorkspace(workspace);
+    sansLettres();
     const exportPdf = vi.spyOn(documentsService, "exportPdf").mockResolvedValue(true);
 
-    render(<ResumeLibraryPage />, { wrapper });
-    expect(await screen.findByText("Profil visible en bibliothèque.")).toBeInTheDocument();
-    expect(screen.getByText("Aperçu")).toBeInTheDocument();
-    expect(screen.queryByText("Aperçu — CV Workspace")).not.toBeInTheDocument();
+    render(<DocumentsPage filter="resumes" />, { wrapper });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Ouvrir" })).toBeEnabled());
 
-    await userEvent.click(screen.getByRole("button", { name: /Modifier/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Ouvrir" }));
     expect(navigateMock).toHaveBeenCalledWith("/documents/generate-resume", {
-      state: { workspace, name: "CV Workspace" },
+      state: { workspace, name: "CV Workspace", documentId: "cv-ws" },
     });
 
-    await userEvent.click(screen.getByRole("button", { name: /Exporter PDF/ }));
+    await userEvent.click(screen.getByRole("button", { name: "PDF" }));
     await waitFor(() =>
       expect(exportPdf).toHaveBeenCalledWith(workspace.document),
     );
@@ -513,7 +616,7 @@ describe("bibliothèque CV workspace", () => {
     };
     const prepared = workspaceFixture({ profile: "Document préparé à l'export." });
     vi.spyOn(documentsService, "listResumePage").mockResolvedValue({
-      items: [{ id: "cv-old", name: "CV Historique", created_at: "2026-08-30T00:00:00Z" }],
+      items: [{ id: "cv-old", name: "CV Historique", created_at: "2026-08-30T00:00:00Z", ats_score: 72, target_title: "Dev" }],
       total: 1,
       page: 1,
       page_size: 8,
@@ -529,11 +632,12 @@ describe("bibliothèque CV workspace", () => {
     const exportPdf = vi.spyOn(documentsService, "exportPdf").mockResolvedValue(true);
     const saveResume = vi.spyOn(documentsService, "saveResume");
 
-    render(<ResumeLibraryPage />, { wrapper });
-    expect(await screen.findByText("Résumé historique.")).toBeInTheDocument();
+    sansLettres();
+    render(<DocumentsPage filter="resumes" />, { wrapper });
+    await waitFor(() => expect(screen.getByRole("button", { name: "PDF" })).toBeEnabled());
     expect(prepareResume).not.toHaveBeenCalled();
 
-    await userEvent.click(screen.getByRole("button", { name: /Exporter PDF/ }));
+    await userEvent.click(screen.getByRole("button", { name: "PDF" }));
     await waitFor(() => expect(prepareResume).toHaveBeenCalledWith(generation));
     await waitFor(() =>
       expect(exportPdf).toHaveBeenCalledWith(prepared.document),
@@ -576,11 +680,13 @@ describe("décisions ATS et confirmation profil dans le générateur de CV", () 
     vi.spyOn(documentsService, "prepareResume").mockResolvedValue(workspace);
 
     render(<ResumeGeneratorPage />, { wrapper });
+
+    await choisirTexteColle();
     await userEvent.type(screen.getByLabelText(/Texte de l’offre/), "Une offre");
-    await userEvent.click(screen.getByRole("button", { name: /Générer le CV ciblé/ }));
+    await userEvent.click(screen.getByRole("button", { name: /^Générer/ }));
 
     expect(await screen.findByText("Docker")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "CV ciblé" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Générer un CV" })).toBeInTheDocument();
     expect(screen.queryByText("Analysez une offre, générez un CV ciblé, exportez en PDF")).not.toBeInTheDocument();
     expect(screen.getByText(/absentes de votre profil/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Accepter Docker" })).not.toBeInTheDocument();
@@ -598,8 +704,10 @@ describe("décisions ATS et confirmation profil dans le générateur de CV", () 
     vi.spyOn(documentsService, "prepareResume").mockResolvedValue(missingSkillWorkspace());
 
     render(<ResumeGeneratorPage />, { wrapper });
+
+    await choisirTexteColle();
     await userEvent.type(screen.getByLabelText(/Texte de l’offre/), "Une offre");
-    await userEvent.click(screen.getByRole("button", { name: /Générer le CV ciblé/ }));
+    await userEvent.click(screen.getByRole("button", { name: /^Générer/ }));
 
     // L'offre laisse la place à l'aperçu : sans cela le papier A4 restait comprimé.
     const revenir = await screen.findByRole("button", { name: /Modifier l’offre/ });
@@ -610,5 +718,162 @@ describe("décisions ATS et confirmation profil dans le générateur de CV", () 
 
     await userEvent.click(screen.getByRole("button", { name: /Revenir au CV/ }));
     expect(screen.queryByLabelText(/Texte de l’offre/)).not.toBeInTheDocument();
+  });
+});
+
+describe("feuille de la lettre avant rédaction", () => {
+  it("montre une feuille neutre, puis l'éditeur si l'on écrit soi-même", async () => {
+    render(<LetterWriterPage />, { wrapper });
+    await choisirTexteColle();
+
+    expect(screen.queryByLabelText("Contenu de la lettre")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Écrire la lettre moi-même" }));
+
+    expect(screen.getByLabelText("Contenu de la lettre")).toBeInTheDocument();
+  });
+});
+
+describe("offre visée", () => {
+  it("s'ouvre sur les candidatures, comme la maquette", () => {
+    render(<ResumeGeneratorPage />, { wrapper });
+
+    expect(screen.getByRole("tab", { name: "Une candidature" })).toHaveAttribute("aria-selected", "true");
+  });
+});
+
+describe("arrêt d'une génération", () => {
+  it("laisse finir la rédaction quand on renonce à l'interrompre", async () => {
+    vi.spyOn(aiService, "generateCoverLetter").mockReturnValue(new Promise(() => undefined));
+    const cancel = vi.spyOn(aiService, "cancel");
+    render(<LetterWriterPage />, { wrapper });
+    await choisirTexteColle();
+    await userEvent.type(screen.getByLabelText("Contexte ou offre"), "Une offre");
+    await userEvent.click(screen.getByRole("button", { name: /Rédiger la lettre/ }));
+
+    await userEvent.click(screen.getByRole("button", { name: "Arrêter" }));
+    await userEvent.click(screen.getByRole("button", { name: "Laisser finir" }));
+
+    expect(cancel).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Arrêter" })).toBeEnabled();
+  });
+});
+
+describe("ce que l'IA peut utiliser", () => {
+  function profil(): ProfilePayload {
+    const experience = { title: "Technicien", company: "Ker", location: null, start_date: "2020-01", end_date: null, current: true, description: null };
+    return {
+      profile: {
+        identity: {
+          first_name: "Jean",
+          name: "Rivière",
+          email: "jean@exemple.fr",
+          phone: null,
+          address: null,
+          city: null,
+          title: null,
+          resume: "Chargé d'exploitation",
+          birth_date: null,
+          age: null,
+          availability: null,
+          desired_contracts: null,
+          linkedin: null,
+          github: null,
+          website: null,
+        },
+        photo: null,
+        experiences: [experience, experience],
+        skills: [{ name: "Linux", description: null }],
+        education: [],
+        languages: [],
+        projects: [],
+        certifications: [],
+        interests: [],
+      },
+      completion: 60,
+      incomplete_sections: [],
+      updated_at: null,
+    };
+  }
+
+  it("retire du CV les sections écartées et transmet le ton choisi", async () => {
+    vi.spyOn(profileService, "load").mockResolvedValue(profil());
+    const generation = {
+      resume: { resume: "", experiences: [], skills: [], education: [] },
+      analysis: { recap: "", recommendations: [], content_recommendations: [] },
+      job_offer: emptyJobOffer("Technicien"),
+      profile_score: emptyMatchScore(60),
+      recommendation_error: null,
+    };
+    const generate = vi.spyOn(aiService, "generateResume").mockResolvedValue(aiExecution(generation));
+    const prepare = vi.spyOn(documentsService, "prepareResume").mockResolvedValue(workspaceFixture());
+    render(<ResumeGeneratorPage />, { wrapper });
+    await choisirTexteColle();
+
+    // Une section vide ne se règle pas : il n'y a rien à retirer.
+    expect(await screen.findByRole("switch", { name: "Certifications" })).toBeDisabled();
+    await waitFor(() => expect(screen.getByRole("switch", { name: "Compétences" })).toBeEnabled());
+    await userEvent.click(screen.getByRole("switch", { name: "Compétences" }));
+    await userEvent.click(screen.getByRole("radio", { name: "Direct" }));
+    await userEvent.type(screen.getByLabelText(/Texte de l’offre/), "Une offre");
+    await userEvent.click(screen.getByRole("button", { name: /^Générer/ }));
+
+    await waitFor(() => expect(prepare).toHaveBeenCalledWith(generation, ["skills"]));
+    expect(generate).toHaveBeenCalledWith(expect.objectContaining({ excluded_sections: ["skills"], tone: "direct" }));
+  });
+
+  it("n'autorise à la lettre que les arguments cochés", async () => {
+    vi.spyOn(profileService, "load").mockResolvedValue(profil());
+    const generate = vi.spyOn(aiService, "generateCoverLetter").mockResolvedValue(aiExecution("Madame, Monsieur,"));
+    render(<LetterWriterPage />, { wrapper });
+    await choisirTexteColle();
+
+    await waitFor(() => expect(screen.getByRole("switch", { name: "Présentation" })).toBeEnabled());
+    await userEvent.click(screen.getByRole("switch", { name: "Présentation" }));
+    await userEvent.type(screen.getByLabelText("Contexte ou offre"), "Une offre");
+    await userEvent.click(screen.getByRole("button", { name: /Rédiger la lettre/ }));
+
+    await waitFor(() => expect(generate).toHaveBeenCalledWith(expect.objectContaining({ excluded_sections: ["summary"] })));
+  });
+});
+
+describe("adéquation de la lettre", () => {
+  it("mesure la lettre, retire une recommandation ignorée et applique l'autre par la correction", async () => {
+    const generate = vi.spyOn(aiService, "generateCoverLetter").mockResolvedValue(aiExecution("Madame, Monsieur, je pratique Linux."));
+    vi.spyOn(aiService, "analyzeListing").mockResolvedValue(
+      aiExecution({ job_offer: emptyJobOffer("Technicien"), score: emptyMatchScore(50) }),
+    );
+    const recommandation = (requirement: string, impact: number) => ({
+      id: `experience:0:${requirement}`,
+      requirement,
+      importance: "important" as const,
+      evidence: `Technicien chez Ker : ${requirement} de 400 postes`,
+      instruction: `Aborde « ${requirement} » en t'appuyant uniquement sur ce fait de mon profil`,
+      impact,
+    });
+    vi.spyOn(aiService, "evaluateCoverLetter").mockResolvedValue({
+      score: 45,
+      potential: 80,
+      requirements: 4,
+      addressed: ["Linux"],
+      recommendations: [recommandation("Supervision", 27), recommandation("Astreinte", 8)],
+      unsupported: ["Kubernetes"],
+    });
+    render(<LetterWriterPage />, { wrapper });
+    await choisirTexteColle();
+    await userEvent.type(screen.getByLabelText("Contexte ou offre"), "Technicien Linux, supervision, astreinte");
+    await userEvent.click(screen.getByRole("button", { name: /Rédiger la lettre/ }));
+
+    expect(await screen.findByText("jusqu’à 80")).toBeInTheDocument();
+    expect(screen.getByText(/Kubernetes/)).toBeInTheDocument();
+
+    const astreinte = screen.getByText("Aborder « Astreinte »").closest("li");
+    if (!astreinte) throw new Error("Recommandation introuvable");
+    await userEvent.click(within(astreinte).getByRole("button", { name: "Ignorer" }));
+    expect(screen.queryByText("Aborder « Astreinte »")).not.toBeInTheDocument();
+    expect(screen.getByText("jusqu’à 72")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Appliquer" }));
+    await waitFor(() => expect(generate.mock.calls.at(-1)?.[0].instruction).toContain("Aborde « Supervision »"));
   });
 });

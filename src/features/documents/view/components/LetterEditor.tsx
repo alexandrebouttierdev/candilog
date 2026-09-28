@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { IconButton, Select } from "@/shared/ui";
+import { Button, GlyphButton, Select } from "@/shared/ui";
+import { cn } from "@/shared/lib/cn";
 import { DocumentPanel } from "./DocumentUi";
 import { LetterPaper, type LetterPaperField, type LetterPaperFields } from "./LetterPaper";
 import type { Identity } from "@/shared/types/generated/profile";
-import type { IconName } from "@/shared/ui/icon-names";
 import {
   markupFromDom,
   parseLetter,
@@ -12,10 +12,10 @@ import {
   type LetterSize,
 } from "../../model/letterMarkup";
 
-const ALIGNMENTS: { value: LetterAlign; icon: IconName; label: string }[] = [
-  { value: "left", icon: "format_align_left", label: "Aligner à gauche" },
-  { value: "center", icon: "format_align_center", label: "Centrer" },
-  { value: "right", icon: "format_align_right", label: "Aligner à droite" },
+const ALIGNMENTS: { value: LetterAlign; label: string; name: string }[] = [
+  { value: "left", label: "Gauche", name: "Aligner à gauche" },
+  { value: "center", label: "Centre", name: "Centrer" },
+  { value: "right", label: "Droite", name: "Aligner à droite" },
 ];
 
 /**
@@ -116,35 +116,38 @@ export function LetterEditor({
         if (!(event.target instanceof HTMLSelectElement)) event.preventDefault();
       }}
     >
-      <IconButton
-        icon="format_bold"
+      <GlyphButton
+        glyph="B"
         label="Gras"
         aria-pressed={marks.bold}
         disabled={readOnly}
-        className={marks.bold ? "bg-accent-tint text-accent" : undefined}
+        className={cn("font-semibold", marks.bold && "bg-tint-ac-bg text-tint-ac-tx")}
         onClick={() => applyMark("bold")}
       />
-      <IconButton
-        icon="format_underlined"
+      <GlyphButton
+        glyph="U"
         label="Souligné"
         aria-pressed={marks.underline}
         disabled={readOnly}
-        className={marks.underline ? "bg-accent-tint text-accent" : undefined}
+        className={cn("underline", marks.underline && "bg-tint-ac-bg text-tint-ac-tx")}
         onClick={() => applyMark("underline")}
       />
-      <span aria-hidden className="mx-1 h-4 w-px bg-line" />
+      <span aria-hidden className="mx-1 h-4 w-px bg-bd-soft" />
       {ALIGNMENTS.map((alignment) => (
-        <IconButton
+        <Button
           key={alignment.value}
-          icon={alignment.icon}
-          label={alignment.label}
+          size="compact"
+          variant="ghost"
+          aria-label={alignment.name}
           disabled={readOnly}
           onClick={() =>
             forSelectedParagraphs((element) => {
               element.style.textAlign = alignment.value === "left" ? "" : alignment.value;
             })
           }
-        />
+        >
+          {alignment.label}
+        </Button>
       ))}
       <span aria-hidden className="mx-1 h-4 w-px bg-line" />
       <Select
@@ -168,7 +171,7 @@ export function LetterEditor({
   );
 
   return (
-    <DocumentPanel title="Document" icon="draft" action={barre} className="flex min-h-0 flex-col">
+    <DocumentPanel title="Document" action={barre} className="flex min-h-0 flex-col">
       <div className="flex min-h-0 flex-1 flex-col items-center gap-3 overflow-y-auto bg-page p-[26px]">
         <LetterPaper
           fields={fields}

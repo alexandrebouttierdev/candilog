@@ -1,6 +1,7 @@
 //! Entité et champs éditables d'une candidature.
 
 use crate::features::applications::domain::application_type::ApplicationType;
+use crate::features::applications::domain::channel::ApplicationChannel;
 use crate::features::applications::domain::schedule::WeeklyWorkSchedule;
 use crate::features::applications::domain::status::ApplicationStatus;
 use crate::features::companies::domain::CompanySize;
@@ -18,6 +19,9 @@ use serde::{Deserialize, Serialize};
 pub struct Application {
     /// Id de la candidature.
     pub id: uuid::Uuid,
+    /// Numéro de la référence lisible `CAN-142` : croissant, jamais réattribué.
+    #[ts(type = "number")]
+    pub reference_number: i64,
     /// Intitulé du poste visé.
     pub job_title: String,
     /// Id de l'entreprise liée.
@@ -29,8 +33,10 @@ pub struct Application {
     /// Id du contact lié, s'il existe.
     pub contact_id: Option<uuid::Uuid>,
 
-    /// Réponse à une offre, ou démarche spontanée.
+    /// Réponse à une offre, ou démarche spontanée — déduite du canal.
     pub application_type: ApplicationType,
+    /// Canal par lequel l'offre a été trouvée.
+    pub channel: ApplicationChannel,
 
     /// Code du type de contrat (référentiel `contract_types`).
     pub contract_type_code: String,
@@ -74,6 +80,10 @@ pub struct Application {
     pub job_url: Option<String>,
     /// Notes libres.
     pub notes: Option<String>,
+    /// Prochaine relance programmée, aujourd'hui ou plus tard (`AAAA-MM-JJ`).
+    pub next_follow_up_date: Option<String>,
+    /// Prochain entretien, aujourd'hui ou plus tard (horodatage ISO 8601).
+    pub next_interview_at: Option<String>,
     /// Date de création (ISO 8601).
     pub created_at: String,
     /// Date de dernière mise à jour (ISO 8601).
@@ -91,9 +101,9 @@ pub struct NewApplication {
     pub company_id: uuid::Uuid,
     /// Id du contact lié, s'il existe.
     pub contact_id: Option<uuid::Uuid>,
-    /// Réponse à une offre, ou démarche spontanée.
+    /// Canal par lequel l'offre a été trouvée ; la nature de la démarche en découle.
     #[serde(default)]
-    pub application_type: ApplicationType,
+    pub channel: ApplicationChannel,
     /// Code du type de contrat, choisi dans le référentiel `contract_types`.
     pub contract_type_code: String,
     /// Régime horaire hebdomadaire.
@@ -120,4 +130,33 @@ pub struct NewApplication {
     pub job_url: Option<String>,
     /// Notes libres.
     pub notes: Option<String>,
+}
+
+/// Ce que la suppression d'une candidature emporte avec elle, pour l'énumérer dans le
+/// dialogue de confirmation au lieu d'un « êtes-vous sûr ? ». L'entreprise et le contact,
+/// eux, survivent toujours.
+#[derive(Debug, Clone, Default, Serialize, ts_rs::TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "applications.ts")]
+pub struct DeletionImpact {
+    /// Relances programmées.
+    #[ts(type = "number")]
+    pub follow_ups: u64,
+    /// Entretiens.
+    #[ts(type = "number")]
+    pub interviews: u64,
+    /// Changements de statut enregistrés.
+    #[ts(type = "number")]
+    pub status_changes: u64,
+}
+
+/// Une étape de l'historique des statuts d'une candidature.
+#[derive(Debug, Clone, Serialize, ts_rs::TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "applications.ts")]
+pub struct StatusChange {
+    /// Statut atteint.
+    pub status: ApplicationStatus,
+    /// Date du changement (ISO 8601).
+    pub changed_at: String,
 }

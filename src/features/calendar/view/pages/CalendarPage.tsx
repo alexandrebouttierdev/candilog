@@ -15,19 +15,9 @@ import { ViewDay, ViewWeek } from "../components/ViewAgenda";
 import { InterviewFormModal } from "@/features/interviews";
 import { FollowUpFormModal, type FollowUp } from "@/features/followups";
 import type { Interview } from "@/features/interviews";
-import {
-  Button,
-  ConfirmDialog,
-  ErrorBanner,
-  Icon,
-  PageHeader,
-  SegmentedControl,
-  Skeleton,
-  StatusPill,
-} from "@/shared/ui";
+import { Button, ConfirmDialog, ErrorBanner, SegmentedControl, Skeleton, StatusGlyph } from "@/shared/ui";
+import { useChrome } from "@/shared/lib/chrome";
 import { AppError } from "@/shared/types/app-error";
-import { cn } from "@/shared/lib/cn";
-import type { IconName } from "@/shared/ui/icon-names";
 
 type CalendarView = "mois" | "semaine" | "jour";
 
@@ -100,62 +90,64 @@ export function CalendarPage() {
     }
   };
 
+  const upcomingFollowUps = [...vm.parDay.values()]
+    .flat()
+    .filter((event) => event.kind === "follow_up" && !event.done && event.day >= isoLocal(new Date())).length;
+  const monthEvents = vm.countInterviews + vm.countFollowUps;
+  useChrome({
+    status: `${monthEvents} échéance${monthEvents > 1 ? "s" : ""} en ${vm.label.split(" ")[0]?.toLowerCase() ?? ""} · ${upcomingFollowUps} relance${upcomingFollowUps > 1 ? "s" : ""} à venir`,
+    keys: [],
+  });
+
   return (
     <div className="flex h-full flex-col">
-<PageHeader
-        icon="calendar_month"
-        title="Calendrier"
-        subtitle="Entretiens et relances"
-        secondary={
-          <Button
-            icon="send"
-            onClick={() => setEdition({ kind: "relance", target: null, day: null })}
-          >
-            Relance
+      <div className="flex h-toolbar flex-none items-center gap-2 border-b border-bd-soft px-3.5">
+        <button
+          type="button"
+          aria-label="Période précédente"
+          onClick={() => navigate(-1)}
+          className="flex size-[22px] items-center justify-center rounded-r6 text-small text-tx-4 hover:bg-hover hover:text-tx"
+        >
+          ‹
+        </button>
+        <h1 className="serif-title min-w-[150px] text-center text-[16px] text-tx capitalize">{heading}</h1>
+        <button
+          type="button"
+          aria-label="Période suivante"
+          onClick={() => navigate(1)}
+          className="flex size-[22px] items-center justify-center rounded-r6 text-small text-tx-4 hover:bg-hover hover:text-tx"
+        >
+          ›
+        </button>
+        <Button variant="ghost" size="compact" onClick={goToday}>
+          Aujourd&apos;hui
+        </Button>
+        <span className="ml-2 hidden items-center gap-3 text-tiny text-tx-4 min-[1100px]:flex">
+          <span className="flex items-center gap-1.5">
+            <StatusGlyph tone="a" small />
+            {`Relance à envoyer · ${vm.countFollowUps}`}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <StatusGlyph tone="g" small />
+            {`Entretien · ${vm.countInterviews}`}
+          </span>
+        </span>
+        <span className="ml-auto flex flex-none items-center gap-1.5">
+          <SegmentedControl dense label="Vue du calendrier" value={view} options={VIEWS} onChange={setView} />
+          <Button size="compact" onClick={() => setEdition({ kind: "relance", target: null, day: null })}>
+            Programmer une relance
           </Button>
-        }
-        primary={
           <Button
             variant="primary"
-            icon="add"
+            size="compact"
             onClick={() => setEdition({ kind: "entretien", target: null, day: null })}
           >
             Nouvel entretien
           </Button>
-        }
-      />
-
-      <div className="flex flex-none items-center gap-3 border-b border-line bg-surface-alt px-6 py-2.5">
-        <div className="flex items-center">
-          <MonthNav direction="chevron_left" label="Période précédente" onClick={() => navigate(-1)} />
-          <MonthNav direction="chevron_right" label="Période suivante" onClick={() => navigate(1)} joined />
-        </div>
-
-        <Button icon="today" onClick={goToday}>
-          Aujourd'hui
-        </Button>
-
-        <h2 className="text-section text-ink capitalize">{heading}</h2>
-
-        <div className="flex-1" />
-
-        <StatusPill tone="success" icon="event_available">
-          {`${vm.countInterviews} entretien${vm.countInterviews > 1 ? "s" : ""}`}
-        </StatusPill>
-        <StatusPill tone="warning" icon="send">
-          {`${vm.countFollowUps} relance${vm.countFollowUps > 1 ? "s" : ""}`}
-        </StatusPill>
-
-        <SegmentedControl
-          dense
-          label="Vue du calendrier"
-          value={view}
-          options={VIEWS}
-          onChange={setView}
-        />
+        </span>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col p-6">
+      <div className="flex min-h-0 flex-1 flex-col">
         {vm.error ? (
           <ErrorBanner
             message={
@@ -250,42 +242,16 @@ export function CalendarPage() {
   );
 }
 
-function MonthNav({
-  direction,
-  label,
-  onClick,
-  joined = false,
-}: {
-  direction: IconName;
-  label: string;
-  onClick: () => void;
-  joined?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      onClick={onClick}
-      className={cn(
-        "flex size-[30px] items-center justify-center border border-line bg-surface text-ink-muted transition-colors duration-150 hover:bg-neutral-tint hover:text-ink",
-        joined ? "rounded-r-button border-l-0" : "rounded-l-button",
-      )}
-    >
-      <Icon name={direction} size={16} />
-    </button>
-  );
-}
-
 /** Squelette de la grille, aux dimensions des cases réelles. */
 function GridSkeleton() {
   return (
     <div
       role="status"
       aria-label="Chargement du calendrier"
-      className="grid min-h-0 flex-1 grid-cols-7 grid-rows-6 overflow-hidden rounded-card border border-line bg-surface"
+      className="grid min-h-0 flex-1 grid-cols-7 grid-rows-6 overflow-hidden"
     >
       {Array.from({ length: 42 }, (_, index) => (
-        <div key={index} className="flex flex-col gap-1 border-r border-b border-line p-1.5">
+        <div key={index} className="flex flex-col gap-1 border-r border-b border-bd-soft p-1.5">
           <Skeleton className="size-6 flex-none rounded-pill" />
           {index % 5 === 0 ? <Skeleton className="h-3.5 w-full" /> : null}
         </div>

@@ -1,41 +1,11 @@
-import type { ReactNode } from "react";
 import type { AtsRecommendationSection, ResumeGeneration } from "@/features/ai";
 import type { CoverLetter, ResumeWorkspace } from "@/shared/types/generated/documents";
 import { AppError } from "@/shared/types/app-error";
-import { Button, FormField, Icon, TextArea, TextInput } from "@/shared/ui";
+import { Button, FormField, TextArea, TextInput } from "@/shared/ui";
 import { useUiStore } from "@/shared/lib/ui-store";
-import type { IconName } from "@/shared/ui/icon-names";
 import { normalizeResumeWorkspace } from "../../model/resumeWorkspace";
 
 export { RESUME_KEY, COVER_LETTERS_KEY } from "../../viewmodel/documentKeys";
-
-export function Screen({
-  header,
-  children,
-  padded = true,
-}: {
-  header: ReactNode;
-  children: ReactNode;
-  padded?: boolean;
-}) {
-  return (
-    <div className="flex h-full flex-col">
-      {header}
-      <div className={padded ? "min-h-0 flex-1 overflow-y-auto p-5 min-[1200px]:p-6" : "flex min-h-0 flex-1 flex-col overflow-hidden"}>
-        {children}
-      </div>
-    </div>
-  );
-}
-
-export function HeaderBadge({ children, icon = "auto_awesome" }: { children: ReactNode; icon?: IconName }) {
-  return (
-    <span className="inline-flex items-center gap-[5px] rounded-pill bg-accent-tint px-2.5 py-[5px] text-label font-mid text-accent">
-      <Icon name={icon} size={15} />
-      {children}
-    </span>
-  );
-}
 
 /**
  * Mention accompagnant le texte libre renvoyé par le modèle.
@@ -46,17 +16,11 @@ export function HeaderBadge({ children, icon = "auto_awesome" }: { children: Rea
  */
 export function TexteNonVerifie() {
   return (
-    <p className="flex items-start gap-1.5 text-meta text-ink-faint">
-      <Icon name="info" size={14} className="mt-px flex-none" />
+    <p className="text-meta text-ink-faint">
       Commentaire rédigé par le modèle, à partir de l’offre fournie. Le score, lui, est
       calculé par Candilog.
     </p>
   );
-}
-
-export function AtsChip({ score }: { score: number }) {
-  const tone = score >= 80 ? "bg-success-tint text-success" : score >= 65 ? "bg-warning-tint text-warning" : "bg-neutral-tint text-ink-muted";
-  return <span className={`rounded-tag px-1.5 py-0.5 text-[10.5px] font-semibold ${tone}`}>ATS {score}</span>;
 }
 
 /**
@@ -78,6 +42,7 @@ export function ChampOffre({
   placeholder,
   onChange,
   readClipboard,
+  disabled = false,
 }: {
   label: string;
   value: string;
@@ -85,6 +50,8 @@ export function ChampOffre({
   required?: boolean;
   help?: string;
   placeholder?: string;
+  /** Figé pendant une génération : le texte envoyé ne doit plus bouger. */
+  disabled?: boolean;
   onChange: (value: string) => void;
   /** Lecture native du presse-papiers, fournie par le ViewModel. */
   readClipboard: () => Promise<string>;
@@ -116,14 +83,15 @@ export function ChampOffre({
             {...props}
             rows={rows}
             value={value}
+            disabled={disabled}
             placeholder={placeholder}
             onChange={(event) => onChange(event.target.value)}
           />
           <Button
             variant="ghost"
             size="dialog"
-            icon="content_paste"
             className="self-end"
+            disabled={disabled}
             onClick={() => void coller()}
           >
             Coller
@@ -154,15 +122,18 @@ export function generationFromNavigation(state: unknown): {
   result: ResumeGeneration | null;
   workspace: ResumeWorkspace | null;
   name: string;
+  documentId: string | null;
 } {
-  if (typeof state !== "object" || state === null) return { result: null, workspace: null, name: "" };
-  const payload = state as { generation?: ResumeGeneration; workspace?: unknown; name?: string };
+  if (typeof state !== "object" || state === null) return { result: null, workspace: null, name: "", documentId: null };
+  const payload = state as { generation?: ResumeGeneration; workspace?: unknown; name?: string; documentId?: string };
+  const documentId = typeof payload.documentId === "string" ? payload.documentId : null;
   const workspace = normalizeResumeWorkspace(payload.workspace);
   if (workspace) {
     return {
       result: null,
       workspace,
       name: payload.name ?? `CV — ${workspace.job_offer.title || "Version ciblée"}`,
+      documentId,
     };
   }
   if (payload.generation) {
@@ -170,9 +141,10 @@ export function generationFromNavigation(state: unknown): {
       result: payload.generation,
       workspace: null,
       name: payload.name ?? `CV — ${payload.generation.job_offer.title || "Version ciblée"}`,
+      documentId,
     };
   }
-  return { result: null, workspace: null, name: "" };
+  return { result: null, workspace: null, name: "", documentId: null };
 }
 export function coverLetterFromNavigation(state: unknown): CoverLetter | null {
   if (typeof state !== "object" || state === null || !("cover_letter" in state)) return null;

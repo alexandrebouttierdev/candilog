@@ -1,7 +1,7 @@
 //! Helpers communs et déclaration des cas de test.
 use super::*;
 use crate::features::applications::domain::{
-    ApplicationStatus, ApplicationType, WeeklyWorkSchedule,
+    ApplicationChannel, ApplicationStatus, ApplicationType, WeeklyWorkSchedule,
 };
 use crate::features::companies::domain::CompanySize;
 
@@ -12,12 +12,14 @@ use crate::features::companies::domain::CompanySize;
 fn cand(job_title: &str, notes: Option<&str>) -> Application {
     Application {
         id: uuid::Uuid::nil(),
+        reference_number: 42,
         job_title: job_title.into(),
         company_id: uuid::Uuid::nil(),
         company_name: Some("Nova Digital".into()),
         company_size: CompanySize::Pme,
         contact_id: None,
         application_type: ApplicationType::JobOffer,
+        channel: ApplicationChannel::Network,
         contract_type_code: "CDI".into(),
         contract_type_name: Some("CDI".into()),
         weekly_work_schedule: WeeklyWorkSchedule::FullTime,
@@ -35,13 +37,15 @@ fn cand(job_title: &str, notes: Option<&str>) -> Application {
         sent_date: "2026-08-20".into(),
         job_url: Some("https://example.org/offre".into()),
         notes: notes.map(Into::into),
+        next_follow_up_date: None,
+        next_interview_at: None,
         created_at: "2026-08-20T00:00:00Z".into(),
         updated_at: "2026-08-20T00:00:00Z".into(),
     }
 }
 
 /// Nombre de colonnes de l'export, en-tête comprise.
-const COLONNES: usize = 15;
+const COLONNES: usize = 17;
 
 mod le_csv_s_ouvre_correctement_dans_un_tableur;
 mod test_entete_precede_les_lignes;

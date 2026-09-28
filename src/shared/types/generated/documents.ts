@@ -12,14 +12,45 @@ export type CoverLetter = { id: string, name: string, company: string | null, jo
 export type CoverLetterExport = { name: string, company: string | null, job_title: string | null, recipient: string | null, recipient_address: string | null, job_reference: string | null, content: string, };
 
 /**
+ * Version d'un document, telle que la liste l'inspecteur (`screens/07`, « Versions »).
+ */
+export type DocumentVersion = { id: string, 
+/**
+ * Rang dans le document : 1 pour v1.
+ */
+version_number: number, note: string | null, created_at: string, 
+/**
+ * Version que la bibliothèque affiche.
+ */
+is_current: boolean, };
+
+/**
  * Entrée d'enregistrement d'une lettre générée ou remaniée.
  */
-export type NewCoverLetter = { name: string, company: string | null, job_title: string | null, recipient: string | null, recipient_address: string | null, job_reference: string | null, tone: string, length: string, content: string, };
+export type NewCoverLetter = { name: string, company: string | null, job_title: string | null, recipient: string | null, recipient_address: string | null, job_reference: string | null, tone: string, length: string, content: string, 
+/**
+ * Document que cet enregistrement révise (l'une quelconque de ses versions) : il en
+ * devient la version suivante, courante. Absent : un nouveau document, en v1.
+ */
+revises?: string, 
+/**
+ * Ce qui distingue cette version (« Première génération », « Modifiée dans l'éditeur »).
+ */
+version_note?: string, };
 
 /**
  * Entrée d'enregistrement d'un CV.
  */
-export type NewResume = { name: string, content: unknown, };
+export type NewResume = { name: string, content: unknown, 
+/**
+ * Document que cet enregistrement révise (l'une quelconque de ses versions) : il en
+ * devient la version suivante, courante. Absent : un nouveau document, en v1.
+ */
+revises?: string, 
+/**
+ * Ce qui distingue cette version (« Première génération », « Modifiée dans l'éditeur »).
+ */
+version_note?: string, };
 
 export type ResumeCertificationBlock = { id: string, name: string, issuer: string | null, date: string | null, description: string | null, };
 
@@ -70,7 +101,18 @@ export type ResumeSkillGroup = { id: string, name: string, items: Array<string>,
 /**
  * Résumé léger d'une version de CV.
  */
-export type ResumeSummary = { id: string, name: string, created_at: string, };
+export type ResumeSummary = { id: string, name: string, created_at: string, 
+/**
+ * Score ATS enregistré avec la version (0–100), s'il a été calculé.
+ *
+ * Lu dans le JSON à la volée : le contenu reste la seule source, et une ancienne
+ * génération (`profile_score`) comme un éditeur v1 (`score`) le portent.
+ */
+ats_score: number | null, 
+/**
+ * Intitulé de l'offre ciblée, s'il y en a une.
+ */
+target_title: string | null, };
 
 /**
  * Version complète de CV ; son contenu structuré reste extensible.

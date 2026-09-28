@@ -16,7 +16,7 @@ describe("ActivityChart", () => {
     expect(
       screen.getByRole("img", { name: "Candidatures envoyées par semaine" }),
     ).toBeInTheDocument();
-    expect(container.querySelectorAll(".recharts-bar-rectangle")).toHaveLength(2);
+    expect(container.querySelectorAll("[data-bar]")).toHaveLength(2);
     expect(screen.getByText(/Semaine du 17 août : 1 candidature/)).toBeInTheDocument();
     expect(screen.getByText(/Semaine du 24 août : 3 candidatures/)).toBeInTheDocument();
   });
@@ -43,14 +43,14 @@ describe("ActivityChart", () => {
 
     const { container } = render(<ActivityChart activity={activity} shortLabels />);
 
-    expect(container.querySelectorAll(".recharts-bar-rectangle")).toHaveLength(52);
+    expect(container.querySelectorAll("[data-bar]")).toHaveLength(52);
   });
 
   it("suit un changement de série sans remontage", () => {
     const { container, rerender } = render(
       <ActivityChart activity={[{ start: "2026-08-17", count: 1 }]} />,
     );
-    expect(container.querySelectorAll(".recharts-bar-rectangle")).toHaveLength(1);
+    expect(container.querySelectorAll("[data-bar]")).toHaveLength(1);
 
     rerender(
       <ActivityChart
@@ -62,7 +62,7 @@ describe("ActivityChart", () => {
       />,
     );
 
-    expect(container.querySelectorAll(".recharts-bar-rectangle")).toHaveLength(3);
+    expect(container.querySelectorAll("[data-bar]")).toHaveLength(3);
     expect(screen.getByText(/Semaine du 31 août : 2 candidatures/)).toBeInTheDocument();
   });
 
@@ -72,6 +72,6 @@ describe("ActivityChart", () => {
     unmount();
 
     const { container } = render(<ActivityChart activity={activity} />);
-    expect(container.querySelectorAll(".recharts-bar-rectangle")).toHaveLength(1);
+    expect(container.querySelectorAll("[data-bar]")).toHaveLength(1);
   });
 });

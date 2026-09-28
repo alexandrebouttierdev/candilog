@@ -3,8 +3,8 @@
 use crate::app::state::AppState;
 use crate::core::errors::AppResult;
 use crate::features::ai::domain::{
-    InstallManagedModelRequest, ManagedModelDefinition, ManagedModelId, ManagedOllamaStatus,
-    UserBenchmarkRequest, UserBenchmarkResult,
+    InstallManagedModelRequest, LocalModelProbe, ManagedModelDefinition, ManagedModelId,
+    ManagedOllamaStatus, UserBenchmarkRequest, UserBenchmarkResult,
 };
 use tauri::{AppHandle, Emitter, State};
 
@@ -60,4 +60,9 @@ pub async fn run_user_cv_benchmark(
     request: UserBenchmarkRequest,
 ) -> AppResult<UserBenchmarkResult> {
     state.ai.run_user_cv_benchmark(request).await
+}
+
+#[tauri::command(rename_all = "snake_case")]
+pub async fn probe_managed_ollama_model(state: State<'_, AppState>) -> AppResult<LocalModelProbe> {
+    state.ai.probe_local_model().await
 }

@@ -18,7 +18,7 @@ libre : ils doivent être exactement le nom issu du `ModelRegistry` sous `ai/mod
 
 ## Référentiels métier
 
-Le schéma courant (`PRAGMA user_version = 2`) porte
+Le schéma courant (`PRAGMA user_version = 8`) porte
 quatre catalogues **distincts**, semés par `init_schema.sql` en `INSERT OR IGNORE` :
 
 | Table | Clé | Rôle |
@@ -65,6 +65,68 @@ base neuve ne les recrée pas.
 
 `app_kv` reste : elle porte l'archive des réglages illisibles (`parametres_corrompus`).
 
+## Référence et canal d'une candidature
+
+`applications.reference_number` porte la référence affichée `CAN-142`. Un déclencheur
+(`applications_assign_reference`) attribue à **toute** insertion le numéro suivant
+le numéro suivant — écran, import ou restauration, le dépôt n'a pas à y penser — et un index
+unique interdit les doublons. Un numéro supprimé n'est jamais réattribué : « CAN-003 » ne peut
+pas désigner deux candidatures dans l'historique de l'utilisateur. Le dernier numéro attribué
+est donc retenu dans `app_kv` (`last_application_reference`, migration 5) : un simple
+`max + 1` rendrait son numéro à la candidature la plus récente supprimée. Le déclencheur
+prend le plus grand du compteur et des numéros présents ; une remise à zéro des données vide
+`app_kv` et la numérotation repart de 1. La migration 3 a numéroté les candidatures
+existantes dans leur ordre de création.
+
+`applications.channel` (`OFFER`, `COMPANY_SITE`, `NETWORK`, `SPONTANEOUS`) dit par où l'offre
+a été trouvée. `application_type` en **découle** (`SPONTANEOUS` → `SPONTANEE`, sinon `OFFRE`) :
+le formulaire ne saisit plus que le canal. Le lien de l'offre est requis pour `OFFER`,
+facultatif pour le site de l'entreprise et le réseau, interdit pour une démarche spontanée.
+
+La liste lit aussi, par sous-requête, la prochaine relance et le prochain entretien à venir
+(`next_follow_up_date`, `next_interview_at`) : ce sont les échéances affichées en pastille.
+
+## Activité d'une relation
+
+`Company.activity` et `Contact.activity` sont calculées par sous-requêtes à chaque lecture,
+jamais stockées : candidatures ouvertes (statut autre que `REFUS`) et totales, contacts
+rattachés, référence et date d'envoi de la candidature la plus récente. Le filtre
+`relation_state` des entreprises (`active`, `watch`, `closed`) et le paramètre `linked` des
+contacts reposent sur les mêmes conditions, évaluées avant la pagination.
+
+## Relance faite
+
+`follow_ups.done_at` (migration 4) horodate la relance que l'utilisateur a déclarée envoyée
+(« Faire » sur Aujourd'hui) ; `NULL` signifie « encore à faire ». Une relance faite reste
+dans l'historique et au calendrier, mais ne compte plus en retard, ne devient plus la
+prochaine échéance d'une candidature et sort de l'agenda d'Aujourd'hui
+(`analytics_agenda` : relances non faites datées d'ici sept jours, retards compris, et
+entretiens des sept prochains jours).
+
+## Vues enregistrées
+
+`saved_views` (migration 6) conserve les filtres nommés de Candidatures affichés dans la
+section « Vues » de la navigation. `filter` est l'`ApplicationFilter` tel qu'envoyé au
+backend, sérialisé en JSON et rejoué à l'ouverture : une vue ne fige pas de résultats, elle
+se recalcule sur les données du moment. `name` est borné à 60 caractères (service Rust et
+`CHECK`), `position` fixe l'ordre de la navigation. Dupliquer ajoute « (copie) » au nom. Une
+remise à zéro des données vide la table.
+
+## Historique des relations
+
+L'historique d'une entreprise ou d'un contact (inspecteur de Relations) est **lu**, jamais
+recopié : `relations_history` réunit, par une requête `UNION ALL`, les candidatures envoyées
+(`sent_date`), les changements de statut (`status_history`, hors le statut de création),
+les entretiens, les relances faites (`done_at`), les notes et l'ajout de la fiche, du plus
+récent au plus ancien, 100 entrées au plus. Pour un contact, un entretien compte s'il y est
+nommé ou si sa candidature l'est.
+
+Seules les notes ont leur table : `relation_notes` (migration 7) — `body` de 1 à 2 000
+caractères, `noted_on` (`AAAA-MM-JJ`, date du fait et non de la saisie), rattachée à
+**exactement** une entreprise ou un contact (`CHECK`), supprimée avec sa fiche
+(`ON DELETE CASCADE`). Ce champ est distinct de `companies.notes` / `contacts.notes`, texte
+libre de la fiche. Une remise à zéro des données vide la table.
+
 ## Contraintes portées par le schéma
 
 Le service Rust valide, mais n'est pas la seule barrière : `CHECK` sur `company_size`,
@@ -74,9 +136,28 @@ l'exclusion d'un `job_url` pour une candidature `SPONTANEE`. Les
 clés étrangères vers les référentiels sont réelles — `PRAGMA foreign_keys = ON` est posé
 par l'initialiseur de **chaque** connexion du pool.
 
+## Versions des documents
+
+Depuis la migration 8, chaque ligne de `resume_versions` et de `cover_letters` est une
+**version** d'un document : `document_id` relie les versions d'un même document
+(l'identifiant de sa première), `version_number` les numérote (v1, v2…), `is_current`
+désigne celle que la bibliothèque affiche — un index unique partiel en garantit une seule
+par document — et `version_note` dit ce qui la distingue (« Première génération »,
+« Modifiée dans le générateur », 120 caractères au plus). Chaque document antérieur est
+devenu sa propre v1, courante.
+
+Un enregistrement qui porte `revises` (l'identifiant de n'importe quelle version) ajoute la
+version suivante du document et la rend courante, en transaction ; sans `revises`, il crée
+un nouveau document en v1. Restaurer (`documents_*_restore`) déplace `is_current` sans rien
+effacer. Les listes et leurs décomptes ne lisent que les versions courantes ; supprimer un
+document supprime toutes ses versions.
+
 ## Contenu d'un CV (`resume_versions.content`)
 
-La table `resume_versions` stocke le JSON du CV dans `content`. Deux formes coexistent :
+La table `resume_versions` stocke le JSON du CV dans `content`. La liste en lit, par
+`json_extract`, le score ATS (`score.total`, ou `profile_score.total` pour une génération
+historique) et l'intitulé de l'offre ciblée (`job_offer.title`) : le contenu reste la seule
+source, sans colonne dérivée. Deux formes coexistent :
 
 | Forme | Discriminant | Rôle |
 | --- | --- | --- |

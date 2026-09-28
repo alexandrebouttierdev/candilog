@@ -4,12 +4,12 @@ use super::ManagedOllamaService;
 use crate::core::database::SqlitePool;
 use crate::core::errors::{AppError, AppResult};
 use crate::features::ai::domain::*;
-use crate::features::ai::infrastructure::load_config;
 #[cfg(test)]
 use crate::features::ai::infrastructure::GenerationOutput;
 use crate::features::ai::infrastructure::{
     build_provider, extract_pdf, render_pdf_pages, try_extract_pdf_text, LlmGenerator, VisionImage,
 };
+use crate::features::ai::infrastructure::{load_config, load_task_config};
 use crate::features::profile::domain::{build_preview, Profile, ProfileRepository};
 use crate::features::profile::infrastructure::SqliteProfileRepository;
 use std::collections::HashMap;
@@ -27,6 +27,27 @@ Une exigence = une seule idée. Déduplique les répétitions. `minimum_years` e
 
 Conserve aussi les champs simples pour compatibilité : `competences` pour les savoir-faire/outils/qualifications demandés, `savoirEtre`, `experience`, `motsCles` pour les missions sans doublon.
 Réponds uniquement avec ce JSON : {"titre":"","competences":[],"savoirEtre":[],"experience":null,"motsCles":[],"requirements":[{"name":"","category":"hard_skill","importance":"important","mandatory":false,"minimum_years":null,"transferable_from":[]}],"location":null}."#;
+/// Borne d'une lettre évaluée : une lettre tient sur une page, bien en deçà.
+const MAX_LETTER_FIT_CHARS: usize = 20_000;
+
+const PROBE_SYSTEM: &str = "Tu réponds en une phrase courte, en français.";
+const PROBE_PROMPT: &str = "Confirme que tu es prêt à aider à rédiger un CV.";
+
+/// Envoie la phrase de test et mesure l'aller-retour.
+async fn probe(provider: &dyn LlmGenerator, model: String) -> AppResult<LocalModelProbe> {
+    let started = std::time::Instant::now();
+    let output = provider.generate(PROBE_PROMPT, PROBE_SYSTEM, false).await?;
+    if output.text.trim().is_empty() {
+        return Err(AppError::Provider(
+            "Le modèle local n'a rien répondu à la phrase de test.".into(),
+        ));
+    }
+    Ok(LocalModelProbe {
+        model,
+        latency_ms: u32::try_from(started.elapsed().as_millis()).unwrap_or(u32::MAX),
+    })
+}
+
 const RESUME_SYSTEM: &str = r#"Adapte le socle d'un CV à une offre en JSON. Reformule uniquement les faits du profil, sans ajouter compétence, entreprise, diplôme ou expérience. Conserve toutes les expériences et formations. Laisse toujours competences vide : les contenus optionnels seront choisis ensuite par l'utilisateur. Réponds avec {"resume":"","experiences":[{"intitule":"","entreprise":"","description":""}],"competences":[],"formations":[{"diplome":"","etablissement":""}]}. JSON uniquement."#;
 const ATS_SYSTEM: &str = r#"Compare le CV et l'offre fournis. Réponds en français, uniquement en JSON : {"recap":"","recommendations":[{"section":"profile","item_index":null,"original_text":"","proposed_text":"","target_requirement":"","reason":"","source_evidence":[]}],"content_recommendations":[{"item_id":"","reason":"","relevance":"very_relevant"}]}.
 Le champ `score_candilog` est le résultat déterministe et explicable calculé par l'application. Le récapitulatif doit être cohérent avec son total, son détail et ses correspondances ; ne calcule et n'annonce aucun autre score.
@@ -194,9 +215,43 @@ impl AiService {
     }
 
     async fn provider(&self) -> AppResult<Arc<dyn LlmGenerator>> {
-        let config = load_config(&self.pool)?;
+        self.build(load_config(&self.pool)?, false).await
+    }
+
+    /// Fournisseur de la tâche : sa route si elle en a une, le fournisseur principal sinon.
+    async fn provider_for(&self, task: AiTask) -> AppResult<Arc<dyn LlmGenerator>> {
+        let (config, routed) = load_task_config(&self.pool, task)?;
+        self.build(config, routed).await
+    }
+
+    async fn build(&self, config: LlmConfig, routed: bool) -> AppResult<Arc<dyn LlmGenerator>> {
         if matches!(config.provider, ProviderKind::CandilogLocal) {
             let base_url = self.managed_ollama.ensure_runtime_ready().await?;
+            if routed {
+                // Une route locale désigne un modèle installé précis ; s'il a été désinstallé,
+                // la tâche s'arrête au lieu de tourner sur un autre modèle.
+                let installed = self
+                    .managed_ollama
+                    .status()?
+                    .models
+                    .into_iter()
+                    .any(|model| model.installed && model.definition.ollama_tag == config.model);
+                if !installed {
+                    return Err(AppError::Provider(format!(
+                        "Le modèle local « {} » n'est plus installé. Réinstallez-le ou choisissez un autre modèle dans Intelligence artificielle.",
+                        config.model
+                    )));
+                }
+                return build_provider(&LlmConfig {
+                    provider: ProviderKind::Ollama,
+                    api_key: None,
+                    endpoint: Some(base_url),
+                    model: config.model,
+                    temperature: config.temperature,
+                    mode: config.mode,
+                })
+                .await;
+            }
             let model = self
                 .managed_ollama
                 .active_ollama_tag()?
@@ -231,7 +286,7 @@ impl AiService {
         let started_at = std::time::Instant::now();
         validate_source_text(&text, "L'offre")?;
         let (mut job_offer, tokens): (StructuredListing, Option<u32>) = generate_json(
-            self.provider().await?,
+            self.provider_for(AiTask::ExtractOffer).await?,
             &bloc_donnees("offre", &text),
             JOB_OFFER_SYSTEM,
         )
@@ -242,6 +297,29 @@ impl AiService {
             started_at,
             ListingAnalysis { job_offer, score },
             tokens,
+        ))
+    }
+
+    /// Adéquation de la lettre à l'offre (`screens/16`), recalculée localement à chaque
+    /// version : aucun appel au modèle, les recommandations ne viennent que du profil.
+    ///
+    /// # Errors
+    /// `Validation` si la lettre ou l'offre transmises dépassent les bornes.
+    pub fn evaluate_cover_letter(&self, request: LetterFitRequest) -> AppResult<LetterFit> {
+        if request.letter.chars().count() > MAX_LETTER_FIT_CHARS {
+            return Err(AppError::Validation(
+                "La lettre est trop longue pour être évaluée.".into(),
+            ));
+        }
+        request
+            .job_offer
+            .validate_ai_output()
+            .map_err(|_| AppError::Validation("L'offre transmise est invalide.".into()))?;
+        let profile = profile_without(&self.profile()?, &request.excluded_sections);
+        Ok(letter_fit(
+            &request.letter,
+            &request.job_offer,
+            &build_fact_catalog(&profile),
         ))
     }
 
@@ -271,7 +349,7 @@ impl AiService {
                 ) =>
             {
                 tracing::warn!(error = %error, "génération de CV poursuivie en mode local");
-                let profile = self.profile()?;
+                let profile = profile_without(&self.profile()?, &request.excluded_sections);
                 validate_profile_input(&profile)?;
                 progres(
                     &notifier,
@@ -296,17 +374,29 @@ impl AiService {
         token: &CancellationToken,
         notifier: &impl Fn(AiProgress),
     ) -> AppResult<(ResumeGeneration, Option<u32>)> {
-        let profile = self.profile()?;
-        validate_profile_input(&profile)?;
-        if profile.identity.first_name.trim().is_empty()
-            && profile.experiences.is_empty()
-            && profile.skills.is_empty()
+        let full_profile = self.profile()?;
+        validate_profile_input(&full_profile)?;
+        if full_profile.identity.first_name.trim().is_empty()
+            && full_profile.experiences.is_empty()
+            && full_profile.skills.is_empty()
         {
             return Err(AppError::Validation(
                 "Complétez votre profil avant de générer un CV".into(),
             ));
         }
-        let provider = self.provider().await?;
+        // Les sections écartées par l'utilisateur ne quittent jamais la machine : elles sont
+        // retirées avant le premier appel au modèle.
+        let profile = profile_without(&full_profile, &request.excluded_sections);
+        if profile.experiences.is_empty()
+            && profile.education.is_empty()
+            && profile.skills.is_empty()
+            && profile.projects.is_empty()
+        {
+            return Err(AppError::Validation(
+                "Laissez à l'IA au moins une section : expériences, formations, compétences ou projets".into(),
+            ));
+        }
+        let provider = self.provider_for(AiTask::GenerateResume).await?;
         let mut tokens = Some(0_u32);
         progres(
             notifier,
@@ -336,12 +426,13 @@ impl AiService {
         );
         let context =
             serde_json::json!({"profile":profile,"offre":job_offer,"score":score}).to_string();
+        let resume_system = format!("{RESUME_SYSTEM}\n{}", request.tone.instruction());
         let (mut resume, call_tokens): (GeneratedResume, Option<u32>) = cancel(
             token,
             generate_json(
                 provider.clone(),
                 &bloc_donnees("contexte", &context),
-                RESUME_SYSTEM,
+                &resume_system,
             ),
         )
         .await?;
@@ -448,9 +539,14 @@ impl AiService {
             id: id.clone(),
             token: Arc::clone(&token),
         };
-        let profile = self.profile()?;
+        let profile = profile_without(&self.profile()?, &request.excluded_sections);
         validate_profile_input(&profile)?;
         let catalog = build_fact_catalog(&profile);
+        if catalog.is_empty() && !request.excluded_sections.is_empty() {
+            return Err(AppError::Validation(
+                "Autorisez au moins un argument : la lettre n'a rien sur quoi s'appuyer".into(),
+            ));
+        }
         // Sur une itération, on compacte le brief : la lettre précédente + la consigne
         // suffisent à réorienter la sélection de faits, sans renvoyer toute l'offre.
         let iterating = request
@@ -491,7 +587,7 @@ impl AiService {
         }
         .to_string();
         progres(&notifier, &id, "Rédaction", None, None);
-        let provider = self.provider().await?;
+        let provider = self.provider_for(AiTask::WriteLetter).await?;
         let system = if iterating {
             COVER_LETTER_ITERATION_SYSTEM
         } else {
@@ -594,7 +690,7 @@ impl AiService {
         progres(&notifier, &id, "Relecture du français", None, None);
         let (output, tokens) = cancel(
             &token,
-            correct_language_fields(self.provider().await?, &request),
+            correct_language_fields(self.provider_for(AiTask::WriteLetter).await?, &request),
         )
         .await?;
         progres(&notifier, &id, "Correction terminée", None, tokens);
@@ -624,9 +720,9 @@ impl AiService {
         };
         validate_source_text(&text, "Le CV")?;
 
-        let config = load_config(&self.pool)?;
-        let provider = self.provider().await?;
-        let model = effective_model_label(&config, self)?;
+        let (config, routed) = load_task_config(&self.pool, AiTask::AnalyzeResume)?;
+        let provider = self.build(config.clone(), routed).await?;
+        let model = effective_model_label(&config, routed, self)?;
         let reported = provider.reported_capabilities().await.ok().flatten();
         let capabilities = detect_model_capabilities(&config.provider, &model, reported.as_deref());
         let plan = resolve_cv_analysis_plan(request.method, capabilities);
@@ -807,10 +903,11 @@ impl AiService {
 
     /// Capacités du modèle actuellement configuré (pour l'UI d'import).
     pub async fn active_model_capabilities(&self) -> AppResult<ActiveModelCapabilities> {
-        let config = load_config(&self.pool)?;
-        let provider = self.provider().await?;
+        // L'écran d'import interroge le modèle qui lira effectivement le CV.
+        let (config, routed) = load_task_config(&self.pool, AiTask::ImportResume)?;
+        let provider = self.build(config.clone(), routed).await?;
         let reported = provider.reported_capabilities().await.ok().flatten();
-        let model = effective_model_label(&config, self)?;
+        let model = effective_model_label(&config, routed, self)?;
         let capabilities = detect_model_capabilities(&config.provider, &model, reported.as_deref());
         Ok(ActiveModelCapabilities {
             vision: capabilities.vision,
@@ -835,9 +932,9 @@ impl AiService {
         };
         tracing::info!(method = ?request.method, "extraction de CV démarrée");
 
-        let config = load_config(&self.pool)?;
-        let provider = self.provider().await?;
-        let model = effective_model_label(&config, self)?;
+        let (config, routed) = load_task_config(&self.pool, AiTask::ImportResume)?;
+        let provider = self.build(config.clone(), routed).await?;
+        let model = effective_model_label(&config, routed, self)?;
         let reported = provider.reported_capabilities().await.ok().flatten();
         let capabilities = detect_model_capabilities(&config.provider, &model, reported.as_deref());
         let plan = resolve_cv_analysis_plan(request.method, capabilities);
@@ -1078,6 +1175,34 @@ impl AiService {
         Ok((profile, tokens))
     }
 
+    /// Phrase de test de l'installation locale : le modèle actif répond-il, et en combien
+    /// de temps ? Un seul appel court, rien n'est enregistré.
+    ///
+    /// # Errors
+    /// `Provider` si aucun modèle local n'est actif, si le moteur ne démarre pas ou si le
+    /// modèle ne répond rien.
+    pub async fn probe_local_model(&self) -> AppResult<LocalModelProbe> {
+        let model = self
+            .managed_ollama
+            .active_ollama_tag()?
+            .ok_or_else(|| AppError::Provider("Aucun modèle local n'est installé.".into()))?;
+        let config = load_config(&self.pool)?;
+        let provider = self
+            .build(
+                LlmConfig {
+                    provider: ProviderKind::CandilogLocal,
+                    api_key: None,
+                    endpoint: None,
+                    model: model.clone(),
+                    temperature: config.temperature,
+                    mode: config.mode,
+                },
+                false,
+            )
+            .await?;
+        probe(provider.as_ref(), model).await
+    }
+
     /// Benchmark utilisateur sur `CV_BENCHMARK.pdf` : pipeline réel, aucune persistance.
     pub async fn run_user_cv_benchmark(
         &self,
@@ -1102,7 +1227,7 @@ impl AiService {
             token: Arc::clone(&token),
         };
         let provider = self.provider().await?;
-        let model = effective_model_label(&config, self)?;
+        let model = effective_model_label(&config, false, self)?;
         let reported = provider.reported_capabilities().await.ok().flatten();
         let capabilities = detect_model_capabilities(&config.provider, &model, reported.as_deref());
         let plan = resolve_cv_analysis_plan(request.method, capabilities);
@@ -1720,8 +1845,13 @@ async fn run_profile_pipeline(
     ))
 }
 
-fn effective_model_label(config: &LlmConfig, service: &AiService) -> AppResult<String> {
-    if matches!(config.provider, ProviderKind::CandilogLocal) {
+fn effective_model_label(
+    config: &LlmConfig,
+    routed: bool,
+    service: &AiService,
+) -> AppResult<String> {
+    // Une route locale nomme déjà son modèle ; sans route, l'IA locale sert le modèle actif.
+    if matches!(config.provider, ProviderKind::CandilogLocal) && !routed {
         if let Ok(Some(tag)) = service.managed_ollama.active_ollama_tag() {
             if !tag.trim().is_empty() {
                 return Ok(tag);
@@ -2213,6 +2343,154 @@ Anglais · lecture courante de documentation technique\n";
             service.selected_resume_path().unwrap(),
             PathBuf::from("/tmp/second.pdf")
         );
+    }
+
+    /// Service sur une base migrée, avec un profil qui a une expérience et une compétence.
+    fn service_with_profile() -> (AiService, tempfile::TempDir) {
+        let (service, directory) = test_service();
+        crate::core::database::run_local_migrations(&service.pool).unwrap();
+        let mut profile = Profile::default();
+        profile.identity.first_name = "Jean".into();
+        profile.identity.name = "Rivière".into();
+        profile.identity.email = "jean@exemple.fr".into();
+        profile
+            .experiences
+            .push(crate::features::profile::domain::Experience {
+                title: "Technicien".into(),
+                company: "Ker Informatique".into(),
+                start_date: "2020-01".into(),
+                ..Default::default()
+            });
+        profile
+            .skills
+            .push(crate::features::profile::domain::Skill {
+                name: "Linux".into(),
+                ..Default::default()
+            });
+        SqliteProfileRepository::new(service.pool.clone())
+            .save(&profile)
+            .unwrap();
+        (service, directory)
+    }
+
+    #[tokio::test]
+    async fn un_cv_sans_aucune_section_autorisee_est_refuse_avant_tout_appel() {
+        let (service, _directory) = service_with_profile();
+        let request = ResumeGenerationRequest {
+            generation_id: "cv".into(),
+            job_offer: "Technicien systèmes Linux, Rennes, CDI".into(),
+            excluded_sections: vec![ProfileSection::Experiences, ProfileSection::Skills],
+            tone: ResumeTone::default(),
+        };
+
+        let error = service
+            .generate_resume_interne(&request, &CancellationToken::new(), &|_| {})
+            .await
+            .unwrap_err();
+
+        assert!(
+            matches!(&error, AppError::Validation(message) if message.contains("au moins une section")),
+            "{error:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn une_lettre_sans_aucun_argument_autorise_est_refusee() {
+        let (service, _directory) = service_with_profile();
+        let request = CoverLetterRequest {
+            generation_id: "lettre".into(),
+            company: Some("Novéa".into()),
+            excluded_sections: vec![
+                ProfileSection::Summary,
+                ProfileSection::Experiences,
+                ProfileSection::Skills,
+            ],
+            ..CoverLetterRequest::default()
+        };
+
+        let error = service
+            .generate_cover_letter(request, |_| {})
+            .await
+            .unwrap_err();
+
+        assert!(
+            matches!(&error, AppError::Validation(message) if message.contains("au moins un argument")),
+            "{error:?}"
+        );
+    }
+
+    #[test]
+    fn l_evaluation_de_la_lettre_ignore_les_arguments_exclus() {
+        let (service, _directory) = service_with_profile();
+        let offre = StructuredListing {
+            requirements: vec![JobRequirement {
+                name: "Linux".into(),
+                category: RequirementCategory::HardSkill,
+                ..JobRequirement::default()
+            }],
+            ..StructuredListing::default()
+        };
+        let request = |excluded_sections| LetterFitRequest {
+            letter: "Madame, Monsieur,".into(),
+            job_offer: offre.clone(),
+            excluded_sections,
+        };
+
+        let libre = service.evaluate_cover_letter(request(Vec::new())).unwrap();
+        let sans_competences = service
+            .evaluate_cover_letter(request(vec![ProfileSection::Skills]))
+            .unwrap();
+
+        assert_eq!(libre.recommendations.len(), 1);
+        assert!(sans_competences.recommendations.is_empty());
+        assert_eq!(sans_competences.unsupported, vec!["Linux".to_owned()]);
+    }
+
+    #[test]
+    fn une_lettre_demesuree_n_est_pas_evaluee() {
+        let (service, _directory) = service_with_profile();
+
+        let error = service
+            .evaluate_cover_letter(LetterFitRequest {
+                letter: "a".repeat(MAX_LETTER_FIT_CHARS + 1),
+                job_offer: StructuredListing::default(),
+                excluded_sections: Vec::new(),
+            })
+            .unwrap_err();
+
+        assert!(matches!(error, AppError::Validation(_)), "{error:?}");
+    }
+
+    #[tokio::test]
+    async fn la_phrase_de_test_mesure_la_reponse_du_modele_local() {
+        let provider = FakeProvider::provider(vec![("Prêt à vous aider.", None)]);
+
+        let result = probe(provider.as_ref(), "ministral-3:3b".into())
+            .await
+            .unwrap();
+
+        assert_eq!(result.model, "ministral-3:3b");
+    }
+
+    #[tokio::test]
+    async fn une_reponse_vide_a_la_phrase_de_test_est_un_echec() {
+        let provider = FakeProvider::provider(vec![("   ", None)]);
+
+        let error = probe(provider.as_ref(), "ministral-3:3b".into())
+            .await
+            .unwrap_err();
+
+        assert!(matches!(error, AppError::Provider(_)), "{error:?}");
+    }
+
+    #[tokio::test]
+    async fn la_phrase_de_test_exige_un_modele_local_installe() {
+        let (service, _directory) = test_service();
+        crate::core::database::run_local_migrations(&service.pool).unwrap();
+
+        let error = service.probe_local_model().await.unwrap_err();
+
+        assert!(matches!(error, AppError::Provider(_)), "{error:?}");
     }
 
     #[tokio::test]

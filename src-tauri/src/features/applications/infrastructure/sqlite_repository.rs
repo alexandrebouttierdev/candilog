@@ -8,8 +8,9 @@ use crate::core::database::SqlitePool;
 use crate::core::errors::{AppError, AppResult};
 use crate::core::pagination::{clamp_page_size, Page};
 use crate::features::applications::domain::{
-    Application, ApplicationFilter, ApplicationRepository, ApplicationSort, ApplicationStatus,
-    NewApplication, PipelineBreakdown,
+    Application, ApplicationFilter, ApplicationGroup, ApplicationGrouping, ApplicationRepository,
+    ApplicationSort, ApplicationStatus, DeletionImpact, FilterField, NewApplication,
+    PipelineBreakdown, StatusChange,
 };
 use rusqlite::types::Value;
 use uuid::Uuid;
@@ -41,7 +42,14 @@ const COLUMNS: &str =
                         c.city, c.address, c.company_type_id, \
                         coalesce(c.city, e.city), coalesce(c.address, e.address), \
                         coalesce(c.company_type_id, e.company_type_id), cty.name, \
-                        c.status, c.sent_date, c.job_url, c.notes, c.created_at, c.updated_at";
+                        c.status, c.sent_date, c.job_url, c.notes, c.created_at, c.updated_at, \
+                        c.reference_number, c.channel, \
+                        (SELECT min(f.follow_up_date) FROM follow_ups f \
+                          WHERE f.application_id = c.id AND f.done_at IS NULL \
+                            AND f.follow_up_date >= date('now', 'localtime')), \
+                        (SELECT min(i.interview_date) FROM interviews i \
+                          WHERE i.application_id = c.id \
+                            AND i.interview_date >= date('now', 'localtime'))";
 
 /// Source des colonnes.
 ///
@@ -75,14 +83,17 @@ fn row_to_application(row: &rusqlite::Row) -> AppResult<Application> {
     let application_type = read(6)?;
     let weekly_work_schedule = read(9)?;
     let status = read(20)?;
+    let channel = read(27)?;
     Ok(Application {
         id: uuid_column(row, 0).map_err(|e| translate_error(e, "candidature"))?,
+        reference_number: row.get(26).map_err(|e| translate_error(e, "candidature"))?,
         job_title: read(1)?,
         company_id: uuid_column(row, 2).map_err(|e| translate_error(e, "candidature"))?,
         company_name: opt(3)?,
         company_size: enum_from_text(&company_size)?,
         contact_id: uuid_column_opt(row, 5).map_err(|e| translate_error(e, "candidature"))?,
         application_type: enum_from_text(&application_type)?,
+        channel: enum_from_text(&channel)?,
         contract_type_code: read(7)?,
         contract_type_name: opt(8)?,
         weekly_work_schedule: enum_from_text(&weekly_work_schedule)?,
@@ -100,6 +111,8 @@ fn row_to_application(row: &rusqlite::Row) -> AppResult<Application> {
         sent_date: read(21)?,
         job_url: opt(22)?,
         notes: opt(23)?,
+        next_follow_up_date: opt(28)?,
+        next_interview_at: opt(29)?,
         created_at: read(24)?,
         updated_at: read(25)?,
     })
@@ -131,9 +144,13 @@ fn save_status(
 }
 
 /// Ajoute une clause `colonne IN (…)` sur une liste de valeurs textuelles.
+///
+/// Inversée, la clause garde les valeurs absentes : `NULL NOT IN (…)` vaut `NULL` en SQL,
+/// et une candidature sans domaine serait sinon écartée de « domaine n'est pas M18 ».
 fn push_in_clause(
     column: &str,
     textes: impl IntoIterator<Item = String>,
+    negate: bool,
     values: &mut Vec<Value>,
     clauses: &mut Vec<String>,
 ) {
@@ -142,9 +159,15 @@ fn push_in_clause(
         values.push(Value::Text(texte));
         placeholders.push(format!("?{}", values.len()));
     }
-    if !placeholders.is_empty() {
-        clauses.push(format!("{column} IN ({})", placeholders.join(", ")));
+    if placeholders.is_empty() {
+        return;
     }
+    let list = placeholders.join(", ");
+    clauses.push(if negate {
+        format!("({column} IS NULL OR {column} NOT IN ({list}))")
+    } else {
+        format!("{column} IN ({list})")
+    });
 }
 
 /// Clauses `WHERE` et paramètres liés correspondant à un filtre.
@@ -162,6 +185,7 @@ fn clauses(filter: &ApplicationFilter) -> AppResult<(String, Vec<Value>)> {
     };
 
     let pattern = |text: &str| Value::Text(like_contains(text));
+    let excluded = |field: FilterField| filter.excluded.contains(&field);
 
     if !filter.search.trim().is_empty() {
         values.push(pattern(&filter.search));
@@ -176,13 +200,37 @@ fn clauses(filter: &ApplicationFilter) -> AppResult<(String, Vec<Value>)> {
     for status in &filter.status {
         statuses.push(text_from_enum(status)?);
     }
-    push_in_clause("c.status", statuses, &mut values, &mut clauses);
+    push_in_clause(
+        "c.status",
+        statuses,
+        excluded(FilterField::Status),
+        &mut values,
+        &mut clauses,
+    );
 
     let mut types = Vec::new();
     for application_type in &filter.application_type {
         types.push(text_from_enum(application_type)?);
     }
-    push_in_clause("c.application_type", types, &mut values, &mut clauses);
+    push_in_clause(
+        "c.application_type",
+        types,
+        excluded(FilterField::ApplicationType),
+        &mut values,
+        &mut clauses,
+    );
+
+    let mut channels = Vec::new();
+    for channel in &filter.channel {
+        channels.push(text_from_enum(channel)?);
+    }
+    push_in_clause(
+        "c.channel",
+        channels,
+        excluded(FilterField::Channel),
+        &mut values,
+        &mut clauses,
+    );
 
     let mut schedules = Vec::new();
     for schedule in &filter.weekly_work_schedule {
@@ -191,6 +239,7 @@ fn clauses(filter: &ApplicationFilter) -> AppResult<(String, Vec<Value>)> {
     push_in_clause(
         "c.weekly_work_schedule",
         schedules,
+        excluded(FilterField::WeeklyWorkSchedule),
         &mut values,
         &mut clauses,
     );
@@ -202,6 +251,7 @@ fn clauses(filter: &ApplicationFilter) -> AppResult<(String, Vec<Value>)> {
     push_in_clause(
         "coalesce(e.company_size, 'UNKNOWN')",
         sizes,
+        excluded(FilterField::CompanySize),
         &mut values,
         &mut clauses,
     );
@@ -209,39 +259,62 @@ fn clauses(filter: &ApplicationFilter) -> AppResult<(String, Vec<Value>)> {
     push_in_clause(
         "c.contract_type_code",
         filter.contract_type_code.iter().cloned(),
+        excluded(FilterField::ContractType),
         &mut values,
         &mut clauses,
     );
     push_in_clause(
         "c.professional_domain_id",
         filter.professional_domain_id.iter().cloned(),
+        excluded(FilterField::ProfessionalDomain),
         &mut values,
         &mut clauses,
     );
     push_in_clause(
         EFFECTIVE_COMPANY_TYPE,
         filter.company_type_id.iter().cloned(),
+        excluded(FilterField::CompanyType),
         &mut values,
         &mut clauses,
     );
     push_in_clause(
         "e.sector_id",
         filter.sector_id.iter().map(ToString::to_string),
+        excluded(FilterField::Sector),
         &mut values,
         &mut clauses,
     );
 
     if let Some(company_id) = filter.company_id {
         add(
-            "c.company_id = ?",
+            if excluded(FilterField::Company) {
+                "c.company_id != ?"
+            } else {
+                "c.company_id = ?"
+            },
             Value::Text(company_id.to_string()),
+            &mut values,
+            &mut clauses,
+        );
+    }
+    if let Some(contact_id) = filter.contact_id {
+        add(
+            "c.contact_id = ?",
+            Value::Text(contact_id.to_string()),
             &mut values,
             &mut clauses,
         );
     }
     if !filter.city.trim().is_empty() {
         add(
-            &format!("search_key(coalesce({EFFECTIVE_CITY}, '')) LIKE ? {LIKE_ESCAPE}"),
+            &format!(
+                "{}search_key(coalesce({EFFECTIVE_CITY}, '')) LIKE ? {LIKE_ESCAPE}",
+                if excluded(FilterField::City) {
+                    "NOT "
+                } else {
+                    ""
+                }
+            ),
             pattern(&filter.city),
             &mut values,
             &mut clauses,
@@ -249,7 +322,14 @@ fn clauses(filter: &ApplicationFilter) -> AppResult<(String, Vec<Value>)> {
     }
     if !filter.job_title.trim().is_empty() {
         add(
-            &format!("search_key(c.job_title) LIKE ? {LIKE_ESCAPE}"),
+            &format!(
+                "{}search_key(c.job_title) LIKE ? {LIKE_ESCAPE}",
+                if excluded(FilterField::JobTitle) {
+                    "NOT "
+                } else {
+                    ""
+                }
+            ),
             pattern(&filter.job_title),
             &mut values,
             &mut clauses,
@@ -292,6 +372,7 @@ fn clauses(filter: &ApplicationFilter) -> AppResult<(String, Vec<Value>)> {
     push_in_clause(
         "c.id",
         filter.ids.iter().map(ToString::to_string),
+        false,
         &mut values,
         &mut clauses,
     );
@@ -318,14 +399,14 @@ const fn sort_column(sort: ApplicationSort) -> &'static str {
 
 /// Paramètres d'écriture d'une candidature, dans l'ordre attendu par `INSERT` et `UPDATE`.
 ///
-/// Le lien de l'offre est effacé pour une candidature spontanée : le service le normalise
-/// déjà, la base le refuse par un `CHECK`, et le dépôt n'a aucune raison de tenter
-/// l'écriture d'une valeur que les deux autres couches interdisent.
+/// La nature de la démarche découle du canal. Le lien de l'offre est effacé pour une
+/// candidature spontanée : le service le normalise déjà, la base le refuse par un `CHECK`,
+/// et le dépôt n'a aucune raison de tenter l'écriture d'une valeur que les deux autres
+/// couches interdisent.
 fn write_params(input: &NewApplication, status: &str, now: &str) -> AppResult<Vec<Value>> {
-    let application_type = text_from_enum(&input.application_type)?;
-    let job_url = if input.application_type
-        == crate::features::applications::domain::ApplicationType::Unsolicited
-    {
+    let nature = input.channel.application_type();
+    let application_type = text_from_enum(&nature)?;
+    let job_url = if nature == crate::features::applications::domain::ApplicationType::Unsolicited {
         None
     } else {
         input.job_url.clone()
@@ -355,6 +436,7 @@ fn write_params(input: &NewApplication, status: &str, now: &str) -> AppResult<Ve
         job_url.map_or(Value::Null, Value::Text),
         input.notes.clone().map_or(Value::Null, Value::Text),
         Value::Text(now.to_owned()),
+        Value::Text(text_from_enum(&input.channel)?),
     ])
 }
 
@@ -496,6 +578,42 @@ impl ApplicationRepository for SqliteApplicationRepository {
         .map_err(|e| translate_error(e, "répartition du pipeline"))
     }
 
+    fn groups(
+        &self,
+        filter: &ApplicationFilter,
+        by: ApplicationGrouping,
+    ) -> AppResult<Vec<ApplicationGroup>> {
+        let conn = connection(&self.pool)?;
+        // Contrairement à la répartition du Kanban, le filtre de statut s'applique : la liste
+        // ne montre que les statuts retenus.
+        let (where_sql, values) = clauses(filter)?;
+        let (key, label) = match by {
+            ApplicationGrouping::Company => ("c.company_id", "coalesce(e.name, '')"),
+            ApplicationGrouping::Contract => (
+                "c.contract_type_code",
+                "coalesce(ct.name, c.contract_type_code)",
+            ),
+        };
+        let sql = format!(
+            "SELECT {key}, {label}, count(*) {FROM_SQL}{where_sql}
+             GROUP BY {key} ORDER BY count(*) DESC, lower({label})"
+        );
+        let mut statement = conn
+            .prepare(&sql)
+            .map_err(|e| translate_error(e, "groupes de candidatures"))?;
+        let rows = statement
+            .query_map(rusqlite::params_from_iter(values.iter()), |row| {
+                Ok(ApplicationGroup {
+                    key: row.get(0)?,
+                    label: row.get(1)?,
+                    count: row.get(2)?,
+                })
+            })
+            .map_err(|e| translate_error(e, "groupes de candidatures"))?;
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(|e| translate_error(e, "groupes de candidatures"))
+    }
+
     fn create(&self, input: &NewApplication) -> AppResult<Application> {
         let mut conn = connection(&self.pool)?;
         let id = Uuid::new_v4();
@@ -512,9 +630,9 @@ impl ApplicationRepository for SqliteApplicationRepository {
                 "INSERT INTO applications (id, company_id, contact_id, job_title,
                     application_type, contract_type_code, weekly_work_schedule, weekly_hours,
                     professional_domain_id, city, address, company_type_id, status, sent_date,
-                    job_url, notes, created_at, updated_at)
+                    job_url, notes, created_at, updated_at, channel)
                  VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15,
-                    ?16, ?17, ?17)",
+                    ?16, ?17, ?17, ?18)",
                 rusqlite::params_from_iter(params.iter()),
             )
             .map_err(|e| translate_constraint(e, REFERENCE_INTROUVABLE, "candidature"))?;
@@ -555,7 +673,7 @@ impl ApplicationRepository for SqliteApplicationRepository {
                     application_type = ?5, contract_type_code = ?6, weekly_work_schedule = ?7,
                     weekly_hours = ?8, professional_domain_id = ?9, city = ?10, address = ?11,
                     company_type_id = ?12, status = ?13, sent_date = ?14, job_url = ?15,
-                    notes = ?16, updated_at = ?17
+                    notes = ?16, updated_at = ?17, channel = ?18
                  WHERE id = ?1",
                 rusqlite::params_from_iter(params.iter()),
             )
@@ -608,6 +726,70 @@ impl ApplicationRepository for SqliteApplicationRepository {
             return Err(AppError::NotFound(format!("candidature {id}")));
         }
         Ok(())
+    }
+
+    fn deletion_impact(&self, id: Uuid) -> AppResult<DeletionImpact> {
+        let conn = connection(&self.pool)?;
+        // Un seul aller-retour : l'existence de la candidature et ses trois décomptes.
+        let impact = conn
+            .query_row(
+                "SELECT (SELECT count(*) FROM follow_ups WHERE application_id = c.id),
+                        (SELECT count(*) FROM interviews WHERE application_id = c.id),
+                        (SELECT count(*) FROM status_history WHERE application_id = c.id)
+                 FROM applications c WHERE c.id = ?1",
+                [id.to_string()],
+                |row| {
+                    Ok(DeletionImpact {
+                        follow_ups: row.get(0)?,
+                        interviews: row.get(1)?,
+                        status_changes: row.get(2)?,
+                    })
+                },
+            )
+            .map_err(|e| translate_error(e, "candidature"));
+        match impact {
+            Err(AppError::NotFound(_)) => Err(AppError::NotFound(format!("candidature {id}"))),
+            other => other,
+        }
+    }
+
+    fn status_history(&self, id: Uuid) -> AppResult<Vec<StatusChange>> {
+        let conn = connection(&self.pool)?;
+        let exists: bool = conn
+            .query_row(
+                "SELECT EXISTS (SELECT 1 FROM applications WHERE id = ?1)",
+                [id.to_string()],
+                |row| row.get(0),
+            )
+            .map_err(|e| translate_error(e, "candidature"))?;
+        if !exists {
+            return Err(AppError::NotFound(format!("candidature {id}")));
+        }
+        let mut query = conn
+            .prepare(
+                "SELECT status, changed_at FROM status_history
+                 WHERE application_id = ?1 ORDER BY changed_at DESC, rowid DESC",
+            )
+            .map_err(|e| translate_error(e, "historique du statut"))?;
+        let mut rows = query
+            .query([id.to_string()])
+            .map_err(|e| translate_error(e, "historique du statut"))?;
+        let mut history = Vec::new();
+        while let Some(row) = rows
+            .next()
+            .map_err(|e| translate_error(e, "historique du statut"))?
+        {
+            let status: String = row
+                .get(0)
+                .map_err(|e| translate_error(e, "historique du statut"))?;
+            history.push(StatusChange {
+                status: enum_from_text(&status)?,
+                changed_at: row
+                    .get(1)
+                    .map_err(|e| translate_error(e, "historique du statut"))?,
+            });
+        }
+        Ok(history)
     }
 }
 

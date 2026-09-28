@@ -17,7 +17,7 @@ import type {
   CvAnalysisMethod,
   UserBenchmarkRequest,
 } from "../model/types";
-import type { UserBenchmarkResult } from "@/shared/types/generated/ai";
+import type { LetterFit, LetterFitRequest, UserBenchmarkResult } from "@/shared/types/generated/ai";
 
 /**
  * Signale la fin d'un traitement IA.
@@ -41,6 +41,8 @@ function announce<T>(run: Promise<T>, generationId?: string): Promise<T> {
 
 export const aiService = {
   analyzeListing: (text: string) => announce(ipc<AiExecution<ListingAnalysis>>("ai_analyze_listing", { text })),
+  /** Adéquation d'une lettre à l'offre, calculée localement : aucun appel au modèle. */
+  evaluateCoverLetter: (request: LetterFitRequest) => ipc<LetterFit>("ai_evaluate_cover_letter", { request }),
   generateResume: (request: ResumeGenerationRequest) => announce(ipc<AiExecution<ResumeGeneration>>("ai_generate_resume", { request }), request.generation_id),
   generateCoverLetter: (request: CoverLetterRequest) => announce(ipc<AiExecution<string>>("ai_generate_cover_letter", { request }), request.generation_id),
   correctFrench: (request: LanguageCorrectionRequest) => announce(ipc<AiExecution<LanguageCorrectionResult>>("ai_correct_french", { request }), request.generation_id),

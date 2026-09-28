@@ -1,6 +1,6 @@
 import type { InputHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
 import { controlClasses } from "./FormField";
-import { Icon } from "./Icon";
+import { LineIcon } from "./LineIcon";
 import { cn } from "@/shared/lib/cn";
 
 /**
@@ -37,8 +37,8 @@ export function TextArea({
 /**
  * Liste déroulante.
  *
- * Le chevron natif est remplacé par l'icône `expand_more` des maquettes : celui de la
- * plateforme varie d'un système à l'autre et casse l'alignement de la barre de filtres.
+ * Le chevron natif est remplacé par le `▾` des maquettes : celui de la plateforme varie
+ * d'un système à l'autre et casse l'alignement de la barre de filtres.
  */
 export function Select({
   invalid,
@@ -65,11 +65,12 @@ export function Select({
       >
         {children}
       </select>
-      <Icon
-        name="expand_more"
-        size={17}
-        className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-ink-faint"
-      />
+      <span
+        aria-hidden
+        className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-[11px] text-ink-faint"
+      >
+        ▾
+      </span>
     </div>
   );
 }
@@ -86,19 +87,19 @@ export function SearchInput({
   value: string;
   onValueChange: (value: string) => void;
   placeholder: string;
-  /** `toolbar` : 30 px, 300 px max, pour la barre d'un tableau. */
+  /** `toolbar` : recherche de barre d'outils du design — 23 px, fond `bg-elev`, sans contour. */
   variant?: "field" | "toolbar";
 }) {
   const toolbar = variant === "toolbar";
 
   return (
-    <div className={cn("relative min-w-0", toolbar && "w-full max-w-[300px] flex-[0_1_300px]", className)}>
-      <Icon
+    <div className={cn("relative min-w-0", toolbar && "w-full min-w-[150px] max-w-[300px] flex-[0_1_220px]", className)}>
+      <LineIcon
         name="search"
-        size={16}
+        size={toolbar ? 13 : 15}
         className={cn(
           "pointer-events-none absolute top-1/2 -translate-y-1/2",
-          toolbar ? "left-2.5 text-ink-disabled" : "left-3 text-ink-faint",
+          toolbar ? "left-2 text-tx-5" : "left-2.5 text-tx-5",
         )}
       />
       <input
@@ -110,8 +111,8 @@ export function SearchInput({
         className={controlClasses(
           false,
           toolbar
-            ? "h-control min-h-control rounded-button border-control bg-fill py-0 pr-2.5 pl-8 text-note"
-            : "pl-9",
+            ? "h-[23px] min-h-[23px] rounded-r6 border-transparent bg-elev py-0 pr-2 pl-6 text-small focus:border-ac"
+            : "pl-8",
         )}
         {...props}
       />

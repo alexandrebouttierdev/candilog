@@ -2,7 +2,9 @@
 
 use crate::core::errors::{AppError, AppResult};
 use crate::core::utils::csv_export::avec_bom;
-use crate::features::analytics::domain::{Analytics, AnalyticsRepository, Dashboard, Period, Step};
+use crate::features::analytics::domain::{
+    AgendaItem, Analytics, AnalyticsRepository, Dashboard, Period, Step,
+};
 use chrono::NaiveDate;
 
 /// Service d'analyses, générique sur le dépôt pour rester testable sans `SQLite`.
@@ -38,6 +40,19 @@ impl<R: AnalyticsRepository> AnalyticsService<R> {
         })
     }
 
+    /// Échéances de l'écran Aujourd'hui : relances encore à faire jusqu'à dans sept jours
+    /// (retards compris) et entretiens de la semaine qui vient.
+    ///
+    /// # Errors
+    /// Propage l'erreur du dépôt.
+    pub fn agenda(&self, today: NaiveDate) -> AppResult<Vec<AgendaItem>> {
+        let until = today + chrono::Duration::days(7);
+        self.repo.agenda(
+            &today.format("%Y-%m-%d").to_string(),
+            &until.format("%Y-%m-%d").to_string(),
+        )
+    }
+
     /// Payload les analyses pour la période choisie.
     ///
     /// # Errors
@@ -67,6 +82,7 @@ impl<R: AnalyticsRepository> AnalyticsService<R> {
             activity: self.repo.activity_hebdomadaire(period.semaines())?,
             funnel,
             to_follow_up: self.repo.to_follow_up(&day, 7, 5)?,
+            channels: self.repo.channel_rates(from.as_deref())?,
         })
     }
 

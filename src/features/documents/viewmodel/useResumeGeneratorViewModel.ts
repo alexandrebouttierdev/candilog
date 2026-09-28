@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   aiService,
   isAiNotConfiguredError,
@@ -12,7 +12,11 @@ import {
 } from "@/features/ai";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
+import type { ProfileSection, ResumeTone } from "@/shared/types/generated/ai";
 import type { ResumeWorkspace } from "@/shared/types/generated/documents";
+import { RESUME_SECTIONS, sectionOptions, toggleSection } from "../model/profileSections";
+import { PROFILE_KEY, profileService } from "@/features/profile";
+import { useRemoteSendGuard } from "@/features/settings";
 import { documentsService } from "../services/documentsService";
 import { exportResumePdf } from "./documentExport";
 import { RESUME_KEY } from "./documentKeys";
@@ -21,6 +25,8 @@ export interface ResumeGeneratorInitial {
   result: ResumeGeneration | null;
   workspace: ResumeWorkspace | null;
   name: string;
+  /** Document rouvert depuis la bibliothèque : l'enregistrer en ajoute une version. */
+  documentId?: string | null;
 }
 
 function errorMessage(error: unknown): string {
@@ -37,6 +43,10 @@ export function useResumeGeneratorViewModel(initial: ResumeGeneratorInitial) {
   const queryClient = useQueryClient();
   const notify = useUiStore((state) => state.notify);
   const [jobOffer, setJobOffer] = useState("");
+  const [excludedSections, setExcludedSections] = useState<ProfileSection[]>([]);
+  const [tone, setTone] = useState<ResumeTone>("professional");
+  const profile = useQuery({ queryKey: PROFILE_KEY, queryFn: profileService.load });
+  const confirmSend = useRemoteSendGuard();
   const { operation, stopping, start, stop, finish, isCurrent } = useAiOperation();
   const [error, setError] = useState<string | null>(null);
   const [historical] = useState(initial.result);
@@ -80,6 +90,8 @@ export function useResumeGeneratorViewModel(initial: ResumeGeneratorInitial) {
       setError("Collez le texte de l’offre à cibler.");
       return;
     }
+    // Premier envoi à un service distant : confirmé avant que rien ne parte (D4).
+    if (!(await confirmSend("generate_resume", "Votre profil et le texte de l’offre"))) return;
     let id: string;
     try {
       id = start("generation");
@@ -91,9 +103,14 @@ export function useResumeGeneratorViewModel(initial: ResumeGeneratorInitial) {
     setError(null);
     timer.start();
     try {
-      const execution = await aiService.generateResume({ generation_id: id, job_offer: jobOffer });
+      const execution = await aiService.generateResume({
+        generation_id: id,
+        job_offer: jobOffer,
+        excluded_sections: excludedSections,
+        tone,
+      });
       if (!mounted.current || !isCurrent(id)) return;
-      const prepared = await documentsService.prepareResume(execution.output);
+      const prepared = await documentsService.prepareResume(execution.output, excludedSections);
       if (!mounted.current || !isCurrent(id)) return;
       timer.stop();
       setWorkspace(prepared);
@@ -126,11 +143,20 @@ export function useResumeGeneratorViewModel(initial: ResumeGeneratorInitial) {
     }
   }
 
+  // Document que le prochain enregistrement révise : celui rouvert, puis celui enregistré ici,
+  // pour qu'un second ⌘S ajoute une version plutôt qu'un nouveau CV.
+  const [revises, setRevises] = useState<string | null>(initial.documentId ?? null);
   const save = useMutation({
-    mutationFn: (content: ResumeWorkspace) => documentsService.saveResume({ name, content }),
-    onSuccess: async () => {
+    mutationFn: (content: ResumeWorkspace) =>
+      documentsService.saveResume({
+        name,
+        content,
+        ...(revises ? { revises, version_note: "Modifiée dans le générateur" } : { version_note: "Première génération" }),
+      }),
+    onSuccess: async (saved) => {
       await queryClient.invalidateQueries({ queryKey: RESUME_KEY });
-      notify({ tone: "success", title: "CV ajouté à la bibliothèque" });
+      notify({ tone: "success", title: revises ? "Nouvelle version enregistrée" : "CV ajouté à la bibliothèque" });
+      setRevises(saved.id);
     },
     onError: (caught: unknown) => {
       notify({
@@ -155,7 +181,13 @@ export function useResumeGeneratorViewModel(initial: ResumeGeneratorInitial) {
     durationMs: timer.durationMs,
     metrics,
     isSaving: save.isPending,
+    /** « Ce que l'IA peut utiliser », compté sur le profil courant. */
+    sectionOptions: sectionOptions(profile.data?.profile ?? null, RESUME_SECTIONS),
+    excludedSections,
+    tone,
     setJobOffer,
+    toggleSection: (section: ProfileSection) => setExcludedSections((current) => toggleSection(current, section)),
+    setTone,
     setName,
     openBrief: () => setBriefOpen(true),
     closeBrief: () => setBriefOpen(false),

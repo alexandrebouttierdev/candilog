@@ -59,7 +59,11 @@ export type BenchmarkQualityLabel = "weak" | "average" | "fair" | "good" | "very
 
 export type ContentRelevance = "very_relevant" | "relevant" | "secondary";
 
-export type CoverLetterRequest = { generation_id: string, company: string | null, job_title: string | null, tone: string | null, length: string | null, context: string | null, previous_cover_letter: string | null, instruction: string | null, };
+export type CoverLetterRequest = { generation_id: string, company: string | null, job_title: string | null, tone: string | null, length: string | null, context: string | null, previous_cover_letter: string | null, instruction: string | null, 
+/**
+ * Arguments que la lettre ne doit pas utiliser (« Arguments autorisés »).
+ */
+excluded_sections: Array<ProfileSection>, };
 
 /**
  * Préférence utilisateur pour l'import de CV.
@@ -106,7 +110,65 @@ export type LanguageCorrectionRequest = { generation_id: string, fields: Array<L
 
 export type LanguageCorrectionResult = { fields: Array<LanguageCorrectionField>, };
 
+export type LetterFit = { 
+/**
+ * Part pondérée des exigences de l'offre que la lettre aborde, sur 100.
+ */
+score: number, 
+/**
+ * Score atteint si toutes les recommandations étaient suivies.
+ */
+potential: number, 
+/**
+ * Nombre d'exigences pondérées lues dans l'offre ; 0 : rien à mesurer.
+ */
+requirements: number, addressed: Array<string>, recommendations: Array<LetterRecommendation>, 
+/**
+ * Exigences que ni la lettre ni le profil n'abordent : à ne pas inventer.
+ */
+unsupported: Array<string>, };
+
+export type LetterFitRequest = { letter: string, 
+/**
+ * Offre structurée par `ai_analyze_listing`.
+ */
+job_offer: StructuredListing, 
+/**
+ * Arguments exclus de la lettre : ils ne fondent aucune recommandation.
+ */
+excluded_sections: Array<ProfileSection>, };
+
+/**
+ * Ajout proposé : une exigence que la lettre n'aborde pas et qu'un fait du profil prouve.
+ */
+export type LetterRecommendation = { id: string, requirement: string, importance: RequirementImportance, 
+/**
+ * Le fait du profil qui permet de l'aborder, tel qu'il y est écrit.
+ */
+evidence: string, 
+/**
+ * Consigne envoyée à la correction de lettre, qui reste bornée aux faits vérifiés.
+ */
+instruction: string, 
+/**
+ * Points gagnés si la lettre l'aborde.
+ */
+impact: number, };
+
 export type ListingAnalysis = { job_offer: StructuredListing, score: MatchScore, };
+
+/**
+ * Réponse du modèle local actif à la phrase de test de l'installation.
+ */
+export type LocalModelProbe = { 
+/**
+ * Tag Ollama du modèle qui a répondu.
+ */
+model: string, 
+/**
+ * Aller-retour mesuré, chargement du modèle en mémoire compris.
+ */
+latency_ms: number, };
 
 export type MachineFit = "recommended" | "compatible" | "may_be_slow" | "insufficient_memory";
 
@@ -170,6 +232,12 @@ export type ProfileImportRequest = { generation_id: string,
  */
 method: CvAnalysisMethod, };
 
+/**
+ * Section du profil. Une section exclue n'est ni envoyée au modèle, ni reprise dans le
+ * document, ni proposée ensuite comme contenu à ajouter.
+ */
+export type ProfileSection = "summary" | "availability" | "experiences" | "education" | "skills" | "languages" | "projects" | "certifications" | "interests";
+
 export type RequirementCategory = "occupation" | "hard_skill" | "soft_skill" | "responsibility" | "experience" | "education" | "certification" | "license" | "language" | "tool" | "methodology" | "industry" | "location" | "availability" | "other";
 
 export type RequirementEvaluation = { requirement: string, category: RequirementCategory, importance: RequirementImportance, match_kind: RequirementMatchKind, score: number | null, evidence: string | null, };
@@ -197,7 +265,16 @@ export type ResumeGeneration = { resume: GeneratedResume, analysis: AtsAnalysis,
  */
 recommendation_error: string | null, };
 
-export type ResumeGenerationRequest = { generation_id: string, job_offer: string, };
+export type ResumeGenerationRequest = { generation_id: string, job_offer: string, 
+/**
+ * Sections du profil que l'IA ne doit pas utiliser (« Ce que l'IA peut utiliser »).
+ */
+excluded_sections: Array<ProfileSection>, tone: ResumeTone, };
+
+/**
+ * Ton de rédaction d'un CV (`screens/15`).
+ */
+export type ResumeTone = "sober" | "professional" | "direct";
 
 /**
  * PDF choisi par l'utilisateur avant le lancement explicite de son analyse.

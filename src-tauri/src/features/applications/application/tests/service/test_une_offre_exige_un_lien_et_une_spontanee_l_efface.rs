@@ -1,4 +1,4 @@
-//! Régime du lien de l'offre selon la nature de la candidature.
+//! Régime du lien de l'offre selon le canal de la candidature.
 
 use super::*;
 
@@ -20,7 +20,7 @@ fn une_candidature_a_une_offre_exige_son_lien() {
 fn une_candidature_spontanee_n_exige_aucun_lien() {
     let service = ApplicationService::new(StubRepo::default());
     let mut input = new("Développeur");
-    input.application_type = ApplicationType::Unsolicited;
+    input.channel = ApplicationChannel::Spontaneous;
     input.job_url = None;
 
     assert!(service.create(&input).is_ok());
@@ -41,8 +41,45 @@ fn le_passage_en_spontanee_efface_le_lien_de_l_offre() {
         Some("https://example.org/offre")
     );
 
-    input.application_type = ApplicationType::Unsolicited;
+    input.channel = ApplicationChannel::Spontaneous;
     service.update(uuid::Uuid::nil(), &input).unwrap();
 
     assert_eq!(service.repository().recu().job_url, None);
+}
+
+/// Site de l'entreprise ou réseau : une cooptation n'a pas toujours d'annonce publique.
+/// Le lien est facultatif, mais un lien donné reste contrôlé.
+#[test]
+fn le_site_et_le_reseau_rendent_le_lien_facultatif_mais_valide() {
+    let service = ApplicationService::new(StubRepo::default());
+    for channel in [ApplicationChannel::CompanySite, ApplicationChannel::Network] {
+        let mut input = new("Développeur");
+        input.channel = channel;
+        input.job_url = None;
+        assert!(
+            service.create(&input).is_ok(),
+            "{channel:?} sans lien refusé"
+        );
+
+        input.job_url = Some("javascript:alert(1)".into());
+        assert!(
+            matches!(service.create(&input), Err(AppError::Validation(_))),
+            "{channel:?} : un lien non HTTP aurait dû être refusé"
+        );
+    }
+}
+
+#[test]
+fn le_canal_determine_la_nature_de_la_demarche() {
+    assert_eq!(
+        ApplicationChannel::Spontaneous.application_type(),
+        ApplicationType::Unsolicited
+    );
+    for channel in [
+        ApplicationChannel::Offer,
+        ApplicationChannel::CompanySite,
+        ApplicationChannel::Network,
+    ] {
+        assert_eq!(channel.application_type(), ApplicationType::JobOffer);
+    }
 }

@@ -36,12 +36,10 @@ export function ProfileSkillChoiceDialog({
   return (
     <ModalHost
       open={pending !== null}
-      icon="person_add"
       title="Ajouter cette compétence au profil ?"
       subtitle={pending?.skill}
       cancelLabel="CV uniquement"
       submitLabel="Ajouter au profil"
-      submitIcon="person_add"
       busy={busy}
       onClose={onKeepResumeOnly}
       onSubmit={() => void ajouter()}

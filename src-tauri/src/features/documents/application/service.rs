@@ -3,15 +3,15 @@
 use crate::core::errors::{AppError, AppResult};
 use crate::core::files::atomic_write;
 use crate::core::pagination::Page;
-use crate::features::ai::domain::ResumeGeneration;
+use crate::features::ai::domain::{profile_without, ProfileSection, ResumeGeneration};
 use crate::features::documents::application::{
     apply_proposal, build, build_cover_letter, prepare_workspace, recalculate, reject_proposal,
     validate_document,
 };
 use crate::features::documents::domain::{
-    sanitize_letter, CoverLetter, CoverLetterExport, CoverLetterRepository, NewCoverLetter,
-    NewResume, ResumeDocument, ResumeRepository, ResumeSummary, ResumeVersion, ResumeWorkspace,
-    RESUME_WORKSPACE_VERSION,
+    sanitize_letter, CoverLetter, CoverLetterExport, CoverLetterRepository, DocumentVersion,
+    NewCoverLetter, NewResume, ResumeDocument, ResumeRepository, ResumeSummary, ResumeVersion,
+    ResumeWorkspace, RESUME_WORKSPACE_VERSION,
 };
 use crate::features::profile::application::ProfileService;
 use crate::features::profile::domain::ProfileRepository;
@@ -54,10 +54,21 @@ impl<C: ResumeRepository, L: CoverLetterRepository, P: ProfileRepository>
     }
 
     /// Fige le profil et une génération IA dans un document de travail autonome.
-    pub fn resume_prepare(&self, generation: ResumeGeneration) -> AppResult<ResumeWorkspace> {
+    ///
+    /// Les sections que l'utilisateur a retirées de la génération ne reviennent ni dans le
+    /// document ni dans la bibliothèque de contenu proposée ensuite.
+    pub fn resume_prepare(
+        &self,
+        generation: ResumeGeneration,
+        excluded_sections: &[ProfileSection],
+    ) -> AppResult<ResumeWorkspace> {
         let payload = self.profile.load()?;
         let photo = self.profile.photo_bytes()?;
-        prepare_workspace(&payload.profile, generation, photo)
+        prepare_workspace(
+            &profile_without(&payload.profile, excluded_sections),
+            generation,
+            photo,
+        )
     }
 
     /// Revalide le document puis recalcule score et propositions après une édition manuelle.
@@ -142,7 +153,25 @@ impl<C: ResumeRepository, L: CoverLetterRepository, P: ProfileRepository>
         self.resume.save(&NewResume {
             name: name.into(),
             content: input.content.clone(),
+            revises: input.revises,
+            version_note: version_note(input.version_note.as_deref())?,
         })
+    }
+
+    /// Versions du CV auquel appartient `id`, de la plus récente à la plus ancienne.
+    ///
+    /// # Errors
+    /// `NotFound` si la version n'existe pas.
+    pub fn resume_versions(&self, id: Uuid) -> AppResult<Vec<DocumentVersion>> {
+        self.resume.versions(id)
+    }
+
+    /// Fait de la version `id` la version courante de son CV.
+    ///
+    /// # Errors
+    /// `NotFound` si la version n'existe pas.
+    pub fn resume_restore(&self, id: Uuid) -> AppResult<()> {
+        self.resume.restore(id)
     }
 
     pub fn resume_list_page(
@@ -150,8 +179,9 @@ impl<C: ResumeRepository, L: CoverLetterRepository, P: ProfileRepository>
         page: u64,
         page_size: u64,
         search: &str,
+        scored_only: bool,
     ) -> AppResult<Page<ResumeSummary>> {
-        self.resume.list_page(page, page_size, search)
+        self.resume.list_page(page, page_size, search, scored_only)
     }
     pub fn resume_get(&self, id: Uuid) -> AppResult<ResumeVersion> {
         self.resume.get(id)
@@ -197,7 +227,24 @@ impl<C: ResumeRepository, L: CoverLetterRepository, P: ProfileRepository>
         // Le corps porte la mise en forme de l'éditeur : il est ramené au balisage canonique
         // avant d'entrer en base, seul endroit où l'on peut garantir que rien d'autre n'y est.
         nettoyee.content = sanitize_letter(&input.content);
+        nettoyee.version_note = version_note(input.version_note.as_deref())?;
         self.cover_letters.save(&nettoyee)
+    }
+
+    /// Versions de la lettre à laquelle appartient `id`, de la plus récente à la plus ancienne.
+    ///
+    /// # Errors
+    /// `NotFound` si la version n'existe pas.
+    pub fn cover_letter_versions(&self, id: Uuid) -> AppResult<Vec<DocumentVersion>> {
+        self.cover_letters.versions(id)
+    }
+
+    /// Fait de la version `id` la version courante de sa lettre.
+    ///
+    /// # Errors
+    /// `NotFound` si la version n'existe pas.
+    pub fn cover_letter_restore(&self, id: Uuid) -> AppResult<()> {
+        self.cover_letters.restore(id)
     }
 
     pub fn cover_letters_list_page(
@@ -247,6 +294,22 @@ fn valider_contenu(content: &serde_json::Value) -> AppResult<()> {
     Ok(())
 }
 
+/// Longueur maximale de la mention d'une version, en caractères.
+const MAX_VERSION_NOTE: usize = 120;
+
+/// Mention d'une version, rognée ; vide, elle est absente.
+fn version_note(note: Option<&str>) -> AppResult<Option<String>> {
+    let Some(note) = note.map(str::trim).filter(|note| !note.is_empty()) else {
+        return Ok(None);
+    };
+    if note.chars().count() > MAX_VERSION_NOTE {
+        return Err(AppError::Validation(format!(
+            "La mention d'une version tient en {MAX_VERSION_NOTE} caractères."
+        )));
+    }
+    Ok(Some(note.to_owned()))
+}
+
 /// Refuse une valeur hors du jeu fermé accepté par le rendu.
 fn valider_valeur(value: &str, acceptes: &[&str], label: &str) -> AppResult<()> {
     if acceptes.contains(&value) {
@@ -261,6 +324,22 @@ fn valider_valeur(value: &str, acceptes: &[&str], label: &str) -> AppResult<()> 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn la_mention_d_une_version_est_rognee_bornee_et_facultative() {
+        assert_eq!(
+            version_note(Some("  Relecture manuelle "))
+                .unwrap()
+                .as_deref(),
+            Some("Relecture manuelle")
+        );
+        assert_eq!(version_note(Some("   ")).unwrap(), None);
+        assert_eq!(version_note(None).unwrap(), None);
+        assert!(matches!(
+            version_note(Some(&"x".repeat(121))),
+            Err(AppError::Validation(_))
+        ));
+    }
     use crate::core::database::{open_pool, run_local_migrations};
     use crate::features::documents::infrastructure::{
         SqliteCoverLetterRepository, SqliteResumeRepository,
@@ -293,6 +372,7 @@ mod tests {
             .resume_save(&NewResume {
                 name: "   ".into(),
                 content: serde_json::json!({}),
+                ..Default::default()
             })
             .unwrap_err();
         assert!(matches!(err, AppError::Validation(_)));
@@ -313,6 +393,7 @@ mod tests {
                 .resume_save(&NewResume {
                     name: "CV Produit".into(),
                     content: contenu.clone(),
+                    ..Default::default()
                 })
                 .unwrap_err();
             assert!(
@@ -332,10 +413,11 @@ mod tests {
             .resume_save(&NewResume {
                 name: "CV Produit".into(),
                 content: serde_json::json!({ "schema_version": 1, "document": {} }),
+                ..Default::default()
             })
             .unwrap_err();
         assert!(matches!(err, AppError::Validation(_)));
-        assert_eq!(service.resume_list_page(1, 8, "").unwrap().total, 0);
+        assert_eq!(service.resume_list_page(1, 8, "", false).unwrap().total, 0);
     }
 
     #[test]
@@ -344,6 +426,7 @@ mod tests {
             .resume_save(&NewResume {
                 name: "CV Produit".into(),
                 content: serde_json::json!({ "resume": "x".repeat(MAX_CONTENT_CHARS) }),
+                ..Default::default()
             })
             .unwrap_err();
         assert!(matches!(err, AppError::Validation(_)));
@@ -365,6 +448,7 @@ mod tests {
                 tone: "sarcastique".into(),
                 length: "medium".into(),
                 content: "Madame, Monsieur…".into(),
+                ..Default::default()
             })
             .unwrap_err();
         assert!(
@@ -383,6 +467,7 @@ mod tests {
                 tone: "formal".into(),
                 length: "interminable".into(),
                 content: "Madame, Monsieur…".into(),
+                ..Default::default()
             })
             .unwrap_err();
         assert!(
@@ -404,6 +489,7 @@ mod tests {
                 tone: "formal".into(),
                 length: "medium".into(),
                 content: "  ".into(),
+                ..Default::default()
             })
             .unwrap_err();
         assert!(matches!(err, AppError::Validation(_)));

@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { analyticsService } from "../services/analyticsService";
 import { FOLLOW_UPS_KEY, followUpService, type NewFollowUp } from "@/features/followups";
 import type { Period } from "@/shared/types/generated/analytics";
-import { ANALYTICS_KEY } from "./useDashboardViewModel";
+import { ANALYTICS_KEY } from "./analyticsKeys";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 

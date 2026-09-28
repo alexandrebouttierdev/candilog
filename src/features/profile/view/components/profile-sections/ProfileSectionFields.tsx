@@ -98,7 +98,7 @@ export function RepeatList({
   return (
     <div className="space-y-4">
       {children || <EmptyInline text={empty} />}
-      <Button variant="secondary" icon="add" onClick={onAdd}>
+      <Button variant="secondary" onClick={onAdd}>
         {addLabel}
       </Button>
     </div>
@@ -121,7 +121,6 @@ export function ItemCard({
         <p className="min-w-0 flex-1 truncate text-section text-ink">{title}</p>
         <Button
           variant="ghost"
-          icon="delete"
           aria-label={`Supprimer ${title}`}
           onClick={onRemove}
         >

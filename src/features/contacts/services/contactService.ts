@@ -15,7 +15,9 @@ export const contactService = {
     page_size: number;
     search: string;
     tracking_role: string | null;
-  }) => ipc<Page<Contact>>("contacts_list_page", params),
+    /** `true` : interlocuteurs d'une candidature ; `false` : réseau ; absent : tous. */
+    linked?: boolean | null;
+  }) => ipc<Page<Contact>>("contacts_list_page", { linked: null, ...params }),
 
   get: (id: string) => ipc<Contact>("contacts_get", { id }),
 

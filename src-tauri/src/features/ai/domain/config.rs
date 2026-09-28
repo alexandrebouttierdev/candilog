@@ -1,6 +1,7 @@
 //! Configuration compatible avec le JSON historique de `parametres`.
 
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use ts_rs::TS;
 
 /// Mode d'analyse, rétro-compatible avec les bases antérieures à son introduction.
@@ -119,11 +120,101 @@ impl LlmConfig {
     }
 }
 
+/// Tâche IA routable vers un modèle précis (écran IA, section « Qui fait quoi »).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "settings.ts")]
+pub enum AiTask {
+    /// Générer un CV ciblé sur une offre.
+    GenerateResume,
+    /// Rédiger ou corriger une lettre de motivation.
+    WriteLetter,
+    /// Analyser un CV PDF face à une offre.
+    AnalyzeResume,
+    /// Extraire la structure d'une offre d'emploi.
+    ExtractOffer,
+    /// Lire un CV importé pour remplir le profil.
+    ImportResume,
+}
+
+impl AiTask {
+    /// Libellé de la tâche, tel que l'écran IA l'affiche.
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::GenerateResume => "Générer un CV ciblé",
+            Self::WriteLetter => "Rédiger une lettre",
+            Self::AnalyzeResume => "Analyser un CV",
+            Self::ExtractOffer => "Extraire une offre d'emploi",
+            Self::ImportResume => "Lire un CV importé",
+        }
+    }
+}
+
+/// Modèle assigné à une tâche : un fournisseur et l'un de ses modèles.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "settings.ts")]
+pub struct TaskRoute {
+    pub provider: ProviderKind,
+    /// Modèle du fournisseur ; pour l'IA locale, le tag Ollama d'un modèle installé.
+    pub model: String,
+}
+
+/// Routage des tâches. **Absente**, une tâche suit le fournisseur principal — c'est l'état
+/// de toute base antérieure au routage, qui garde ainsi son comportement (`DECISIONS` D3).
+/// `None` explicite : tâche désactivée. Jamais de repli d'un fournisseur vers un autre.
+pub type AiRoutes = BTreeMap<AiTask, Option<TaskRoute>>;
+
+/// Réglages mémorisés d'un fournisseur, lus pour construire la configuration d'une route.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub struct StoredPreset {
+    pub endpoint: Option<String>,
+    #[serde(default)]
+    pub temperature: Option<f32>,
+    #[serde(default)]
+    pub mode: AnalysisMode,
+}
+
 #[derive(Deserialize)]
 pub struct SettingsStockes {
     /// Absent sur une base neuve (`data = '{}'`), présent dès que les réglages ont été sauvés.
     #[serde(default)]
     pub llm: LlmConfig,
+    #[serde(default)]
+    pub llm_presets: BTreeMap<String, StoredPreset>,
+    #[serde(default)]
+    pub ai_routes: AiRoutes,
+}
+
+/// Configuration d'une tâche routée vers `route`, à partir des réglages mémorisés de son
+/// fournisseur. La clé API reste à charger depuis le coffre.
+#[must_use]
+pub fn route_config(
+    route: &TaskRoute,
+    main: &LlmConfig,
+    presets: &BTreeMap<String, StoredPreset>,
+) -> LlmConfig {
+    let preset = presets.get(route.provider.storage_id());
+    let same_provider = route.provider == main.provider;
+    LlmConfig {
+        provider: route.provider.clone(),
+        api_key: None,
+        endpoint: preset
+            .and_then(|preset| preset.endpoint.clone())
+            .or_else(|| {
+                if same_provider {
+                    main.endpoint.clone()
+                } else {
+                    None
+                }
+            }),
+        model: route.model.clone(),
+        temperature: preset
+            .and_then(|preset| preset.temperature)
+            .unwrap_or(main.temperature),
+        mode: preset.map_or(main.mode, |preset| preset.mode),
+    }
 }
 
 #[cfg(test)]

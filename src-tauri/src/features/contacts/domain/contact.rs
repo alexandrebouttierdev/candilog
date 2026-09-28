@@ -39,6 +39,24 @@ pub struct Contact {
     pub created_at: String,
     /// Date de dernière mise à jour (ISO 8601).
     pub updated_at: String,
+
+    /// Candidatures dont ce contact est l'interlocuteur, calculées à la lecture.
+    pub activity: ContactActivity,
+}
+
+/// Rattachement d'un contact au suivi : un contact lié à une candidature est un recruteur
+/// ou un manager, les autres relèvent du réseau (écran Relations).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, ts_rs::TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "contacts.ts")]
+pub struct ContactActivity {
+    /// Candidatures dont il est l'interlocuteur.
+    pub applications: u32,
+    /// Numéro de référence de la plus récente.
+    #[ts(type = "number | null")]
+    pub last_reference_number: Option<i64>,
+    /// Date d'envoi de la plus récente (`AAAA-MM-JJ`).
+    pub last_sent_date: Option<String>,
 }
 
 /// Champs de création et d'édition d'un contact : prénom et nom requis.

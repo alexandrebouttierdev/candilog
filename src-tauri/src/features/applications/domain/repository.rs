@@ -2,8 +2,11 @@
 
 use crate::core::errors::AppResult;
 use crate::core::pagination::Page;
-use crate::features::applications::domain::application::{Application, NewApplication};
+use crate::features::applications::domain::application::{
+    Application, DeletionImpact, NewApplication, StatusChange,
+};
 use crate::features::applications::domain::application_type::ApplicationType;
+use crate::features::applications::domain::channel::ApplicationChannel;
 use crate::features::applications::domain::schedule::WeeklyWorkSchedule;
 use crate::features::applications::domain::status::ApplicationStatus;
 use crate::features::companies::domain::CompanySize;
@@ -30,6 +33,41 @@ pub enum ApplicationSort {
     Date,
 }
 
+/// Critère d'un filtre dont la condition peut être inversée (« n'est pas »).
+///
+/// Enum et non nom de colonne : le champ sert à choisir une clause SQL, jamais à être
+/// interpolé. Les bornes (heures, dates) n'en font pas partie : elles s'inversent en
+/// changeant de borne, pas en niant la condition.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ts_rs::TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "applications.ts")]
+pub enum FilterField {
+    /// Statut dans le pipeline.
+    Status,
+    /// Nature de la démarche (offre, spontanée).
+    ApplicationType,
+    /// Canal « Trouvée via ».
+    Channel,
+    /// Type de contrat.
+    ContractType,
+    /// Domaine professionnel du poste.
+    ProfessionalDomain,
+    /// Type d'entreprise effectif.
+    CompanyType,
+    /// Taille de l'entreprise.
+    CompanySize,
+    /// Secteur de l'entreprise.
+    Sector,
+    /// Régime horaire.
+    WeeklyWorkSchedule,
+    /// Entreprise liée.
+    Company,
+    /// Ville effective.
+    City,
+    /// Intitulé du poste.
+    JobTitle,
+}
+
 /// Critères appliqués par `SQLite` avant pagination.
 ///
 /// Tous les critères sont évalués en base : ramener les candidatures en mémoire pour les
@@ -50,6 +88,9 @@ pub struct ApplicationFilter {
     /// Natures de candidature retenues ; vide = toutes.
     #[serde(default)]
     pub application_type: Vec<ApplicationType>,
+    /// Canaux retenus ; vide = tous.
+    #[serde(default)]
+    pub channel: Vec<ApplicationChannel>,
     /// Codes de contrat retenus ; vide = tous.
     #[serde(default)]
     pub contract_type_code: Vec<String>,
@@ -74,6 +115,9 @@ pub struct ApplicationFilter {
     pub max_weekly_hours: Option<f64>,
     /// Entreprise liée.
     pub company_id: Option<Uuid>,
+    /// Contact interlocuteur (inspecteur d'un contact, écran Relations).
+    #[serde(default)]
+    pub contact_id: Option<Uuid>,
     /// Ville effective, en recherche partielle.
     pub city: String,
     /// Intitulé de poste, en recherche partielle.
@@ -89,6 +133,31 @@ pub struct ApplicationFilter {
     /// Identifiants retenus pour un export ou une action groupée ; vide = tout le filtre.
     #[serde(default)]
     pub ids: Vec<Uuid>,
+    /// Critères inversés : la candidature doit **ne pas** y répondre. Une valeur absente
+    /// (domaine, secteur, ville non renseignés) passe toujours un critère inversé.
+    #[serde(default)]
+    pub excluded: Vec<FilterField>,
+}
+
+/// Regroupement de la liste en plus du statut (« Grouper : … », `INTERACTIONS.md` §3.2).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ts_rs::TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "applications.ts")]
+pub enum ApplicationGrouping {
+    Company,
+    Contract,
+}
+
+/// Groupe de la liste : sa clé (identifiant d'entreprise ou code de contrat), son libellé et
+/// le nombre de candidatures retenues par tout le filtre, calculé par `SQLite`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, ts_rs::TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "applications.ts")]
+pub struct ApplicationGroup {
+    pub key: String,
+    pub label: String,
+    #[ts(type = "number")]
+    pub count: u64,
 }
 
 /// Répartition du pipeline par statut, calculée par `SQLite`.
@@ -141,6 +210,16 @@ pub trait ApplicationRepository: Send + Sync {
     /// Retourne `AppError::Database` si la requête échoue.
     fn breakdown(&self, filter: &ApplicationFilter) -> AppResult<PipelineBreakdown>;
 
+    /// Groupes de la liste filtrée, les plus fournis d'abord.
+    ///
+    /// # Errors
+    /// Retourne `AppError::Database` si la requête échoue.
+    fn groups(
+        &self,
+        filter: &ApplicationFilter,
+        by: ApplicationGrouping,
+    ) -> AppResult<Vec<ApplicationGroup>>;
+
     /// Crée une candidature et ouvre son historique de statut.
     ///
     /// # Errors
@@ -165,4 +244,16 @@ pub trait ApplicationRepository: Send + Sync {
     /// `AppError::NotFound` si l'identifiant est inconnu ; `AppError::Database` si la
     /// suppression échoue.
     fn delete(&self, id: Uuid) -> AppResult<()>;
+
+    /// Compte ce que la suppression emporterait.
+    ///
+    /// # Errors
+    /// `AppError::NotFound` si l'identifiant est inconnu.
+    fn deletion_impact(&self, id: Uuid) -> AppResult<DeletionImpact>;
+
+    /// Historique des statuts, le plus récent d'abord.
+    ///
+    /// # Errors
+    /// `AppError::NotFound` si l'identifiant est inconnu.
+    fn status_history(&self, id: Uuid) -> AppResult<Vec<StatusChange>>;
 }

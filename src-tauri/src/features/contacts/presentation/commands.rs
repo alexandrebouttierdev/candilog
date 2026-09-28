@@ -15,7 +15,7 @@ pub async fn contacts_list(state: State<'_, AppState>) -> AppResult<Vec<Contact>
     blocking::execute(move || service.list()).await
 }
 
-/// Payload une page du réseau, filtrée par recherche libre et par rôle.
+/// Payload une page du réseau, filtrée par recherche libre, par rôle et par rattachement.
 #[tauri::command(rename_all = "snake_case")]
 pub async fn contacts_list_page(
     state: State<'_, AppState>,
@@ -23,10 +23,13 @@ pub async fn contacts_list_page(
     page_size: u64,
     search: String,
     tracking_role: Option<String>,
+    linked: Option<bool>,
 ) -> AppResult<Page<Contact>> {
     let service = Arc::clone(&state.contacts);
-    blocking::execute(move || service.list_page(page, page_size, &search, tracking_role.as_deref()))
-        .await
+    blocking::execute(move || {
+        service.list_page(page, page_size, &search, tracking_role.as_deref(), linked)
+    })
+    .await
 }
 
 /// Récupère un contact par identifiant.

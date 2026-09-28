@@ -16,7 +16,7 @@ fn test_les_champs_absents_deviennent_vides() {
 
     let csv = vers_csv(&[sans_company]).unwrap();
 
-    assert!(csv.contains("Développeur;;Offre d'emploi;CDI;Temps plein;;;;PME;;;"));
+    assert!(csv.contains("Développeur;;Offre d'emploi;Réseau;CDI;Temps plein;;;;PME;;;"));
     assert!(!csv.contains("None"));
 }
 

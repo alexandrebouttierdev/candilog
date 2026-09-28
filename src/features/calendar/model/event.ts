@@ -1,9 +1,7 @@
-import { interviewIcon, type Interview } from "@/features/interviews";
+import type { Interview } from "@/features/interviews";
 import type { FollowUp } from "@/features/followups";
-import { followUpIcon } from "@/features/followups";
 import { timeFromTimestamp, dayOf } from "@/shared/lib/dates";
 import type { Tone } from "@/shared/ui";
-import type { IconName } from "@/shared/ui/icon-names";
 
 /**
  * Événement du calendrier, entretien ou relance ramenés à une forme commune.
@@ -20,8 +18,9 @@ export interface CalendarEvent {
   readonly time: string | null;
   readonly label: string;
   readonly detail: string | null;
-  readonly icon: IconName;
   readonly tone: Tone;
+  /** Relance déclarée envoyée (« Faire » sur Aujourd'hui) : elle reste visible, atténuée. */
+  readonly done: boolean;
 }
 
 /** Convertit un entretien en événement. Tonalité verte : c'est un avancement. */
@@ -33,8 +32,8 @@ export function fromInterview(interview: Interview): CalendarEvent {
     time: timeFromTimestamp(interview.interview_date),
     label: interview.application_job_title ?? "Entretien",
     detail: interview.company_name,
-    icon: interviewIcon(interview.type),
     tone: "success",
+    done: false,
   };
 }
 
@@ -47,8 +46,8 @@ export function fromFollowUp(follow_up: FollowUp): CalendarEvent {
     time: null,
     label: follow_up.application_job_title ?? "Relance",
     detail: follow_up.company_name,
-    icon: followUpIcon(follow_up.type),
     tone: "warning",
+    done: follow_up.done_at !== null,
   };
 }
 

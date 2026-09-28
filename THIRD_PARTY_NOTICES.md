@@ -13,12 +13,12 @@ livré.
 
 ---
 
-## Polices embarquées dans le binaire
+## Police embarquée dans le binaire
 
-Ce sont les seuls composants tiers dont les **fichiers** sont redistribués tels quels par
-Candilog ; leurs licences exigent que la mention de copyright et le texte les accompagnent.
+C'est le seul composant tiers dont les **fichiers** sont redistribués tels quels par
+Candilog ; sa licence exige que la mention de copyright et le texte les accompagnent.
 
-### IBM Plex Sans, IBM Plex Mono
+### IBM Plex Sans, IBM Plex Serif, IBM Plex Mono
 
 Copyright © 2017 IBM Corp. with Reserved Font Name "Plex".
 Licence **SIL Open Font License 1.1** — texte intégral :
@@ -26,18 +26,9 @@ Licence **SIL Open Font License 1.1** — texte intégral :
 livré dans le paquet sous `licenses/ibm-plex-OFL-1.1.txt`.
 
 Utilisation : composition des CV et des lettres exportés en PDF (`src-tauri/src/infrastructure/pdf/`)
-et de leur aperçu à l'écran, qui doit rester fidèle à la page imprimée.
-
-### Material Symbols Rounded
-
-Copyright © Google LLC. Licence **Apache License 2.0** — texte intégral :
-[`src-tauri/assets/licenses/material-symbols-Apache-2.0.txt`](./src-tauri/assets/licenses/material-symbols-Apache-2.0.txt),
-livré dans le paquet sous `licenses/material-symbols-Apache-2.0.txt`.
-
-Utilisation : icônes de l'interface. Le fichier embarqué
-(`src/shared/ui/material-symbols-rounded.woff2`) est une **sous-police** dérivée de la
-police publiée, réduite aux icônes réellement employées par `scripts/subset-icons.py`. Seuls
-des glyphes ont été retirés ; aucune forme n'a été modifiée.
+et de leur aperçu à l'écran, qui doit rester fidèle à la page imprimée (Sans, Mono) ; titres,
+scores et données machine de l'interface (Serif 500 et 600, Mono), téléchargés depuis le
+dépôt officiel `IBM/plex`.
 
 ---
 
@@ -60,7 +51,7 @@ exacte et vérifiable.
 | Écosystème | Inventaire | Licences autorisées |
 | --- | --- | --- |
 | Rust | `src-tauri/Cargo.lock` | `deny.toml`, section `[licenses]` |
-| JavaScript | `package-lock.json` | — |
+| JavaScript | `yarn.lock` | — |
 
 La conformité des licences Rust est contrôlée à chaque changement de dépendance :
 

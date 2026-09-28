@@ -90,7 +90,7 @@ export function useManagedOllamaViewModel(
       setTransientState(status.runtime_state);
       void queryClient.invalidateQueries({ queryKey: SETTINGS_KEY });
       onConfigured?.();
-      notify({ tone: "success", title: "Modèle local prêt" });
+      // Pas de toast : la surcouche d'installation annonce la fin en place.
     },
     onError: (error: unknown) => {
       if (error instanceof AppError && error.isCancelled) {
@@ -98,7 +98,6 @@ export function useManagedOllamaViewModel(
         setEventError(null);
         setTransientState(null);
         void queryClient.invalidateQueries({ queryKey: MANAGED_OLLAMA_KEY });
-        notify({ tone: "info", title: "Téléchargement annulé" });
         return;
       }
       setTransientState("error");
@@ -141,6 +140,7 @@ export function useManagedOllamaViewModel(
     isRemoving: remove.isPending,
     isActivating: activate.isPending,
     install: install.mutate,
+    installAsync: install.mutateAsync,
     cancel: () => void managedOllamaService.cancel(),
     remove: remove.mutate,
     activate: activate.mutate,

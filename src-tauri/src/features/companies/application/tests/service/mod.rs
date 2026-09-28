@@ -1,6 +1,6 @@
 //! Helpers communs et déclaration des cas de test.
 use super::*;
-use crate::features::companies::domain::{Company, CompanySize};
+use crate::features::companies::domain::{Company, CompanyActivity, CompanySize};
 
 /// Entreprise de test, renvoyée par le dépôt double.
 fn ent(name: &str) -> Company {
@@ -18,6 +18,7 @@ fn ent(name: &str) -> Company {
         notes: None,
         created_at: "now".into(),
         updated_at: "now".into(),
+        activity: CompanyActivity::default(),
     }
 }
 

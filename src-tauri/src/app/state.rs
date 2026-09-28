@@ -25,8 +25,12 @@ use crate::features::profile::application::ProfileService;
 use crate::features::profile::infrastructure::SqliteProfileRepository;
 use crate::features::referentials::application::ReferentialService;
 use crate::features::referentials::infrastructure::SqliteReferentialRepository;
+use crate::features::relations::application::RelationHistoryService;
+use crate::features::relations::infrastructure::SqliteRelationHistoryRepository;
 use crate::features::settings::application::SettingsService;
 use crate::features::settings::infrastructure::SqliteSettingsRepository;
+use crate::features::views::application::SavedViewService;
+use crate::features::views::infrastructure::SqliteSavedViewRepository;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -54,6 +58,9 @@ pub type SettingsHandle = Arc<SettingsService<SqliteSettingsRepository, SecretSt
 pub type Profile = Arc<ProfileService<SqliteProfileRepository>>;
 /// Service des relances tel que partagé par les commandes.
 pub type FollowUps = Arc<FollowUpService<SqliteFollowUpRepository>>;
+/// Service des vues enregistrées de Candidatures.
+pub type Views = Arc<SavedViewService<SqliteSavedViewRepository>>;
+pub type RelationHistory = Arc<RelationHistoryService<SqliteRelationHistoryRepository>>;
 /// Service des référentiels métier tel que partagé par les commandes.
 pub type Referentials = Arc<ReferentialService<SqliteReferentialRepository>>;
 
@@ -71,6 +78,8 @@ pub struct AppState {
     pub profile: Profile,
     pub followups: FollowUps,
     pub referentials: Referentials,
+    pub views: Views,
+    pub relation_history: RelationHistory,
     pub sqlite: SqlitePool,
     pub db_path: PathBuf,
 }
@@ -160,6 +169,12 @@ impl AppState {
             referentials: Arc::new(ReferentialService::new(SqliteReferentialRepository::new(
                 pool.clone(),
             ))),
+            views: Arc::new(SavedViewService::new(SqliteSavedViewRepository::new(
+                pool.clone(),
+            ))),
+            relation_history: Arc::new(RelationHistoryService::new(
+                SqliteRelationHistoryRepository::new(pool.clone()),
+            )),
             sqlite: pool,
             db_path,
         })

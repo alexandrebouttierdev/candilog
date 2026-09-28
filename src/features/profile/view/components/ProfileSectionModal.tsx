@@ -8,7 +8,6 @@ import { ProfileInterestsForm } from "./profile-sections/ProfileInterestsForm";
 import { ProfileLanguagesForm } from "./profile-sections/ProfileLanguagesForm";
 import { ProfileProjectsForm } from "./profile-sections/ProfileProjectsForm";
 import { ProfileSkillsForm } from "./profile-sections/ProfileSkillsForm";
-import type { IconName } from "@/shared/ui/icon-names";
 
 export type ProfileSection =
   | "identity"
@@ -22,17 +21,17 @@ export type ProfileSection =
   | "certifications"
   | "interests";
 
-const META: Record<ProfileSection, { icon: IconName; title: string; subtitle: string }> = {
-  identity: { icon: "badge", title: "Identité", subtitle: "Coordonnées et informations personnelles" },
-  objective: { icon: "target", title: "Objectif professionnel", subtitle: "Titre, résumé et recherche" },
-  online: { icon: "link", title: "Présence en ligne", subtitle: "Liens professionnels" },
-  experiences: { icon: "work_history", title: "Expériences", subtitle: "Décrivez les étapes utiles de votre parcours" },
-  skills: { icon: "psychology", title: "Compétences", subtitle: "Ajoutez vos savoir-faire principaux" },
-  education: { icon: "school", title: "Formations", subtitle: "Diplômes et parcours de formation" },
-  languages: { icon: "translate", title: "Langues", subtitle: "Indiquez votre niveau de pratique" },
-  projects: { icon: "rocket_launch", title: "Projets", subtitle: "Valorisez vos réalisations personnelles" },
-  certifications: { icon: "workspace_premium", title: "Certifications", subtitle: "Ajoutez vos qualifications reconnues" },
-  interests: { icon: "palette", title: "Centres d'intérêts", subtitle: "Facultatif — hobbies et centres d'intérêts" },
+const META: Record<ProfileSection, { title: string; subtitle: string }> = {
+  identity: { title: "Identité", subtitle: "Coordonnées et informations personnelles" },
+  objective: { title: "Objectif professionnel", subtitle: "Titre, résumé et recherche" },
+  online: { title: "Présence en ligne", subtitle: "Liens professionnels" },
+  experiences: { title: "Expériences", subtitle: "Décrivez les étapes utiles de votre parcours" },
+  skills: { title: "Compétences", subtitle: "Ajoutez vos savoir-faire principaux" },
+  education: { title: "Formations", subtitle: "Diplômes et parcours de formation" },
+  languages: { title: "Langues", subtitle: "Indiquez votre niveau de pratique" },
+  projects: { title: "Projets", subtitle: "Valorisez vos réalisations personnelles" },
+  certifications: { title: "Certifications", subtitle: "Ajoutez vos qualifications reconnues" },
+  interests: { title: "Centres d'intérêts", subtitle: "Facultatif — hobbies et centres d'intérêts" },
 };
 
 const IDENTITY_SECTIONS = new Set<ProfileSection>(["identity", "objective", "online"]);
@@ -68,7 +67,6 @@ export function ProfileSectionModal({
   return (
     <ModalHost
       open
-      icon={meta.icon}
       title={meta.title}
       subtitle={meta.subtitle}
       footer_note="Les informations sont utilisées dans votre CV."

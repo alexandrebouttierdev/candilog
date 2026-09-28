@@ -9,7 +9,6 @@ import {
 import type { Company, NewCompany } from "@/shared/types/generated/companies";
 import { CompanySizes, useReferentials } from "@/features/referentials";
 import { FormField, ModalHost, Select, TextArea, TextInput } from "@/shared/ui";
-import type { IconName } from "@/shared/ui/icon-names";
 
 /** Valeurs d'un formulaire vierge. */
 const EMPTY_FORM: CompanyFormInput = {
@@ -88,7 +87,6 @@ export function CompanyFormModal({
   return (
     <ModalHost
       open={open}
-      icon="apartment"
       title={company ? "Modifier l'entreprise" : "Nouvelle entreprise"}
       subtitle={company ? company.name : "Ajoutez une société à votre répertoire"}
       footer_note="Seul le nom est obligatoire."
@@ -99,7 +97,7 @@ export function CompanyFormModal({
       width="600px"
     >
       <form onSubmit={(event) => void save(event)} className="flex flex-col gap-5">
-        <Section title="Identité" icon="apartment">
+        <Section title="Identité">
           <div className="col-span-2">
             <FormField label="Nom" required error={form.formState.errors.name?.message}>
               {(props) => (
@@ -114,7 +112,7 @@ export function CompanyFormModal({
           </div>
         </Section>
 
-        <Section title="Qualification" icon="category">
+        <Section title="Qualification">
           <FormField label="Secteur d'activité">
             {(props) => (
               <Select {...props} {...form.register("sector_id")}>
@@ -154,7 +152,7 @@ export function CompanyFormModal({
           </FormField>
         </Section>
 
-        <Section title="Localisation" icon="location_on">
+        <Section title="Localisation">
           <FormField label="Site web" error={form.formState.errors.website?.message}>
             {(props) => (
               <TextInput
@@ -198,21 +196,14 @@ export function CompanyFormModal({
 /** Section de formulaire : sur-titre, filet, grille à deux colonnes. */
 function Section({
   title,
-  icon,
   children,
 }: {
   title: string;
-  icon: IconName;
   children: React.ReactNode;
 }) {
   return (
     <fieldset className="flex flex-col gap-3">
-      <legend className="flex items-center gap-1.5 text-eyebrow uppercase text-ink-faint">
-        <span className="material-symbols-rounded text-[14px]" aria-hidden="true">
-          {icon}
-        </span>
-        {title}
-      </legend>
+      <legend className="text-eyebrow uppercase text-ink-faint">{title}</legend>
       <div className="grid grid-cols-2 gap-4">{children}</div>
     </fieldset>
   );

@@ -1,6 +1,8 @@
 //! Helpers communs et déclaration des cas de test.
 use super::*;
-use crate::features::applications::domain::{ApplicationType, WeeklyWorkSchedule};
+use crate::features::applications::domain::{
+    ApplicationChannel, ApplicationType, WeeklyWorkSchedule,
+};
 use crate::features::companies::domain::CompanySize;
 use std::sync::Mutex;
 
@@ -8,12 +10,14 @@ use std::sync::Mutex;
 fn cand(job_title: &str, status: ApplicationStatus) -> Application {
     Application {
         id: uuid::Uuid::nil(),
+        reference_number: 1,
         job_title: job_title.into(),
         company_id: uuid::Uuid::nil(),
         company_name: Some("Nova Digital".into()),
         company_size: CompanySize::Unknown,
         contact_id: None,
         application_type: ApplicationType::JobOffer,
+        channel: ApplicationChannel::Offer,
         contract_type_code: "CDI".into(),
         contract_type_name: Some("CDI".into()),
         weekly_work_schedule: WeeklyWorkSchedule::Unspecified,
@@ -31,6 +35,8 @@ fn cand(job_title: &str, status: ApplicationStatus) -> Application {
         sent_date: "2026-08-20".into(),
         job_url: None,
         notes: None,
+        next_follow_up_date: None,
+        next_interview_at: None,
         created_at: "2026-08-20T00:00:00Z".into(),
         updated_at: "2026-08-20T00:00:00Z".into(),
     }
@@ -42,7 +48,7 @@ fn new(job_title: &str) -> NewApplication {
         job_title: job_title.into(),
         company_id: uuid::Uuid::from_u128(1),
         contact_id: None,
-        application_type: ApplicationType::JobOffer,
+        channel: ApplicationChannel::Offer,
         contract_type_code: "CDI".into(),
         weekly_work_schedule: WeeklyWorkSchedule::Unspecified,
         weekly_hours: None,
@@ -95,6 +101,13 @@ impl ApplicationRepository for StubRepo {
     fn breakdown(&self, _filter: &ApplicationFilter) -> AppResult<PipelineBreakdown> {
         Ok(PipelineBreakdown::default())
     }
+    fn groups(
+        &self,
+        _filter: &ApplicationFilter,
+        _by: ApplicationGrouping,
+    ) -> AppResult<Vec<ApplicationGroup>> {
+        Ok(vec![])
+    }
     fn create(&self, input: &NewApplication) -> AppResult<Application> {
         self.retenir(input);
         Ok(cand(&input.job_title, input.status))
@@ -105,6 +118,12 @@ impl ApplicationRepository for StubRepo {
     }
     fn update_status(&self, _id: uuid::Uuid, status: ApplicationStatus) -> AppResult<Application> {
         Ok(cand("Développeur", status))
+    }
+    fn deletion_impact(&self, _id: uuid::Uuid) -> AppResult<DeletionImpact> {
+        Ok(DeletionImpact::default())
+    }
+    fn status_history(&self, _id: uuid::Uuid) -> AppResult<Vec<StatusChange>> {
+        Ok(vec![])
     }
     fn delete(&self, _id: uuid::Uuid) -> AppResult<()> {
         Ok(())
@@ -118,6 +137,7 @@ mod test_creer_refuse_un_lien_d_offre_non_http;
 mod test_creer_refuse_une_entreprise_vide;
 mod test_creer_valide_delegue_au_depot;
 mod test_date_dans_un_autre_format_est_refusee;
+mod test_la_duplication_repart_en_attente_avec_une_nouvelle_reference;
 mod test_les_heures_hebdomadaires_sont_bornees;
 mod test_modifier_valide_les_memes_regles_que_creer;
 mod test_une_offre_exige_un_lien_et_une_spontanee_l_efface;

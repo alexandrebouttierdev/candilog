@@ -43,8 +43,10 @@ impl<R: ContactRepository> ContactService<R> {
         page_size: u64,
         search: &str,
         tracking_role: Option<&str>,
+        linked: Option<bool>,
     ) -> AppResult<Page<Contact>> {
-        self.repo.list_page(page, page_size, search, tracking_role)
+        self.repo
+            .list_page(page, page_size, search, tracking_role, linked)
     }
 
     /// Valide puis crée le contact.

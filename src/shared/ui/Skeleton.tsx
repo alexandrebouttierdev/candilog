@@ -1,18 +1,18 @@
 import { cn } from "@/shared/lib/cn";
 
 /**
- * Bloc de chargement.
+ * Bloc de chargement : fond `sk`, animation `sk` (opacité .45 ↔ .9 en 1 400 ms).
  *
- * Le guide impose des squelettes plutôt qu'un indicateur centré : la forme de l'écran reste
- * lisible pendant le chargement, et le contenu ne provoque pas de saut de mise en page quand
- * il arrive. L'animation ne touche que l'opacité, conformément à la règle transverse qui
- * interdit d'animer la mise en page.
+ * Le design impose un squelette **de la forme réelle du contenu** plutôt qu'un indicateur
+ * centré : l'écran reste lisible pendant le chargement et rien ne saute à l'arrivée des
+ * données. `index` décale l'animation de 100 ms par ligne.
  */
-export function Skeleton({ className }: { className?: string }) {
+export function Skeleton({ className, index = 0 }: { className?: string; index?: number }) {
   return (
     <div
       aria-hidden="true"
-      className={cn("animate-pulse rounded-pill bg-neutral-tint", className)}
+      style={index ? { animationDelay: `${index * 100}ms` } : undefined}
+      className={cn("animate-sk rounded-r3 bg-sk", className)}
     />
   );
 }
@@ -22,11 +22,12 @@ export function SkeletonRows({ rows = 5, columns = 4 }: { rows?: number; columns
   return (
     <div role="status" aria-label="Chargement en cours">
       {Array.from({ length: rows }, (_, row) => (
-        <div key={row} className="flex h-row items-center gap-4 border-b border-line px-4">
+        <div key={row} className="flex h-row-app items-center gap-[11px] px-3.5">
           {Array.from({ length: columns }, (_, column) => (
             <Skeleton
               key={column}
-              className={cn("h-3", column === 0 ? "flex-[2]" : "flex-1")}
+              index={row}
+              className={cn("h-[9px]", column === 0 ? "flex-[2]" : "flex-1")}
             />
           ))}
         </div>

@@ -47,6 +47,38 @@ réponse HTTP valide dont le corps n'est pas le JSON attendu. Les deux se cumule
 transport d'abord, forme de la réponse ensuite. L'import de profil en ajoute une troisième,
 qui porte sur le contenu et non sur la forme (voir « Sorties du modèle »).
 
+## Routage par tâche (« Qui fait quoi »)
+
+Cinq tâches sont routables (`AiTask`) : générer un CV ciblé, rédiger une lettre (et sa
+correction), analyser un CV, extraire une offre, lire un CV importé. Le routage vit dans les
+réglages (`ai_routes`) :
+
+- **route absente** : la tâche suit le fournisseur principal (`llm`). C'est l'état de toute
+  base antérieure au routage, qui garde donc son comportement (décision D3) ;
+- **route** `{ provider, model }` : la tâche utilise ce fournisseur, avec les réglages
+  mémorisés de son preset (endpoint, température, mode) et sa clé du coffre. Pour l'IA
+  locale, `model` est le tag Ollama d'un modèle installé ;
+- **`null`** : tâche désactivée.
+
+Aucun repli : une tâche dont le fournisseur n'a pas de clé, dont le modèle local a été
+désinstallé ou qui est désactivée **s'arrête et le dit** (`load_task_config`,
+`AiService::provider_for`). Elle n'envoie jamais ses données à un autre fournisseur que
+celui choisi. Le benchmark utilisateur mesure le fournisseur principal. Toute route est
+revalidée en Rust à l'enregistrement (modèle non vide).
+
+**Premier envoi distant (décision D4).** Avant d'envoyer une tâche, l'écran appelle
+`useRemoteSendGuard` : la destination (`taskDestination`) est la route de la tâche, sinon le
+fournisseur principal, et elle est **distante dès que son adresse l'est** (D13 : un Ollama ou
+un fournisseur personnalisé sur une autre machine compte comme distant). Pour un
+fournisseur distant pas encore accepté, `RemoteSendDialog` dit qui reçoit quoi et pour
+combien de tâches ; « Annuler » n'envoie rien. « Ne plus demander pour … » (désactivé par
+défaut) ajoute l'identifiant du fournisseur à `settings.remote_send_consents`, revalidé en
+Rust (fournisseurs distants connus seulement) ; Réglages → Intelligence artificielle le
+remet à zéro. Les cinq tâches passent par cette garde, corrections comprises ; le benchmark,
+qui n'envoie que le CV de référence, non. Des réglages illisibles laissent passer la garde :
+le backend lit les mêmes réglages pour choisir son fournisseur et échoue alors sans rien
+envoyer.
+
 ## IA locale Candilog (détails)
 
 `candilog_local` est le seul fournisseur dont le modèle actif ne vit pas dans `llm.model` :
@@ -61,6 +93,16 @@ Le catalogue des modèles, les pulls, l'activation et le benchmark utilisateur p
 `remove_managed_ollama_model` et `activate_managed_ollama_model`. Le téléchargement publie
 `managed-ollama://download-progress`, `managed-ollama://download-completed` et
 `managed-ollama://download-error`.
+
+L'installation se fait dans la surcouche **Installer l'IA locale** (`LocalInstallOverlay`,
+`screens/14`) : choix du modèle, puis trois étapes — moteur (événements `kind: runtime`),
+modèle (`kind: model`, débit et temps restant calculés sur les octets reçus), vérification.
+La vérification appelle `probe_managed_ollama_model` : une phrase de test courte envoyée au
+modèle actif, dont l'aller-retour est mesuré (`LocalModelProbe.latency_ms`, chargement en
+mémoire compris). Rien n'est enregistré. Fermer la surcouche n'interrompt pas le
+téléchargement : `ManagedOllamaPanel` en suit la progression et un toast annonce la fin.
+Les jauges vitesse / qualité / mémoire des cartes dessinent la catégorie du catalogue et la
+RAM recommandée ; ce ne sont pas des mesures.
 
 Les anciens réglages `mistral_local` (llama.cpp) sont migrés automatiquement vers
 `candilog_local` au chargement ; le bloc `local_ai` est ignoré. Les fichiers `.gguf` restent
@@ -156,6 +198,29 @@ Le récapitulatif et les reformulations de `AtsAnalysis` restent du texte libre 
 recommandations de contenu, elles, ne transportent que des identifiants du catalogue du
 profil, une justification et une pertinence qualitative. `ground_content_recommendations`
 écarte les identifiants inconnus et les doublons avant l'éditeur.
+
+**Sections exclues.** `ResumeGenerationRequest.excluded_sections` et
+`CoverLetterRequest.excluded_sections` (`ProfileSection` : présentation, disponibilité,
+expériences, formations, compétences, langues, projets, certifications, centres d'intérêt)
+retirent ces sections du profil (`profile_without`) **avant** le premier appel au modèle :
+elles ne quittent pas la machine. Pour le CV, `documents_resume_prepare` reçoit la même liste,
+si bien qu'elles ne reviennent ni dans le document ni dans sa bibliothèque de contenu. Un CV
+sans expériences, formations, compétences ni projets, ou une lettre sans aucun fait
+autorisé, est refusé avant tout appel. Le CV a un ton (`ResumeTone` : sobre, professionnel,
+direct), ajouté à la consigne de rédaction. Il n'a pas de choix de longueur : le document et
+son export tiennent sur une page. La disponibilité de l'identité est un fait du catalogue
+de la lettre (`GroundedFactKind::Availability`) ; les prétentions salariales n'existent pas
+dans le profil.
+
+**Adéquation de la lettre.** Une fois la lettre rédigée, l'offre est structurée une fois
+par la tâche « Extraire une offre » (`ai_analyze_listing`), puis chaque version de la
+lettre est mesurée **localement** par `ai_evaluate_cover_letter` (`domain/letter_fit.rs`,
+sans appel au modèle). Le score est la part des exigences de l'offre que la lettre aborde,
+pondérée comme le score ATS (`requirement_weight`). Une recommandation ne naît que d'une
+exigence absente de la lettre **et** présente dans un fait du catalogue autorisé ; elle
+porte ce fait et un gain en points. « Appliquer » envoie sa consigne à la correction de la
+lettre, qui reste bornée aux faits vérifiés : le modèle ne réécrit jamais librement. Les
+exigences que le profil ne prouve pas sont listées, jamais proposées.
 
 La lettre de motivation est **assemblée**, pas rédigée librement : le modèle ne renvoie
 qu'une sélection d'identifiants du catalogue de faits et des mots-clés du brief
@@ -329,8 +394,8 @@ qu'après confirmation et transmission de l'arrêt au backend.
 
 ## Benchmark utilisateur (`CV_BENCHMARK.pdf`)
 
-Le bouton **Tester** (en-tête global, héros des réglages IA, carte de chaque modèle local
-installé) lance `run_user_cv_benchmark`. Le PDF de référence et sa ground truth
+Le bouton **Tester** (héros de l'écran Intelligence artificielle, carte de chaque modèle
+local installé) lance `run_user_cv_benchmark`. Le PDF de référence et sa ground truth
 (`src-tauri/resources/CV_BENCHMARK.pdf`, `CV_BENCHMARK.expected.json`) sont **compilés dans
 le binaire** (`include_bytes!` / `include_str!`) : le PDF est ensuite écrit dans un fichier
 temporaire pour les extracteurs. Ils ne figurent pas dans le bundle Tauri
@@ -358,10 +423,13 @@ et fixtures associées).
 
 ## Interface IA
 
-L'écran Paramètres → Intelligence artificielle comporte deux onglets : **IA locale**
-(catalogue Ollama géré) et **IA online/personnalisé** (grille distante). Thème et son
-vivent dans **Paramètres → Customisation**. Le sélecteur rapide global (`AiQuickSelector` dans la barre supérieure)
-synchronise le fournisseur actif avec les paramètres persistés.
+L'écran **Intelligence artificielle** est une destination de la navigation (`/ai`) ; il
+comporte deux onglets : **IA locale** (catalogue Ollama géré) et **IA online/personnalisé**
+(grille distante), et porte le bouton **Tester** du benchmark. Le son de fin de traitement
+vit dans **Réglages → Apparence**. Le pied de la navigation rappelle le fournisseur actif,
+son modèle et sa localité (puce verte sur cet ordinateur, ambre pour un envoi distant — la
+puce suit l'adresse, `127.0.0.1` ou `localhost` comptant comme local, une IP de réseau
+privé comme distante).
 
 ## Cache
 

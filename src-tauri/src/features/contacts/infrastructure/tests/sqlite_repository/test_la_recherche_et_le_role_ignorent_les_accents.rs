@@ -12,9 +12,9 @@ fn test_la_recherche_et_le_role_ignorent_les_accents() {
     repo.create(&contact).unwrap();
 
     for terme in ["émery", "EMERY", "Emery"] {
-        let page = repo.list_page(1, 10, terme, None).unwrap();
+        let page = repo.list_page(1, 10, terme, None, None).unwrap();
         assert_eq!(page.total, 1, "recherche « {terme} » sans résultat");
     }
-    let page = repo.list_page(1, 10, "", Some("DÉCIDEUR")).unwrap();
+    let page = repo.list_page(1, 10, "", Some("DÉCIDEUR"), None).unwrap();
     assert_eq!(page.total, 1, "filtre par rôle accentué sans résultat");
 }

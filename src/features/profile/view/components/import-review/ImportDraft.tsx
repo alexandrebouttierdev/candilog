@@ -2,9 +2,9 @@ import type { ReactNode } from "react";
 import type { UseFormReturn } from "react-hook-form";
 import type { ImportProfilePreview, ImportResolution } from "@/shared/types/generated/profile";
 import { cn } from "@/shared/lib/cn";
-import { Card, CardHeader, CardMeta, FormField, Icon, TextArea, TextInput } from "@/shared/ui";
+import { Card, CardHeader, CardMeta, FormField, StatusGlyph, TextArea, TextInput } from "@/shared/ui";
 import { IMPORT_SECTIONS, type ImportProfileFormInput, type ImportProfileFormValues, type ImportSection } from "../../../model/import-review.schema";
-import { blockId, SECTION_ICONS, SECTION_LABELS, type CatalogRow } from "./catalog";
+import { blockId, SECTION_LABELS, type CatalogRow } from "./catalog";
 
 export function ImportDraft({
   preview,
@@ -24,7 +24,7 @@ export function ImportDraft({
         if (sectionRows.length === 0) return null;
         return (
           <Card key={section} clipped>
-            <CardHeader compact icon={SECTION_ICONS[section]} meta={<CardMeta>{sectionRows.length}</CardMeta>}>
+            <CardHeader compact meta={<CardMeta>{sectionRows.length}</CardMeta>}>
               {SECTION_LABELS[section]}
             </CardHeader>
             <div
@@ -75,8 +75,8 @@ function PreviewBlock({
       )}
     >
       {row.conflict ? (
-        <p className="mb-2 flex items-start gap-1 text-meta text-warning">
-          <Icon name="warning" size={14} className="mt-0.5 flex-none" />
+        <p className="mb-2 flex items-center gap-1.5 text-meta text-warning">
+          <StatusGlyph tone="a" small />
           Une entrée similaire existe déjà.
         </p>
       ) : null}

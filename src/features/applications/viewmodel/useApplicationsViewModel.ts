@@ -10,15 +10,28 @@ import {
   EMPTY_FILTER,
   type ApplicationFilterValues,
 } from "../model/schemas/application-filter.schema";
-import type { ApplicationSort } from "@/shared/types/generated/applications";
+import type { ApplicationGrouping, ApplicationSort } from "@/shared/types/generated/applications";
 import { PAGE_SIZE, type Page } from "@/shared/types/page";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { Statuses } from "../model/statuses";
+import { formatReference } from "../model/presentation";
+import { groupFilter, nextGrouping, OPEN_GROUPS } from "../model/grouping";
+import type { ListGrouping } from "../model/grouping";
 
 /** Root des clés de cache de la feature. */
 export const APPLICATIONS_KEY = ["candidatures"] as const;
+
+/** Critères d'un filtre complet, sans la recherche, le tri ni les identifiants. */
+function filterValuesOf(filter: ApplicationFilter): ApplicationFilterValues {
+  const { search: _search, sort: _sort, descending: _descending, ids: _ids, ...values } = filter;
+  void _search;
+  void _sort;
+  void _descending;
+  void _ids;
+  return { ...EMPTY_FILTER, ...values };
+}
 
 /** Mode d'affichage du suivi. */
 export type TrackingView = "kanban" | "list";
@@ -30,26 +43,45 @@ const INITIAL_KANBAN_PAGES: Record<ApplicationStatus, number> = {
   REFUS: 1,
 };
 
+/** Lignes chargées par groupe de la liste, puis à chaque « Afficher plus ». */
+export const GROUP_STEP = 50;
+
+const INITIAL_GROUP_LIMITS: Record<ApplicationStatus, number> = {
+  EN_ATTENTE: GROUP_STEP,
+  RELANCEE: GROUP_STEP,
+  ENTRETIEN: GROUP_STEP,
+  REFUS: GROUP_STEP,
+};
+
 /**
- * Orchestration de l'écran Tracking → Applications.
+ * Orchestration de l'écran Candidatures.
  *
- * Sert les deux vues sur le même filtre. La liste porte une pagination globale ; le Kanban
- * interroge chaque statut séparément afin que ses quatre colonnes restent indépendantes.
+ * Les deux vues interrogent **chaque statut séparément**, sur le même filtre : SQLite
+ * applique le statut avant LIMIT/OFFSET, sans charger le pipeline complet. La liste v2
+ * est groupée par statut — chaque groupe charge ses 50 premières lignes, puis 50 de plus
+ * à la demande ; le Kanban pagine chaque colonne indépendamment.
  */
-export function useApplicationsViewModel() {
+export function useApplicationsViewModel(controlledView?: TrackingView, initialFilter?: ApplicationFilter) {
   const queryClient = useQueryClient();
   const notify = useUiStore((state) => state.notify);
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const [view, setViewState] = useState<TrackingView>("kanban");
-  const [page, setPage] = useState(1);
-  const [sizePage, setSizePage] = useState<number>(PAGE_SIZE);
+  const [viewState, setViewState] = useState<TrackingView>("kanban");
+  // La vue suit l'onglet de la barre de titre quand l'écran est monté par une route (v2) ;
+  // l'état local ne sert plus qu'aux écrans montés sans onglet.
+  const view = controlledView ?? viewState;
   const [kanbanPages, setKanbanPages] = useState(INITIAL_KANBAN_PAGES);
-  const [search, setSearchState] = useState("");
+  const [groupLimits, setGroupLimits] = useState(INITIAL_GROUP_LIMITS);
+  // Une vue enregistrée ouvre l'écran avec son filtre ; l'écran est remonté à chaque vue.
+  const [search, setSearchState] = useState(initialFilter?.search ?? "");
   const searchQuery = useDebounce(search);
-  const [filters, setFilters] = useState<ApplicationFilterValues>(EMPTY_FILTER);
-  const [sort, setSort] = useState<ApplicationSort>("date");
-  const [descending, setDescending] = useState(true);
+  const [filters, setFilters] = useState<ApplicationFilterValues>(() =>
+    initialFilter ? filterValuesOf(initialFilter) : EMPTY_FILTER,
+  );
+  // Ordre dans un groupe ou une colonne : les plus récentes d'abord. La liste v2 n'a plus
+  // d'en-têtes de colonnes triables — le groupement par statut les remplace.
+  const sort: ApplicationSort = "date";
+  const descending = true;
 
   // La fiche ouverte vit dans l'URL, pas dans un état local : le Dashboard ouvre une
   // candidature par `?id=<uuid>`, et le panneau survit ainsi à un rechargement comme à un
@@ -77,33 +109,92 @@ export function useApplicationsViewModel() {
     [searchQuery, filters, sort, descending],
   );
 
-  const list = useQuery({
-    queryKey: [...APPLICATIONS_KEY, "page", { page, page_size: sizePage, filter }],
-    queryFn: () => applicationService.listPage({ page, page_size: sizePage, filter }),
-    enabled: view === "list",
+  // Statuts retenus par le filtre : tous sans critère, ceux cochés, ou tous sauf eux quand
+  // le critère est inversé (« Statut n'est pas Refusée »).
+  const statusExcluded = filter.excluded.includes("status");
+  const retains = useCallback(
+    (status: ApplicationStatus) => filter.status.length === 0 || filter.status.includes(status) !== statusExcluded,
+    [filter.status, statusExcluded],
+  );
+  // Chaque colonne demande son seul statut : l'inversion est déjà résolue par `retains`.
+  const otherExclusions = filter.excluded.filter((field) => field !== "status");
+
+  // « Grouper : statut ▾ » : hors statut, la liste suit les groupes comptés par SQLite et
+  // les requêtes par statut se taisent. Le Kanban reste par nature en statuts.
+  const [grouping, setGrouping] = useState<ListGrouping>("status");
+  const customBy: ApplicationGrouping | null = view === "list" && grouping !== "status" ? grouping : null;
+  const [customLimits, setCustomLimits] = useState<Readonly<Record<string, number>>>({});
+  // Groupes dont l'ouverture diffère du défaut (ouverts : les `OPEN_GROUPS` premiers).
+  const [toggledGroups, setToggledGroups] = useState<ReadonlySet<string>>(new Set());
+
+  // Une requête par statut : SQLite applique le statut avant LIMIT/OFFSET, ce qui évite
+  // de charger le pipeline complet et permet à chaque groupe d'avancer à son propre rythme.
+  const kanbanQueries = useQueries({
+    queries: Statuses.map((status) => {
+      const bornes =
+        view === "kanban"
+          ? { page: kanbanPages[status.value], page_size: PAGE_SIZE }
+          : { page: 1, page_size: groupLimits[status.value] };
+      return {
+        queryKey: [...APPLICATIONS_KEY, view, status.value, { ...bornes, filter }],
+        queryFn: () =>
+          applicationService.listPage({
+            ...bornes,
+            filter: { ...filter, status: [status.value], excluded: otherExclusions },
+          }),
+        enabled: retains(status.value) && customBy === null,
+      };
+    }),
   });
 
-  // Une requête par colonne : SQLite applique le statut avant LIMIT/OFFSET, ce qui évite
-  // de charger le pipeline complet et permet à chaque colonne d'avancer à son propre rythme.
-  const kanbanQueries = useQueries({
-    queries: Statuses.map((status) => ({
-      queryKey: [
-        ...APPLICATIONS_KEY,
-        "kanban",
-        status.value,
-        { page: kanbanPages[status.value], page_size: PAGE_SIZE, filter },
-      ],
-      queryFn: () =>
-        applicationService.listPage({
-          page: kanbanPages[status.value],
-          page_size: PAGE_SIZE,
-          filter: { ...filter, status: [status.value] },
-        }),
-      enabled:
-        view === "kanban" &&
-        (filter.status.length === 0 || filter.status.includes(status.value)),
-    })),
+  const groupsQuery = useQuery({
+    queryKey: [...APPLICATIONS_KEY, "groupes", customBy, { filter }],
+    queryFn: () => {
+      if (customBy === null) throw new Error("Regroupement par statut");
+      return applicationService.groups(filter, customBy);
+    },
+    enabled: customBy !== null,
   });
+  const groupList = useMemo(() => groupsQuery.data ?? [], [groupsQuery.data]);
+  const isGroupOpen = useCallback(
+    (key: string, index: number) => index < OPEN_GROUPS !== toggledGroups.has(key),
+    [toggledGroups],
+  );
+  // Un groupe replié n'est pas interrogé : une liste par entreprise peut en compter des dizaines.
+  const customQueries = useQueries({
+    queries: groupList.map((group, index) => {
+      const limit = customLimits[group.key] ?? GROUP_STEP;
+      return {
+        queryKey: [...APPLICATIONS_KEY, "groupe", customBy, group.key, limit, { filter }],
+        queryFn: () => {
+          if (customBy === null) throw new Error("Regroupement par statut");
+          return applicationService.listPage({ page: 1, page_size: limit, filter: groupFilter(filter, customBy, group.key) });
+        },
+        enabled: customBy !== null && isGroupOpen(group.key, index),
+      };
+    }),
+  });
+  const customGroups = useMemo(
+    () =>
+      groupList.map((group, index) => {
+        const open = isGroupOpen(group.key, index);
+        const query = customQueries[index];
+        return {
+          key: group.key,
+          label: group.label,
+          open,
+          loading: open && (query?.isPending ?? true),
+          page: query?.data ?? {
+            items: [],
+            total: group.count,
+            page: 1,
+            page_size: customLimits[group.key] ?? GROUP_STEP,
+            total_pages: 1,
+          },
+        };
+      }),
+    [groupList, customQueries, customLimits, isGroupOpen],
+  );
 
   const kanbanColumns = useMemo<Record<ApplicationStatus, Page<Application>>>(() => {
     const columns = {} as Record<ApplicationStatus, Page<Application>>;
@@ -113,19 +204,26 @@ export function useApplicationsViewModel() {
         query?.data ?? {
           items: [],
           total: 0,
-          page: kanbanPages[status.value],
-          page_size: PAGE_SIZE,
+          page: view === "kanban" ? kanbanPages[status.value] : 1,
+          page_size: view === "kanban" ? PAGE_SIZE : groupLimits[status.value],
           total_pages: 1,
         };
     });
     return columns;
-  }, [kanbanPages, kanbanQueries]);
+  }, [kanbanPages, groupLimits, kanbanQueries, view]);
 
   // Compteurs des en-têtes de colonnes : calculés par SQLite sur tout le filtre, pas sur la
   // page affichée — une colonne annoncerait sinon « 3 » en contenant tout le pipeline.
   const breakdown = useQuery({
     queryKey: [...APPLICATIONS_KEY, "repartition", { filter }],
     queryFn: () => applicationService.breakdown(filter),
+  });
+  // Total sans aucun critère, pour le décompte « 3 / 24 » de la barre d'outils. Même clé
+  // que le décompte de la navigation : une seule requête pour les deux.
+  const overall = useQuery({
+    queryKey: [...APPLICATIONS_KEY, "navigation"],
+    queryFn: () =>
+      applicationService.breakdown({ ...EMPTY_FILTER, search: "", sort: "date", descending: true, ids: [] }),
   });
 
   // Le détail est chargé par son identifiant, pas cherché dans `items` : une fiche ouverte
@@ -180,9 +278,28 @@ export function useApplicationsViewModel() {
   const changementStatus = useMutation({
     mutationFn: (params: { id: string; status: ApplicationStatus }) =>
       applicationService.changeStatus(params.id, params.status),
-    onSuccess: invalidate,
-    // Pas de toast en cas de succès : le déplacement de la carte est déjà la confirmation
-    // visible du geste. Un échec, lui, doit être annoncé — la carte reviendra à sa place.
+    // Toast court `CAN-142 → Entretien` (`INTERACTIONS.md` §3.2) : le geste peut venir
+    // d'une glisse, du menu ou du clavier, et la ligne peut changer de groupe hors écran.
+    onSuccess: async (application: Application) => {
+      await invalidate();
+      const label = Statuses.find((status) => status.value === application.status)?.label ?? application.status;
+      notify({ tone: "success", title: `${formatReference(application.reference_number)} → ${label}` });
+    },
+    onError: reportFailure("Changement de statut impossible"),
+  });
+
+  const changementStatusMultiple = useMutation({
+    mutationFn: async (params: { ids: readonly string[]; status: ApplicationStatus }) => {
+      for (const id of params.ids) {
+        await applicationService.changeStatus(id, params.status);
+      }
+      return params.ids.length;
+    },
+    onSuccess: async (count, params) => {
+      await invalidate();
+      const label = Statuses.find((status) => status.value === params.status)?.label ?? params.status;
+      notify({ tone: "success", title: `${count} candidature${count > 1 ? "s" : ""} → ${label}` });
+    },
     onError: reportFailure("Changement de statut impossible"),
   });
 
@@ -194,6 +311,19 @@ export function useApplicationsViewModel() {
       notify({ tone: "success", title: "Candidature supprimée" });
     },
     onError: reportFailure("Suppression impossible"),
+  });
+
+  const duplication = useMutation({
+    mutationFn: (id: string) => applicationService.duplicate(id),
+    onSuccess: async (application) => {
+      await invalidate();
+      select(application.id);
+      notify({
+        tone: "success",
+        title: `${formatReference(application.reference_number)} créée par duplication`,
+      });
+    },
+    onError: reportFailure("Duplication impossible"),
   });
 
   const suppressionMultiple = useMutation({
@@ -227,29 +357,38 @@ export function useApplicationsViewModel() {
     onError: reportFailure("Export impossible"),
   });
 
-  const setSearch = useCallback((value: string) => {
-    setSearchState(value);
-    setPage(1);
+  const resetPaging = useCallback(() => {
     setKanbanPages(INITIAL_KANBAN_PAGES);
+    setGroupLimits(INITIAL_GROUP_LIMITS);
   }, []);
 
-  const applyFilters = useCallback((values: ApplicationFilterValues) => {
-    setFilters(values);
-    setPage(1);
-    setKanbanPages(INITIAL_KANBAN_PAGES);
-  }, []);
+  const setSearch = useCallback(
+    (value: string) => {
+      setSearchState(value);
+      resetPaging();
+    },
+    [resetPaging],
+  );
+
+  const applyFilters = useCallback(
+    (values: ApplicationFilterValues) => {
+      setFilters(values);
+      resetPaging();
+    },
+    [resetPaging],
+  );
 
   const resetFilters = useCallback(() => {
     setFilters(EMPTY_FILTER);
-    setPage(1);
-    setKanbanPages(INITIAL_KANBAN_PAGES);
-  }, []);
+    resetPaging();
+  }, [resetPaging]);
 
   /** Nombre de critères actifs, hors recherche libre, pour la pastille du bouton Filtres. */
   const activeFilterCount = useMemo(
     () =>
       filters.status.length +
       filters.application_type.length +
+      filters.channel.length +
       filters.contract_type_code.length +
       filters.professional_domain_id.length +
       filters.company_type_id.length +
@@ -268,31 +407,14 @@ export function useApplicationsViewModel() {
     [filters],
   );
 
-  /** Bascule la direction si l'on retrie la colonne courante, sinon trie la nouvelle. */
-  const sortBy = useCallback(
-    (column: ApplicationSort) => {
-      if (column === sort) {
-        setDescending((value) => !value);
-      } else {
-        setSort(column);
-        setDescending(true);
-      }
-      setPage(1);
-    },
-    [sort],
+  const items: Application[] = Array.from(
+    new Map(
+      Statuses.flatMap((status) => kanbanColumns[status.value].items).map((item) => [
+        item.id,
+        item,
+      ]),
+    ).values(),
   );
-
-  const items: Application[] =
-    view === "list"
-      ? (list.data?.items ?? [])
-      : Array.from(
-          new Map(
-            Statuses.flatMap((status) => kanbanColumns[status.value].items).map((item) => [
-              item.id,
-              item,
-            ]),
-          ).values(),
-        );
   const selection = selected_id === null ? null : (detail.data ?? null);
   const kanbanError = kanbanQueries.find((query) => query.error !== null)?.error ?? null;
   const totalKanban = breakdown.data
@@ -301,6 +423,23 @@ export function useApplicationsViewModel() {
       breakdown.data.interview +
       breakdown.data.rejected
     : 0;
+
+  const cycleGrouping = () => {
+    setGrouping((current) => nextGrouping(current));
+    setCustomLimits({});
+    setToggledGroups(new Set());
+  };
+  const toggleCustomGroup = (key: string) => {
+    setToggledGroups((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+  const showMoreInGroup = (key: string) => {
+    setCustomLimits((current) => ({ ...current, [key]: (current[key] ?? GROUP_STEP) + GROUP_STEP }));
+  };
 
   // Un `?id=` pointant sur une candidature supprimée ou inconnue ne doit pas laisser
   // l'URL mentir : le paramètre est retiré et l'échec annoncé une seule fois.
@@ -321,9 +460,11 @@ export function useApplicationsViewModel() {
     breakdown: breakdown.data ?? { pending: 0, followed_up: 0, interview: 0, rejected: 0 },
     kanbanColumns,
     kanbanPages,
-    total: view === "kanban" ? totalKanban : (list.data?.total ?? 0),
-    page,
-    page_size: sizePage,
+    total: totalKanban,
+    overallTotal: overall.data
+      ? overall.data.pending + overall.data.followed_up + overall.data.interview + overall.data.rejected
+      : null,
+    groupLimits,
     search,
     setSearch,
     filters,
@@ -333,40 +474,46 @@ export function useApplicationsViewModel() {
     descending,
     selection,
     selected_id,
+    // Une colonne que le filtre écarte n'est jamais interrogée : elle resterait « en attente ».
     isLoading:
-      view === "kanban"
-        ? breakdown.isPending || kanbanQueries.some((query) => query.isPending)
-        : list.isPending,
+      breakdown.isPending ||
+      (customBy === null
+        ? kanbanQueries.some((query, index) => {
+            const status = Statuses[index];
+            return status !== undefined && retains(status.value) && query.isPending;
+          })
+        : groupsQuery.isPending),
+    grouping,
+    /** Passe au regroupement suivant : statut → entreprise → contrat. */
+    cycleGrouping,
+    customGroups,
+    toggleCustomGroup,
+    showMoreInGroup,
     isLoadingDetail: selected_id !== null && detail.isPending,
-    error: view === "kanban" ? (breakdown.error ?? kanbanError) : list.error,
+    error: breakdown.error ?? (customBy === null ? kanbanError : groupsQuery.error),
     isSaving: creation.isPending || modification.isPending,
     isDeleting: suppression.isPending || suppressionMultiple.isPending,
     isExporting: exportCsv.isPending,
 
-    /** Change de vue et revient à la première page de la liste. */
-    setView: useCallback((suivante: TrackingView) => {
-      setViewState(suivante);
-      setPage(1);
-    }, []),
-    setPage,
+    setView: setViewState,
     setKanbanPage: useCallback((status: ApplicationStatus, nextPage: number) => {
       setKanbanPages((current) => ({ ...current, [status]: nextPage }));
     }, []),
-    /** Change la densité de la vue Liste et revient à la première page. */
-    setPageSize: useCallback((size: number) => {
-      setSizePage(size);
-      setPage(1);
+    /** Charge 50 lignes de plus dans un groupe de la liste. */
+    showMore: useCallback((status: ApplicationStatus) => {
+      setGroupLimits((current) => ({ ...current, [status]: current[status] + GROUP_STEP }));
     }, []),
     applyFilters,
     resetFilters,
-    sortBy,
     select,
     /** Recharge la liste, les compteurs et la fiche ouverte, pas seulement la page. */
     reload: () => void invalidate(),
     create: creation.mutateAsync,
     update: modification.mutateAsync,
     changeStatus: changementStatus.mutateAsync,
+    changeStatusMany: changementStatusMultiple.mutateAsync,
     delete: suppression.mutateAsync,
+    duplicate: duplication.mutateAsync,
     deleteMany: suppressionMultiple.mutateAsync,
     exportCsv: exportCsv.mutateAsync,
   };

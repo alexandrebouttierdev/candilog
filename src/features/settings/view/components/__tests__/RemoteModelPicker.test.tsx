@@ -21,7 +21,7 @@ describe("RemoteModelPicker", () => {
     expect(screen.getAllByRole("radio")).toHaveLength(3);
     const selected = screen.getByRole("radio", { name: "gpt-4o" });
     expect(selected).toHaveAttribute("aria-checked", "true");
-    expect(within(selected).getByText("check_circle")).toBeInTheDocument();
+    expect(within(selected).getByText("✓")).toBeInTheDocument();
     expect(selected.querySelector("img")).not.toBeNull();
   });
 

@@ -15,6 +15,10 @@ export type Application = {
  */
 id: string, 
 /**
+ * Numéro de la référence lisible `CAN-142` : croissant, jamais réattribué.
+ */
+reference_number: number, 
+/**
  * Intitulé du poste visé.
  */
 job_title: string, 
@@ -35,9 +39,13 @@ company_size: CompanySize,
  */
 contact_id: string | null, 
 /**
- * Réponse à une offre, ou démarche spontanée.
+ * Réponse à une offre, ou démarche spontanée — déduite du canal.
  */
 application_type: ApplicationType, 
+/**
+ * Canal par lequel l'offre a été trouvée.
+ */
+channel: ApplicationChannel, 
 /**
  * Code du type de contrat (référentiel `contract_types`).
  */
@@ -110,6 +118,14 @@ job_url: string | null,
  */
 notes: string | null, 
 /**
+ * Prochaine relance programmée, aujourd'hui ou plus tard (`AAAA-MM-JJ`).
+ */
+next_follow_up_date: string | null, 
+/**
+ * Prochain entretien, aujourd'hui ou plus tard (horodatage ISO 8601).
+ */
+next_interview_at: string | null, 
+/**
  * Date de création (ISO 8601).
  */
 created_at: string, 
@@ -117,6 +133,16 @@ created_at: string,
  * Date de dernière mise à jour (ISO 8601).
  */
 updated_at: string, };
+
+/**
+ * Canal d'une candidature.
+ *
+ * Il détermine la nature de la démarche ([`ApplicationType`]) : seule une candidature
+ * spontanée est [`ApplicationType::Unsolicited`]. Il fixe aussi le régime du lien de
+ * l'offre — requis pour une offre publiée, facultatif pour le site de l'entreprise ou le
+ * réseau, interdit pour une démarche spontanée.
+ */
+export type ApplicationChannel = "OFFER" | "COMPANY_SITE" | "NETWORK" | "SPONTANEOUS";
 
 /**
  * Critères appliqués par `SQLite` avant pagination.
@@ -141,6 +167,10 @@ status: Array<ApplicationStatus>,
  * Natures de candidature retenues ; vide = toutes.
  */
 application_type: Array<ApplicationType>, 
+/**
+ * Canaux retenus ; vide = tous.
+ */
+channel: Array<ApplicationChannel>, 
 /**
  * Codes de contrat retenus ; vide = tous.
  */
@@ -178,6 +208,10 @@ max_weekly_hours: number | null,
  */
 company_id: string | null, 
 /**
+ * Contact interlocuteur (inspecteur d'un contact, écran Relations).
+ */
+contact_id: string | null, 
+/**
  * Ville effective, en recherche partielle.
  */
 city: string, 
@@ -204,7 +238,23 @@ descending: boolean,
 /**
  * Identifiants retenus pour un export ou une action groupée ; vide = tout le filtre.
  */
-ids: Array<string>, };
+ids: Array<string>, 
+/**
+ * Critères inversés : la candidature doit **ne pas** y répondre. Une valeur absente
+ * (domaine, secteur, ville non renseignés) passe toujours un critère inversé.
+ */
+excluded: Array<FilterField>, };
+
+/**
+ * Groupe de la liste : sa clé (identifiant d'entreprise ou code de contrat), son libellé et
+ * le nombre de candidatures retenues par tout le filtre, calculé par `SQLite`.
+ */
+export type ApplicationGroup = { key: string, label: string, count: number, };
+
+/**
+ * Regroupement de la liste en plus du statut (« Grouper : … », `INTERACTIONS.md` §3.2).
+ */
+export type ApplicationGrouping = "company" | "contract";
 
 /**
  * Colonne de tri de la vue Liste.
@@ -234,6 +284,34 @@ export type ApplicationStatus = "EN_ATTENTE" | "RELANCEE" | "ENTRETIEN" | "REFUS
 export type ApplicationType = "OFFRE" | "SPONTANEE";
 
 /**
+ * Ce que la suppression d'une candidature emporte avec elle, pour l'énumérer dans le
+ * dialogue de confirmation au lieu d'un « êtes-vous sûr ? ». L'entreprise et le contact,
+ * eux, survivent toujours.
+ */
+export type DeletionImpact = { 
+/**
+ * Relances programmées.
+ */
+follow_ups: number, 
+/**
+ * Entretiens.
+ */
+interviews: number, 
+/**
+ * Changements de statut enregistrés.
+ */
+status_changes: number, };
+
+/**
+ * Critère d'un filtre dont la condition peut être inversée (« n'est pas »).
+ *
+ * Enum et non nom de colonne : le champ sert à choisir une clause SQL, jamais à être
+ * interpolé. Les bornes (heures, dates) n'en font pas partie : elles s'inversent en
+ * changeant de borne, pas en niant la condition.
+ */
+export type FilterField = "status" | "application_type" | "channel" | "contract_type" | "professional_domain" | "company_type" | "company_size" | "sector" | "weekly_work_schedule" | "company" | "city" | "job_title";
+
+/**
  * Champs éditables d'une candidature, en création comme en modification.
  */
 export type NewApplication = { 
@@ -250,9 +328,9 @@ company_id: string,
  */
 contact_id: string | null, 
 /**
- * Réponse à une offre, ou démarche spontanée.
+ * Canal par lequel l'offre a été trouvée ; la nature de la démarche en découle.
  */
-application_type: ApplicationType, 
+channel: ApplicationChannel, 
 /**
  * Code du type de contrat, choisi dans le référentiel `contract_types`.
  */
@@ -321,6 +399,19 @@ interview: number,
  * Nombre de candidatures refusées.
  */
 rejected: number, };
+
+/**
+ * Une étape de l'historique des statuts d'une candidature.
+ */
+export type StatusChange = { 
+/**
+ * Statut atteint.
+ */
+status: ApplicationStatus, 
+/**
+ * Date du changement (ISO 8601).
+ */
+changed_at: string, };
 
 /**
  * Régime horaire hebdomadaire du poste.

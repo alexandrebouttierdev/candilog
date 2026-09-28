@@ -170,8 +170,8 @@ Vue (features/<domaine>/view)
 Les vues et ViewModels n'importent **jamais** `invoke`. ESLint l'interdit. Tout passe par
 `ipc()`.
 
-**UI partagée vs UI de feature :** `Button`, `ModalHost`, `Inspector`, `SplitPane`,
-`DataTable` restent dans `shared/ui`. `ApplicationDetail`, `KanbanBoard`, `ProfileUi`
+**UI partagée vs UI de feature :** `Button`, `ModalHost`, `Menu`, `SplitPane`,
+`WorkSurface` restent dans `shared/ui`. `ApplicationDetail`, `KanbanBoard`, `ProfileUi`
 restent dans leur feature. Ne pas tout pousser dans `shared` « au cas où ».
 
 Zustand ne duplique pas les données serveur. TanStack Query est la cache métier.
@@ -484,14 +484,14 @@ Interdit comme rustine de CI : `@ts-ignore`, `eslint-disable`, `as any`,
 
 ## 20. Validation avant fin de tâche
 
-Exécuter **uniquement** les commandes qui existent. Ne pas inventer `npm run format`.
+Exécuter **uniquement** les commandes qui existent. Ne pas inventer `yarn format`.
 
 ### Frontend
 
 ```bash
-npm run lint
-npm test
-npm run build
+yarn lint
+yarn test
+yarn build
 ```
 
 (`build` inclut `tsc --noEmit`.)

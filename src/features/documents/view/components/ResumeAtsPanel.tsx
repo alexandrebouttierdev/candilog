@@ -6,7 +6,7 @@ import type {
   ResumeWorkspace,
 } from "@/shared/types/generated/documents";
 import { availableProfileItems, missingProfileSkills } from "../../model/resumeWorkspace";
-import { Button, Icon, StatusPill } from "@/shared/ui";
+import { Button, StatusPill } from "@/shared/ui";
 
 const LAYOUT_LABELS: Record<ResumeLayoutStatus, { label: string; tone: "success" | "neutral" | "warning" | "danger" }> = {
   spacious: { label: "Bonne marge", tone: "success" },
@@ -83,7 +83,7 @@ export function ResumeAtsPanel({
         ) : null}
         <div className="flex items-center justify-between gap-3 border-t border-line pt-2.5">
           <p className="text-label font-semibold text-ink">Mise en page</p>
-          <StatusPill tone={layout.tone} icon={workspace.layout.overflow ? "warning" : "article"}>
+          <StatusPill tone={layout.tone}>
             {layout.label}
           </StatusPill>
         </div>
@@ -101,16 +101,15 @@ export function ResumeAtsPanel({
       </section>
 
       <section className="space-y-3" aria-labelledby="recommendations-title">
-        <SectionHeading id="recommendations-title" icon="auto_awesome" title="Recommandé pour cette offre" />
+        <SectionHeading id="recommendations-title" title="Recommandé pour cette offre" />
         {!hasOffer ? (
-          <CompactState icon="target" title="Offre absente" description="Ajoutez une offre pour obtenir une sélection priorisée." />
+          <CompactState title="Offre absente" description="Ajoutez une offre pour obtenir une sélection priorisée." />
         ) : workspace.recommendation_error ? (
-          <CompactState icon="warning" title="Recommandations IA indisponibles" description="Les contenus du profil restent disponibles et peuvent être ajoutés manuellement." />
+          <CompactState title="Recommandations IA indisponibles" description="Les contenus du profil restent disponibles et peuvent être ajoutés manuellement." />
         ) : busy ? (
-          <CompactState icon="progress_activity" title="Mise à jour en cours" description="La pertinence et la place disponible sont recalculées." />
+          <CompactState title="Mise à jour en cours" description="La pertinence et la place disponible sont recalculées." />
         ) : workspace.content_recommendations.length === 0 ? (
           <CompactState
-            icon={workspace.layout.overflow ? "warning" : "task_alt"}
             title={workspace.layout.overflow || workspace.layout.status === "full" ? "Aucun ajout conseillé" : "Aucune recommandation prioritaire"}
             description={workspace.layout.overflow || workspace.layout.status === "full"
               ? "Le document n’a plus assez de place pour un ajout propre."
@@ -133,9 +132,9 @@ export function ResumeAtsPanel({
       </section>
 
       <section className="space-y-3" aria-labelledby="available-title">
-        <SectionHeading id="available-title" icon="inventory_2" title="Disponible dans votre profil" />
+        <SectionHeading id="available-title" title="Disponible dans votre profil" />
         {available.length === 0 ? (
-          <CompactState icon="task_alt" title="Tout est à jour" description="Aucun autre élément du profil n’est disponible." />
+          <CompactState title="Tout est à jour" description="Aucun autre élément du profil n’est disponible." />
         ) : (
           <ProfileLibrary items={available} disabled={busy} onAdd={onAddProfileItem} />
         )}
@@ -143,7 +142,7 @@ export function ResumeAtsPanel({
 
       {missing.length > 0 ? (
         <section className="space-y-3" aria-labelledby="gaps-title">
-          <SectionHeading id="gaps-title" icon="warning" title="Compétences manquantes à vérifier" />
+          <SectionHeading id="gaps-title" title="Compétences manquantes à vérifier" />
           <p className="text-meta leading-relaxed text-ink-faint">
             Demandées par l’offre, mais absentes de votre profil. Ajoutez-les d’abord au profil uniquement si vous les maîtrisez.
           </p>
@@ -155,7 +154,7 @@ export function ResumeAtsPanel({
 
       {workspace.proposals.some((proposal) => proposal.kind === "text_replacement") ? (
         <section className="space-y-3" aria-labelledby="writing-title">
-          <SectionHeading id="writing-title" icon="edit_note" title="Optimisations de rédaction" />
+          <SectionHeading id="writing-title" title="Optimisations de rédaction" />
           <ul className="divide-y divide-line border-y border-line">
             {workspace.proposals.filter((proposal) => proposal.kind === "text_replacement").map((proposal) => (
               <ResumeProposalRow key={proposal.id} proposal={proposal} busy={busy} onAccept={onAccept} onReject={onReject} onUndo={onUndo} />
@@ -167,16 +166,13 @@ export function ResumeAtsPanel({
   );
 }
 
-type HeadingIcon = "auto_awesome" | "inventory_2" | "warning" | "edit_note";
-function SectionHeading({ id, icon, title }: { id: string; icon: HeadingIcon; title: string }) {
-  return <div className="flex items-center gap-2"><Icon name={icon} size={16} className="text-accent" /><h3 id={id} className="text-label font-semibold text-ink">{title}</h3></div>;
+function SectionHeading({ id, title }: { id: string; title: string }) {
+  return <h3 id={id} className="text-label font-semibold text-ink">{title}</h3>;
 }
 
-type StateIcon = "target" | "progress_activity" | "warning" | "task_alt";
-function CompactState({ icon, title, description }: { icon: StateIcon; title: string; description: string }) {
+function CompactState({ title, description }: { title: string; description: string }) {
   return (
-    <div className="flex gap-2.5 rounded-card bg-fill p-3">
-      <Icon name={icon} size={17} className="mt-0.5 flex-none text-ink-faint" />
+    <div className="rounded-card bg-fill p-3">
       <div><p className="text-label font-medium text-ink">{title}</p><p className="mt-0.5 text-meta leading-relaxed text-ink-faint">{description}</p></div>
     </div>
   );
@@ -198,7 +194,7 @@ function ContentRecommendationRow({ recommendation, workspace, disabled, onApply
   return (
     <li className="space-y-2.5 py-3 first:pt-2">
       <div className="flex items-start justify-between gap-2"><p className="min-w-0 text-label font-semibold text-ink">{recommendation.label}</p><span className="flex-none text-meta font-medium text-accent">{relevance}</span></div>
-      {replacement && removed ? <p className="flex items-center gap-1.5 text-meta text-ink-muted"><span className="line-through">{removed}</span><Icon name="swap_horiz" size={14} /><span>{recommendation.label}</span></p> : null}
+      {replacement && removed ? <p className="flex items-center gap-1.5 text-meta text-ink-muted"><span className="line-through">{removed}</span><span aria-hidden>→</span><span>{recommendation.label}</span></p> : null}
       <p className="text-meta leading-relaxed text-ink-muted">{recommendation.reason}</p>
       <p className={`tabular text-meta font-semibold ${scoreDelta > 0 ? "text-success" : scoreDelta < 0 ? "text-danger" : "text-ink-faint"}`}>
         {scoreDelta > 0 ? "+" : ""}{scoreDelta} pt{Math.abs(scoreDelta) > 1 ? "s" : ""} ATS
@@ -214,7 +210,7 @@ function ProfileLibrary({ items, disabled, onAdd }: { items: ResumeProfileItem[]
       {(["skill", "project", "certification", "language"] as const).map((kind) => {
         const group = items.filter((item) => item.content.type === kind);
         if (group.length === 0) return null;
-        return <div key={kind}><p className="mb-1.5 text-meta font-semibold uppercase tracking-wide text-ink-faint">{ITEM_LABELS[kind]}</p><ul className="divide-y divide-line border-y border-line">{group.map((item) => <li key={item.id} className="flex items-center gap-2 py-2"><div className="min-w-0 flex-1"><p className="truncate text-label text-ink">{item.label}</p>{item.detail ? <p className="truncate text-meta text-ink-faint">{item.detail}</p> : null}</div><Button size="dialog" variant="ghost" icon="add" disabled={disabled} aria-label={`Ajouter ${item.label}`} onClick={() => onAdd(item.id)}>Ajouter</Button></li>)}</ul></div>;
+        return <div key={kind}><p className="mb-1.5 text-meta font-semibold uppercase tracking-wide text-ink-faint">{ITEM_LABELS[kind]}</p><ul className="divide-y divide-line border-y border-line">{group.map((item) => <li key={item.id} className="flex items-center gap-2 py-2"><div className="min-w-0 flex-1"><p className="truncate text-label text-ink">{item.label}</p>{item.detail ? <p className="truncate text-meta text-ink-faint">{item.detail}</p> : null}</div><Button size="dialog" variant="ghost" disabled={disabled} aria-label={`Ajouter ${item.label}`} onClick={() => onAdd(item.id)}>Ajouter</Button></li>)}</ul></div>;
       })}
     </div>
   );
@@ -224,7 +220,7 @@ function ResumeProposalRow({ proposal, busy, onAccept, onReject, onUndo }: { pro
   const scoreDelta = proposal.gain;
   return (
     <li className="space-y-2.5 py-3">
-      <div className="flex items-start justify-between gap-2"><p className="text-label font-semibold text-ink">{proposal.label}</p>{!proposal.applicable ? <StatusPill tone="neutral" icon="block">Non applicable</StatusPill> : proposal.status === "accepted" ? <StatusPill tone="success" icon="check">Appliquée</StatusPill> : proposal.status === "rejected" ? <StatusPill tone="neutral" icon="close">Ignorée</StatusPill> : null}</div>
+      <div className="flex items-start justify-between gap-2"><p className="text-label font-semibold text-ink">{proposal.label}</p>{!proposal.applicable ? <StatusPill tone="neutral">Non applicable</StatusPill> : proposal.status === "accepted" ? <StatusPill tone="success">Appliquée</StatusPill> : proposal.status === "rejected" ? <StatusPill tone="neutral">Ignorée</StatusPill> : null}</div>
       <p className="text-meta leading-relaxed text-ink-muted">{proposal.proposed_text}</p>
       {proposal.applicable ? (
         <p className={`tabular text-meta font-semibold ${scoreDelta > 0 ? "text-success" : scoreDelta < 0 ? "text-danger" : "text-ink-faint"}`}>

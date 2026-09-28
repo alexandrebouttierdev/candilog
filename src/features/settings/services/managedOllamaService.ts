@@ -2,6 +2,7 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { ipc } from "@/shared/services/ipc";
 import type {
   InstallManagedModelRequest,
+  LocalModelProbe,
   ManagedModelDefinition,
   ManagedModelId,
   ManagedOllamaDownloadProgress,
@@ -21,6 +22,8 @@ export const managedOllamaService = {
     ipc<ManagedOllamaStatus>("remove_managed_ollama_model", { model_id: modelId }),
   activate: (modelId: ManagedModelId) =>
     ipc<ManagedModelDefinition>("activate_managed_ollama_model", { model_id: modelId }),
+  /** Phrase de test envoyée au modèle local actif ; renvoie l'aller-retour mesuré. */
+  probe: () => ipc<LocalModelProbe>("probe_managed_ollama_model"),
   onProgress: (handler: (event: ManagedOllamaDownloadProgress) => void): Promise<UnlistenFn> =>
     listen<ManagedOllamaDownloadProgress>(DOWNLOAD_PROGRESS_EVENT, (event) =>
       handler(event.payload),
