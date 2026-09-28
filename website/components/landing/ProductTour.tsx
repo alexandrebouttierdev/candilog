@@ -25,7 +25,7 @@ const ONGLETS = [
     cle: "documents",
     libelle: "Documents",
     aide: "CV et lettres, avec leur score et leurs versions.",
-    alt: "Bibliothèque de documents de Candilog\u00a0: trois CV avec leur score ATS, trois lettres, et le détail du CV Designer produit senior noté 84 sur 100 avec ses versions.",
+    alt: "Bibliothèque de documents de Candilog\u00a0: trois CV avec leur score ATS, trois lettres et le détail du CV Designer produit senior noté 84 sur 100 avec ses versions.",
     fil: ["Documents", "Tous"] as const,
     nav: "documents" as const,
     etat: "6 documents · 3 CV · 3 lettres · dernier export il y a 2 j",
@@ -95,7 +95,7 @@ export function ProductTour() {
           }
         >
           Pas de tableau de bord à widgets&nbsp;: une liste pour trier, une fiche pour décider, une
-          barre d&apos;état qui dit ce qui se passe. Tout se pilote au clavier, et{" "}
+          barre d&apos;état qui dit ce qui se passe. Tout se pilote au clavier et{" "}
           <span className="font-mono text-[13px]">⌘K</span> ouvre toutes les actions.
         </EnTeteSection>
 

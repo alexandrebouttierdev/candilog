@@ -22,9 +22,9 @@ const GARANTIES = [
   },
   {
     repere: "étape 2 / 4 · 00:08",
-    titre: "Une progression honnête",
+    titre: "Le temps réel, affiché",
     texte:
-      "L'étape en cours et le temps écoulé, jamais un pourcentage inventé. Vous arrêtez un traitement quand vous le décidez, et la durée réelle s'affiche à la fin.",
+      "L'étape en cours et le temps écoulé, jamais un pourcentage inventé. Vous arrêtez un traitement quand vous le décidez\u00a0; la durée réelle s'affiche à la fin.",
   },
   {
     repere: "profil → document",
@@ -173,14 +173,14 @@ export function AiSection() {
             </>
           }
         >
-          Installez l&apos;IA locale depuis l&apos;application, ou connectez le fournisseur dont
-          vous avez la clé&nbsp;: Mistral, OpenAI, Gemini, Claude, DeepSeek, ou tout service compatible
+          Installez l&apos;IA locale depuis l&apos;application ou connectez le fournisseur dont
+          vous avez la clé&nbsp;: Mistral, OpenAI, Gemini, Claude, DeepSeek ou tout service compatible
           OpenAI. Chaque tâche peut ensuite utiliser un modèle différent.
         </EnTeteSection>
         <figure className="m-0">
           <figcaption className="sr-only">
             Écran Intelligence artificielle de Candilog&nbsp;: l&apos;IA locale avec deux modèles
-            installés, et la section «&nbsp;Qui fait quoi&nbsp;» qui attribue un modèle à chacune des cinq
+            installés et la section «&nbsp;Qui fait quoi&nbsp;» qui attribue un modèle à chacune des cinq
             tâches — trois en local, l&apos;analyse de CV chez un fournisseur distant, une non
             configurée.
           </figcaption>

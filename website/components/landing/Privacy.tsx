@@ -13,7 +13,7 @@ const FAITS = [
   ["Clés d'API protégées", "Rangées dans le trousseau de votre système, jamais réaffichées en clair."],
   [
     "Connexions sortantes limitées",
-    "Le fournisseur d'IA que vous choisissez, la vérification des mises à jour, et les liens que vous ouvrez.",
+    "Le fournisseur d'IA que vous choisissez, la vérification des mises à jour et les liens que vous ouvrez.",
   ],
 ] as const;
 

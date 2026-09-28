@@ -56,7 +56,7 @@ export const FAQ: readonly EntreeFaq[] = [
       "Candilog est conçu pour fonctionner sur Windows, macOS et Linux, avec notamment une prise en charge de distributions comme Ubuntu et Fedora.",
   },
   {
-    question: "Le code source est-il disponible, et puis-je le modifier\u00a0?",
+    question: "Le code source est-il disponible et puis-je le modifier\u00a0?",
     reponse:
       "Oui. Le code source de Candilog est publiquement accessible\u00a0: c'est un projet source available, distribué pour les usages autorisés sous la licence PolyForm Noncommercial License 1.0.0. Vous pouvez le consulter, l'étudier, proposer des améliorations et effectuer les modifications prévues par cette licence.",
   },

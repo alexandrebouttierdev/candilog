@@ -71,8 +71,9 @@ export default function Page() {
 
         <LegalSection id="documents" titre="Documents">
           <P>
-            Les documents que vous importez ou créez dans Candilog sont gérés conformément au
-            fonctionnement de l&apos;application.
+            Les documents que vous importez ou créez dans Candilog sont enregistrés sur votre
+            appareil&nbsp;; ils ne quittent votre ordinateur que si vous lancez une fonctionnalité
+            qui nécessite un service externe.
           </P>
           <P>
             Lorsque certaines fonctionnalités nécessitent un traitement externe, les informations

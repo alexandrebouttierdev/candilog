@@ -45,7 +45,7 @@ const FONCTIONS: readonly Fonction[] = [
     ],
     apercu: <AnalyseOffre />,
     legende:
-      "Analyse face à l'offre dans Candilog\u00a0: 4 exigences couvertes sur 7, un score de 78 sur 100, et pour chaque exigence la preuve citée du CV ou la mention «\u00a0introuvable\u00a0».",
+      "Analyse face à l'offre dans Candilog\u00a0: 4 exigences couvertes sur 7, un score de 78 sur 100 et pour chaque exigence la preuve citée du CV ou la mention «\u00a0introuvable\u00a0».",
   },
   {
     ecran: "Générer une lettre",
@@ -59,7 +59,7 @@ const FONCTIONS: readonly Fonction[] = [
     ],
     apercu: <GenerateurLettre />,
     legende:
-      "Générateur de lettre de Candilog\u00a0: une lettre adressée à Atelier Nord sur une page A4, un score d'adéquation de 68 sur 100 pouvant atteindre 84, et des recommandations à appliquer ou ignorer.",
+      "Générateur de lettre de Candilog\u00a0: une lettre adressée à Atelier Nord sur une page A4, un score d'adéquation de 68 sur 100 pouvant atteindre 84 et des recommandations à appliquer ou ignorer.",
   },
 ];
 
