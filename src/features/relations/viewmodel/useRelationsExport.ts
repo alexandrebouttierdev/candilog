@@ -2,14 +2,8 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
+import { localToday } from "../model/history";
 import { relationsService } from "../services/relationsService";
-
-/** Date du jour `AAAA-MM-JJ`, telle qu'elle figurera dans les noms de fichiers. */
-function today(): string {
-  const now = new Date();
-  const pad = (value: number) => String(value).padStart(2, "0");
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-}
 
 /**
  * Export des relations (`states/dialog-csv-rel.png`) : un dialogue d'information annonce
@@ -18,7 +12,8 @@ function today(): string {
 export function useRelationsExport() {
   const notify = useUiStore((state) => state.notify);
   const [open, setOpen] = useState(false);
-  const [date] = useState(today);
+  // Date du jour, telle qu'elle figurera dans les noms de fichiers.
+  const [date] = useState(() => localToday());
   const run = useMutation({
     mutationFn: relationsService.exportCsv,
     onSuccess: (result) => {

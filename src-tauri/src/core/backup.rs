@@ -238,7 +238,8 @@ pub fn reset_data(pool: &SqlitePool) -> AppResult<()> {
         .map_err(|error| AppError::Database(error.to_string()))?;
     let transaction = connection.transaction()?;
     transaction.execute_batch(
-        "DELETE FROM follow_ups;
+        "DELETE FROM relation_notes;
+         DELETE FROM follow_ups;
          DELETE FROM interviews;
          DELETE FROM status_history;
          DELETE FROM applications;

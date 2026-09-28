@@ -22,6 +22,9 @@ import type { RelationKind } from "../../viewmodel/useRelationsViewModel";
 import { RelationList, companyRow, contactRow } from "../components/RelationList";
 import { RelationInspector } from "../components/RelationInspector";
 import { RelationFilters } from "../components/RelationFilters";
+import { RelationNoteDialog } from "../components/RelationNoteDialog";
+import { useRelationHistory } from "../../viewmodel/useRelationHistory";
+import type { HistoryLine } from "../../model/history";
 
 type Form =
   | { kind: "company"; editing: Company | null }
@@ -47,9 +50,19 @@ export function RelationsPage({ kind }: { kind: RelationKind }) {
   const [menu, setMenu] = useState<MenuAnchor | null>(null);
   const [followUpFor, setFollowUpFor] = useState<Application | null>(null);
   const [floating, setFloating] = useState(false);
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [pendingNote, setPendingNote] = useState<HistoryLine | null>(null);
 
   const companies = kind === "companies";
   const selection = vm.company ?? vm.contact;
+  const history = useRelationHistory(
+    vm.company ? { kind: "company", id: vm.company.id } : vm.contact ? { kind: "contact", id: vm.contact.id } : null,
+  );
+  const selectionName = vm.company
+    ? vm.company.name
+    : vm.contact
+      ? `${vm.contact.first_name} ${vm.contact.name}`.trim()
+      : "";
   const floatingOpen = !wide && floating && selection !== null;
   useDismissable({ open: floatingOpen, onDismiss: () => setFloating(false) });
 
@@ -90,10 +103,15 @@ export function RelationsPage({ kind }: { kind: RelationKind }) {
       contact={vm.contact}
       applications={vm.linkedApplications}
       applicationsTotal={vm.linkedTotal}
+      history={history}
       floating={!wide}
       onClose={() => setFloating(false)}
       onMenu={(event) => setMenu(event.currentTarget.getBoundingClientRect())}
-      onEdit={openEdit}
+      onAddNote={() => {
+        history.resetAdd();
+        setNoteOpen(true);
+      }}
+      onDeleteNote={setPendingNote}
       onNewApplication={() =>
         void navigate(applicationsPath({ create: true, ...(vm.company ? { companyId: vm.company.id } : {}) }))
       }
@@ -180,6 +198,28 @@ export function RelationsPage({ kind }: { kind: RelationKind }) {
         busy={exporter.isExporting}
         onCancel={exporter.cancel}
         onConfirm={exporter.confirm}
+      />
+      {noteOpen && selection ? (
+        <RelationNoteDialog
+          name={selectionName}
+          saving={history.saving}
+          error={history.addError}
+          onSave={history.addNote}
+          onClose={() => setNoteOpen(false)}
+        />
+      ) : null}
+      <ConfirmDialog
+        open={pendingNote !== null}
+        register="destruction"
+        title="Supprimer cette note ?"
+        description={pendingNote ? `« ${pendingNote.text} », du ${pendingNote.fullDate}, disparaîtra de l'historique de ${selectionName}.` : ""}
+        confirmLabel="Supprimer la note"
+        busy={history.deleting}
+        onCancel={() => setPendingNote(null)}
+        onConfirm={() => {
+          if (pendingNote?.noteId) history.deleteNote(pendingNote.noteId);
+          setPendingNote(null);
+        }}
       />
 
       <div className="relative flex min-h-0 flex-1">

@@ -7,15 +7,11 @@ import { companySizeLabel } from "@/features/referentials";
 import { openExternal } from "@/shared/services/external-link";
 import { cn } from "@/shared/lib/cn";
 import { Avatar, GlyphButton, StatusGlyph } from "@/shared/ui";
+import type { HistoryLine } from "../../model/history";
 
 /** `AAAA-MM-JJ` → `JJ-MM-AA`. */
 function shortYearDate(iso: string): string {
   return `${iso.slice(8, 10)}-${iso.slice(5, 7)}-${iso.slice(2, 4)}`;
-}
-
-/** `AAAA-MM-JJ` → `JJ-MM`. */
-function shortDate(iso: string): string {
-  return `${iso.slice(8, 10)}-${iso.slice(5, 7)}`;
 }
 
 /** Lien web affichable sans protocole : `vallis-conseil.fr`. */
@@ -35,18 +31,21 @@ interface Action {
  * Inspecteur de Relations (`screens/05-companies.png`, `06-network.png`), 300 px : identité,
  * trois actions, champs, candidatures rattachées, historique et notes.
  *
- * L'historique ne montre que des faits enregistrés — envoi des candidatures, ajout de la
- * fiche — jamais une chronologie reconstituée : une date inventée se lirait comme vraie.
+ * L'historique ne montre que des faits enregistrés (candidatures, statuts, entretiens,
+ * relances faites, notes, ajout de la fiche), lus par le backend : jamais une chronologie
+ * reconstituée, une date inventée se lirait comme vraie. « Note » y ajoute un fait daté.
  */
 export function RelationInspector({
   company,
   contact,
   applications,
   applicationsTotal,
+  history,
   floating,
   onClose,
   onMenu,
-  onEdit,
+  onAddNote,
+  onDeleteNote,
   onNewApplication,
   onFollowUp,
   onOpenApplication,
@@ -56,10 +55,12 @@ export function RelationInspector({
   contact: Contact | null;
   applications: readonly Application[];
   applicationsTotal: number;
+  history: { lines: readonly HistoryLine[]; loading: boolean; error: string | null };
   floating: boolean;
   onClose: () => void;
   onMenu: (event: MouseEvent<HTMLButtonElement>) => void;
-  onEdit: () => void;
+  onAddNote: () => void;
+  onDeleteNote: (line: HistoryLine) => void;
   onNewApplication: () => void;
   onFollowUp: (application: Application) => void;
   onOpenApplication: (id: string) => void;
@@ -82,7 +83,7 @@ export function RelationInspector({
           title: company.website ? undefined : "Aucun site renseigné",
           onClick: () => void openExternal(company.website ?? ""),
         },
-        { label: "Note", onClick: onEdit },
+        { label: "Note", onClick: onAddNote },
       ]
     : [
         {
@@ -103,19 +104,8 @@ export function RelationInspector({
             if (latest) onFollowUp(latest);
           },
         },
-        { label: "Note", onClick: onEdit },
+        { label: "Note", onClick: onAddNote },
       ];
-
-  const history: Array<{ date: string; text: string }> = [
-    ...applications.map((application) => ({
-      date: application.sent_date,
-      text: `Candidature envoyée · ${application.job_title}`,
-    })),
-    {
-      date: (company ?? contact)?.created_at.slice(0, 10) ?? "",
-      text: company ? "Entreprise ajoutée au suivi" : "Contact ajouté",
-    },
-  ].sort((a, b) => b.date.localeCompare(a.date));
 
   const notes = company ? company.notes : (contact?.notes ?? null);
 
@@ -231,15 +221,33 @@ export function RelationInspector({
         )}
       </Section>
 
-      <Section title="Historique">
-        <ul className="flex flex-col gap-2">
-          {history.map((item) => (
-            <li key={`${item.date}-${item.text}`} className="flex items-baseline gap-2.5 text-small">
-              <span className="w-9 flex-none font-mono text-caps text-tx-6">{item.date ? shortDate(item.date) : ""}</span>
-              <span className="leading-[1.45] text-tx-3">{item.text}</span>
-            </li>
-          ))}
-        </ul>
+      <Section title="Historique" action={<GlyphButton glyph="+" label="Ajouter une note" onClick={onAddNote} />}>
+        {history.error ? (
+          <p className="text-sub leading-[1.5] text-tx-6">{history.error}</p>
+        ) : history.loading ? (
+          <p role="status" className="text-sub text-tx-6">
+            Lecture de l’historique…
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {history.lines.map((line) => (
+              <li key={line.key} className="group/history flex items-baseline gap-2.5 text-small">
+                <span title={line.fullDate} className="w-9 flex-none font-mono text-caps text-tx-6">
+                  {line.day}
+                </span>
+                <span className="min-w-0 flex-1 leading-[1.45]">
+                  <span className={cn("whitespace-pre-wrap", line.noteId ? "text-tx-2" : "text-tx-3")}>{line.text}</span>
+                  {line.job ? <span className="block truncate text-tiny text-tx-5">{line.job}</span> : null}
+                </span>
+                {line.noteId ? (
+                  <span className="flex-none self-start opacity-0 group-hover/history:opacity-100 focus-within:opacity-100">
+                    <GlyphButton glyph="✕" label="Supprimer la note" onClick={() => onDeleteNote(line)} />
+                  </span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
       </Section>
 
       {notes ? (
@@ -287,12 +295,23 @@ function Field({
   );
 }
 
-function Section({ title, count, children }: { title: string; count?: number; children: ReactNode }) {
+function Section({
+  title,
+  count,
+  action,
+  children,
+}: {
+  title: string;
+  count?: number;
+  action?: ReactNode;
+  children: ReactNode;
+}) {
   return (
     <section className="mt-4 border-t border-bd-soft pt-3">
-      <h3 className="caps mb-2 flex items-center">
+      <h3 className="caps mb-2 flex min-h-5 items-center">
         {title}
         {count !== undefined ? <span className="ml-auto font-mono text-tx-7">{count}</span> : null}
+        {action ? <span className="-my-1 ml-auto">{action}</span> : null}
       </h3>
       {children}
     </section>

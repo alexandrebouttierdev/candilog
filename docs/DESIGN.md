@@ -272,9 +272,12 @@ Réutiliser la recette du voisin plutôt que d’en inventer une.
   **Recruteurs et managers** (interlocuteurs d'une candidature) et **Réseau**. Lignes de
   38 px : avatar, nom et sous-titre, rattachement, dernière référence, date.
 - Inspecteur 300 px (flottant sous 1060 px) : trois actions (Nouvelle candidature, Site web,
-  Note ; Écrire, Relancer, Note), champs, candidatures rattachées, historique des faits
-  enregistrés, notes. `mailto:` et `tel:` restent des liens natifs ; un lien web passe par
-  `openExternal`.
+  Note ; Écrire, Relancer, Note), champs, candidatures rattachées, **Historique** (faits
+  enregistrés lus par le backend : candidatures, statuts, entretiens, relances faites, notes,
+  ajout de la fiche ; date `JJ-MM` en mono, candidature concernée sous le fait), notes de la
+  fiche. « Note » et le `+` de l'historique ouvrent « Ajouter une note » (texte et date du
+  fait) ; une note se supprime par son `✕`, après confirmation. `mailto:` et `tel:` restent
+  des liens natifs ; un lien web passe par `openExternal`.
 - « CSV » (`states/dialog-csv-rel.png`) : dialogue d'information qui annonce les deux
   fichiers (`entreprises-<date>.csv`, `contacts-<date>.csv`), leurs lignes et 9 colonnes,
   le séparateur et l'encodage ; puis le dialogue natif. Tout est exporté, sans la recherche

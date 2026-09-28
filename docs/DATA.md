@@ -18,7 +18,7 @@ libre : ils doivent être exactement le nom issu du `ModelRegistry` sous `ai/mod
 
 ## Référentiels métier
 
-Le schéma courant (`PRAGMA user_version = 6`) porte
+Le schéma courant (`PRAGMA user_version = 7`) porte
 quatre catalogues **distincts**, semés par `init_schema.sql` en `INSERT OR IGNORE` :
 
 | Table | Clé | Rôle |
@@ -111,6 +111,21 @@ backend, sérialisé en JSON et rejoué à l'ouverture : une vue ne fige pas de 
 se recalcule sur les données du moment. `name` est borné à 60 caractères (service Rust et
 `CHECK`), `position` fixe l'ordre de la navigation. Dupliquer ajoute « (copie) » au nom. Une
 remise à zéro des données vide la table.
+
+## Historique des relations
+
+L'historique d'une entreprise ou d'un contact (inspecteur de Relations) est **lu**, jamais
+recopié : `relations_history` réunit, par une requête `UNION ALL`, les candidatures envoyées
+(`sent_date`), les changements de statut (`status_history`, hors le statut de création),
+les entretiens, les relances faites (`done_at`), les notes et l'ajout de la fiche, du plus
+récent au plus ancien, 100 entrées au plus. Pour un contact, un entretien compte s'il y est
+nommé ou si sa candidature l'est.
+
+Seules les notes ont leur table : `relation_notes` (migration 7) — `body` de 1 à 2 000
+caractères, `noted_on` (`AAAA-MM-JJ`, date du fait et non de la saisie), rattachée à
+**exactement** une entreprise ou un contact (`CHECK`), supprimée avec sa fiche
+(`ON DELETE CASCADE`). Ce champ est distinct de `companies.notes` / `contacts.notes`, texte
+libre de la fiche. Une remise à zéro des données vide la table.
 
 ## Contraintes portées par le schéma
 

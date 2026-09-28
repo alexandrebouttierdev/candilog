@@ -13,6 +13,7 @@ use crate::features::followups::presentation::commands as followups;
 use crate::features::interviews::presentation::commands as interviews;
 use crate::features::profile::presentation::commands as profile;
 use crate::features::referentials::presentation::commands as referentials;
+use crate::features::relations::presentation::commands as relations;
 use crate::features::settings::presentation::commands as settings;
 use crate::features::views::presentation::commands as views;
 use tauri::Manager;
@@ -137,6 +138,9 @@ pub fn run() {
             views::saved_views_update,
             views::saved_views_duplicate,
             views::saved_views_delete,
+            relations::relations_history,
+            relations::relations_add_note,
+            relations::relations_delete_note,
             referentials::referentials_load,
         ])
         .run(tauri::generate_context!())

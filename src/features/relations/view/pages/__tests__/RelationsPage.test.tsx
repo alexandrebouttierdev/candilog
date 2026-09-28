@@ -107,6 +107,7 @@ beforeEach(() => {
     ),
   );
   vi.spyOn(applicationService, "listPage").mockResolvedValue(page([]));
+  vi.spyOn(relationsService, "history").mockResolvedValue([]);
 });
 
 describe("Relations — entreprises", () => {
@@ -234,5 +235,50 @@ describe("Relations — export CSV", () => {
     await waitFor(() =>
       expect(useUiStore.getState().toasts.map((toast) => toast.title)).toContain("Relations exportées"),
     );
+  });
+});
+
+describe("Relations — historique", () => {
+  it("montre les faits lus par le backend, ajoute une note datée et la supprime", async () => {
+    const history = vi.spyOn(relationsService, "history").mockResolvedValue([
+      { kind: "note", at: "2026-09-02", application_id: null, job_title: null, detail: "Réponse positive de Claire", note_id: "n1" },
+      { kind: "application_sent", at: "2026-08-29", application_id: "a1", job_title: "Technicien support N2", detail: null, note_id: null },
+    ]);
+    const addNote = vi.spyOn(relationsService, "addNote").mockResolvedValue({
+      id: "n2",
+      relation: { kind: "company", id: "Vallis Conseil" },
+      body: "Appel de Claire",
+      noted_on: "2026-09-10",
+      created_at: "2026-09-10T08:00:00Z",
+    });
+    const deleteNote = vi.spyOn(relationsService, "deleteNote").mockResolvedValue(undefined);
+    render(<RelationsPage kind="companies" />, { wrapper });
+
+    const fiche = await screen.findByRole("complementary", { name: "Fiche Vallis Conseil" });
+    expect(await within(fiche).findByText("Réponse positive de Claire")).toBeInTheDocument();
+    expect(within(fiche).getByText("Candidature envoyée")).toBeInTheDocument();
+    expect(history).toHaveBeenCalledWith({ kind: "company", id: "Vallis Conseil" });
+
+    await userEvent.click(within(fiche).getByRole("button", { name: "Note" }));
+    const dialogue = await screen.findByRole("dialog", { name: "Ajouter une note" });
+    await userEvent.type(within(dialogue).getByLabelText(/^Note/), "Appel de Claire");
+    const date = within(dialogue).getByLabelText(/^Date/);
+    await userEvent.clear(date);
+    await userEvent.type(date, "10-09-2026");
+    await userEvent.click(within(dialogue).getByRole("button", { name: "Ajouter la note" }));
+
+    await waitFor(() =>
+      expect(addNote).toHaveBeenCalledWith({
+        relation: { kind: "company", id: "Vallis Conseil" },
+        body: "Appel de Claire",
+        noted_on: "2026-09-10",
+      }),
+    );
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Ajouter une note" })).not.toBeInTheDocument());
+
+    await userEvent.click(within(fiche).getByRole("button", { name: "Supprimer la note" }));
+    const confirmation = await screen.findByRole("alertdialog");
+    await userEvent.click(within(confirmation).getByRole("button", { name: "Supprimer la note" }));
+    await waitFor(() => expect(deleteNote).toHaveBeenCalledWith("n1"));
   });
 });
