@@ -1,7 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans, IBM_Plex_Serif } from "next/font/google";
 
-import { SITE_DESCRIPTION as DESCRIPTION, SITE_TITRE as TITRE, SITE_URL } from "@/lib/data/site";
+import {
+  OG_IMAGE,
+  SITE_DESCRIPTION as DESCRIPTION,
+  SITE_TITRE as TITRE,
+  SITE_URL,
+} from "@/lib/data/site";
 
 import "./globals.css";
 
@@ -29,15 +34,6 @@ const plexSans = IBM_Plex_Sans({
   variable: "--font-plex-sans",
   display: "swap",
 });
-
-/* Image de partage statique (public/og-image.png) : un fichier à extension, servi par
-   GitHub Pages avec le bon type MIME — une route `opengraph-image` sortirait sans. */
-const OG_IMAGE = {
-  url: "/og-image.png",
-  width: 1200,
-  height: 630,
-  alt: "Candilog — Suivez chaque candidature. Ciblez chaque document.",
-};
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -85,20 +81,6 @@ const themeScript = `(function(){try{var k="candilog-theme",v=localStorage.getIt
 if(v!=="dark"&&v!=="light"){v=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";}
 document.documentElement.setAttribute("data-theme",v);}catch(e){}})();`;
 
-/* Données structurées : une application de bureau gratuite pour un usage personnel. */
-const jsonLd = {
-  "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  name: "Candilog",
-  applicationCategory: "BusinessApplication",
-  operatingSystem: "macOS, Windows, Linux",
-  description: DESCRIPTION,
-  url: SITE_URL,
-  inLanguage: "fr",
-  author: { "@type": "Person", name: "Alexandre Bouttier" },
-  offers: { "@type": "Offer", price: "0", priceCurrency: "EUR" },
-};
-
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
@@ -109,10 +91,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-        />
       </head>
       <body>{children}</body>
     </html>

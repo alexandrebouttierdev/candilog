@@ -15,12 +15,14 @@ import { BrandIcon } from "@/components/ui/BrandIcon";
 import { ButtonLink } from "@/components/ui/Button";
 import { LineIcon } from "@/components/ui/LineIcon";
 import { CONTACT_EMAIL, GITHUB_REPO, LICENCE_POLYFORM } from "@/lib/data/liens";
+import { metadonneesPage } from "@/lib/data/site";
 
-export const metadata: Metadata = {
-  title: "Licence — Candilog",
+export const metadata: Metadata = metadonneesPage({
+  titre: "Licence — Candilog",
   description:
     "Candilog est un projet source available\u00a0: usages non commerciaux sous PolyForm Noncommercial 1.0.0, usage commercial sur licence séparée.",
-};
+  chemin: "/licence/",
+});
 
 const BOUTON_SECONDAIRE = "mt-5 h-[34px] px-[14px] text-[13px]";
 

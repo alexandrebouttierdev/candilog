@@ -49,7 +49,7 @@ const FONCTIONS: readonly Fonction[] = [
   },
   {
     ecran: "Générer une lettre",
-    titre: "Une lettre assemblée à partir de votre parcours.",
+    titre: "Une lettre de motivation assemblée à partir de votre parcours.",
     texte:
       "Le modèle choisit parmi les faits de votre profil\u00a0; il n'en invente pas. Candilog mesure ensuite ce qui répond vraiment à l'offre et propose quoi aborder.",
     points: [

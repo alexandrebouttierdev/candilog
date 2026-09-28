@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { isValidElement, type ReactNode } from "react";
 
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SiteHeader } from "@/components/layout/SiteHeader";
@@ -11,24 +12,58 @@ import { Privacy } from "@/components/landing/Privacy";
 import { ProductTour } from "@/components/landing/ProductTour";
 import { Tracking } from "@/components/landing/Tracking";
 import { Workflow } from "@/components/landing/Workflow";
-import { SITE_DESCRIPTION, SITE_TITRE } from "@/lib/data/site";
+import { FAQ } from "@/lib/data/faq";
+import { SITE_DESCRIPTION, SITE_TITRE, SITE_URL, metadonneesPage } from "@/lib/data/site";
 
-export const metadata: Metadata = {
-  alternates: { canonical: "/" },
-  openGraph: {
-    type: "website",
-    locale: "fr_FR",
-    siteName: "Candilog",
-    url: "/",
-    title: SITE_TITRE,
+export const metadata: Metadata = metadonneesPage({
+  titre: SITE_TITRE,
+  description: SITE_DESCRIPTION,
+  chemin: "/",
+});
+
+/** Texte brut d'une réponse de FAQ : certaines contiennent un lien, que le JSON-LD ne
+ *  peut pas porter. On garde les mots à l'identique, sans le balisage. */
+function texte(noeud: ReactNode): string {
+  if (typeof noeud === "string" || typeof noeud === "number") return String(noeud);
+  if (Array.isArray(noeud)) return noeud.map(texte).join("");
+  if (isValidElement<{ children?: ReactNode }>(noeud)) return texte(noeud.props.children);
+  return "";
+}
+
+/* Données structurées de l'accueil : l'application elle-même et la FAQ affichée plus
+   bas, reprise mot pour mot. */
+const jsonLd = [
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "Candilog",
+    applicationCategory: "BusinessApplication",
+    operatingSystem: "macOS, Windows, Linux",
     description: SITE_DESCRIPTION,
-    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Candilog — Suivez chaque candidature. Ciblez chaque document." }],
+    url: SITE_URL,
+    inLanguage: "fr",
+    author: { "@type": "Person", name: "Alexandre Bouttier" },
+    offers: { "@type": "Offer", price: "0", priceCurrency: "EUR" },
   },
-};
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    inLanguage: "fr",
+    mainEntity: FAQ.map(({ question, reponse }) => ({
+      "@type": "Question",
+      name: question,
+      acceptedAnswer: { "@type": "Answer", text: texte(reponse) },
+    })),
+  },
+];
 
 export default function Page() {
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
+      />
       <a
         href="#contenu"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-3 focus:z-50 focus:rounded-r7 focus:bg-ac focus:px-4 focus:py-2 focus:text-on-accent"

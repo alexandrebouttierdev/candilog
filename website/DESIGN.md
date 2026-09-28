@@ -166,9 +166,12 @@ Sobres, bornées, jamais infinies. Toutes neutralisées par `prefers-reduced-mot
 
 ## 8. SEO
 
-- Métadonnées dans `app/layout.tsx` (titre, description, mots-clés, Open Graph,
-  Twitter, `theme-color`) et `app/page.tsx` (canonique `/`).
-- Données structurées `SoftwareApplication` (JSON-LD) dans le layout.
+- Métadonnées par défaut dans `app/layout.tsx` (titre, description, mots-clés, Open
+  Graph, Twitter, `theme-color`). Chaque page déclare les siennes avec
+  `metadonneesPage()` (`lib/data/site.ts`) : titre, description, canonique, Open Graph
+  et Twitter propres, pour qu'aucune page ne reprenne ceux de l'accueil.
+- Données structurées (JSON-LD) dans `app/page.tsx` : `SoftwareApplication` et
+  `FAQPage`, construite depuis `lib/data/faq.tsx` (questions et réponses à l'identique).
 - `public/og-image.png` (1200 × 630) : image de partage statique — un fichier à
   extension, servi avec le bon type MIME par GitHub Pages.
 - `app/robots.ts`, `app/sitemap.ts` : générés au build.

@@ -173,9 +173,9 @@ export function AiSection() {
             </>
           }
         >
-          Installez l&apos;IA locale depuis l&apos;application ou connectez le fournisseur dont
-          vous avez la clé&nbsp;: Mistral, OpenAI, Gemini, Claude, DeepSeek ou tout service compatible
-          OpenAI. Chaque tâche peut ensuite utiliser un modèle différent.
+          Installez l&apos;IA locale (Ollama) depuis l&apos;application ou connectez le fournisseur
+          dont vous avez la clé&nbsp;: Mistral, OpenAI, Gemini, Claude, DeepSeek ou tout service
+          compatible OpenAI. Chaque tâche peut ensuite utiliser un modèle différent.
         </EnTeteSection>
         <figure className="m-0">
           <figcaption className="sr-only">

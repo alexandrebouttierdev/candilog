@@ -12,12 +12,14 @@ import {
 import { ButtonLink } from "@/components/ui/Button";
 import { LineIcon } from "@/components/ui/LineIcon";
 import { CONTACT_EMAIL } from "@/lib/data/liens";
+import { metadonneesPage } from "@/lib/data/site";
 
-export const metadata: Metadata = {
-  title: "Mentions légales — Candilog",
+export const metadata: Metadata = metadonneesPage({
+  titre: "Mentions légales — Candilog",
   description:
     "Informations relatives à l'édition et à l'hébergement du site officiel de Candilog.",
-};
+  chemin: "/mentions-legales/",
+});
 
 export default function Page() {
   return (

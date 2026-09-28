@@ -50,7 +50,8 @@ components/
   ui/                    Button, DownloadMenu, LineIcon, BrandMark, BrandIcon, Reveal
 lib/
   data/                  contenus et listes, sortis du JSX ; demo.ts = données fictives
-                         des aperçus ; site.ts = titre et description
+                         des aperçus ; site.ts = titre, description et métadonnées
+                         par page
   hooks/                 useScrollReveal
   cn.ts, menuOuvert.ts
 public/                  og-image.png, brand/ (marques), providers/ (IA), CNAME

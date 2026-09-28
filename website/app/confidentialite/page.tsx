@@ -12,12 +12,14 @@ import {
 } from "@/components/legal/primitives";
 import { CONTACT_EMAIL } from "@/lib/data/liens";
 import { MISE_A_JOUR_CONFIDENTIALITE } from "@/lib/data/legal";
+import { metadonneesPage } from "@/lib/data/site";
 
-export const metadata: Metadata = {
-  title: "Politique de confidentialité — Candilog",
+export const metadata: Metadata = metadonneesPage({
+  titre: "Politique de confidentialité — Candilog",
   description:
     "Où sont enregistrées vos informations et dans quelles situations certaines données peuvent être traitées par des services externes.",
-};
+  chemin: "/confidentialite/",
+});
 
 const SOMMAIRE = [
   { href: "#local", libelle: "1. Vos données principales sont stockées localement" },

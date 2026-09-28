@@ -24,9 +24,9 @@ const FAITS = [
 ] as const;
 
 /**
- * Hero : la promesse en deux lignes, les deux actions, puis l'application elle-même —
- * l'écran « Aujourd'hui » — posée sur le bureau (`desk`), comme dans les captures de
- * référence. Les quatre faits sous la fenêtre sont vérifiables dans l'application.
+ * Hero : la promesse en deux lignes, les deux actions (le téléchargement d'abord), puis
+ * l'application elle-même — l'écran « Aujourd'hui » — posée sur le bureau (`desk`), comme
+ * dans les captures de référence. Les quatre faits sous la fenêtre sont vérifiables dans l'application.
  */
 export function Hero() {
   return (
@@ -47,7 +47,8 @@ export function Hero() {
             document à l&apos;offre.
           </p>
           <div className="flex flex-col gap-[14px] lg:items-end">
-            <div className="flex flex-col-reverse gap-[10px] sm:flex-row">
+            <div className="flex flex-col gap-[10px] sm:flex-row">
+              <DownloadMenu />
               <ButtonLink
                 href={GITHUB_REPO}
                 target="_blank"
@@ -58,7 +59,6 @@ export function Hero() {
               >
                 Voir le code source
               </ButtonLink>
-              <DownloadMenu alignement="droite" />
             </div>
             <p className="font-mono text-[11.5px] text-tx-4">
               Gratuit pour un usage personnel · macOS · Windows · Linux · sans compte
@@ -71,8 +71,9 @@ export function Hero() {
         <Reveal className="mx-auto max-w-[1200px] px-4 md:px-8 xl:px-0">
           <figure className="m-0">
             <figcaption className="sr-only">
-              Écran Aujourd&apos;hui de Candilog&nbsp;: une relance en retard, un entretien à 14&nbsp;h&nbsp;30,
-              trois échéances cette semaine et la répartition des 14 candidatures par statut.
+              Suivi des candidatures dans Candilog, écran Aujourd&apos;hui&nbsp;: une relance en
+              retard, un entretien à 14&nbsp;h&nbsp;30, trois échéances cette semaine et la
+              répartition des 14 candidatures par statut.
             </figcaption>
             <div aria-hidden="true" className="window-lift">
               <EcranAujourdhui />

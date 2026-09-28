@@ -14,12 +14,14 @@ import { ButtonLink } from "@/components/ui/Button";
 import { LineIcon } from "@/components/ui/LineIcon";
 import { CONTACT_EMAIL } from "@/lib/data/liens";
 import { MISE_A_JOUR_CONDITIONS } from "@/lib/data/legal";
+import { metadonneesPage } from "@/lib/data/site";
 
-export const metadata: Metadata = {
-  title: "Conditions d'utilisation — Candilog",
+export const metadata: Metadata = metadonneesPage({
+  titre: "Conditions d'utilisation — Candilog",
   description:
     "Les règles générales applicables à l'utilisation de Candilog et de son site officiel.",
-};
+  chemin: "/conditions-utilisation/",
+});
 
 const SOMMAIRE = [
   { href: "#objet", libelle: "1. Objet" },
