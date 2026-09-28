@@ -159,6 +159,9 @@ Sobres, bornées, jamais infinies. Toutes neutralisées par `prefers-reduced-mot
 - Visite produit : vrai `tablist`, tabindex itinérant, flèches et Début/Fin.
 - Menus (téléchargement, navigation mobile) et FAQ : *disclosures* avec `aria-expanded`
   + `aria-controls`, panneau fermé `inert`, fermeture à `Échap` et au clic extérieur.
+  Dans la FAQ, la question reste le texte du `<h3>` et le bouton, étiré sur la ligne,
+  est nommé par `aria-labelledby` : un titre vide pour les extracteurs de contenu
+  (qui ignorent l'intérieur des boutons) nuisait à l'indexation.
 - Statuts : glyphe de forme (vide, demi, trois quarts, plein) **et** libellé, jamais la
   couleur seule.
 

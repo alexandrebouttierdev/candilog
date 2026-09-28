@@ -11,7 +11,8 @@ import { GITHUB_DISCUSSIONS } from "@/lib/data/liens";
 /**
  * FAQ : une seule question ouverte à la fois, la première au chargement.
  *
- * Vrais `<button>` avec `aria-expanded` et `aria-controls`. L'ouverture passe par
+ * Vrais `<button>` avec `aria-expanded` et `aria-controls`, nommés par le titre de la
+ * question (le texte reste dans le `<h3>`, pas dans le bouton). L'ouverture passe par
  * `grid-template-rows: 0fr → 1fr` (hauteur inconnue animée sans mesure) ; le panneau
  * fermé porte `inert` pour que ses liens ne restent pas atteignables au clavier.
  */
@@ -41,29 +42,38 @@ export function Faq() {
         <div className="border-t border-bd">
           {FAQ.map((entree, index) => {
             const estOuverte = ouverte === index;
+            const idQuestion = `${id}-question-${String(index)}`;
             const idReponse = `${id}-reponse-${String(index)}`;
             return (
               <div key={entree.question} className="border-b border-bd">
-                <h3 className="m-0">
+                {/* La question est le texte du titre, hors du bouton : des extracteurs de
+                    contenu ignorent ce qu'un `<button>` contient, et le titre sortait vide.
+                    Le bouton, étiré sur toute la ligne, prend son nom du titre. */}
+                <div className="relative flex min-h-[60px] items-center gap-6 py-4">
+                  <h3
+                    id={idQuestion}
+                    className="m-0 flex-1 text-pretty text-[16px] font-medium text-tx md:text-[17px]"
+                  >
+                    {entree.question}
+                  </h3>
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      "block flex-none text-tx-4 transition-transform duration-[220ms] ease-out-soft",
+                      estOuverte && "rotate-45",
+                    )}
+                  >
+                    <LineIcon name="close" size={14} className="rotate-45" />
+                  </span>
                   <button
                     type="button"
                     onClick={() => setOuverte(estOuverte ? null : index)}
                     aria-expanded={estOuverte}
                     aria-controls={idReponse}
-                    className="flex min-h-[60px] w-full cursor-pointer items-center gap-6 py-4 text-left text-[16px] font-medium text-tx md:text-[17px]"
-                  >
-                    <span className="flex-1 text-pretty">{entree.question}</span>
-                    <span
-                      aria-hidden="true"
-                      className={cn(
-                        "block flex-none text-tx-4 transition-transform duration-[220ms] ease-out-soft",
-                        estOuverte && "rotate-45",
-                      )}
-                    >
-                      <LineIcon name="close" size={14} className="rotate-45" />
-                    </span>
-                  </button>
-                </h3>
+                    aria-labelledby={idQuestion}
+                    className="absolute inset-0 w-full cursor-pointer"
+                  />
+                </div>
                 <div
                   id={idReponse}
                   inert={!estOuverte}
