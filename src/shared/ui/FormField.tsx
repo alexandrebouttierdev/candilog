@@ -3,9 +3,9 @@ import { useId } from "react";
 import { cn } from "@/shared/lib/cn";
 
 /**
- * Libellé, champ, aide et erreur d'un champ de formulaire (`COMPONENTS.md` §2 du design).
+ * Libellé, champ, aide et erreur d'un champ de formulaire (`DESIGN.md` § formulaires).
  *
- * Libellé 11,5 px `tx-4` à 5 px du champ ; aide contextuelle à droite du libellé en
+ * Libellé 11,5 px `tx-4` medium à 5 px du champ ; aide contextuelle à droite du libellé en
  * 10,5 px `tx-6` (`JJ-MM-AAAA`) ; un champ requis encore vide affiche la mention
  * `obligatoire` en `st-a` — pas de contour rouge. Une erreur de validation reste écrite
  * sous le champ, en clair : elle dit ce qui bloque et quoi faire.
@@ -47,7 +47,7 @@ export function FormField({
   return (
     <div className={cn("flex min-w-0 flex-col", className)}>
       <div className="mb-[5px] flex items-baseline gap-1.5">
-        <label htmlFor={id} className="text-sub text-tx-4">
+        <label htmlFor={id} className="text-sub font-mid text-tx-4">
           {label}
           {required ? <span className="sr-only"> (obligatoire)</span> : null}
         </label>

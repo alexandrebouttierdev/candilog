@@ -81,7 +81,8 @@ export function UpdatesPage() {
  * Vignette d'état : elle reprend le sens de la pastille, en plus gros et sans mot.
  *
  * Un rectangle neutre aurait décoré sans informer ; ici la couleur et l'icône disent déjà
- * si l'on doit agir, avant même de lire la phrase.
+ * si l'on doit agir, avant même de lire la phrase. L'état « pas encore vérifié » utilise un
+ * tracé SVG (grille 16, trait 1,4) : le glyphe Unicode `↻` se déforme selon la police.
  */
 function Vignette({
   update,
@@ -99,18 +100,37 @@ function Vignette({
         ? { glyph: "↓", classes: "bg-tint-g-bg text-tint-g-tx" }
         : update === null
           ? { glyph: "✓", classes: "bg-tint-g-bg text-tint-g-tx" }
-          : { glyph: "↻", classes: "bg-group text-tx-4" };
+          : { glyph: "refresh" as const, classes: "bg-group text-tx-4" };
 
   return (
     <span
       aria-hidden
       className={cn(
-        "flex size-10 flex-none items-center justify-center rounded-r9 text-[18px] font-medium",
+        "flex size-10 flex-none items-center justify-center rounded-r9 text-[18px] leading-none",
         apparence.classes,
       )}
     >
-      {apparence.glyph}
+      {apparence.glyph === "refresh" ? <RefreshMark /> : apparence.glyph}
     </span>
+  );
+}
+
+/** Flèche de reprise, même langage de trait que `LineIcon` — sans élargir le catalogue. */
+function RefreshMark() {
+  return (
+    <svg
+      width={18}
+      height={18}
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.4}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M13.1 8A5.1 5.1 0 1 1 11.4 4" />
+      <path d="M13.1 2.6v3.3h-3.3" />
+    </svg>
   );
 }
 

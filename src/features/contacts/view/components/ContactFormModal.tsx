@@ -9,7 +9,7 @@ import {
 import { Roles } from "../../model/roles";
 import type { Contact, NewContact } from "@/shared/types/generated/contacts";
 import { fetchCompanyPickerPage } from "@/features/companies";
-import { EntityPicker, FormField, ModalHost, Select, TextArea, TextInput } from "@/shared/ui";
+import { EntityPicker, FormField, FormSection, ModalHost, Select, TextArea, TextInput } from "@/shared/ui";
 
 const EMPTY_FORM: ContactFormInput = {
   first_name: "",
@@ -88,8 +88,7 @@ export function ContactFormModal({
       width="620px"
     >
       <form onSubmit={(event) => void save(event)} className="flex flex-col gap-5">
-        <fieldset className="flex flex-col gap-3">
-          <legend className="text-eyebrow uppercase text-ink-faint">Identité</legend>
+        <FormSection title="Identité">
           <div className="grid grid-cols-2 gap-4">
             <FormField label="Prénom" required error={errors.first_name?.message}>
               {(props) => (
@@ -131,12 +130,9 @@ export function ContactFormModal({
               )}
             </FormField>
           </div>
-        </fieldset>
+        </FormSection>
 
-        <fieldset className="flex flex-col gap-3">
-          <legend className="text-eyebrow uppercase text-ink-faint">
-            Contexte professionnel
-          </legend>
+        <FormSection title="Contexte professionnel">
           <div className="grid grid-cols-2 gap-4">
             <FormField label="Entreprise">
               {(props) => (
@@ -207,7 +203,7 @@ export function ContactFormModal({
               </FormField>
             </div>
           </div>
-        </fieldset>
+        </FormSection>
       </form>
     </ModalHost>
   );

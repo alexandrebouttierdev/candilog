@@ -15,6 +15,7 @@ import {
   DateInput,
   EntityPicker,
   FormField,
+  FormSection,
   ModalHost,
   Select,
   TextArea,
@@ -111,8 +112,7 @@ export function InterviewFormModal({
       width="600px"
     >
       <form onSubmit={(event) => void save(event)} className="flex flex-col gap-5">
-        <fieldset className="flex flex-col gap-3">
-          <legend className="text-eyebrow uppercase text-ink-faint">Contexte</legend>
+        <FormSection title="Contexte">
           <div className="flex flex-col gap-4">
             <FormField label="Candidature" required error={errors.application_id?.message}>
               {(props) => (
@@ -159,10 +159,9 @@ export function InterviewFormModal({
               )}
             </FormField>
           </div>
-        </fieldset>
+        </FormSection>
 
-        <fieldset className="flex flex-col gap-3">
-          <legend className="text-eyebrow uppercase text-ink-faint">Organisation</legend>
+        <FormSection title="Organisation">
           <div className="grid grid-cols-3 gap-4">
             <FormField label="Date" required error={errors.date?.message}>
               {(props) => (
@@ -235,7 +234,7 @@ export function InterviewFormModal({
               </div>
             ) : null}
           </div>
-        </fieldset>
+        </FormSection>
       </form>
     </ModalHost>
   );

@@ -11,6 +11,7 @@ export { Banner, ErrorBanner } from "./ErrorBanner";
 export { DateInput, TimeInput } from "./DateInput";
 export { SearchInput, Select, TextArea, TextInput } from "./Field";
 export { FormField, controlClasses } from "./FormField";
+export { FormSection } from "./FormSection";
 export { Kbd } from "./Kbd";
 export { BrandMark, LineIcon } from "./LineIcon";
 export type { LineIconName } from "./LineIcon";

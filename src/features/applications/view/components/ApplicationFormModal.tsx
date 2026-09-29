@@ -206,7 +206,7 @@ export function ApplicationFormModal({
       >
         <form
           onSubmit={(event) => void save(event)}
-          className="grid grid-cols-2 gap-x-3.5 gap-y-3"
+          className="grid grid-cols-2 gap-x-3.5 gap-y-4"
           noValidate
         >
           <FormField

@@ -13,6 +13,7 @@ import { ApplicationPicker } from "@/features/applications";
 import {
   DateInput,
   FormField,
+  FormSection,
   ModalHost,
   Select,
   TextArea,
@@ -95,10 +96,7 @@ export function FollowUpFormModal({
       width="560px"
     >
       <form onSubmit={(event) => void save(event)} className="flex flex-col gap-5">
-        <fieldset className="flex flex-col gap-3">
-          <legend className="text-eyebrow uppercase text-ink-faint">
-            Candidature concernée
-          </legend>
+        <FormSection title="Candidature concernée">
           <FormField label="Candidature" required error={errors.application_id?.message}>
             {(props) => (
               <Controller
@@ -116,10 +114,9 @@ export function FollowUpFormModal({
               />
             )}
           </FormField>
-        </fieldset>
+        </FormSection>
 
-        <fieldset className="flex flex-col gap-3">
-          <legend className="text-eyebrow uppercase text-ink-faint">Planification</legend>
+        <FormSection title="Planification">
           <div className="grid grid-cols-2 gap-4">
             <FormField label="Date" required error={errors.follow_up_date?.message}>
               {(props) => (
@@ -155,7 +152,7 @@ export function FollowUpFormModal({
               </FormField>
             </div>
           </div>
-        </fieldset>
+        </FormSection>
       </form>
     </ModalHost>
   );

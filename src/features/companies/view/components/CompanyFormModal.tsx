@@ -8,7 +8,7 @@ import {
 } from "../../model/schemas/company-form.schema";
 import type { Company, NewCompany } from "@/shared/types/generated/companies";
 import { CompanySizes, useReferentials } from "@/features/referentials";
-import { FormField, ModalHost, Select, TextArea, TextInput } from "@/shared/ui";
+import { FormField, FormSection, ModalHost, Select, TextArea, TextInput } from "@/shared/ui";
 
 /** Valeurs d'un formulaire vierge. */
 const EMPTY_FORM: CompanyFormInput = {
@@ -97,114 +97,104 @@ export function CompanyFormModal({
       width="600px"
     >
       <form onSubmit={(event) => void save(event)} className="flex flex-col gap-5">
-        <Section title="Identité">
-          <div className="col-span-2">
-            <FormField label="Nom" required error={form.formState.errors.name?.message}>
+        <FormSection title="Identité">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <FormField label="Nom" required error={form.formState.errors.name?.message}>
+                {(props) => (
+                  <TextInput
+                    {...props}
+                    {...form.register("name")}
+                    placeholder="Nom de l'entreprise"
+                    invalid={Boolean(form.formState.errors.name)}
+                  />
+                )}
+              </FormField>
+            </div>
+          </div>
+        </FormSection>
+
+        <FormSection title="Qualification">
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="Secteur d'activité">
+              {(props) => (
+                <Select {...props} {...form.register("sector_id")}>
+                  <option value="">Sélectionner…</option>
+                  {referentials.data.sectors.map((sector) => (
+                    <option key={sector.id} value={sector.id}>
+                      {sector.name}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </FormField>
+
+            <FormField label="Type d'entreprise">
+              {(props) => (
+                <Select {...props} {...form.register("company_type_id")}>
+                  <option value="">Sélectionner…</option>
+                  {referentials.data.company_types.map((type) => (
+                    <option key={type.code} value={type.code}>
+                      {type.name}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </FormField>
+
+            <FormField label="Taille de l'entreprise">
+              {(props) => (
+                <Select {...props} {...form.register("company_size")}>
+                  {CompanySizes.map((size) => (
+                    <option key={size.value} value={size.value}>
+                      {size.label}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </FormField>
+          </div>
+        </FormSection>
+
+        <FormSection title="Localisation">
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="Site web" error={form.formState.errors.website?.message}>
               {(props) => (
                 <TextInput
                   {...props}
-                  {...form.register("name")}
-                  placeholder="Nom de l'entreprise"
-                  invalid={Boolean(form.formState.errors.name)}
+                  {...form.register("website")}
+                  placeholder="https://…"
+                  invalid={Boolean(form.formState.errors.website)}
                 />
               )}
             </FormField>
-          </div>
-        </Section>
 
-        <Section title="Qualification">
-          <FormField label="Secteur d'activité">
-            {(props) => (
-              <Select {...props} {...form.register("sector_id")}>
-                <option value="">Sélectionner…</option>
-                {referentials.data.sectors.map((sector) => (
-                  <option key={sector.id} value={sector.id}>
-                    {sector.name}
-                  </option>
-                ))}
-              </Select>
-            )}
-          </FormField>
-
-          <FormField label="Type d'entreprise">
-            {(props) => (
-              <Select {...props} {...form.register("company_type_id")}>
-                <option value="">Sélectionner…</option>
-                {referentials.data.company_types.map((type) => (
-                  <option key={type.code} value={type.code}>
-                    {type.name}
-                  </option>
-                ))}
-              </Select>
-            )}
-          </FormField>
-
-          <FormField label="Taille de l'entreprise">
-            {(props) => (
-              <Select {...props} {...form.register("company_size")}>
-                {CompanySizes.map((size) => (
-                  <option key={size.value} value={size.value}>
-                    {size.label}
-                  </option>
-                ))}
-              </Select>
-            )}
-          </FormField>
-        </Section>
-
-        <Section title="Localisation">
-          <FormField label="Site web" error={form.formState.errors.website?.message}>
-            {(props) => (
-              <TextInput
-                {...props}
-                {...form.register("website")}
-                placeholder="https://…"
-                invalid={Boolean(form.formState.errors.website)}
-              />
-            )}
-          </FormField>
-
-          <FormField label="Ville">
-            {(props) => <TextInput {...props} {...form.register("city")} placeholder="Ville" />}
-          </FormField>
-
-          <div className="col-span-2">
-            <FormField label="Adresse">
-              {(props) => (
-                <TextInput {...props} {...form.register("address")} placeholder="Adresse" />
-              )}
+            <FormField label="Ville">
+              {(props) => <TextInput {...props} {...form.register("city")} placeholder="Ville" />}
             </FormField>
-          </div>
 
-          <div className="col-span-2">
-            <FormField label="Notes">
-              {(props) => (
-                <TextArea
-                  {...props}
-                  {...form.register("notes")}
-                  placeholder="Contexte, culture, informations utiles…"
-                />
-              )}
-            </FormField>
+            <div className="col-span-2">
+              <FormField label="Adresse">
+                {(props) => (
+                  <TextInput {...props} {...form.register("address")} placeholder="Adresse" />
+                )}
+              </FormField>
+            </div>
+
+            <div className="col-span-2">
+              <FormField label="Notes">
+                {(props) => (
+                  <TextArea
+                    {...props}
+                    {...form.register("notes")}
+                    placeholder="Contexte, culture, informations utiles…"
+                  />
+                )}
+              </FormField>
+            </div>
           </div>
-        </Section>
+        </FormSection>
       </form>
     </ModalHost>
-  );
-}
-
-/** Section de formulaire : sur-titre, filet, grille à deux colonnes. */
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <fieldset className="flex flex-col gap-3">
-      <legend className="text-eyebrow uppercase text-ink-faint">{title}</legend>
-      <div className="grid grid-cols-2 gap-4">{children}</div>
-    </fieldset>
   );
 }
