@@ -1,5 +1,4 @@
-import { Button } from "@/shared/ui";
-import logoCandilog from "@/assets/logo-candilog.svg";
+import { Button, BrandMark } from "@/shared/ui";
 import { openExternal } from "@/shared/services/external-link";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { useAboutViewModel } from "../../viewmodel/useAboutViewModel";
@@ -14,7 +13,7 @@ export function AboutPage() {
     <SettingsSection title="À propos" description="Candilog, un produit indépendant. Candidatures, réseau et documents — tout reste ici.">
       <div className="flex items-center gap-3.5 border-b border-bd-soft py-3">
         <span className="flex size-11 flex-none items-center justify-center rounded-r9 bg-group">
-          <img src={logoCandilog} alt="" width={26} height={26} className="size-[26px]" />
+          <BrandMark size={26} />
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-row font-medium text-tx">Candilog</p>
