@@ -18,7 +18,9 @@ pkgdesc="Suivi de candidatures, CV et lettres ciblés, avec assistance IA locale
 arch=('x86_64')
 url="https://candilog.fr"
 license=('LicenseRef-PolyForm-Noncommercial-1.0.0')
-depends=('webkit2gtk-4.1' 'gtk3' 'hicolor-icon-theme')
+# `poppler` fournit pdftoppm, pdftotext et pdfinfo, requis à l'exécution par l'import de CV
+# en mode Vision et par l'extraction de texte dans l'ordre de mise en page (docs/AI.md).
+depends=('webkit2gtk-4.1' 'gtk3' 'hicolor-icon-theme' 'poppler')
 optdepends=("gnome-keyring: coffre système pour les clés d'API (ou tout service Secret Service)")
 # Le binaire est déjà optimisé par Cargo : ni strip ni paquet de débogage.
 options=('!strip' '!debug')

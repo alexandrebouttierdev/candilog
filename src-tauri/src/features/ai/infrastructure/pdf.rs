@@ -113,18 +113,27 @@ fn render_pages(path: &Path) -> AppResult<Vec<PdfPageImage>> {
         ));
     }
 
-    if let Some(page_count) = compter_pages_pdf(&path) {
-        if page_count == 0 {
+    match compter_pages_pdf(&path) {
+        Some(0) => {
             return Err(AppError::Validation(
                 "Impossible de déterminer le nombre de pages de ce PDF.".into(),
             ));
         }
-        if page_count > MAX_VISION_PAGES {
+        Some(page_count) if page_count > MAX_VISION_PAGES => {
             return Err(AppError::Validation(format!(
                 "Ce CV comporte {page_count} pages. L'analyse visuelle accepte au plus \
                  {MAX_VISION_PAGES} pages. Réduisez le document, ou utilisez l'analyse Texte."
             )));
         }
+        Some(_) => {}
+        // `pdfinfo` absent ou en échec : le contrôle amont est sauté, et seul le décompte des
+        // images produites arrêtera un document trop long. Journaliser évite qu'un garde-fou
+        // disparaisse sans laisser de trace — le symptôme serait un refus tardif, après le
+        // rendu, au lieu du message qui nomme le nombre de pages.
+        None => tracing::warn!(
+            "nombre de pages du PDF indéterminé (pdfinfo) : contrôle amont de la limite Vision \
+             sauté"
+        ),
     }
 
     let temp = tempfile::tempdir().map_err(|error| {

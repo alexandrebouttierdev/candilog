@@ -20,11 +20,11 @@
         "titleBarStyle": "Overlay",
         "hiddenTitle": true,
         "resizable": true,
-        "dragDropEnabled": true
+        "dragDropEnabled": false
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' ipc: http://ipc.localhost"
+      "csp": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' ipc: http://ipc.localhost; base-uri 'none'; form-action 'none'; object-src 'none'"
     }
   },
   "bundle": {
@@ -45,6 +45,18 @@
     "category": "Utility",
     "macOS": {
       "minimumSystemVersion": "11.0"
+    },
+    "linux": {
+      "deb": {
+        "depends": [
+          "poppler-utils"
+        ]
+      },
+      "rpm": {
+        "depends": [
+          "poppler-utils"
+        ]
+      }
     },
     "shortDescription": "Suivi de candidatures et assistance IA locale",
     "longDescription": "Candilog suit vos candidatures, entreprises, contacts, entretiens et relances, et génère CV et lettres de motivation avec une IA locale ou distante.",
