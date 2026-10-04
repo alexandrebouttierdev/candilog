@@ -143,3 +143,90 @@ describe("contrat IPC", () => {
     expect(camel).toEqual([]);
   });
 });
+
+/**
+ * Constantes `const NOM … = "valeur"` d'un fichier, pour résoudre un nom d'événement passé
+ * par identifiant plutôt qu'en littéral (`MANAGED_DOWNLOAD_PROGRESS_EVENT`).
+ */
+function stringConstants(source: string): Map<string, string> {
+  const constants = new Map<string, string>();
+  for (const match of source.matchAll(/const\s+(\w+)\s*(?::\s*&?'?\w+)?\s*=\s*"([^"]+)"/g)) {
+    constants.set(match[1]!, match[2]!);
+  }
+  return constants;
+}
+
+/** Premier argument d'un appel `nom(...)`, résolu en littéral quand c'est possible. */
+function firstArguments(source: string, callee: string): string[] {
+  const constants = stringConstants(source);
+  const appels = source.matchAll(
+    new RegExp(`\\b${callee}\\s*(?:<[\\s\\S]*?>)?\\s*\\(\\s*(?:"([^"]+)"|(\\w+))`, "g"),
+  );
+  return [...appels].flatMap((match) => {
+    if (match[1] !== undefined) return [match[1]];
+    const resolu = constants.get(match[2]!);
+    return resolu === undefined ? [] : [resolu];
+  });
+}
+
+/**
+ * Contrat des **événements** Tauri, jumeau de celui des commandes ci-dessus.
+ *
+ * Même angle mort, et il a déjà mordu : un nom d'événement n'est vérifié ni par Rust ni par
+ * TypeScript. Un `listen` posé sur un nom que plus personne n'émet ne se déclenche jamais et
+ * ne lève aucune erreur — la documentation a longtemps annoncé des `local-ai://*` que le
+ * backend n'émettait pas. Les deux inventaires sont donc comparés.
+ */
+describe("contrat des événements", () => {
+  /** Noms réellement émis par la couche `presentation` des features. */
+  function rustEvents(): Set<string> {
+    const files = globSync("src-tauri/src/features/*/presentation/*.rs", { cwd: root });
+    const names = new Set<string>();
+    for (const file of files) {
+      const source = readFileSync(`${root}/${file}`, "utf8");
+      for (const name of firstArguments(source, "emit")) names.add(name);
+    }
+    return names;
+  }
+
+  /** Noms réellement écoutés par le frontend. */
+  function listenedEvents(): Set<string> {
+    const files = globSync("src/{app,features,shared}/**/*.{ts,tsx}", { cwd: root }).filter(
+      (file) => !file.includes("__tests__"),
+    );
+    const names = new Set<string>();
+    for (const file of files) {
+      const source = readFileSync(`${root}/${file}`, "utf8");
+      if (!source.includes("@tauri-apps/api/event")) continue;
+      for (const name of firstArguments(source, "listen")) names.add(name);
+    }
+    return names;
+  }
+
+  it("trouve bien les événements des deux côtés", () => {
+    // Garde-fou du test : sans lui, deux ensembles vides rendraient les comparaisons vraies.
+    expect(rustEvents().size).toBeGreaterThan(0);
+    expect(listenedEvents().size).toBeGreaterThan(0);
+  });
+
+  it("résout un nom passé par constante autant qu'un littéral", () => {
+    // `managed-ollama://download-progress` est émis et écouté via une constante de module :
+    // une capture limitée aux littéraux l'aurait manqué des deux côtés à la fois.
+    expect(rustEvents()).toContain("managed-ollama://download-progress");
+    expect(listenedEvents()).toContain("managed-ollama://download-progress");
+  });
+
+  it("n'écoute que des événements réellement émis", () => {
+    const emis = rustEvents();
+    const fantomes = [...listenedEvents()].filter((name) => !emis.has(name));
+    expect(fantomes).toEqual([]);
+  });
+
+  it("documente la liste complète des événements dans ARCHITECTURE.md", () => {
+    // La table de `docs/ARCHITECTURE.md` se donne pour exhaustive : qu'elle le reste.
+    const architecture = readFileSync(`${root}/docs/ARCHITECTURE.md`, "utf8");
+    for (const name of rustEvents()) {
+      expect(architecture, `${name} absent de docs/ARCHITECTURE.md`).toContain(`\`${name}\``);
+    }
+  });
+});
