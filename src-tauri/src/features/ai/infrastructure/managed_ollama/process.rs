@@ -95,6 +95,14 @@ impl ManagedOllamaProcess {
     }
 }
 
+/// Premier port libre à partir de [`MANAGED_OLLAMA_PREFERRED_PORT`].
+///
+/// La disponibilité est testée en liant un socket, qui est aussitôt refermé : c'est Ollama
+/// qui doit lier le port, et rien ne permet de lui passer un socket déjà ouvert. Il reste
+/// donc une fenêtre pendant laquelle un autre processus peut s'en emparer. L'issue est
+/// bénigne et déjà couverte : Ollama échoue à démarrer, `ensure_running` ne voit jamais le
+/// contrôle de santé passer, arrête le processus et renvoie une erreur — la tentative
+/// suivante repart sur un autre port.
 fn pick_local_port() -> AppResult<u16> {
     for port in MANAGED_OLLAMA_PREFERRED_PORT..MANAGED_OLLAMA_PREFERRED_PORT + 50 {
         if TcpListener::bind(("127.0.0.1", port)).is_ok() {

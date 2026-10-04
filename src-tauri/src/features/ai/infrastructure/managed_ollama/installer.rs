@@ -13,6 +13,63 @@ use std::path::{Path, PathBuf};
 use tar::Archive;
 use tokio_util::sync::CancellationToken;
 
+/// Supprime un chemin temporaire quoi qu'il advienne du chemin de sortie.
+///
+/// L'extraction ne nettoyait son dossier qu'en cas de succès, et le `.part` qu'en cas
+/// d'annulation ou d'empreinte non conforme : une écriture interrompue — disque plein,
+/// typiquement — laissait des résidus que le nom unique faisait s'accumuler au lieu de se
+/// remplacer. Même motif que `core::files::TemporaryFileGuard` (`docs/CODE_RULES.md` §13).
+struct ResteTemporaire {
+    chemin: PathBuf,
+    dossier: bool,
+    publie: bool,
+}
+
+impl ResteTemporaire {
+    fn fichier(chemin: PathBuf) -> Self {
+        Self {
+            chemin,
+            dossier: false,
+            publie: false,
+        }
+    }
+
+    fn dossier(chemin: PathBuf) -> Self {
+        Self {
+            chemin,
+            dossier: true,
+            publie: false,
+        }
+    }
+
+    /// Le chemin a été publié (renommé vers sa destination) : ne plus le supprimer.
+    fn publier(&mut self) {
+        self.publie = true;
+    }
+}
+
+impl Drop for ResteTemporaire {
+    fn drop(&mut self) {
+        if self.publie {
+            return;
+        }
+        let retrait = if self.dossier {
+            fs::remove_dir_all(&self.chemin)
+        } else {
+            fs::remove_file(&self.chemin)
+        };
+        match retrait {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => tracing::warn!(
+                %error,
+                chemin = %self.chemin.display(),
+                "résidu d'installation non supprimé"
+            ),
+        }
+    }
+}
+
 pub struct RuntimeInstaller {
     client: reqwest::Client,
 }
@@ -45,6 +102,9 @@ impl RuntimeInstaller {
         let archive_path = downloads_dir.join(artifact.archive_name);
         let part_path = downloads_dir.join(format!("{}.part", artifact.archive_name));
         let temp_dir = downloads_dir.join(format!("extract-{}", uuid::Uuid::new_v4()));
+        // Le dossier d'extraction disparaît sur tous les chemins de sortie, y compris une
+        // panique : plus besoin de le retirer à la main dans chaque branche d'erreur.
+        let _menage = ResteTemporaire::dossier(temp_dir.clone());
         let executable = runtime_version_dir.join("ollama");
 
         self.download_with_checksum(
@@ -97,14 +157,10 @@ impl RuntimeInstaller {
                 tracing::error!(%error, "tâche d'extraction Ollama interrompue");
                 AppError::Provider("L'extraction du moteur local a été interrompue.".into())
             })?,
-            () = cancel_wait.cancelled() => {
-                let _ = fs::remove_dir_all(&temp_dir);
-                return Err(AppError::Cancelled);
-            }
+            () = cancel_wait.cancelled() => return Err(AppError::Cancelled),
         };
 
         if cancel.is_cancelled() {
-            let _ = fs::remove_dir_all(&temp_dir);
             return Err(AppError::Cancelled);
         }
 
@@ -136,11 +192,13 @@ impl RuntimeInstaller {
         let mut downloaded = 0_u64;
         let mut hasher = Sha256::new();
         let mut file = File::create(part_path).map_err(map_io)?;
+        // Retiré sur tout échec, y compris une écriture interrompue : seul le `rename` final
+        // le publie, et l'oubli de ce guard est ce qui laissait des `.part` s'accumuler.
+        let mut menage_part = ResteTemporaire::fichier(part_path.to_path_buf());
         let mut stream = response.bytes_stream();
         use futures_util::StreamExt;
         while let Some(chunk) = stream.next().await {
             if cancel.is_cancelled() {
-                let _ = fs::remove_file(part_path);
                 return Err(AppError::Cancelled);
             }
             let chunk = chunk.map_err(|error| {
@@ -154,12 +212,14 @@ impl RuntimeInstaller {
         file.flush().map_err(map_io)?;
         let digest = format!("{:x}", hasher.finalize());
         if digest != artifact.sha256 {
-            let _ = fs::remove_file(part_path);
             return Err(AppError::Provider(
                 "L'empreinte du moteur téléchargé ne correspond pas à la version attendue.".into(),
             ));
         }
+        // `rename` publie l'archive : le guard ne doit plus la supprimer.
+        drop(file);
         fs::rename(part_path, final_path).map_err(map_io)?;
+        menage_part.publier();
         Ok(())
     }
 }

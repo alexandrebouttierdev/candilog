@@ -161,14 +161,12 @@ impl ManagedOllamaService {
             let cancel = cancel.clone();
             tokio::select! {
                 result = start_work => result.map_err(join_err)?,
-                () = cancel.cancelled() => {
-                    if let Ok(guard) = self.process.lock() {
-                        if let Some(process) = guard.as_ref() {
-                            let _ = process.stop();
-                        }
-                    }
-                    Err(AppError::Cancelled)
-                }
+                // Aucun verrou ici : la tâche bloquante détient `process` pendant tout
+                // `ensure_running` — jusqu'à quinze secondes d'attente de santé — et un
+                // `std::sync::Mutex` immobiliserait un worker Tokio le temps de l'obtenir.
+                // C'est inutile de surcroît : `ensure_running` observe le même jeton, arrête
+                // le processus lui-même et rend la main (`process.rs`).
+                () = cancel.cancelled() => Err(AppError::Cancelled),
             }
         } else {
             start_work.await.map_err(join_err)?
@@ -182,13 +180,19 @@ impl ManagedOllamaService {
     ) -> AppResult<()> {
         let definition = ManagedModelRegistry::get(request.model_id)
             .ok_or_else(|| AppError::Validation("Modèle local inconnu.".into()))?;
-        if self.download.lock().map_err(lock_err)?.is_some() {
-            return Err(AppError::Provider(
-                "Un téléchargement est déjà en cours.".into(),
-            ));
-        }
+        // Test et pose dans **une seule** section critique : en deux verrouillages, deux
+        // appels concurrents franchissaient tous les deux le test, et le second écrasait le
+        // jeton du premier — rendant le téléchargement initial impossible à annuler.
         let cancel = CancellationToken::new();
-        *self.download.lock().map_err(lock_err)? = Some((request.model_id, cancel.clone()));
+        {
+            let mut en_cours = self.download.lock().map_err(lock_err)?;
+            if en_cours.is_some() {
+                return Err(AppError::Provider(
+                    "Un téléchargement est déjà en cours.".into(),
+                ));
+            }
+            *en_cours = Some((request.model_id, cancel.clone()));
+        }
         let base_url = match self
             .ensure_runtime_ready_with_progress(Some(&cancel), &on_progress)
             .await
