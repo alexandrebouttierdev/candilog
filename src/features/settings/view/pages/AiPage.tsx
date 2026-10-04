@@ -30,6 +30,7 @@ import { LocalInstallOverlay } from "../components/LocalInstallOverlay";
 import { AiTaskRouting } from "../components/AiTaskRouting";
 import { AI_TASKS, assignmentOf, mainLabel } from "../../model/taskRouting";
 import { RemoteModelPicker } from "../components/RemoteModelPicker";
+import { ProviderLogo } from "../components/ProviderGrid";
 import { cn } from "@/shared/lib/cn";
 import { type ConnectionTest } from "../../model/aiStatus";
 import { useManagedOllamaViewModel } from "../../viewmodel/useManagedOllamaViewModel";
@@ -310,6 +311,7 @@ export function AiPage() {
                   active ? "bg-elev shadow-[inset_2px_0_0_var(--ac)]" : "hover:bg-hover",
                 )}
               >
+                <ProviderLogo id={provider.id} className="size-5" />
                 <span className="min-w-0 flex-1">
                   <span className={cn("block truncate text-ui", active ? "font-medium text-tx" : "text-tx-2")}>
                     {provider.label}

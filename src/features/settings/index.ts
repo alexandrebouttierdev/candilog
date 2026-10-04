@@ -17,6 +17,7 @@ export {
 export {
   ManagedPublisherLogo,
   ProviderGrid,
+  ProviderLogo,
   logoManagedPublisher,
   providerLogo,
 } from "./view/components/ProviderGrid";

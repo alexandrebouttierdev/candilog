@@ -59,6 +59,32 @@ export function ManagedPublisherLogo({
   );
 }
 
+/**
+ * Logo d'un fournisseur, pour les surfaces qui le nomment hors de la grille — onglets
+ * verticaux de l'écran IA, sélecteur de modèles distants.
+ *
+ * Composant et non `<img>` recopié : la bascule `mono` (inversion en thème sombre des
+ * marques monochromes — OpenAI, Ollama, Personnalisé) vivait déjà en deux endroits, et une
+ * troisième copie aurait fini par diverger.
+ */
+export function ProviderLogo({
+  id,
+  className,
+}: {
+  id: ProviderOption["id"];
+  className?: string;
+}) {
+  const logo = providerLogo(id);
+  if (!logo) return null;
+  return (
+    <img
+      src={logo.src}
+      alt=""
+      className={cn("size-5 shrink-0 object-contain", logo.mono && "dark:invert", className)}
+    />
+  );
+}
+
 export const LOGO_CANDILOG_LOCAL = { src: logoCandilogLocal, mono: false };
 
 export function providerLogo(id: ProviderOption["id"]) {
