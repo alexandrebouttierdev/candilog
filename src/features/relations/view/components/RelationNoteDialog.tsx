@@ -1,13 +1,22 @@
-import { useState } from "react";
-import { toDisplayDate, toIsoDate } from "@/shared/lib/dates";
+import { Controller, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { toDisplayDate } from "@/shared/lib/dates";
 import { DateInput, FormField, ModalHost, TextArea } from "@/shared/ui";
 import { localToday } from "../../model/history";
-
-const MAX_NOTE = 2000;
+import {
+  MAX_NOTE_BODY,
+  relationNoteFormSchema,
+  type RelationNoteFormInput,
+  type RelationNoteFormValues,
+} from "../../model/schemas/relation-note.schema";
 
 /**
  * « Note » de l'inspecteur de Relations : un fait daté ajouté à l'historique de la fiche
  * (un appel, une réponse, une rencontre). La date est celle du fait, aujourd'hui par défaut.
+ *
+ * React Hook Form + Zod comme tout formulaire d'entité (`docs/CODE_RULES.md` §8) : la borne
+ * de 2 000 caractères et le format de date sont ainsi signalés dans le champ, et non par un
+ * refus du backend au moment d'enregistrer.
  */
 export function RelationNoteDialog({
   name,
@@ -24,17 +33,17 @@ export function RelationNoteDialog({
   onSave: (body: string, notedOn: string) => Promise<boolean>;
   onClose: () => void;
 }) {
-  const [body, setBody] = useState("");
-  const [date, setDate] = useState(() => toDisplayDate(localToday()));
-  const notedOn = toIsoDate(date);
-  const ready = body.trim() !== "" && notedOn !== null && !saving;
+  const form = useForm<RelationNoteFormInput, unknown, RelationNoteFormValues>({
+    resolver: zodResolver(relationNoteFormSchema),
+    defaultValues: { body: "", noted_on: toDisplayDate(localToday()) },
+    mode: "onSubmit",
+  });
 
-  const submit = () => {
-    if (!ready) return;
-    void onSave(body, notedOn).then((saved) => {
+  const submit = form.handleSubmit((values) => {
+    return onSave(values.body, values.noted_on).then((saved) => {
       if (saved) onClose();
     });
-  };
+  });
 
   return (
     <ModalHost
@@ -42,40 +51,52 @@ export function RelationNoteDialog({
       title="Ajouter une note"
       subtitle={`Dans l'historique de ${name}`}
       submitLabel="Ajouter la note"
-      submitDisabled={!ready}
+      submitDisabled={saving}
       busy={saving}
       width="480px"
       onClose={onClose}
-      onSubmit={submit}
+      onSubmit={() => void submit()}
     >
       <div className="flex flex-col gap-3">
-        <FormField label="Note" required missing={body.trim() === ""} error={error ?? undefined}>
-          {(props) => (
-            <TextArea
-              {...props}
-              autoFocus
-              rows={4}
-              maxLength={MAX_NOTE}
-              placeholder="Un appel, une réponse, une rencontre…"
-              value={body}
-              onChange={(event) => setBody(event.target.value)}
-            />
+        <Controller
+          control={form.control}
+          name="body"
+          render={({ field, fieldState }) => (
+            <FormField
+              label="Note"
+              required
+              missing={field.value.trim() === ""}
+              // L'erreur du backend prime : elle décrit un refus que le schéma n'a pas vu.
+              error={error ?? fieldState.error?.message}
+            >
+              {(props) => (
+                <TextArea
+                  {...props}
+                  {...field}
+                  autoFocus
+                  rows={4}
+                  maxLength={MAX_NOTE_BODY}
+                  placeholder="Un appel, une réponse, une rencontre…"
+                />
+              )}
+            </FormField>
           )}
-        </FormField>
-        <FormField
-          label="Date"
-          hint="celle du fait, pas de la saisie"
-          error={notedOn === null ? "Date invalide (JJ-MM-AAAA)." : undefined}
-        >
-          {(props) => (
-            <DateInput
-              {...props}
-              value={date}
-              invalid={notedOn === null}
-              onChange={(event) => setDate(event.target.value)}
-            />
+        />
+        <Controller
+          control={form.control}
+          name="noted_on"
+          render={({ field, fieldState }) => (
+            <FormField
+              label="Date"
+              hint="celle du fait, pas de la saisie"
+              error={fieldState.error?.message}
+            >
+              {(props) => (
+                <DateInput {...props} {...field} invalid={fieldState.invalid} />
+              )}
+            </FormField>
           )}
-        </FormField>
+        />
       </div>
     </ModalHost>
   );
