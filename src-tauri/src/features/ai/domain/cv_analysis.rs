@@ -141,11 +141,17 @@ pub fn model_name_suggests_vision(provider: &ProviderKind, model: &str) -> bool 
 
 #[must_use]
 pub fn managed_model_supports_vision(id: ManagedModelId) -> bool {
+    // Tous les modèles du catalogue acceptent les images : Ministral 3 (texte et image sur
+    // les trois tailles) et Gemma 4 (multimodal, encodeur visuel dédié). La liste reste
+    // explicite plutôt qu'un `true` : ajouter un modèle texte-only au catalogue ne doit pas
+    // le faire passer pour Vision par défaut.
     matches!(
         id,
         ManagedModelId::Ministral3Light
             | ManagedModelId::Ministral3Balanced
             | ManagedModelId::Ministral3Powerful
+            | ManagedModelId::Gemma4E2b
+            | ManagedModelId::Gemma4E4b
     )
 }
 
@@ -253,13 +259,13 @@ mod tests {
     }
 
     #[test]
-    fn lfm_catalogue_n_est_pas_vision() {
-        assert!(!managed_model_supports_vision(
-            ManagedModelId::Lfm25UltraLight
-        ));
-        assert!(
-            !detect_model_capabilities(&ProviderKind::CandilogLocal, "lfm2.5:1.2b", None).vision
-        );
+    fn gemma_4_du_catalogue_est_vision() {
+        // Les deux Gemma 4 remplacent les LFM2.5, qui étaient texte-only : le catalogue
+        // local n'a plus de modèle sans image, et la détection doit le refléter.
+        assert!(managed_model_supports_vision(ManagedModelId::Gemma4E2b));
+        assert!(managed_model_supports_vision(ManagedModelId::Gemma4E4b));
+        assert!(detect_model_capabilities(&ProviderKind::CandilogLocal, "gemma4:e4b", None).vision);
+        assert!(detect_model_capabilities(&ProviderKind::CandilogLocal, "gemma4:e2b", None).vision);
     }
 
     #[test]

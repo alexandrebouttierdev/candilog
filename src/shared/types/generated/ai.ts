@@ -182,18 +182,28 @@ export type ManagedModelDefinition = { id: ManagedModelId, category: ManagedMode
  */
 ollama_tag: string, approximate_download_bytes: number, recommended_ram_gb: number, };
 
-export type ManagedModelId = "lfm25350m" | "lfm25_ultra_light" | "ministral3_light" | "ministral3_balanced" | "ministral3_powerful" | "mistral_small_quality";
+export type ManagedModelId = "ministral3_light" | "gemma4_e2b" | "ministral3_balanced" | "gemma4_e4b" | "ministral3_powerful";
 
 /**
  * Éditeur du modèle Ollama — pilote le logo affiché sur les cartes du catalogue local.
  */
-export type ManagedModelPublisher = "liquid" | "mistral";
+export type ManagedModelPublisher = "mistral" | "google";
 
 export type ManagedModelStatus = { definition: ManagedModelDefinition, installed: boolean, active: boolean, machine_fit: MachineFit, recommended: boolean, last_benchmark: UserBenchmarkSummary | null, };
 
 export type ManagedOllamaDownloadProgress = { kind: ManagedDownloadKind, model_id: ManagedModelId | null, state: ManagedRuntimeState, downloaded_bytes: number, total_bytes: number, progress: number, label: string, };
 
-export type ManagedOllamaSettings = { active_model_id: ManagedModelId | null, installed_model_tags: Array<string>, runtime_state: ManagedRuntimeState, runtime_port: number | null, runtime_version: string | null, benchmark_history: Array<StoredBenchmarkResult>, last_error: string | null, };
+export type ManagedOllamaSettings = { 
+/**
+ * Modèle actif, oublié plutôt que fatal s'il a quitté le catalogue.
+ *
+ * `#[serde(default)]` ne couvre que le champ **absent** : une valeur devenue inconnue —
+ * un modèle retiré du catalogue, comme les LFM2.5 — ferait échouer la désérialisation de
+ * tout le bloc de réglages, que le dépôt archiverait alors en `parametres_corrompus`.
+ * L'utilisateur perdrait ses clés, son routage et ses préférences pour un seul champ.
+ * Ici l'inconnu retombe sur `None` : l'écran redemande simplement quel modèle activer.
+ */
+active_model_id: ManagedModelId | null, installed_model_tags: Array<string>, runtime_state: ManagedRuntimeState, runtime_port: number | null, runtime_version: string | null, benchmark_history: Array<StoredBenchmarkResult>, last_error: string | null, };
 
 export type ManagedOllamaStatus = { runtime_state: ManagedRuntimeState, runtime_version: string | null, port: number | null, models_disk_bytes: number, active_model: ManagedModelDefinition | null, models: Array<ManagedModelStatus>, last_error: string | null, };
 

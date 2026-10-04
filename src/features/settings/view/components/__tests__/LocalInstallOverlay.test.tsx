@@ -39,7 +39,7 @@ const STATUS: ManagedOllamaStatus = {
   models: [
     modele("ministral3_light", "Ministral 3 · 3B", { recommended: true }),
     modele("ministral3_balanced", "Ministral 3 · 8B"),
-    modele("mistral_small_quality", "Mistral Small", { machine_fit: "insufficient_memory" }),
+    modele("gemma4_e4b", "Gemma 4 E4B", { machine_fit: "insufficient_memory" }),
   ],
   last_error: null,
 };
@@ -73,7 +73,7 @@ describe("installer l'IA locale", () => {
     render(<LocalInstallOverlay vm={viewModel(vi.fn())} onClose={vi.fn()} />);
 
     expect(screen.getByRole("radio", { name: /Ministral 3 · 3B/ })).toHaveAttribute("aria-checked", "true");
-    expect(screen.getByRole("radio", { name: /Mistral Small/ })).toBeDisabled();
+    expect(screen.getByRole("radio", { name: /Gemma 4 E4B/ })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Installer · 2,1 Go" })).toBeEnabled();
   });
 

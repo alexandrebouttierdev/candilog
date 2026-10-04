@@ -24,6 +24,30 @@ HTTP Ollama existant est réutilisé avec l'endpoint local du processus géré. 
 RAM le permet — bon compromis pour lettres, CV et analyses. Windows n'est
 pas encore supporté (archive `.zip` non extraite).
 
+Le catalogue porte cinq modèles, tous capables d'analyser des images, et leur description
+s'en tient à des **faits** vérifiables sur la page Ollama du modèle — paramètres, fenêtre de
+contexte, modalités, poids — plutôt qu'à un classement de qualité. La comparaison mesurée,
+elle, existe déjà : c'est le benchmark utilisateur, dont le score s'affiche sur la carte de
+chaque modèle installé.
+
+| Modèle | Tag | Poids | RAM | Contexte | Particularité |
+| --- | --- | --- | --- | --- | --- |
+| Ministral 3 3B | `ministral-3:3b` | 3,0 Go | 8 Gio | 256 k | Le plus rapide et le plus sobre ; **recommandé** |
+| Gemma 4 E2B | `gemma4:e2b` | 7,5 Go | 16 Gio | 128 k | 2,3 G paramètres effectifs ; texte, image **et son**, encodeur visuel dédié (~150 M) |
+| Ministral 3 8B | `ministral-3:8b` | 6,0 Go | 16 Gio | 256 k | Deux fois les paramètres du 3B, à contexte identique |
+| Gemma 4 E4B | `gemma4:e4b` | 9,5 Go | 24 Gio | 128 k | 4,5 G paramètres effectifs ; le plus lourd à télécharger |
+| Ministral 3 14B | `ministral-3:14b` | 9,1 Go | 24 Gio | 256 k | Le plus grand ; rédaction la plus détaillée, au prix de la vitesse |
+
+Les Ministral 3 viennent de Mistral AI sous Apache 2.0 et annoncent le français parmi leurs
+langues principales ; les Gemma 4 de Google DeepMind. Le catalogue n'a plus de modèle sous
+8 Gio de RAM depuis le retrait des LFM2.5 : sous ce seuil, aucun modèle n'est recommandé —
+mieux vaut ne rien proposer qu'un modèle qui ne tiendra pas en mémoire.
+
+Un modèle retiré du catalogue ne casse pas une installation existante : un
+`managed_ollama.active_model_id` devenu inconnu retombe sur « aucun modèle actif » au lieu
+de rendre tout le bloc de réglages illisible, et les fichiers déjà tirés restent sur le
+disque, à retirer depuis Ollama.
+
 HTTPS obligatoire et adresses privées refusées dès que l'endpoint quitte la machine.
 Deux exemptions, et deux seulement : **Ollama**, qui ne sert pas HTTPS et reste donc joignable
 en clair y compris sur une autre machine du réseau ; et un **point de terminaison
@@ -158,10 +182,11 @@ garanti.
 
 La capacité Vision est déterminée pour le **modèle réellement sélectionné** (métadonnées
 Ollama `/api/show` si disponibles — y compris via un endpoint Custom qui répond à
-`/api/show` — sinon catalogue Candilog et familles connues). Ministral 3 du catalogue
-local est Vision ; LFM2.5 ne l'est pas. **Gemma 3** : les variantes `4b` et plus sont
-Vision ; `gemma3:1b` et `270m` sont texte-only (un envoi d'images provoque un HTTP 400
-chez Ollama).
+`/api/show` — sinon catalogue Candilog et familles connues). **Tous** les modèles du
+catalogue local sont Vision depuis le retrait des LFM2.5, qui étaient les seuls texte-only ;
+la liste reste néanmoins explicite côté code, pour qu'un futur modèle sans image ne passe pas
+pour Vision par défaut. **Gemma 3** : les variantes `4b` et plus sont Vision ; `gemma3:1b` et
+`270m` sont texte-only (un envoi d'images provoque un HTTP 400 chez Ollama).
 
 Comportement :
 

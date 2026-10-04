@@ -12,7 +12,6 @@ import logoGemini from "@/assets/providers/googlegemini.svg";
 import logoMistral from "@/assets/providers/mistralai.svg";
 import logoDeepseek from "@/assets/providers/deepseek.svg";
 import logoCustom from "@/assets/providers/custom.svg";
-import logoLuth from "@/assets/providers/luth.svg";
 import logoCandilogLocal from "@/assets/providers/ollamacandilog.png";
 
 const LOGOS: Record<
@@ -33,8 +32,8 @@ export const MANAGED_PUBLISHER_LOGOS: Record<
   ManagedModelPublisher,
   { src: string; label: string; mono: boolean }
 > = {
-  liquid: { src: logoLuth, label: "Liquid", mono: false },
   mistral: { src: logoMistral, label: "Mistral", mono: false },
+  google: { src: logoGemini, label: "Google DeepMind", mono: false },
 };
 
 export function logoManagedPublisher(publisher: ManagedModelPublisher) {

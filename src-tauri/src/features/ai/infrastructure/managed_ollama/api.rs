@@ -240,12 +240,8 @@ mod tests {
             completed: None,
             total: None,
         };
-        let progress = pull_event_progress(
-            &event,
-            "lfm2.5:ultra-light",
-            ManagedModelId::Lfm25UltraLight,
-        )
-        .expect("progression manifeste");
+        let progress = pull_event_progress(&event, "gemma4:e2b", ManagedModelId::Gemma4E2b)
+            .expect("progression manifeste");
         assert_eq!(progress.progress, 0);
         assert_eq!(progress.label, "Récupération du manifeste…");
     }
@@ -273,12 +269,8 @@ mod tests {
             completed: None,
             total: Some(1_000),
         };
-        let progress = pull_event_progress(
-            &event,
-            "lfm2.5:ultra-light",
-            ManagedModelId::Lfm25UltraLight,
-        )
-        .expect("progression téléchargement");
+        let progress = pull_event_progress(&event, "gemma4:e2b", ManagedModelId::Gemma4E2b)
+            .expect("progression téléchargement");
         assert_eq!(progress.downloaded_bytes, 0);
         assert_eq!(progress.total_bytes, 1_000);
     }
