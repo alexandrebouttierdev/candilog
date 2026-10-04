@@ -1,12 +1,21 @@
 import { useQuery } from "@tanstack/react-query";
-import { APPLICATIONS_KEY, applicationService } from "@/features/applications";
-import { EMPTY_FILTER } from "@/features/applications";
-import type { ApplicationFilter } from "@/features/applications";
-import { COMPANIES_KEY, companyService } from "@/features/companies";
-import { CONTACTS_KEY, contactService } from "@/features/contacts";
-import { COVER_LETTERS_KEY, RESUME_KEY, documentsService } from "@/features/documents";
-import { horizonOf, useAgenda } from "@/features/analytics";
-import { PROFILE_KEY, profileService } from "@/features/profile";
+// Modules feuilles et non barils de feature : la coque charge ce hook à chaque démarrage, et
+// un baril tire tout ce qu'il réexporte. Les écrans lourds (éditeur de CV, feuilles A4)
+// atterrissaient ainsi dans le chunk d'entrée, ce qui annulait le `lazy()` d'`AppRouter`.
+import { applicationService } from "@/features/applications/services/applicationService";
+import { APPLICATIONS_KEY } from "@/features/applications/viewmodel/useApplicationsViewModel";
+import { EMPTY_FILTER } from "@/features/applications/model/schemas/application-filter.schema";
+import type { ApplicationFilter } from "@/features/applications/services/applicationService";
+import { COMPANIES_KEY } from "@/features/companies/viewmodel/companyKeys";
+import { companyService } from "@/features/companies/services/companyService";
+import { CONTACTS_KEY } from "@/features/contacts/viewmodel/contactKeys";
+import { contactService } from "@/features/contacts/services/contactService";
+import { COVER_LETTERS_KEY, RESUME_KEY } from "@/features/documents/viewmodel/documentKeys";
+import { documentsService } from "@/features/documents/services/documentsService";
+import { horizonOf } from "@/features/analytics/model/agenda";
+import { useAgenda } from "@/features/analytics/viewmodel/useAgenda";
+import { PROFILE_KEY } from "@/features/profile/viewmodel/useProfileViewModel";
+import { profileService } from "@/features/profile/services/profileService";
 
 /** Toutes les candidatures, sans filtre : le décompte de la navigation est un total. */
 const TOUTES: ApplicationFilter = { ...EMPTY_FILTER, search: "", sort: "date", descending: true, ids: [] };

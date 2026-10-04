@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ApplicationsPage } from "@/features/applications";
+import { ApplicationsPage } from "@/features/applications/view/pages/ApplicationsPage";
 import type { ActiveSavedView, ApplicationFilter } from "@/features/applications";
 import { SaveViewDialog, useSavedViews } from "@/features/views";
 
