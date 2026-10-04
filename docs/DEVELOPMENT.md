@@ -198,14 +198,25 @@ polices, valeurs parasites, erreurs de console. Les PDF exportés sont ouverts a
 en image. Le banc ne fait pas partie du bundle — `vite build` n'a qu'une entrée,
 `index.html`.
 
+Le banc **lit** les artefacts, il ne les produit pas : exécuter d'abord le scénario Rust
+ci-dessus, sans quoi `documents.spec.ts` saute chaque cible absente et le contrôle ne vaut
+rien. Le mode synthétique suffit.
+
 ```bash
 yarn playwright install chromium   # une fois
+
+# 1. produire les artefacts, 2. les mesurer
+CANDILOG_E2E=1 CANDILOG_E2E_SYNTHETIC=1   cargo test --manifest-path src-tauri/Cargo.toml --locked --test e2e_documents
 yarn e2e                       # lance le serveur Vite au besoin
+
 yarn e2e:typecheck
 ```
 
 Prérequis : `poppler-utils` (`pdfinfo`, `pdftotext`, `pdftoppm`). Les artefacts et les
 rapports sont écrits dans `test-output/`, ignoré par Git.
+
+Un cas de `content.spec.ts` reste ignoré hors mode live : il compare la lettre à l'offre, et
+exige donc `CANDILOG_E2E_OFFER`. C'est le seul `skip` attendu.
 
 ## Structure du dépôt
 

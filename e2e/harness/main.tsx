@@ -92,6 +92,11 @@ async function demarrer() {
           <QueryClientProvider client={clientAvecProfil(lettre.identity)}>
             <LetterPaper
               editable={false}
+              // `LetterPaper` reçoit l'identité en prop depuis que le ViewModel l'injecte ;
+              // le banc, resté en arrière, ne semait que le client de requêtes. La feuille
+              // se rendait donc sans son bloc d'identité — nom, titre, coordonnées — et les
+              // mesures de débordement portaient sur une lettre amputée de son en-tête.
+              identity={lettre.identity}
               fields={{
                 company: lettre.company,
                 job_title: lettre.job_title,

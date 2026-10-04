@@ -27,6 +27,7 @@
 
 use candilog_lib::core::database::helpers::connection;
 use candilog_lib::core::database::{open_pool, run_local_migrations, SqlitePool};
+use candilog_lib::core::utils::text::elider;
 use candilog_lib::features::ai::application::AiService;
 use candilog_lib::features::ai::domain::{
     profile_content_catalog, profile_score, AtsAnalysis, AtsContentRecommendation,
@@ -508,9 +509,14 @@ async fn obtenir_lettre(
                 "{} {}",
                 cas.profile.identity.first_name, cas.profile.identity.name
             );
+            // `elider` et non une élision figée dans le gabarit : « au sein de Astek » doit
+            // s'écrire « au sein d'Astek », et c'est exactement ce que le composeur réel
+            // fait (`cover_letter.rs`). Coder la règle à la main ici produisait un corps que
+            // le banc Playwright signalait à juste titre comme fautif.
             let mut paragraphes = vec![format!(
-                "Madame, Monsieur,\n\nJe me permets de vous adresser ma candidature pour le poste d'{} au sein de {}.",
-                JOB_TITLE, COMPANY
+                "Madame, Monsieur,\n\nJe me permets de vous adresser ma candidature pour le poste {} au sein {}.",
+                elider("de", JOB_TITLE),
+                elider("de", COMPANY)
             )];
             if let Some(resume) = cas.profile.identity.resume.as_deref() {
                 paragraphes.push(format!(
