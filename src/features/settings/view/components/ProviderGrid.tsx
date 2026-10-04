@@ -27,13 +27,18 @@ const LOGOS: Record<
   custom: { src: logoCustom, mono: true },
 };
 
-/** Logos des éditeurs du catalogue Ollama géré — propriété `publisher`, jamais le nom affiché. */
-export const MANAGED_PUBLISHER_LOGOS: Record<
-  ManagedModelPublisher,
-  { src: string; label: string; mono: boolean }
+/**
+ * Logos des éditeurs du catalogue Ollama géré — propriété `publisher`, jamais le nom affiché.
+ *
+ * Volontairement **partiel** : tant qu'on ne dispose pas de la marque officielle d'un
+ * éditeur, mieux vaut n'afficher aucun logo que d'en détourner un autre. Gemma et Gemini
+ * sont deux produits Google distincts, et `googlegemini.svg` — qui porte bien le titre
+ * « Google Gemini » — reste réservé au fournisseur distant Gemini, où il est juste.
+ */
+export const MANAGED_PUBLISHER_LOGOS: Partial<
+  Record<ManagedModelPublisher, { src: string; label: string; mono: boolean }>
 > = {
   mistral: { src: logoMistral, label: "Mistral", mono: false },
-  google: { src: logoGemini, label: "Google DeepMind", mono: false },
 };
 
 export function logoManagedPublisher(publisher: ManagedModelPublisher) {
@@ -49,6 +54,15 @@ export function ManagedPublisherLogo({
   className?: string;
 }) {
   const logo = logoManagedPublisher(publisher);
+  if (!logo) {
+    // Repli sur l'initiale de l'éditeur, comme `Avatar` : la tuile reste occupée et
+    // l'identité lisible, sans inventer une marque que nous n'avons pas.
+    return (
+      <span className={cn("text-small font-medium text-tx-4", className)}>
+        {publisherInitial(publisher)}
+      </span>
+    );
+  }
   return (
     <img
       src={logo.src}
@@ -56,6 +70,11 @@ export function ManagedPublisherLogo({
       className={cn("size-5 shrink-0 object-contain", logo.mono && "dark:invert", className)}
     />
   );
+}
+
+/** Initiale d'un éditeur sans logo officiel disponible. */
+function publisherInitial(publisher: ManagedModelPublisher): string {
+  return publisher.charAt(0).toUpperCase();
 }
 
 /**
