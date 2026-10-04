@@ -3,9 +3,26 @@
 ## Revue des dépendances natives
 
 La politique `cargo-deny` n'ignore que les avis « non maintenu » sans correctif sûr du
-runtime Tauri Linux stable : GTK3 (et `proc-macro-error` via GTK3), ainsi que les crates
+runtime Tauri Linux stable : `proc-macro-error` via les liaisons GTK3, et les crates
 `rust-unic` tirées par `urlpattern` dans `tauri-utils`. Ces exceptions sont réexaminées le
-30 novembre 2026 ou dès qu'une version stable de Tauri retire ces chaînes.
+31 mai 2027 ou dès qu'une version stable de Tauri retire ces chaînes.
+
+**Revue du 4 octobre 2026.** Elle a servi à quelque chose, et c'est l'argument pour la
+refaire. Deux constats :
+
+- les dix avis des liaisons GTK3 elles-mêmes (`RUSTSEC-2024-0411` à `-0420` : `gtk`,
+  `gdk`, `atk`, `gtk-sys`…) ont été **retirés** de la base RustSec le 14 août 2026. Les
+  crates sont toujours dans l'arbre, mais plus les avis : `cargo deny` les signalait en
+  `advisory-not-detected`, et les garder faisait exactement croire à un contrôle qui
+  n'avait plus lieu. Ils sont retirés de `deny.toml` ;
+- `rustls` 0.23.43 portait `RUSTSEC-2026-0285` (gravité 5,3), une acceptation de messages
+  de handshake TLS 1.3 au mauvais niveau de chiffrement. C'est la pile TLS de **tous** les
+  appels sortants — fournisseurs IA et vérification de mise à jour. Un correctif existait
+  (0.23.45) : l'avis était donc bloquant par construction, et `cargo deny check` échouait,
+  ce qui interdisait toute publication puisque le job `quality` l'exécute.
+
+L'avis `RUSTSEC-2024-0429` (`glib`, *unsound*) reste signalé en avertissement, sans mise à
+jour disponible sur la lignée GTK3 ; il n'est pas bloquant et n'a pas à rejoindre la liste.
 
 À l'échéance, un `cargo deny check` vert ne prouve rien : il le restera tant que la liste
 n'aura pas changé. La revue consiste à rejouer le contrôle **sans** la liste d'exceptions,
