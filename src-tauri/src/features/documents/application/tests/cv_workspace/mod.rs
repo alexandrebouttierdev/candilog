@@ -175,6 +175,7 @@ fn workspace_avec_recommandation(original: &str, proposed: &str) -> ResumeWorksp
     prepare_workspace(&profile(), generation, None).unwrap()
 }
 
+mod ajoute_une_competence_et_recalcule;
 mod applique_une_suggestion_textuelle;
 mod calcule_le_gain_d_une_competence;
 mod compose_un_document_autonome;
