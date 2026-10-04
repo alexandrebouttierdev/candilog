@@ -39,10 +39,22 @@ export class AppError extends Error {
    */
   readonly code: string;
 
-  constructor(dto: AppErrorDto) {
+  /**
+   * Détail technique, hors du message affiché.
+   *
+   * Renseigné quand l'IPC échoue avant d'atteindre une commande : le texte brut de Tauri est
+   * en anglais et nomme des composants internes (« Command … not found »), ce que ni §1
+   * (messages utilisateur en français) ni §13 (les détails internes restent hors de l'UI) ne
+   * tolèrent dans un toast. Il reste disponible ici pour le diagnostic, en position
+   * secondaire, sans être le message principal.
+   */
+  readonly detail: string | undefined;
+
+  constructor(dto: AppErrorDto, detail?: string) {
     super(dto.message);
     this.name = "AppError";
     this.code = dto.code;
+    this.detail = detail;
   }
 
   /** L'utilisateur a annulé : à ignorer silencieusement plutôt qu'à signaler. */
@@ -71,11 +83,13 @@ function isAppErrorDto(value: unknown): value is AppErrorDto {
 export function toAppError(value: unknown): AppError {
   if (value instanceof AppError) return value;
   if (isAppErrorDto(value)) return new AppError(value);
-  return new AppError({
-    code: "IPC_ERROR",
-    message:
-      typeof value === "string"
-        ? value
-        : "Une erreur inattendue est survenue lors de la communication avec Candilog.",
-  });
+  return new AppError(
+    {
+      code: "IPC_ERROR",
+      message: "Une erreur inattendue est survenue lors de la communication avec Candilog.",
+    },
+    // La chaîne brute n'est plus le message affiché : elle est en anglais et nomme des
+    // composants internes. Elle reste accessible en détail, pour le diagnostic.
+    typeof value === "string" ? value : undefined,
+  );
 }

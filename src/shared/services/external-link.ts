@@ -21,7 +21,7 @@ export async function openExternal(url: string): Promise<void> {
     useUiStore.getState().notify({
       tone: "error",
       title: "Lien impossible à ouvrir",
-      detail: error instanceof AppError ? error.message : undefined,
+      detail: error instanceof AppError ? (error.detail ?? error.message) : undefined,
     });
   }
 }
