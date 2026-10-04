@@ -1,10 +1,8 @@
 import { useRef, useState } from "react";
 import type { KeyboardEvent, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
 import type { CoverLetter, ResumeSummary } from "@/shared/types/generated/documents";
-import { documentsService } from "../../services/documentsService";
-import { COVER_LETTERS_KEY, RESUME_KEY } from "../../viewmodel/documentKeys";
+import { useDocumentCounts } from "../../viewmodel/useDocumentCounts";
 import { useDocumentsViewModel } from "../../viewmodel/useDocumentsViewModel";
 import type { DocumentFilter, DocumentSelection } from "../../viewmodel/useDocumentsViewModel";
 import { labelTone } from "./documentPageSupport";
@@ -71,26 +69,7 @@ export function DocumentsPage({ filter }: { filter: DocumentFilter }) {
   const searchInput = useRef<HTMLInputElement>(null);
   const [menu, setMenu] = useState<MenuAnchor | null>(null);
 
-  // Décomptes des onglets : mêmes clés que la navigation pour CV et lettres.
-  const resumeCount = useQuery({
-    queryKey: [...RESUME_KEY, "navigation"],
-    queryFn: () => documentsService.listResumePage({ page: 1, page_size: 1, search: "" }),
-  });
-  const letterCount = useQuery({
-    queryKey: [...COVER_LETTERS_KEY, "navigation"],
-    queryFn: () => documentsService.listCoverLettersPage({ page: 1, page_size: 1, search: "" }),
-  });
-  const analysisCount = useQuery({
-    queryKey: [...RESUME_KEY, "navigation", "analyses"],
-    queryFn: () => documentsService.listResumePage({ page: 1, page_size: 1, search: "", scored_only: true }),
-  });
-  const counts: Record<DocumentFilter, number | undefined> = {
-    all:
-      resumeCount.data && letterCount.data ? resumeCount.data.total + letterCount.data.total : undefined,
-    resumes: resumeCount.data?.total,
-    letters: letterCount.data?.total,
-    analyses: analysisCount.data?.total,
-  };
+  const counts = useDocumentCounts();
 
   const open = () => {
     // `documentId` : enregistrer depuis le générateur ajoute une version à ce document.
