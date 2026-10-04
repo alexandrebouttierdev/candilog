@@ -11,6 +11,7 @@ import {
   ignoreContentRecommendation,
   isResumeWorkspace,
   missingProfileSkills,
+  reachableScore,
   normalizeResumeWorkspace,
   removeExperienceBullet,
   removeProjectBullet,
@@ -242,3 +243,81 @@ describe("relecture linguistique du CV", () => {
     expect(JSON.stringify(corrected.document)).not.toContain("Texte inventé");
   });
 });
+
+describe("score ATS atteignable", () => {
+  it("vaut le score courant quand rien n'est proposé", () => {
+    const workspace = workspaceFixture();
+
+    expect(reachableScore(workspace)).toBe(workspace.score.total);
+  });
+
+  it("additionne les gains des recommandations de contenu", () => {
+    const base = workspaceFixture();
+    const workspace = {
+      ...base,
+      score: { ...base.score, total: 20 },
+      content_recommendations: [
+        { ...recommandationContenu("a"), score_delta: 13 },
+        { ...recommandationContenu("b"), score_delta: 7 },
+      ],
+    };
+
+    expect(reachableScore(workspace)).toBe(40);
+  });
+
+  it("ignore une proposition acceptée, refusée ou inapplicable", () => {
+    const base = workspaceFixture();
+    const workspace = {
+      ...base,
+      score: { ...base.score, total: 50 },
+      proposals: [
+        { ...proposition("p1"), gain: 5, status: "pending" as const, applicable: true },
+        { ...proposition("p2"), gain: 9, status: "accepted" as const, applicable: true },
+        { ...proposition("p3"), gain: 9, status: "rejected" as const, applicable: true },
+        // Le texte a changé depuis la génération : la proposition n'offre plus rien.
+        { ...proposition("p4"), gain: 9, status: "pending" as const, applicable: false },
+      ],
+    };
+
+    expect(reachableScore(workspace)).toBe(55);
+  });
+
+  it("ne dépasse jamais 100", () => {
+    const base = workspaceFixture();
+    const workspace = {
+      ...base,
+      score: { ...base.score, total: 95 },
+      content_recommendations: [{ ...recommandationContenu("a"), score_delta: 40 }],
+    };
+
+    expect(reachableScore(workspace)).toBe(100);
+  });
+});
+
+/** Recommandation de contenu minimale — la mesure de mise en page vient du fixture. */
+function recommandationContenu(id: string) {
+  return {
+    id,
+    label: id,
+    reason: "",
+    relevance: "relevant" as const,
+    action: { type: "add" as const, item_id: id },
+    score_delta: 0,
+    layout_after: workspaceFixture().layout,
+  };
+}
+
+/** Proposition de reformulation minimale. */
+function proposition(id: string) {
+  return {
+    id,
+    kind: "text_replacement" as const,
+    target: { type: "profile" as const },
+    label: id,
+    original_text: "avant",
+    proposed_text: "après",
+    gain: 0,
+    status: "pending" as const,
+    applicable: true,
+  };
+}

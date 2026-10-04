@@ -198,6 +198,33 @@ export function availableProfileItems(workspace: ResumeWorkspace): ResumeProfile
   });
 }
 
+/**
+ * Score ATS atteignable si toutes les actions encore proposées étaient suivies.
+ *
+ * Le document s'ouvre sans compétences — elles restent dans la bibliothèque du profil
+ * jusqu'à un choix de l'utilisateur (`docs/AI.md`) — donc un profil parfaitement adapté
+ * affiche un score bas à la génération. Sans repère, ce chiffre se lit comme un verdict
+ * alors que c'est un point de départ.
+ *
+ * Même calcul que `LetterFit.potential` côté lettre : la **somme des gains affichés**,
+ * plafonnée à 100, pour que « jusqu'à » tombe juste par rapport à la liste que l'utilisateur
+ * a sous les yeux. Les gains sont simulés un à un et ne se composent pas exactement ; c'est
+ * un plafond indicatif, pas une promesse — d'où « jusqu'à ».
+ *
+ * Seules les actions réellement actionnables comptent : une proposition déjà acceptée,
+ * refusée, ou devenue inapplicable parce que le texte a changé, n'offre plus rien.
+ */
+export function reachableScore(workspace: ResumeWorkspace): number {
+  const gainsContenu = workspace.content_recommendations.reduce(
+    (total, recommendation) => total + recommendation.score_delta,
+    0,
+  );
+  const gainsPropositions = workspace.proposals
+    .filter((proposal) => proposal.status === "pending" && proposal.applicable)
+    .reduce((total, proposal) => total + proposal.gain, 0);
+  return Math.min(100, workspace.score.total + gainsContenu + gainsPropositions);
+}
+
 /** Exigences de l'offre absentes à la fois du CV et de la bibliothèque du profil. */
 export function missingProfileSkills(workspace: ResumeWorkspace): string[] {
   const profileSkills = workspace.profile_library

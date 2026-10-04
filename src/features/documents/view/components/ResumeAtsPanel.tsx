@@ -5,7 +5,7 @@ import type {
   ResumeProposal,
   ResumeWorkspace,
 } from "@/shared/types/generated/documents";
-import { availableProfileItems, missingProfileSkills } from "../../model/resumeWorkspace";
+import { availableProfileItems, missingProfileSkills, reachableScore } from "../../model/resumeWorkspace";
 import { Button, StatusPill } from "@/shared/ui";
 
 const LAYOUT_LABELS: Record<ResumeLayoutStatus, { label: string; tone: "success" | "neutral" | "warning" | "danger" }> = {
@@ -47,6 +47,7 @@ export function ResumeAtsPanel({
 }) {
   const layout = LAYOUT_LABELS[workspace.layout.status];
   const scoreEvolution = workspace.score.total - workspace.initial_score;
+  const atteignable = reachableScore(workspace);
   const available = availableProfileItems(workspace);
   const missing = missingProfileSkills(workspace);
   const hasOffer = Boolean(workspace.job_offer.title.trim()
@@ -61,15 +62,26 @@ export function ResumeAtsPanel({
             <p className="text-meta font-medium text-ink-faint">Score ATS</p>
             <p className="tabular text-[22px] font-semibold leading-none text-ink">
               {workspace.score.total}<span className="ml-1 text-label font-normal text-ink-faint">/ 100</span>
+              {atteignable > workspace.score.total ? (
+                <span className="ml-2 text-label font-normal text-ink-faint">
+                  jusqu’à {atteignable}
+                </span>
+              ) : null}
             </p>
           </div>
           <span className={`tabular text-meta font-semibold ${scoreEvolution > 0 ? "text-success" : scoreEvolution < 0 ? "text-danger" : "text-ink-faint"}`}>
             {scoreEvolution > 0 ? "+" : ""}{scoreEvolution} pt{Math.abs(scoreEvolution) > 1 ? "s" : ""} depuis la génération
           </span>
         </div>
-        <div className="h-1.5 overflow-hidden rounded-pill bg-fill" aria-hidden="true">
+        <div className="relative h-1.5 overflow-hidden rounded-pill bg-fill" aria-hidden="true">
+          {/* Deux teintes, comme la barre d'adéquation de la lettre : le score acquis
+              par-dessus la part que les actions restantes ajouteraient. */}
           <div
-            className={workspace.score.total >= 70 ? "h-full rounded-pill bg-success" : workspace.score.total >= 45 ? "h-full rounded-pill bg-warning" : "h-full rounded-pill bg-danger"}
+            className="absolute inset-y-0 left-0 rounded-pill bg-accent-tint"
+            style={{ width: `${atteignable}%` }}
+          />
+          <div
+            className={`absolute inset-y-0 left-0 rounded-pill ${workspace.score.total >= 70 ? "bg-success" : workspace.score.total >= 45 ? "bg-warning" : "bg-danger"}`}
             style={{ width: `${workspace.score.total}%` }}
           />
         </div>

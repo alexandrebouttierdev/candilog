@@ -359,6 +359,13 @@ Réutiliser la recette du voisin plutôt que d’en inventer une.
   gauche, phases au centre (choix du fichier, analyse, revue élément par élément éditable,
   bilan), « Importer les éléments sélectionnés » (`⌘S`) en haut. « Annuler » arrête aussi
   une analyse en cours ; rien n'est écrit avant validation.
+- Éditeur de CV, panneau ATS (`ResumeAtsPanel`) : le score porte un « jusqu'à N » et la
+  barre une seconde teinte dès qu'il reste des actions — jumeau du `LetterFitPanel`. Le
+  document s'ouvre sans compétences (elles attendent dans la bibliothèque du profil), donc un
+  profil bien adapté affiche un score bas à la génération : sans ce repère, ce chiffre se lit
+  comme un verdict au lieu d'un point de départ. C'est la **somme des gains affichés**,
+  plafonnée à 100, pour qu'elle tombe juste par rapport à la liste sous les yeux — un plafond
+  indicatif, d'où « jusqu'à », et non une promesse.
 - Lettre, colonne droite après rédaction (`LetterFitPanel`) : « 62 / 100 · adéquation »,
   « jusqu'à 81 » (score si toutes les recommandations restantes étaient suivies), barre à
   deux teintes ; recommandations « Aborder « … » » avec le fait du profil cité, gain `+n`,
