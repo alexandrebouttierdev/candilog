@@ -129,6 +129,12 @@ jobs:
       - name: Vérifier la chaîne complète des documents
         env:
           CANDILOG_E2E: "1"
+          # Mode synthétique et non rejeu : le rejeu lit les générations enregistrées sous
+          # `test-output/`, qui n'est pas versionné et n'existe donc pas sur un checkout
+          # neuf — l'étape échouait sur les dix profils, « aucune génération enregistrée ».
+          # Le mode synthétique compose des artefacts factuels sans cache ni appel IA, et
+          # exerce ce que cette étape doit protéger : composition, mesure et export PDF.
+          CANDILOG_E2E_SYNTHETIC: "1"
         run: cargo test --manifest-path src-tauri/Cargo.toml --locked --test e2e_documents
 
   build:

@@ -52,8 +52,9 @@ GitHub Release **publique** lorsque le tag `v<version>` n'existe pas encore. Un
 `workflow_dispatch` permet aussi un lancement manuel.
 
 Le job `quality` exécute d'abord lint, tests et build frontend, puis formatage, Clippy,
-tests Rust, `cargo-deny` et le scénario de bout en bout des documents en mode rejeu
-(`CANDILOG_E2E=1`, sans appel au fournisseur IA). Les jobs de build dépendent explicitement de ce contrôle et ne
+tests Rust, `cargo-deny` et le scénario de bout en bout des documents en mode **synthétique**
+(`CANDILOG_E2E=1 CANDILOG_E2E_SYNTHETIC=1`, sans appel au fournisseur IA ni cache : le rejeu
+lirait `test-output/`, que le dépôt ne versionne pas). Les jobs de build dépendent explicitement de ce contrôle et ne
 peuvent donc produire aucun paquet s'il échoue. Toutes les actions tierces sont référencées
 par leur SHA complet ; les droits d'écriture sur le dépôt et l'OIDC sont réservés au seul
 job `publish`.

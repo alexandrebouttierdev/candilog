@@ -45,7 +45,12 @@ Le paquet macOS cible macOS 11.0 au minimum. Cette borne, déclarée dans
 `tauri.conf.json`, couvre les API requises par le runtime natif et reste cohérente avec
 la cible minimale du binaire produit par la toolchain de release.
 
-Outils facultatifs : `cargo-deny` (audit des dépendances Rust, non installé par le dépôt).
+Outils d'audit des dépendances Rust, non installés par le dépôt — à poser une fois
+(`cargo install cargo-deny cargo-audit --locked`) :
+
+- `cargo-deny` : licences, sources et avis de sécurité selon la politique de `deny.toml`.
+  Le job `quality` l'exécute, donc un avis bloquant interdit toute publication ;
+- `cargo-audit` : avis RustSec seuls, utile pour une vérification rapide hors politique.
 
 ## Installation
 
@@ -148,11 +153,20 @@ le formatage Rust, `yarn build` couvre le typage TypeScript.
 `prepare_workspace`, `ResumePdf`, `CoverLetterPdf` — pour les profils fictifs de
 `src-tauri/tests/fixtures/profiles/`, et dépose ses artefacts dans `test-output/`
 (profil source, génération, poste de travail, PDF). Il est **ignoré** tant que
-`CANDILOG_E2E` est absent : aucune suite standard ne déclenche d'appel payant. Le mode
-rejeu, lui, ne demande ni réseau ni fournisseur : le job `quality` du workflow de release
-le rejoue à chaque publication (`CANDILOG_E2E=1`, sans `CANDILOG_E2E_LIVE`).
+`CANDILOG_E2E` est absent : aucune suite standard ne déclenche d'appel payant. Ni le mode
+synthétique ni le rejeu ne demandent de réseau ou de fournisseur ; le job `quality` du
+workflow de release exécute le **synthétique** à chaque publication
+(`CANDILOG_E2E=1 CANDILOG_E2E_SYNTHETIC=1`).
+
+Le rejeu suppose des générations déjà enregistrées dans `test-output/`, qui n'est pas
+versionné : sur un clone neuf, il faut donc commencer par un passage `CANDILOG_E2E_LIVE=1`,
+ou utiliser le mode **synthétique**, qui n'exige ni cache ni fournisseur. C'est ce dernier
+que le job `quality` emploie.
 
 ```bash
+# Synthétique : ni cache ni IA. Exerce la composition, la mesure et l'export PDF.
+CANDILOG_E2E=1 CANDILOG_E2E_SYNTHETIC=1   cargo test --manifest-path src-tauri/Cargo.toml --locked --test e2e_documents
+
 # Rejeu : la génération enregistrée est relue, seuls la composition et l'export sont rejoués.
 CANDILOG_E2E=1 cargo test --manifest-path src-tauri/Cargo.toml --locked --test e2e_documents
 
@@ -164,6 +178,7 @@ CANDILOG_E2E=1 CANDILOG_E2E_LIVE=1 CANDILOG_E2E_OFFER=/chemin/offre.txt   cargo 
 | --- | --- | --- |
 | `CANDILOG_E2E` | active le scénario | absent → ignoré |
 | `CANDILOG_E2E_LIVE` | appelle réellement le fournisseur IA | absent → rejeu |
+| `CANDILOG_E2E_SYNTHETIC` | compose des artefacts factuels, sans cache ni IA | absent → non |
 | `CANDILOG_E2E_OFFER` | fichier de l'offre | requis en live |
 | `CANDILOG_E2E_SETTINGS_DB` | base dont les réglages IA sont copiés | base de développement |
 | `CANDILOG_E2E_OUT` | dossier des artefacts | `test-output/` |
