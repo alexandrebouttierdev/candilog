@@ -1,9 +1,10 @@
 @import "tailwindcss";
 
 /*
- * Jetons Candilog v2 — valeurs de `reference_design/tokens.json` (source de vérité
- * numérique du design, voir `docs/DESIGN.md`). Les noms reprennent ceux du handoff
- * (`--bg-app`, `--tx-3`, `--ac`…) pour faciliter la relecture croisée avec la maquette.
+ * Jetons Candilog v2 — **source de vérité numérique du design** (voir `docs/DESIGN.md` pour
+ * leur emploi). Le `tokens.json` du handoff dont ces valeurs sont issues ne fait pas partie
+ * du dépôt : c'est donc ce fichier qu'il faut lire et modifier. Les noms reprennent ceux du
+ * handoff (`--bg-app`, `--tx-3`, `--ac`…), d'où leur brièveté.
  *
  * Thème clair par défaut ; le sombre s'applique via `prefers-color-scheme` (mode
  * « Système ») ou `data-theme="dark"`, jamais en dupliquant les jetons dérivés.
@@ -136,18 +137,8 @@
   --candilog-shell-control-disabled-border: var(--bd);
   --candilog-shell-control-disabled-bg: var(--bg-chip);
   --candilog-shell-control-disabled-ink: var(--tx-6);
-  --candilog-glass-subnav: var(--bg-app);
-  --candilog-glass-subnav-border: var(--bd-soft);
-  --candilog-glass-topbar: var(--bg-app);
-  --candilog-glass-topbar-border: var(--bd-soft);
-  --candilog-glass-inspector: var(--bg-panel);
-  --candilog-glass-inspector-border: var(--bd-soft);
   --candilog-glass-popover: var(--menu-bg);
-  --candilog-glass-menu: var(--menu-bg);
-  --candilog-glass-modal: var(--modal-bg);
-  --candilog-glass-fallback: var(--bg-panel);
   --candilog-blur-shell: 0px;
-  --candilog-blur-subnav: 0px;
   --candilog-blur-overlay: 0px;
   --candilog-success: var(--st-g);
   --candilog-success-text: var(--tint-g-tx);
@@ -428,9 +419,6 @@
   --color-rail-divider: var(--candilog-rail-divider);
   --color-rail-focus: var(--candilog-rail-focus);
   --color-rail-logo: var(--candilog-rail-logo);
-  --color-glass-subnav: var(--candilog-glass-subnav-border);
-  --color-glass-topbar: var(--candilog-glass-topbar-border);
-  --color-glass-inspector: var(--candilog-glass-inspector-border);
   --color-ink: var(--candilog-text-primary);
   --color-ink-strong: var(--candilog-text-strong);
   --color-ink-muted: var(--candilog-text-secondary);
@@ -613,9 +601,6 @@
   --spacing-tab: 30px;
   --spacing-chip: 26px;
   --spacing-pager: 24px;
-  --spacing-topbar: 46px;
-  --spacing-rail: 68px;
-  --spacing-subnav: 186px;
 
   --shadow-pop: var(--shadow);
   --shadow-sheet: var(--shadow-page);
@@ -955,6 +940,18 @@
     color-scheme: light dark;
   }
 
+  /*
+   * Glisser la fenêtre au doigt et au stylet sous Windows.
+   *
+   * `data-tauri-drag-region` ne couvre que la souris : WebView2 n'y transmet pas les
+   * événements tactiles et de stylet, et la barre de titre dessinée par l'application
+   * devenait impossible à saisir autrement qu'au pointeur. Recommandation officielle de
+   * Tauri 2 pour une barre de titre personnalisée.
+   */
+  [data-tauri-drag-region] {
+    app-region: drag;
+  }
+
   :root[data-theme="light"] {
     color-scheme: light;
   }
@@ -1108,29 +1105,14 @@
     background: var(--candilog-glass-rail);
   }
 
-  .glass-topbar {
-    background: var(--candilog-glass-topbar);
-  }
 
-  .glass-subnav {
-    background: var(--candilog-glass-subnav);
-  }
 
-  .glass-inspector {
-    background: var(--candilog-glass-inspector);
-  }
 
   .glass-popover {
     background: var(--candilog-glass-popover);
   }
 
-  .glass-menu {
-    background: var(--candilog-glass-menu);
-  }
 
-  .glass-modal {
-    background: var(--candilog-glass-modal);
-  }
 
   .shell-brand-control {
     border-color: var(--candilog-rail-item-active-border);

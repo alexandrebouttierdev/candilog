@@ -28,7 +28,6 @@ export type { GlyphTone } from "./StatusGlyph";
 export { StatusPill, Tag } from "./StatusPill";
 export { Switch } from "./Switch";
 export type { Tone } from "./StatusPill";
-export { Toolbar } from "./Toolbar";
 export { Toaster } from "./Toaster";
 export { WorkSurface, PaneSection, RunMeter, StepList } from "./WorkSurface";
 export type { GeneratorStep } from "./WorkSurface";
