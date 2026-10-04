@@ -102,8 +102,35 @@ pub trait LlmGenerator: Send + Sync {
     }
 }
 
-fn autorise_endpoint_local(provider: &ProviderKind) -> bool {
-    matches!(provider, ProviderKind::Ollama | ProviderKind::Custom(_))
+/// L'endpoint désigne-t-il cette machine ?
+///
+/// Seule la boucle locale compte : `localhost`, `127.0.0.0/8`, `::1`. Un nom mDNS
+/// (`*.local`) ou une IP de réseau privé désignent une **autre** machine, donc un envoi
+/// réseau. La pastille de localité de l'interface (`taskRouting.ts`) est plus permissive
+/// parce qu'elle répond à une autre question — les données quittent-elles l'ordinateur —
+/// et non à celle de savoir si du trafic en clair est acceptable.
+fn hote_est_loopback(url: &url::Url) -> bool {
+    match url.host() {
+        Some(url::Host::Domain(domaine)) => domaine.eq_ignore_ascii_case("localhost"),
+        Some(url::Host::Ipv4(ip)) => ip.is_loopback(),
+        Some(url::Host::Ipv6(ip)) => ip.is_loopback(),
+        None => false,
+    }
+}
+
+/// Un endpoint en clair, pouvant viser le réseau local, est-il acceptable ?
+///
+/// Ollama ne sert pas HTTPS et reste exempté, y compris sur une autre machine du réseau
+/// (`docs/AI.md`). Un point de terminaison personnalisé ne l'est que sur la boucle locale :
+/// LM Studio, `llama.cpp server` ou vLLM sur `127.0.0.1` sont le cas d'usage réel, alors
+/// qu'un Custom **distant** en `http://` transmettrait la clé API en clair et contournerait
+/// le refus des adresses privées qu'exige `docs/CODE_RULES.md` §12.
+fn autorise_endpoint_local(provider: &ProviderKind, url: &url::Url) -> bool {
+    match provider {
+        ProviderKind::Ollama => true,
+        ProviderKind::Custom(_) => hote_est_loopback(url),
+        _ => false,
+    }
 }
 
 fn utilise_api_openai_compatible(provider: &ProviderKind) -> bool {
@@ -137,7 +164,7 @@ pub async fn build_provider(config: &LlmConfig) -> AppResult<Arc<dyn LlmGenerato
         .timeout(std::time::Duration::from_secs(60 * 30))
         .redirect(reqwest::redirect::Policy::none())
         .user_agent(concat!("Candilog/", env!("CARGO_PKG_VERSION")));
-    if !autorise_endpoint_local(&config.provider) {
+    if !autorise_endpoint_local(&config.provider, &url) {
         if url.scheme() != "https" {
             return Err(AppError::Validation(
                 "Un endpoint IA distant doit utiliser HTTPS".into(),
@@ -863,6 +890,98 @@ mod tests {
             provider: ProviderKind::Custom("custom".into()),
             api_key: Some("ollama".into()),
             endpoint: Some("http://localhost:11434".into()),
+            model: "llama3.2".into(),
+            temperature: 0.7,
+            mode: AnalysisMode::default(),
+        })
+        .await
+        .is_ok());
+    }
+
+    /// `127.0.0.1`, `::1` et `localhost` seuls comptent : un nom mDNS ou une IP privée
+    /// désignent une autre machine, même si l'interface les affiche comme « locales ».
+    #[test]
+    fn seule_la_boucle_locale_est_un_hote_local() {
+        let loopback = [
+            "http://localhost:11434",
+            "http://LOCALHOST:11434",
+            "http://127.0.0.1:11434",
+            "http://127.1.2.3:11434",
+            "http://[::1]:11434",
+        ];
+        for endpoint in loopback {
+            let url = url::Url::parse(endpoint).unwrap();
+            assert!(hote_est_loopback(&url), "{endpoint} devrait être local");
+        }
+
+        let distant = [
+            "http://192.168.1.50:11434",
+            "http://10.0.0.8:11434",
+            "http://serveur.local:11434",
+            "http://api.exemple.test",
+        ];
+        for endpoint in distant {
+            let url = url::Url::parse(endpoint).unwrap();
+            assert!(!hote_est_loopback(&url), "{endpoint} devrait être distant");
+        }
+    }
+
+    /// Un Custom distant transmettrait la clé API en clair : `docs/CODE_RULES.md` §12 exige
+    /// HTTPS dès que l'endpoint quitte la machine.
+    #[tokio::test]
+    async fn custom_distant_refuse_http_en_clair() {
+        for endpoint in ["http://198.51.100.10:8080", "http://192.168.1.50:8080"] {
+            let resultat = build_provider(&LlmConfig {
+                provider: ProviderKind::Custom("custom".into()),
+                api_key: Some("cle-test".into()),
+                endpoint: Some(endpoint.into()),
+                model: "modele".into(),
+                temperature: 0.7,
+                mode: AnalysisMode::default(),
+            })
+            .await;
+
+            match resultat {
+                Err(AppError::Validation(message)) => {
+                    assert!(message.contains("HTTPS"), "{endpoint} : {message}");
+                }
+                Err(_) => panic!("{endpoint} doit être refusé en validation"),
+                Ok(_) => panic!("{endpoint} ne doit pas être accepté en clair"),
+            }
+        }
+    }
+
+    /// La garde anti-SSRF s'applique aussi au Custom : en HTTPS, c'est l'adresse résolue qui
+    /// est contrôlée.
+    #[tokio::test]
+    async fn custom_distant_refuse_une_adresse_privee() {
+        let resultat = build_provider(&LlmConfig {
+            provider: ProviderKind::Custom("custom".into()),
+            api_key: Some("cle-test".into()),
+            endpoint: Some("https://192.168.1.50:8443".into()),
+            model: "modele".into(),
+            temperature: 0.7,
+            mode: AnalysisMode::default(),
+        })
+        .await;
+
+        match resultat {
+            Err(AppError::Validation(message)) => {
+                assert!(message.contains("réseau local"), "{message}");
+            }
+            Err(_) => panic!("une IP privée doit être refusée en validation"),
+            Ok(_) => panic!("un Custom distant ne doit pas viser le réseau local"),
+        }
+    }
+
+    /// Ollama ne sert pas HTTPS : il reste exempté même sur une autre machine du réseau,
+    /// conformément à `docs/AI.md`.
+    #[tokio::test]
+    async fn ollama_reste_autorise_en_http_sur_le_reseau() {
+        assert!(build_provider(&LlmConfig {
+            provider: ProviderKind::Ollama,
+            api_key: None,
+            endpoint: Some("http://192.168.1.50:11434".into()),
             model: "llama3.2".into(),
             temperature: 0.7,
             mode: AnalysisMode::default(),
