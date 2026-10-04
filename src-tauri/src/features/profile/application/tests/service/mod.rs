@@ -1,7 +1,7 @@
 use super::*;
 use crate::features::profile::domain::{
     Certification, Education, Experience, ImportProfileRequest, ImportResolution,
-    ImportScalarDecision, ImportSkillDecision, Language, Project, Skill, MAX_SIDE,
+    ImportScalarDecision, ImportSkillDecision, Language, Project, Skill, MAX_SIDE, MAX_SIDE_SOURCE,
 };
 use std::sync::Mutex;
 
@@ -414,6 +414,43 @@ fn une_image_trop_grande_est_ramenee_au_cote_maximal_sans_deformation() {
     // Rapport 2:1 conservé, plus grand côté ramené à la limite.
     assert_eq!(redimensionnee.width(), MAX_SIDE);
     assert_eq!(redimensionnee.height(), MAX_SIDE / 2);
+}
+
+/// Une image dont un côté dépasse la borne d'entrée est refusée **avant** décodage complet.
+///
+/// 8 001 × 1 pixels : quelques dizaines de kilo-octets, donc très loin de
+/// `MAX_SOURCE_BYTES`, et parfaitement décodable. Sans borne de dimensions, elle passait et
+/// était simplement redimensionnée ; c'est ce qui distingue cette garde d'un simple refus de
+/// fichier corrompu. Le même contrôle arrête une image forgée qui déclare 65 535 × 65 535 —
+/// soit ~17 Gio en RGBA pour une entrée minuscule — que le décodeur tentait d'allouer.
+#[test]
+fn une_image_plus_large_que_la_borne_d_entree_est_refusee() {
+    let mut buffer = std::io::Cursor::new(Vec::new());
+    image::RgbaImage::from_pixel(MAX_SIDE_SOURCE + 1, 1, image::Rgba([7, 7, 7, 255]))
+        .write_to(&mut buffer, image::ImageFormat::Png)
+        .unwrap();
+    let octets = buffer.into_inner();
+    assert!(
+        octets.len() < MAX_SOURCE_BYTES,
+        "l'entrée doit rester sous la borne de taille"
+    );
+
+    let error = normaliser(&octets).unwrap_err();
+
+    assert!(matches!(error, AppError::Validation(_)));
+}
+
+#[test]
+fn une_photo_de_taille_realiste_reste_acceptee() {
+    // La borne d'entrée ne doit pas rejeter une photo d'appareil : seul le cas forgé l'est.
+    let mut buffer = std::io::Cursor::new(Vec::new());
+    image::RgbaImage::from_pixel(4032, 3024, image::Rgba([9, 9, 9, 255]))
+        .write_to(&mut buffer, image::ImageFormat::Png)
+        .unwrap();
+
+    let png = normaliser(&buffer.into_inner()).unwrap();
+
+    assert_eq!(image::load_from_memory(&png).unwrap().width(), MAX_SIDE);
 }
 
 #[test]
