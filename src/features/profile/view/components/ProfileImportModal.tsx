@@ -27,7 +27,7 @@ import {
   summarizeImport,
   type ImportProfileFormInput,
   type ImportProfileFormValues,
-} from "../../model/import-review.schema";
+} from "../../model/schemas/import-review.schema";
 import { useElapsedClock } from "@/shared/hooks/useElapsedClock";
 import {
   useProfileImportProgress,

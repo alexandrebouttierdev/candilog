@@ -1,4 +1,4 @@
-import { experienceSchema, identitySchema } from "../profileSchemas";
+import { experienceSchema, identitySchema } from "../schemas/profile-sections.schema";
 
 describe("schémas du profil", () => {
   it("refuse une date de fin pour un poste actuel", () => {

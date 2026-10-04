@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import type { Identity } from "@/shared/types/generated/profile";
-import { identitySchema } from "../../../model/profileSchemas";
+import { identitySchema } from "../../../model/schemas/profile-sections.schema";
 import { ProfileArea, ProfileField } from "./ProfileSectionFields";
 import { identityDefaults } from "./profileSectionDefaults";
 

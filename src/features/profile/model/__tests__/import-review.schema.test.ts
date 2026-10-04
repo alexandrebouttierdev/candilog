@@ -8,7 +8,7 @@ import {
   previewToFormValues,
   setSectionSelected,
   summarizeImport,
-} from "../import-review.schema";
+} from "../schemas/import-review.schema";
 
 const preview = (): ImportProfilePreview => ({
   identity: [

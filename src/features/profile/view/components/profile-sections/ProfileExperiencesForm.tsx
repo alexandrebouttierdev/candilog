@@ -2,7 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import type { Experience } from "@/shared/types/generated/profile";
-import { experiencesFormSchema } from "../../../model/profileSchemas";
+import { experiencesFormSchema } from "../../../model/schemas/profile-sections.schema";
 import { ItemCard, ProfileArea, ProfileField, RepeatList } from "./ProfileSectionFields";
 import { emptyExperience, experienceDefaults } from "./profileSectionDefaults";
 

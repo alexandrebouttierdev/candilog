@@ -1,5 +1,5 @@
 import type { ImportProfilePreview } from "@/shared/types/generated/profile";
-import type { ImportSection } from "../../../model/import-review.schema";
+import type { ImportSection } from "../../../model/schemas/import-review.schema";
 
 export const SECTION_LABELS: Record<ImportSection, string> = {
   identity: "Informations personnelles",

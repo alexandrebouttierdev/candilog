@@ -2,7 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 import type { Interest } from "@/shared/types/generated/profile";
-import { interestsFormSchema } from "../../../model/profileSchemas";
+import { interestsFormSchema } from "../../../model/schemas/profile-sections.schema";
 import { ItemCard, ProfileField, RepeatList } from "./ProfileSectionFields";
 import { emptyInterest, interestDefaults } from "./profileSectionDefaults";
 

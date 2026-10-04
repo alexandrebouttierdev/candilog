@@ -2,7 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import type { Certification } from "@/shared/types/generated/profile";
-import { certificationsFormSchema } from "../../../model/profileSchemas";
+import { certificationsFormSchema } from "../../../model/schemas/profile-sections.schema";
 import { ItemCard, ProfileArea, ProfileField, RepeatList } from "./ProfileSectionFields";
 import { certificationDefaults, emptyCertification } from "./profileSectionDefaults";
 

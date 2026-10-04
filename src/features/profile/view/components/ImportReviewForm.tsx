@@ -16,7 +16,7 @@ import {
   type ImportProfileFormInput,
   type ImportProfileFormValues,
   type ImportSection,
-} from "../../model/import-review.schema";
+} from "../../model/schemas/import-review.schema";
 import type { ImportJournalEntry } from "../../viewmodel/useProfileImportProgress";
 import { ImportJournal } from "./ImportJournal";
 import { blockId, catalogOf, SECTION_ARIA, SECTION_LABELS } from "./import-review/catalog";

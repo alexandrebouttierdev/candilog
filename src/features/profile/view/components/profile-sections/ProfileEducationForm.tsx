@@ -2,7 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import type { Education } from "@/shared/types/generated/profile";
-import { educationFormSchema } from "../../../model/profileSchemas";
+import { educationFormSchema } from "../../../model/schemas/profile-sections.schema";
 import { ItemCard, ProfileArea, ProfileField, RepeatList } from "./ProfileSectionFields";
 import { educationDefaults, emptyEducation } from "./profileSectionDefaults";
 

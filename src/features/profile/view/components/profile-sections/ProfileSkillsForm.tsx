@@ -2,7 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 import type { Skill } from "@/shared/types/generated/profile";
-import { skillsFormSchema } from "../../../model/profileSchemas";
+import { skillsFormSchema } from "../../../model/schemas/profile-sections.schema";
 import { ItemCard, ProfileArea, ProfileField, RepeatList } from "./ProfileSectionFields";
 import { emptySkill, skillDefaults } from "./profileSectionDefaults";
 

@@ -3,7 +3,7 @@ import type { UseFormReturn } from "react-hook-form";
 import type { ImportProfilePreview, ImportResolution } from "@/shared/types/generated/profile";
 import { cn } from "@/shared/lib/cn";
 import { Card, CardHeader, CardMeta, FormField, StatusGlyph, TextArea, TextInput } from "@/shared/ui";
-import { IMPORT_SECTIONS, type ImportProfileFormInput, type ImportProfileFormValues, type ImportSection } from "../../../model/import-review.schema";
+import { IMPORT_SECTIONS, type ImportProfileFormInput, type ImportProfileFormValues, type ImportSection } from "../../../model/schemas/import-review.schema";
 import { blockId, SECTION_LABELS, type CatalogRow } from "./catalog";
 
 export function ImportDraft({
