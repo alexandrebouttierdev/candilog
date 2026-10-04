@@ -85,7 +85,12 @@ jobs:
       - name: Installer Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: lts/*
+          # Majeure explicite et non `lts/*` : l'arrivée d'un nouveau LTS changeait la
+          # version sous le job sans qu'aucune ligne du dépôt ne bouge. Node 26 expose un
+          # `localStorage` global indéfini qui masque celui de jsdom (cf. le substitut de
+          # `src/shared/lib/test-setup.ts`) — exactement le genre de rupture qu'une montée
+          # subie fait découvrir sur une publication. La montée reste une décision datée.
+          node-version: "24"
           cache: yarn
 
       - name: Installer Rust
@@ -170,7 +175,12 @@ jobs:
       - name: Installer Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: lts/*
+          # Majeure explicite et non `lts/*` : l'arrivée d'un nouveau LTS changeait la
+          # version sous le job sans qu'aucune ligne du dépôt ne bouge. Node 26 expose un
+          # `localStorage` global indéfini qui masque celui de jsdom (cf. le substitut de
+          # `src/shared/lib/test-setup.ts`) — exactement le genre de rupture qu'une montée
+          # subie fait découvrir sur une publication. La montée reste une décision datée.
+          node-version: "24"
           cache: yarn
 
       - name: Installer Rust

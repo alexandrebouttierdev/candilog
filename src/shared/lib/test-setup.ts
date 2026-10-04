@@ -13,6 +13,55 @@ import { configure } from "@testing-library/dom";
 configure({ asyncUtilTimeout: 5_000 });
 
 /**
+ * `localStorage` de l'environnement jsdom.
+ *
+ * Node 26 expose son propre `localStorage` global, **indéfini** tant que
+ * `--localstorage-file` n'est pas passé (il le signale par un `ExperimentalWarning`). Comme
+ * Vitest fait de `window` le `globalThis` du worker, cet accesseur masque celui de jsdom —
+ * qui fonctionne pourtant très bien — et `window.localStorage` vaut `undefined`. Seul
+ * `localStorage` est touché : `sessionStorage` n'est pas un global de Node et traverse
+ * intact, ce qui rendait le symptôme d'autant plus trompeur.
+ *
+ * Le substitut est posé ici plutôt que contourné test par test : la préférence de son de fin
+ * de traitement et celles d'affichage lisent `localStorage` en production, et c'est leur
+ * comportement réel qu'il faut pouvoir vérifier. Même registre que `ResizeObserver`
+ * ci-dessous — jsdom ne fournit pas ce dont les tests ont besoin, le banc le fournit.
+ */
+class LocalStorageDeTest implements Storage {
+  private readonly entrees = new Map<string, string>();
+
+  get length(): number {
+    return this.entrees.size;
+  }
+
+  clear(): void {
+    this.entrees.clear();
+  }
+
+  getItem(cle: string): string | null {
+    return this.entrees.get(String(cle)) ?? null;
+  }
+
+  key(index: number): string | null {
+    return [...this.entrees.keys()][index] ?? null;
+  }
+
+  removeItem(cle: string): void {
+    this.entrees.delete(String(cle));
+  }
+
+  setItem(cle: string, valeur: string): void {
+    this.entrees.set(String(cle), String(valeur));
+  }
+}
+
+Object.defineProperty(globalThis, "localStorage", {
+  configurable: true,
+  writable: true,
+  value: new LocalStorageDeTest(),
+});
+
+/**
  * `ResizeObserver` de jsdom.
  *
  * jsdom ne l'implémente pas, et il ne mesure aucun élément : un conteneur responsive de
