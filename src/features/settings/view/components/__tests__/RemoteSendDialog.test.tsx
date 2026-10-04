@@ -90,7 +90,7 @@ describe("premier envoi à un service distant", () => {
     const save = vi.spyOn(settingsService, "save").mockResolvedValue(reglages());
     render(<RemoteSendConsents />, { wrapper });
 
-    expect(await screen.findByText("Plus de confirmation pour : Claude.")).toBeInTheDocument();
+    expect(await screen.findByText("Plus de confirmation pour : Anthropic.")).toBeInTheDocument();
     await act(async () => {
       await userEvent.click(screen.getByRole("button", { name: "Redemander" }));
     });

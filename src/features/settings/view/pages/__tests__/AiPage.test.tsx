@@ -283,7 +283,7 @@ describe("écran Intelligence artificielle — qui fait quoi", () => {
 
     const section = await screen.findByRole("region", { name: "Qui fait quoi" });
     await userEvent.click(within(section).getByRole("button", { name: /^Analyser un CV/ }));
-    await userEvent.click(await screen.findByRole("menuitemradio", { name: "Mistral · mistral-small-latest" }));
+    await userEvent.click(await screen.findByRole("menuitemradio", { name: "Mistral AI · mistral-small-latest" }));
 
     await waitFor(() =>
       expect(save.mock.calls[0]?.[0].ai_routes).toEqual({

@@ -1,6 +1,6 @@
 import type { AiTask, Settings, TaskRoute } from "@/shared/types/generated/settings";
 import type { ManagedModelStatus } from "@/shared/types/generated/ai";
-import { defaultEndpoint, getProvider, idProvider } from "./providers";
+import { defaultEndpoint, getProvider, idProvider, providerById } from "./providers";
 import type { ProviderOption } from "./providers";
 
 /** Les cinq tâches routables, dans l'ordre de l'écran (`docs/AI.md`, « Routage par tâche »). */
@@ -35,14 +35,20 @@ export function isLocalEndpoint(endpoint: string | null | undefined): boolean {
   }
 }
 
-/** Qui reçoit les données : l'éditeur du service, ou l'hôte pour un serveur que l'on désigne. */
-const RECIPIENTS: Partial<Record<ProviderOption["id"], string>> = {
-  claude: "Anthropic",
-  openai: "OpenAI",
-  gemini: "Google",
-  mistral: "Mistral AI",
-  deepseek: "DeepSeek",
-};
+/**
+ * Fournisseurs dont l'adresse n'est pas choisie par l'utilisateur.
+ *
+ * Pour eux, le destinataire est l'éditeur du service, et son nom vient du libellé de
+ * `PROVIDERS` — une seule source. Pour les autres (Ollama, personnalisé), l'utilisateur
+ * désigne lui-même la machine : c'est son hôte qui reçoit, et c'est donc lui qu'on montre.
+ */
+const SERVICES_HEBERGES: ReadonlySet<ProviderOption["id"]> = new Set([
+  "claude",
+  "openai",
+  "gemini",
+  "mistral",
+  "deepseek",
+]);
 
 /** Où part une tâche, et si ses données quittent l'ordinateur. */
 export interface TaskDestination {
@@ -72,7 +78,7 @@ export function taskDestination(task: AiTask, settings: Settings): TaskDestinati
   }
   return {
     providerId,
-    recipient: RECIPIENTS[providerId] ?? host,
+    recipient: SERVICES_HEBERGES.has(providerId) ? providerById(providerId).label : host,
     remote: !isLocalEndpoint(endpoint),
   };
 }

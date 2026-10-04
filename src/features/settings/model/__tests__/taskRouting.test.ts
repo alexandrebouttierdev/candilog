@@ -33,7 +33,7 @@ describe("routage des tâches", () => {
   it("nomme la route distante et la marque comme envoi distant", () => {
     const routed = settings({ ai_routes: { analyze_resume: { provider: "claude", model: "claude-sonnet" } } });
     expect(assignmentOf("analyze_resume", routed, [MINISTRAL])).toEqual({
-      label: "Claude · claude-sonnet",
+      label: "Anthropic · claude-sonnet",
       locality: "remote",
       isDefault: false,
     });

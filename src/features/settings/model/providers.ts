@@ -28,10 +28,15 @@ export const PROVIDERS: readonly ProviderOption[] = [
     hint: "Modèles gérés localement",
     recommended: true,
   },
-  { id: "mistral", label: "Mistral", hint: "Europe" },
+  // Le libellé nomme l'**éditeur**, pas la famille de modèles : c'est lui qui reçoit les
+  // données, et c'est donc lui que l'utilisateur doit reconnaître avant d'accepter un envoi
+  // distant. `taskRouting` réutilise ce libellé comme destinataire, au lieu d'en tenir une
+  // seconde liste qui divergeait — la grille annonçait « Claude » quand le dialogue de
+  // consentement disait « Anthropic ». La famille de modèles passe en indice.
+  { id: "mistral", label: "Mistral AI", hint: "Europe" },
   { id: "openai", label: "OpenAI", hint: "GPT" },
-  { id: "gemini", label: "Gemini", hint: "Google" },
-  { id: "claude", label: "Claude", hint: "Anthropic" },
+  { id: "gemini", label: "Google", hint: "Gemini" },
+  { id: "claude", label: "Anthropic", hint: "Claude" },
   { id: "deepseek", label: "DeepSeek", hint: "API" },
   {
     id: "custom",
@@ -46,6 +51,12 @@ export const OLLAMA_PROVIDER: ProviderOption = {
   label: "Ollama",
   hint: "Votre installation ou Ollama Cloud",
 };
+
+/** Option d'un fournisseur par son identifiant — le libellé y est la source du nom d'éditeur. */
+export function providerById(id: ProviderOption["id"]): ProviderOption {
+  if (id === "ollama") return OLLAMA_PROVIDER;
+  return PROVIDERS.find((item) => item.id === id) ?? PROVIDERS[0]!;
+}
 
 export function getProvider(provider: ProviderKind): ProviderOption {
   const id = idProvider(provider);

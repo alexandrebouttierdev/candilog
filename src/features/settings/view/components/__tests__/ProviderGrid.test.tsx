@@ -10,7 +10,7 @@ describe("grille des fournisseurs", () => {
     expect(screen.getByRole("radiogroup", { name: "Fournisseur IA" })).toBeInTheDocument();
     expect(screen.getAllByRole("radio")).toHaveLength(PROVIDERS.length);
     expect(screen.getByRole("radio", { name: /OpenAI/ })).toHaveAttribute("aria-checked", "true");
-    expect(screen.getByRole("radio", { name: "Mistral" })).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByRole("radio", { name: "Mistral AI" })).toHaveAttribute("aria-checked", "false");
     for (const fournisseur of PROVIDERS) {
       const radio = screen.getByRole("radio", { name: fournisseur.label });
       expect(within(radio).getByText(fournisseur.label)).toBeInTheDocument();
@@ -29,7 +29,7 @@ describe("grille des fournisseurs", () => {
   it("signale le fournisseur choisi et notifie le changement", async () => {
     const onChange = vi.fn();
     render(<ProviderGrid value="openai" onChange={onChange} />);
-    await userEvent.click(screen.getByRole("radio", { name: /Claude/ }));
+    await userEvent.click(screen.getByRole("radio", { name: /Anthropic/ }));
     expect(onChange).toHaveBeenCalledWith("claude");
   });
 
@@ -40,7 +40,7 @@ describe("grille des fournisseurs", () => {
       within(screen.getByRole("radio", { name: "OpenAI" })).getByText("✓"),
     ).toBeInTheDocument();
     expect(
-      within(screen.getByRole("radio", { name: "Mistral" })).queryByText("✓"),
+      within(screen.getByRole("radio", { name: "Mistral AI" })).queryByText("✓"),
     ).not.toBeInTheDocument();
   });
 
