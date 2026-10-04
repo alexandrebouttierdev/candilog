@@ -92,7 +92,8 @@ describe("écran Profil — photo", () => {
 
     render(<ProfilePage />, { wrapper });
 
-    const preview = await screen.findByRole("img", { name: "Photo de profil" });
+    // Décorative (`alt=""`) : le nom et le titre sont rendus à côté.
+    const preview = await screen.findByRole("presentation");
     expect(preview).toHaveAttribute("src", PHOTO);
     expect(preview.className).toContain("rounded-field");
     expect(preview.className).not.toContain("rounded-full");

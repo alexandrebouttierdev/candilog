@@ -279,7 +279,9 @@ function ResumeHeader({
       <div className="min-w-0 flex-1">{entete}</div>
       <img
         src={photo}
-        alt="Photo de profil"
+        // Décorative : l'identité est juste à côté dans l'en-tête, et un lecteur
+        // d'écran annonce déjà « image ».
+        alt=""
         className="max-h-[30mm] max-w-[26mm] flex-none object-contain"
       />
     </div>

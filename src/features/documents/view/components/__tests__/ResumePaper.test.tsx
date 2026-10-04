@@ -149,7 +149,9 @@ describe("ResumePaper — photo du profil", () => {
       />,
     );
 
-    const image = screen.getByRole("img", { name: "Photo de profil" });
+    // `presentation` et non `img` : la photo est décorative (`alt=""`), l'identité étant
+    // juste à côté dans l'en-tête. La requête encode donc cette décision.
+    const image = screen.getByRole("presentation");
     expect(image).toHaveAttribute("src", PHOTO);
     // `contain` : l'image est inscrite dans son cadre, jamais étirée pour le remplir.
     expect(image.className).toContain("object-contain");

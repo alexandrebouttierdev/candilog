@@ -585,7 +585,7 @@ function PhotoBlock({
   return (
     <div className="mt-4 flex items-center gap-3.5 rounded-r9 bg-group px-3.5 py-3">
       {photo ? (
-        <img src={photo} alt="Photo de profil" className="size-14 flex-none rounded-field object-cover" />
+        <img src={photo} alt="" className="size-14 flex-none rounded-field object-cover" />
       ) : (
         <span aria-hidden className="flex size-14 flex-none items-center justify-center rounded-field bg-av1 text-lead font-medium text-av-tx">
           {initials}
