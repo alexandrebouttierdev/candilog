@@ -11,7 +11,7 @@ export interface ToastMessage {
 }
 
 /**
- * Sections de la surcouche Réglages (`reference_design/INTERACTIONS.md` §3.7). Les
+ * Sections de la surcouche Réglages (`INTERACTIONS.md` §3.7). Les
  * Réglages ne sont pas une destination : les fermer rend l'écran précédent intact.
  */
 export type SettingsSection = "appearance" | "data" | "ai" | "shortcuts" | "updates" | "about";

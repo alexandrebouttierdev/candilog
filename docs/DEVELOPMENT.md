@@ -7,7 +7,7 @@ Installer, lancer, régénérer, valider. Les règles de code sont dans
 
 | Outil | Version | Vérifié par |
 | --- | --- | --- |
-| Node.js | LTS | la CI utilise `node-version: lts/*` |
+| Node.js | 24 | la CI épingle `node-version: "24"` |
 | Yarn | 4.9.1, via Corepack | `packageManager` de `package.json` |
 | Rust | 1.91 | `rust-version` de `src-tauri/Cargo.toml` |
 | Cargo | fourni par la toolchain Rust | — |
@@ -20,6 +20,26 @@ libwebkit2gtk-4.1-dev  libappindicator3-dev  librsvg2-dev  patchelf  xdg-utils
 
 Sur macOS et Windows, suivre les prérequis Tauri 2 officiels (Xcode Command Line Tools,
 Microsoft C++ Build Tools et WebView2).
+
+### Dépendances d'exécution
+
+À distinguer des prérequis ci-dessus, qui ne servent qu'à **construire** : celles-ci sont
+nécessaires à l'application **installée**.
+
+| Outil | Requis par | Déclaré dans |
+| --- | --- | --- |
+| `pdftoppm`, `pdftotext`, `pdfinfo` (Poppler) | import de CV en mode Vision, extraction du texte dans l'ordre de mise en page | `bundle.linux.deb.depends` et `rpm.depends` (`tauri.conf.json`), `depends` du [`PKGBUILD`](../packaging/arch/PKGBUILD) |
+
+Les paquets Linux posent donc cette dépendance eux-mêmes (`poppler-utils` sous Debian,
+Ubuntu, Fedora et RHEL ; `poppler` sous Arch). En développement, l'installer à la main :
+sans elle, l'import Vision échoue avec un message explicite et l'extraction de texte
+retombe sur l'extracteur de flux, à l'ordre de colonnes incorrect.
+
+**macOS et Windows n'ont pas d'équivalent** : aucun gestionnaire de paquets n'est supposé
+présent, et les binaires ne sont pas embarqués. L'import Vision y dépend donc d'une
+installation Poppler faite par l'utilisateur ; à défaut, seul le mode Texte fonctionne.
+C'est une limite de plateforme assumée, signalée à l'utilisateur par le message d'erreur du
+mode Vision (`docs/AI.md`).
 
 Le paquet macOS cible macOS 11.0 au minimum. Cette borne, déclarée dans
 `tauri.conf.json`, couvre les API requises par le runtime natif et reste cohérente avec

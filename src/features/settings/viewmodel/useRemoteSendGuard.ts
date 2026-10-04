@@ -50,7 +50,7 @@ export const useRemoteSendStore = create<RemoteSendState>((set, get) => ({
 }));
 
 /**
- * Garde du premier envoi à un service distant (`reference_design/DECISIONS.md` D4) : à
+ * Garde du premier envoi à un service distant (décision D4, `docs/AI.md`) : à
  * appeler juste avant d'envoyer une tâche. Elle laisse passer une tâche locale ou un
  * fournisseur déjà accepté ; sinon elle ouvre le dialogue et résout `false` si
  * l'utilisateur annule — rien n'est alors envoyé.

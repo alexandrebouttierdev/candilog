@@ -48,8 +48,10 @@ Vue React → ViewModel (hook) → service frontend → ipc() → commande Tauri
 - `src-tauri/src/` — `app/` (état, démarrage), `core/` (config, base, erreurs, journal,
   sauvegardes, mises à jour, secrets), `features/<domaine>/{domain,application,
   infrastructure,presentation}`, `infrastructure/pdf/`.
-- `src-tauri/migrations/init_schema.sql` — schéma SQLite unique, appliqué par
-  `PRAGMA user_version`.
+- `src-tauri/migrations/` — `init_schema.sql` pose le modèle v1, les fichiers numérotés
+  (`002_…`) le font évoluer ; le curseur est `PRAGMA user_version` (voir `docs/DATA.md`).
+  Ne pas modifier `init_schema.sql` pour faire évoluer le modèle : une base existante ne le
+  rejouerait pas.
 - `src/shared/types/generated/` — types TypeScript **générés** par `ts-rs` depuis Rust.
 
 ## Règles absolues

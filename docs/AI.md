@@ -24,8 +24,18 @@ HTTP Ollama existant est réutilisé avec l'endpoint local du processus géré. 
 RAM le permet — bon compromis pour lettres, CV et analyses. Windows n'est
 pas encore supporté (archive `.zip` non extraite).
 
-HTTPS obligatoire hors Ollama, adresses privées refusées pour un point de terminaison
-distant, réponse plafonnée à 5 Mio, PDF source plafonné à 10 Mio.
+HTTPS obligatoire et adresses privées refusées dès que l'endpoint quitte la machine.
+Deux exemptions, et deux seulement : **Ollama**, qui ne sert pas HTTPS et reste donc joignable
+en clair y compris sur une autre machine du réseau ; et un **point de terminaison
+personnalisé sur la boucle locale** (`localhost`, `127.0.0.0/8`, `::1`), pour LM Studio,
+`llama.cpp server` ou vLLM. Un Custom **distant** suit la règle générale : en clair, il
+transmettrait la clé API en lisible, et l'exempter rendait contournable par configuration le
+refus des adresses privées. Un nom mDNS (`*.local`) ou une IP de réseau privé désignent une
+autre machine, donc ne sont pas la boucle locale — la pastille de localité de l'interface est
+plus permissive parce qu'elle répond à une autre question (les données quittent-elles
+l'ordinateur), pas à celle du trafic en clair.
+
+Réponse plafonnée à 5 Mio, PDF source plafonné à 10 Mio.
 
 Chaque appel HTTP est **repris jusqu'à trois fois** sur un échec transitoire — délai
 dépassé, connexion impossible, `429`, `5xx` — avec une attente de 1 s puis 2 s. Une
@@ -91,8 +101,10 @@ Le catalogue des modèles, les pulls, l'activation et le benchmark utilisateur p
 `ManagedOllamaService` (`domain/managed_ollama.rs`). Les commandes IPC dédiées sont
 `get_managed_ollama_status`, `install_managed_ollama_model`, `cancel_managed_ollama_download`,
 `remove_managed_ollama_model` et `activate_managed_ollama_model`. Le téléchargement publie
-`managed-ollama://download-progress`, `managed-ollama://download-completed` et
-`managed-ollama://download-error`.
+un **unique** événement, `managed-ollama://download-progress` : l'étape, les octets, le total
+et le `state` (`ManagedRuntimeState`), qui porte aussi l'achèvement et l'échec. Il n'existe
+ni `download-completed` ni `download-error` — un seul flux à écouter, un seul abonnement à
+nettoyer (`docs/ARCHITECTURE.md`).
 
 L'installation se fait dans la surcouche **Installer l'IA locale** (`LocalInstallOverlay`,
 `screens/14`) : choix du modèle, puis trois étapes — moteur (événements `kind: runtime`),
@@ -135,6 +147,14 @@ L'import de profil (`ai_import_profile`) propose deux méthodes :
 | --- | --- |
 | **Vision** (recommandé) | PDF → rendu pages (`pdftoppm`) → modèle multimodal (+ texte Rust complémentaire) → JSON |
 | **Texte** | PDF → extraction Rust (`pdftotext -layout` / flux) → modèle texte → JSON |
+
+`pdftoppm`, `pdftotext` et `pdfinfo` viennent de **Poppler**, dépendance d'exécution réelle
+et non outil de développement : les paquets Linux la déclarent (`poppler-utils`, `poppler`
+sous Arch), et `docs/DEVELOPMENT.md` la liste à part des prérequis de construction. Sans
+elle, Vision est indisponible — l'erreur le dit et renvoie au mode Texte — et l'extraction
+retombe sur l'extracteur de flux, qui suit l'ordre du flux de contenu et non celui des
+colonnes. macOS et Windows n'embarquent pas ces binaires : le mode Texte y est le seul
+garanti.
 
 La capacité Vision est déterminée pour le **modèle réellement sélectionné** (métadonnées
 Ollama `/api/show` si disponibles — y compris via un endpoint Custom qui répond à

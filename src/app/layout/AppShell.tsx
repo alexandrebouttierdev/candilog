@@ -23,7 +23,7 @@ function PageFallback() {
 }
 
 /**
- * Coque v2 (`reference_design/DESIGN_SYSTEM.md` §9) : barre de titre de 40 px sur toute la
+ * Coque v2 (`docs/DESIGN.md` §8) : barre de titre de 40 px sur toute la
  * largeur, navigation à gauche, panneau de contenu, barre d'état de 34 px. Les barres ne
  * défilent jamais ; seule la zone de contenu défile. La surcouche Réglages recouvre tout
  * sous la barre de titre, qui ne disparaît jamais (`PLATFORM.md` C2).

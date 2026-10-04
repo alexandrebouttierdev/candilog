@@ -285,7 +285,9 @@ Surveiller : optionnel vs requis, `null` / `undefined`, enums, dates ISO, nombre
 noms de champs. Ne pas maintenir à la main un second type TS incompatible avec ts-rs.
 
 Helpers partagés : `core::utils::validation` (`validate_optional_http_url`,
-`validate_user_file_path`). Réutiliser avant d'en inventer.
+`validate_optional_email`, `is_local_or_private_ip`) et `core::files`
+(`validate_selected_source`, `validate_selected_target`, `atomic_write`).
+Réutiliser avant d'en inventer.
 
 ---
 
@@ -302,8 +304,12 @@ filesystem générique : I/O fichiers via commandes Rust + chemins validés.
 Toute entrée React (IDs, URLs, chemins, enums, textes, limites, SQL params) est validée
 côté Rust. TypeScript n'est pas une frontière de sécurité.
 
-`validate_user_file_path` : rejeter vide, `\0`, `..`. Ne pas interpoler un chemin
-utilisateur dans une commande système.
+Un chemin de fichier passe par `core::files::validate_selected_source` (lecture) ou
+`validate_selected_target` (écriture) : chemin absolu exigé, extension contrôlée, lien
+symbolique refusé, chemin canonisé. Ne pas se contenter de rejeter `..` — un chemin
+relatif ou un lien franchirait ce seul contrôle. Ne pas interpoler un chemin utilisateur
+dans une commande système ; un sous-processus reçoit ses arguments séparément, jamais
+par un shell.
 
 ---
 
@@ -346,8 +352,10 @@ Concevoir pour : rapidité, robustesse, économie de tokens, maintenabilité.
 - opérations longues : pas de blocage UI, état de chargement, timeout, erreur provider,
   anti double-soumission, annulation (`CancellationToken` + `ai_cancel`) ;
 - bornes déclarées dans `features/ai/domain/validation.rs` (`MAX_SOURCE_CHARS`,
-  `MAX_CONTEXT_CHARS`, `MAX_STRUCTURED_CHARS`, `MAX_ITEMS`, `MAX_ITEM_CHARS`), HTTPS hors
-  Ollama, rejet des IP privées pour les endpoints distants.
+  `MAX_CONTEXT_CHARS`, `MAX_STRUCTURED_CHARS`, `MAX_ITEMS`, `MAX_ITEM_CHARS`), HTTPS et
+  rejet des IP privées pour tout endpoint distant. Seules exemptions : Ollama, et un
+  endpoint personnalisé **sur la boucle locale** (`docs/AI.md`). Ne pas élargir cette liste
+  à un fournisseur entier : c'est l'adresse qui décide, pas le nom du fournisseur.
 
 ---
 

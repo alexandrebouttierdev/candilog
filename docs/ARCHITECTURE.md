@@ -86,9 +86,16 @@ couche `presentation` de la feature concernée :
 | `ia-progression` | `features/ai` — génération et analyse |
 | `profile_import_progress` | `features/ai` — import de profil depuis un CV |
 | `update-progress` | `features/settings` — téléchargement d'une mise à jour |
-| `local-ai://download-progress` | `features/ai` — octets, total, débit et étape Mistral Local |
-| `local-ai://download-completed` | `features/ai` — modèle vérifié, installé et benchmarké |
-| `local-ai://download-error` | `features/ai` — erreur typée et message français |
+| `managed-ollama://download-progress` | `features/ai` — moteur et modèle de l'IA locale : octets, total, étape et `state` |
+
+Cette table est la **liste complète** : quatre événements, pas un de plus. Un nom d'événement
+n'est vérifié ni par Rust ni par TypeScript, et un écouteur posé sur un nom inexistant ne se
+déclenche jamais sans produire d'erreur — `commandes-ipc.test.ts` compare donc les `emit`
+Rust aux `listen` du frontend, comme il le fait pour les commandes.
+
+L'achèvement et l'échec du téléchargement de l'IA locale **n'ont pas d'événement dédié** :
+ils sont portés par le champ `state` (`ManagedRuntimeState`) de
+`managed-ollama://download-progress`. Un seul flux à écouter, un seul abonnement à nettoyer.
 
 L'écran « Analyser » sépare strictement le choix du PDF du traitement :
 `ai_select_resume_file` ouvre le dialogue natif, **retient le chemin validé dans

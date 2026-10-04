@@ -3,7 +3,7 @@ import { Reveal } from "@/components/ui/Reveal";
 
 /* Faits vérifiés dans le code : base locale, sauvegarde et restauration
    (`useBackupsViewModel`), coffre système pour les clés, sorties réseau limitées
-   (`docs/CLAUDE_DESIGN_CONTEXT.md` §1). Formulation alignée sur la FAQ calibrée. */
+   (`docs/DATA.md`, `docs/AI.md`). Formulation alignée sur la FAQ calibrée. */
 const FAITS = [
   ["Aucun compte", "Pas d'inscription, pas de serveur Candilog, pas de synchronisation."],
   [

@@ -17,7 +17,7 @@ type Fonction = {
 };
 
 /* Les trois surcouches de Documents, chacune avec ce qu'elle garantit réellement
-   (`docs/CLAUDE_DESIGN_CONTEXT.md` §8, garanties IA). */
+   (`docs/AI.md` : grounding, score ATS déterministe, sections exclues). */
 const FONCTIONS: readonly Fonction[] = [
   {
     ecran: "Générer un CV",

@@ -16,10 +16,20 @@ Sources dans le code :
 
 Ne pas inventer de couleur, de rayon, de gabarit de bouton ou de composant déjà présent dans `shared/ui`.
 
-La référence visuelle est `reference_design/` : `tokens.json` pour les valeurs,
-`DECISIONS.md` pour les arbitrages, `screens/` pour les écrans. `styles.css` porte ces
-jetons sous leurs noms du handoff (`--bg-app`, `--tx-3`, `--ac`, `--st-g`…) et les expose
-en utilitaires Tailwind (`bg-panel`, `text-tx-4`, `bg-ac`, `rounded-r7`, `h-row-app`…).
+**La référence visuelle est `src/styles.css`**, qui porte les jetons sous leurs noms du
+handoff (`--bg-app`, `--tx-3`, `--ac`, `--st-g`…) et les expose en utilitaires Tailwind
+(`bg-panel`, `text-tx-4`, `bg-ac`, `rounded-r7`, `h-row-app`…). Une valeur se lit là, et le
+présent document dit comment l'employer.
+
+> **Notation du handoff.** Le dossier de livraison du design (`tokens.json`,
+> `DECISIONS.md`, `INTERACTIONS.md`, `PLATFORM.md`, `AI_TASK_ROUTING.md`, `screens/`,
+> `states/`) **ne fait pas partie du dépôt**. Les commentaires du code y renvoient encore par
+> leur notation courte — `DECISIONS.md D7`, `INTERACTIONS.md §3.2`, `screens/15`,
+> `states/dialog-stop-gen.png`. Ce sont des **références de provenance**, pas des liens :
+> elles disent d'où vient un arbitrage, non où le relire. Ce qui en survit et fait autorité
+> est ici, dans `docs/AI.md` (routage des tâches, gardes d'envoi distant D3/D4/D13) et dans
+> `src/styles.css`. Ne pas créer de règle nouvelle qui dépende d'un fichier du handoff : elle
+> serait inapplicable.
 
 > **Jetons v1 hérités.** `bg-surface`, `text-ink`, `border-line`, `text-accent`,
 > `rounded-card`, `text-body`… existent encore : ils sont **repointés** sur la palette v2
@@ -56,7 +66,10 @@ Ne pas :
   compteurs et touches ;
 - multiplier les ombres : une seule (`shadow-pop`), réservée aux menus, dialogues et
   formulaires modaux ; `shadow-sheet` pour la feuille A4 des aperçus ;
-- agrandir les rayons au-delà de `rounded-r11` (fenêtre modale) ;
+- agrandir les rayons au-delà de `rounded-r11` (fenêtre modale) — deux jetons v1 le
+  dépassent encore et sont de la dette, pas une permission : `rounded-card` (12 px,
+  19 emplois) et `rounded-overlay` (14 px, `DateInput`). Ne pas en introduire d'autres,
+  et passer un composant retouché à l'échelle `r2`–`r11` ;
 - ajouter une police d’icônes ou une bibliothèque de graphiques (décision D7, §6) ;
 - recréer un bouton, un champ, une pastille, une barre de filtres ou une modale « pour cet écran » ;
 - exposer la pile technique à l’utilisateur (Tauri, React, SQLite, IPC…) ;
@@ -193,7 +206,10 @@ Aucune police d’icônes (décision D7). Trois moyens, dans cet ordre :
 
 - **`LineIcon`** (`src/shared/ui/LineIcon.tsx`) : les 11 tracés dessinés pour Candilog
   (navigation, signet, export, import, recherche) — grille 16, trait 1,4 px, `currentColor`.
-  N’en ajouter qu’à partir d’un tracé livré dans `reference_design/assets/icons/`.
+  N’en ajouter un que s’il respecte cette grille — 16 × 16, trait 1,4 px,
+  `currentColor`, aucun remplissage — et que le libellé seul ne suffit pas. Le dossier
+  de tracés du handoff n’est plus dans le dépôt : `LineIcon.tsx` est désormais la
+  définition de référence, et un tracé neuf s’y ajoute à côté des onze existants.
 - **Glyphes typographiques** des maquettes : `‹ ›` (précédent, suivant), `▾` (liste,
   dépliable), `✕` (fermer, retirer), `✓` (choisi, terminé), `+`, `→`, `↶ ↷` ; en bouton
   seul, `GlyphButton`, qui exige un `label`.
@@ -385,6 +401,13 @@ barre groupée 40 px dès qu'une case est cochée
   bandeaux « sans réponse depuis plus de 14 jours » et « entretien aujourd'hui » ; cartes
   compactes (référence, échéance, intitulé, entreprise, contrat, date) ; chaque colonne est
   paginée côté SQLite (`ColumnPager`). Un changement de statut affiche `CAN-142 → Entretien`.
+  Le déplacement d'une carte utilise le glisser-déposer **HTML5** (`dataTransfer`), ce qui
+  impose `dragDropEnabled: false` dans `src-tauri/tauri.conf.json` : laissé à `true`, le
+  gestionnaire de dépôt natif de Tauri intercepte les événements et le glisser-déposer HTML5
+  ne fonctionne plus sous WebView2 (Windows). Rien n'écoute `tauri://drag-drop`, donc le
+  drapeau ne rendait aucun service et ouvrait une surface de dépôt de fichiers inutilisée.
+  Ne pas le remettre à `true` sans câbler le dépôt natif **et** vérifier le Kanban sous
+  Windows : les deux mécanismes sont mutuellement exclusifs sur cette plateforme.
 
 ### Analyse
 
@@ -444,7 +467,7 @@ barre groupée 40 px dès qu'une case est cochée
   tâche, conséquences (destinataire, tâche, « 1 sur 5 »), interrupteur « Ne plus demander
   pour … » **désactivé** par défaut, « Annuler » / « Envoyer ». Monté une fois dans la coque.
 
-- IA (`screens/12`, `13`) : colonne **Fournisseurs** de 190 px (onglets verticaux : état « Local · n modèles », « Clé enregistrée », « Aucune clé », point vert quand le fournisseur est prêt, mention « principal »), puis le détail : nom en serif, description **factuelle** et trois jauges — confidentialité, coût, hors connexion ; jamais une promesse de qualité. L'IA locale affiche ses modèles installés en lignes (`ManagedOllamaPanel` : Utiliser, Tester, Supprimer) et ouvre **Installer l'IA locale** (`LocalInstallOverlay`, `screens/14`, sur `WorkSurface`) : à gauche les trois étapes et la fiche du modèle choisi, au centre les modèles en boutons radio avec jauges, puis le déroulé et « Installation terminée » ; annulation et échec s'affichent en place, jamais par toast, un fournisseur distant sa configuration (modèle et `RemoteModelPicker` après Actualiser, endpoint, clé jamais rendue en clair, mode, température) avec « Tester la connexion » (`T`) et « Enregistrer », qui en fait le fournisseur principal. En bas, **Qui fait quoi** (`AiTaskRouting`, `reference_design/AI_TASK_ROUTING.md`) : cinq tâches, le modèle de chacune, point vert (local), ambre (distant) ou gris (désactivée) ; le sélecteur propose le fournisseur principal, les modèles installés, les fournisseurs distants configurés et « Aucun » ; le choix est enregistré aussitôt, sans repli. Le fournisseur local s’appelle **« IA locale »**, jamais d’après une famille de modèles. La liste **Profils disponibles** reprend les `evaluations` du backend (`compatibility` + `reason`) : un profil `unsupported` est étiqueté « Incompatible » et son installation est désactivée. Un benchmark `too_slow` avertit **toujours**, y compris sur le plus petit profil où aucun repli n’existe. Le résultat d'un test de connexion est un message fixe : la prose du modèle n’est pas un état.
+- IA (`screens/12`, `13`) : colonne **Fournisseurs** de 190 px (onglets verticaux : état « Local · n modèles », « Clé enregistrée », « Aucune clé », point vert quand le fournisseur est prêt, mention « principal »), puis le détail : nom en serif, description **factuelle** et trois jauges — confidentialité, coût, hors connexion ; jamais une promesse de qualité. L'IA locale affiche ses modèles installés en lignes (`ManagedOllamaPanel` : Utiliser, Tester, Supprimer) et ouvre **Installer l'IA locale** (`LocalInstallOverlay`, `screens/14`, sur `WorkSurface`) : à gauche les trois étapes et la fiche du modèle choisi, au centre les modèles en boutons radio avec jauges, puis le déroulé et « Installation terminée » ; annulation et échec s'affichent en place, jamais par toast, un fournisseur distant sa configuration (modèle et `RemoteModelPicker` après Actualiser, endpoint, clé jamais rendue en clair, mode, température) avec « Tester la connexion » (`T`) et « Enregistrer », qui en fait le fournisseur principal. En bas, **Qui fait quoi** (`AiTaskRouting`, routage décrit dans `docs/AI.md`) : cinq tâches, le modèle de chacune, point vert (local), ambre (distant) ou gris (désactivée) ; le sélecteur propose le fournisseur principal, les modèles installés, les fournisseurs distants configurés et « Aucun » ; le choix est enregistré aussitôt, sans repli. Le fournisseur local s’appelle **« IA locale »**, jamais d’après une famille de modèles. La liste **Profils disponibles** reprend les `evaluations` du backend (`compatibility` + `reason`) : un profil `unsupported` est étiqueté « Incompatible » et son installation est désactivée. Un benchmark `too_slow` avertit **toujours**, y compris sur le plus petit profil où aucun repli n’existe. Le résultat d'un test de connexion est un message fixe : la prose du modèle n’est pas un état.
 
 ### Formulaires
 
@@ -501,13 +524,20 @@ primitives dans les deux thèmes.
 
 ---
 
-## 11. Glass et overlays
+## 11. Overlays
 
-La coque est vitreuse (`backdrop-filter` 16–20 px). Les **overlays** (popover Filtres adaptatif de 230 à 640 px selon son contenu, menus, modale) utilisent `glass-popover` / `glass-menu` / `glass-modal` et `shadow-overlay` / `shadow-menu`.
+**La coque n'est pas vitreuse.** `--candilog-blur-shell` et `--candilog-blur-overlay` valent
+`0px` : la hiérarchie vient des surfaces et du filet 1 px (§3), conformément à §2. Les classes
+`glass-topbar`, `glass-subnav`, `glass-inspector`, `glass-menu` et `glass-modal` de la v1 ont
+été retirées de `styles.css` — elles n'avaient plus aucun appelant. Seule `glass-popover`
+subsiste, employée par `DateInput`, et elle ne pose qu'une couleur de fond.
 
-Sans `backdrop-filter`, fallback `glass-fallback` / `surface-elevated` (déjà dans `styles.css`).
+Un overlay (popover Filtres adaptatif de 230 à 640 px selon son contenu, menu, dialogue) se
+construit donc avec les jetons de surface — `bg-menu`, `bg-modal` — un filet `border-bd-menu`
+et l'ombre unique `shadow-pop` de §2.
 
-Fermeture : `useDismissable` (Escape + clic extérieur) — calendrier, FilterMenu, inspecteur, modale.
+Fermeture : `useDismissable` (Escape + clic extérieur) — calendrier, FilterMenu, inspecteur,
+modale.
 
 
 ---

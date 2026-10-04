@@ -1,5 +1,5 @@
 /**
- * Carte des destinations de Candilog v2 (`reference_design/INTERACTIONS.md` §1-2).
+ * Carte des destinations de Candilog v2 (`INTERACTIONS.md` §1-2).
  *
  * Six destinations dans la barre de navigation. Les Réglages ne sont pas une destination
  * mais une surcouche (`⌘,`) ; les générateurs, l'analyse et l'import sont des actions.

@@ -3,7 +3,7 @@ import type { ManagedModelStatus } from "@/shared/types/generated/ai";
 import { defaultEndpoint, getProvider, idProvider } from "./providers";
 import type { ProviderOption } from "./providers";
 
-/** Les cinq tâches routables, dans l'ordre de l'écran (`AI_TASK_ROUTING.md` §2). */
+/** Les cinq tâches routables, dans l'ordre de l'écran (`docs/AI.md`, « Routage par tâche »). */
 export const AI_TASKS: ReadonlyArray<{ value: AiTask; label: string }> = [
   { value: "generate_resume", label: "Générer un CV ciblé" },
   { value: "write_letter", label: "Rédiger une lettre" },
@@ -23,7 +23,7 @@ export interface Assignment {
 /**
  * Une adresse de cette machine ? `localhost`, `127.0.0.1`, `[::1]`, `*.local` sont locales ;
  * toute autre adresse — y compris une IP de réseau privé — est distante, car les données
- * quittent la machine (`reference_design/DECISIONS.md` D13, volontairement prudent).
+ * quittent la machine (décision D13, `docs/AI.md` ; volontairement prudent).
  */
 export function isLocalEndpoint(endpoint: string | null | undefined): boolean {
   if (!endpoint) return false;

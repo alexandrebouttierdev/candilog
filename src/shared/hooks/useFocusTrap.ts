@@ -6,7 +6,7 @@ const FOCUSABLE =
 
 /**
  * Piège le focus dans une surface modale et le rend à l'élément déclencheur à la fermeture
- * (`reference_design/INTERACTIONS.md` §7) : tant qu'un dialogue ou un formulaire est
+ * (`INTERACTIONS.md` §7) : tant qu'un dialogue ou un formulaire est
  * ouvert, `Tab` ne doit pas parcourir l'arrière-plan atténué, invisible mais atteignable.
  */
 export function useFocusTrap(container: RefObject<HTMLElement | null>, active: boolean) {

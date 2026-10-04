@@ -20,7 +20,7 @@ import type { ThemePref } from "@/shared/lib/ui-store";
 /**
  * Planche de vérification du design system v2.
  *
- * Sert à comparer les primitives à `docs/DESIGN.md` et à `reference_design/` dans les deux
+ * Sert à comparer les primitives à `docs/DESIGN.md` et à `src/styles.css` dans les deux
  * thèmes, et à éprouver les états au clavier. N'est atteignable que par l'URL `/_design`,
  * jamais depuis la navigation : c'est un outil de revue, pas un écran de l'application.
  */

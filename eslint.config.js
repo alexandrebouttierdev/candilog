@@ -17,9 +17,6 @@ export default tseslint.config(
       "website/**",
       "vendor/**",
       "docs/**",
-      // Handoff de design : prototype HTML généré par un outil, référence de rendu et non
-      // code de l'application.
-      "reference_design/**",
       ".npm-cache/**",
       ".pnp.cjs",
       ".pnp.loader.mjs",

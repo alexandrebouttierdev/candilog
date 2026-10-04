@@ -84,7 +84,7 @@ pub struct AppSettings {
     #[serde(default)]
     pub ai_routes: AiRoutes,
     /// Fournisseurs distants pour lesquels l'utilisateur a demandé de ne plus confirmer le
-    /// premier envoi (`reference_design/DECISIONS.md` D4), par identifiant (`claude`, …).
+    /// premier envoi (décision D4, `docs/AI.md`), par identifiant (`claude`, …).
     #[serde(default)]
     pub remote_send_consents: BTreeSet<String>,
     #[serde(default)]

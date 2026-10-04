@@ -96,7 +96,7 @@ function hasDetails(values: ApplicationFormInput): boolean {
 }
 
 /**
- * Formulaire `candidature` (`reference_design/DECISIONS.md` D4) : la création et la
+ * Formulaire `candidature` (`DECISIONS.md` D4) : la création et la
  * modification partagent la même grille ; seul le contrat annoncé change.
  *
  * Grille de la maquette (intitulé, entreprise, ville, contrat, canal, date, statut, lien,

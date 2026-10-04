@@ -1,4 +1,4 @@
-//! Export CSV des entreprises (écran Relations, `reference_design/DECISIONS.md` E10).
+//! Export CSV des entreprises (écran Relations, `DECISIONS.md` E10).
 
 use crate::core::errors::{AppError, AppResult};
 use crate::core::utils::csv_export::{avec_bom, champ_sur};

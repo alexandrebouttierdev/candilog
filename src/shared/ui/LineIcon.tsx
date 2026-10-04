@@ -2,7 +2,7 @@ import { cn } from "@/shared/lib/cn";
 import logoCandilog from "@/assets/logo-candilog.svg";
 
 /**
- * Les 11 icônes dessinées pour Candilog (`reference_design/assets/icons/`) : grille 16,
+ * Les 11 icônes dessinées pour Candilog (`docs/DESIGN.md` §6) : grille 16,
  * trait 1,4 px, extrémités arrondies, `currentColor` — l'icône suit l'encre de son
  * conteneur, donc l'état actif et le thème.
  *

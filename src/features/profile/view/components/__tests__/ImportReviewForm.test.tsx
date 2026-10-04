@@ -10,7 +10,7 @@ import {
   previewToFormValues,
   type ImportProfileFormInput,
   type ImportProfileFormValues,
-} from "../../../model/import-review.schema";
+} from "../../../model/schemas/import-review.schema";
 import { ImportReviewForm } from "../ImportReviewForm";
 
 const preview = (): ImportProfilePreview => ({

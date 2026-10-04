@@ -2,7 +2,7 @@
  * Plateforme d'exécution et notation des raccourcis clavier.
  *
  * Le design imprime chaque raccourci dans l'interface (barre d'état, menus, boutons) selon
- * l'usage de la plateforme (`reference_design/PLATFORM.md` C4) : glyphes collés sous macOS
+ * l'usage de la plateforme (`PLATFORM.md` C4) : glyphes collés sous macOS
  * (`⌘K`), touches écrites en entier et séparées par une espace sous Windows et Linux
  * (`Ctrl K`) — jamais de `+`, jamais `Ctl` ni `^`.
  */
