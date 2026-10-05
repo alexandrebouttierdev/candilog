@@ -15,6 +15,31 @@ use crate::features::settings::domain::{
 use std::path::{Path, PathBuf};
 
 /// Service des réglages, générique sur le dépôt et le coffre (testable hors trousseau).
+/// Faut-il réinterroger GitHub ?
+///
+/// Oui quand l'application ne l'a jamais fait, quand `DELAI_VERIFICATION_MAJ` est écoulé,
+/// quand l'horodatage retenu est illisible — rester bloqué pour toujours sur une valeur
+/// qu'aucun code ne sait plus relire serait pire que de vérifier une fois de trop — et
+/// quand il est dans le futur, ce qui ne peut venir que d'une horloge déréglée depuis.
+fn verification_maj_due(derniere: Option<&str>, maintenant: chrono::DateTime<chrono::Utc>) -> bool {
+    let Some(texte) = derniere else {
+        return true;
+    };
+    let Ok(instant) = chrono::DateTime::parse_from_rfc3339(texte) else {
+        tracing::info!(horodatage = texte, "horodatage de vérification illisible");
+        return true;
+    };
+    let ecoule = maintenant - instant.with_timezone(&chrono::Utc);
+    ecoule.num_seconds() < 0 || ecoule >= DELAI_VERIFICATION_MAJ
+}
+
+/// Délai minimal entre deux interrogations de l'API GitHub au démarrage.
+///
+/// Un jour : l'application est ouverte au moins une fois par jour par qui cherche un emploi,
+/// ce qui suffit à voir une publication sans marteler l'API — GitHub plafonne les clients
+/// anonymes à soixante requêtes par heure et par adresse.
+const DELAI_VERIFICATION_MAJ: chrono::TimeDelta = chrono::TimeDelta::hours(24);
+
 pub struct SettingsService<R: SettingsRepository, C: SecretStoreContract> {
     repo: R,
     secret_store: C,
@@ -265,6 +290,35 @@ impl<R: SettingsRepository, C: SecretStoreContract> SettingsService<R, C> {
             .map(UpdateInfo::from))
     }
 
+    /// Vérification au démarrage : interroge GitHub **une fois par jour au plus**.
+    ///
+    /// Retourne `None` sans aucun appel réseau tant que `DELAI_VERIFICATION_MAJ` n'est pas
+    /// écoulé depuis la dernière tentative. L'instant est retenu **avant** l'appel et quelle
+    /// qu'en soit l'issue : sinon une panne réseau ou un quota GitHub ferait réessayer à
+    /// chaque lancement, exactement quand il ne faut pas insister.
+    ///
+    /// Une vérification qui échoue ne remonte pas : hors ligne, API indisponible ou quota
+    /// dépassé ne sont pas des problèmes que l'utilisateur doive traiter au lancement, et
+    /// l'écran Mises à jour reste là pour une vérification explicite — qui, elle, rapporte
+    /// son erreur.
+    ///
+    /// # Errors
+    /// Retourne une erreur si l'horodatage ne peut être ni lu ni écrit.
+    pub async fn check_update_if_due(&self) -> AppResult<Option<UpdateInfo>> {
+        let maintenant = chrono::Utc::now();
+        if !verification_maj_due(self.repo.last_update_check()?.as_deref(), maintenant) {
+            return Ok(None);
+        }
+        self.repo.mark_update_check(&maintenant.to_rfc3339())?;
+        match self.check_update().await {
+            Ok(disponible) => Ok(disponible),
+            Err(erreur) => {
+                tracing::info!(%erreur, "vérification de mise à jour au démarrage sans réponse");
+                Ok(None)
+            }
+        }
+    }
+
     /// Télécharge l'installeur de la dernière release, vérifie son empreinte, puis l'ouvre.
     ///
     /// L'asset est **re-résolu ici** à partir de l'API GitHub : le frontend ne transmet plus
@@ -443,6 +497,7 @@ mod tests {
 
     struct RepoMemoire {
         store: Mutex<Option<AppSettings>>,
+        derniere_verification: Mutex<Option<String>>,
     }
 
     impl SettingsRepository for RepoMemoire {
@@ -453,6 +508,13 @@ mod tests {
             *self.store.lock().unwrap() = Some(settings.clone());
             Ok(settings.clone())
         }
+        fn last_update_check(&self) -> AppResult<Option<String>> {
+            Ok(self.derniere_verification.lock().unwrap().clone())
+        }
+        fn mark_update_check(&self, instant: &str) -> AppResult<()> {
+            *self.derniere_verification.lock().unwrap() = Some(instant.to_owned());
+            Ok(())
+        }
     }
 
     fn service() -> SettingsService<RepoMemoire, CoffreMemoire> {
@@ -461,6 +523,7 @@ mod tests {
         SettingsService::new(
             RepoMemoire {
                 store: Mutex::new(None),
+                derniere_verification: Mutex::new(None),
             },
             CoffreMemoire::default(),
             pool,
@@ -487,6 +550,89 @@ mod tests {
             model: "llama3.2:3b".into(),
             temperature: 0.7,
             mode: AnalysisMode::Auto,
+        }
+    }
+
+    /// Le délai de vérification, décidé sans réseau ni horloge réelle.
+    mod verification_de_mise_a_jour {
+        use super::*;
+
+        fn t(iso: &str) -> chrono::DateTime<chrono::Utc> {
+            chrono::DateTime::parse_from_rfc3339(iso)
+                .unwrap()
+                .with_timezone(&chrono::Utc)
+        }
+
+        #[test]
+        fn un_premier_lancement_verifie() {
+            assert!(verification_maj_due(None, t("2026-10-05T12:00:00Z")));
+        }
+
+        #[test]
+        fn rien_avant_vingt_quatre_heures() {
+            let maintenant = t("2026-10-05T12:00:00Z");
+            assert!(!verification_maj_due(
+                Some("2026-10-05T11:59:00Z"),
+                maintenant
+            ));
+            assert!(!verification_maj_due(
+                Some("2026-10-04T12:00:01Z"),
+                maintenant
+            ));
+        }
+
+        #[test]
+        fn vingt_quatre_heures_pile_suffisent() {
+            let maintenant = t("2026-10-05T12:00:00Z");
+            assert!(verification_maj_due(
+                Some("2026-10-04T12:00:00Z"),
+                maintenant
+            ));
+            assert!(verification_maj_due(
+                Some("2026-10-03T08:00:00Z"),
+                maintenant
+            ));
+        }
+
+        #[test]
+        fn un_horodatage_illisible_ne_bloque_pas_a_jamais() {
+            assert!(verification_maj_due(
+                Some("hier"),
+                t("2026-10-05T12:00:00Z")
+            ));
+            assert!(verification_maj_due(Some(""), t("2026-10-05T12:00:00Z")));
+        }
+
+        #[test]
+        fn un_horodatage_dans_le_futur_vient_d_une_horloge_dereglee() {
+            // Sans ce cas, une horloge avancée d'un an puis remise à l'heure aurait suspendu
+            // toute vérification pendant un an.
+            assert!(verification_maj_due(
+                Some("2027-10-05T12:00:00Z"),
+                t("2026-10-05T12:00:00Z")
+            ));
+        }
+
+        #[test]
+        fn le_fuseau_de_l_horodatage_est_respecte() {
+            // 14:30+02:00 vaut 12:30 UTC : deux heures plus tôt, pas vingt-deux.
+            assert!(!verification_maj_due(
+                Some("2026-10-05T14:30:00+02:00"),
+                t("2026-10-05T14:30:00Z")
+            ));
+        }
+
+        #[tokio::test]
+        async fn un_appel_trop_tot_n_interroge_pas_github_et_laisse_l_horodatage() {
+            let service = service();
+            let pose = chrono::Utc::now().to_rfc3339();
+            service.repo.mark_update_check(&pose).unwrap();
+
+            // L'horodatage intact est la preuve qu'aucun appel n'a été tenté : il est
+            // réécrit avant chaque interrogation de GitHub. Ce test ne touche donc pas le
+            // réseau, qu'il soit joignable ou non.
+            assert!(service.check_update_if_due().await.unwrap().is_none());
+            assert_eq!(service.repo.last_update_check().unwrap(), Some(pose));
         }
     }
 
@@ -869,6 +1015,7 @@ mod tests {
         let service = SettingsService::new(
             RepoMemoire {
                 store: Mutex::new(None),
+                derniere_verification: Mutex::new(None),
             },
             CoffreMemoire {
                 cles: Mutex::new(HashMap::from([("openai".into(), "sk-stored".into())])),

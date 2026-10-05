@@ -8,6 +8,7 @@ import { managedOllamaService, settingsService } from "@/features/settings";
 import { applicationService } from "@/features/applications";
 import { profileService } from "@/features/profile";
 import type { Settings } from "@/shared/types/generated/settings";
+import { Toaster } from "@/shared/ui";
 import { AppShell } from "../AppShell";
 
 const REGLAGES: Settings = {
@@ -40,6 +41,9 @@ function renderShell(initialEntries = ["/"]) {
   render(
     <QueryWrapper>
       <RouterProvider router={router} />
+      {/* `App.tsx` monte le Toaster à côté du routeur : sans lui, rien de ce que la coque
+          notifie ne serait observable ici. */}
+      <Toaster />
     </QueryWrapper>,
   );
   return router;
@@ -59,6 +63,8 @@ beforeEach(() => {
     last_error: null,
   });
   vi.spyOn(managedOllamaService, "onProgress").mockResolvedValue(() => undefined);
+  // Par défaut, rien à annoncer : les autres tests n'ont pas à composer avec un toast.
+  vi.spyOn(settingsService, "checkUpdateIfDue").mockResolvedValue(null);
 });
 
 describe("coque applicative", () => {
@@ -105,6 +111,28 @@ describe("coque applicative", () => {
     expect(masque?.className).toContain("wide:block");
     // Le libellé suit la même règle, et c'est lui qui donne la mesure.
     expect(within(lien).getByText("Intelligence artificielle").className).toContain("hidden");
+  });
+
+  it("annonce une nouvelle version au démarrage, sans la chercher deux fois", async () => {
+    const verifie = vi.spyOn(settingsService, "checkUpdateIfDue").mockResolvedValue({
+      version: "1.4.0",
+      notes: "",
+      page_url: "https://github.com/alexandrebouttierdev/candilog/releases/latest",
+      asset: null,
+    });
+
+    renderShell();
+
+    // Le toast nomme sa destination : le design interdit un bouton dedans.
+    expect(await screen.findByText("Candilog 1.4.0 est disponible")).toBeInTheDocument();
+    expect(screen.getByText(/Réglages › Mises à jour/)).toBeInTheDocument();
+    expect(verifie).toHaveBeenCalledTimes(1);
+  });
+
+  it("ne dit rien au démarrage quand aucune version n'est annoncée", async () => {
+    renderShell();
+    await waitFor(() => expect(settingsService.checkUpdateIfDue).toHaveBeenCalled());
+    expect(screen.queryByText(/est disponible/)).not.toBeInTheDocument();
   });
 
   it("ne met de badge bêta que sur l'IA", () => {

@@ -12,6 +12,7 @@ import { Sidebar } from "./Sidebar";
 import { StatusBar } from "./StatusBar";
 import { TitleBar } from "./TitleBar";
 import { useShellShortcuts } from "./useShellShortcuts";
+import { useStartupUpdateCheck } from "./useStartupUpdateCheck";
 
 function PageFallback() {
   return (
@@ -41,6 +42,7 @@ export function AppShell() {
 function ShellFrame() {
   useShellShortcuts();
   useShellCommands();
+  useStartupUpdateCheck();
 
   return (
     <div className="flex h-screen min-h-0 flex-col overflow-hidden bg-app text-tx-2">

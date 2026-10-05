@@ -109,6 +109,15 @@ pub async fn settings_check_update(state: State<'_, AppState>) -> AppResult<Opti
     state.settings.check_update().await
 }
 
+/// Vérification au démarrage : interroge GitHub une fois par jour au plus, et se tait
+/// quand le délai n'est pas écoulé ou que le réseau n'a pas répondu.
+#[tauri::command(rename_all = "snake_case")]
+pub async fn settings_check_update_if_due(
+    state: State<'_, AppState>,
+) -> AppResult<Option<UpdateInfo>> {
+    state.settings.check_update_if_due().await
+}
+
 /// Télécharge l'installeur (événement `update-progress`), vérifie son empreinte puis l'ouvre.
 ///
 /// Sans paramètre : l'asset est résolu côté Rust depuis l'API GitHub. Laisser le frontend

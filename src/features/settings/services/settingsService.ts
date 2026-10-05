@@ -24,6 +24,9 @@ export const settingsService = {
   restore: () => ipc<boolean>("settings_restore"),
   reset: () => ipc<ResetOutcome>("settings_reset"),
   checkUpdate: () => ipc<UpdateInfo | null>("settings_check_update"),
+  // Vérification au démarrage : Rust n'interroge GitHub qu'une fois par jour et ne remonte
+  // pas l'échec d'un réseau absent. `null` veut donc dire « rien à annoncer », pas « à jour ».
+  checkUpdateIfDue: () => ipc<UpdateInfo | null>("settings_check_update_if_due"),
   // Sans argument : l'asset est résolu et son empreinte vérifiée côté Rust. Le frontend ne
   // désigne pas ce qui sera téléchargé puis ouvert par le lanceur système.
   downloadUpdate: () => ipc<string>("settings_download_update"),

@@ -6,6 +6,12 @@ use crate::core::errors::{AppError, AppResult};
 use crate::features::settings::domain::{AppSettings, SettingsRepository};
 use rusqlite::OptionalExtension;
 
+/// Clé `app_kv` retenant l'instant de la dernière interrogation de l'API GitHub.
+///
+/// `app_kv` plutôt que `settings` : ce n'est pas un réglage, et une remise à zéro des
+/// données l'efface avec le reste — le prochain démarrage vérifiera, ce qui est inoffensif.
+const CLE_DERNIERE_VERIFICATION: &str = "last_update_check";
+
 const CORRUPT_SETTINGS_REDACTION: &str =
     "[contenu illisible non archivé afin de protéger les secrets]";
 
@@ -108,6 +114,28 @@ impl SettingsRepository for SqliteSettingsRepository {
         .map_err(|e| translate_error(e, "paramètres"))?;
         Ok(settings.clone())
     }
+
+    fn last_update_check(&self) -> AppResult<Option<String>> {
+        let conn = connection(&self.pool)?;
+        conn.query_row(
+            "SELECT kv_value FROM app_kv WHERE kv_key = ?1",
+            [CLE_DERNIERE_VERIFICATION],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(|e| translate_error(e, "dernière vérification de mise à jour"))
+    }
+
+    fn mark_update_check(&self, instant: &str) -> AppResult<()> {
+        let conn = connection(&self.pool)?;
+        conn.execute(
+            "INSERT INTO app_kv (kv_key, kv_value) VALUES (?1, ?2)
+             ON CONFLICT(kv_key) DO UPDATE SET kv_value = excluded.kv_value",
+            [CLE_DERNIERE_VERIFICATION, instant],
+        )
+        .map_err(|e| translate_error(e, "dernière vérification de mise à jour"))?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -120,6 +148,25 @@ mod tests {
         let pool = open_pool(None).unwrap();
         run_local_migrations(&pool).unwrap();
         SqliteSettingsRepository::new(pool)
+    }
+
+    #[test]
+    fn l_horodatage_de_verification_est_absent_puis_retenu_et_remplace() {
+        let repo = repo();
+        assert_eq!(repo.last_update_check().unwrap(), None);
+
+        repo.mark_update_check("2026-10-04T12:00:00+00:00").unwrap();
+        assert_eq!(
+            repo.last_update_check().unwrap().as_deref(),
+            Some("2026-10-04T12:00:00+00:00")
+        );
+
+        // Écrit à chaque tentative : la clé se remplace, elle ne s'accumule pas.
+        repo.mark_update_check("2026-10-05T12:00:00+00:00").unwrap();
+        assert_eq!(
+            repo.last_update_check().unwrap().as_deref(),
+            Some("2026-10-05T12:00:00+00:00")
+        );
     }
 
     #[test]

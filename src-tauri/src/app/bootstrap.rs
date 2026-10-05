@@ -121,6 +121,7 @@ pub fn run() {
             settings::settings_restore,
             settings::settings_reset,
             settings::settings_check_update,
+            settings::settings_check_update_if_due,
             settings::settings_download_update,
             settings::settings_about,
             settings::open_external_url,

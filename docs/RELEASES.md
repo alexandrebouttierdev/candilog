@@ -122,10 +122,22 @@ aucun argument et re-résout l'asset côté Rust. Le paquet est retenu en mémoi
 écrit sur disque qu'ensuite — sous un nom libre, jamais en écrasant un homonyme déjà présent
 dans le dossier Téléchargements.
 
-La mise à jour est **assistée, pas automatique** : l'installation et le redémarrage restent
-entre les mains de l'utilisateur. Aucune mise à jour silencieuse n'est exécutée, et la
-vérification de disponibilité n'a lieu que sur demande explicite depuis l'écran des
-réglages.
+La mise à jour est **assistée, pas automatique** : le téléchargement, l'installation et le
+redémarrage restent entre les mains de l'utilisateur. Aucune mise à jour silencieuse n'est
+exécutée.
+
+La **disponibilité**, elle, est vérifiée seule. Au démarrage, la coque appelle
+`settings_check_update_if_due` ; `SettingsService::check_update_if_due` n'interroge l'API
+GitHub qu'une fois par jour au plus (`DELAI_VERIFICATION_MAJ`), l'instant de chaque tentative
+étant retenu dans `app_kv` sous `last_update_check`. L'horodatage est écrit **avant** l'appel
+et quelle qu'en soit l'issue : une panne réseau ou un quota GitHub dépassé ne doit pas
+provoquer une tentative à chaque lancement. Un horodatage illisible ou situé dans le futur
+(horloge déréglée) vaut « à vérifier », faute de quoi l'application resterait bloquée dessus.
+
+Une version trouvée s'annonce par un toast — « Candilog 1.4.0 est disponible · Réglages ›
+Mises à jour ». Sans bouton : le design l'interdit (`docs/DESIGN.md` §7), le toast nomme donc
+sa destination. Une vérification de démarrage qui échoue ne remonte rien ; l'écran Mises à
+jour reste le seul endroit où l'on vérifie sur demande — et là, l'erreur s'affiche.
 
 Le contrat de nommage entre le workflow et `updater.rs` est verrouillé par un test
 (`les_assets_du_workflow_sont_ceux_que_l_application_attend`) : renommer un asset ici casse
