@@ -822,6 +822,56 @@ describe("ce que l'IA peut utiliser", () => {
     expect(generate).toHaveBeenCalledWith(expect.objectContaining({ excluded_sections: ["skills"], tone: "direct" }));
   });
 
+  it("avertit le générateur de CV que le profil est à compléter", async () => {
+    // Profil neuf : ni nom ni fait. Le générateur ne peut qu'inventer, et il le dit avant
+    // de lancer plutôt que de laisser découvrir une feuille creuse.
+    const neuf = profil();
+    vi.spyOn(profileService, "load").mockResolvedValue({
+      ...neuf,
+      profile: {
+        ...neuf.profile,
+        identity: { ...neuf.profile.identity, first_name: "", name: "" },
+        experiences: [],
+        skills: [],
+      },
+      completion: 0,
+    });
+
+    render(<ResumeGeneratorPage />, { wrapper });
+    const bandeau = await screen.findByText("Profil à compléter");
+    expect(bandeau.parentElement?.textContent).toContain(
+      "votre nom et au moins une expérience, une formation ou une compétence",
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Compléter le profil" }));
+    expect(navigateMock).toHaveBeenCalledWith("/profile");
+  });
+
+  it("avertit aussi le rédacteur de lettre, dans ses propres termes", async () => {
+    const neuf = profil();
+    vi.spyOn(profileService, "load").mockResolvedValue({
+      ...neuf,
+      profile: { ...neuf.profile, experiences: [], skills: [] },
+      completion: 10,
+    });
+
+    render(<LetterWriterPage />, { wrapper });
+    const bandeau = await screen.findByText("Profil à compléter");
+    // Le nom est renseigné ici : seul le manque de faits est reproché.
+    expect(bandeau.parentElement?.textContent).toContain(
+      "Candilog écrit une lettre à partir de votre profil : il y manque au moins une expérience",
+    );
+  });
+
+  it("ne dit rien quand le profil a de quoi nourrir la génération", async () => {
+    vi.spyOn(profileService, "load").mockResolvedValue(profil());
+    render(<ResumeGeneratorPage />, { wrapper });
+
+    // Attendre le profil : l'absence du bandeau avant chargement serait vraie pour rien.
+    await waitFor(() => expect(screen.getByRole("switch", { name: "Compétences" })).toBeEnabled());
+    expect(screen.queryByText("Profil à compléter")).not.toBeInTheDocument();
+  });
+
   it("n'autorise à la lettre que les arguments cochés", async () => {
     vi.spyOn(profileService, "load").mockResolvedValue(profil());
     const generate = vi.spyOn(aiService, "generateCoverLetter").mockResolvedValue(aiExecution("Madame, Monsieur,"));

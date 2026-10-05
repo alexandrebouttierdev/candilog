@@ -146,6 +146,7 @@
   --candilog-success-border: color-mix(in srgb, var(--st-g) 30%, transparent);
   --candilog-warning: var(--st-a);
   --candilog-warning-tint: color-mix(in srgb, var(--st-a) 16%, transparent);
+  --candilog-warning-border: color-mix(in srgb, var(--st-a) 30%, transparent);
   --candilog-danger: var(--st-c);
   --candilog-danger-text: var(--tint-c-tx);
   --candilog-danger-tint: var(--tint-c-bg);
@@ -446,6 +447,7 @@
   --color-success-border: var(--candilog-success-border);
   --color-warning: var(--candilog-warning);
   --color-warning-tint: var(--candilog-warning-tint);
+  --color-warning-border: var(--candilog-warning-border);
   --color-danger: var(--candilog-danger);
   --color-danger-text: var(--candilog-danger-text);
   --color-danger-tint: var(--candilog-danger-tint);

@@ -1,7 +1,7 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/shared/lib/cn";
 import { useUiStore } from "@/shared/lib/ui-store";
-import { BrandMark, LineIcon } from "@/shared/ui";
+import { BetaBadge, BrandMark, LineIcon } from "@/shared/ui";
 import { formatShortcut } from "@/shared/lib/platform";
 import { DESTINATIONS, destinationForPath } from "@/app/router/routes";
 import type { DestinationKey } from "@/app/router/routes";
@@ -43,6 +43,8 @@ export function Sidebar() {
           ? null
           : { value: `${counts.profile} %`, tone: counts.profile < 100 ? "text-st-a" : "text-tx-6" };
       case "ai":
+        // La place du décompte porte le badge « bêta », rendu plus bas : l'IA n'a rien à
+        // dénombrer, et c'est son seul emplacement dans la barre.
         return null;
     }
   };
@@ -85,7 +87,14 @@ export function Sidebar() {
               >
                 <LineIcon name={destination.icon} className={isActive ? "text-ac-tx" : undefined} />
                 <span className="hidden truncate wide:inline">{destination.label}</span>
-                {badge ? (
+                {destination.key === "ai" ? (
+                  // Enveloppé plutôt que masqué par une classe passée au badge : `hidden` et
+                  // l'`inline-flex` du badge sont deux utilitaires `display`, et l'ordre de
+                  // la feuille décidait lequel gagnait — « bêta » débordait du rail de 52 px.
+                  <span className="ml-auto hidden wide:block">
+                    <BetaBadge size="nav" />
+                  </span>
+                ) : badge ? (
                   <span className={cn("ml-auto hidden font-mono text-mono-sm wide:inline", badge.tone)}>
                     {badge.value}
                   </span>

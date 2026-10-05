@@ -14,6 +14,7 @@ export function WorkSurface({
   crumbRoot,
   onClose,
   title,
+  badge,
   actions,
   left,
   right,
@@ -29,6 +30,8 @@ export function WorkSurface({
   crumbRoot: string;
   onClose: () => void;
   title: string;
+  /** Pastille accolée au titre : le badge « bêta » des surfaces qui passent par l'IA. */
+  badge?: ReactNode;
   actions: ReactNode;
   left: ReactNode;
   /** Colonne de droite ; absente, la feuille prend la place. */
@@ -92,6 +95,7 @@ export function WorkSurface({
             ›
           </span>
           <span className="truncate font-medium text-tx">{title}</span>
+          {badge}
         </p>
         <div className="ml-auto flex flex-none items-center gap-1.5">{actions}</div>
       </header>

@@ -3,6 +3,7 @@ import { AiBenchmarkModal, useAiRailStatusStore } from "@/features/ai";
 import { AppError } from "@/shared/types/app-error";
 import type { AiTask, AnalysisMode, LlmForm, Settings, TaskRoute } from "@/shared/types/generated/settings";
 import {
+  BetaBadge,
   Button,
   ErrorBanner,
   FormField,
@@ -327,6 +328,12 @@ export function AiPage() {
             );
           })}
         </div>
+        {/* Dit une fois pour tout l'écran, au pied de la colonne qui le nomme : le badge du
+            fil d'Ariane marque l'état, cette phrase en donne la conséquence. */}
+        <p className="flex flex-none flex-col items-start gap-1.5 border-t border-bd-soft px-3.5 py-2.5 text-tiny leading-[1.45] text-tx-5">
+          <BetaBadge size="nav" />
+          <span>Les fonctions d'IA sont en bêta : relisez tout ce qu'elles produisent avant de l'envoyer.</span>
+        </p>
       </nav>
 
       <div className="min-w-0 flex-1 overflow-y-auto px-[22px] pt-[18px] pb-8">

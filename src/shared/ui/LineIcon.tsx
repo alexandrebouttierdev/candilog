@@ -2,7 +2,7 @@ import { cn } from "@/shared/lib/cn";
 import logoCandilog from "@/assets/logo-candilog.svg";
 
 /**
- * Les 11 icônes dessinées pour Candilog (`docs/DESIGN.md` §6) : grille 16,
+ * Les 12 icônes dessinées pour Candilog (`docs/DESIGN.md` §6) : grille 16,
  * trait 1,4 px, extrémités arrondies, `currentColor` — l'icône suit l'encre de son
  * conteneur, donc l'état actif et le thème.
  *
@@ -37,6 +37,13 @@ const PATHS = {
   "export-csv": ["M8 2.6v7.8M5.2 7.6 8 10.4l2.8-2.8", "M2.9 10.6v1.6a1 1 0 0 0 1 1h8.2a1 1 0 0 0 1-1v-1.6"],
   import: ["M8 10.6V2.8M5.2 5.6 8 2.8l2.8 2.8", "M2.9 10.2v2a1 1 0 0 0 1 1h8.2a1 1 0 0 0 1-1v-2"],
   search: ["M7.3 12.1a4.4 4.4 0 1 0 0-8.8 4.4 4.4 0 0 0 0 8.8Z", "M10.5 10.5 13.4 13.4"],
+  // Éprouvette : la marque d'une fonctionnalité en bêta. Le trait du liquide reste à
+  // mi-hauteur pour qu'elle se lise encore à 11 px, la taille du badge.
+  beta: [
+    "M6.4 2.6h3.2",
+    "M6.9 2.6v3.3L4 11.6c-.5.9.1 1.9 1.1 1.9h5.8c1 0 1.6-1 1.1-1.9L9.1 5.9V2.6",
+    "M5.5 9.3h5",
+  ],
 } as const;
 
 export type LineIconName = keyof typeof PATHS;

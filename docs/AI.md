@@ -3,6 +3,12 @@
 Toute l'IA vit dans `src-tauri/src/features/ai/`. Le frontend n'envoie que des DTO et
 écoute la progression : **aucun prompt dans React**.
 
+Tout ce qui passe par l'IA est annoncé **bêta** dans l'interface (`BetaBadge`,
+`docs/DESIGN.md` §6) : la destination Intelligence artificielle, les générateurs de CV et de
+lettre, l'analyse face à l'offre, l'import de CV et l'installation de l'IA locale. La
+conséquence annoncée est toujours la même — relire ce que le modèle produit. Retirer ce badge
+est une décision produit, pas un nettoyage de code.
+
 ## Fournisseurs
 
 L'**IA locale Candilog** (`candilog_local`), Ollama, Claude, OpenAI, Gemini,

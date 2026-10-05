@@ -30,6 +30,7 @@ const ECRANS: RouteObject[] = [
   { index: true, element: <p>Écran Aujourd'hui</p> },
   { path: "applications", element: <><p>Écran Candidatures</p><input aria-label="Recherche" /></> },
   { path: "profile", element: <p>Écran Profil</p> },
+  { path: "ai", element: <p>Écran Intelligence artificielle</p> },
 ];
 
 function renderShell(initialEntries = ["/"]) {
@@ -76,6 +77,40 @@ describe("coque applicative", () => {
     }
     expect(within(nav).getByRole("link", { name: /Candidatures/ })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("tab", { name: "Kanban" })).toBeInTheDocument();
+  });
+
+  it("marque l'IA d'un badge bêta dans la navigation et dans le fil d'Ariane", () => {
+    renderShell(["/ai"]);
+    const nav = screen.getByRole("navigation", { name: "Navigation principale" });
+    // Le badge occupe la place du décompte : l'IA n'a rien à dénombrer.
+    expect(within(nav).getByRole("link", { name: /Intelligence artificielle/ })).toHaveTextContent("bêta");
+    // Et il redit l'état pour l'écran entier, l'IA n'ayant pas de surcouche à soi.
+    const fil = screen.getByRole("navigation", { name: "Fil d'Ariane" });
+    expect(fil).toHaveTextContent("bêta");
+  });
+
+  it("efface le badge bêta avec les libellés quand le rail tombe à 52 px", () => {
+    renderShell(["/ai"]);
+    const nav = screen.getByRole("navigation", { name: "Navigation principale" });
+    const lien = within(nav).getByRole("link", { name: /Intelligence artificielle/ });
+
+    // Sous le palier de 1060 px le rail n'affiche que les icônes, et « bêta » débordait des
+    // 52 px. `hidden` et l'`inline-flex` du badge sont deux utilitaires `display` : lequel
+    // gagne ne dépend que de l'ordre de la feuille, que jsdom ne connaît pas. La règle
+    // vérifiable ici est donc structurelle — ce qui masque ne déclare pas son propre
+    // `display`, sinon il entre en concurrence avec lui-même.
+    const masque = within(lien).getByText("bêta").closest(".hidden");
+    expect(masque).not.toBeNull();
+    expect(masque?.className).not.toMatch(/\b(inline-)?flex\b/);
+    expect(masque?.className).toContain("wide:block");
+    // Le libellé suit la même règle, et c'est lui qui donne la mesure.
+    expect(within(lien).getByText("Intelligence artificielle").className).toContain("hidden");
+  });
+
+  it("ne met de badge bêta que sur l'IA", () => {
+    renderShell(["/applications"]);
+    const fil = screen.getByRole("navigation", { name: "Fil d'Ariane" });
+    expect(fil).not.toHaveTextContent("bêta");
   });
 
   it("affiche les décomptes connus : total des candidatures et complétude du profil", async () => {

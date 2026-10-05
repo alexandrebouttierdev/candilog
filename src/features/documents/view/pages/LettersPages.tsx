@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "react-router-dom";
-import { Button, ConfirmDialog, ErrorBanner } from "@/shared/ui";
+import { BetaBadge, Button, ConfirmDialog, ErrorBanner } from "@/shared/ui";
 import { cn } from "@/shared/lib/cn";
 import { useLetterWriterViewModel } from "../../viewmodel/useLetterWriterViewModel";
 import { useStepLog } from "../../viewmodel/useStepLog";
@@ -14,6 +14,7 @@ import { OfferSource } from "../components/OfferSource";
 import { Segmented } from "../components/Segmented";
 import { SectionToggles } from "../components/SectionToggles";
 import { LetterEditor } from "../components/LetterEditor";
+import { ProfileGapBanner } from "../components/ProfileGapBanner";
 import type { LetterPaperField } from "../components/LetterPaper";
 import { Champ, coverLetterFromNavigation } from "./documentPageSupport";
 
@@ -73,6 +74,7 @@ export function LetterWriterPage() {
   return (
     <GeneratorFrame
       title="Générer une lettre"
+      badge={<BetaBadge />}
       actions={
         running ? (
           <Button size="bar" shortcut="mod+." disabled={vm.stopping} onClick={() => setAskStop(true)}>
@@ -101,6 +103,7 @@ export function LetterWriterPage() {
       }
       left={
         <>
+          <ProfileGapBanner gaps={vm.profileGaps} what="lettre" />
           <PaneSection title="Offre visée">
             <OfferSource
               value={vm.context}

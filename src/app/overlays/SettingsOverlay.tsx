@@ -6,7 +6,7 @@ import type { SettingsSection as Section } from "@/shared/lib/ui-store";
 import { useDismissable } from "@/shared/hooks/useDismissable";
 import { useFocusTrap } from "@/shared/hooks/useFocusTrap";
 import { PATHS } from "@/shared/lib/paths";
-import { Button, Kbd } from "@/shared/ui";
+import { BetaBadge, Button, Kbd } from "@/shared/ui";
 import {
   AboutPage,
   AppearanceSettings,
@@ -91,7 +91,8 @@ export function SettingsOverlay() {
                   : "text-tx-3 hover:bg-elev hover:text-tx",
               )}
             >
-              {SETTINGS_LABELS[key]}
+              <span className="min-w-0 truncate">{SETTINGS_LABELS[key]}</span>
+              {key === "ai" ? <BetaBadge size="nav" className="ml-1.5" /> : null}
             </button>
           ))}
         </nav>

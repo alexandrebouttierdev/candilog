@@ -34,9 +34,13 @@ export function ErrorBanner({
 }
 
 /** Glyphe de statut du bandeau : la teinte seule ne porte jamais l'information. */
-const GLYPHS = { danger: "c", success: "g", accent: "n" } as const;
+const GLYPHS = { danger: "c", warning: "a", success: "g", accent: "n" } as const;
 
-/** Bandeau d'information, de succès ou d'erreur, aux trois teintes des maquettes. */
+/**
+ * Bandeau d'information, d'avertissement, de succès ou d'erreur, aux teintes des
+ * maquettes. L'ambre dit « à traiter » sans dire « échoué » : ce qui est affiché reste
+ * utilisable, mais le résultat ne vaudra que ce que vaut ce qui manque.
+ */
 export function Banner({
   tone,
   title,
@@ -44,7 +48,7 @@ export function Banner({
   children,
   className,
 }: {
-  tone: "danger" | "success" | "accent";
+  tone: "danger" | "warning" | "success" | "accent";
   title: string;
   message?: ReactNode;
   children?: ReactNode;
@@ -52,6 +56,7 @@ export function Banner({
 }) {
   const TONES = {
     danger: "border-danger-border bg-danger-tint text-danger",
+    warning: "border-warning-border bg-warning-tint text-warning",
     success: "border-success-border bg-success-tint text-success",
     accent: "border-accent-border bg-accent-tint text-accent",
   } as const;

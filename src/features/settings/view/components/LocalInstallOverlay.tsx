@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import type { ManagedModelStatus } from "@/shared/types/generated/ai";
-import { Button, PaneSection, WorkSurface } from "@/shared/ui";
+import { BetaBadge, Button, PaneSection, WorkSurface } from "@/shared/ui";
 import { cn } from "@/shared/lib/cn";
 import { formatDuration } from "@/shared/lib/duration";
 import { ManagedPublisherLogo } from "./ProviderGrid";
@@ -90,6 +90,7 @@ export function LocalInstallOverlay({
     <WorkSurface
       crumbRoot="Intelligence artificielle"
       title="Installer l’IA locale"
+      badge={<BetaBadge />}
       onClose={onClose}
       status={status}
       {...(flow.phase === "run"

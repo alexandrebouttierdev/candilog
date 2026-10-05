@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 import { formatElapsed, formatTokens } from "@/shared/lib/duration";
 import { useUiStore } from "@/shared/lib/ui-store";
 import type { ResumeWorkspace } from "@/shared/types/generated/documents";
-import { Button, ErrorBanner, FormField, TextInput } from "@/shared/ui";
+import { BetaBadge, Button, ErrorBanner, FormField, TextInput } from "@/shared/ui";
 import { useResumeEditor } from "../../viewmodel/useResumeEditor";
 import { useResumeGeneratorViewModel } from "../../viewmodel/useResumeGeneratorViewModel";
 import { OverflowStatus, UndoRedoControls } from "../components/DocumentUi";
@@ -14,6 +14,7 @@ import { OfferSource } from "../components/OfferSource";
 import { Segmented } from "../components/Segmented";
 import { SectionToggles } from "../components/SectionToggles";
 import { useStepLog } from "../../viewmodel/useStepLog";
+import { ProfileGapBanner } from "../components/ProfileGapBanner";
 import { ProfileSkillChoiceDialog } from "../components/ProfileSkillChoiceDialog";
 import { ResumeAtsPanel } from "../components/ResumeAtsPanel";
 import { ResumePaper } from "../components/ResumePaper";
@@ -49,6 +50,7 @@ export function ResumeGeneratorPage() {
 
   const offerPane = (
     <>
+      <ProfileGapBanner gaps={vm.profileGaps} what="CV" />
       <PaneSection title="Offre visée">
         <OfferSource value={vm.jobOffer} onChange={vm.setJobOffer} readClipboard={vm.readClipboard} disabled={running} />
       </PaneSection>
@@ -130,6 +132,7 @@ export function ResumeGeneratorPage() {
   return (
     <GeneratorFrame
       title="Générer un CV"
+      badge={<BetaBadge />}
       actions={generateButton}
       left={offerPane}
       right={stepsPane}
@@ -241,6 +244,7 @@ function ResumeEditorScreen({
   return (
     <GeneratorFrame
       title="Générer un CV"
+      badge={<BetaBadge />}
       actions={
         <>
           {generateButton}

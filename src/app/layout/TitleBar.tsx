@@ -1,5 +1,6 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/shared/lib/cn";
+import { BetaBadge } from "@/shared/ui";
 import { useChromeValue } from "@/shared/lib/chrome";
 import { useCommands } from "@/shared/lib/commands";
 import { currentPlatform } from "@/shared/lib/platform";
@@ -40,6 +41,9 @@ export function TitleBar() {
         <span data-tauri-drag-region className="whitespace-nowrap text-tx-4">
           {root}
         </span>
+        {/* L'IA est signalée partout où elle travaille : ici pour l'écran entier, dans
+            l'en-tête des surcouches pour les générateurs et l'analyse. */}
+        {!settings && destination.key === "ai" ? <BetaBadge /> : null}
         {leaf ? (
           <>
             <span aria-hidden data-tauri-drag-region className="text-tx-7">

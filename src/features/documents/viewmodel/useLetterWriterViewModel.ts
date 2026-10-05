@@ -17,6 +17,7 @@ import { useRemoteSendGuard } from "@/features/settings";
 import type { Identity } from "@/shared/types/generated/profile";
 import type { ProfileSection } from "@/shared/types/generated/ai";
 import { LETTER_ARGUMENTS, sectionOptions, toggleSection } from "../model/profileSections";
+import { profileGaps } from "../model/profileReadiness";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 import { exportCoverLetterPdf } from "./documentExport";
@@ -261,6 +262,9 @@ export function useLetterWriterViewModel(initial: CoverLetter | null) {
     identity,
     /** Les arguments proposés, comptés sur le profil courant. */
     argumentOptions: sectionOptions(profile.data?.profile ?? null, LETTER_ARGUMENTS),
+    // Vide tant que le profil n'est pas chargé : un bandeau qui clignote au démarrage
+    // avertirait de ce qu'on ignore encore.
+    profileGaps: profile.data ? profileGaps(profile.data.profile) : [],
     excludedSections,
     toggleSection: (section: ProfileSection) => setExcludedSections((current) => toggleSection(current, section)),
     saveIdentity: async (next: Identity): Promise<void> => {

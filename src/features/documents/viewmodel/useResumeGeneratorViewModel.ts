@@ -15,6 +15,7 @@ import { AppError } from "@/shared/types/app-error";
 import type { ProfileSection, ResumeTone } from "@/shared/types/generated/ai";
 import type { ResumeWorkspace } from "@/shared/types/generated/documents";
 import { RESUME_SECTIONS, sectionOptions, toggleSection } from "../model/profileSections";
+import { profileGaps } from "../model/profileReadiness";
 import { PROFILE_KEY, profileService } from "@/features/profile";
 import { useRemoteSendGuard } from "@/features/settings";
 import { documentsService } from "../services/documentsService";
@@ -183,6 +184,9 @@ export function useResumeGeneratorViewModel(initial: ResumeGeneratorInitial) {
     isSaving: save.isPending,
     /** « Ce que l'IA peut utiliser », compté sur le profil courant. */
     sectionOptions: sectionOptions(profile.data?.profile ?? null, RESUME_SECTIONS),
+    // Vide tant que le profil n'est pas chargé : un bandeau qui clignote au démarrage
+    // avertirait de ce qu'on ignore encore.
+    profileGaps: profile.data ? profileGaps(profile.data.profile) : [],
     excludedSections,
     tone,
     setJobOffer,

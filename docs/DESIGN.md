@@ -204,12 +204,12 @@ Focus clavier : `outline 1px accent-focus`, offset 0 — déjà sur `:focus-visi
 
 Aucune police d’icônes (décision D7). Trois moyens, dans cet ordre :
 
-- **`LineIcon`** (`src/shared/ui/LineIcon.tsx`) : les 11 tracés dessinés pour Candilog
-  (navigation, signet, export, import, recherche) — grille 16, trait 1,4 px, `currentColor`.
-  N’en ajouter un que s’il respecte cette grille — 16 × 16, trait 1,4 px,
-  `currentColor`, aucun remplissage — et que le libellé seul ne suffit pas. Le dossier
-  de tracés du handoff n’est plus dans le dépôt : `LineIcon.tsx` est désormais la
-  définition de référence, et un tracé neuf s’y ajoute à côté des onze existants.
+- **`LineIcon`** (`src/shared/ui/LineIcon.tsx`) : les 12 tracés dessinés pour Candilog
+  (navigation, signet, export, import, recherche, éprouvette du badge bêta) — grille 16,
+  trait 1,4 px, `currentColor`. N’en ajouter un que s’il respecte cette grille — 16 × 16,
+  trait 1,4 px, `currentColor`, aucun remplissage — et que le libellé seul ne suffit pas. Le
+  dossier de tracés du handoff n’est plus dans le dépôt : `LineIcon.tsx` est désormais la
+  définition de référence, et un tracé neuf s’y ajoute à côté des douze existants.
 - **Glyphes typographiques** des maquettes : `‹ ›` (précédent, suivant), `▾` (liste,
   dépliable), `✕` (fermer, retirer), `✓` (choisi, terminé), `+`, `→`, `↶ ↷` ; en bouton
   seul, `GlyphButton`, qui exige un `label`.
@@ -218,6 +218,26 @@ Aucune police d’icônes (décision D7). Trois moyens, dans cet ordre :
 Sinon, pas d’icône : le libellé suffit. Une icône purement décorative à côté d’un titre ou
 d’une ligne n’est pas remplacée. Marque : `BrandMark` (tuile `#5B62F0` fixe dans les deux
 thèmes).
+
+### Badge bêta
+
+`BetaBadge` (`src/shared/ui/BetaBadge.tsx`) marque **tout ce qui passe par l’IA** : éprouvette
+et mot « bêta », pastille ambre — ni une erreur, ni un état normal. Deux tailles : `nav` dans
+une barre de navigation, la taille courante partout ailleurs. Son `title` donne la conséquence
+(« relisez toujours ce que l’IA produit »), pas une définition de « bêta ».
+
+Il paraît là où l’IA travaille, et nulle part ailleurs :
+
+- barre de navigation et fil d’Ariane, sur la destination **Intelligence artificielle** — dans
+  la barre il prend la place du décompte, et le libellé se tronque en conséquence (le `title`
+  du lien le rend en entier). Sous le palier de 1060 px il disparaît avec les libellés : c’est
+  une **enveloppe** qui porte `hidden wide:block`, jamais une classe posée sur le badge, dont
+  l’`inline-flex` entrerait en concurrence avec elle et ferait déborder « bêta » du rail de
+  52 px ;
+- navigation de la surcouche Réglages, sur la même section ;
+- en-tête (`badge` de `WorkSurface`) des générateurs de CV et de lettre, de l’analyse face à
+  l’offre, de l’import de CV et de l’installation de l’IA locale ;
+- pied de la colonne « Fournisseurs » de l’écran IA, où une phrase en donne la conséquence.
 
 ---
 
@@ -335,6 +355,12 @@ Réutiliser la recette du voisin plutôt que d’en inventer une.
   (260 px), feuille A4 sur le bureau `bg-canvas`, déroulé (270 px, dès 1060 px) — et barre
   d'état. `⌘⏎` génère, `⌘S` enregistre : la surcouche porte ses propres raccourcis, ceux
   d'écran se taisant sous une surface.
+- **Profil à compléter** (`ProfileGapBanner`, bandeau ambre en tête de la colonne de gauche)
+  dès que le profil n'a pas de quoi nourrir la génération : pas de nom, ou aucune expérience,
+  formation ni compétence (`model/profileReadiness.ts`). Un générateur n'invente pas un
+  parcours, il reformule le profil : le dire avant vaut mieux que de laisser découvrir une
+  feuille creuse. Il n'empêche pas de générer, et « Compléter le profil » quitte la surcouche
+  — rien n'est encore produit à cet instant.
 - « Offre visée » (`OfferSource`) : s'ouvre sur les candidatures ouvertes du suivi — le
   texte est prérempli avec ce que Candilog en sait, sans rien inventer — sauf si une offre
   est déjà fournie ; sinon le texte collé.
@@ -474,7 +500,7 @@ barre groupée 40 px dès qu'une case est cochée
   tâche, conséquences (destinataire, tâche, « 1 sur 5 »), interrupteur « Ne plus demander
   pour … » **désactivé** par défaut, « Annuler » / « Envoyer ». Monté une fois dans la coque.
 
-- IA (`screens/12`, `13`) : colonne **Fournisseurs** de 190 px (onglets verticaux : état « Local · n modèles », « Clé enregistrée », « Aucune clé », point vert quand le fournisseur est prêt, mention « principal »), puis le détail : nom en serif, description **factuelle** et trois jauges — confidentialité, coût, hors connexion ; jamais une promesse de qualité. L'IA locale affiche ses modèles installés en lignes (`ManagedOllamaPanel` : Utiliser, Tester, Supprimer) et ouvre **Installer l'IA locale** (`LocalInstallOverlay`, `screens/14`, sur `WorkSurface`) : à gauche les trois étapes et la fiche du modèle choisi, au centre les modèles en boutons radio avec jauges, puis le déroulé et « Installation terminée » ; annulation et échec s'affichent en place, jamais par toast, un fournisseur distant sa configuration (modèle et `RemoteModelPicker` après Actualiser, clé jamais rendue en clair, mode, température). **L'endpoint n'apparaît que là où il décrit un choix** : « Personnalisé », dont c'est l'objet, et Ollama, dont l'utilisateur désigne l'hôte — l'adresse des cinq services cloud est fixe, et l'exposer n'offrait aucun réglage tout en laissant une faute de frappe casser le fournisseur en silence. Une valeur déjà personnalisée reste visible, pour rester corrigeable avec « Tester la connexion » (`T`) et « Enregistrer », qui en fait le fournisseur principal. En bas, **Qui fait quoi** (`AiTaskRouting`, routage décrit dans `docs/AI.md`) : cinq tâches, le modèle de chacune, point vert (local), ambre (distant) ou gris (désactivée) ; le sélecteur propose le fournisseur principal, les modèles installés, les fournisseurs distants configurés et « Aucun » ; le choix est enregistré aussitôt, sans repli. Le fournisseur local s’appelle **« IA locale »**, jamais d’après une famille de modèles. Même principe pour les distants : la carte porte le nom de l’**éditeur** — Anthropic, Google, Mistral AI, OpenAI, DeepSeek — et la famille de modèles passe en indice. C’est l’éditeur qui reçoit les données, donc lui que l’utilisateur doit reconnaître avant d’accepter un envoi ; `taskRouting` réutilise ce libellé comme destinataire plutôt que d’en tenir une seconde liste. La liste **Profils disponibles** reprend les `evaluations` du backend (`compatibility` + `reason`) : un profil `unsupported` est étiqueté « Incompatible » et son installation est désactivée. Un benchmark `too_slow` avertit **toujours**, y compris sur le plus petit profil où aucun repli n’existe. Le résultat d'un test de connexion est un message fixe : la prose du modèle n’est pas un état.
+- IA (`screens/12`, `13`) : colonne **Fournisseurs** de 190 px (onglets verticaux : état « Local · n modèles », « Clé enregistrée », « Aucune clé », point vert quand le fournisseur est prêt, mention « principal » ; en pied de colonne, le `BetaBadge` et la phrase qui en donne la conséquence — relire tout ce que l'IA produit), puis le détail : nom en serif, description **factuelle** et trois jauges — confidentialité, coût, hors connexion ; jamais une promesse de qualité. L'IA locale affiche ses modèles installés en lignes (`ManagedOllamaPanel` : Utiliser, Tester, Supprimer) et ouvre **Installer l'IA locale** (`LocalInstallOverlay`, `screens/14`, sur `WorkSurface`) : à gauche les trois étapes et la fiche du modèle choisi, au centre les modèles en boutons radio avec jauges, puis le déroulé et « Installation terminée » ; annulation et échec s'affichent en place, jamais par toast, un fournisseur distant sa configuration (modèle et `RemoteModelPicker` après Actualiser, clé jamais rendue en clair, mode, température). **L'endpoint n'apparaît que là où il décrit un choix** : « Personnalisé », dont c'est l'objet, et Ollama, dont l'utilisateur désigne l'hôte — l'adresse des cinq services cloud est fixe, et l'exposer n'offrait aucun réglage tout en laissant une faute de frappe casser le fournisseur en silence. Une valeur déjà personnalisée reste visible, pour rester corrigeable avec « Tester la connexion » (`T`) et « Enregistrer », qui en fait le fournisseur principal. En bas, **Qui fait quoi** (`AiTaskRouting`, routage décrit dans `docs/AI.md`) : cinq tâches, le modèle de chacune, point vert (local), ambre (distant) ou gris (désactivée) ; le sélecteur propose le fournisseur principal, les modèles installés, les fournisseurs distants configurés et « Aucun » ; le choix est enregistré aussitôt, sans repli. Le fournisseur local s’appelle **« IA locale »**, jamais d’après une famille de modèles. Même principe pour les distants : la carte porte le nom de l’**éditeur** — Anthropic, Google, Mistral AI, OpenAI, DeepSeek — et la famille de modèles passe en indice. C’est l’éditeur qui reçoit les données, donc lui que l’utilisateur doit reconnaître avant d’accepter un envoi ; `taskRouting` réutilise ce libellé comme destinataire plutôt que d’en tenir une seconde liste. La liste **Profils disponibles** reprend les `evaluations` du backend (`compatibility` + `reason`) : un profil `unsupported` est étiqueté « Incompatible » et son installation est désactivée. Un benchmark `too_slow` avertit **toujours**, y compris sur le plus petit profil où aucun repli n’existe. Le résultat d'un test de connexion est un message fixe : la prose du modèle n’est pas un état.
 
 ### Formulaires
 
@@ -494,11 +520,13 @@ barre groupée 40 px dès qu'une case est cochée
 | --- | --- |
 | Chargement d’écran | `Skeleton` / `SkeletonRows`, `role="status"` |
 | Échec de chargement | `ErrorBanner` + Réessayer |
+| Avertissement non bloquant (ce qui est affiché reste utilisable, le résultat vaudra ce que vaut ce qui manque) | `Banner` `tone="warning"` — ambre, glyphe `a` |
 | Succès / échec d’écriture sans décision | `notify()` → `Toaster` (4 s, bas droite) |
 | Décision destructive | `ConfirmDialog` |
 | Rien à montrer | `EmptyState` dans le contenant, pas un écran plein décoratif |
 | Traitement IA en cours | `AiProgress` : étape, barre indéterminée et temps écoulé — **jamais** de pourcentage, il serait inventé |
 | Traitement IA terminé | Durée totale en badge d'en-tête (« Rédigée en 12 s ») |
+| Fonction qui passe par l'IA | `BetaBadge` dans l'en-tête de l'écran ou de la surcouche (§6) |
 
 ---
 

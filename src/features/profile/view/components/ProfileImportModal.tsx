@@ -17,7 +17,7 @@ import {
 } from "@/features/ai";
 import { AppError } from "@/shared/types/app-error";
 import { useRemoteSendGuard } from "@/features/settings";
-import { Button, ConfirmDialog, ErrorBanner, LineIcon, WorkSurface } from "@/shared/ui";
+import { BetaBadge, Button, ConfirmDialog, ErrorBanner, LineIcon, WorkSurface } from "@/shared/ui";
 import { formatAiSummary } from "@/shared/lib/duration";
 import {
   countMarked,
@@ -259,6 +259,7 @@ export function ProfileImportModal({
       <WorkSurface
         crumbRoot="Profil"
         title="Importer un CV"
+        badge={<BetaBadge />}
         onClose={close}
         actions={
           view === "review" ? (

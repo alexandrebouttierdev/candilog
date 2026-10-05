@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { formatAiSummary, formatElapsed } from "@/shared/lib/duration";
-import { Button, EmptyState, ErrorBanner, StatusGlyph } from "@/shared/ui";
+import { BetaBadge, Button, EmptyState, ErrorBanner, StatusGlyph } from "@/shared/ui";
 import type { GlyphTone } from "@/shared/ui";
 import { cn } from "@/shared/lib/cn";
 import type { MatchScore } from "@/features/ai";
@@ -68,6 +68,7 @@ export function ResumeAnalysisPage() {
   return (
     <GeneratorFrame
       title="Analyse face à l’offre"
+      badge={<BetaBadge />}
       actions={
         running ? (
           <Button size="bar" shortcut="mod+." disabled={vm.stopping} onClick={() => setAskStop(true)}>

@@ -1,4 +1,5 @@
 export { Avatar, avatarInitials, avatarTone } from "./Avatar";
+export { BetaBadge } from "./BetaBadge";
 export { Button, GlyphButton } from "./Button";
 export type { ButtonVariant } from "./Button";
 export { Card, CardHeader, CardMeta, CardTitle } from "./Card";
