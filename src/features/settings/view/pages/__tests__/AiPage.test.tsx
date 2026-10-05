@@ -239,11 +239,55 @@ describe("écran Intelligence artificielle", () => {
     expect(await screen.findByDisplayValue("gpt-4o-mini")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("tab", { name: /^Mistral/ }));
     expect(await screen.findByDisplayValue("mistral-small-latest")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("https://api.mistral.ai")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("tab", { name: /^OpenAI/ }));
     expect(await screen.findByDisplayValue("gpt-4o-mini")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("https://api.openai.com")).toBeInTheDocument();
+
+    // Le modèle porte seul la démonstration : l'endpoint d'un service cloud est fixe et
+    // n'est plus affiché, faute de décrire un choix (cf. `endpointUtile`).
+    expect(screen.queryByDisplayValue("https://api.openai.com")).not.toBeInTheDocument();
+  });
+
+  it("masque l'endpoint d'un service cloud, dont l'adresse est fixe", async () => {
+    vi.spyOn(settingsService, "load").mockResolvedValue(
+      reglages({ provider: "openai", model: "gpt-4o-mini", api_key_configured: true }),
+    );
+    render(<AiPage />, { wrapper });
+
+    await userEvent.click(await screen.findByRole("tab", { name: /^OpenAI/ }));
+    await screen.findByDisplayValue("gpt-4o-mini");
+
+    expect(screen.queryByDisplayValue("https://api.openai.com")).not.toBeInTheDocument();
+  });
+
+  it("affiche l'endpoint d'un fournisseur personnalisé, dont c'est tout l'objet", async () => {
+    vi.spyOn(settingsService, "load").mockResolvedValue(
+      reglages({
+        provider: { custom: "passerelle" },
+        model: "modele-interne",
+        endpoint: "https://passerelle.interne.test",
+      }),
+    );
+    render(<AiPage />, { wrapper });
+
+    expect(await screen.findByDisplayValue("https://passerelle.interne.test")).toBeInTheDocument();
+  });
+
+  it("laisse visible un endpoint déjà personnalisé sur un service cloud", async () => {
+    // Une configuration posée avant cette règle ne doit pas devenir invisible : elle reste
+    // modifiable, donc corrigeable.
+    const initial = reglages({
+      provider: "openai",
+      model: "gpt-4o-mini",
+      endpoint: "https://passerelle.interne.test",
+      api_key_configured: true,
+    });
+    vi.spyOn(settingsService, "load").mockResolvedValue(initial);
+
+    render(<AiPage />, { wrapper });
+    await userEvent.click(await screen.findByRole("tab", { name: /^OpenAI/ }));
+
+    expect(await screen.findByDisplayValue("https://passerelle.interne.test")).toBeInTheDocument();
   });
 });
 

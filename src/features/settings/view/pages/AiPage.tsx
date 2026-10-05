@@ -16,6 +16,7 @@ import { useUiStore } from "@/shared/lib/ui-store";
 import { openExternal } from "@/shared/services/external-link";
 import { useSettingsViewModel } from "../../viewmodel/useSettingsViewModel";
 import {
+  defaultEndpoint,
   getProvider,
   OLLAMA_PROVIDER,
   OTHER_PROVIDERS,
@@ -426,24 +427,26 @@ export function AiPage() {
                         </p>
                       )}
                     </div>
-                    <FormField
-                      label="Endpoint"
-                      required={idProvider(llm.provider) === "custom"}
-                      className="max-w-[380px]"
-                      help={
-                        idProvider(llm.provider) === "custom"
-                          ? "Ollama local ou LM Studio : http://localhost:11434 (HTTP, sans /v1)."
-                          : undefined
-                      }
-                    >
-                      {(props) => (
-                        <TextInput
-                          {...props}
-                          value={llm.endpoint ?? ""}
-                          onChange={(event) => patchLlm({ endpoint: event.target.value || null })}
-                        />
-                      )}
-                    </FormField>
+                    {endpointUtile(llm) ? (
+                      <FormField
+                        label="Endpoint"
+                        required={idProvider(llm.provider) === "custom"}
+                        className="max-w-[380px]"
+                        help={
+                          idProvider(llm.provider) === "custom"
+                            ? "Ollama local ou LM Studio : http://localhost:11434 (HTTP, sans /v1)."
+                            : undefined
+                        }
+                      >
+                        {(props) => (
+                          <TextInput
+                            {...props}
+                            value={llm.endpoint ?? ""}
+                            onChange={(event) => patchLlm({ endpoint: event.target.value || null })}
+                          />
+                        )}
+                      </FormField>
+                    ) : null}
                     {idProvider(llm.provider) !== "ollama" ? (
                       <FormField
                         label="Clé API"
@@ -639,4 +642,22 @@ function Temperature({ value, onChange }: { value: number; onChange: (value: num
       </div>
     </div>
   );
+}
+
+/**
+ * L'endpoint mérite-t-il d'être affiché pour ce fournisseur ?
+ *
+ * Il n'est modifiable que là où il décrit vraiment un choix : « Personnalisé », dont c'est
+ * tout l'objet, et Ollama, dont l'utilisateur désigne l'hôte et le port. Pour les cinq
+ * services cloud, l'adresse de l'API est fixe : l'exposer n'offrait aucun réglage et une
+ * faute de frappe y cassait le fournisseur sans que rien ne l'explique.
+ *
+ * Exception : une valeur déjà personnalisée reste visible et modifiable, pour ne pas cacher
+ * une configuration active à qui l'avait posée avant cette règle — et pouvoir la corriger.
+ */
+function endpointUtile(llm: LlmForm): boolean {
+  const id = idProvider(llm.provider);
+  if (id === "custom" || id === "ollama") return true;
+  const actuel = llm.endpoint?.trim() ?? "";
+  return actuel !== "" && actuel !== defaultEndpoint(id);
 }
