@@ -11,7 +11,7 @@ const FAITS = [
   },
   {
     titre: "L'IA que vous choisissez",
-    texte: "IA locale installée depuis l'application, ou votre clé Mistral, OpenAI, Gemini, Claude, DeepSeek.",
+    texte: "IA locale installée depuis l'application, ou votre clé Mistral AI, OpenAI, Google Gemini, Anthropic, DeepSeek.",
   },
   {
     titre: "Des PDF d'une page",

@@ -85,7 +85,16 @@ export function DocumentsShowcase() {
         {FONCTIONS.map((f, i) => (
           <article
             key={f.ecran}
-            className="grid items-center gap-8 xl:grid-cols-[340px_minmax(0,1fr)] xl:gap-16"
+            className={cn(
+              "grid items-center gap-8 xl:gap-16",
+              // Les deux colonnes sont asymétriques : le texte tient dans 340 px, l'aperçu a
+              // besoin du reste. Alterner les côtés demande donc d'inverser **le gabarit** et
+              // pas seulement l'ordre — sinon l'aperçu de la rangée paire atterrit dans la
+              // colonne étroite et s'y écrase (titre cassé mot à mot, texte en ruban vertical).
+              i % 2 === 1
+                ? "xl:grid-cols-[minmax(0,1fr)_340px]"
+                : "xl:grid-cols-[340px_minmax(0,1fr)]",
+            )}
           >
             <div className={cn("flex max-w-[640px] flex-col gap-5", i % 2 === 1 && "xl:order-2")}>
               <span className="font-mono text-[12px] text-ac-tx">{f.ecran}</span>
@@ -100,7 +109,7 @@ export function DocumentsShowcase() {
                 ))}
               </ul>
             </div>
-            <figure className="m-0 min-w-0">
+            <figure className={cn("m-0 min-w-0", i % 2 === 1 && "xl:order-1")}>
               <figcaption className="sr-only">{f.legende}</figcaption>
               <div aria-hidden="true" className="window-lift">
                 {f.apercu}

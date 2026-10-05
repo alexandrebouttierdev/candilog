@@ -111,10 +111,10 @@ function EcranIa() {
               <span className="flex h-[40px] items-center gap-[10px] px-[10px]">
                 <StatusGlyph ton="n" />
                 <span className="flex flex-1 flex-col">
-                  <span className="font-medium">Ministral 3 · 8B</span>
-                  <span className="text-[10.5px] text-tx-5">Plus fin sur les CV longs · peut être lent</span>
+                  <span className="font-medium">Gemma 4 · E2B</span>
+                  <span className="text-[10.5px] text-tx-5">Texte, image et son · lit un CV en PDF</span>
                 </span>
-                <Pastille mono>8 B</Pastille>
+                <Pastille mono>E2B</Pastille>
                 <FauxBouton>Assigner…</FauxBouton>
               </span>
             </span>
@@ -174,8 +174,8 @@ export function AiSection() {
           }
         >
           Installez l&apos;IA locale (Ollama) depuis l&apos;application ou connectez le fournisseur
-          dont vous avez la clé&nbsp;: Mistral, OpenAI, Gemini, Claude, DeepSeek ou tout service
-          compatible OpenAI. Chaque tâche peut ensuite utiliser un modèle différent.
+          dont vous avez la clé&nbsp;: Mistral AI, OpenAI, Google Gemini, Anthropic, DeepSeek ou
+          tout service compatible OpenAI. Chaque tâche peut ensuite utiliser un modèle différent.
         </EnTeteSection>
         <figure className="m-0">
           <figcaption className="sr-only">

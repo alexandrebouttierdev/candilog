@@ -389,7 +389,7 @@ export function AnalyseOffre() {
         </div>
       </div>
       <BarreEtat
-        gauche="claude sonnet · analyse distante · 7 s · CV v2 face à CAN-214"
+        gauche="claude-sonnet · analyse distante · 7 s · CV v2 face à CAN-214"
         touches={[{ libelle: "Fermer", touche: "Échap" }]}
       />
     </Fenetre>

@@ -312,18 +312,19 @@ export const PERSONA = {
 /* ── IA ──────────────────────────────────────────────────────────────────── */
 
 /** Les cinq tâches routables de l'application (`src/features/settings/model/taskRouting.ts`)
- *  et le routage par défaut de `reference_design/AI_TASK_ROUTING.md`. */
+ *  et un routage d'exemple. L'étiquette reprend la forme de l'application : éditeur ·
+ *  modèle pour un fournisseur distant, nom du modèle pour l'IA locale. */
 export const ROUTAGE = [
   { tache: "Générer un CV ciblé", modele: "Ministral 3 · 3B", ou: "local" },
   { tache: "Rédiger une lettre", modele: "Ministral 3 · 3B", ou: "local" },
-  { tache: "Analyser un CV", modele: "Claude Sonnet", ou: "distant" },
+  { tache: "Analyser un CV", modele: "Anthropic · Claude Sonnet", ou: "distant" },
   { tache: "Extraire une offre d'emploi", modele: "Choisir un modèle", ou: "aucun" },
   { tache: "Lire un CV importé", modele: "Ministral 3 · 3B", ou: "local" },
 ] as const;
 
 export const FOURNISSEURS_APERCU = [
   { nom: "IA locale", detail: "Local · 2 modèles", pret: true, choisi: true, logo: null },
-  { nom: "Claude", detail: "Clé enregistrée", pret: true, choisi: false, logo: "claude" },
-  { nom: "Mistral", detail: "Aucune clé", pret: false, choisi: false, logo: "mistralai" },
+  { nom: "Anthropic", detail: "Clé enregistrée", pret: true, choisi: false, logo: "claude" },
+  { nom: "Mistral AI", detail: "Aucune clé", pret: false, choisi: false, logo: "mistralai" },
   { nom: "OpenAI", detail: "Aucune clé", pret: false, choisi: false, logo: "openai" },
 ] as const;
