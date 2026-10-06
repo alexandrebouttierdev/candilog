@@ -31,7 +31,9 @@ rfd = { version = "0.16", default-features = false, features = ["common-controls
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "fs", "io-util"] }
 tokio-util = "0.7"
 futures-util = "0.3"
-sysinfo = { version = "0.39.6", default-features = false, features = ["system"] }
+# La lignée 0.39 relève son MSRV à 1.95 : rester en 0.38 tant que `rust-version` vaut
+# 1.91, sinon `cargo` refuse de construire sous la toolchain que la CI épingle.
+sysinfo = { version = "0.38.4", default-features = false, features = ["system"] }
 fs2 = "0.4"
 
 # `rusqlite` et `r2d2` sont conservés depuis l'application Iced : les dépôts SQL et
