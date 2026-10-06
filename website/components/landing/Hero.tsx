@@ -27,47 +27,54 @@ const FAITS = [
  * Hero : la promesse en deux lignes, les deux actions (le téléchargement d'abord), puis
  * l'application elle-même — l'écran « Aujourd'hui » — posée sur le bureau (`desk`), comme
  * dans les captures de référence. Les quatre faits sous la fenêtre sont vérifiables dans l'application.
+ *
+ * Tout tient dans **une seule colonne de lecture**. Le titre, le chapô et les boutons se
+ * lisaient auparavant en deux colonnes écartées de 80 px, l'appel à l'action collé au bord
+ * droit : l'œil devait traverser un vide pour trouver le bouton qui suit la phrase qui le
+ * justifie. La largeur, c'est la fenêtre d'application en dessous qui l'occupe.
  */
 export function Hero() {
   return (
     <section aria-labelledby="hero-titre" className="overflow-x-clip">
-      <Reveal className="mx-auto flex max-w-[1200px] flex-col gap-7 px-4 pt-12 md:gap-9 md:px-8 md:pt-20 xl:px-0 xl:pt-24">
+      <Reveal className="mx-auto flex max-w-[1200px] flex-col px-4 pt-12 md:px-8 md:pt-16 xl:px-0 xl:pt-20">
         <h1
           id="hero-titre"
-          className="serif-title max-w-[1000px] text-balance text-[40px] leading-[1.04] tracking-[-0.03em] sm:text-[52px] lg:text-[66px] lg:leading-[1.02]"
+          className="serif-title max-w-[860px] text-balance text-[34px] leading-[1.06] tracking-[-0.03em] sm:text-[44px] lg:text-[54px] lg:leading-[1.04]"
         >
           Suivez chaque candidature.
-          <br className="hidden sm:block" /> <span className="text-tx-4">Ciblez chaque document.</span>
+          {/* Coupure à toutes les largeurs : sans elle, sous 640 px, le changement d'encre
+              tombait au milieu d'une ligne et les deux phrases n'en formaient plus qu'une.
+              `tx-3` et non `tx-4` : à cette taille, le gris le plus clair du design passait
+              pour une ligne désactivée au lieu d'un second temps. */}
+          <br /> <span className="text-tx-3">Ciblez chaque document.</span>
         </h1>
-        <div className="grid gap-7 lg:grid-cols-[560px_minmax(0,1fr)] lg:items-end lg:gap-20">
-          <p className="text-pretty text-[16.5px] leading-[1.6] text-tx-3 md:text-[17.5px]">
-            Candilog est une application de bureau pour mener votre recherche d&apos;emploi&nbsp;:
-            candidatures, relances, entretiens, CV et lettres au même endroit. L&apos;IA, locale ou
-            chez le fournisseur de votre choix, part des faits de votre profil pour adapter chaque
-            document à l&apos;offre.
-          </p>
-          <div className="flex flex-col gap-[14px] lg:items-end">
-            <div className="flex flex-col gap-[10px] sm:flex-row">
-              <DownloadMenu />
-              <ButtonLink
-                href={GITHUB_REPO}
-                target="_blank"
-                rel="noopener noreferrer"
-                variante="secondaire"
-                taille="tactile"
-                className="sm:h-[40px] sm:px-4 sm:text-[14px]"
-              >
-                Voir le code source
-              </ButtonLink>
-            </div>
-            <p className="font-mono text-[11.5px] text-tx-4">
-              Gratuit pour un usage personnel · macOS · Windows · Linux · sans compte
-            </p>
+        <p className="mt-5 max-w-[620px] text-pretty text-[16.5px] leading-[1.6] text-tx-3 md:text-[17.5px]">
+          Candilog est une application de bureau pour mener votre recherche d&apos;emploi&nbsp;:
+          candidatures, relances, entretiens, CV et lettres au même endroit. L&apos;IA, locale ou
+          chez le fournisseur de votre choix, part des faits de votre profil pour adapter chaque
+          document à l&apos;offre.
+        </p>
+        <div className="mt-7 flex flex-col gap-[14px]">
+          <div className="flex flex-col gap-[10px] sm:flex-row">
+            <DownloadMenu />
+            <ButtonLink
+              href={GITHUB_REPO}
+              target="_blank"
+              rel="noopener noreferrer"
+              variante="secondaire"
+              taille="tactile"
+              className="sm:h-[40px] sm:px-4 sm:text-[14px]"
+            >
+              Voir le code source
+            </ButtonLink>
           </div>
+          <p className="font-mono text-[11.5px] text-tx-4">
+            Gratuit pour un usage personnel · macOS · Windows · Linux · sans compte
+          </p>
         </div>
       </Reveal>
 
-      <div className="mt-12 bg-[linear-gradient(var(--app)_0_120px,var(--desk)_120px)] md:mt-16 md:bg-[linear-gradient(var(--app)_0_200px,var(--desk)_200px)]">
+      <div className="mt-10 bg-[linear-gradient(var(--app)_0_120px,var(--desk)_120px)] md:mt-14 md:bg-[linear-gradient(var(--app)_0_200px,var(--desk)_200px)]">
         <Reveal className="mx-auto max-w-[1200px] px-4 md:px-8 xl:px-0">
           <figure className="m-0">
             <figcaption className="sr-only">

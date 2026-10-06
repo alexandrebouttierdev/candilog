@@ -96,9 +96,16 @@ depuis le site.
 
 | Titre | Valeur |
 | --- | --- |
-| H1 | 40 → 52 → 66 px, `leading-[1.02]`, `-0.03em` |
-| H2 de section | 32 → 40 → 44 px, `-0.025em` |
-| H3 éditorial | 24 → 28 px |
+| H1 (hero) | 34 → 44 → 54 px, `leading-[1.04]`, `-0.03em` |
+| H2 de section | 26 → 32 → 36 px, `-0.025em` |
+| H2 de clôture (`DownloadCta`) | 28 → 40 px, `-0.028em` |
+| H2 de la FAQ | 26 → 32 px |
+| H3 éditorial | 21 → 24 px |
+
+L'échelle a été **descendue d'environ un cinquième** : à 66 px, le H1 occupait deux lignes
+de 145 px et repoussait l'application sous la ligne de flottaison, et les H2 à 44 px pesaient
+plus que les aperçus qu'ils annonçaient. Les tailles des **aperçus** (`landing/app/`) n'en
+dépendent pas : elles copient l'application et ne bougent qu'avec elle (§10).
 | Sur-titre (`eyebrow`) | 12 px, capitales, `0.08em`, `tx-4` |
 | En-tête d'aperçu (`caps`) | 10,5 px, capitales, `0.04em`, `tx-6` — celui de l'application |
 
@@ -113,6 +120,10 @@ tuile `#5B62F0` de l'application ; `app/icon.svg` en est la copie.
 ## 5. Layout et responsive
 
 - Contenu : **1200 px** centré ; gouttières 16 px (mobile), 32 px (dès 768 px).
+- **Hero sur une seule colonne** : titre, chapô (620 px au plus) et boutons se suivent
+  verticalement. La version en deux colonnes écartait l'appel à l'action de 80 px, collé au
+  bord droit, loin de la phrase qui le justifie. C'est la fenêtre d'application en dessous,
+  pleine largeur, qui occupe les 1200 px.
 - Sections : 64 → 96 → 128 px de marge verticale. En-tête de section éditorial
   (`EnTeteSection`) : titre à gauche, chapô à droite dès 1024 px.
 - Contrôles : 32 px compact, 40 px principal, **48 px tactile** sous 640 px.

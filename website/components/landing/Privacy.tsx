@@ -69,7 +69,7 @@ export function Privacy() {
           <span className="eyebrow">Confidentialité</span>
           <h2
             id="confidentialite-titre"
-            className="serif-title text-balance text-[32px] leading-[1.1] tracking-[-0.025em] md:text-[40px] xl:text-[44px] xl:leading-[1.08]"
+            className="serif-title text-balance text-[26px] leading-[1.14] tracking-[-0.025em] md:text-[32px] xl:text-[36px] xl:leading-[1.1]"
           >
             Vos données sont
             <br className="hidden sm:block" /> sur votre ordinateur.

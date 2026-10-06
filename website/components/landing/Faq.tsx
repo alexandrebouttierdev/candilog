@@ -25,7 +25,7 @@ export function Faq() {
       <Reveal className="mx-auto grid max-w-[1200px] gap-8 px-4 py-16 md:px-8 md:py-24 lg:grid-cols-[340px_minmax(0,1fr)] lg:gap-20 xl:px-0 xl:py-28">
         <div className="flex flex-col gap-4">
           <span className="eyebrow">Questions</span>
-          <h2 id="faq-titre" className="serif-title text-[30px] leading-[1.1] tracking-[-0.025em] md:text-[36px]">
+          <h2 id="faq-titre" className="serif-title text-[26px] leading-[1.14] tracking-[-0.025em] md:text-[32px]">
             Avant d&apos;installer.
           </h2>
           <a

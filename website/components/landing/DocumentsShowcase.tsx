@@ -98,7 +98,7 @@ export function DocumentsShowcase() {
           >
             <div className={cn("flex max-w-[640px] flex-col gap-5", i % 2 === 1 && "xl:order-2")}>
               <span className="font-mono text-[12px] text-ac-tx">{f.ecran}</span>
-              <h3 className="serif-title text-balance text-[24px] leading-[1.15] md:text-[28px]">{f.titre}</h3>
+              <h3 className="serif-title text-balance text-[21px] leading-[1.2] md:text-[24px]">{f.titre}</h3>
               <p className="text-pretty text-[15px] leading-[1.65] text-tx-3">{f.texte}</p>
               <ul className="m-0 flex list-none flex-col border-t border-bd p-0">
                 {f.points.map((p) => (

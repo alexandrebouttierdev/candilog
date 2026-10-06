@@ -27,7 +27,7 @@ export function DownloadCta() {
           <BrandMark size={52} />
           <h2
             id="telecharger-titre"
-            className="serif-title text-balance text-[34px] leading-[1.06] tracking-[-0.028em] md:text-[48px]"
+            className="serif-title text-balance text-[28px] leading-[1.1] tracking-[-0.028em] md:text-[40px]"
           >
             Votre prochaine candidature
             <br className="hidden sm:block" /> commence ici.
