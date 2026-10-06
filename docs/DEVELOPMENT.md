@@ -35,6 +35,9 @@ Ubuntu, Fedora et RHEL ; `poppler` sous Arch). En développement, l'installer à
 sans elle, l'import Vision échoue avec un message explicite et l'extraction de texte
 retombe sur l'extracteur de flux, à l'ordre de colonnes incorrect.
 
+Le job `quality` du workflow de release l'installe aussi : il exécute les tests Rust, dont
+celui de l'ordre de mise en page à deux colonnes, qui échoue sans `pdftotext`.
+
 **macOS et Windows n'ont pas d'équivalent** : aucun gestionnaire de paquets n'est supposé
 présent, et les binaires ne sont pas embarqués. L'import Vision y dépend donc d'une
 installation Poppler faite par l'utilisateur ; à défaut, seul le mode Texte fonctionne.
