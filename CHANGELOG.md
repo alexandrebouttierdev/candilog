@@ -4,6 +4,13 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
 [SemVer](https://semver.org/lang/fr/). Chaque version publiée correspond à un tag
 `v<version>` et à une [release GitHub](https://github.com/alexandrebouttierdev/candilog/releases).
 
+## [0.0.2] — 2026-10-08
+
+### Modifié
+
+- Republication des paquets 0.0.1 : la release GitHub a été supprimée par erreur, et un
+  tag déjà posé n'est pas republié par le workflow. Aucun changement de code ni de données.
+
 ## [0.0.1] — 2026-10-06
 
 Première version publique.
