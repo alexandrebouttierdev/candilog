@@ -172,9 +172,11 @@ ailleurs dans le workflow :
 - `APPLE_CERTIFICATE_PASSWORD` — mot de passe du `.p12` ;
 - `APPLE_SIGNING_IDENTITY` — identité exacte du certificat, telle que la nomme
   `security find-identity -v -p codesigning` ;
-- `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID` — identifiant Apple du compte développeur,
-  mot de passe d'application créé sur `appleid.apple.com`, et identifiant d'équipe. Les
-  accords du programme doivent être acceptés pour que la notarisation aboutisse.
+- `APPLE_API_KEY`, `APPLE_API_ISSUER`, `APPLE_API_KEY_CONTENT` — la notarisation
+  s'authentifie par clé API App Store Connect (JWT) : l'identifiant de la clé, l'Issuer
+  ID, et le contenu du fichier `.p8` téléchargé une seule fois sur App Store Connect.
+  Le mot de passe d'application n'est pas utilisable en CI : Apple le refuse (401)
+  depuis les adresses des runners, qu'il ne reconnaît pas comme la session du compte.
 
 Tant que `APPLE_CERTIFICATE` est absent, le build reste **non signé sans échec** : la
 garde du workflow n'exporte rien, et le CLI saute la signature quand la variable manque.
