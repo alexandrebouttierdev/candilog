@@ -126,10 +126,10 @@ Les installateurs sont publiés dans les
 | Arch Linux | `candilog-arch-latest.pkg.tar.zst` | `sudo pacman -U ./candilog-arch-latest.pkg.tar.zst` |
 
 > [!NOTE]
-> Les binaires ne portent pas encore de signature de code commerciale. Au premier
-> lancement, **Windows** affiche « Windows a protégé votre ordinateur » : *Informations
-> complémentaires* → *Exécuter quand même*. **macOS** refuse l'ouverture : clic droit sur
-> l'application → *Ouvrir*, ou *Réglages Système → Confidentialité et sécurité*.
+> Les binaires **macOS** sont signés avec un certificat *Developer ID Application* et
+> notariés par Apple : aucune intervention au premier lancement. Les binaires **Windows**
+> ne portent pas encore de signature de code commerciale : SmartScreen affiche « Windows a
+> protégé votre ordinateur » — *Informations complémentaires* → *Exécuter quand même*.
 
 <details>
 <summary><b>Vérifier le fichier téléchargé</b></summary>
@@ -156,7 +156,7 @@ gh attestation verify candilog-ubuntu-latest.deb --repo alexandrebouttierdev/can
 | --- | --- | --- |
 | `SHA256SUMS` | Le fichier est arrivé intact | Son origine |
 | Attestation de provenance | Construit par ce dépôt, ce commit, ce workflow | Rien pour SmartScreen ni Gatekeeper |
-| Signature de code | *(pas encore)* | — |
+| Signature de code | macOS : signée *Developer ID* et notariée par Apple | Windows : pas encore signé, avertissement SmartScreen |
 
 </details>
 

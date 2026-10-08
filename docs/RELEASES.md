@@ -145,42 +145,51 @@ la suite de tests, et non la mise à jour du premier utilisateur.
 
 ## Chaîne de confiance
 
-Trois garanties distinctes, dont deux seulement sont en place :
+Trois garanties distinctes, la signature de code étant en place sur macOS seulement :
 
 | Garantie | État | Ce qu'elle établit |
 | --- | --- | --- |
 | `SHA256SUMS` | **en place** | Le fichier téléchargé est intact. L'application le vérifie avant d'ouvrir un installateur ; l'utilisateur peut le refaire à la main. |
 | Attestation de provenance Sigstore | **en place** | Le binaire a été construit par ce dépôt, depuis ce commit, par `release.yml`. Vérifiable par `gh attestation verify <fichier> --repo alexandrebouttierdev/candilog`. |
-| Signature de code Windows et macOS | **absente** | Seule reconnue par SmartScreen et Gatekeeper. Demande un certificat commercial. |
+| Signature de code macOS | **en place** | Signé *Developer ID Application* et notarié par Apple : Gatekeeper ouvre le binaire sans intervention. |
+| Signature de code Windows | **absente** | Seule reconnue par SmartScreen. Demande un certificat commercial. |
 
 L'attestation est produite par `actions/attest-build-provenance` dans le job `publish`, qui
 exige les permissions `id-token: write` et `attestations: write`. Elle est **gratuite** et
 ne demande aucun secret : le jeton OIDC du workflow suffit. Elle ne fait pas disparaître les
 avertissements des systèmes d'exploitation — rien de gratuit ne le fait.
 
-### Activer la signature de code
+### Signature de code
 
-Cet état est **assumé** pour les premières versions, et annoncé partout où l'utilisateur
-peut le rencontrer : `README`, notes de release, écran « Mises à jour ». Le jour où les
-certificats sont acquis, voici ce qu'il faut, et rien de plus — le workflow ne contient
-volontairement aucune branche inactive pour cela.
+**macOS** — en place. Ce n'est pas `tauri-action` qui signe : il se contente de lancer
+`tauri build`, et c'est le CLI Tauri qui lit les six secrets du dépôt, importe le
+certificat dans un trousseau éphémère, signe le binaire universel et le `.dmg`, puis
+notarise et agrafe le `.app`. Le job `build` macOS les exporte ; rien n'est à faire
+ailleurs dans le workflow :
 
-**macOS** — compte Apple Developer (99 $/an). `tauri-action` sait signer et notariser
-nativement : ajouter au job `build` les variables d'environnement `APPLE_CERTIFICATE`
-(certificat *Developer ID Application* exporté en `.p12`, encodé en base64),
-`APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD`
-(mot de passe d'application) et `APPLE_TEAM_ID`, toutes en secrets du dépôt.
+- `APPLE_CERTIFICATE` — certificat *Developer ID Application* exporté en `.p12` depuis le
+  Trousseau, encodé en base64 sur une seule ligne ;
+- `APPLE_CERTIFICATE_PASSWORD` — mot de passe du `.p12` ;
+- `APPLE_SIGNING_IDENTITY` — identité exacte du certificat, telle que la nomme
+  `security find-identity -v -p codesigning` ;
+- `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID` — identifiant Apple du compte développeur,
+  mot de passe d'application créé sur `appleid.apple.com`, et identifiant d'équipe. Les
+  accords du programme doivent être acceptés pour que la notarisation aboutisse.
 
-**Windows** — certificat de signature de code OV (~300 €/an) ou EV (jeton matériel, exigé
-depuis 2023 pour une réputation SmartScreen immédiate). Renseigner
-`bundle.windows.signCommand` dans `src-tauri/tauri.conf.json`, ou ajouter au job Windows une
-étape `signtool` après `tauri-action`, avant la préparation des assets renommés. Le
-certificat OV n'annule pas SmartScreen tout de suite : la réputation se construit au fil des
-téléchargements.
+Tant que `APPLE_CERTIFICATE` est absent, le build reste **non signé sans échec** : la
+garde du workflow n'exporte rien, et le CLI saute la signature quand la variable manque.
+Un certificat expiré ou révoqué fait, lui, échouer le build — c'est voulu, une release
+ne doit pas sortir « silencieusement non signée » alors qu'elle aurait dû l'être.
 
-Dans les deux cas, mettre à jour dans la même tâche le tableau ci-dessus, la section
-« Avertissement éditeur inconnu » du `README`, les notes de release du workflow et le texte
-d'accompagnement de l'écran des mises à jour.
+**Windows** — encore absent. Certificat de signature de code OV (~300 €/an) ou EV (jeton
+matériel, exigé depuis 2023 pour une réputation SmartScreen immédiate). Le jour où il est
+acquis, renseigner `bundle.windows.signCommand` dans `src-tauri/tauri.conf.json`, ou
+ajouter au job Windows une étape `signtool` après `tauri-action`, avant la préparation des
+assets renommés. Le certificat OV n'annule pas SmartScreen tout de suite : la réputation
+se construit au fil des téléchargements.
+
+Le jour où le certificat Windows est acquis, mettre à jour dans la même tâche le tableau
+ci-dessus, la note du `README`, et les notes de release du workflow.
 
 ## Côté site
 
