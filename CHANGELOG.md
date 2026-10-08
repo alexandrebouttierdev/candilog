@@ -4,6 +4,13 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
 [SemVer](https://semver.org/lang/fr/). Chaque version publiée correspond à un tag
 `v<version>` et à une [release GitHub](https://github.com/alexandrebouttierdev/candilog/releases).
 
+## [0.0.3] — 2026-10-08
+
+### Ajouté
+
+- Signature de code macOS : le binaire est signé avec un certificat *Developer ID
+  Application* et notarié par Apple. Gatekeeper ouvre Candilog sans intervention.
+
 ## [0.0.2] — 2026-10-08
 
 ### Modifié
