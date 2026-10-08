@@ -4,6 +4,16 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
 [SemVer](https://semver.org/lang/fr/). Chaque version publiée correspond à un tag
 `v<version>` et à une [release GitHub](https://github.com/alexandrebouttierdev/candilog/releases).
 
+## [0.0.4] — 2026-10-09
+
+### Corrigé
+
+- IA locale : l'empreinte attendue du moteur Ollama macOS est celle du fichier actuel,
+  re-téléversé par Ollama le 16 décembre 2025 ; l'installation ne refuse plus le
+  téléchargement sur Mac.
+- Analyse face à l'offre : l'état vide « Prêt à analyser » est centré dans le panneau,
+  comme les états neutres des autres générateurs.
+
 ## [0.0.3] — 2026-10-08
 
 ### Ajouté
