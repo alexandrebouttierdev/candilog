@@ -114,8 +114,19 @@ votre accord avant le premier envoi.
 
 ## Télécharger
 
-Les installateurs sont publiés dans les
-[releases GitHub](https://github.com/alexandrebouttierdev/candilog/releases/latest).
+Choisissez votre système pour télécharger directement la dernière version de Candilog.
+
+<div align="center">
+
+<a href="https://github.com/alexandrebouttierdev/candilog/releases/latest/download/candilog-windows-latest.exe"><img src="https://img.shields.io/badge/Windows-T%C3%A9l%C3%A9charger-4A51DF?style=for-the-badge&logo=windows&logoColor=white" alt="Télécharger pour Windows"></a>
+<a href="https://github.com/alexandrebouttierdev/candilog/releases/latest/download/candilog-macos-latest.dmg"><img src="https://img.shields.io/badge/macOS-T%C3%A9l%C3%A9charger-4A51DF?style=for-the-badge&logo=apple&logoColor=white" alt="Télécharger pour macOS"></a>
+<a href="https://github.com/alexandrebouttierdev/candilog/releases/latest/download/candilog-ubuntu-latest.deb"><img src="https://img.shields.io/badge/Ubuntu%20%2F%20Debian-T%C3%A9l%C3%A9charger-4A51DF?style=for-the-badge&logo=ubuntu&logoColor=white" alt="Télécharger pour Ubuntu et Debian"></a>
+<a href="https://github.com/alexandrebouttierdev/candilog/releases/latest/download/candilog-fedora-latest.rpm"><img src="https://img.shields.io/badge/Fedora%20%2F%20RHEL-T%C3%A9l%C3%A9charger-4A51DF?style=for-the-badge&logo=fedora&logoColor=white" alt="Télécharger pour Fedora et RHEL"></a>
+<a href="https://github.com/alexandrebouttierdev/candilog/releases/latest/download/candilog-arch-latest.pkg.tar.zst"><img src="https://img.shields.io/badge/Arch%20Linux-T%C3%A9l%C3%A9charger-4A51DF?style=for-the-badge&logo=archlinux&logoColor=white" alt="Télécharger pour Arch Linux"></a>
+
+[Voir toutes les versions et les notes de publication](https://github.com/alexandrebouttierdev/candilog/releases/latest)
+
+</div>
 
 | Système | Fichier | Installation |
 | --- | --- | --- |
@@ -142,7 +153,7 @@ shasum -a 256 -c SHA256SUMS --ignore-missing # macOS
 ```
 
 ```powershell
-Get-FileHash .\candilog-windows-latest.exe -Algorithm SHA256   # Windows, à comparer au fichier
+Get-FileHash .\\candilog-windows-latest.exe -Algorithm SHA256   # Windows, à comparer au fichier
 ```
 
 Chaque binaire porte aussi une **attestation de provenance** [Sigstore](https://www.sigstore.dev/),
