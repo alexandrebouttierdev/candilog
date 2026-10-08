@@ -38,7 +38,7 @@ pub fn runtime_artifact_for_current_platform() -> Option<RuntimeArtifact> {
         return Some(RuntimeArtifact {
             version: MANAGED_OLLAMA_RUNTIME_VERSION,
             url: "https://github.com/ollama/ollama/releases/download/v0.13.4/ollama-darwin.tgz",
-            sha256: "4831b6b3b0b736b9abf06adbaeaffc44c7e363fcfdd120f9573be00b5691f0e9",
+            sha256: "69251adfdc02b82bbafa827a40af5f86ce671a30a9eb86470b4ae9b6184dc66b",
             archive_name: "ollama-darwin.tgz",
             executable: "bin/ollama",
         });
