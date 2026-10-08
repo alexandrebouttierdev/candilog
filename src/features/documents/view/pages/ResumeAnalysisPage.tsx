@@ -138,8 +138,16 @@ export function ResumeAnalysisPage() {
       closeDisabled={running}
       {...(canRun ? { onSubmit: () => void vm.run() } : {})}
     >
-      <div className="bg-panel flex-1 overflow-y-auto">
-        <div className="max-w-[760px] px-[26px] pt-5 pb-8">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-panel">
+        {!result && !running ? (
+          <div className="flex flex-1 flex-col items-center justify-center p-[26px]">
+            <EmptyState
+              title="Prêt à analyser"
+              description="Choisissez votre CV en PDF et l’offre visée : chaque exigence sera confrontée au CV, preuve à l’appui."
+            />
+          </div>
+        ) : (
+          <div className="max-w-[760px] px-[26px] pt-5 pb-8">
           {running && !vm.stopping ? <AiProgress progress={vm.progress} elapsedMs={vm.elapsedMs} /> : null}
           {result ? (
             <>
@@ -231,15 +239,9 @@ export function ResumeAnalysisPage() {
                 </section>
               ) : null}
             </>
-          ) : running ? null : (
-            <div className="pt-[10vh]">
-              <EmptyState
-                title="Prêt à analyser"
-                description="Choisissez votre CV en PDF et l’offre visée : chaque exigence sera confrontée au CV, preuve à l’appui."
-              />
-            </div>
-          )}
-        </div>
+          ) : null}
+          </div>
+        )}
       </div>
       <StopGenerationDialog
         open={askStop && running && !vm.stopping}
