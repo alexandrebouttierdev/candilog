@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useDismissable } from "@/shared/hooks/useDismissable";
 import { Kbd } from "./Kbd";
 import { cn } from "@/shared/lib/cn";
+import { currentPlatform } from "@/shared/lib/platform";
 import { formatElapsed, formatTokens } from "@/shared/lib/duration";
 
 /**
@@ -78,14 +79,22 @@ export function WorkSurface({
       }}
       className="fixed inset-0 z-50 flex flex-col bg-app"
     >
-      <header data-tauri-drag-region className="flex h-overlay-head flex-none items-center gap-3 border-b border-bd-soft pr-3 pl-[84px]">
+      <header
+        data-tauri-drag-region
+        className={cn(
+          "flex h-overlay-head flex-none items-center gap-3 border-b border-bd-soft pr-3",
+          // Même réserve que la barre de titre : les feux macOS se posent sur l'en-tête,
+          // ailleurs la croix s'aligne sur le fil d'Ariane des écrans (`TitleBar`).
+          currentPlatform() === "mac" ? "pl-[84px]" : "pl-[13px]",
+        )}
+      >
         <button
           type="button"
           aria-label="Fermer"
           aria-keyshortcuts="Escape"
           disabled={closeDisabled}
           onClick={close}
-          className="flex size-[22px] flex-none items-center justify-center rounded-r6 bg-chip text-tiny text-tx-4 hover:text-tx disabled:opacity-50"
+          className="flex size-[24px] flex-none items-center justify-center rounded-r6 bg-tint-c-bg text-small text-tint-c-tx hover:brightness-110 disabled:opacity-50"
         >
           ✕
         </button>

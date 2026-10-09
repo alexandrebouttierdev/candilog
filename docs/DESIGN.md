@@ -126,6 +126,10 @@ Sept encres, de la plus forte à la plus faible :
   (avancement), rouge (échec). Portés par `StatusGlyph` ; jamais un aplat de fond.
 - Teintes de pastille, fond et encre appariés : `bg-tint-ac-bg text-tint-ac-tx`,
   `bg-tint-g-bg text-tint-g-tx`, `bg-tint-c-bg text-tint-c-tx`.
+- La croix de fermeture d'une surcouche porte la teinte `bg-tint-c-bg text-tint-c-tx` :
+  seule sortie d'une surface plein écran, elle doit se repérer d'un coup d'œil. C'est la
+  seule exception au rouge réservé à la destruction, et elle reste une teinte, jamais un
+  aplat `st-c`.
 - Avatars : `bg-av1` à `bg-av3` avec `text-av-tx`, choisis par `Avatar`.
 
 ### Correspondance des jetons v1

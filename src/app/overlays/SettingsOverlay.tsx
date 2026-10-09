@@ -1,6 +1,7 @@
 import { Suspense, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/shared/lib/cn";
+import { currentPlatform } from "@/shared/lib/platform";
 import { useUiStore } from "@/shared/lib/ui-store";
 import type { SettingsSection as Section } from "@/shared/lib/ui-store";
 import { useDismissable } from "@/shared/hooks/useDismissable";
@@ -50,14 +51,17 @@ export function SettingsOverlay() {
           la croix et le fil « Réglages › section » remplacent ceux de l'écran recouvert. */}
       <header
         data-tauri-drag-region
-        className="flex h-overlay-head flex-none items-center gap-3 border-b border-bd-soft pr-3.5 pl-[84px]"
+        className={cn(
+          "flex h-overlay-head flex-none items-center gap-3 border-b border-bd-soft pr-3.5",
+          currentPlatform() === "mac" ? "pl-[84px]" : "pl-[13px]",
+        )}
       >
         <button
           type="button"
           aria-label="Fermer les réglages"
           aria-keyshortcuts="Escape"
           onClick={close}
-          className="flex size-[22px] flex-none items-center justify-center rounded-r6 bg-chip text-tiny text-tx-4 hover:text-tx"
+          className="flex size-[24px] flex-none items-center justify-center rounded-r6 bg-tint-c-bg text-small text-tint-c-tx hover:brightness-110"
         >
           ✕
         </button>
