@@ -82,7 +82,8 @@ Ne pas :
 
 ## 3. Couleur
 
-Thème **clair par défaut** (papier chaud), sombre par `data-theme="dark"` ou le mode
+Thème **clair par défaut** (gris froid, même famille que le sombre), sombre par
+`data-theme="dark"` ou le mode
 « Système » (`prefers-color-scheme`). Chaque jeton existe dans les deux thèmes ; un
 composant n’a jamais de variante `dark:` de couleur.
 
