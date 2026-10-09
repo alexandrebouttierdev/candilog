@@ -50,7 +50,7 @@ export function SettingsOverlay() {
           la croix et le fil « Réglages › section » remplacent ceux de l'écran recouvert. */}
       <header
         data-tauri-drag-region
-        className="flex h-titlebar flex-none items-center gap-3 border-b border-bd-soft pr-3.5 pl-[84px]"
+        className="flex h-overlay-head flex-none items-center gap-3 border-b border-bd-soft pr-3.5 pl-[84px]"
       >
         <button
           type="button"

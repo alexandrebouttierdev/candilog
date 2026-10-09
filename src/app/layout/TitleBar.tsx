@@ -9,7 +9,7 @@ import { activeTab, destinationForPath } from "@/app/router/routes";
 import { SETTINGS_LABELS } from "@/app/overlays/settingsSections";
 
 /**
- * Barre de titre de 40 px (`PLATFORM.md` C1) : fil d'Ariane à gauche,
+ * Barre de titre de 64 px (`PLATFORM.md` C1) : fil d'Ariane à gauche,
  * onglets de vue et mention d'écran à droite.
  *
  * Sous macOS, la fenêtre est en `titleBarStyle: Overlay` : les feux natifs se posent sur

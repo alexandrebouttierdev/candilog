@@ -78,7 +78,7 @@ export function WorkSurface({
       }}
       className="fixed inset-0 z-50 flex flex-col bg-app"
     >
-      <header data-tauri-drag-region className="flex h-titlebar flex-none items-center gap-3 border-b border-bd-soft pr-3 pl-[84px]">
+      <header data-tauri-drag-region className="flex h-overlay-head flex-none items-center gap-3 border-b border-bd-soft pr-3 pl-[84px]">
         <button
           type="button"
           aria-label="Fermer"

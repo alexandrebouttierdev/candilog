@@ -574,10 +574,10 @@
   --radius-paper: 4px;
 
   /* Dimensions v2 : chrome et contrôles fixes, lignes selon la densité. */
-  --spacing-titlebar: 40px;
+  --spacing-titlebar: 64px;
   --spacing-toolbar: 38px;
   --spacing-statusbar: 34px;
-  --spacing-overlay-head: 44px;
+  --spacing-overlay-head: 64px;
   --spacing-btn: 27px;
   --spacing-input: 30px;
   --spacing-nav: 202px;

@@ -174,7 +174,8 @@ sous **1060 px** (préfixe `wide:`).
 
 | Élément | Utilitaire | Valeur |
 | --- | --- | --- |
-| Barre de titre | `h-titlebar` | 40 px |
+| Barre de titre | `h-titlebar` | 64 px |
+| En-tête de surcouche | `h-overlay-head` | 64 px |
 | Barre d’outils d’écran | `h-toolbar` | 38 px |
 | Barre d’état | `h-statusbar` | 34 px |
 | Navigation | `w-nav` / `w-nav-sm` | 202 px / 52 px |
@@ -256,7 +257,7 @@ Il paraît là où l’IA travaille, et nulle part ailleurs :
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│ Barre de titre 40 px : fil d'Ariane · onglets de vue · mention│
+│ Barre de titre 64 px : fil d'Ariane · onglets de vue · mention│
 ├──────────┬───────────────────────────────────────────────────┤
 │ Nav      │ main (#contenu) — panneau `bg-panel`, rayon 9      │
 │ 202 px   │ (barre d'outils 38 px de l'écran, contenu)        │
