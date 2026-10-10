@@ -6,8 +6,8 @@ use crate::core::utils::text::search_key;
 use crate::core::utils::validation::validate_optional_http_url;
 use crate::features::ai::domain::{
     score_resume_imported, AtsRecommendation, AtsRecommendationSection, ContentRelevance,
-    GeneratedEducation, GeneratedExperience, GeneratedResume, ResumeGeneration, MAX_ITEMS,
-    MAX_ITEM_CHARS,
+    GeneratedEducation, GeneratedExperience, GeneratedResume, ProfileSection, ResumeGeneration,
+    MAX_ITEMS, MAX_ITEM_CHARS,
 };
 use crate::features::documents::domain::{
     ResumeCertificationBlock, ResumeContentRecommendation, ResumeContentRecommendationAction,
@@ -158,6 +158,119 @@ pub fn prepare_workspace(
     workspace.content_recommendations =
         build_content_recommendations(&workspace, photo.as_deref())?;
     Ok(workspace)
+}
+
+/// Compose un CV depuis le seul profil : ni offre, ni score, ni propositions.
+///
+/// À la différence de [`prepare_workspace`], les compétences, projets, certifications et
+/// langues **sont** posés sur la feuille. L'arbitrage éditorial est rendu en amont par les
+/// interrupteurs de l'écran, et non après coup par insertion.
+///
+/// # Errors
+/// Retourne une validation si le profil n'a pas assez de matière pour composer un CV, ou si
+/// le document composé dépasse les bornes d'édition.
+pub fn compose_base_resume(
+    profile: &Profile,
+    excluded: &[ProfileSection],
+) -> AppResult<ResumeDocument> {
+    if profile.identity.first_name.trim().is_empty()
+        && profile.identity.name.trim().is_empty()
+        && profile.experiences.is_empty()
+        && profile.education.is_empty()
+        && profile.skills.is_empty()
+    {
+        return Err(AppError::Validation(
+            "Complétez votre profil avant de composer un CV.".into(),
+        ));
+    }
+
+    let identity = &profile.identity;
+    let ecartee = |section: ProfileSection| excluded.contains(&section);
+
+    let mut document = ResumeDocument {
+        identity: ResumeIdentity {
+            full_name: [identity.first_name.trim(), identity.name.trim()]
+                .into_iter()
+                .filter(|part| !part.is_empty())
+                .collect::<Vec<_>>()
+                .join(" "),
+            title: identity.title.as_deref().unwrap_or_default().trim().into(),
+            headline: None,
+            city: trimmed_option(identity.city.as_deref()),
+            phone: trimmed_option(identity.phone.as_deref()),
+            email: identity.email.trim().into(),
+            website: normalize_http_url(identity.website.as_deref()),
+            linkedin: normalize_http_url(identity.linkedin.as_deref()),
+            github: normalize_http_url(identity.github.as_deref()),
+            extra: Vec::new(),
+        },
+        profile: if ecartee(ProfileSection::Summary) {
+            String::new()
+        } else {
+            identity.resume.as_deref().unwrap_or_default().trim().into()
+        },
+        experiences: if ecartee(ProfileSection::Experiences) {
+            Vec::new()
+        } else {
+            profile
+                .experiences
+                .iter()
+                .map(|source| ResumeExperienceBlock {
+                    id: Uuid::new_v4().to_string(),
+                    title: source.title.clone(),
+                    company: source.company.clone(),
+                    location: trimmed_option(source.location.as_deref()),
+                    period: format_workspace_period(
+                        Some(&source.start_date),
+                        source.end_date.as_deref(),
+                        source.current,
+                    ),
+                    bullets: split_bullets(source.description.as_deref().unwrap_or_default()),
+                })
+                .collect()
+        },
+        education: if ecartee(ProfileSection::Education) {
+            Vec::new()
+        } else {
+            profile
+                .education
+                .iter()
+                .map(|source| ResumeEducationBlock {
+                    id: Uuid::new_v4().to_string(),
+                    degree: source.degree.clone(),
+                    school: source.school.clone(),
+                    location: trimmed_option(source.location.as_deref()),
+                    period: format_workspace_period(
+                        source.start_date.as_deref(),
+                        source.end_date.as_deref(),
+                        false,
+                    ),
+                    description: trimmed_option(source.description.as_deref()),
+                })
+                .collect()
+        },
+        projects: Vec::new(),
+        skill_groups: Vec::new(),
+        certifications: Vec::new(),
+        languages: Vec::new(),
+    };
+
+    // Les quatre sections insérables passent par la bibliothèque déjà écrite pour le CV
+    // ciblé : elle sait les convertir, et `insert_profile_item` sait les dédupliquer.
+    for item in build_profile_library(profile) {
+        let section = match &item.content {
+            ResumeProfileItemContent::Skill { .. } => ProfileSection::Skills,
+            ResumeProfileItemContent::Project { .. } => ProfileSection::Projects,
+            ResumeProfileItemContent::Certification { .. } => ProfileSection::Certifications,
+            ResumeProfileItemContent::Language { .. } => ProfileSection::Languages,
+        };
+        if !ecartee(section) {
+            insert_profile_item(&mut document, &item);
+        }
+    }
+
+    validate_document(&document)?;
+    Ok(document)
 }
 
 fn build_profile_library(profile: &Profile) -> Vec<ResumeProfileItem> {
@@ -1055,3 +1168,7 @@ fn validate_list(len: usize, label: &str) -> AppResult<()> {
 #[cfg(test)]
 #[path = "tests/cv_workspace/mod.rs"]
 mod cv_workspace;
+
+#[cfg(test)]
+#[path = "tests/cv_base/mod.rs"]
+mod cv_base;
