@@ -171,16 +171,18 @@ gh attestation verify candilog-ubuntu-latest.deb --repo alexandrebouttierdev/can
 
 </details>
 
-**Mises à jour** : Candilog ne cherche jamais de mise à jour tout seul. *Réglages → Mises à
-jour → Rechercher maintenant* télécharge l'installateur, vérifie son empreinte SHA-256, puis
-vous laisse l'installer.
+**Mises à jour** : au démarrage, Candilog demande à l'API GitHub quelle est la dernière
+version publiée — une fois par jour au plus, et sans rien envoyer d'autre que cette question.
+S'il en existe une plus récente, un message vous le signale : rien n'est téléchargé ni
+installé. *Réglages → Mises à jour → Rechercher maintenant* vérifie à la demande, télécharge
+l'installateur, contrôle son empreinte SHA-256, puis vous laisse l'installer.
 
 ## Vos données
 
-Tout vit sur votre machine. Candilog ne contacte Internet que dans trois cas, toujours à
-votre demande : la recherche de mise à jour, un appel au fournisseur IA distant que vous
-avez configuré, et le téléchargement d'un modèle d'IA locale. Ni télémétrie, ni statistiques
-d'usage, ni rapport d'erreur automatique.
+Tout vit sur votre machine. Candilog ne contacte Internet que dans trois cas : la recherche
+de mise à jour — la seule automatique, une fois par jour au plus, au démarrage —, un appel au
+fournisseur IA distant que vous avez configuré, et le téléchargement d'un modèle d'IA locale.
+Ni télémétrie, ni statistiques d'usage, ni rapport d'erreur automatique.
 
 | Quoi | Où |
 | --- | --- |

@@ -178,8 +178,9 @@ depuis 2023 pour une réputation SmartScreen immédiate). Renseigner
 certificat OV n'annule pas SmartScreen tout de suite : la réputation se construit au fil des
 téléchargements.
 
-Dans les deux cas, mettre à jour dans la même tâche le tableau ci-dessus, la section
-« Avertissement éditeur inconnu » du `README`, les notes de release du workflow et le texte
+Dans les deux cas, mettre à jour dans la même tâche le tableau ci-dessus, l'encart
+d'avertissement sous le tableau des téléchargements du `README` et la ligne « Signature de
+code » de son tableau des garanties, les notes de release du workflow et le texte
 d'accompagnement de l'écran des mises à jour.
 
 ## Côté site
