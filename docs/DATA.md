@@ -162,7 +162,7 @@ ni score ni offre. Trois formes coexistent :
 
 | Forme | Discriminant | Rôle |
 | --- | --- | --- |
-| CV de base | `kind = "base"` (testé avant `schema_version`) | `BaseResume` : document composé depuis le seul profil, sans offre ni score |
+| CV de base | `kind = "base"` **et** `schema_version = 1` (`kind` testé en premier) | `BaseResume` : document composé depuis le seul profil, sans offre ni score |
 | Éditeur autonome | `schema_version = 1` sans `kind` | `ResumeWorkspace` complet : document, offre, analyse, score, propositions |
 | Historique | ni l'un ni l'autre champ | Snapshot `ResumeGeneration` (génération IA seule) — encore lisible en bibliothèque |
 
@@ -174,7 +174,9 @@ dans le même blob ; un CV de base n'embarque que le document.
 À l'écriture, `valider_contenu` (`features/documents/application/service.rs`) teste `kind`
 avant `schema_version` : un CV de base et un CV ciblé partagent tous deux `schema_version: 1`,
 seul `kind` les distingue, et inverser l'ordre ferait retomber un CV de base dans la
-désérialisation en `ResumeWorkspace`, qui échoue faute d'offre, d'analyse et de score. Les
+désérialisation en `ResumeWorkspace`, qui échoue faute d'offre, d'analyse et de score. La
+branche `kind` exige elle aussi `schema_version = 1` : un `kind = "base"` forgé dans une
+autre version serait accepté à l'écriture puis déclaré illisible à la lecture. Les
 deux formes reconnues sont désérialisées puis leur document passé par `validate_document`
 (`features/documents/application/resume_workspace.rs`) : un appel IPC forgé ne peut pas
 persister une forme incohérente. Les liens d'identité et de projet doivent être des URL

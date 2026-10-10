@@ -279,11 +279,12 @@ impl<C: ResumeRepository, L: CoverLetterRepository, P: ProfileRepository>
 /// Refuse un contenu de CV qui n'est pas un objet JSON borné.
 ///
 /// Trois branches, évaluées dans cet ordre :
-/// - `kind == "base"` : CV de base, désérialisé en [`BaseResume`] et son document revalidé.
-///   Elle est testée avant `schema_version`, car un CV de base et un CV ciblé partagent tous
-///   deux `schema_version: 1` ; seul `kind` les distingue, et l'inverser ferait retomber un CV
-///   de base dans la désérialisation en [`ResumeWorkspace`], qui échoue faute de `job_offer`,
-///   `analysis` et `score`.
+/// - `kind == "base"` : CV de base en `schema_version: 1`, désérialisé en [`BaseResume`] et
+///   son document revalidé. Elle est testée avant `schema_version`, car un CV de base et un
+///   CV ciblé partagent tous deux `schema_version: 1` ; seul `kind` les distingue, et
+///   l'inverser ferait retomber un CV de base dans la désérialisation en [`ResumeWorkspace`],
+///   qui échoue faute de `job_offer`, `analysis` et `score`. Une autre version est refusée :
+///   seule celle-ci se relit.
 /// - `schema_version == 1` sans `kind` : CV ciblé (l'éditeur de CV autonome), désérialisé en
 ///   [`ResumeWorkspace`] et son document revalidé.
 /// - toute autre forme : contenu historique, accepté tel quel pour la lecture et la
@@ -305,6 +306,15 @@ fn valider_contenu(content: &serde_json::Value) -> AppResult<()> {
         ));
     }
     if content.get("kind") == Some(&serde_json::json!(RESUME_BASE_KIND)) {
+        // La version est exigée ici comme dans la branche workspace : sans elle, un
+        // `kind: "base"` forgé dans une version inconnue entrerait en base, et la
+        // bibliothèque le déclarerait ensuite illisible faute de savoir le relire.
+        if content.get("schema_version") != Some(&serde_json::json!(RESUME_WORKSPACE_VERSION)) {
+            return Err(AppError::Validation(
+                "Le contenu du CV est invalide : composez-le à nouveau avant de l'enregistrer"
+                    .into(),
+            ));
+        }
         let base: BaseResume = serde_json::from_value(content.clone()).map_err(|_| {
             AppError::Validation(
                 "Le contenu du CV est invalide : composez-le à nouveau avant de l'enregistrer"
@@ -555,6 +565,21 @@ mod tests {
     #[test]
     fn un_cv_de_base_incomplet_n_est_plus_accepte_comme_contenu_historique() {
         let content = serde_json::json!({ "kind": "base" });
+        assert!(matches!(
+            valider_contenu(&content),
+            Err(AppError::Validation(_))
+        ));
+    }
+
+    /// Un `kind: "base"` forgé avec une autre version entrait en base, puis la bibliothèque
+    /// le déclarait illisible : la branche `kind` doit exiger la version qu'elle sait relire.
+    #[test]
+    fn un_cv_de_base_dans_une_version_inconnue_est_refuse() {
+        let content = serde_json::json!({
+            "schema_version": 2,
+            "kind": "base",
+            "document": serde_json::to_value(document_minimal()).unwrap(),
+        });
         assert!(matches!(
             valider_contenu(&content),
             Err(AppError::Validation(_))
