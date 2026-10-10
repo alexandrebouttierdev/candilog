@@ -5,7 +5,7 @@ import type { CoverLetter, ResumeSummary } from "@/shared/types/generated/docume
 import { useDocumentCounts } from "../../viewmodel/useDocumentCounts";
 import { useDocumentsViewModel } from "../../viewmodel/useDocumentsViewModel";
 import type { DocumentFilter, DocumentSelection } from "../../viewmodel/useDocumentsViewModel";
-import { baseResumeDocument, routeForContent } from "../../model/resumeWorkspace";
+import { baseResumeContent, routeForContent } from "../../model/resumeWorkspace";
 import { labelTone } from "./documentPageSupport";
 import { PATHS } from "@/shared/lib/paths";
 import { useChrome } from "@/shared/lib/chrome";
@@ -78,9 +78,9 @@ export function DocumentsPage({ filter }: { filter: DocumentFilter }) {
     const documentId = vm.version?.id;
     const name = vm.version?.name;
     if (vm.version && routeForContent(vm.version.content) === PATHS.baseResume) {
-      const document = baseResumeDocument(vm.version.content);
-      if (document) {
-        void navigate(PATHS.baseResume, { state: { document, name, documentId } });
+      const base = baseResumeContent(vm.version.content);
+      if (base) {
+        void navigate(PATHS.baseResume, { state: { ...base, name, documentId } });
         return;
       }
     }

@@ -84,6 +84,26 @@ describe("ViewModel du CV de base", () => {
     expect(result.current.excluded).toEqual([]);
   });
 
+  it("enregistre les sections écartées avec le document", async () => {
+    vi.spyOn(documentsService, "composeBaseResume").mockResolvedValue(documentExemple);
+    const saveResume = vi.spyOn(documentsService, "saveResume").mockResolvedValue({
+      id: "resume-1",
+      name: "CV de base",
+      content: documentExemple,
+      created_at: "2026-10-10T00:00:00Z",
+    });
+    const { result } = renderHook(() => useBaseResumeViewModel(), { wrapper });
+    await waitFor(() => expect(result.current.document).not.toBeNull());
+
+    act(() => result.current.toggle("skills"));
+    await waitFor(() => expect(result.current.excluded).toEqual(["skills"]));
+    await act(async () => { await result.current.save(); });
+
+    // Sans ce champ, la réouverture rallumerait « Compétences » et la recomposition
+    // suivante les ramènerait sur la feuille.
+    expect(saveResume.mock.calls[0]?.[0].content).toMatchObject({ excluded_sections: ["skills"] });
+  });
+
   it("enregistre le document sous la forme « CV de base »", async () => {
     vi.spyOn(documentsService, "composeBaseResume").mockResolvedValue(documentExemple);
     const saveResume = vi.spyOn(documentsService, "saveResume").mockResolvedValue({
@@ -99,7 +119,7 @@ describe("ViewModel du CV de base", () => {
 
     expect(saveResume).toHaveBeenCalledWith({
       name: "CV de base",
-      content: { schema_version: 1, kind: "base", document: documentExemple },
+      content: { schema_version: 1, kind: "base", document: documentExemple, excluded_sections: [] },
       version_note: "Composée depuis le profil",
     });
     expect(useUiStore.getState().toasts.at(-1)?.title).toBe("CV ajouté à la bibliothèque");
@@ -120,6 +140,30 @@ describe("réouverture d'un CV de base enregistré", () => {
     expect(compose).not.toHaveBeenCalled();
     expect(result.current.document).toEqual(reopened);
     expect(result.current.name).toBe("Ma version retouchée");
+  });
+
+  it("repart des sections écartées enregistrées, sans ressusciter celles qui l'étaient", async () => {
+    const compose = vi.spyOn(documentsService, "composeBaseResume").mockResolvedValue(documentExemple);
+    const reopened = { ...documentExemple, profile: "Retouché après enregistrement." };
+    const { result } = renderHook(
+      () =>
+        useBaseResumeViewModel({
+          document: reopened,
+          name: "Ma version retouchée",
+          documentId: "cv-base-1",
+          excludedSections: ["skills"],
+        }),
+      { wrapper },
+    );
+
+    // L'interrupteur « Compétences » reste éteint : le document rouvert n'en a pas.
+    expect(result.current.excluded).toEqual(["skills"]);
+
+    act(() => result.current.toggle("projects"));
+    act(() => result.current.confirmToggle());
+
+    // La recomposition retire les projets **et** garde les compétences écartées.
+    await waitFor(() => expect(compose).toHaveBeenCalledWith(["skills", "projects"]));
   });
 
   it("demande confirmation avant de recomposer la première bascule après réouverture", async () => {
@@ -160,7 +204,7 @@ describe("réouverture d'un CV de base enregistré", () => {
 
     expect(saveResume).toHaveBeenCalledWith({
       name: "Ma version retouchée",
-      content: { schema_version: 1, kind: "base", document: reopened },
+      content: { schema_version: 1, kind: "base", document: reopened, excluded_sections: [] },
       revises: "cv-base-1",
       version_note: "Modifiée depuis le CV de base",
     });

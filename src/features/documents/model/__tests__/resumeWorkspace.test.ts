@@ -9,7 +9,7 @@ import {
   applyContentRecommendation,
   applyResumeCorrection,
   availableProfileItems,
-  baseResumeDocument,
+  baseResumeContent,
   ignoreContentRecommendation,
   isResumeDocumentShape,
   isResumeWorkspace,
@@ -64,12 +64,29 @@ describe("décision de réouverture d'un document", () => {
 
   it("extrait le document d'un CV de base reconnu, et rien d'un contenu sans sa structure", () => {
     const document = workspaceFixture().document;
-    expect(baseResumeDocument({ schema_version: 1, kind: "base", document })).toEqual(document);
+    expect(baseResumeContent({ schema_version: 1, kind: "base", document })).toEqual({
+      document,
+      excludedSections: [],
+    });
     // `kind: "base"` sans structure de document reconnue : jamais affiché à moitié vide.
-    expect(baseResumeDocument({ schema_version: 1, kind: "base", document: {} })).toBeNull();
+    expect(baseResumeContent({ schema_version: 1, kind: "base", document: {} })).toBeNull();
     // Un CV ciblé — sans `kind` — n'est jamais lu comme un CV de base, même structuré.
-    expect(baseResumeDocument({ schema_version: 1, document })).toBeNull();
-    expect(baseResumeDocument(null)).toBeNull();
+    expect(baseResumeContent({ schema_version: 1, document })).toBeNull();
+    expect(baseResumeContent(null)).toBeNull();
+  });
+
+  it("relit les sections écartées enregistrées, en ignorant ce qui n'en est pas une", () => {
+    const document = workspaceFixture().document;
+    expect(
+      baseResumeContent({ schema_version: 1, kind: "base", document, excluded_sections: ["skills", "summary"] }),
+    ).toEqual({ document, excludedSections: ["skills", "summary"] });
+    // Un contenu enregistré avant ce champ reste lisible : aucune section écartée.
+    expect(baseResumeContent({ schema_version: 1, kind: "base", document })?.excludedSections).toEqual([]);
+    // Une valeur hors du jeu fermé des sections n'allumera jamais un interrupteur fantôme.
+    expect(
+      baseResumeContent({ schema_version: 1, kind: "base", document, excluded_sections: ["salaire", 3] })
+        ?.excludedSections,
+    ).toEqual([]);
   });
 });
 

@@ -10,7 +10,8 @@ import type {
   ResumeSkillGroup,
   ResumeWorkspace,
 } from "@/shared/types/generated/documents";
-import type { LanguageCorrectionField } from "@/shared/types/generated/ai";
+import type { LanguageCorrectionField, ProfileSection } from "@/shared/types/generated/ai";
+import { parseProfileSections } from "./profileSections";
 import { PATHS } from "@/shared/lib/paths";
 
 /** Jumeau frontend de `RESUME_WORKSPACE_VERSION` (Rust) : seule cette version est éditable ici. */
@@ -44,11 +45,6 @@ export type ResumeSectionKind =
   | "certification"
   | "language";
 
-/**
- * Un workspace CV versionné, reconnu par sa version et la présence de ses collections
- * obligatoires. Un objet `{ schema_version: 1 }` sans document structuré n'en est pas un :
- * seule une composition passée par `prepare_workspace` (Rust) l'est.
- */
 /** Reconnaît la structure d'un document de CV, indépendamment de son enveloppe. */
 export function isResumeDocumentShape(value: unknown): value is ResumeDocument {
   if (typeof value !== "object" || value === null) return false;
@@ -63,6 +59,11 @@ export function isResumeDocumentShape(value: unknown): value is ResumeDocument {
   );
 }
 
+/**
+ * Un contenu CV versionné, reconnu par sa version et la présence des collections
+ * obligatoires de son document. Un objet `{ schema_version: 1 }` sans document structuré
+ * n'en est pas un : seule une composition passée par le Rust l'est.
+ */
 function hasResumeDocument(value: unknown): value is { schema_version: number; document: ResumeDocument } {
   if (typeof value !== "object" || value === null) return false;
   const candidate = value as Partial<ResumeWorkspace>;
@@ -71,14 +72,24 @@ function hasResumeDocument(value: unknown): value is { schema_version: number; d
 }
 
 /**
- * Document d'un CV de base reconnu (`kind: "base"`, tâche 1), prêt à être réaffiché tel
- * qu'enregistré plutôt que recomposé depuis le profil. `hasResumeDocument` écarte un contenu
- * historique sans structure : il ne doit jamais s'afficher à moitié vide.
+ * Contenu d'un CV de base reconnu (`kind: "base"`), prêt à être réaffiché tel qu'enregistré
+ * plutôt que recomposé depuis le profil. `hasResumeDocument` écarte un contenu historique
+ * sans structure : il ne doit jamais s'afficher à moitié vide.
+ *
+ * Les sections écartées accompagnent le document : sans elles, la réouverture rallumerait
+ * les interrupteurs des sections retirées et la recomposition suivante les ramènerait sur la
+ * feuille. Un contenu enregistré avant ce champ n'en déclare aucune.
  */
-export function baseResumeDocument(value: unknown): ResumeDocument | null {
+export function baseResumeContent(
+  value: unknown,
+): { document: ResumeDocument; excludedSections: ProfileSection[] } | null {
   if (!hasResumeDocument(value)) return null;
-  if ((value as { kind?: unknown }).kind !== "base") return null;
-  return (value as { document: ResumeDocument }).document;
+  const candidate = value as { kind?: unknown; document: ResumeDocument; excluded_sections?: unknown };
+  if (candidate.kind !== "base") return null;
+  return {
+    document: candidate.document,
+    excludedSections: parseProfileSections(candidate.excluded_sections),
+  };
 }
 
 /**

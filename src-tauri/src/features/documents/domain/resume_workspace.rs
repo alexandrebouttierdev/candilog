@@ -1,6 +1,8 @@
 //! Document de travail autonome d'un CV ciblé.
 
-use crate::features::ai::domain::{AtsAnalysis, ContentRelevance, MatchScore, StructuredListing};
+use crate::features::ai::domain::{
+    AtsAnalysis, ContentRelevance, MatchScore, ProfileSection, StructuredListing,
+};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
@@ -19,6 +21,13 @@ pub struct BaseResume {
     pub schema_version: u8,
     pub kind: String,
     pub document: ResumeDocument,
+    /// Sections du profil écartées à la composition, conservées avec le document.
+    ///
+    /// Sans elles, rouvrir un CV de base rallumerait les interrupteurs des sections
+    /// retirées, et la première recomposition les ferait revenir sur la feuille. `default`
+    /// garde lisibles les contenus enregistrés avant ce champ, sans migration.
+    #[serde(default)]
+    pub excluded_sections: Vec<ProfileSection>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]

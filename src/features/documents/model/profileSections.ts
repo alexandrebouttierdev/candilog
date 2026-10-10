@@ -20,6 +20,30 @@ export const RESUME_SECTIONS: ReadonlyArray<readonly [ProfileSection, string]> =
 ];
 
 /**
+ * Jeu fermé des sections du profil, pour relire une liste enregistrée sans faire confiance
+ * au JSON stocké.
+ */
+const PROFILE_SECTIONS: readonly ProfileSection[] = [
+  "summary",
+  "availability",
+  "experiences",
+  "education",
+  "skills",
+  "languages",
+  "projects",
+  "certifications",
+  "interests",
+];
+
+/** Sections d'une liste enregistrée, les valeurs inconnues écartées. */
+export function parseProfileSections(value: unknown): ProfileSection[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is ProfileSection =>
+    PROFILE_SECTIONS.includes(item as ProfileSection),
+  );
+}
+
+/**
  * « Arguments autorisés » pour une lettre (`screens/16`) : les faits du profil dont la
  * lettre peut s'appuyer. Les prétentions salariales n'y figurent pas : le profil ne les
  * connaît pas.

@@ -571,6 +571,36 @@ mod tests {
         ));
     }
 
+    /// Les sections écartées voyagent avec le contenu : sans elles, rouvrir un CV de base
+    /// rallumerait des interrupteurs éteints et ressusciterait les sections retirées.
+    #[test]
+    fn un_cv_de_base_conserve_les_sections_ecartees() {
+        let content = serde_json::json!({
+            "schema_version": 1,
+            "kind": "base",
+            "document": serde_json::to_value(document_minimal()).unwrap(),
+            "excluded_sections": ["skills", "summary"],
+        });
+        assert!(valider_contenu(&content).is_ok());
+        let base: BaseResume = serde_json::from_value(content).unwrap();
+        assert_eq!(
+            base.excluded_sections,
+            vec![ProfileSection::Skills, ProfileSection::Summary]
+        );
+    }
+
+    /// Les contenus enregistrés avant ce champ restent lisibles sans migration.
+    #[test]
+    fn un_cv_de_base_sans_sections_ecartees_reste_lisible() {
+        let content = serde_json::json!({
+            "schema_version": 1,
+            "kind": "base",
+            "document": serde_json::to_value(document_minimal()).unwrap(),
+        });
+        let base: BaseResume = serde_json::from_value(content).unwrap();
+        assert!(base.excluded_sections.is_empty());
+    }
+
     /// Un `kind: "base"` forgé avec une autre version entrait en base, puis la bibliothèque
     /// le déclarait illisible : la branche `kind` doit exiger la version qu'elle sait relire.
     #[test]

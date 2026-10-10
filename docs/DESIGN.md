@@ -375,8 +375,9 @@ Réutiliser la recette du voisin plutôt que d’en inventer une.
   la version. `⌘S` enregistre, `Échap` ferme ; pas de `⌘⏎`, il n'y a rien à générer.
   Basculer un interrupteur recompose depuis le profil et écrase les retouches ; une
   confirmation le demande dès que la feuille a été retouchée. Rouvert depuis la
-  bibliothèque, un CV de base affiche ce qui a été enregistré, sans recomposer, et un
-  nouvel enregistrement y ajoute une version. Dans la bibliothèque, il ne se distingue des
+  bibliothèque, un CV de base affiche ce qui a été enregistré, sans recomposer, avec ses
+  interrupteurs dans l'état où la composition les avait laissés, et un nouvel
+  enregistrement y ajoute une version. Dans la bibliothèque, il ne se distingue des
   autres CV en rien — pas de pastille, pas de filtre — décision produit, pas un oubli.
 - « Offre visée » (`OfferSource`) : s'ouvre sur les candidatures ouvertes du suivi — le
   texte est prérempli avec ce que Candilog en sait, sans rien inventer — sauf si une offre

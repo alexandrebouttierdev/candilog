@@ -37,6 +37,11 @@ export interface BaseResumeInitial {
   name?: string | null;
   /** Document rouvert depuis la bibliothèque : l'enregistrer en ajoute une version. */
   documentId?: string | null;
+  /**
+   * Sections écartées à la composition du document rouvert : les interrupteurs repartent
+   * de là, et la recomposition ne ressuscite pas une section que l'utilisateur avait retirée.
+   */
+  excludedSections?: readonly ProfileSection[] | null;
 }
 
 /**
@@ -55,7 +60,7 @@ export interface BaseResumeInitial {
 export function useBaseResumeViewModel(initial: BaseResumeInitial = {}) {
   const queryClient = useQueryClient();
   const notify = useUiStore((state) => state.notify);
-  const [excluded, setExcluded] = useState<ProfileSection[]>([]);
+  const [excluded, setExcluded] = useState<ProfileSection[]>([...(initial.excludedSections ?? [])]);
   const [document, setDocumentState] = useState<ResumeDocument | null>(initial.document ?? null);
   const [dirty, setDirty] = useState(initial.document != null);
   const [pendingToggle, setPendingToggle] = useState<ProfileSection | null>(null);
@@ -125,6 +130,7 @@ export function useBaseResumeViewModel(initial: BaseResumeInitial = {}) {
         schema_version: BASE_RESUME_SCHEMA_VERSION,
         kind: BASE_RESUME_KIND,
         document: content,
+        excluded_sections: excluded,
       };
       return documentsService.saveResume({
         name,

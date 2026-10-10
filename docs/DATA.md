@@ -162,14 +162,19 @@ ni score ni offre. Trois formes coexistent :
 
 | Forme | Discriminant | Rôle |
 | --- | --- | --- |
-| CV de base | `kind = "base"` **et** `schema_version = 1` (`kind` testé en premier) | `BaseResume` : document composé depuis le seul profil, sans offre ni score |
+| CV de base | `kind = "base"` **et** `schema_version = 1` (`kind` testé en premier) | `BaseResume` : document composé depuis le seul profil et sections écartées, sans offre ni score |
 | Éditeur autonome | `schema_version = 1` sans `kind` | `ResumeWorkspace` complet : document, offre, analyse, score, propositions |
 | Historique | ni l'un ni l'autre champ | Snapshot `ResumeGeneration` (génération IA seule) — encore lisible en bibliothèque |
 
 Une version `kind = "base"` ou `schema_version = 1` est **autonome** : une fois enregistrée,
 elle ne dépend plus du profil courant ni d'une génération antérieure. Pour l'éditeur
 autonome, le document (`ResumeDocument`), l'offre et les décisions ATS voyagent ensemble
-dans le même blob ; un CV de base n'embarque que le document.
+dans le même blob ; un CV de base n'embarque que son document et `excluded_sections`, la
+liste des sections du profil que sa composition a écartées. Ce champ porte `#[serde(default)]`
+et **aucune migration** ne l'ajoute : un CV de base enregistré avant lui se relit avec une
+liste vide. Il existe pour que la réouverture retrouve les interrupteurs tels qu'ils étaient
+— sans lui, ils se rallumaient tous et la première recomposition ramenait les sections
+retirées.
 
 À l'écriture, `valider_contenu` (`features/documents/application/service.rs`) teste `kind`
 avant `schema_version` : un CV de base et un CV ciblé partagent tous deux `schema_version: 1`,

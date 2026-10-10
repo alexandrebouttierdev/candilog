@@ -630,7 +630,7 @@ describe("bibliothèque CV workspace", () => {
       name: "CV de base",
       // Forme `{ kind: "base", … }` (tâche 1) : seul ce champ distingue un CV de base d'un
       // CV ciblé enregistré avec le même workspace structuré.
-      content: { schema_version: 1, kind: "base", document },
+      content: { schema_version: 1, kind: "base", document, excluded_sections: ["skills"] },
       created_at: "2026-08-30T00:00:00Z",
     });
     sansLettres();
@@ -639,8 +639,10 @@ describe("bibliothèque CV workspace", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Ouvrir" })).toBeEnabled());
 
     await userEvent.click(screen.getByRole("button", { name: "Ouvrir" }));
+    // Les sections écartées voyagent avec le document : l'écran rouvre les interrupteurs
+    // dans l'état où l'enregistrement les avait laissés.
     expect(navigateMock).toHaveBeenCalledWith("/documents/base-resume", {
-      state: { document, name: "CV de base", documentId: "cv-base" },
+      state: { document, excludedSections: ["skills"], name: "CV de base", documentId: "cv-base" },
     });
   });
 
