@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import type { ResumeDocument, ResumeWorkspace } from "@/shared/types/generated/documents";
 import { Button, ConfirmDialog, ErrorBanner, FormField, TextInput } from "@/shared/ui";
 import { useProfilePhoto } from "@/features/profile";
@@ -52,7 +53,10 @@ function BaseResumeSheet({
   photo: string | null;
   onChange: (next: ResumeDocument) => void;
 }) {
-  const workspace = toEditableWorkspace(document);
+  // Mémoïsé sur `document` : un rendu déclenché par autre chose (le nom de la version, la
+  // photo…) ne doit pas fournir un nouvel objet `workspace` à `ResumePaper`, qui réarmerait
+  // sa mesure de densité pour rien — elle dépend de cette référence.
+  const workspace = useMemo(() => toEditableWorkspace(document), [document]);
   return (
     <div className="flex min-h-0 flex-1 flex-col items-center gap-3 overflow-auto p-[26px]">
       <ResumePaper

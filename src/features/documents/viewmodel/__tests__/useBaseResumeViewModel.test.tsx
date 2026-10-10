@@ -41,21 +41,32 @@ describe("ViewModel du CV de base", () => {
     await waitFor(() => expect(compose).toHaveBeenLastCalledWith(["skills"]));
   });
 
-  it("demande confirmation avant de recomposer une feuille retouchée", async () => {
-    vi.spyOn(documentsService, "composeBaseResume").mockResolvedValue(documentExemple);
+  it("demande confirmation avant de recomposer une feuille retouchée, puis recompose réellement", async () => {
+    // Un document distinct par appel (reflétant les sections écartées reçues) : sans cela,
+    // la garde par référence de la copie locale ne distinguerait jamais une recomposition
+    // d'une réponse déjà appliquée, et le test ne prouverait que l'intention, pas l'effet.
+    const compose = vi
+      .spyOn(documentsService, "composeBaseResume")
+      .mockImplementation((excluded = []) => Promise.resolve({ ...documentExemple, profile: `profil:${excluded.join(",")}` }));
     const { result } = renderHook(() => useBaseResumeViewModel(), { wrapper });
     await waitFor(() => expect(result.current.document).not.toBeNull());
+    expect(result.current.document?.profile).toBe("profil:");
 
     act(() => result.current.setDocument({ ...documentExemple, profile: "retouché" }));
     act(() => result.current.toggle("skills"));
 
     expect(result.current.pendingToggle).toBe("skills");
     expect(result.current.excluded).toEqual([]);
+    // Rien n'est recomposé avant confirmation : la retouche est toujours là.
+    expect(result.current.document?.profile).toBe("retouché");
 
     act(() => result.current.confirmToggle());
 
     await waitFor(() => expect(result.current.excluded).toEqual(["skills"]));
     expect(result.current.pendingToggle).toBeNull();
+    // La feuille affichée est bien la nouvelle composition, pas la retouche écrasée.
+    await waitFor(() => expect(result.current.document?.profile).toBe("profil:skills"));
+    expect(compose).toHaveBeenLastCalledWith(["skills"]);
   });
 
   it("annule la bascule en attente sans toucher aux sections retenues", async () => {
