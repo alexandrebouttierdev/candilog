@@ -1,9 +1,9 @@
 import type { AtsRecommendationSection, ResumeGeneration } from "@/features/ai";
-import type { CoverLetter, ResumeWorkspace } from "@/shared/types/generated/documents";
+import type { CoverLetter, ResumeDocument, ResumeWorkspace } from "@/shared/types/generated/documents";
 import { AppError } from "@/shared/types/app-error";
 import { Button, FormField, TextArea, TextInput } from "@/shared/ui";
 import { useUiStore } from "@/shared/lib/ui-store";
-import { normalizeResumeWorkspace } from "../../model/resumeWorkspace";
+import { isResumeDocumentShape, normalizeResumeWorkspace } from "../../model/resumeWorkspace";
 
 export { RESUME_KEY, COVER_LETTERS_KEY } from "../../viewmodel/documentKeys";
 
@@ -145,6 +145,25 @@ export function generationFromNavigation(state: unknown): {
     };
   }
   return { result: null, workspace: null, name: "", documentId: null };
+}
+/**
+ * Document de CV de base transmis par la navigation : la réouverture d'une version
+ * enregistrée (`DocumentsPage`), affichée telle quelle plutôt que recomposée depuis le
+ * profil. Sans état de navigation (entrée directe par le bouton de la barre d'outils), les
+ * trois champs restent `null` et l'écran compose comme avant.
+ */
+export function baseResumeFromNavigation(state: unknown): {
+  document: ResumeDocument | null;
+  name: string | null;
+  documentId: string | null;
+} {
+  if (typeof state !== "object" || state === null) return { document: null, name: null, documentId: null };
+  const payload = state as { document?: unknown; name?: string; documentId?: string };
+  return {
+    document: isResumeDocumentShape(payload.document) ? payload.document : null,
+    name: payload.name ?? null,
+    documentId: typeof payload.documentId === "string" ? payload.documentId : null,
+  };
 }
 export function coverLetterFromNavigation(state: unknown): CoverLetter | null {
   if (typeof state !== "object" || state === null || !("cover_letter" in state)) return null;

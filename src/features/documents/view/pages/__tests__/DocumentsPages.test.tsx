@@ -138,6 +138,16 @@ describe("bibliothèque de documents", () => {
     expect(await screen.findByText("ATS 82")).toBeInTheDocument();
     expect(paged).toHaveBeenCalledWith({ page: 1, page_size: 50, search: "", scored_only: true });
   });
+
+  it("ouvre l'écran du CV de base depuis la barre d'outils", async () => {
+    sansLettres();
+    vi.spyOn(documentsService, "listResumePage").mockResolvedValue({ items: [], total: 0, page: 1, page_size: 50, total_pages: 1 });
+
+    render(<DocumentsPage filter="resumes" />, { wrapper });
+    await userEvent.click(await screen.findByRole("button", { name: "CV de base" }));
+
+    expect(navigateMock).toHaveBeenCalledWith("/documents/base-resume");
+  });
 });
 
 describe("analyse explicite d'un CV sélectionné", () => {
@@ -604,6 +614,34 @@ describe("bibliothèque CV workspace", () => {
     await waitFor(() =>
       expect(exportPdf).toHaveBeenCalledWith(workspace.document),
     );
+  });
+
+  it("rouvre un CV de base sur son écran dédié, pas sur le générateur ciblé", async () => {
+    const document = workspaceFixture().document;
+    vi.spyOn(documentsService, "listResumePage").mockResolvedValue({
+      items: [{ id: "cv-base", name: "CV de base", created_at: "2026-08-30T00:00:00Z", ats_score: null, target_title: null }],
+      total: 1,
+      page: 1,
+      page_size: 8,
+      total_pages: 1,
+    });
+    vi.spyOn(documentsService, "getResume").mockResolvedValue({
+      id: "cv-base",
+      name: "CV de base",
+      // Forme `{ kind: "base", … }` (tâche 1) : seul ce champ distingue un CV de base d'un
+      // CV ciblé enregistré avec le même workspace structuré.
+      content: { schema_version: 1, kind: "base", document },
+      created_at: "2026-08-30T00:00:00Z",
+    });
+    sansLettres();
+
+    render(<DocumentsPage filter="resumes" />, { wrapper });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Ouvrir" })).toBeEnabled());
+
+    await userEvent.click(screen.getByRole("button", { name: "Ouvrir" }));
+    expect(navigateMock).toHaveBeenCalledWith("/documents/base-resume", {
+      state: { document, name: "CV de base", documentId: "cv-base" },
+    });
   });
 
   it("prépare une génération historique seulement à l'export", async () => {

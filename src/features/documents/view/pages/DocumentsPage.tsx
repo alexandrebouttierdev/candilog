@@ -5,6 +5,7 @@ import type { CoverLetter, ResumeSummary } from "@/shared/types/generated/docume
 import { useDocumentCounts } from "../../viewmodel/useDocumentCounts";
 import { useDocumentsViewModel } from "../../viewmodel/useDocumentsViewModel";
 import type { DocumentFilter, DocumentSelection } from "../../viewmodel/useDocumentsViewModel";
+import { baseResumeDocument, routeForContent } from "../../model/resumeWorkspace";
 import { labelTone } from "./documentPageSupport";
 import { PATHS } from "@/shared/lib/paths";
 import { useChrome } from "@/shared/lib/chrome";
@@ -72,10 +73,19 @@ export function DocumentsPage({ filter }: { filter: DocumentFilter }) {
   const counts = useDocumentCounts();
 
   const open = () => {
-    // `documentId` : enregistrer depuis le générateur ajoute une version à ce document.
+    // `documentId` : enregistrer depuis le générateur (ou le CV de base) ajoute une version
+    // à ce document plutôt que d'en créer un second.
     const documentId = vm.version?.id;
-    if (vm.workspace) void navigate(PATHS.generateResume, { state: { workspace: vm.workspace, name: vm.version?.name, documentId } });
-    else if (vm.generation) void navigate(PATHS.generateResume, { state: { generation: vm.generation, name: vm.version?.name, documentId } });
+    const name = vm.version?.name;
+    if (vm.version && routeForContent(vm.version.content) === PATHS.baseResume) {
+      const document = baseResumeDocument(vm.version.content);
+      if (document) {
+        void navigate(PATHS.baseResume, { state: { document, name, documentId } });
+        return;
+      }
+    }
+    if (vm.workspace) void navigate(PATHS.generateResume, { state: { workspace: vm.workspace, name, documentId } });
+    else if (vm.generation) void navigate(PATHS.generateResume, { state: { generation: vm.generation, name, documentId } });
     else if (vm.letter) void navigate(PATHS.writeLetter, { state: { cover_letter: vm.letter } });
   };
   const canOpen = Boolean(vm.workspace ?? vm.generation ?? vm.letter);
@@ -186,6 +196,9 @@ export function DocumentsPage({ filter }: { filter: DocumentFilter }) {
           </Button>
           <Button size="compact" onClick={() => void navigate(PATHS.writeLetter)}>
             Générer une lettre
+          </Button>
+          <Button size="compact" onClick={() => void navigate(PATHS.baseResume)}>
+            CV de base
           </Button>
           <Button variant="primary" size="compact" shortcut="n" onClick={() => void navigate(PATHS.generateResume)}>
             Générer un CV

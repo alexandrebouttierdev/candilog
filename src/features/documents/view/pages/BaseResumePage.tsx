@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useLocation } from "react-router-dom";
 import type { ResumeDocument, ResumeWorkspace } from "@/shared/types/generated/documents";
 import { Button, ConfirmDialog, ErrorBanner, FormField, TextInput } from "@/shared/ui";
 import { useProfilePhoto } from "@/features/profile";
@@ -9,6 +10,7 @@ import { GeneratorFrame, PaneSection } from "../components/GeneratorFrame";
 import { ProfileGapBanner } from "../components/ProfileGapBanner";
 import { ResumePaper } from "../components/ResumePaper";
 import { SectionToggles } from "../components/SectionToggles";
+import { baseResumeFromNavigation } from "./documentPageSupport";
 
 /**
  * Enveloppe neutre autour du document composé : `ResumePaper` et `updateResumeField`
@@ -75,7 +77,11 @@ function BaseResumeSheet({
  * de `BetaBadge`, qui signale les fonctions passant par l'IA, ce qui n'est pas le cas ici.
  */
 export function BaseResumePage() {
-  const vm = useBaseResumeViewModel();
+  const location = useLocation();
+  // Seul l'état initial du ViewModel en dépend : mémoïsé pour ne pas lui fournir un objet
+  // neuf à chaque rendu.
+  const initiale = useMemo(() => baseResumeFromNavigation(location.state), [location.state]);
+  const vm = useBaseResumeViewModel(initiale);
   const photo = useProfilePhoto().data ?? null;
   const canSave = Boolean(vm.name.trim()) && vm.document !== null && !vm.isSaving && !vm.isComposing;
 

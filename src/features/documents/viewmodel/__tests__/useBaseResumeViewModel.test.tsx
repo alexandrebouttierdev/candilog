@@ -105,3 +105,65 @@ describe("ViewModel du CV de base", () => {
     expect(useUiStore.getState().toasts.at(-1)?.title).toBe("CV ajouté à la bibliothèque");
   });
 });
+
+describe("réouverture d'un CV de base enregistré", () => {
+  it("affiche le document rouvert sans le recomposer depuis le profil", () => {
+    const compose = vi.spyOn(documentsService, "composeBaseResume");
+    const reopened = { ...documentExemple, profile: "Retouché après enregistrement." };
+    const { result } = renderHook(
+      () => useBaseResumeViewModel({ document: reopened, name: "Ma version retouchée", documentId: "cv-base-1" }),
+      { wrapper },
+    );
+
+    // Aucune composition : écraser silencieusement la retouche enregistrée serait la perte
+    // de travail que cette tâche doit éviter.
+    expect(compose).not.toHaveBeenCalled();
+    expect(result.current.document).toEqual(reopened);
+    expect(result.current.name).toBe("Ma version retouchée");
+  });
+
+  it("demande confirmation avant de recomposer la première bascule après réouverture", async () => {
+    const compose = vi.spyOn(documentsService, "composeBaseResume").mockResolvedValue(documentExemple);
+    const reopened = { ...documentExemple, profile: "Retouché après enregistrement." };
+    const { result } = renderHook(
+      () => useBaseResumeViewModel({ document: reopened, name: "Ma version retouchée", documentId: "cv-base-1" }),
+      { wrapper },
+    );
+
+    act(() => result.current.toggle("skills"));
+
+    // La bascule attend la confirmation : le document rouvert n'est pas encore écrasé.
+    expect(result.current.pendingToggle).toBe("skills");
+    expect(compose).not.toHaveBeenCalled();
+    expect(result.current.document).toEqual(reopened);
+
+    act(() => result.current.confirmToggle());
+
+    await waitFor(() => expect(compose).toHaveBeenCalledWith(["skills"]));
+    await waitFor(() => expect(result.current.document).toEqual(documentExemple));
+  });
+
+  it("enregistre une nouvelle version du document rouvert plutôt qu'un second CV de base", async () => {
+    const reopened = { ...documentExemple, profile: "Retouché après enregistrement." };
+    const saveResume = vi.spyOn(documentsService, "saveResume").mockResolvedValue({
+      id: "cv-base-1",
+      name: "Ma version retouchée",
+      content: reopened,
+      created_at: "2026-10-10T00:00:00Z",
+    });
+    const { result } = renderHook(
+      () => useBaseResumeViewModel({ document: reopened, name: "Ma version retouchée", documentId: "cv-base-1" }),
+      { wrapper },
+    );
+
+    await act(async () => { await result.current.save(); });
+
+    expect(saveResume).toHaveBeenCalledWith({
+      name: "Ma version retouchée",
+      content: { schema_version: 1, kind: "base", document: reopened },
+      revises: "cv-base-1",
+      version_note: "Modifié depuis le CV de base",
+    });
+    expect(useUiStore.getState().toasts.at(-1)?.title).toBe("Nouvelle version enregistrée");
+  });
+});

@@ -31,25 +31,48 @@ function errorDetail(error: unknown): string | undefined {
   return error instanceof AppError ? error.message : undefined;
 }
 
+export interface BaseResumeInitial {
+  /** Document rouvert depuis la bibliothèque : affiché tel qu'enregistré, sans composer. */
+  document?: ResumeDocument | null;
+  name?: string | null;
+  /** Document rouvert depuis la bibliothèque : l'enregistrer en ajoute une version. */
+  documentId?: string | null;
+}
+
 /**
  * Composition et enregistrement d'un CV de base : lu dans le seul profil, sans offre ni
  * IA. La recomposition est un changement de clé de requête, jamais un effet manuel ; la
  * feuille affichée reste une copie locale pour que les retouches survivent au rendu, et
  * n'est écrasée par une nouvelle composition qu'après confirmation (`toggle`/`confirmToggle`).
+ *
+ * Rouvrir un CV de base enregistré (`initial.document`) affiche ce document directement :
+ * composer depuis le profil à l'ouverture écraserait silencieusement les retouches que
+ * l'utilisateur avait enregistrées. La composition ne reprend qu'à la première bascule de
+ * section, qui demande alors confirmation exactement comme une retouche de session — rouvrir
+ * un document déjà retouché est précisément le cas où l'on écrase ces retouches en
+ * connaissance de cause.
  */
-export function useBaseResumeViewModel() {
+export function useBaseResumeViewModel(initial: BaseResumeInitial = {}) {
   const queryClient = useQueryClient();
   const notify = useUiStore((state) => state.notify);
   const [excluded, setExcluded] = useState<ProfileSection[]>([]);
-  const [document, setDocumentState] = useState<ResumeDocument | null>(null);
-  const [dirty, setDirty] = useState(false);
+  const [document, setDocumentState] = useState<ResumeDocument | null>(initial.document ?? null);
+  const [dirty, setDirty] = useState(initial.document != null);
   const [pendingToggle, setPendingToggle] = useState<ProfileSection | null>(null);
-  const [name, setName] = useState("CV de base");
+  const [name, setName] = useState(initial.name ?? "CV de base");
+  // Document que le prochain enregistrement révise : celui rouvert, puis celui enregistré
+  // ici, pour qu'un second ⌘S ajoute une version plutôt qu'un second CV de base.
+  const [revises, setRevises] = useState<string | null>(initial.documentId ?? null);
+  // Tant qu'un document rouvert n'a pas subi sa première bascule confirmée, la composition
+  // ne doit pas partir : sa réponse écraserait l'affichage du document enregistré dès
+  // qu'elle arrive, avant toute confirmation.
+  const [composeEnabled, setComposeEnabled] = useState(initial.document == null);
 
   const profile = useQuery({ queryKey: PROFILE_KEY, queryFn: profileService.load });
   const composed = useQuery({
     queryKey: [...BASE_RESUME_KEY, excluded],
     queryFn: () => documentsService.composeBaseResume(excluded),
+    enabled: composeEnabled,
   });
 
   // Resynchronise la copie locale sur chaque nouvelle composition reçue, pendant le rendu
@@ -76,6 +99,7 @@ export function useBaseResumeViewModel() {
    */
   function toggle(section: ProfileSection): void {
     if (!dirty) {
+      setComposeEnabled(true);
       setExcluded((current) => toggleSection(current, section));
       return;
     }
@@ -87,6 +111,7 @@ export function useBaseResumeViewModel() {
     const section = pendingToggle;
     setPendingToggle(null);
     setDirty(false);
+    setComposeEnabled(true);
     setExcluded((current) => toggleSection(current, section));
   }
 
@@ -101,11 +126,16 @@ export function useBaseResumeViewModel() {
         kind: BASE_RESUME_KIND,
         document: content,
       };
-      return documentsService.saveResume({ name, content: base, version_note: "Composé depuis le profil" });
+      return documentsService.saveResume({
+        name,
+        content: base,
+        ...(revises ? { revises, version_note: "Modifié depuis le CV de base" } : { version_note: "Composé depuis le profil" }),
+      });
     },
-    onSuccess: async () => {
+    onSuccess: async (saved) => {
       await queryClient.invalidateQueries({ queryKey: RESUME_KEY });
-      notify({ tone: "success", title: "CV ajouté à la bibliothèque" });
+      notify({ tone: "success", title: revises ? "Nouvelle version enregistrée" : "CV ajouté à la bibliothèque" });
+      setRevises(saved.id);
     },
     onError: (caught: unknown) => {
       notify({ tone: "error", title: "Enregistrement impossible", detail: errorDetail(caught) });

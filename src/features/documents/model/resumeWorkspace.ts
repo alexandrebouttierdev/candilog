@@ -11,6 +11,7 @@ import type {
   ResumeWorkspace,
 } from "@/shared/types/generated/documents";
 import type { LanguageCorrectionField } from "@/shared/types/generated/ai";
+import { PATHS } from "@/shared/lib/paths";
 
 /** Jumeau frontend de `RESUME_WORKSPACE_VERSION` (Rust) : seule cette version est éditable ici. */
 export const RESUME_WORKSPACE_VERSION = 1;
@@ -48,12 +49,10 @@ export type ResumeSectionKind =
  * obligatoires. Un objet `{ schema_version: 1 }` sans document structuré n'en est pas un :
  * seule une composition passée par `prepare_workspace` (Rust) l'est.
  */
-function hasResumeDocument(value: unknown): value is { schema_version: number; document: ResumeDocument } {
+/** Reconnaît la structure d'un document de CV, indépendamment de son enveloppe. */
+export function isResumeDocumentShape(value: unknown): value is ResumeDocument {
   if (typeof value !== "object" || value === null) return false;
-  const candidate = value as Partial<ResumeWorkspace>;
-  if (candidate.schema_version !== RESUME_WORKSPACE_VERSION) return false;
-  if (typeof candidate.document !== "object" || candidate.document === null) return false;
-  const document = candidate.document as Partial<ResumeDocument>;
+  const document = value as Partial<ResumeDocument>;
   return (
     Array.isArray(document.experiences) &&
     Array.isArray(document.projects) &&
@@ -62,6 +61,33 @@ function hasResumeDocument(value: unknown): value is { schema_version: number; d
     Array.isArray(document.certifications) &&
     Array.isArray(document.languages)
   );
+}
+
+function hasResumeDocument(value: unknown): value is { schema_version: number; document: ResumeDocument } {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Partial<ResumeWorkspace>;
+  if (candidate.schema_version !== RESUME_WORKSPACE_VERSION) return false;
+  return isResumeDocumentShape(candidate.document);
+}
+
+/**
+ * Document d'un CV de base reconnu (`kind: "base"`, tâche 1), prêt à être réaffiché tel
+ * qu'enregistré plutôt que recomposé depuis le profil. `hasResumeDocument` écarte un contenu
+ * historique sans structure : il ne doit jamais s'afficher à moitié vide.
+ */
+export function baseResumeDocument(value: unknown): ResumeDocument | null {
+  if (!hasResumeDocument(value)) return null;
+  if ((value as { kind?: unknown }).kind !== "base") return null;
+  return (value as { document: ResumeDocument }).document;
+}
+
+/**
+ * Un contenu portant `kind: "base"` se rouvre sur l'écran du CV de base ; tout autre
+ * contenu — y compris un contenu historique sans ce champ — reste un CV ciblé.
+ */
+export function routeForContent(content: unknown): string {
+  const kind = (content as { kind?: unknown } | null)?.kind;
+  return kind === "base" ? PATHS.baseResume : PATHS.generateResume;
 }
 
 /** Met à niveau les workspaces v1 créés avant la bibliothèque éditoriale. */

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { PATHS } from "@/shared/lib/paths";
 import {
   addExperienceBullet,
   addProfileItem,
@@ -8,7 +9,9 @@ import {
   applyContentRecommendation,
   applyResumeCorrection,
   availableProfileItems,
+  baseResumeDocument,
   ignoreContentRecommendation,
+  isResumeDocumentShape,
   isResumeWorkspace,
   missingProfileSkills,
   reachableScore,
@@ -18,6 +21,7 @@ import {
   removeSection,
   removeSkill,
   resumeCorrectionFields,
+  routeForContent,
   safeResumeUrl,
   updateResumeField,
   workspaceFixture,
@@ -46,6 +50,34 @@ describe("garde de reconnaissance du workspace", () => {
     expect(normalized?.document).toEqual(current.document);
     expect(normalized?.profile_library).toEqual([]);
     expect(normalized?.analysis.content_recommendations).toEqual([]);
+  });
+});
+
+describe("décision de réouverture d'un document", () => {
+  it("rouvre un CV de base sur sa page, et un CV ciblé sur le générateur", () => {
+    // [VIGILANCE 5] un contenu sans `kind` reste un CV ciblé.
+    expect(routeForContent({ schema_version: 1, document: {} })).toBe(PATHS.generateResume);
+    expect(routeForContent({ titre: "ancien" })).toBe(PATHS.generateResume);
+    expect(routeForContent(null)).toBe(PATHS.generateResume);
+    expect(routeForContent({ schema_version: 1, kind: "base", document: {} })).toBe(PATHS.baseResume);
+  });
+
+  it("extrait le document d'un CV de base reconnu, et rien d'un contenu sans sa structure", () => {
+    const document = workspaceFixture().document;
+    expect(baseResumeDocument({ schema_version: 1, kind: "base", document })).toEqual(document);
+    // `kind: "base"` sans structure de document reconnue : jamais affiché à moitié vide.
+    expect(baseResumeDocument({ schema_version: 1, kind: "base", document: {} })).toBeNull();
+    // Un CV ciblé — sans `kind` — n'est jamais lu comme un CV de base, même structuré.
+    expect(baseResumeDocument({ schema_version: 1, document })).toBeNull();
+    expect(baseResumeDocument(null)).toBeNull();
+  });
+});
+
+describe("reconnaissance de la structure d'un document", () => {
+  it("reconnaît un document de CV par ses collections obligatoires", () => {
+    expect(isResumeDocumentShape(workspaceFixture().document)).toBe(true);
+    expect(isResumeDocumentShape({})).toBe(false);
+    expect(isResumeDocumentShape(null)).toBe(false);
   });
 });
 
