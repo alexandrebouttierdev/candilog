@@ -222,6 +222,46 @@ jobs:
       - name: Installer les dépendances frontend
         run: yarn install --immutable
 
+      # La signature et la notarisation sont faites par le CLI Tauri lui-même : il lit
+      # ces variables, importe le certificat dans un trousseau éphémère, signe le
+      # binaire universel et le .dmg, puis notarise et agrafe le .app. La garde sur
+      # `APPLE_CERTIFICATE` évite d'exporter des valeurs vides si les secrets ne sont
+      # pas encore posés : le CLI prendrait une chaîne vide pour un certificat et
+      # échouerait, alors qu'une variable absente lui fait sauter la signature sans
+      # échec. La liste est verrouillée par `docs/RELEASES.md`, et
+      # `bundle.macOS.signingIdentity` n'est volontairement pas dans `tauri.conf.json`
+      # pour ne pas imposer le certificat aux builds locaux.
+      #
+      # La notarisation s'authentifie par clé API App Store Connect (JWT), pas par
+      # identifiant Apple : Apple refuse le mot de passe d'application (401) depuis
+      # les adresses de la CI, qu'il ne reconnaît pas comme la session du compte.
+      - name: Renseigner la signature Apple
+        if: matrix.platform == 'macos-latest'
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY_CONTENT: ${{ secrets.APPLE_API_KEY_CONTENT }}
+        run: |
+          if [ -n "$APPLE_CERTIFICATE" ]; then
+            {
+              echo "APPLE_CERTIFICATE=${APPLE_CERTIFICATE}"
+              echo "APPLE_CERTIFICATE_PASSWORD=${APPLE_CERTIFICATE_PASSWORD}"
+              echo "APPLE_SIGNING_IDENTITY=${APPLE_SIGNING_IDENTITY}"
+            } >> "$GITHUB_ENV"
+          fi
+          if [ -n "$APPLE_API_KEY" ] && [ -n "$APPLE_API_ISSUER" ] && [ -n "$APPLE_API_KEY_CONTENT" ]; then
+            mkdir -p private_keys
+            printf '%s' "$APPLE_API_KEY_CONTENT" > "private_keys/AuthKey_${APPLE_API_KEY}.p8"
+            {
+              echo "APPLE_API_KEY=${APPLE_API_KEY}"
+              echo "APPLE_API_ISSUER=${APPLE_API_ISSUER}"
+              echo "APPLE_API_KEY_PATH=$(pwd)/private_keys/AuthKey_${APPLE_API_KEY}.p8"
+            } >> "$GITHUB_ENV"
+          fi
+
       - name: Construire Candilog
         uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f # v1
         with:
@@ -428,9 +468,9 @@ jobs:
           gh attestation verify candilog-windows-latest.exe --repo ${{ github.repository }}
           \`\`\`
 
-          ### Éditeur non vérifié par le système
+          ### Signature
 
-          Ces binaires ne portent **pas de signature de code** au sens de Windows et macOS : cela demande un certificat commercial, qui n'est pas encore acquis. Windows affichera donc un avertissement SmartScreen (« Éditeur inconnu ») et macOS un refus de Gatekeeper — passer par *Informations complémentaires → Exécuter quand même*, ou par un clic droit → *Ouvrir*. Sur Linux, aucun avertissement particulier.
+          Les binaires **macOS** sont signés avec un certificat *Developer ID Application* et notariés par Apple : Gatekeeper les ouvre sans intervention. Les binaires **Windows** ne portent pas encore de signature de code commerciale : SmartScreen affiche « Éditeur inconnu » au premier lancement — passer par *Informations complémentaires → Exécuter quand même*. Sur Linux, aucun avertissement particulier.
 
-          L'empreinte SHA-256 atteste que le fichier est arrivé intact, l'attestation de provenance qu'il vient bien d'ici. Ni l'une ni l'autre ne fait disparaître ces avertissements. La procédure complète est décrite dans le README." \
+          L'empreinte SHA-256 atteste que le fichier est arrivé intact, l'attestation de provenance qu'il vient bien d'ici. La procédure complète est décrite dans le README." \
             release-assets/*
