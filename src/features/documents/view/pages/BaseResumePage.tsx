@@ -1,10 +1,10 @@
 import type { ResumeDocument, ResumeWorkspace } from "@/shared/types/generated/documents";
-import { Button, ConfirmDialog, ErrorBanner } from "@/shared/ui";
+import { Button, ConfirmDialog, ErrorBanner, FormField, TextInput } from "@/shared/ui";
 import { useProfilePhoto } from "@/features/profile";
 import { updateResumeField } from "../../model/resumeWorkspace";
 import { useBaseResumeViewModel } from "../../viewmodel/useBaseResumeViewModel";
 import { EmptySheet } from "../components/EmptySheet";
-import { GeneratorFrame } from "../components/GeneratorFrame";
+import { GeneratorFrame, PaneSection } from "../components/GeneratorFrame";
 import { ProfileGapBanner } from "../components/ProfileGapBanner";
 import { ResumePaper } from "../components/ResumePaper";
 import { SectionToggles } from "../components/SectionToggles";
@@ -93,6 +93,11 @@ export function BaseResumePage() {
             disabled={vm.isComposing}
             onToggle={vm.toggle}
           />
+          <PaneSection title="Nom de la version">
+            <FormField label="Nom de la version" required>
+              {(props) => <TextInput {...props} value={vm.name} onChange={(e) => vm.setName(e.target.value)} />}
+            </FormField>
+          </PaneSection>
           {vm.error ? <ErrorBanner title="Composition impossible" message={vm.error} /> : null}
         </>
       }
