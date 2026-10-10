@@ -83,7 +83,7 @@ describe("invalidation de la composition du CV de base", () => {
   });
 
   it("périme la composition quand un import est appliqué", async () => {
-    vi.spyOn(profileService, "applyImport").mockResolvedValue(payload);
+    vi.spyOn(profileService, "applyImport").mockResolvedValue({ added: 1, replaced: 0, skipped: 0 });
     const { client, wrapper } = contexte();
     const { result } = renderHook(() => useProfileViewModel(), { wrapper });
 
