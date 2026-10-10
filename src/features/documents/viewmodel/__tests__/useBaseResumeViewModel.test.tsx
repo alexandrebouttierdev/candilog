@@ -100,7 +100,7 @@ describe("ViewModel du CV de base", () => {
     expect(saveResume).toHaveBeenCalledWith({
       name: "CV de base",
       content: { schema_version: 1, kind: "base", document: documentExemple },
-      version_note: "Composé depuis le profil",
+      version_note: "Composée depuis le profil",
     });
     expect(useUiStore.getState().toasts.at(-1)?.title).toBe("CV ajouté à la bibliothèque");
   });
@@ -162,8 +162,30 @@ describe("réouverture d'un CV de base enregistré", () => {
       name: "Ma version retouchée",
       content: { schema_version: 1, kind: "base", document: reopened },
       revises: "cv-base-1",
-      version_note: "Modifié depuis le CV de base",
+      version_note: "Modifiée depuis le CV de base",
     });
+    expect(useUiStore.getState().toasts.at(-1)?.title).toBe("Nouvelle version enregistrée");
+  });
+
+  it("enregistre une version du CV rouvert, puis de la version qu'il vient d'enregistrer", async () => {
+    const reopened = { ...documentExemple, profile: "Retouché après enregistrement." };
+    const saveResume = vi
+      .spyOn(documentsService, "saveResume")
+      .mockResolvedValueOnce({ id: "cv-base-2", name: "Ma version retouchée", content: reopened, created_at: "2026-10-10T00:00:00Z" })
+      .mockResolvedValueOnce({ id: "cv-base-3", name: "Ma version retouchée", content: reopened, created_at: "2026-10-10T00:01:00Z" });
+    const { result } = renderHook(
+      () => useBaseResumeViewModel({ document: reopened, name: "Ma version retouchée", documentId: "cv-base-1" }),
+      { wrapper },
+    );
+
+    await act(async () => { await result.current.save(); });
+    await act(async () => { await result.current.save(); });
+
+    // Le second ⌘S révise la version que le premier vient d'enregistrer (`cv-base-2`), pas
+    // le document initialement rouvert (`cv-base-1`) : sans `setRevises(saved.id)`, ce
+    // second appel porterait encore `revises: "cv-base-1"` et cette assertion échouerait.
+    expect(saveResume.mock.calls.map(([input]) => input.revises)).toEqual(["cv-base-1", "cv-base-2"]);
+    expect(saveResume.mock.calls[0]?.[0].version_note).toBe("Modifiée depuis le CV de base");
     expect(useUiStore.getState().toasts.at(-1)?.title).toBe("Nouvelle version enregistrée");
   });
 });

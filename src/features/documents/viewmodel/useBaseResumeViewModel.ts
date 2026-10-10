@@ -129,7 +129,7 @@ export function useBaseResumeViewModel(initial: BaseResumeInitial = {}) {
       return documentsService.saveResume({
         name,
         content: base,
-        ...(revises ? { revises, version_note: "Modifié depuis le CV de base" } : { version_note: "Composé depuis le profil" }),
+        ...(revises ? { revises, version_note: "Modifiée depuis le CV de base" } : { version_note: "Composée depuis le profil" }),
       });
     },
     onSuccess: async (saved) => {
