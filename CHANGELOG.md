@@ -4,6 +4,32 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
 [SemVer](https://semver.org/lang/fr/). Chaque version publiée correspond à un tag
 `v<version>` et à une [release GitHub](https://github.com/alexandrebouttierdev/candilog/releases).
 
+## [0.1.0] — 2026-10-10
+
+### Ajouté
+
+- **CV de base** : composer un CV à partir du seul profil, sans offre ni candidature et
+  sans IA. La feuille A4 est remplie dès l'ouverture, les sections à faire figurer se
+  règlent par interrupteurs, et le document s'enregistre dans la bibliothèque comme les
+  autres CV. Rouvrir un CV de base affiche ce qui a été enregistré, retouches comprises.
+
+### Modifié
+
+- Thème clair : fonds, filets et encres passent du sable au gris froid, la même famille
+  que le thème sombre. L'indigo de la marque et la sélection ne sont plus les seules notes
+  froides posées sur du chaud. Le texte secondaire repasse au-dessus du seuil de contraste
+  AA, et les filets de séparation redeviennent visibles.
+- Barre de titre et en-tête des surcouches : 64 px au lieu de 40, pour que le fil d'Ariane
+  et les actions respirent.
+- La croix de fermeture des surcouches s'aligne sur le fil d'Ariane des écrans et porte une
+  teinte qui la rend repérable : c'est la seule sortie d'une surface plein écran.
+
+### Corrigé
+
+- Le `README` affirmait que Candilog ne cherche jamais de mise à jour tout seul, et que ses
+  accès réseau se font tous à la demande. L'application interroge l'API GitHub au démarrage,
+  une fois par jour au plus, sans rien envoyer d'autre que cette question.
+
 ## [0.0.4] — 2026-10-09
 
 ### Corrigé
