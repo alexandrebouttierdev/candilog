@@ -45,12 +45,12 @@ chaque modèle installé.
 | Ministral 3 14B | `ministral-3:14b` | 9,1 Go | 24 Gio | 256 k | Le plus grand ; rédaction la plus détaillée, au prix de la vitesse |
 
 Les Ministral 3 viennent de Mistral AI sous Apache 2.0 et annoncent le français parmi leurs
-langues principales ; les Gemma 4 de Google DeepMind. Les cartes de ces derniers n'affichent
-pas de logo : Gemma et Gemini sont deux produits Google distincts, et `googlegemini.svg` est
-réservé au fournisseur distant Gemini, où il est juste. Faute de la marque officielle de
-Gemma, la tuile porte l'initiale de l'éditeur plutôt qu'un logo détourné. Le catalogue n'a plus de modèle sous
-8 Gio de RAM depuis le retrait des LFM2.5 : sous ce seuil, aucun modèle n'est recommandé —
-mieux vaut ne rien proposer qu'un modèle qui ne tiendra pas en mémoire.
+langues principales ; les Gemma 4 de Google DeepMind. Les cartes portent la marque de
+l'éditeur, jamais celle du modèle : les Gemma 4 affichent le G de Google (`google.svg`), car
+Gemma et Gemini sont deux produits Google distincts et `googlegemini.svg` reste réservé au
+fournisseur distant Gemini, où il est juste. Le catalogue n'a plus de modèle sous 8 Gio de
+RAM depuis le retrait des LFM2.5 : sous ce seuil, aucun modèle n'est recommandé — mieux vaut
+ne rien proposer qu'un modèle qui ne tiendra pas en mémoire.
 
 Un modèle retiré du catalogue ne casse pas une installation existante : un
 `managed_ollama.active_model_id` devenu inconnu retombe sur « aucun modèle actif » au lieu

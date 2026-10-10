@@ -12,6 +12,7 @@ import logoGemini from "@/assets/providers/googlegemini.svg";
 import logoMistral from "@/assets/providers/mistralai.svg";
 import logoDeepseek from "@/assets/providers/deepseek.svg";
 import logoCustom from "@/assets/providers/custom.svg";
+import logoGoogle from "@/assets/providers/google.svg";
 import logoCandilogLocal from "@/assets/providers/ollamacandilog.png";
 
 const LOGOS: Record<
@@ -30,15 +31,19 @@ const LOGOS: Record<
 /**
  * Logos des éditeurs du catalogue Ollama géré — propriété `publisher`, jamais le nom affiché.
  *
- * Volontairement **partiel** : tant qu'on ne dispose pas de la marque officielle d'un
- * éditeur, mieux vaut n'afficher aucun logo que d'en détourner un autre. Gemma et Gemini
- * sont deux produits Google distincts, et `googlegemini.svg` — qui porte bien le titre
- * « Google Gemini » — reste réservé au fournisseur distant Gemini, où il est juste.
+ * On affiche la marque de l'**éditeur**, pas celle du modèle : Gemma n'a pas de logo dans
+ * notre jeu d'icônes, et `googlegemini.svg` ne ferait pas l'affaire — Gemma et Gemini sont
+ * deux produits Google distincts, et ce fichier reste réservé au fournisseur distant
+ * Gemini. Les modèles Gemma portent donc le G de Google, qui les publie.
+ *
+ * Le type reste **partiel** : un éditeur ajouté côté Rust avant son logo retombe sur son
+ * initiale plutôt que d'emprunter une marque qui n'est pas la sienne.
  */
 export const MANAGED_PUBLISHER_LOGOS: Partial<
   Record<ManagedModelPublisher, { src: string; label: string; mono: boolean }>
 > = {
   mistral: { src: logoMistral, label: "Mistral", mono: false },
+  google: { src: logoGoogle, label: "Google", mono: false },
 };
 
 export function logoManagedPublisher(publisher: ManagedModelPublisher) {

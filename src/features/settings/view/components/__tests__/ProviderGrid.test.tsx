@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { ProviderGrid } from "../ProviderGrid";
+import { ManagedPublisherLogo, ProviderGrid } from "../ProviderGrid";
+import type { ManagedModelPublisher } from "@/shared/types/generated/ai";
 import { PROVIDERS, OTHER_PROVIDERS } from "../../../model/providers";
 
 describe("grille des fournisseurs", () => {
@@ -68,5 +69,36 @@ describe("grille des fournisseurs", () => {
     const tuile = screen.getByRole("radio", { name: "IA locale Candilog" });
 
     expect(tuile.querySelector("img")).not.toBeNull();
+  });
+});
+
+describe("logo d'éditeur du catalogue local", () => {
+  it("affiche la marque de l'éditeur pour chaque modèle géré", () => {
+    render(
+      <>
+        <span data-testid="mistral">
+          <ManagedPublisherLogo publisher="mistral" />
+        </span>
+        <span data-testid="google">
+          <ManagedPublisherLogo publisher="google" />
+        </span>
+      </>,
+    );
+
+    for (const editeur of ["mistral", "google"]) {
+      expect(screen.getByTestId(editeur).querySelector("img")).not.toBeNull();
+    }
+  });
+
+  it("retombe sur l'initiale pour un éditeur sans logo", () => {
+    render(
+      <span data-testid="inconnu">
+        <ManagedPublisherLogo publisher={"meta" as ManagedModelPublisher} />
+      </span>,
+    );
+
+    const tuile = screen.getByTestId("inconnu");
+    expect(tuile.querySelector("img")).toBeNull();
+    expect(within(tuile).getByText("M")).toBeInTheDocument();
   });
 });
