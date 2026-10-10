@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { BASE_RESUME_KEY } from "@/features/documents";
 import { profileService } from "../services/profileService";
 import type { ImportProfileRequest, Profile, ProfilePayload } from "@/shared/types/generated/profile";
 import { useUiStore } from "@/shared/lib/ui-store";
@@ -24,10 +25,20 @@ export function useProfileViewModel() {
   const queryClient = useQueryClient();
   const notify = useUiStore((state) => state.notify);
   const query = useQuery({ queryKey: PROFILE_KEY, queryFn: profileService.load });
+
+  /**
+   * Le CV de base est composé en Rust depuis le profil et mis en cache : toute écriture du
+   * profil périme cette composition. Sans cela, revenir sur l'écran dans les trente secondes
+   * (`staleTime`) y affichait l'ancienne feuille sous la mention « composé depuis votre
+   * profil », avec une colonne de gauche — elle, rafraîchie — qui la contredisait.
+   */
+  const perimerCvDeBase = () => queryClient.invalidateQueries({ queryKey: BASE_RESUME_KEY });
+
   const save = useMutation({
     mutationFn: (profile: Profile) => profileService.save(profile),
-    onSuccess: (payload: ProfilePayload) => {
+    onSuccess: async (payload: ProfilePayload) => {
       queryClient.setQueryData(PROFILE_KEY, payload);
+      await perimerCvDeBase();
       notify({ tone: "success", title: "Profil enregistré" });
     },
     onError: (error: unknown) => {
@@ -42,6 +53,7 @@ export function useProfileViewModel() {
     mutationFn: (request: ImportProfileRequest) => profileService.applyImport(request),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: PROFILE_KEY });
+      await perimerCvDeBase();
     },
     onError: (error: unknown) => {
       notify({
@@ -57,6 +69,9 @@ export function useProfileViewModel() {
     if (payload === null) return;
     queryClient.setQueryData(PROFILE_KEY, payload);
     await queryClient.invalidateQueries({ queryKey: PROFILE_PHOTO_KEY });
+    // Chemin partagé par la photo et la réinitialisation : la seconde vide le profil, donc
+    // la composition en cache.
+    await perimerCvDeBase();
   };
 
   const setPhoto = useMutation({
