@@ -14,7 +14,7 @@ Le design est **haute fidélité** : `13,5px` n'est pas `text-sm`, `r9` n'est pa
 Les couleurs ne sont pas écrites dans les classes, elles sont **exposées à Tailwind
 depuis des variables CSS** (`app/globals.css`, bloc `@theme inline`), sous les noms du
 handoff de l'application : `bg-panel`, `text-tx-3`, `border-bd`, `bg-ac`, `bg-st-g`…
-`bg-panel` rend `#FCFBF9` en clair et `#16171B` en sombre, sans une seule variante `dark:`.
+`bg-panel` rend `#FFFFFF` en clair et `#16171B` en sombre, sans une seule variante `dark:`.
 
 ```tsx
 // ✅ une seule écriture, les deux thèmes
@@ -43,7 +43,8 @@ handoff de l'application : `bg-panel`, `text-tx-3`, `border-bd`, `bg-ac`, `bg-st
 
 ## 2. Jetons
 
-Définis sur `:root` (clair, papier chaud) et `:root[data-theme="dark"]`.
+Définis sur `:root` (clair, gris froid — même famille que le sombre) et
+`:root[data-theme="dark"]`.
 
 | Famille | Utilitaires |
 | --- | --- |
@@ -54,7 +55,7 @@ Définis sur `:root` (clair, papier chaud) et `:root[data-theme="dark"]`.
 | Statuts | `st-n` · `st-a` · `st-g` · `st-c` — neutre, ambre, vert, rouge |
 | Teintes | `bg-tint-{ac,g,c}-bg` + `text-tint-{ac,g,c}-tx` |
 | Avatars | `bg-av1` → `bg-av3`, `text-av-tx` |
-| Feuille A4 | `bg-paper`, `text-paper-ink{,-2,-3}`, `bg-paper-rule`, `bg-paper-sk`, `bg-paper-side`, `bg-paper-mark` — **identiques dans les deux thèmes** |
+| Feuille A4 | `bg-paper`, `text-paper-ink{,-2,-3}`, `bg-paper-rule`, `bg-paper-sk`, `bg-paper-side`, `bg-paper-mark` — encres des gabarits de l'application, **identiques dans les deux thèmes** |
 | Fenêtre | `bg-wc1` → `bg-wc3` (feux macOS, gris en sombre) |
 
 **Jetons v1 hérités.** `bg-page`, `bg-surface`, `text-ink*`, `border-line`,

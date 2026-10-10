@@ -9,46 +9,50 @@
 
 @import "tailwindcss";
 
-/* ── 1. Jetons v2 — clair (papier chaud) / sombre ─────────────────────────── */
+/* ── 1. Jetons v2 — clair (gris froid) / sombre ───────────────────────────── */
 :root {
   /* Surfaces */
-  --desk: #dedcd6;        /* bureau sous les fenêtres et la feuille A4 */
-  --app: #f1f0ec;         /* fond de page, chrome des fenêtres */
-  --app-glass: rgb(241 240 236 / 0.86);
-  --panel: #fcfbf9;       /* zone de travail, sections claires */
-  --elev: #e4e2dc;
-  --hover: #f4f2ec;
-  --sel: #ecedfb;
-  --group: #f5f3ee;
-  --chip: #eae7e0;
+  --desk: #dcdee6;        /* bureau sous les fenêtres et la feuille A4 */
+  --app: #f3f4f6;         /* fond de page, chrome des fenêtres */
+  --app-glass: rgb(243 244 246 / 0.86);
+  --panel: #ffffff;       /* zone de travail, sections claires */
+  --elev: #e5e7ec;
+  --hover: #eff1f4;
+  --sel: #e4e5f4;
+  --group: #edeff2;
+  --chip: #e8eaee;
   --modal: #ffffff;
-  --field: #f5f3ee;
+  --field: #edeff2;
   --paper: #ffffff;       /* feuille A4 : blanche dans les deux thèmes */
-  /* Encres de la feuille A4 (`documentPaper` de tokens.json) : identiques dans les
-     deux thèmes, la feuille prévisualise une page imprimée. */
-  --paper-ink: #1a1a1c;
-  --paper-ink-2: #4b4843;
-  --paper-ink-3: #8b8781;
-  --paper-rule: #dfdcd5;
-  --paper-sk: #c9c6c0;
-  --paper-side: #f5f3ee;
+  /* Encres de la feuille A4 : celles des gabarits de l'application
+     (`--resume-*` et `--letter-*` de `src/styles.css`, encres du moteur PDF),
+     identiques dans les deux thèmes — la feuille prévisualise une page imprimée. */
+  --paper-ink: #14161b;
+  --paper-ink-2: #3a3f4c;
+  --paper-ink-3: #767c8b;
+  --paper-rule: #e2e4ea;
+  --paper-sk: #c6c9d2;
+  --paper-side: #f4f5fb;
   --paper-mark: #ecedfb;  /* surlignage d'un élément ajouté ou recommandé */
 
   /* Filets */
-  --bd: #e7e4dd;
-  --bd-soft: #efede7;
-  --bd-menu: #e4e0d8;
-  --frame: #dfdcd5;
-  --bd-strong: #d3cfc6;
+  --bd: #d8dbe3;
+  --bd-soft: #e4e6eb;
+  --bd-menu: #ced1dc;
+  /* `frame` et `bd-strong` n'existent que sur le site : ils prolongent la rampe de
+     filets de l'application d'un cran (1,47) et de deux (1,65) de contraste sur
+     `--app`, dans le même rapport qu'avant le passage au gris froid. */
+  --frame: #c7cbd6;
+  --bd-strong: #bbc0cd;
 
   /* Encres, de la plus forte à la plus faible */
-  --tx: #1a1a1c;
-  --tx-2: #2c2a27;
-  --tx-3: #4b4843;
-  --tx-4: #767069;
-  --tx-5: #84807a;
-  --tx-6: #a8a39c;
-  --tx-7: #bdb9b1;
+  --tx: #1c1d22;
+  --tx-2: #2b2e35;
+  --tx-3: #474a56;
+  --tx-4: #5c6271;
+  --tx-5: #696f80;
+  --tx-6: #888d9e;
+  --tx-7: #a9adb8;
 
   /* Accent — un seul, indigo */
   --ac: #4a51df;
@@ -58,24 +62,24 @@
   --brand: #5b62f0;       /* tuile de marque, fixe dans les deux thèmes */
 
   /* Statuts : neutre, ambre, vert, rouge */
-  --st-n: #8c877f;
+  --st-n: #72788b;
   --st-a: #a8761c;
   --st-g: #2f8c5b;
   --st-c: #b03a2e;
 
   /* Teintes appariées fond / encre */
-  --tint-ac-bg: #dedff6;
-  --tint-ac-tx: #33356b;
-  --tint-g-bg: #d3e8db;
-  --tint-g-tx: #256647;
-  --tint-c-bg: #f6deda;
-  --tint-c-tx: #a5342a;
+  --tint-ac-bg: #d6d8f2;
+  --tint-ac-tx: #3a3c72;
+  --tint-g-bg: #caded5;
+  --tint-g-tx: #1f5a3e;
+  --tint-c-bg: #e6d1d0;
+  --tint-c-tx: #8e2a20;
 
   /* Avatars */
-  --av1: #c9cbee;
-  --av2: #c7ddd0;
-  --av3: #dccfe2;
-  --av-tx: #33356b;
+  --av1: #c9cbf0;
+  --av2: #c2dacf;
+  --av3: #d6ccdd;
+  --av-tx: #3a3c72;
 
   /* Feux de fenêtre macOS */
   --wc1: #df6a5e;
@@ -83,8 +87,8 @@
   --wc3: #4fb07a;
 
   /* Ombres : fenêtres de l'aperçu, menus, dialogues — jamais le contenu */
-  --sh-window: 0 1px 2px rgb(58 48 32 / 0.06), 0 30px 70px -24px rgb(58 48 32 / 0.24);
-  --sh-pop: 0 18px 48px -12px rgb(58 48 32 / 0.3);
+  --sh-window: 0 1px 2px rgb(18 20 28 / 0.06), 0 30px 70px -24px rgb(18 20 28 / 0.24);
+  --sh-pop: 0 18px 48px -12px rgb(18 20 28 / 0.3);
   --sh-sheet: 0 1px 2px rgb(0 0 0 / 0.1), 0 8px 24px -8px rgb(0 0 0 / 0.15);
 
   color-scheme: light;
