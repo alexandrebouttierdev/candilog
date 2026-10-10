@@ -31,6 +31,9 @@ export const documentsService = {
   /** Les sections écartées de la génération restent hors du document et de sa bibliothèque. */
   prepareResume: (generation: ResumeGeneration, excluded_sections: readonly ProfileSection[] = []) =>
     ipc<ResumeWorkspace>("documents_resume_prepare", { generation, excluded_sections }),
+  /** Compose un CV depuis le seul profil : aucune offre, aucune IA. */
+  composeBaseResume: (excluded_sections: readonly ProfileSection[] = []) =>
+    ipc<ResumeDocument>("documents_resume_compose_base", { excluded_sections }),
   recalculateResume: (workspace: ResumeWorkspace) =>
     ipc<ResumeWorkspace>("documents_resume_recalculate", { workspace }),
   applyResumeProposal: (workspace: ResumeWorkspace, proposal_id: string) =>

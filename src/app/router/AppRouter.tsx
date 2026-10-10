@@ -30,6 +30,9 @@ const DocumentsPage = lazy(() =>
 const ResumeGeneratorPage = lazy(() =>
   import("@/features/documents/view/pages/DocumentsPages").then((m) => ({ default: m.ResumeGeneratorPage })),
 );
+const BaseResumePage = lazy(() =>
+  import("@/features/documents/view/pages/BaseResumePage").then((m) => ({ default: m.BaseResumePage })),
+);
 const LetterWriterPage = lazy(() =>
   import("@/features/documents/view/pages/DocumentsPages").then((m) => ({ default: m.LetterWriterPage })),
 );
@@ -99,6 +102,7 @@ export const ROUTES: RouteObject[] = [
   { path: "documents/letters", element: <DocumentsPage filter="letters" /> },
   { path: "documents/analyses", element: <DocumentsPage filter="analyses" /> },
   { path: "documents/generate-resume", element: <ResumeGeneratorPage /> },
+  { path: "documents/base-resume", element: <BaseResumePage /> },
   { path: "documents/write-cover-letter", element: <LetterWriterPage /> },
   { path: "documents/analyze", element: <ResumeAnalysisPage /> },
   { path: "ai", element: <AiPage /> },

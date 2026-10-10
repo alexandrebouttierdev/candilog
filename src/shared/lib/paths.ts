@@ -19,6 +19,7 @@ export const PATHS = {
   letters: "/documents/letters",
   analyses: "/documents/analyses",
   generateResume: "/documents/generate-resume",
+  baseResume: "/documents/base-resume",
   writeLetter: "/documents/write-cover-letter",
   analyzeResume: "/documents/analyze",
   ai: "/ai",
