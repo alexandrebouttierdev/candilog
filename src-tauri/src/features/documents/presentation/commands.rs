@@ -86,6 +86,16 @@ pub async fn documents_resume_prepare(
     blocking::execute(move || service.resume_prepare(generation, &excluded)).await
 }
 
+/// Compose un CV de base depuis le seul profil enregistré, sans offre ni IA.
+#[tauri::command(rename_all = "snake_case")]
+pub async fn documents_resume_compose_base(
+    state: State<'_, AppState>,
+    excluded_sections: Vec<ProfileSection>,
+) -> AppResult<ResumeDocument> {
+    let service = state.documents.clone();
+    blocking::execute(move || service.compose_base_resume(excluded_sections)).await
+}
+
 /// Revalide le document puis recalcule score et propositions après une édition manuelle.
 #[tauri::command(rename_all = "snake_case")]
 pub async fn documents_resume_recalculate(

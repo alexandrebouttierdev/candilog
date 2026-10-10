@@ -5,8 +5,8 @@ use crate::core::files::atomic_write;
 use crate::core::pagination::Page;
 use crate::features::ai::domain::{profile_without, ProfileSection, ResumeGeneration};
 use crate::features::documents::application::{
-    apply_proposal, build, build_cover_letter, prepare_workspace, recalculate, reject_proposal,
-    validate_document,
+    apply_proposal, build, build_cover_letter, compose_base_resume, prepare_workspace, recalculate,
+    reject_proposal, validate_document,
 };
 use crate::features::documents::domain::{
     sanitize_letter, BaseResume, CoverLetter, CoverLetterExport, CoverLetterRepository,
@@ -69,6 +69,19 @@ impl<C: ResumeRepository, L: CoverLetterRepository, P: ProfileRepository>
             generation,
             photo,
         )
+    }
+
+    /// Compose un CV de base depuis le profil enregistré.
+    ///
+    /// # Errors
+    /// Retourne une erreur de lecture du profil, ou une validation si le document composé
+    /// dépasse les bornes d'édition.
+    pub fn compose_base_resume(
+        &self,
+        excluded_sections: Vec<ProfileSection>,
+    ) -> AppResult<ResumeDocument> {
+        let payload = self.profile.load()?;
+        compose_base_resume(&payload.profile, &excluded_sections)
     }
 
     /// Revalide le document puis recalcule score et propositions après une édition manuelle.

@@ -77,6 +77,7 @@ pub fn run() {
             documents::documents_resume_save,
             documents::documents_resume_delete,
             documents::documents_resume_prepare,
+            documents::documents_resume_compose_base,
             documents::documents_resume_recalculate,
             documents::documents_resume_apply_proposal,
             documents::documents_resume_reject_proposal,
