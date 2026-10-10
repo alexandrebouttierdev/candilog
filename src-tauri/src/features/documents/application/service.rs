@@ -265,10 +265,19 @@ impl<C: ResumeRepository, L: CoverLetterRepository, P: ProfileRepository>
 
 /// Refuse un contenu de CV qui n'est pas un objet JSON borné.
 ///
-/// Un contenu historique, sans `schema_version`, reste accepté tel quel pour la lecture et
-/// la duplication : seule la version 1 (l'éditeur de CV autonome) est désérialisée en
-/// [`ResumeWorkspace`] et son document revalidé, faute de quoi une forme incohérente pourrait
-/// entrer en base par un appel IPC forgé.
+/// Trois branches, évaluées dans cet ordre :
+/// - `kind == "base"` : CV de base, désérialisé en [`BaseResume`] et son document revalidé.
+///   Elle est testée avant `schema_version`, car un CV de base et un CV ciblé partagent tous
+///   deux `schema_version: 1` ; seul `kind` les distingue, et l'inverser ferait retomber un CV
+///   de base dans la désérialisation en [`ResumeWorkspace`], qui échoue faute de `job_offer`,
+///   `analysis` et `score`.
+/// - `schema_version == 1` sans `kind` : CV ciblé (l'éditeur de CV autonome), désérialisé en
+///   [`ResumeWorkspace`] et son document revalidé.
+/// - toute autre forme : contenu historique, accepté tel quel pour la lecture et la
+///   duplication.
+///
+/// Sans les deux premières branches, une forme incohérente pourrait entrer en base par un
+/// appel IPC forgé.
 fn valider_contenu(content: &serde_json::Value) -> AppResult<()> {
     if !content.is_object() {
         return Err(AppError::Validation(
@@ -528,9 +537,11 @@ mod tests {
         assert!(valider_contenu(&content).is_ok());
     }
 
+    /// Un contenu `kind: "base"` incomplet était accepté comme contenu historique avant la
+    /// branche de validation : il doit désormais être refusé.
     #[test]
-    fn un_cv_de_base_sans_document_est_refuse() {
-        let content = serde_json::json!({ "schema_version": 1, "kind": "base" });
+    fn un_cv_de_base_incomplet_n_est_plus_accepte_comme_contenu_historique() {
+        let content = serde_json::json!({ "kind": "base" });
         assert!(matches!(
             valider_contenu(&content),
             Err(AppError::Validation(_))
