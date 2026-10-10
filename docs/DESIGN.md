@@ -329,8 +329,8 @@ Réutiliser la recette du voisin plutôt que d’en inventer une.
 
 - Un seul écran (`DocumentsPage`) : onglets Tous / CV / Lettres / Analyses dans la barre
   d'outils (routes `/documents`, `/documents/resumes`, `/documents/letters`,
-  `/documents/analyses`), recherche `/`, actions Importer, Générer une lettre, Générer un
-  CV (`N`).
+  `/documents/analyses`), recherche `/`, actions Importer, Générer une lettre, CV de base,
+  Générer un CV (`N`).
 - Liste groupée CV / Lettres de motivation, lignes de 40 px : feuille, nom et sous-titre,
   score ATS en pastille (vert dès 80, accent dès 65, rouge en dessous), date, entreprise.
   Clic droit : Dupliquer ou Copier le texte, Supprimer.
@@ -367,6 +367,17 @@ Réutiliser la recette du voisin plutôt que d’en inventer une.
   parcours, il reformule le profil : le dire avant vaut mieux que de laisser découvrir une
   feuille creuse. Il n'empêche pas de générer, et « Compléter le profil » quitte la surcouche
   — rien n'est encore produit à cet instant.
+- **CV de base** (`BaseResumePage`, route `/documents/base-resume`) : même `GeneratorFrame`,
+  mais sans colonne droite — rien à attendre, aucune IA n'intervient — et sans `BetaBadge`,
+  qui signale précisément l'inverse. La feuille se compose dès l'ouverture, depuis le seul
+  profil ; à gauche, `SectionToggles` (sections du profil, sans `availability` ni
+  `interests` : aucun champ du document ne les accueille), `ProfileGapBanner` et le nom de
+  la version. `⌘S` enregistre, `Échap` ferme ; pas de `⌘⏎`, il n'y a rien à générer.
+  Basculer un interrupteur recompose depuis le profil et écrase les retouches ; une
+  confirmation le demande dès que la feuille a été retouchée. Rouvert depuis la
+  bibliothèque, un CV de base affiche ce qui a été enregistré, sans recomposer, et un
+  nouvel enregistrement y ajoute une version. Dans la bibliothèque, il ne se distingue des
+  autres CV en rien — pas de pastille, pas de filtre — décision produit, pas un oubli.
 - « Offre visée » (`OfferSource`) : s'ouvre sur les candidatures ouvertes du suivi — le
   texte est prérempli avec ce que Candilog en sait, sans rien inventer — sauf si une offre
   est déjà fournie ; sinon le texte collé.

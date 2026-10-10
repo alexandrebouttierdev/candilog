@@ -157,25 +157,33 @@ document supprime toutes ses versions.
 La table `resume_versions` stocke le JSON du CV dans `content`. La liste en lit, par
 `json_extract`, le score ATS (`score.total`, ou `profile_score.total` pour une génération
 historique) et l'intitulé de l'offre ciblée (`job_offer.title`) : le contenu reste la seule
-source, sans colonne dérivée. Deux formes coexistent :
+source, sans colonne dérivée. Un CV de base n'a ni l'un ni l'autre champ : sa ligne n'affiche
+ni score ni offre. Trois formes coexistent :
 
 | Forme | Discriminant | Rôle |
 | --- | --- | --- |
-| Historique | pas de `schema_version` | Snapshot `ResumeGeneration` (génération IA seule) — encore lisible en bibliothèque |
-| Éditeur autonome | `schema_version = 1` | `ResumeWorkspace` complet : document, offre, analyse, score, propositions |
+| CV de base | `kind = "base"` (testé avant `schema_version`) | `BaseResume` : document composé depuis le seul profil, sans offre ni score |
+| Éditeur autonome | `schema_version = 1` sans `kind` | `ResumeWorkspace` complet : document, offre, analyse, score, propositions |
+| Historique | ni l'un ni l'autre champ | Snapshot `ResumeGeneration` (génération IA seule) — encore lisible en bibliothèque |
 
-Une version v1 est **autonome** : une fois enregistrée, elle ne dépend plus du profil courant
-ni d'une génération antérieure. Le document (`ResumeDocument`), l'offre et les décisions ATS
-voyagent ensemble dans le même blob.
+Une version `kind = "base"` ou `schema_version = 1` est **autonome** : une fois enregistrée,
+elle ne dépend plus du profil courant ni d'une génération antérieure. Pour l'éditeur
+autonome, le document (`ResumeDocument`), l'offre et les décisions ATS voyagent ensemble
+dans le même blob ; un CV de base n'embarque que le document.
 
-À l'écriture, un contenu v1 est désérialisé en `ResumeWorkspace` et son document passé par
-`validate_document` (`features/documents/application/resume_workspace.rs`) : un appel IPC
-forgé ne peut pas persister une forme incohérente. Les liens d'identité et de projet doivent
-être des URL HTTP(S) absolues ; l'aperçu applique la même restriction avant de créer un lien,
-y compris pour un ancien contenu déjà stocké. Les anciens `ResumeGeneration` restent
-acceptés tels quels pour la lecture et la duplication ; la conversion en workspace n'intervient
-qu'à la première édition ou export via `documents_resume_prepare`, sans réécriture silencieuse
-de la bibliothèque.
+À l'écriture, `valider_contenu` (`features/documents/application/service.rs`) teste `kind`
+avant `schema_version` : un CV de base et un CV ciblé partagent tous deux `schema_version: 1`,
+seul `kind` les distingue, et inverser l'ordre ferait retomber un CV de base dans la
+désérialisation en `ResumeWorkspace`, qui échoue faute d'offre, d'analyse et de score. Les
+deux formes reconnues sont désérialisées puis leur document passé par `validate_document`
+(`features/documents/application/resume_workspace.rs`) : un appel IPC forgé ne peut pas
+persister une forme incohérente. Les liens d'identité et de projet doivent être des URL
+HTTP(S) absolues ; l'aperçu applique la même restriction avant de créer un lien, y compris
+pour un ancien contenu déjà stocké. Un contenu qui n'est ni l'un ni l'autre reste historique,
+accepté tel quel pour la lecture et la duplication, **sans migration** : rien ne le relit ni
+ne le réécrit sous une forme différente de celle enregistrée ; la conversion d'un historique
+en éditeur autonome n'intervient qu'à la première édition ou export via
+`documents_resume_prepare`, sans réécriture silencieuse de la bibliothèque.
 
 ## Corps d'une lettre
 

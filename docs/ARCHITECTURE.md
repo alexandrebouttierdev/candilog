@@ -59,6 +59,10 @@ et langues restent dans `profile_library` tant que l'utilisateur ne les ajoute p
 | `documents_resume_apply_proposal` | Applique une proposition puis recalcule |
 | `documents_resume_reject_proposal` | Refuse une proposition sans modifier le document, puis recalcule |
 | `documents_resume_export_pdf` | Exporte un `ResumeDocument` (plus un `ResumeGeneration`) |
+| `documents_resume_compose_base` | Compose un CV de base depuis le profil, sans offre ni IA : renvoie un `ResumeDocument`, pas un workspace |
+
+Cette dernière commande n'entre pas dans le `ResumeWorkspace` ci-dessus : un CV de base n'a
+ni offre, ni score, ni proposition à porter (`docs/DATA.md` § Contenu d'un CV).
 
 La pertinence sémantique vient de `features/ai` sous forme d'identifiants du catalogue du
 profil. Le grounding supprime tout identifiant inventé. Le classement final (maximum quatre),
