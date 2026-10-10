@@ -6,13 +6,10 @@ import { AppError } from "@/shared/types/app-error";
 import type { ProfileSection } from "@/shared/types/generated/ai";
 import type { BaseResume, ResumeDocument } from "@/shared/types/generated/documents";
 import { profileGaps } from "../model/profileReadiness";
+import { RESUME_BASE_KIND, RESUME_WORKSPACE_VERSION } from "../model/resumeWorkspace";
 import { BASE_RESUME_SECTIONS, sectionOptions, toggleSection } from "../model/profileSections";
 import { documentsService } from "../services/documentsService";
 import { BASE_RESUME_KEY, RESUME_KEY } from "./documentKeys";
-
-/** Jumeau frontend de `RESUME_WORKSPACE_VERSION` / `RESUME_BASE_KIND` (Rust). */
-const BASE_RESUME_SCHEMA_VERSION = 1;
-const BASE_RESUME_KIND = "base";
 
 function errorMessage(error: unknown): string {
   return error instanceof AppError ? error.message : "Une erreur inattendue s’est produite.";
@@ -118,8 +115,8 @@ export function useBaseResumeViewModel(initial: BaseResumeInitial = {}) {
   const saveMutation = useMutation({
     mutationFn: (content: ResumeDocument) => {
       const base: BaseResume = {
-        schema_version: BASE_RESUME_SCHEMA_VERSION,
-        kind: BASE_RESUME_KIND,
+        schema_version: RESUME_WORKSPACE_VERSION,
+        kind: RESUME_BASE_KIND,
         document: content,
         excluded_sections: excluded,
       };

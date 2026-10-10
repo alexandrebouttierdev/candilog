@@ -18,6 +18,13 @@ import { PATHS } from "@/shared/lib/paths";
 export const RESUME_WORKSPACE_VERSION = 1;
 
 /**
+ * Jumeau frontend de `RESUME_BASE_KIND` (Rust) : discriminant de la forme « CV de base »
+ * dans le contenu JSON d'un CV enregistré. La duplication avec le Rust est inévitable et
+ * assumée ; celle à l'intérieur du frontend ne l'est pas.
+ */
+export const RESUME_BASE_KIND = "base";
+
+/**
  * Cible fermée d'une modification de texte dans le document.
  *
  * Chaque variante désigne un champ précis, jamais un chemin libre : un éditeur qui accepte
@@ -85,7 +92,7 @@ export function baseResumeContent(
 ): { document: ResumeDocument; excludedSections: ProfileSection[] } | null {
   if (!hasResumeDocument(value)) return null;
   const candidate = value as { kind?: unknown; document: ResumeDocument; excluded_sections?: unknown };
-  if (candidate.kind !== "base") return null;
+  if (candidate.kind !== RESUME_BASE_KIND) return null;
   return {
     document: candidate.document,
     excludedSections: parseProfileSections(candidate.excluded_sections),
@@ -98,7 +105,7 @@ export function baseResumeContent(
  */
 export function routeForContent(content: unknown): string {
   const kind = (content as { kind?: unknown } | null)?.kind;
-  return kind === "base" ? PATHS.baseResume : PATHS.generateResume;
+  return kind === RESUME_BASE_KIND ? PATHS.baseResume : PATHS.generateResume;
 }
 
 /** Met à niveau les workspaces v1 créés avant la bibliothèque éditoriale. */
