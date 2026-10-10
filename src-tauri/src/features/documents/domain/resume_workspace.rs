@@ -6,6 +6,21 @@ use ts_rs::TS;
 
 pub const RESUME_WORKSPACE_VERSION: u8 = 1;
 
+/// Discriminant de la forme « CV de base » dans le contenu JSON d'un CV enregistré.
+///
+/// Les deux formes coexistent : un CV ciblé reste en `schema_version: 1` sans `kind`.
+pub const RESUME_BASE_KIND: &str = "base";
+
+/// CV composé depuis le seul profil : ni offre, ni score, ni propositions.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "documents.ts")]
+pub struct BaseResume {
+    pub schema_version: u8,
+    pub kind: String,
+    pub document: ResumeDocument,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "documents.ts")]

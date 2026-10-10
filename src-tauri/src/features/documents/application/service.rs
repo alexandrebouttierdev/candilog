@@ -9,9 +9,9 @@ use crate::features::documents::application::{
     validate_document,
 };
 use crate::features::documents::domain::{
-    sanitize_letter, CoverLetter, CoverLetterExport, CoverLetterRepository, DocumentVersion,
-    NewCoverLetter, NewResume, ResumeDocument, ResumeRepository, ResumeSummary, ResumeVersion,
-    ResumeWorkspace, RESUME_WORKSPACE_VERSION,
+    sanitize_letter, BaseResume, CoverLetter, CoverLetterExport, CoverLetterRepository,
+    DocumentVersion, NewCoverLetter, NewResume, ResumeDocument, ResumeRepository, ResumeSummary,
+    ResumeVersion, ResumeWorkspace, RESUME_BASE_KIND, RESUME_WORKSPACE_VERSION,
 };
 use crate::features::profile::application::ProfileService;
 use crate::features::profile::domain::ProfileRepository;
@@ -282,6 +282,16 @@ fn valider_contenu(content: &serde_json::Value) -> AppResult<()> {
             "Le contenu du CV dépasse la taille maximale autorisée".into(),
         ));
     }
+    if content.get("kind") == Some(&serde_json::json!(RESUME_BASE_KIND)) {
+        let base: BaseResume = serde_json::from_value(content.clone()).map_err(|_| {
+            AppError::Validation(
+                "Le contenu du CV est invalide : composez-le à nouveau avant de l'enregistrer"
+                    .into(),
+            )
+        })?;
+        validate_document(&base.document)?;
+        return Ok(());
+    }
     if content.get("schema_version") == Some(&serde_json::json!(RESUME_WORKSPACE_VERSION)) {
         let workspace: ResumeWorkspace = serde_json::from_value(content.clone()).map_err(|_| {
             AppError::Validation(
@@ -493,5 +503,43 @@ mod tests {
             })
             .unwrap_err();
         assert!(matches!(err, AppError::Validation(_)));
+    }
+
+    use crate::features::documents::domain::ResumeIdentity;
+
+    fn document_minimal() -> ResumeDocument {
+        ResumeDocument {
+            identity: ResumeIdentity {
+                full_name: "Alex Martin".into(),
+                email: "alex@example.com".into(),
+                ..Default::default()
+            },
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn un_contenu_de_cv_de_base_valide_est_accepte() {
+        let content = serde_json::json!({
+            "schema_version": 1,
+            "kind": "base",
+            "document": serde_json::to_value(document_minimal()).unwrap(),
+        });
+        assert!(valider_contenu(&content).is_ok());
+    }
+
+    #[test]
+    fn un_cv_de_base_sans_document_est_refuse() {
+        let content = serde_json::json!({ "schema_version": 1, "kind": "base" });
+        assert!(matches!(
+            valider_contenu(&content),
+            Err(AppError::Validation(_))
+        ));
+    }
+
+    #[test]
+    fn un_contenu_historique_sans_kind_reste_accepte() {
+        let content = serde_json::json!({ "titre": "ancien CV" });
+        assert!(valider_contenu(&content).is_ok());
     }
 }

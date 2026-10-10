@@ -2,6 +2,11 @@
 import type { AtsAnalysis, ContentRelevance, MatchScore, StructuredListing } from "./ai";
 
 /**
+ * CV composé depuis le seul profil : ni offre, ni score, ni propositions.
+ */
+export type BaseResume = { schema_version: number, kind: string, document: ResumeDocument, };
+
+/**
  * CoverLetter enregistrée dans la bibliothèque locale.
  */
 export type CoverLetter = { id: string, name: string, company: string | null, job_title: string | null, recipient: string | null, recipient_address: string | null, job_reference: string | null, tone: string, length: string, content: string, created_at: string, };
