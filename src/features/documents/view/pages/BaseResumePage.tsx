@@ -84,12 +84,17 @@ export function BaseResumePage() {
   const vm = useBaseResumeViewModel(initiale);
   const photo = useProfilePhoto().data ?? null;
   const canSave = Boolean(vm.name.trim()) && vm.document !== null && !vm.isSaving && !vm.isComposing;
+  // Le raccourci est gardé comme le bouton : sans nom de version, ⌘S ne doit pas partir
+  // vers un enregistrement que le natif refusera, comme sur les deux générateurs voisins.
+  const save = () => {
+    if (canSave) void vm.save();
+  };
 
   return (
     <GeneratorFrame
       title="CV de base"
       actions={
-        <Button variant="primary" size="bar" shortcut="mod+s" disabled={!canSave} onClick={() => void vm.save()}>
+        <Button variant="primary" size="bar" shortcut="mod+s" disabled={!canSave} onClick={save}>
           {vm.isSaving ? "Enregistrement…" : "Enregistrer"}
         </Button>
       }
@@ -113,7 +118,7 @@ export function BaseResumePage() {
       }
       status="composé depuis votre profil · aucune offre"
       keys={[{ label: "Enregistrer", shortcut: "mod+s" }]}
-      onSave={() => void vm.save()}
+      onSave={save}
     >
       {vm.document ? (
         <BaseResumeSheet document={vm.document} photo={photo} onChange={vm.setDocument} />

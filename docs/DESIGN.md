@@ -370,9 +370,11 @@ Réutiliser la recette du voisin plutôt que d’en inventer une.
 - **CV de base** (`BaseResumePage`, route `/documents/base-resume`) : même `GeneratorFrame`,
   mais sans colonne droite — rien à attendre, aucune IA n'intervient — et sans `BetaBadge`,
   qui signale précisément l'inverse. La feuille se compose dès l'ouverture, depuis le seul
-  profil ; à gauche, `SectionToggles` (sections du profil, sans `availability` ni
-  `interests` : aucun champ du document ne les accueille), `ProfileGapBanner` et le nom de
-  la version. `⌘S` enregistre, `Échap` ferme ; pas de `⌘⏎`, il n'y a rien à générer.
+  profil ; à gauche, `SectionToggles` sur sa propre liste (`BASE_RESUME_SECTIONS`) : sept
+  interrupteurs, « Présentation » en tête — elle ouvre le CV — puis expériences, formations,
+  compétences, langues, projets et certifications. Ni disponibilité ni centres d'intérêt :
+  aucun champ du document ne les accueille, et un réglage sans effet serait un mensonge.
+  Viennent ensuite `ProfileGapBanner` et le nom de la version. `⌘S` enregistre, `Échap` ferme ; pas de `⌘⏎`, il n'y a rien à générer.
   Basculer un interrupteur recompose depuis le profil et écrase les retouches ; une
   confirmation le demande dès que la feuille a été retouchée. Rouvert depuis la
   bibliothèque, un CV de base affiche ce qui a été enregistré, sans recomposer, avec ses

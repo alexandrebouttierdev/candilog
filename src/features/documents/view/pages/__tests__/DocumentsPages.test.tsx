@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -12,6 +12,7 @@ import { DocumentsPage } from "../DocumentsPage";
 import { ResumeGeneratorPage } from "../ResumeGeneratorPage";
 import { ResumeAnalysisPage } from "../ResumeAnalysisPage";
 import { LetterWriterPage } from "../LettersPages";
+import { BaseResumePage } from "../BaseResumePage";
 import { AppError } from "@/shared/types/app-error";
 import { profileService } from "@/features/profile";
 import type { ProfilePayload } from "@/shared/types/generated/profile";
@@ -799,43 +800,44 @@ describe("arrêt d'une génération", () => {
   });
 });
 
-describe("ce que l'IA peut utiliser", () => {
-  function profil(): ProfilePayload {
-    const experience = { title: "Technicien", company: "Ker", location: null, start_date: "2020-01", end_date: null, current: true, description: null };
-    return {
-      profile: {
-        identity: {
-          first_name: "Jean",
-          name: "Rivière",
-          email: "jean@exemple.fr",
-          phone: null,
-          address: null,
-          city: null,
-          title: null,
-          resume: "Chargé d'exploitation",
-          birth_date: null,
-          age: null,
-          availability: null,
-          desired_contracts: null,
-          linkedin: null,
-          github: null,
-          website: null,
-        },
-        photo: null,
-        experiences: [experience, experience],
-        skills: [{ name: "Linux", description: null }],
-        education: [],
-        languages: [],
-        projects: [],
-        certifications: [],
-        interests: [],
+/** Profil d'essai : deux expériences, une compétence et une présentation. */
+function profil(): ProfilePayload {
+  const experience = { title: "Technicien", company: "Ker", location: null, start_date: "2020-01", end_date: null, current: true, description: null };
+  return {
+    profile: {
+      identity: {
+        first_name: "Jean",
+        name: "Rivière",
+        email: "jean@exemple.fr",
+        phone: null,
+        address: null,
+        city: null,
+        title: null,
+        resume: "Chargé d'exploitation",
+        birth_date: null,
+        age: null,
+        availability: null,
+        desired_contracts: null,
+        linkedin: null,
+        github: null,
+        website: null,
       },
-      completion: 60,
-      incomplete_sections: [],
-      updated_at: null,
-    };
-  }
+      photo: null,
+      experiences: [experience, experience],
+      skills: [{ name: "Linux", description: null }],
+      education: [],
+      languages: [],
+      projects: [],
+      certifications: [],
+      interests: [],
+    },
+    completion: 60,
+    incomplete_sections: [],
+    updated_at: null,
+  };
+}
 
+describe("ce que l'IA peut utiliser", () => {
   it("retire du CV les sections écartées et transmet le ton choisi", async () => {
     vi.spyOn(profileService, "load").mockResolvedValue(profil());
     const generation = {
@@ -965,5 +967,77 @@ describe("adéquation de la lettre", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Appliquer" }));
     await waitFor(() => expect(generate.mock.calls.at(-1)?.[0].instruction).toContain("Aborde « Supervision »"));
+  });
+});
+
+describe("page du CV de base", () => {
+  /** Monte la page avec un profil chargé et une composition réussie. */
+  function monter() {
+    vi.spyOn(profileService, "load").mockResolvedValue(profil());
+    vi.spyOn(profileService, "photo").mockResolvedValue(null);
+    const compose = vi
+      .spyOn(documentsService, "composeBaseResume")
+      .mockResolvedValue(workspaceFixture().document);
+    render(<BaseResumePage />, { wrapper });
+    return compose;
+  }
+
+  it("propose les sept sections du CV, « Présentation » comprise", async () => {
+    monter();
+
+    // `summary` pilote le champ « profil » du document : l'interrupteur existe, et il est
+    // en tête parce que la présentation ouvre le CV.
+    const interrupteurs = await screen.findAllByRole("switch");
+    expect(interrupteurs.map((element) => element.getAttribute("aria-label"))).toEqual([
+      "Présentation",
+      "Expériences",
+      "Formations",
+      "Compétences",
+      "Langues",
+      "Projets",
+      "Certifications",
+    ]);
+    // `availability` et `interests` n'ont aucun champ sur le document : les proposer
+    // afficherait un réglage sans effet.
+    expect(screen.queryByRole("switch", { name: "Disponibilité" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("switch", { name: "Centres d’intérêt" })).not.toBeInTheDocument();
+  });
+
+  it("recompose sans la présentation quand son interrupteur est éteint", async () => {
+    const compose = monter();
+    await waitFor(() => expect(screen.getByRole("switch", { name: "Présentation" })).toBeEnabled());
+
+    await userEvent.click(screen.getByRole("switch", { name: "Présentation" }));
+
+    await waitFor(() => expect(compose).toHaveBeenLastCalledWith(["summary"]));
+  });
+
+  it("ne déclenche pas ⌘S quand le nom de la version est vide", async () => {
+    monter();
+    const saveResume = vi.spyOn(documentsService, "saveResume");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Enregistrer" })).toBeEnabled());
+    await userEvent.clear(screen.getByRole("textbox", { name: /Nom de la version/ }));
+
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "s", ctrlKey: true });
+
+    // Le bouton est désactivé sans nom : le raccourci doit se taire de même, comme sur le
+    // générateur ciblé et sur la lettre, au lieu d'ouvrir un toast rouge.
+    expect(saveResume).not.toHaveBeenCalled();
+    expect(useUiStore.getState().toasts).toEqual([]);
+  });
+
+  it("enregistre avec ⌘S dès que la version porte un nom", async () => {
+    monter();
+    const saveResume = vi.spyOn(documentsService, "saveResume").mockResolvedValue({
+      id: "cv-base",
+      name: "CV de base",
+      content: {},
+      created_at: "2026-10-10T00:00:00Z",
+    });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Enregistrer" })).toBeEnabled());
+
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "s", ctrlKey: true });
+
+    await waitFor(() => expect(saveResume).toHaveBeenCalledTimes(1));
   });
 });

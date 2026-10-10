@@ -20,6 +20,25 @@ export const RESUME_SECTIONS: ReadonlyArray<readonly [ProfileSection, string]> =
 ];
 
 /**
+ * « Ce qui figure sur le CV » pour le CV de base, liste à part et non un filtre de
+ * `RESUME_SECTIONS` : la présentation ouvre le CV et doit pouvoir s'en retirer — c'est elle
+ * que `ProfileSection::Summary` écarte côté Rust — alors que le générateur ciblé et la
+ * lettre se servent de leurs propres listes, qu'y ajouter `summary` changerait.
+ *
+ * `availability` et `interests` n'y sont pas : aucun champ du document ne les accueille, et
+ * proposer un interrupteur sans effet serait un mensonge.
+ */
+export const BASE_RESUME_SECTIONS: ReadonlyArray<readonly [ProfileSection, string]> = [
+  ["summary", "Présentation"],
+  ["experiences", "Expériences"],
+  ["education", "Formations"],
+  ["skills", "Compétences"],
+  ["languages", "Langues"],
+  ["projects", "Projets"],
+  ["certifications", "Certifications"],
+];
+
+/**
  * Jeu fermé des sections du profil, pour relire une liste enregistrée sans faire confiance
  * au JSON stocké.
  */

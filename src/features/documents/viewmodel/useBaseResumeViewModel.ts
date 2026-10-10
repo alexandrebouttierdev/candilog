@@ -6,22 +6,13 @@ import { AppError } from "@/shared/types/app-error";
 import type { ProfileSection } from "@/shared/types/generated/ai";
 import type { BaseResume, ResumeDocument } from "@/shared/types/generated/documents";
 import { profileGaps } from "../model/profileReadiness";
-import { RESUME_SECTIONS, sectionOptions, toggleSection } from "../model/profileSections";
+import { BASE_RESUME_SECTIONS, sectionOptions, toggleSection } from "../model/profileSections";
 import { documentsService } from "../services/documentsService";
 import { BASE_RESUME_KEY, RESUME_KEY } from "./documentKeys";
 
 /** Jumeau frontend de `RESUME_WORKSPACE_VERSION` / `RESUME_BASE_KIND` (Rust). */
 const BASE_RESUME_SCHEMA_VERSION = 1;
 const BASE_RESUME_KIND = "base";
-
-/**
- * « Ce qui figure sur le CV » : `availability` et `interests` n'ont pas de place sur un
- * CV — même le générateur ciblé ne les y met pas — donc elles ne sont jamais proposées ici,
- * contrairement à `RESUME_SECTIONS` dont le générateur ciblé se sert tel quel.
- */
-const BASE_RESUME_SECTIONS = RESUME_SECTIONS.filter(
-  ([section]) => section !== "availability" && section !== "interests",
-);
 
 function errorMessage(error: unknown): string {
   return error instanceof AppError ? error.message : "Une erreur inattendue s’est produite.";
