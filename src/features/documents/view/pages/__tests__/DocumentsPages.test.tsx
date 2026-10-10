@@ -1026,6 +1026,33 @@ describe("page du CV de base", () => {
     expect(useUiStore.getState().toasts).toEqual([]);
   });
 
+  /**
+   * Un profil avec de la matière mais sans nom : la garde de vacuité laisse composer, puis
+   * `validate_document` refuse. L'écran montrait alors deux messages qui se contredisaient —
+   * l'ambre « Profil à compléter », qui dit ne rien bloquer, et le rouge « Composition
+   * impossible » — au-dessus d'un squelette de feuille qui n'arriverait jamais.
+   */
+  it("dit en un seul message qu'il n'y a rien à composer, sans squelette de feuille", async () => {
+    const sansNom = profil();
+    vi.spyOn(profileService, "load").mockResolvedValue({
+      ...sansNom,
+      profile: { ...sansNom.profile, identity: { ...sansNom.profile.identity, first_name: "", name: "" } },
+    });
+    vi.spyOn(profileService, "photo").mockResolvedValue(null);
+    vi.spyOn(documentsService, "composeBaseResume").mockRejectedValue(
+      new AppError({ code: "VALIDATION_ERROR", message: "Le nom complet du CV est obligatoire." }),
+    );
+    const { container } = render(<BaseResumePage />, { wrapper });
+
+    expect(await screen.findByText("Le nom complet du CV est obligatoire.")).toBeInTheDocument();
+    // Un seul message, et une seule sortie.
+    expect(screen.queryByText("Profil à compléter")).not.toBeInTheDocument();
+    expect(screen.queryByText("Composition impossible")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Compléter le profil" })).toHaveLength(1);
+    // Pas de fantôme de document au centre : la feuille A4 porte `shadow-sheet`.
+    expect(container.querySelector(".shadow-sheet")).toBeNull();
+  });
+
   it("enregistre avec ⌘S dès que la version porte un nom", async () => {
     monter();
     const saveResume = vi.spyOn(documentsService, "saveResume").mockResolvedValue({

@@ -1,7 +1,8 @@
 import { useMemo } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import type { ResumeDocument, ResumeWorkspace } from "@/shared/types/generated/documents";
-import { Button, ConfirmDialog, ErrorBanner, FormField, TextInput } from "@/shared/ui";
+import { PATHS } from "@/shared/lib/paths";
+import { Button, ConfirmDialog, EmptyState, ErrorBanner, FormField, TextInput } from "@/shared/ui";
 import { useProfilePhoto } from "@/features/profile";
 import { updateResumeField } from "../../model/resumeWorkspace";
 import { useBaseResumeViewModel } from "../../viewmodel/useBaseResumeViewModel";
@@ -82,7 +83,16 @@ export function BaseResumePage() {
   // neuf à chaque rendu.
   const initiale = useMemo(() => baseResumeFromNavigation(location.state), [location.state]);
   const vm = useBaseResumeViewModel(initiale);
+  const navigate = useNavigate();
   const photo = useProfilePhoto().data ?? null;
+  /**
+   * Rien ne peut être composé : la commande a refusé et aucune feuille n'est affichée.
+   *
+   * Un seul message alors, au centre et porteur de sa sortie. Le bandeau ambre « Profil à
+   * compléter » se tait — il annonce que rien n'est bloqué, ce qui serait faux — et aucun
+   * squelette de feuille n'est dessiné : il n'y a pas de document en route.
+   */
+  const bloque = vm.error !== null && vm.document === null;
   const canSave = Boolean(vm.name.trim()) && vm.document !== null && !vm.isSaving && !vm.isComposing;
   // Le raccourci est gardé comme le bouton : sans nom de version, ⌘S ne doit pas partir
   // vers un enregistrement que le natif refusera, comme sur les deux générateurs voisins.
@@ -100,7 +110,7 @@ export function BaseResumePage() {
       }
       left={
         <>
-          <ProfileGapBanner gaps={vm.profileGaps} what="CV" />
+          {bloque ? null : <ProfileGapBanner gaps={vm.profileGaps} what="CV" />}
           <SectionToggles
             title="Ce qui figure sur le CV"
             options={vm.options}
@@ -113,7 +123,10 @@ export function BaseResumePage() {
               {(props) => <TextInput {...props} value={vm.name} onChange={(e) => vm.setName(e.target.value)} />}
             </FormField>
           </PaneSection>
-          {vm.error ? <ErrorBanner title="Composition impossible" message={vm.error} /> : null}
+          {/* Une recomposition qui échoue alors qu'une feuille est déjà là : le bandeau la
+              signale sans effacer le document affiché. Sans feuille, c'est le message du
+              centre qui parle. */}
+          {vm.error && !bloque ? <ErrorBanner title="Composition impossible" message={vm.error} /> : null}
         </>
       }
       status="composé depuis votre profil · aucune offre"
@@ -122,6 +135,18 @@ export function BaseResumePage() {
     >
       {vm.document ? (
         <BaseResumeSheet document={vm.document} photo={photo} onChange={vm.setDocument} />
+      ) : bloque ? (
+        <div className="flex flex-1 flex-col items-center justify-center p-[26px]">
+          <EmptyState
+            title="Rien à composer pour l’instant"
+            description={vm.error ?? undefined}
+            action={
+              <Button variant="secondary" size="empty" onClick={() => void navigate(PATHS.profile)}>
+                Compléter le profil
+              </Button>
+            }
+          />
+        </div>
       ) : (
         <EmptySheet busy={vm.isComposing} />
       )}

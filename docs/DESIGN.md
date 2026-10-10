@@ -376,7 +376,12 @@ Réutiliser la recette du voisin plutôt que d’en inventer une.
   aucun champ du document ne les accueille, et un réglage sans effet serait un mensonge.
   Viennent ensuite `ProfileGapBanner` et le nom de la version. `⌘S` enregistre, `Échap` ferme ; pas de `⌘⏎`, il n'y a rien à générer.
   Basculer un interrupteur recompose depuis le profil et écrase les retouches ; une
-  confirmation le demande dès que la feuille a été retouchée. Rouvert depuis la
+  confirmation le demande dès que la feuille a été retouchée. Quand la composition est
+  refusée et qu'aucune feuille n'est affichée — profil vide, ou profil sans nom, qu'un CV
+  ne peut pas porter — le centre remplace le squelette A4 par un seul état vide portant le
+  message du natif et « Compléter le profil ». `ProfileGapBanner` se tait alors : il annonce
+  que rien n'est bloqué, et il le contredirait. Il reparaît dès qu'une feuille existe, où il
+  signale ce qui manque sans empêcher d'enregistrer. Rouvert depuis la
   bibliothèque, un CV de base affiche ce qui a été enregistré, sans recomposer, avec ses
   interrupteurs dans l'état où la composition les avait laissés, et un nouvel
   enregistrement y ajoute une version. Dans la bibliothèque, il ne se distingue des
