@@ -521,6 +521,7 @@ fn error_meta(error: &AppError) -> (&'static str, &'static str) {
             }
         }
         AppError::Cancelled => "cancelled",
+        AppError::Sync(_) => "sync",
     };
     (error.code(), category)
 }

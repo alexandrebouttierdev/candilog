@@ -25,6 +25,7 @@ Ne lire que ce qui sert à la tâche en cours.
 | Écran, composant, style | `docs/DESIGN.md` |
 | Schéma SQLite, référentiels, chemins de données | `docs/DATA.md` |
 | Providers IA, prompts, annulation | `docs/AI.md` |
+| Synchronisation entre ordinateurs, chiffrement, OAuth | `docs/SYNC.md` |
 | Installer, lancer, régénérer les types | `docs/DEVELOPMENT.md` |
 | Publication d'une version | `docs/RELEASES.md` |
 | Proposer une contribution | `CONTRIBUTING.md` |

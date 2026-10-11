@@ -89,18 +89,26 @@ pub async fn settings_restore(app: AppHandle, state: State<'_, AppState>) -> App
         return Ok(false);
     };
     let service = Arc::clone(&state.settings);
+    // La restauration détache la base de tout espace de synchronisation (`docs/SYNC.md`) :
+    // la configuration précédente sert à retirer ses secrets du coffre.
+    let previous = state.sync.config()?;
     blocking::execute(move || {
         service.restore(&source)?;
-        Ok(true)
+        Ok(())
     })
-    .await
+    .await?;
+    state.sync.after_local_replacement(&previous).await;
+    Ok(true)
 }
 
 /// Efface les données utilisateur, pas le référentiel des secteurs.
 #[tauri::command(rename_all = "snake_case")]
 pub async fn settings_reset(state: State<'_, AppState>) -> AppResult<ResetOutcome> {
     let service = Arc::clone(&state.settings);
-    blocking::execute(move || service.reset()).await
+    let previous = state.sync.config()?;
+    let outcome = blocking::execute(move || service.reset()).await?;
+    state.sync.after_local_replacement(&previous).await;
+    Ok(outcome)
 }
 
 /// Compare la version installée à la dernière release GitHub.

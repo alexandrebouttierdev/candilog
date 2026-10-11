@@ -534,6 +534,7 @@ prochain push sur `master`.
 | `docs/DESIGN.md` | UI, jetons, interdits visuels |
 | `docs/DATA.md` | SQLite, schéma, relations, chemins de données |
 | `docs/AI.md` | providers, prompts, cache, annulation IA |
+| `docs/SYNC.md` | synchronisation entre ordinateurs, chiffrement, OAuth |
 | `docs/DEVELOPMENT.md` | prérequis, exécution, régénération des types, validations |
 | `docs/RELEASES.md` | publication des binaires et politique `cargo-deny` |
 | `THIRD_PARTY_NOTICES.md` | attribution des composants tiers redistribués avec les binaires |

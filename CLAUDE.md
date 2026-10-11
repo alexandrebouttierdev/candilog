@@ -9,7 +9,7 @@ ici : elles vivent dans `AGENTS.md`, importé ci-dessous.
 
 - **Avant toute modification significative**, relire `AGENTS.md` puis le document de
   référence de la tâche (`docs/CODE_RULES.md`, `docs/ARCHITECTURE.md`, `docs/DESIGN.md`,
-  `docs/DATA.md`, `docs/AI.md`). Ne pas charger toute la documentation par réflexe.
+  `docs/DATA.md`, `docs/AI.md`, `docs/SYNC.md`). Ne pas charger toute la documentation par réflexe.
 - **Périmètre imbriqué** : en travaillant dans `src/`, `src-tauri/` ou `website/`, lire le
   `AGENTS.md` du dossier concerné — il ne contient que les différences.
 - **Commandes longues** : `yarn test` (~1 min), `cargo clippy` et `cargo test` (plusieurs

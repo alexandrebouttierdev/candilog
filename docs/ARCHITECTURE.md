@@ -91,8 +91,9 @@ couche `presentation` de la feature concernée :
 | `profile_import_progress` | `features/ai` — import de profil depuis un CV |
 | `update-progress` | `features/settings` — téléchargement d'une mise à jour |
 | `managed-ollama://download-progress` | `features/ai` — moteur et modèle de l'IA locale : octets, total, étape et `state` |
+| `sync://status` | `features/sync` — état de la synchronisation entre ordinateurs (`SyncStatus`) |
 
-Cette table est la **liste complète** : quatre événements, pas un de plus. Un nom d'événement
+Cette table est la **liste complète** : cinq événements, pas un de plus. Un nom d'événement
 n'est vérifié ni par Rust ni par TypeScript, et un écouteur posé sur un nom inexistant ne se
 déclenche jamais sans produire d'erreur — `commandes-ipc.test.ts` compare donc les `emit`
 Rust aux `listen` du frontend, comme il le fait pour les commandes.
@@ -119,6 +120,14 @@ HTTP en cours.
 
 `core/events/` reste un module de réservation, sans contenu.
 
+## Synchronisation
+
+`features/sync` porte la synchronisation facultative entre ordinateurs : déclencheurs SQLite
+qui journalisent chaque écriture métier dans sa transaction, moteur de cycle indépendant du
+fournisseur derrière le contrat `RemoteStore` (dossier, Google Drive, OneDrive), chiffrement
+côté client et tâche de fond lancée par `bootstrap.rs`, annulée à la fermeture de la
+fenêtre. Inerte en mode local. Protocole, garanties et limites : `docs/SYNC.md`.
+
 ## Le site
 
 `website/` est le site public candilog.fr : un projet Next.js **autonome**, sans lien de
@@ -127,5 +136,5 @@ design system — voir `website/README.md` et `website/DESIGN.md`.
 
 ## Documents liés
 
-`docs/CODE_RULES.md` (règles de code), `docs/DATA.md` (schéma et données),
+`docs/CODE_RULES.md` (règles de code), `docs/DATA.md` (schéma et données), `docs/SYNC.md` (synchronisation),
 `docs/AI.md` (IA), `docs/DESIGN.md` (interface), `docs/DEVELOPMENT.md` (commandes).

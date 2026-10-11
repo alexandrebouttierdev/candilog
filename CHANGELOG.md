@@ -4,6 +4,22 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
 [SemVer](https://semver.org/lang/fr/). Chaque version publiée correspond à un tag
 `v<version>` et à une [release GitHub](https://github.com/alexandrebouttierdev/candilog/releases).
 
+## [Non publié]
+
+### Ajouté
+
+- Synchronisation facultative entre ordinateurs (Réglages › Synchronisation et sauvegarde) :
+  dossier personnalisé (Dropbox, iCloud Drive, Nextcloud…), Google Drive (dossier caché de
+  l'application) ou Microsoft OneDrive (dossier Applications). Le stockage local reste le
+  mode par défaut, sans compte. Données chiffrées sur l'ordinateur avant l'envoi (phrase
+  secrète et clé de récupération), fonctionnement hors ligne, arbitrage champ par champ et
+  conflits présentés à l'utilisateur. Voir `docs/SYNC.md`.
+
+### Modifié
+
+- Restaurer une sauvegarde ou remettre les données à zéro désactive la synchronisation de
+  cet ordinateur.
+
 ## [0.0.1] — 2026-10-06
 
 Première version publique.

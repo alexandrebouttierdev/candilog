@@ -18,7 +18,7 @@ libre : ils doivent être exactement le nom issu du `ModelRegistry` sous `ai/mod
 
 ## Référentiels métier
 
-Le schéma courant (`PRAGMA user_version = 8`) porte
+Le schéma courant (`PRAGMA user_version = 9`) porte
 quatre catalogues **distincts**, semés par `init_schema.sql` en `INSERT OR IGNORE` :
 
 | Table | Clé | Rôle |
@@ -126,6 +126,16 @@ caractères, `noted_on` (`AAAA-MM-JJ`, date du fait et non de la saisie), rattac
 **exactement** une entreprise ou un contact (`CHECK`), supprimée avec sa fiche
 (`ON DELETE CASCADE`). Ce champ est distinct de `companies.notes` / `contacts.notes`, texte
 libre de la fiche. Une remise à zéro des données vide la table.
+
+## Synchronisation (migration 9)
+
+`009_sync.sql` ajoute les tables `sync_*` et trois déclencheurs par table synchronisée, sans
+modifier aucune table métier. Les déclencheurs n'écrivent dans `sync_outbox` que si
+l'ordinateur est rattaché à un espace (drapeau `tracking`) : en mode local, rien n'est
+journalisé. La configuration de la synchronisation vit dans `sync_state` — propre à cet
+ordinateur — et non dans `settings`. Restaurer une sauvegarde ou remettre les données à zéro
+vide ces tables (`core::backup::clear_sync_state`) : l'ordinateur repasse en mode local, et
+une remise à zéro ne publie aucune suppression. Détails : `docs/SYNC.md`.
 
 ## Contraintes portées par le schéma
 

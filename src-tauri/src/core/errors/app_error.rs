@@ -29,6 +29,9 @@ pub enum AppError {
     /// Opération interrompue à la demande de l'utilisateur (annulation).
     #[error("Génération annulée")]
     Cancelled,
+    /// Échec de la synchronisation, déjà rédigé pour l'utilisateur (`docs/SYNC.md`).
+    #[error("Synchronisation : {0}")]
+    Sync(String),
 }
 
 /// Alias de résultat standard de l'application.
@@ -53,6 +56,7 @@ impl AppError {
             Self::Serialization(_) => "SERIALIZATION_ERROR",
             Self::Provider(_) => "PROVIDER_ERROR",
             Self::Cancelled => "CANCELLED",
+            Self::Sync(_) => "SYNC_ERROR",
         }
     }
 
@@ -69,7 +73,9 @@ impl AppError {
     #[must_use]
     pub fn user_message(&self) -> String {
         match self {
-            Self::Validation(message) | Self::Provider(message) => message.clone(),
+            Self::Validation(message) | Self::Provider(message) | Self::Sync(message) => {
+                message.clone()
+            }
             Self::NotFound(resource) => format!("Introuvable : {resource}."),
             Self::Database(_) => {
                 "Le fichier de données de Candilog est illisible ou endommagé.".into()

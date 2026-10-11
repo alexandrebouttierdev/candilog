@@ -12,7 +12,7 @@ fn base_historique_est_refusee_avant_toute_ecriture() {
             .execute_batch(
                 "CREATE TABLE candidatures(id TEXT PRIMARY KEY);
                  INSERT INTO candidatures(id) VALUES ('historique');
-                 PRAGMA user_version = 9;",
+                 PRAGMA user_version = 99;",
             )
             .unwrap();
     }

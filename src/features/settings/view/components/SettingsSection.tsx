@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 
 /**
  * Section de la surcouche Réglages v2 (`screens/18-settings.png`) : titre serif 21 px et
@@ -13,9 +13,12 @@ export function SettingsSection({
   description: string;
   children: ReactNode;
 }) {
+  // Plusieurs sections peuvent cohabiter (Synchronisation, puis Sauvegarde locale) :
+  // l'identifiant du titre doit rester unique pour `aria-labelledby`.
+  const titleId = useId();
   return (
-    <section aria-labelledby="reglages-titre">
-      <h2 id="reglages-titre" className="serif-title text-screen text-tx">
+    <section aria-labelledby={titleId}>
+      <h2 id={titleId} className="serif-title text-screen text-tx">
         {title}
       </h2>
       <p className="mt-1.5 text-ui text-tx-4">{description}</p>

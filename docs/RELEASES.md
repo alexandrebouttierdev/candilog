@@ -143,6 +143,14 @@ Le contrat de nommage entre le workflow et `updater.rs` est verrouillé par un t
 (`les_assets_du_workflow_sont_ceux_que_l_application_attend`) : renommer un asset ici casse
 la suite de tests, et non la mise à jour du premier utilisateur.
 
+## Synchronisation cloud
+
+L'étape « Construire Candilog » transmet à la compilation `CANDILOG_GOOGLE_CLIENT_ID` et
+`CANDILOG_MICROSOFT_CLIENT_ID` (variables du dépôt, `vars.*`) et
+`CANDILOG_GOOGLE_CLIENT_SECRET` (secret du dépôt). Absentes, la version publiée ne propose
+que le mode local et le dossier personnalisé. Création des applications OAuth :
+`docs/SYNC.md`, « Configurer les applications OAuth ».
+
 ## Chaîne de confiance
 
 Trois garanties distinctes, dont deux seulement sont en place :
