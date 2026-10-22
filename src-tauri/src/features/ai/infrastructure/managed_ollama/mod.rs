@@ -7,5 +7,5 @@ mod process;
 
 pub use api::ManagedOllamaApi;
 pub use installer::RuntimeInstaller;
-pub use manifest::require_runtime_artifact;
+pub use manifest::{require_runtime_artifact, RuntimeArchiveFormat};
 pub use process::ManagedOllamaProcess;

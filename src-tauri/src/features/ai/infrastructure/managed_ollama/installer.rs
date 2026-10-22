@@ -1,6 +1,6 @@
 //! Téléchargement et installation atomique du runtime Ollama géré.
 
-use super::manifest::RuntimeArtifact;
+use super::manifest::{RuntimeArchiveFormat, RuntimeArtifact};
 use crate::core::errors::{AppError, AppResult};
 use crate::features::ai::domain::{
     ManagedDownloadKind, ManagedOllamaDownloadProgress, ManagedRuntimeState,
@@ -97,15 +97,22 @@ impl RuntimeInstaller {
         on_progress: &impl Fn(ManagedOllamaDownloadProgress),
     ) -> AppResult<PathBuf> {
         fs::create_dir_all(downloads_dir).map_err(map_io)?;
-        fs::create_dir_all(runtime_version_dir).map_err(map_io)?;
+        let runtime_root = runtime_version_dir
+            .parent()
+            .ok_or_else(|| AppError::Provider("Le dossier du moteur local est invalide.".into()))?;
+        fs::create_dir_all(runtime_root).map_err(map_io)?;
 
         let archive_path = downloads_dir.join(artifact.archive_name);
         let part_path = downloads_dir.join(format!("{}.part", artifact.archive_name));
-        let temp_dir = downloads_dir.join(format!("extract-{}", uuid::Uuid::new_v4()));
+        let temp_dir = runtime_root.join(format!(".ollama-runtime-{}", uuid::Uuid::new_v4()));
         // Le dossier d'extraction disparaît sur tous les chemins de sortie, y compris une
         // panique : plus besoin de le retirer à la main dans chaque branche d'erreur.
         let _menage = ResteTemporaire::dossier(temp_dir.clone());
-        let executable = runtime_version_dir.join("ollama");
+        let installed_executable = match artifact.archive_format {
+            RuntimeArchiveFormat::Tgz => "ollama",
+            RuntimeArchiveFormat::Zip => artifact.executable,
+        };
+        let executable = runtime_version_dir.join(installed_executable);
 
         self.download_with_checksum(
             artifact,
@@ -142,16 +149,16 @@ impl RuntimeInstaller {
 
         let archive_for_extract = archive_path.clone();
         let temp_for_extract = temp_dir.clone();
-        let executable_for_install = executable.clone();
         let executable_in_archive = artifact.executable.to_owned();
+        let archive_format = artifact.archive_format;
         let cancel_wait = cancel.clone();
         let extract_result = tokio::select! {
             result = tokio::task::spawn_blocking(move || {
                 extract_runtime_archive(
                     &archive_for_extract,
                     &temp_for_extract,
-                    &executable_for_install,
                     &executable_in_archive,
+                    archive_format,
                 )
             }) => result.map_err(|error| {
                 tracing::error!(%error, "tâche d'extraction Ollama interrompue");
@@ -165,6 +172,18 @@ impl RuntimeInstaller {
         }
 
         extract_result?;
+        if runtime_version_dir.exists() {
+            fs::remove_dir_all(runtime_version_dir).map_err(map_io)?;
+        }
+        fs::rename(&temp_dir, runtime_version_dir).map_err(map_io)?;
+        _menage.publier();
+        if artifact.archive_format == RuntimeArchiveFormat::Zip {
+            if let Err(error) = fs::remove_file(&archive_path) {
+                if error.kind() != std::io::ErrorKind::NotFound {
+                    tracing::warn!(%error, chemin = %archive_path.display(), "archive Ollama installée non supprimée");
+                }
+            }
+        }
         Ok(executable)
     }
 
@@ -218,6 +237,9 @@ impl RuntimeInstaller {
         }
         // `rename` publie l'archive : le guard ne doit plus la supprimer.
         drop(file);
+        if final_path.exists() {
+            fs::remove_file(final_path).map_err(map_io)?;
+        }
         fs::rename(part_path, final_path).map_err(map_io)?;
         menage_part.publier();
         Ok(())
@@ -227,24 +249,40 @@ impl RuntimeInstaller {
 fn extract_runtime_archive(
     archive_path: &Path,
     temp_dir: &Path,
-    executable: &Path,
     executable_in_archive: &str,
+    archive_format: RuntimeArchiveFormat,
 ) -> AppResult<()> {
     fs::create_dir_all(temp_dir).map_err(map_io)?;
-    extract_tgz(archive_path, temp_dir)?;
-    let extracted = temp_dir.join(executable_in_archive);
-    if !extracted.exists() {
-        return Err(AppError::Provider(
-            "L'archive Ollama ne contient pas l'exécutable attendu.".into(),
-        ));
+    match archive_format {
+        RuntimeArchiveFormat::Tgz => {
+            let unpack_dir = temp_dir.join("archive");
+            fs::create_dir_all(&unpack_dir).map_err(map_io)?;
+            extract_tgz(archive_path, &unpack_dir)?;
+            let extracted = unpack_dir.join(executable_in_archive);
+            if !extracted.exists() {
+                return Err(AppError::Provider(
+                    "L'archive Ollama ne contient pas l'exécutable attendu.".into(),
+                ));
+            }
+            let installed_executable = temp_dir.join("ollama");
+            fs::rename(&extracted, &installed_executable).map_err(map_io)?;
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                fs::set_permissions(&installed_executable, fs::Permissions::from_mode(0o700))
+                    .map_err(map_io)?;
+            }
+            fs::remove_dir_all(unpack_dir).map_err(map_io)?;
+        }
+        RuntimeArchiveFormat::Zip => {
+            extract_zip(archive_path, temp_dir)?;
+            if !temp_dir.join(executable_in_archive).exists() {
+                return Err(AppError::Provider(
+                    "L'archive Ollama ne contient pas l'exécutable attendu.".into(),
+                ));
+            }
+        }
     }
-    fs::rename(&extracted, executable).map_err(map_io)?;
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(executable, fs::Permissions::from_mode(0o700)).map_err(map_io)?;
-    }
-    let _ = fs::remove_dir_all(temp_dir);
     Ok(())
 }
 
@@ -256,6 +294,15 @@ fn extract_tgz(archive_path: &Path, destination: &Path) -> AppResult<()> {
         AppError::Provider(format!("Extraction de l'archive impossible : {error}"))
     })?;
     Ok(())
+}
+
+fn extract_zip(archive_path: &Path, destination: &Path) -> AppResult<()> {
+    let file = File::open(archive_path).map_err(map_io)?;
+    let mut archive = zip::ZipArchive::new(file)
+        .map_err(|error| AppError::Provider(format!("Archive ZIP Ollama invalide : {error}")))?;
+    archive.extract(destination).map_err(|error| {
+        AppError::Provider(format!("Extraction de l'archive ZIP impossible : {error}"))
+    })
 }
 
 fn percent(downloaded: u64, total: u64) -> u8 {
@@ -270,4 +317,45 @@ fn percent(downloaded: u64, total: u64) -> u8 {
 fn map_io(error: std::io::Error) -> AppError {
     tracing::error!(%error, "opération disque IA locale impossible");
     AppError::Provider("Une opération disque de l'IA locale a échoué.".into())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Read;
+
+    #[test]
+    fn extraction_zip_conserve_l_executable_et_les_dll() {
+        let directory = tempfile::tempdir().expect("dossier temporaire");
+        let archive_path = directory.path().join("ollama.zip");
+        let extracted_path = directory.path().join("extracted");
+        let file = File::create(&archive_path).expect("créer l'archive");
+        let mut archive = zip::ZipWriter::new(file);
+        let options = zip::write::SimpleFileOptions::default();
+        archive
+            .start_file("ollama.exe", options)
+            .expect("ajouter l'exécutable");
+        archive.write_all(b"runtime").expect("écrire l'exécutable");
+        archive
+            .start_file("lib/ollama.dll", options)
+            .expect("ajouter la DLL");
+        archive.write_all(b"backend").expect("écrire la DLL");
+        archive.finish().expect("terminer l'archive");
+
+        extract_runtime_archive(
+            &archive_path,
+            &extracted_path,
+            "ollama.exe",
+            RuntimeArchiveFormat::Zip,
+        )
+        .expect("extraire l'archive");
+
+        let mut executable = File::open(extracted_path.join("ollama.exe")).expect("exécutable");
+        let mut executable_contents = Vec::new();
+        executable
+            .read_to_end(&mut executable_contents)
+            .expect("lire l'exécutable");
+        assert_eq!(executable_contents, b"runtime");
+        assert!(extracted_path.join("lib/ollama.dll").exists());
+    }
 }

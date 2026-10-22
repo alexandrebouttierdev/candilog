@@ -9,7 +9,8 @@ use crate::features::ai::domain::{
     UserBenchmarkSummary,
 };
 use crate::features::ai::infrastructure::{
-    require_runtime_artifact, ManagedOllamaApi, ManagedOllamaProcess, RuntimeInstaller,
+    require_runtime_artifact, ManagedOllamaApi, ManagedOllamaProcess, RuntimeArchiveFormat,
+    RuntimeInstaller,
 };
 use crate::features::settings::domain::SettingsRepository;
 use crate::features::settings::infrastructure::SqliteSettingsRepository;
@@ -102,7 +103,11 @@ impl ManagedOllamaService {
     {
         let artifact = require_runtime_artifact()?;
         let version_dir = self.paths.runtime_root.join(artifact.version);
-        let executable = version_dir.join("ollama");
+        let executable_name = match artifact.archive_format {
+            RuntimeArchiveFormat::Tgz => "ollama",
+            RuntimeArchiveFormat::Zip => artifact.executable,
+        };
+        let executable = version_dir.join(executable_name);
         if !executable.exists() {
             let installer = RuntimeInstaller::new()?;
             let local_cancel = CancellationToken::new();
