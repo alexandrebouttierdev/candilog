@@ -164,7 +164,6 @@ pub fn run() {
             sync::sync_connect,
             sync::sync_cancel_connect,
             sync::sync_setup,
-            sync::sync_unlock,
             sync::sync_set_auto,
             sync::sync_now,
             sync::sync_disconnect,

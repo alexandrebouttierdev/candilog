@@ -150,7 +150,7 @@ async fn un_nouvel_ordinateur_part_d_un_instantane() {
         .unwrap();
     // Les lots couverts disparaissent (ménage d'une autre installation, rétention écoulée).
     for name in space.remote.names() {
-        if name.starts_with("changes/") {
+        if name.starts_with("v2/changes/") {
             space.remote.remove(&name);
         }
     }

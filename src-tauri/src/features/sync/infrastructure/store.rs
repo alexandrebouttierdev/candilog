@@ -51,7 +51,7 @@ pub struct BlobUpload {
     pub file: String,
 }
 
-/// Lot chiffré prêt à l'envoi, conservé jusqu'à confirmation du fournisseur.
+/// Lot prêt à l'envoi, conservé jusqu'à confirmation du fournisseur.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PreparedBatch {
     pub seq: u64,
@@ -233,8 +233,8 @@ impl SqliteSyncStore {
             rows
         };
         if !pending.is_empty() {
-            // Le contenu chiffré n'est pas relu : toutes les données sont réinscrites, ce
-            // qui republie au pire des valeurs déjà connues.
+            // Le contenu n'est pas relu : toutes les données sont réinscrites, ce qui
+            // republie au pire des valeurs déjà connues.
             enqueue_all(&tx)?;
         }
         tx.execute("DELETE FROM sync_pending", [])?;
@@ -334,7 +334,7 @@ impl SqliteSyncStore {
 
     /// Prépare le prochain lot depuis le journal, ou renvoie le lot encore en attente.
     ///
-    /// Le lot est chiffré puis **enregistré** avant tout envoi, dans la même transaction que
+    /// Le lot est encodé puis **enregistré** avant tout envoi, dans la même transaction que
     /// la mise à jour des versions et la purge du journal : après une coupure, c'est
     /// exactement le même contenu, sous le même nom, qui est renvoyé. Une écriture dont le
     /// résultat distant est incertain se rejoue donc sans effet de bord.
@@ -343,7 +343,7 @@ impl SqliteSyncStore {
     /// sa version locale porterait sinon une version qui écraserait l'autre en silence.
     ///
     /// # Errors
-    /// Erreur SQLite ou de chiffrement ; rien n'est modifié en cas d'échec.
+    /// Erreur SQLite ou de sérialisation ; rien n'est modifié en cas d'échec.
     pub fn prepare_batch(
         &self,
         photos_dir: &Path,

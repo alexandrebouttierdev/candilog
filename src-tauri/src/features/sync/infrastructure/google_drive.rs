@@ -9,7 +9,7 @@
 //!
 //! Drive autorise deux fichiers de même nom : l'adaptateur vérifie l'existence avant toute
 //! création et, s'il trouve des doublons (envoi rejoué), lit le premier — leurs contenus
-//! sont identiques par construction, chaque lot étant chiffré une fois puis conservé.
+//! sont identiques par construction, chaque lot étant encodé une fois puis conservé.
 
 use crate::features::sync::domain::remote::{PutOutcome, RemoteError, RemoteObject, RemoteStore};
 use crate::features::sync::infrastructure::authorized::{self, valid_object_name};

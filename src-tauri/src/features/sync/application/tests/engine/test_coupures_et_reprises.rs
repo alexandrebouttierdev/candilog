@@ -68,7 +68,7 @@ async fn une_reponse_perdue_apres_envoi_ne_double_rien() {
         .remote
         .names()
         .into_iter()
-        .filter(|name| name.starts_with("changes/"))
+        .filter(|name| name.starts_with("v2/changes/"))
         .collect();
     assert_eq!(batches.len(), 2, "un lot pour c1, un pour c2 : {batches:?}");
 

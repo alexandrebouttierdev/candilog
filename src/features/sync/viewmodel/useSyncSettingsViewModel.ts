@@ -38,7 +38,6 @@ export function useSyncSettingsViewModel() {
     enabled: attached,
   });
   const [probe, setProbe] = useState<RemoteProbe | null>(null);
-  const [recoveryKey, setRecoveryKey] = useState<string | null>(null);
   const [dialog, setDialog] = useState<SyncDialog>(null);
 
   const refresh = async () => {
@@ -80,7 +79,6 @@ export function useSyncSettingsViewModel() {
     mutationFn: (request: SetupRequest) => syncService.setup(request),
     onSuccess: async (outcome) => {
       setProbe(null);
-      if (outcome.recovery_key) setRecoveryKey(outcome.recovery_key);
       await queryClient.invalidateQueries();
       notify({
         tone: "success",
@@ -89,15 +87,6 @@ export function useSyncSettingsViewModel() {
           ? `Vos données précédentes ont été sauvegardées dans ${outcome.backup_file}.`
           : undefined,
       });
-    },
-  });
-
-  const unlock = useMutation({
-    mutationFn: ({ passphrase, recovery }: { passphrase: string | null; recovery: string | null }) =>
-      syncService.unlock(passphrase, recovery),
-    onSuccess: async () => {
-      await refresh();
-      notify({ tone: "success", title: "Espace déverrouillé" });
     },
   });
 
@@ -166,13 +155,11 @@ export function useSyncSettingsViewModel() {
     availability: availability.data ?? { google_drive: false, one_drive: false },
     conflicts: conflicts.data ?? [],
     probe,
-    recoveryKey,
     dialog,
     connecting: connect.isPending ? connect.variables : null,
     choosingFolder: chooseFolder.isPending,
     reconnecting: reconnect.isPending,
     settingUp: setup.isPending,
-    unlocking: unlock.isPending,
     disconnecting: disconnect.isPending,
     restoring: restore.isPending,
     resolving: resolve.isPending || resolveAll.isPending,
@@ -182,8 +169,6 @@ export function useSyncSettingsViewModel() {
     reconnect: (provider: SyncProviderKind) => reconnect.mutate(provider),
     closeProbe: () => setProbe(null),
     setup: setup.mutateAsync,
-    closeRecoveryKey: () => setRecoveryKey(null),
-    unlock: unlock.mutateAsync,
     setAuto: (enabled: boolean) => setAuto.mutate(enabled),
     syncNow: () => syncNow.mutate(),
     openDialog: setDialog,

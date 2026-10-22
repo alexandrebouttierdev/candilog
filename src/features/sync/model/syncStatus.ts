@@ -10,7 +10,6 @@ export const PHASE_LABELS: Readonly<Record<SyncPhase, string>> = {
   pending: "Modifications en attente",
   offline: "Hors ligne",
   auth_required: "Reconnexion nécessaire",
-  key_required: "Phrase secrète nécessaire",
   temporary_error: "Erreur temporaire",
   conflict: "Conflit à arbitrer",
   restoring: "Restauration en cours",
@@ -23,7 +22,6 @@ export function phaseTone(phase: SyncPhase): GlyphTone {
     case "up_to_date":
       return "g";
     case "auth_required":
-    case "key_required":
     case "incompatible":
       return "c";
     case "offline":
@@ -45,7 +43,7 @@ export const PROVIDER_LABELS: Readonly<Record<SyncProviderKind, string>> = {
 
 /** L'état demande-t-il une action de l'utilisateur pour que la synchronisation reprenne ? */
 export function needsAttention(status: SyncStatus): boolean {
-  return ["auth_required", "key_required", "incompatible", "conflict"].includes(status.phase);
+  return ["auth_required", "incompatible", "conflict"].includes(status.phase);
 }
 
 /** Décompte lisible des modifications en attente. */

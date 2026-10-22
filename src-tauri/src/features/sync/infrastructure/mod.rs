@@ -1,9 +1,8 @@
-//! Implémentations : état SQLite, chiffrement, fournisseurs (dossier, Google Drive,
+//! Implémentations : état SQLite, fournisseurs (dossier, Google Drive,
 //! OneDrive) et coffre des secrets.
 
 pub mod apply;
 pub mod authorized;
-pub mod crypto;
 pub mod folder;
 pub mod google_drive;
 #[cfg(test)]

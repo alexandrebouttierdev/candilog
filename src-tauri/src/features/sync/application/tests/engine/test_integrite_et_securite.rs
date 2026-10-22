@@ -1,43 +1,31 @@
-//! Chiffrement, clé incorrecte, espace altéré ou incompatible.
+//! Données en clair, objets altérés ou incompatibles.
 
 use super::*;
-use crate::features::sync::domain::protocol::{batch_name, ChangeBatch, FORMAT_VERSION};
+use crate::features::sync::application::engine::{publish_manifest, read_manifest};
+use crate::features::sync::domain::protocol::{
+    batch_name, ChangeBatch, SpaceManifest, FORMAT_VERSION, MANIFEST_NAME,
+};
 
 #[tokio::test]
-async fn rien_ne_part_en_clair() {
+async fn les_donnees_synchronisees_sont_lisibles_en_clair() {
     let space = Space::new();
     let a = space.computer();
     a.add_company("c1", "Entreprise Confidentielle");
     a.exec("UPDATE companies SET notes = 'salaire souhaité 45000' WHERE id = 'c1'");
     a.sync_ok().await;
-    for name in space.remote.names() {
-        let bytes = space.remote.raw(&name).unwrap();
-        for secret in [&b"Confidentielle"[..], b"45000", b"salaire"] {
-            assert!(
-                !bytes.windows(secret.len()).any(|w| w == secret),
-                "{name} contient du clair"
-            );
-        }
-        assert!(!name.contains("Confidentielle"));
+    let batch = space
+        .remote
+        .names()
+        .into_iter()
+        .find(|name| name.ends_with(".batch"))
+        .unwrap();
+    let bytes = space.remote.raw(&batch).unwrap();
+    assert!(batch.starts_with("v2/changes/"));
+    let decoded: ChangeBatch = decode_object(&bytes, &batch).unwrap();
+    let json = serde_json::to_vec(&decoded).unwrap();
+    for content in [&b"Confidentielle"[..], b"45000", b"salaire"] {
+        assert!(json.windows(content.len()).any(|window| window == content));
     }
-}
-
-#[tokio::test]
-async fn une_cle_incorrecte_n_applique_rien() {
-    let space = Space::new();
-    let a = space.computer();
-    a.add_company("c1", "Acme");
-    a.sync_ok().await;
-
-    let other = Space::new();
-    let intruder = Computer::detached(&space);
-    let mut session = intruder.session.clone();
-    session.cipher = Arc::new(SpaceCipher::new(SPACE, &other.key).unwrap());
-    intruder.attach(false);
-    let report = intruder.engine.cycle(&session).await;
-    assert!(matches!(report.failure, Some(SyncFailure::Integrity(_))));
-    assert_eq!(intruder.count("SELECT count(*) FROM companies"), 0);
-    assert_eq!(intruder.count("SELECT count(*) FROM sync_cursors"), 0);
 }
 
 #[tokio::test]
@@ -75,8 +63,8 @@ async fn un_lot_d_une_version_plus_recente_est_signale_incompatible() {
         created_at: TS.into(),
         changes: Vec::new(),
     };
-    let sealed = b.session.cipher.encode_json(&name, &batch).unwrap();
-    space.remote.overwrite(&name, sealed);
+    let bytes = encode_object(&batch).unwrap();
+    space.remote.overwrite(&name, bytes);
     let report = b.sync().await;
     assert!(
         matches!(report.failure, Some(SyncFailure::Incompatible(_))),
@@ -104,24 +92,33 @@ async fn un_lot_rejoue_sous_une_autre_identite_est_refuse() {
 #[tokio::test]
 async fn un_manifeste_malforme_est_refuse() {
     let space = MemoryStore::default();
-    space.overwrite("space.json", b"{pas du json".to_vec());
+    space.overwrite(MANIFEST_NAME, b"{pas du json".to_vec());
     assert!(matches!(
         read_manifest(&space).await,
         Err(SyncFailure::Integrity(_))
     ));
-    space.remove("space.json");
+    space.remove(MANIFEST_NAME);
     assert_eq!(read_manifest(&space).await.unwrap(), None);
 }
 
 #[tokio::test]
 async fn un_manifeste_existant_n_est_jamais_remplace() {
     let remote = MemoryStore::default();
-    let first = create_space(SPACE, "phrase secrète de test", TS).unwrap();
-    publish_manifest(&remote, &first.manifest).await.unwrap();
-    let second = create_space(SPACE, "autre phrase secrète", TS).unwrap();
-    assert!(publish_manifest(&remote, &second.manifest).await.is_err());
-    assert_eq!(
-        read_manifest(&remote).await.unwrap().unwrap(),
-        first.manifest
-    );
+    let manifest = SpaceManifest {
+        format: FORMAT_VERSION,
+        app: "candilog".into(),
+        space_id: SPACE.into(),
+        created_at: TS.into(),
+    };
+    publish_manifest(&remote, &manifest).await.unwrap();
+    assert!(publish_manifest(&remote, &manifest).await.is_err());
+    assert_eq!(read_manifest(&remote).await.unwrap().unwrap(), manifest);
+}
+
+#[tokio::test]
+async fn les_objets_de_l_ancien_espace_ne_sont_pas_reconnus() {
+    let space = MemoryStore::default();
+    space.overwrite("space.json", "ancien manifeste chiffré".as_bytes().to_vec());
+    assert_eq!(read_manifest(&space).await.unwrap(), None);
+    assert!(space.raw("space.json").is_some());
 }

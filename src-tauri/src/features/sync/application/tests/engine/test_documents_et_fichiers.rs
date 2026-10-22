@@ -36,7 +36,7 @@ fn set_photo(computer: &Computer, name: &str, content: &[u8]) {
 }
 
 #[tokio::test]
-async fn la_photo_du_profil_voyage_chiffree_et_verifiee() {
+async fn la_photo_du_profil_voyage_en_clair_et_est_verifiee() {
     let space = Space::new();
     let a = space.computer();
     let b = space.computer();
@@ -48,11 +48,11 @@ async fn la_photo_du_profil_voyage_chiffree_et_verifiee() {
         .remote
         .names()
         .into_iter()
-        .filter(|n| n.starts_with("blobs/"))
+        .filter(|n| n.starts_with("v2/blobs/"))
         .collect();
     assert_eq!(blobs.len(), 1);
     let stored = space.remote.raw(&blobs[0]).unwrap();
-    assert!(!stored.windows(5).any(|w| w == b"photo"), "photo chiffrée");
+    assert!(stored.windows(5).any(|w| w == b"photo"), "photo en clair");
 
     b.sync_ok().await;
     assert_eq!(
@@ -73,7 +73,7 @@ async fn une_photo_absente_de_l_espace_n_empeche_pas_le_profil() {
         .remote
         .names()
         .into_iter()
-        .filter(|n| n.starts_with("blobs/"))
+        .filter(|n| n.starts_with("v2/blobs/"))
     {
         space.remote.remove(&blob);
     }
@@ -101,10 +101,10 @@ async fn une_photo_alteree_est_refusee() {
         .remote
         .names()
         .into_iter()
-        .find(|n| n.starts_with("blobs/"))
+        .find(|n| n.starts_with("v2/blobs/"))
         .unwrap();
-    // Autre contenu valide pour la clé, sous le même nom : l'empreinte ne correspond plus.
-    let forged = a.session.cipher.seal(&blob, b"autre image").unwrap();
+    // Un contenu différent sous le même nom ne passe plus la vérification d'empreinte.
+    let forged = b"autre image".to_vec();
     space.remote.remove(&blob);
     space.remote.overwrite(&blob, forged);
     b.sync_ok().await;

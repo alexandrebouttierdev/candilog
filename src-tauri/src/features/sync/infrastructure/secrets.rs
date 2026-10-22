@@ -1,5 +1,5 @@
-//! Secrets de la synchronisation dans le coffre du système (`keyring`) : clé de l'espace
-//! et jetons de renouvellement OAuth. Jamais dans SQLite, jamais dans les journaux.
+//! Secrets de la synchronisation dans le coffre du système (`keyring`) : jetons OAuth.
+//! Jamais dans SQLite, jamais dans les journaux.
 
 use crate::core::config::APP_IDENTIFIER;
 use crate::core::errors::{AppError, AppResult};
@@ -18,7 +18,7 @@ pub trait SyncSecrets: Send + Sync {
     fn delete(&self, name: &str) -> AppResult<()>;
 }
 
-/// Entrée de la clé d'un espace (avec l'identité de l'installation qui l'a déverrouillée).
+/// Entrée historique de clé, uniquement supprimée lors de la déconnexion d'anciens espaces.
 #[must_use]
 pub fn space_entry(space_id: &str) -> String {
     format!("sync-space-{space_id}")
@@ -33,8 +33,8 @@ pub fn token_entry(provider: &str) -> String {
 fn unavailable(error: &keyring::Error) -> AppError {
     tracing::error!(%error, "coffre système inaccessible pour la synchronisation");
     AppError::Sync(
-        "Le trousseau du système est indisponible : Candilog ne peut pas y conserver la clé \
-         de synchronisation."
+        "Le trousseau du système est indisponible : Candilog ne peut pas y conserver les \
+         jetons du fournisseur."
             .into(),
     )
 }

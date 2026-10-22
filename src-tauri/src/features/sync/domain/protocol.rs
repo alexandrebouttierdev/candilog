@@ -7,10 +7,10 @@
 //! comporte comme une API cloud.
 //!
 //! ```text
-//! space.json                                  manifeste en clair, sans donnée personnelle
-//! changes/<installation>/<seq:012>.batch      lot de changements chiffré
-//! snapshots/<installation>/<seq:012>.snap     instantané complet chiffré
-//! blobs/<empreinte>.blob                      fichier joint chiffré (photo du profil)
+//! space-v2.json                               manifeste du nouvel espace sans chiffrement
+//! v2/changes/<installation>/<seq:012>.batch   lot de changements en clair
+//! v2/snapshots/<installation>/<seq:012>.snap  instantané complet en clair
+//! v2/blobs/<empreinte>.blob                   fichier joint en clair
 //! ```
 
 use crate::features::sync::domain::entities::{self, SyncedTable};
@@ -20,13 +20,13 @@ use std::collections::BTreeMap;
 
 /// Version du format des objets distants. Un objet d'un format supérieur est refusé : il
 /// vient d'une version plus récente de Candilog.
-pub const FORMAT_VERSION: u32 = 1;
+pub const FORMAT_VERSION: u32 = 2;
 
 /// Nom du manifeste de l'espace.
-pub const MANIFEST_NAME: &str = "space.json";
-pub const CHANGES_PREFIX: &str = "changes/";
-pub const SNAPSHOTS_PREFIX: &str = "snapshots/";
-pub const BLOBS_PREFIX: &str = "blobs/";
+pub const MANIFEST_NAME: &str = "space-v2.json";
+pub const CHANGES_PREFIX: &str = "v2/changes/";
+pub const SNAPSHOTS_PREFIX: &str = "v2/snapshots/";
+pub const BLOBS_PREFIX: &str = "v2/blobs/";
 
 /// Plafonds de validation d'un objet reçu. Très au-delà d'un usage réel, ils empêchent un
 /// objet forgé d'épuiser la mémoire ou le disque.
@@ -43,9 +43,9 @@ pub type Row = BTreeMap<String, serde_json::Value>;
 pub struct Attachment {
     /// Nom local du fichier, sous le dossier des photos.
     pub file: String,
-    /// Nom de l'objet distant : empreinte chiffrée par clé, qui ne révèle pas le contenu.
+    /// Nom de l'objet distant : empreinte SHA-256 du contenu.
     pub blob: String,
-    /// SHA-256 du contenu en clair, vérifié après déchiffrement.
+    /// SHA-256 du contenu, vérifié après téléchargement.
     pub sha256: String,
     pub size: u64,
 }
@@ -105,32 +105,13 @@ pub struct Snapshot {
     pub records: Vec<RecordChange>,
 }
 
-/// Paramètres de dérivation de la clé de chiffrement depuis la phrase secrète.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct KdfParams {
-    pub algorithm: String,
-    pub memory_kib: u32,
-    pub iterations: u32,
-    pub parallelism: u32,
-    /// Sel aléatoire, en base64.
-    pub salt: String,
-}
-
 /// Manifeste d'un espace de synchronisation, écrit une seule fois à sa création.
-///
-/// Il est en clair parce qu'il faut le lire avant de connaître la clé ; il ne contient que
-/// des paramètres techniques et la clé de l'espace **chiffrée** par la phrase secrète.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SpaceManifest {
     pub format: u32,
     pub app: String,
     pub space_id: String,
     pub created_at: String,
-    pub kdf: KdfParams,
-    /// Clé de l'espace chiffrée par la clé dérivée de la phrase secrète (base64).
-    pub wrapped_key: String,
-    /// Témoin chiffré par la clé de l'espace : vérifie une clé de récupération saisie.
-    pub key_check: String,
 }
 
 /// Erreur de validation d'un objet reçu : il est refusé en entier.
@@ -351,7 +332,7 @@ fn validate_header(
             "objet écrit par une version plus récente de Candilog",
         ));
     }
-    if header.format == 0 {
+    if header.format != FORMAT_VERSION {
         return Err(invalid("format inconnu"));
     }
     if header.space_id != space_id {
@@ -410,35 +391,19 @@ pub fn validate_snapshot(
     snapshot.records.iter().try_for_each(validate_change)
 }
 
-/// Valide le manifeste d'un espace, paramètres de dérivation compris : un manifeste forgé
-/// ne doit pas pouvoir imposer une dérivation de plusieurs gigaoctets.
-///
 /// # Errors
 /// [`InvalidObject`] si le manifeste n'est pas celui d'un espace Candilog lisible.
 pub fn validate_manifest(manifest: &SpaceManifest) -> Result<(), InvalidObject> {
     if manifest.app != "candilog" {
         return Err(invalid("ce dossier n'est pas un espace Candilog"));
     }
-    if manifest.format > FORMAT_VERSION || manifest.format == 0 {
+    if manifest.format != FORMAT_VERSION {
         return Err(invalid(
             "espace créé par une version plus récente de Candilog",
         ));
     }
     if !is_valid_identifier(&manifest.space_id) {
         return Err(invalid("identifiant d'espace invalide"));
-    }
-    let kdf = &manifest.kdf;
-    if kdf.algorithm != "argon2id"
-        || !(19_456..=1_048_576).contains(&kdf.memory_kib)
-        || !(1..=10).contains(&kdf.iterations)
-        || !(1..=4).contains(&kdf.parallelism)
-        || kdf.salt.is_empty()
-        || kdf.salt.len() > 64
-    {
-        return Err(invalid("paramètres de chiffrement non pris en charge"));
-    }
-    if manifest.wrapped_key.len() > 256 || manifest.key_check.len() > 256 {
-        return Err(invalid("manifeste invalide"));
     }
     Ok(())
 }
@@ -469,7 +434,7 @@ mod tests {
         let name = batch_name(INSTALL, 42);
         assert_eq!(
             name,
-            "changes/11111111-1111-4111-8111-111111111111/000000000042.batch"
+            "v2/changes/11111111-1111-4111-8111-111111111111/000000000042.batch"
         );
         assert_eq!(
             parse_object_name(&name),
@@ -487,13 +452,13 @@ mod tests {
     #[test]
     fn les_noms_inattendus_sont_ignores() {
         for name in [
-            "changes/11111111-1111-4111-8111-111111111111/000000000042 (copie en conflit).batch",
-            "changes/../000000000001.batch",
-            "changes/11111111-1111-4111-8111-111111111111/000000000000.batch",
-            "changes/pas-un-uuid/000000000001.batch",
+            "v2/changes/11111111-1111-4111-8111-111111111111/000000000042 (copie en conflit).batch",
+            "v2/changes/../000000000001.batch",
+            "v2/changes/11111111-1111-4111-8111-111111111111/000000000000.batch",
+            "v2/changes/pas-un-uuid/000000000001.batch",
             ".tmp-000000000001.batch",
-            "blobs/../../etc/passwd.blob",
-            "space.json",
+            "v2/blobs/../../etc/passwd.blob",
+            "space-v2.json",
         ] {
             assert_eq!(parse_object_name(name), None, "{name}");
         }
@@ -576,26 +541,17 @@ mod tests {
     }
 
     #[test]
-    fn un_manifeste_aux_parametres_abusifs_est_refuse() {
+    fn un_manifeste_de_format_incorrect_ou_etranger_est_refuse() {
         let manifest = SpaceManifest {
-            format: 1,
+            format: FORMAT_VERSION,
             app: "candilog".into(),
             space_id: SPACE.into(),
             created_at: String::new(),
-            kdf: KdfParams {
-                algorithm: "argon2id".into(),
-                memory_kib: 65_536,
-                iterations: 3,
-                parallelism: 1,
-                salt: "c2Vs".into(),
-            },
-            wrapped_key: "x".into(),
-            key_check: "y".into(),
         };
         validate_manifest(&manifest).unwrap();
-        let mut abusive = manifest.clone();
-        abusive.kdf.memory_kib = 64 * 1024 * 1024;
-        assert!(validate_manifest(&abusive).is_err());
+        let mut old = manifest.clone();
+        old.format = 1;
+        assert!(validate_manifest(&old).is_err());
         let mut foreign = manifest;
         foreign.app = "autre".into();
         assert!(validate_manifest(&foreign).is_err());

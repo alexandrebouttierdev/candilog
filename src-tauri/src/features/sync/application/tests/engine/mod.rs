@@ -4,7 +4,6 @@
 use super::*;
 use crate::core::database::{open_pool, run_local_migrations, SqlitePool};
 use crate::features::sync::domain::model::SyncProviderKind;
-use crate::features::sync::infrastructure::crypto::{create_space, SpaceKey};
 use crate::features::sync::infrastructure::memory::MemoryStore;
 
 mod test_concurrence_et_conflits;
@@ -16,18 +15,15 @@ mod test_propagation;
 pub(super) const SPACE: &str = "22222222-2222-4222-8222-222222222222";
 pub(super) const TS: &str = "2026-01-01T00:00:00+00:00";
 
-/// Un espace partagé et sa clé.
+/// Un espace distant partagé.
 pub(super) struct Space {
     pub remote: MemoryStore,
-    pub key: SpaceKey,
 }
 
 impl Space {
     pub fn new() -> Self {
-        let created = create_space(SPACE, "phrase secrète de test", TS).unwrap();
         Self {
             remote: MemoryStore::default(),
-            key: created.key,
         }
     }
 
@@ -55,7 +51,6 @@ impl Computer {
         let installation_id = uuid::Uuid::new_v4().to_string();
         let session = Session {
             remote: Arc::new(space.remote.clone()),
-            cipher: Arc::new(SpaceCipher::new(SPACE, &space.key).unwrap()),
             space_id: SPACE.into(),
             installation_id,
         };
