@@ -17,11 +17,11 @@ use crate::features::sync::domain::protocol::{
 };
 use crate::features::sync::domain::remote::{PutOutcome, RemoteError, RemoteStore};
 use crate::features::sync::infrastructure::apply::{ApplyReport, Unit};
-use crate::features::sync::infrastructure::crypto::{CryptoError, SpaceCipher};
 use crate::features::sync::infrastructure::store::{
     hex, sha2_digest, OwnSnapshot, PreparedBatch, SqliteSyncStore, SyncConfig,
 };
 use std::collections::{BTreeMap, BTreeSet};
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -64,11 +64,10 @@ impl From<AppError> for SyncFailure {
     }
 }
 
-/// Connexion à un espace : fournisseur, clé et identité de l'installation.
+/// Connexion à un espace : fournisseur et identité de l'installation.
 #[derive(Clone)]
 pub struct Session {
     pub remote: Arc<dyn RemoteStore>,
-    pub cipher: Arc<SpaceCipher>,
     pub space_id: String,
     pub installation_id: String,
 }
@@ -111,11 +110,41 @@ async fn blocking<T: Send + 'static>(
         .map_err(SyncFailure::from)
 }
 
-fn integrity(error: CryptoError, name: &str) -> SyncFailure {
-    tracing::warn!(%error, object = name, "objet distant illisible");
-    SyncFailure::Integrity(format!(
-        "un fichier de l'espace est illisible ou incomplet ({name})"
-    ))
+fn decode_object<T: serde::de::DeserializeOwned>(
+    bytes: &[u8],
+    name: &str,
+) -> Result<T, SyncFailure> {
+    if bytes.len() > protocol::MAX_OBJECT_BYTES {
+        return Err(SyncFailure::Integrity(format!(
+            "objet trop volumineux ({name})"
+        )));
+    }
+    let decoder = flate2::read::DeflateDecoder::new(bytes);
+    let mut json = Vec::new();
+    decoder
+        .take(protocol::MAX_OBJECT_BYTES as u64 + 1)
+        .read_to_end(&mut json)
+        .map_err(|_| SyncFailure::Integrity(format!("objet compressé illisible ({name})")))?;
+    if json.len() > protocol::MAX_OBJECT_BYTES {
+        return Err(SyncFailure::Integrity(format!(
+            "objet décompressé trop volumineux ({name})"
+        )));
+    }
+    serde_json::from_slice(&json).map_err(|_| {
+        SyncFailure::Integrity(format!(
+            "un fichier de l'espace est illisible ou incomplet ({name})"
+        ))
+    })
+}
+
+fn encode_object<T: serde::Serialize>(value: &T) -> AppResult<Vec<u8>> {
+    let json = serde_json::to_vec(value)?;
+    let mut encoder =
+        flate2::write::DeflateEncoder::new(Vec::new(), flate2::Compression::default());
+    encoder
+        .write_all(&json)
+        .and_then(|()| encoder.finish())
+        .map_err(|error| AppError::Sync(format!("Compression impossible : {error}")))
 }
 
 fn invalid(error: &protocol::InvalidObject) -> SyncFailure {
@@ -234,10 +263,9 @@ impl SyncEngine {
         for _ in 0..MAX_BATCHES_PER_CYCLE {
             let store = self.store.clone();
             let photos = self.photos_dir.clone();
-            let cipher = Arc::clone(&session.cipher);
             let prepared = blocking(move || {
-                let namer = |bytes: &[u8]| cipher.blob_id(bytes);
-                let encode = |name: &str, batch: &ChangeBatch| cipher.encode_json(name, batch);
+                let namer = |bytes: &[u8]| hex(&sha2_digest(bytes));
+                let encode = |_name: &str, batch: &ChangeBatch| encode_object(batch);
                 store.prepare_batch(&photos, &namer, &encode)
             })
             .await?;
@@ -298,8 +326,12 @@ impl SyncEngine {
                 }
             };
             let name = protocol::blob_name(&upload.blob);
-            let sealed = session.cipher.seal(&name, &content)?;
-            session.remote.put_new(&name, &sealed).await?;
+            if content.len() as u64 > protocol::MAX_ATTACHMENT_BYTES {
+                return Err(SyncFailure::Integrity(
+                    "fichier joint trop volumineux".into(),
+                ));
+            }
+            session.remote.put_new(&name, &content).await?;
         }
         Ok(())
     }
@@ -392,10 +424,7 @@ impl SyncEngine {
                 "lot annoncé mais absent ({name})"
             )));
         };
-        let batch: ChangeBatch = session
-            .cipher
-            .decode_json(&name, &bytes)
-            .map_err(|error| integrity(error, &name))?;
+        let batch: ChangeBatch = decode_object(&bytes, &name)?;
         protocol::validate_batch(&batch, &session.space_id, installation, seq)
             .map_err(|error| invalid(&error))?;
         if batch.schema_version > LATEST_SCHEMA_VERSION {
@@ -436,7 +465,7 @@ impl SyncEngine {
             let Some(bytes) = session.remote.get(&name).await? else {
                 continue;
             };
-            let snapshot: Snapshot = match session.cipher.decode_json(&name, &bytes) {
+            let snapshot: Snapshot = match decode_object(&bytes, &name) {
                 Ok(snapshot) => snapshot,
                 Err(error) => {
                     tracing::warn!(%error, "instantané illisible ignoré");
@@ -531,10 +560,7 @@ impl SyncEngine {
                 .get(&name)
                 .await?
                 .ok_or_else(|| SyncFailure::Integrity(format!("lot absent ({name})")))?;
-            let batch: ChangeBatch = session
-                .cipher
-                .decode_json(&name, &bytes)
-                .map_err(|error| integrity(error, &name))?;
+            let batch: ChangeBatch = decode_object(&bytes, &name)?;
             protocol::validate_batch(&batch, &session.space_id, &installation, seq)
                 .map_err(|error| invalid(&error))?;
             if batch.schema_version > LATEST_SCHEMA_VERSION {
@@ -582,17 +608,14 @@ impl SyncEngine {
                     continue;
                 }
                 let name = protocol::blob_name(&attachment.blob);
-                let Some(sealed) = session.remote.get(&name).await? else {
+                let Some(content) = session.remote.get(&name).await? else {
                     tracing::warn!("fichier joint absent de l'espace");
                     continue;
                 };
-                let content = match session.cipher.open(&name, &sealed) {
-                    Ok(content) => content,
-                    Err(error) => {
-                        tracing::warn!(%error, "fichier joint illisible");
-                        continue;
-                    }
-                };
+                if content.len() as u64 > protocol::MAX_ATTACHMENT_BYTES {
+                    tracing::warn!("fichier joint trop volumineux : ignoré");
+                    continue;
+                }
                 if hex(&sha2_digest(&content)) != attachment.sha256
                     || u64::try_from(content.len()).ok() != Some(attachment.size)
                 {
@@ -647,10 +670,9 @@ impl SyncEngine {
     ) -> Result<(), SyncFailure> {
         let store = self.store.clone();
         let photos = self.photos_dir.clone();
-        let cipher = Arc::clone(&session.cipher);
         let cutoff = tombstone_cutoff.to_owned();
         let snapshot = blocking(move || {
-            let namer = |bytes: &[u8]| cipher.blob_id(bytes);
+            let namer = |bytes: &[u8]| hex(&sha2_digest(bytes));
             store.snapshot(last_seq, &cutoff, &photos, &namer)
         })
         .await?;
@@ -658,7 +680,7 @@ impl SyncEngine {
             return Ok(());
         };
         let name = protocol::snapshot_name(&session.installation_id, last_seq);
-        let bytes = session.cipher.encode_json(&name, &snapshot)?;
+        let bytes = encode_object(&snapshot).map_err(SyncFailure::from)?;
         session.remote.put_new(&name, &bytes).await?;
         let mut kept = snapshots;
         kept.push(OwnSnapshot {

@@ -49,6 +49,7 @@ describe("section Synchronisation et sauvegarde", () => {
       provider: "folder",
       location: "/Users/camille/Dropbox",
       space_exists: false,
+      legacy_space_exists: true,
       space_created_at: null,
       local_has_data: true,
     });
@@ -56,7 +57,8 @@ describe("section Synchronisation et sauvegarde", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Choisir un dossier…" }));
 
     expect(await screen.findByText("Créer l'espace de synchronisation")).toBeInTheDocument();
-    expect(screen.getByText(/ne peut pas la retrouver/)).toBeInTheDocument();
+    expect(screen.getByText(/envoyées sans chiffrement/)).toBeInTheDocument();
+    expect(screen.getByText(/Un ancien espace chiffré existe ici/)).toBeInTheDocument();
   });
 
   it("exige un scénario explicite pour rejoindre un espace depuis un ordinateur qui a des données", async () => {
@@ -65,17 +67,19 @@ describe("section Synchronisation et sauvegarde", () => {
       provider: "folder",
       location: "/Users/camille/Dropbox",
       space_exists: true,
+      legacy_space_exists: false,
       space_created_at: "2026-10-01T10:00:00Z",
       local_has_data: true,
     });
-    const setup = vi.spyOn(syncService, "setup");
+    const setup = vi.spyOn(syncService, "setup").mockResolvedValue({ backup_file: null });
     render(<SyncSettings />, { wrapper: QueryWrapper });
     await userEvent.click(await screen.findByRole("button", { name: "Choisir un dossier…" }));
-    await userEvent.type(await screen.findByLabelText("Phrase secrète"), "une phrase longue");
-    await userEvent.click(screen.getByRole("button", { name: "Rejoindre" }));
+    await userEvent.click(await screen.findByRole("radio", { name: /Fusionner avec les données/ }));
 
-    expect(await screen.findByText(/Choisissez ce que deviennent/)).toBeInTheDocument();
+    expect(await screen.findByText("Cet ordinateur contient déjà des données")).toBeInTheDocument();
     expect(setup).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("button", { name: "Rejoindre" }));
+    expect(setup).toHaveBeenCalledWith({ choice: "join_merge" });
   });
 
   it("explique l'état et confirme la désactivation sans effacer les données", async () => {

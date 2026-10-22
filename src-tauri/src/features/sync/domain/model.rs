@@ -69,8 +69,6 @@ pub enum SyncPhase {
     Offline,
     /// Session du fournisseur expirée ou révoquée.
     AuthRequired,
-    /// Clé de l'espace absente de ce poste : phrase secrète ou clé de récupération requise.
-    KeyRequired,
     TemporaryError,
     Conflict,
     Restoring,
@@ -145,6 +143,8 @@ pub struct RemoteProbe {
     pub location: String,
     /// Un espace Candilog existe déjà à cet emplacement.
     pub space_exists: bool,
+    /// Un espace chiffré au format historique est présent ; il n'est ni lu ni modifié.
+    pub legacy_space_exists: bool,
     pub space_created_at: Option<String>,
     /// Cet ordinateur contient déjà des données (candidatures, profil, documents…).
     pub local_has_data: bool,
@@ -169,8 +169,6 @@ pub enum SetupChoice {
 #[ts(export, export_to = "sync.ts")]
 pub struct SetupRequest {
     pub choice: SetupChoice,
-    pub passphrase: Option<String>,
-    pub recovery_key: Option<String>,
 }
 
 /// Issue de la mise en service.
@@ -178,8 +176,6 @@ pub struct SetupRequest {
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "sync.ts")]
 pub struct SetupOutcome {
-    /// Clé de récupération, affichée **une seule fois** à la création de l'espace.
-    pub recovery_key: Option<String>,
     /// Sauvegarde prise avant de remplacer les données locales.
     pub backup_file: Option<String>,
 }

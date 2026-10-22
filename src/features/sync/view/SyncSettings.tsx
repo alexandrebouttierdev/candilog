@@ -1,19 +1,12 @@
-import { Controller, useForm, useWatch } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
 import {
   Banner,
   Button,
   ConfirmDialog,
   ErrorBanner,
-  FormField,
-  SegmentedControl,
   SkeletonRows,
   StatusGlyph,
   Switch,
-  TextInput,
 } from "@/shared/ui";
-import { AppError } from "@/shared/types/app-error";
 import type { SyncProviderKind, SyncStatus } from "@/shared/types/generated/sync";
 import { SettingsRow, SettingsSection } from "@/features/settings";
 import {
@@ -23,9 +16,7 @@ import {
   phaseTone,
   PROVIDER_LABELS,
 } from "../model/syncStatus";
-import { unlockSchema, type UnlockValues } from "../model/schemas/sync-secret.schema";
 import { useSyncSettingsViewModel, type SyncSettingsViewModel } from "../viewmodel/useSyncSettingsViewModel";
-import { RecoveryKeyDialog } from "./RecoveryKeyDialog";
 import { SyncConflictList } from "./SyncConflictList";
 import { SyncSetupDialog } from "./SyncSetupDialog";
 
@@ -41,13 +32,19 @@ export function SyncSettings() {
   return (
     <SettingsSection
       title="Synchronisation et sauvegarde"
-      description="Vos données restent sur cet ordinateur. Vous pouvez aussi les retrouver sur vos autres ordinateurs, chiffrées, par le service de votre choix."
+      description="Vos données restent sur cet ordinateur. Vous pouvez aussi les retrouver sur vos autres ordinateurs via le service de votre choix."
     >
+      <Banner
+        className="mb-3"
+        tone="warning"
+        title="Synchronisation sans chiffrement"
+        message="Les données synchronisées sont lisibles par le fournisseur de stockage et par toute personne ayant accès à l'emplacement choisi."
+      />
       <dl className="mb-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 rounded-r9 bg-group px-3 py-2.5 text-sub">
         <dt className="font-medium text-tx-3">Sauvegarde</dt>
         <dd className="text-tx-5">une copie de la base dans un fichier, quand vous le décidez.</dd>
         <dt className="font-medium text-tx-3">Synchronisation</dt>
-        <dd className="text-tx-5">les mêmes données sur plusieurs ordinateurs, envoyées chiffrées et en continu.</dd>
+        <dd className="text-tx-5">les mêmes données sur plusieurs ordinateurs, envoyées en continu sans chiffrement.</dd>
         <dt className="font-medium text-tx-3">Restauration</dt>
         <dd className="text-tx-5">remplace les données de cet ordinateur, après une copie de secours.</dd>
       </dl>
@@ -60,7 +57,6 @@ export function SyncSettings() {
       {vm.probe ? (
         <SyncSetupDialog probe={vm.probe} busy={vm.settingUp} onSubmit={vm.setup} onClose={vm.closeProbe} />
       ) : null}
-      {vm.recoveryKey ? <RecoveryKeyDialog recoveryKey={vm.recoveryKey} onClose={vm.closeRecoveryKey} /> : null}
     </SettingsSection>
   );
 }
@@ -140,8 +136,6 @@ function SyncPanel({ vm, status }: { vm: SyncSettingsViewModel; status: SyncStat
           </Button>
         ) : null}
       </div>
-
-      {status.phase === "key_required" ? <UnlockForm vm={vm} /> : null}
 
       {status.missing_files > 0 ? (
         <Banner
@@ -233,7 +227,7 @@ function SyncPanel({ vm, status }: { vm: SyncSettingsViewModel; status: SyncStat
         consequences={[
           { label: "Vos données restent sur cet ordinateur" },
           { label: "L'espace distant et les autres ordinateurs ne sont pas modifiés" },
-          { label: "La clé de l'espace et la connexion au fournisseur sont retirées d'ici" },
+          { label: "Les données locales restent ici ; l'espace distant n'est pas effacé" },
         ]}
         note={
           status.pending_changes > 0
@@ -246,84 +240,5 @@ function SyncPanel({ vm, status }: { vm: SyncSettingsViewModel; status: SyncStat
         onConfirm={vm.disconnect}
       />
     </div>
-  );
-}
-
-/** Déverrouillage d'un espace dont la clé manque sur cet ordinateur. */
-function UnlockForm({ vm }: { vm: SyncSettingsViewModel }) {
-  const [error, setError] = useState<string | null>(null);
-  const form = useForm<UnlockValues>({
-    resolver: zodResolver(unlockSchema),
-    defaultValues: { method: "passphrase", secret: "" },
-  });
-  const method = useWatch({ control: form.control, name: "method" });
-  const submit = form.handleSubmit(async (values) => {
-    setError(null);
-    try {
-      await vm.unlock({
-        passphrase: values.method === "passphrase" ? values.secret : null,
-        recovery: values.method === "recovery" ? values.secret : null,
-      });
-      form.reset();
-    } catch (caught) {
-      setError(caught instanceof AppError ? caught.message : "Déverrouillage impossible.");
-    }
-  });
-
-  return (
-    <form
-      className="mt-3 rounded-r9 bg-group px-3 py-3"
-      onSubmit={(event) => {
-        event.preventDefault();
-        void submit();
-      }}
-    >
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <span className="text-sub font-mid text-tx-4">Déverrouiller l'espace avec</span>
-        <Controller
-          control={form.control}
-          name="method"
-          render={({ field }) => (
-            <SegmentedControl
-              dense
-              label="Secret de l'espace"
-              value={field.value}
-              onChange={field.onChange}
-              options={[
-                { value: "passphrase", label: "Phrase secrète" },
-                { value: "recovery", label: "Clé de récupération" },
-              ]}
-            />
-          )}
-        />
-      </div>
-      <div className="flex items-end gap-2">
-        <Controller
-          control={form.control}
-          name="secret"
-          render={({ field, fieldState }) => (
-            <FormField
-              className="flex-1"
-              label={method === "passphrase" ? "Phrase secrète" : "Clé de récupération"}
-              error={fieldState.error?.message ?? error ?? undefined}
-            >
-              {(props) => (
-                <TextInput
-                  {...props}
-                  {...field}
-                  type={method === "passphrase" ? "password" : "text"}
-                  autoComplete="off"
-                  spellCheck={false}
-                  invalid={fieldState.invalid}
-                />
-              )}
-            </FormField>
-          )}
-        />
-        <Button type="submit" variant="primary" disabled={vm.unlocking}>
-          Déverrouiller
-        </Button>
-      </div>
-    </form>
   );
 }

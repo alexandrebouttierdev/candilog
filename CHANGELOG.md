@@ -4,6 +4,15 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
 [SemVer](https://semver.org/lang/fr/). Chaque version publiée correspond à un tag
 `v<version>` et à une [release GitHub](https://github.com/alexandrebouttierdev/candilog/releases).
 
+## [0.1.4] — 2026-10-22
+
+### Modifié
+
+- La synchronisation n'utilise plus de phrase secrète ni de chiffrement. Les anciens espaces
+  chiffrés sont conservés sans migration ; les nouveaux espaces utilisent un protocole
+  distinct et transmettent les données en clair. Le fournisseur de stockage et toute
+  personne ayant accès à l'espace peuvent lire les données synchronisées.
+
 ## [0.1.3] — 2026-10-22
 
 ### Corrigé

@@ -15,7 +15,6 @@ use crate::features::sync::domain::model::{
 use crate::features::sync::domain::protocol::Row;
 use crate::features::sync::domain::remote::{RemoteError, RemoteStore};
 use crate::features::sync::infrastructure::apply::StoredConflict;
-use crate::features::sync::infrastructure::crypto::{self, SpaceCipher, SpaceKey};
 use crate::features::sync::infrastructure::folder::FolderStore;
 use crate::features::sync::infrastructure::oauth::{self, OAuthClient, OAuthError, OAuthSession};
 use crate::features::sync::infrastructure::secrets::{space_entry, SyncSecrets};
@@ -26,7 +25,6 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tokio::sync::Notify;
 use tokio_util::sync::CancellationToken;
-use zeroize::Zeroizing;
 
 /// Intervalle de surveillance du journal local.
 const TICK: Duration = Duration::from_secs(5);
@@ -96,13 +94,6 @@ pub struct SyncService {
     notify: Notify,
     shutdown: CancellationToken,
     cycle_lock: tokio::sync::Mutex<()>,
-}
-
-/// Secret de l'espace conservé dans le coffre : la clé et l'installation qui l'a ouverte.
-#[derive(serde::Serialize, serde::Deserialize)]
-struct StoredSpaceKey {
-    installation_id: String,
-    key: String,
 }
 
 fn sync_error(message: impl Into<String>) -> AppError {
@@ -365,59 +356,39 @@ impl SyncService {
         }
     }
 
-    fn load_key(&self, space_id: &str) -> AppResult<Option<(String, SpaceKey)>> {
-        let Some(text) = self.secrets.load(&space_entry(space_id))? else {
-            return Ok(None);
-        };
-        let stored: StoredSpaceKey = serde_json::from_str(&text)
-            .map_err(|_| sync_error("Clé de synchronisation illisible dans le trousseau."))?;
-        let key = SpaceKey::from_base64(&stored.key)
-            .map_err(|_| sync_error("Clé de synchronisation illisible dans le trousseau."))?;
-        Ok(Some((stored.installation_id, key)))
-    }
-
-    fn save_key(&self, space_id: &str, installation_id: &str, key: &SpaceKey) -> AppResult<()> {
-        let stored = StoredSpaceKey {
-            installation_id: installation_id.to_owned(),
-            key: key.to_base64().to_string(),
-        };
-        let text = Zeroizing::new(serde_json::to_string(&stored)?);
-        self.secrets.store(&space_entry(space_id), &text)
-    }
-
-    /// Session de l'espace rattaché (et sa clé), ou ce qui l'empêche.
-    fn session(&self, config: &SyncConfig) -> Result<(Session, SpaceKey), SessionError> {
+    /// Session de l'espace rattaché, ou ce qui l'empêche.
+    fn session(&self, config: &SyncConfig) -> Result<Session, SessionError> {
         let (space_id, installation_id) = config.attached().ok_or_else(|| {
             SessionError::Blocked(Blocked {
                 phase: SyncPhase::NotConfigured,
                 message: String::new(),
             })
         })?;
-        let key = match self.load_key(space_id) {
-            Ok(Some((owner, key))) if owner == installation_id => key,
-            Ok(_) => {
-                return Err(SessionError::Blocked(Blocked {
-                    phase: SyncPhase::KeyRequired,
-                    message: "La clé de l'espace est absente de cet ordinateur : saisissez votre phrase secrète ou votre clé de récupération.".into(),
-                }))
-            }
-            Err(error) => return Err(SessionError::Failure(SyncFailure::Local(error.user_message()))),
-        };
         let remote = self.remote_for(config).map_err(|error| {
             // Dossier démonté, fournisseur indisponible : passager, réessayé avec délai.
             SessionError::Failure(SyncFailure::Remote(RemoteError::Unavailable(
                 error.user_message(),
             )))
         })?;
-        let cipher = SpaceCipher::new(space_id, &key)
-            .map_err(|error| SessionError::Failure(SyncFailure::Local(error.user_message())))?;
         let session = Session {
             remote,
-            cipher: Arc::new(cipher),
             space_id: space_id.to_owned(),
             installation_id: installation_id.to_owned(),
         };
-        Ok((session, key))
+        Ok(session)
+    }
+
+    async fn validate_session_space(&self, session: &Session) -> Result<(), SyncFailure> {
+        let manifest = read_manifest(session.remote.as_ref()).await?;
+        match manifest {
+            Some(manifest) if manifest.space_id == session.space_id => Ok(()),
+            Some(_) => Err(SyncFailure::Incompatible(
+                "Cet emplacement contient un autre espace de synchronisation : désactivez puis configurez un nouvel espace.".into(),
+            )),
+            None => Err(SyncFailure::Incompatible(
+                "Cet espace utilise un ancien format chiffré et n'a pas été modifié. Désactivez la synchronisation puis créez un nouvel espace non chiffré.".into(),
+            )),
+        }
     }
 
     async fn probe(
@@ -429,6 +400,11 @@ impl SyncService {
         let manifest = read_manifest(remote)
             .await
             .map_err(|failure| into_app_error(&failure, provider))?;
+        let legacy_space_exists = remote
+            .get("space.json")
+            .await
+            .map_err(|error| into_app_error(&SyncFailure::Remote(error), provider))?
+            .is_some();
         let store = self.store().clone();
         let local_has_data =
             crate::core::utils::blocking::execute(move || store.local_has_data()).await?;
@@ -436,6 +412,7 @@ impl SyncService {
             provider,
             location,
             space_exists: manifest.is_some(),
+            legacy_space_exists,
             space_created_at: manifest.map(|manifest| manifest.created_at),
             local_has_data,
         })
@@ -538,8 +515,8 @@ impl SyncService {
     /// Met la synchronisation en service selon le scénario choisi explicitement.
     ///
     /// # Errors
-    /// `Validation` si le scénario ne correspond pas à l'emplacement, ou si la phrase secrète
-    /// est refusée ; `Sync` pour un échec du fournisseur ; rien n'est rattaché en cas d'échec.
+    /// `Validation` si le scénario ne correspond pas à l'emplacement ; `Sync` pour un échec
+    /// du fournisseur ; rien n'est rattaché en cas d'échec.
     pub async fn setup(&self, request: SetupRequest) -> AppResult<SetupOutcome> {
         let pending = self
             .pending
@@ -554,32 +531,26 @@ impl SyncService {
             .await
             .map_err(|failure| into_app_error(&failure, provider))?;
         let installation_id = uuid::Uuid::new_v4().to_string();
-        let mut outcome = SetupOutcome {
-            recovery_key: None,
-            backup_file: None,
-        };
+        let mut outcome = SetupOutcome { backup_file: None };
 
-        let (space_id, key) = match (request.choice, &manifest) {
+        let space_id = match (request.choice, &manifest) {
             (SetupChoice::CreateSpace, Some(_)) => {
                 return Err(AppError::Validation(
                     "Un espace Candilog existe déjà à cet emplacement : rejoignez-le plutôt que d'en créer un autre.".into(),
                 ))
             }
             (SetupChoice::CreateSpace, None) => {
-                let passphrase = Zeroizing::new(request.passphrase.unwrap_or_default());
                 let space_id = uuid::Uuid::new_v4().to_string();
-                let created_at = now_iso();
-                let new_space = {
-                    let passphrase = passphrase.clone();
-                    let space_id = space_id.clone();
-                    crate::core::utils::blocking::execute(move || crypto::create_space(&space_id, &passphrase, &created_at))
-                        .await?
+                let new_manifest = crate::features::sync::domain::protocol::SpaceManifest {
+                    format: crate::features::sync::domain::protocol::FORMAT_VERSION,
+                    app: "candilog".into(),
+                    space_id: space_id.clone(),
+                    created_at: now_iso(),
                 };
-                publish_manifest(pending.remote.as_ref(), &new_space.manifest)
+                publish_manifest(pending.remote.as_ref(), &new_manifest)
                     .await
                     .map_err(|failure| into_app_error(&failure, provider))?;
-                outcome.recovery_key = Some(new_space.recovery_key.to_string());
-                (space_id, new_space.key)
+                space_id
             }
             (_, None) => {
                 return Err(AppError::Validation(
@@ -587,12 +558,10 @@ impl SyncService {
                 ))
             }
             (_, Some(manifest)) => {
-                let key = Self::unlock(manifest.clone(), request.passphrase, request.recovery_key).await?;
-                (manifest.space_id.clone(), key)
+                manifest.space_id.clone()
             }
         };
 
-        self.save_key(&space_id, &installation_id, &key)?;
         let config = SyncConfig {
             provider,
             folder: pending
@@ -615,10 +584,12 @@ impl SyncService {
                 outcome.backup_file = Some(self.safety_backup().await?);
                 let session = Session {
                     remote: Arc::clone(&pending.remote),
-                    cipher: Arc::new(SpaceCipher::new(&space_id, &key)?),
                     space_id: space_id.clone(),
                     installation_id: installation_id.clone(),
                 };
+                self.validate_session_space(&session)
+                    .await
+                    .map_err(|failure| into_app_error(&failure, provider))?;
                 self.runtime().restoring = true;
                 self.publish_status();
                 let result = self
@@ -636,10 +607,7 @@ impl SyncService {
                 crate::core::utils::blocking::execute(move || store.attach(&config, true)).await
             }
         };
-        if let Err(error) = attached {
-            let _ = self.secrets.delete(&space_entry(&space_id));
-            return Err(error);
-        }
+        attached?;
         *self
             .pending
             .lock()
@@ -647,72 +615,6 @@ impl SyncService {
         self.reset_runtime();
         self.trigger();
         Ok(outcome)
-    }
-
-    async fn unlock(
-        manifest: crate::features::sync::domain::protocol::SpaceManifest,
-        passphrase: Option<String>,
-        recovery: Option<String>,
-    ) -> AppResult<SpaceKey> {
-        let passphrase = passphrase.map(Zeroizing::new);
-        let recovery = recovery.map(Zeroizing::new);
-        crate::core::utils::blocking::execute(move || {
-            let result = if let Some(recovery) =
-                recovery.as_deref().filter(|value| !value.trim().is_empty())
-            {
-                crypto::unlock_with_recovery(&manifest, recovery)?
-            } else if let Some(passphrase) = passphrase.as_deref().filter(|value| !value.is_empty())
-            {
-                crypto::unlock_with_passphrase(&manifest, passphrase)?
-            } else {
-                return Err(AppError::Validation(
-                    "Saisissez la phrase secrète de l'espace, ou sa clé de récupération.".into(),
-                ));
-            };
-            result.map_err(|_| {
-                AppError::Validation("Phrase secrète ou clé de récupération incorrecte.".into())
-            })
-        })
-        .await
-    }
-
-    /// Déverrouille l'espace sur un ordinateur dont le coffre ne contient pas la clé (base
-    /// copiée, trousseau effacé). L'installation reçoit une nouvelle identité : elle ne
-    /// pourra jamais écrire sous le nom d'un autre ordinateur.
-    ///
-    /// # Errors
-    /// `Validation` pour un secret incorrect, `Sync` pour un espace inaccessible.
-    pub async fn unlock_space(
-        &self,
-        passphrase: Option<String>,
-        recovery: Option<String>,
-    ) -> AppResult<()> {
-        let config = self.store().config()?;
-        let space_id = config
-            .space_id
-            .clone()
-            .ok_or_else(|| AppError::Validation("Aucun espace rattaché.".into()))?;
-        let remote = self.remote_for(&config)?;
-        let manifest = read_manifest(remote.as_ref())
-            .await
-            .map_err(|failure| into_app_error(&failure, config.provider))?
-            .ok_or_else(|| {
-                sync_error("L'espace de synchronisation a disparu de cet emplacement.")
-            })?;
-        if manifest.space_id != space_id {
-            return Err(sync_error(
-                "Cet emplacement contient un autre espace Candilog : déconnectez puis reconfigurez la synchronisation.",
-            ));
-        }
-        let key = Self::unlock(manifest, passphrase, recovery).await?;
-        let installation_id = uuid::Uuid::new_v4().to_string();
-        let store = self.store().clone();
-        let renewed = installation_id.clone();
-        crate::core::utils::blocking::execute(move || store.renew_installation(&renewed)).await?;
-        self.save_key(&space_id, &installation_id, &key)?;
-        self.reset_runtime();
-        self.trigger();
-        Ok(())
     }
 
     async fn safety_backup(&self) -> AppResult<String> {
@@ -737,10 +639,13 @@ impl SyncService {
     pub async fn restore_from_space(&self) -> AppResult<String> {
         let _guard = self.cycle_lock.lock().await;
         let config = self.store().config()?;
-        let (session, _) = self.session(&config).map_err(|error| match error {
+        let session = self.session(&config).map_err(|error| match error {
             SessionError::Blocked(blocked) => sync_error(blocked.message),
             SessionError::Failure(failure) => into_app_error(&failure, config.provider),
         })?;
+        self.validate_session_space(&session)
+            .await
+            .map_err(|failure| into_app_error(&failure, config.provider))?;
         let backup_file = self.safety_backup().await?;
         self.runtime().restoring = true;
         self.publish_status();
@@ -903,7 +808,7 @@ impl SyncService {
         if config.attached().is_none() {
             return;
         }
-        let (session, key) = match self.session(&config) {
+        let session = match self.session(&config) {
             Ok(opened) => opened,
             Err(SessionError::Blocked(blocked)) => {
                 self.runtime().blocked = Some(blocked);
@@ -919,6 +824,22 @@ impl SyncService {
                 return;
             }
         };
+        if let Err(failure) = self.validate_session_space(&session).await {
+            match failure {
+                SyncFailure::Incompatible(message) => {
+                    self.runtime().blocked = Some(Blocked {
+                        phase: SyncPhase::Incompatible,
+                        message,
+                    });
+                }
+                failure => {
+                    let mut runtime = self.runtime();
+                    self.schedule_retry(&mut runtime, &failure, config.provider);
+                }
+            }
+            self.publish_status();
+            return;
+        }
         {
             let mut runtime = self.runtime();
             runtime.syncing = true;
@@ -929,13 +850,6 @@ impl SyncService {
             () = self.shutdown.cancelled() => return,
             report = self.engine.cycle(&session) => report,
         };
-        if let Some(renewed) = &report.renewed_installation {
-            if let Some(space_id) = &config.space_id {
-                if let Err(error) = self.save_key(space_id, renewed, &key) {
-                    tracing::error!(%error, "nouvelle identité non retenue dans le coffre");
-                }
-            }
-        }
         let pending = self
             .store()
             .counts()

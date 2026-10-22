@@ -21,8 +21,6 @@ export const syncService = {
   connect: (provider: SyncProviderKind) => ipc<RemoteProbe>("sync_connect", { provider }),
   cancelConnect: () => ipc<void>("sync_cancel_connect"),
   setup: (request: SetupRequest) => ipc<SetupOutcome>("sync_setup", { request }),
-  unlock: (passphrase: string | null, recovery_key: string | null) =>
-    ipc<void>("sync_unlock", { passphrase, recovery_key }),
   setAuto: (enabled: boolean) => ipc<void>("sync_set_auto", { enabled }),
   now: () => ipc<void>("sync_now"),
   disconnect: () => ipc<void>("sync_disconnect"),

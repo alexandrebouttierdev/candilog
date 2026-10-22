@@ -5,7 +5,6 @@ use super::*;
 use crate::core::database::{open_pool, run_local_migrations, SqlitePool};
 use crate::features::sync::infrastructure::secrets::MemorySecrets;
 
-const PASSPHRASE: &str = "phrase secrète de test";
 const TS: &str = "2026-01-01T00:00:00+00:00";
 
 struct Install {
@@ -60,26 +59,13 @@ impl Install {
             .unwrap()
     }
 
-    async fn setup(
-        &self,
-        choice: SetupChoice,
-        passphrase: Option<&str>,
-        recovery: Option<&str>,
-    ) -> AppResult<SetupOutcome> {
-        self.service
-            .setup(SetupRequest {
-                choice,
-                passphrase: passphrase.map(str::to_owned),
-                recovery_key: recovery.map(str::to_owned),
-            })
-            .await
+    async fn setup(&self, choice: SetupChoice) -> AppResult<SetupOutcome> {
+        self.service.setup(SetupRequest { choice }).await
     }
 
     async fn create_space(&self, folder: &Path) -> SetupOutcome {
         self.choose(folder).await;
-        self.setup(SetupChoice::CreateSpace, Some(PASSPHRASE), None)
-            .await
-            .unwrap()
+        self.setup(SetupChoice::CreateSpace).await.unwrap()
     }
 
     fn phase(&self) -> SyncPhase {
@@ -100,7 +86,7 @@ async fn le_mode_local_est_celui_par_defaut() {
 }
 
 #[tokio::test]
-async fn creer_un_espace_publie_les_donnees_locales_chiffrees() {
+async fn creer_un_espace_publie_les_donnees_sans_chiffrement() {
     let folder = tempfile::tempdir().unwrap();
     let install = Install::new();
     install.add_company("c1");
@@ -108,16 +94,8 @@ async fn creer_un_espace_publie_les_donnees_locales_chiffrees() {
     assert!(!probe.space_exists);
     assert!(probe.local_has_data);
 
-    let outcome = install
-        .setup(SetupChoice::CreateSpace, Some(PASSPHRASE), None)
-        .await
-        .unwrap();
-    let recovery = outcome.recovery_key.unwrap();
-    assert_eq!(
-        recovery.split('-').count(),
-        13,
-        "clé de récupération lisible par groupes"
-    );
+    let outcome = install.setup(SetupChoice::CreateSpace).await.unwrap();
+    assert!(outcome.backup_file.is_none());
     assert_eq!(install.phase(), SyncPhase::Pending);
 
     install.service.run_cycle().await;
@@ -126,8 +104,8 @@ async fn creer_un_espace_publie_les_donnees_locales_chiffrees() {
     assert!(status.last_success_at.is_some());
     assert_eq!(status.pending_changes, 0);
     let space = folder.path().join("candilog-sync");
-    assert!(space.join("space.json").is_file());
-    let manifest = std::fs::read_to_string(space.join("space.json")).unwrap();
+    assert!(space.join("space-v2.json").is_file());
+    let manifest = std::fs::read_to_string(space.join("space-v2.json")).unwrap();
     assert!(
         !manifest.contains("Entreprise"),
         "le manifeste ne porte aucune donnée"
@@ -135,35 +113,24 @@ async fn creer_un_espace_publie_les_donnees_locales_chiffrees() {
 }
 
 #[tokio::test]
-async fn une_phrase_trop_courte_ne_cree_rien() {
+async fn la_creation_ne_demande_aucune_phrase_secrete() {
     let folder = tempfile::tempdir().unwrap();
     let install = Install::new();
     install.choose(folder.path()).await;
-    assert!(install
-        .setup(SetupChoice::CreateSpace, Some("court"), None)
-        .await
-        .is_err());
-    assert_eq!(install.phase(), SyncPhase::NotConfigured);
-    assert!(!folder.path().join("candilog-sync/space.json").exists());
+    install.setup(SetupChoice::CreateSpace).await.unwrap();
+    assert_eq!(install.phase(), SyncPhase::Pending);
+    assert!(folder.path().join("candilog-sync/space-v2.json").exists());
 }
 
 #[tokio::test]
-async fn rejoindre_avec_une_phrase_incorrecte_ne_rattache_rien() {
+async fn rejoindre_un_espace_ne_demande_aucun_secret() {
     let folder = tempfile::tempdir().unwrap();
     let first = Install::new();
     first.create_space(folder.path()).await;
     let second = Install::new();
     assert!(second.choose(folder.path()).await.space_exists);
-    let error = second
-        .setup(
-            SetupChoice::JoinMerge,
-            Some("une autre phrase secrète"),
-            None,
-        )
-        .await
-        .unwrap_err();
-    assert!(error.user_message().contains("incorrecte"));
-    assert_eq!(second.phase(), SyncPhase::NotConfigured);
+    second.setup(SetupChoice::JoinMerge).await.unwrap();
+    assert_eq!(second.phase(), SyncPhase::Pending);
 }
 
 #[tokio::test]
@@ -177,10 +144,7 @@ async fn deux_ordinateurs_se_synchronisent_par_un_dossier() {
     let second = Install::new();
     second.add_company("c2");
     second.choose(folder.path()).await;
-    second
-        .setup(SetupChoice::JoinMerge, Some(PASSPHRASE), None)
-        .await
-        .unwrap();
+    second.setup(SetupChoice::JoinMerge).await.unwrap();
     second.service.run_cycle().await;
     first.service.run_cycle().await;
 
@@ -192,23 +156,16 @@ async fn deux_ordinateurs_se_synchronisent_par_un_dossier() {
 }
 
 #[tokio::test]
-async fn la_cle_de_recuperation_permet_de_rejoindre() {
+async fn rejoindre_un_espace_est_possible_sans_cle_de_recuperation() {
     let folder = tempfile::tempdir().unwrap();
     let first = Install::new();
     first.add_company("c1");
-    let recovery = first
-        .create_space(folder.path())
-        .await
-        .recovery_key
-        .unwrap();
+    first.create_space(folder.path()).await;
     first.service.run_cycle().await;
 
     let second = Install::new();
     second.choose(folder.path()).await;
-    second
-        .setup(SetupChoice::JoinMerge, None, Some(&recovery))
-        .await
-        .unwrap();
+    second.setup(SetupChoice::JoinMerge).await.unwrap();
     second.service.run_cycle().await;
     assert_eq!(second.count("SELECT count(*) FROM companies"), 1);
 }
@@ -224,10 +181,7 @@ async fn recuperer_l_espace_sauvegarde_puis_remplace_les_donnees_locales() {
     let second = Install::new();
     second.add_company("locale");
     second.choose(folder.path()).await;
-    let outcome = second
-        .setup(SetupChoice::JoinReplaceLocal, Some(PASSPHRASE), None)
-        .await
-        .unwrap();
+    let outcome = second.setup(SetupChoice::JoinReplaceLocal).await.unwrap();
     let backup_file = outcome.backup_file.unwrap();
     assert!(
         Path::new(&backup_file).is_file(),
@@ -251,9 +205,7 @@ async fn creer_un_second_espace_au_meme_endroit_est_refuse() {
     let second = Install::new();
     second.choose(folder.path()).await;
     assert!(matches!(
-        second
-            .setup(SetupChoice::CreateSpace, Some(PASSPHRASE), None)
-            .await,
+        second.setup(SetupChoice::CreateSpace).await,
         Err(AppError::Validation(_))
     ));
 }
@@ -264,9 +216,7 @@ async fn rejoindre_un_emplacement_vide_est_refuse() {
     let install = Install::new();
     install.choose(folder.path()).await;
     assert!(matches!(
-        install
-            .setup(SetupChoice::JoinMerge, Some(PASSPHRASE), None)
-            .await,
+        install.setup(SetupChoice::JoinMerge).await,
         Err(AppError::Validation(_))
     ));
 }
@@ -278,7 +228,7 @@ async fn se_deconnecter_garde_les_donnees_locales_et_l_espace() {
     install.add_company("c1");
     install.create_space(folder.path()).await;
     install.service.run_cycle().await;
-    let files_before = std::fs::read_dir(folder.path().join("candilog-sync/changes"))
+    let files_before = std::fs::read_dir(folder.path().join("candilog-sync/v2/changes"))
         .unwrap()
         .count();
 
@@ -295,7 +245,7 @@ async fn se_deconnecter_garde_les_donnees_locales_et_l_espace() {
         "clé retirée du coffre"
     );
     assert_eq!(
-        std::fs::read_dir(folder.path().join("candilog-sync/changes"))
+        std::fs::read_dir(folder.path().join("candilog-sync/v2/changes"))
             .unwrap()
             .count(),
         files_before,
@@ -314,7 +264,8 @@ async fn changer_de_fournisseur_copie_les_donnees_sans_toucher_l_ancien_espace()
     install.add_company("c1");
     install.create_space(old.path()).await;
     install.service.run_cycle().await;
-    let old_space = std::fs::read_to_string(old.path().join("candilog-sync/space.json")).unwrap();
+    let old_space =
+        std::fs::read_to_string(old.path().join("candilog-sync/space-v2.json")).unwrap();
 
     install.service.disconnect().await.unwrap();
     install.create_space(new.path()).await;
@@ -322,14 +273,11 @@ async fn changer_de_fournisseur_copie_les_donnees_sans_toucher_l_ancien_espace()
 
     let other = Install::new();
     other.choose(new.path()).await;
-    other
-        .setup(SetupChoice::JoinMerge, Some(PASSPHRASE), None)
-        .await
-        .unwrap();
+    other.setup(SetupChoice::JoinMerge).await.unwrap();
     other.service.run_cycle().await;
     assert_eq!(other.count("SELECT count(*) FROM companies"), 1);
     assert_eq!(
-        std::fs::read_to_string(old.path().join("candilog-sync/space.json")).unwrap(),
+        std::fs::read_to_string(old.path().join("candilog-sync/space-v2.json")).unwrap(),
         old_space
     );
 }
@@ -367,35 +315,38 @@ async fn un_dossier_demonte_est_signale_sans_perdre_les_modifications() {
 }
 
 #[tokio::test]
-async fn une_cle_absente_du_coffre_se_retrouve_avec_la_phrase_secrete() {
+async fn un_espace_chiffre_historique_est_bloque_sans_etre_modifie() {
     let folder = tempfile::tempdir().unwrap();
     let install = Install::new();
     install.add_company("c1");
-    install.create_space(folder.path()).await;
-    install.service.run_cycle().await;
-    let before = install.service.config().unwrap().installation_id;
-
-    install.secrets.0.lock().unwrap().clear();
-    install.service.run_cycle().await;
-    assert_eq!(install.phase(), SyncPhase::KeyRequired);
-
-    assert!(install
-        .service
-        .unlock_space(Some("mauvaise phrase secrète".into()), None)
-        .await
-        .is_err());
-    install
-        .service
-        .unlock_space(Some(PASSPHRASE.into()), None)
-        .await
+    install.choose(folder.path()).await;
+    let legacy = folder.path().join("candilog-sync/space.json");
+    std::fs::write(&legacy, br#"{"format":1,"app":"candilog"}"#).unwrap();
+    let config = SyncConfig {
+        provider: SyncProviderKind::Folder,
+        folder: Some(folder.path().display().to_string()),
+        space_id: Some("22222222-2222-4222-8222-222222222222".into()),
+        installation_id: Some("11111111-1111-4111-8111-111111111111".into()),
+        auto_sync: true,
+    };
+    SqliteSyncStore::new(install.pool.clone())
+        .attach(&config, true)
         .unwrap();
     install.service.run_cycle().await;
-    assert_eq!(install.phase(), SyncPhase::UpToDate);
-    assert_ne!(
-        install.service.config().unwrap().installation_id,
-        before,
-        "nouvelle identité"
+    assert_eq!(install.phase(), SyncPhase::Incompatible);
+    assert!(install
+        .service
+        .status()
+        .unwrap()
+        .message
+        .unwrap()
+        .contains("ancien format chiffré"));
+    assert_eq!(
+        std::fs::read(&legacy).unwrap(),
+        br#"{"format":1,"app":"candilog"}"#
     );
+    assert!(!folder.path().join("candilog-sync/space-v2.json").exists());
+    assert_eq!(install.service.status().unwrap().pending_changes, 1);
 }
 
 #[tokio::test]
@@ -424,10 +375,7 @@ async fn les_conflits_sont_presentes_en_francais() {
     first.service.run_cycle().await;
     let second = Install::new();
     second.choose(folder.path()).await;
-    second
-        .setup(SetupChoice::JoinMerge, Some(PASSPHRASE), None)
-        .await
-        .unwrap();
+    second.setup(SetupChoice::JoinMerge).await.unwrap();
     second.service.run_cycle().await;
 
     first.exec("UPDATE companies SET city = 'Lyon' WHERE id = 'c1'");

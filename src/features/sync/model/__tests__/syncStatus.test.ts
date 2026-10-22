@@ -27,7 +27,6 @@ describe("état de synchronisation", () => {
   });
 
   it("signale les états qui attendent une action de l'utilisateur", () => {
-    expect(needsAttention({ ...base, phase: "key_required" })).toBe(true);
     expect(needsAttention({ ...base, phase: "conflict" })).toBe(true);
     expect(needsAttention({ ...base, phase: "offline" })).toBe(false);
   });

@@ -55,7 +55,7 @@ impl RemoteError {
 
 /// Stockage distant d'objets immuables.
 ///
-/// Les noms sont des chemins relatifs à l'espace (`changes/<installation>/<seq>.batch`).
+/// Les noms sont des chemins relatifs à l'espace (`v2/changes/<installation>/<seq>.batch`).
 /// Aucune implémentation ne doit suivre un nom vers l'extérieur de l'espace : les noms
 /// sont produits par le moteur, mais un adaptateur les revalide malgré tout.
 #[async_trait]

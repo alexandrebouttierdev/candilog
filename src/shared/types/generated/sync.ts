@@ -30,7 +30,11 @@ export type RemoteProbe = { provider: SyncProviderKind, location: string,
 /**
  * Un espace Candilog existe déjà à cet emplacement.
  */
-space_exists: boolean, space_created_at: string | null, 
+space_exists: boolean, 
+/**
+ * Un espace chiffré au format historique est présent ; il n'est ni lu ni modifié.
+ */
+legacy_space_exists: boolean, space_created_at: string | null, 
 /**
  * Cet ordinateur contient déjà des données (candidatures, profil, documents…).
  */
@@ -46,10 +50,6 @@ export type SetupChoice = "create_space" | "join_merge" | "join_replace_local";
  */
 export type SetupOutcome = { 
 /**
- * Clé de récupération, affichée **une seule fois** à la création de l'espace.
- */
-recovery_key: string | null, 
-/**
  * Sauvegarde prise avant de remplacer les données locales.
  */
 backup_file: string | null, };
@@ -57,7 +57,7 @@ backup_file: string | null, };
 /**
  * Demande de mise en service de la synchronisation.
  */
-export type SetupRequest = { choice: SetupChoice, passphrase: string | null, recovery_key: string | null, };
+export type SetupRequest = { choice: SetupChoice, };
 
 /**
  * Conflit présenté à l'utilisateur.
@@ -70,7 +70,7 @@ export type SyncConflict = { id: string, entity: string, entity_label: string, r
  * `UpToDate` n'est annoncé que lorsque plus aucune modification locale n'attend et que le
  * fournisseur a confirmé l'écriture du dernier lot.
  */
-export type SyncPhase = "not_configured" | "disabled" | "up_to_date" | "syncing" | "pending" | "offline" | "auth_required" | "key_required" | "temporary_error" | "conflict" | "restoring" | "incompatible";
+export type SyncPhase = "not_configured" | "disabled" | "up_to_date" | "syncing" | "pending" | "offline" | "auth_required" | "temporary_error" | "conflict" | "restoring" | "incompatible";
 
 /**
  * Mode de stockage choisi. `Local` est le mode par défaut : aucune donnée ne quitte

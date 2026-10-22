@@ -2,7 +2,7 @@
 
 Candilog fonctionne d'abord **en local** : c'est le mode par défaut, sans compte ni réseau.
 La synchronisation est facultative. Rattaché à un **espace** — un dossier de votre choix,
-Google Drive ou OneDrive —, un ordinateur y publie des lots chiffrés de ses modifications
+Google Drive ou OneDrive —, un ordinateur y publie des lots de ses modifications
 et applique ceux des autres. Aucun serveur Candilog, aucun compte Candilog, aucun
 abonnement : l'espace est un simple ensemble de fichiers chez le fournisseur choisi.
 
@@ -27,7 +27,7 @@ migration qui ajoute une colonne sans la déclarer échoue.
 ```text
 Écriture métier ──► déclencheur SQLite ──► sync_outbox        (même transaction)
                                               │
-SyncService (tâche de fond) ──► SyncEngine ──► SqliteSyncStore ──► lot chiffré (sync_pending)
+SyncService (tâche de fond) ──► SyncEngine ──► SqliteSyncStore ──► lot sérialisé (sync_pending)
                                     │                                   │
                                     └──── RemoteStore ◄─────────────────┘
                                           ├─ FolderStore      (dossier local)
@@ -40,7 +40,7 @@ SyncService (tâche de fond) ──► SyncEngine ──► SqliteSyncStore ─�
 - `application/engine.rs` : le cycle (envoi, réception, instantanés, ménage), indépendant
   du fournisseur. `application/service.rs` : configuration, mise en service, planification,
   état affiché.
-- `infrastructure/` : état SQLite (`store.rs`, `apply.rs`), chiffrement (`crypto.rs`),
+- `infrastructure/` : état SQLite (`store.rs`, `apply.rs`),
   adaptateurs, OAuth (`oauth.rs`), coffre (`secrets.rs`).
 
 Ajouter un fournisseur revient à implémenter `RemoteStore` (quatre opérations : lister,
@@ -57,7 +57,7 @@ Aucune table métier n'est modifiée. `009_sync.sql` ajoute :
 | `sync_outbox` | Enregistrements modifiés localement, non encore publiés |
 | `sync_records` | Version connue de chaque enregistrement : vecteur de l'enregistrement, vecteur par colonne, contenu de référence, marqueur de suppression |
 | `sync_cursors` | Dernier lot appliqué de chaque autre installation |
-| `sync_pending` | Lot chiffré préparé, pas encore confirmé par le fournisseur |
+| `sync_pending` | Lot préparé, pas encore confirmé par le fournisseur |
 | `sync_conflicts` | Conflits en attente d'une décision |
 | `sync_deferred` | Changements reçus dont le parent n'est pas encore arrivé |
 
@@ -77,10 +77,10 @@ aucune suppression vers les autres ordinateurs.
 ### Objets distants
 
 ```text
-space.json                                  manifeste en clair, sans donnée personnelle
-changes/<installation>/<seq:012>.batch      lot de changements chiffré
-snapshots/<installation>/<seq:012>.snap     instantané complet chiffré
-blobs/<hmac>.blob                           fichier joint chiffré (photo du profil)
+space-v2.json                               manifeste du nouvel espace
+v2/changes/<installation>/<seq:012>.batch   lot de changements en clair
+v2/snapshots/<installation>/<seq:012>.snap  instantané complet en clair
+v2/blobs/<sha256>.blob                      fichier joint en clair (photo du profil)
 ```
 
 Tous les objets sont **immuables** et chaque installation n'écrit que sous son propre
@@ -88,12 +88,17 @@ identifiant. Deux ordinateurs ne peuvent donc pas s'écraser, et aucun fournisse
 offrir d'écriture conditionnelle. Un nom inattendu (copie de conflit d'un outil tiers,
 fichier temporaire) est ignoré.
 
+Le namespace `v2/` et le manifeste `space-v2.json` sont distincts de l'ancien protocole
+chiffré (`space.json`, `changes/`, `snapshots/`, `blobs/`). Les anciens objets restent
+intacts et ne sont ni lus ni migrés. Une configuration locale encore rattachée à l'ancien
+protocole est bloquée ; il faut la désactiver puis créer ou rejoindre un espace v2.
+
 ### Identifiants et versions
 
 - **Enregistrement** : sa clé primaire existante (UUID ; `1` pour le profil).
-- **Installation** : UUID tiré au rattachement, conservé avec la clé de l'espace dans le
-  coffre système. Une base copiée sur un autre poste, dont le coffre ne connaît pas
-  l'identité, demande la phrase secrète puis reçoit une **nouvelle** identité.
+- **Installation** : UUID tiré au rattachement et conservé dans la configuration locale.
+  Une base copiée sur un autre poste dont l'identité est déjà utilisée reçoit une nouvelle
+  identité avant de republier.
 - **Version** : vecteur `installation → numéro du dernier lot vu`, pour l'enregistrement et
   pour **chaque colonne**. Les horloges ne servent jamais à arbitrer.
 
@@ -101,7 +106,7 @@ fichier temporaire) est ignoré.
 
 1. `prepare_batch` lit le journal, calcule pour chaque enregistrement les colonnes modifiées
    depuis le contenu de référence, leur donne la version `version connue ⊔ {moi: n}`,
-   chiffre le lot et l'**enregistre** dans `sync_pending`, le tout dans une transaction qui
+   sérialise le lot et l'**enregistre** dans `sync_pending`, le tout dans une transaction qui
    purge aussi le journal.
 2. Les fichiers joints sont envoyés, puis le lot, en création seule.
 3. Le lot n'est retiré de `sync_pending` qu'après confirmation du fournisseur.
@@ -182,30 +187,19 @@ nouvel ordinateur part du plus complet puis rejoue les lots suivants.
 - Les ordinateurs convergent vers le même état une fois les mêmes lots appliqués et les
   conflits tranchés.
 
-## Chiffrement
+## Confidentialité
 
-Le chiffrement côté client est **obligatoire** pour tous les fournisseurs, dossier compris.
+La synchronisation v2 **n'est pas chiffrée** : les lots et instantanés sont compressés, mais
+pas chiffrés ; les fichiers joints sont envoyés tels quels. Leur contenu est donc lisible
+après décompression et l'empreinte SHA-256 des photos est visible dans leur nom. Le fournisseur
+de stockage et toute personne ayant accès à cet emplacement peuvent lire les données
+synchronisées. Aucun secret ni mot de passe de synchronisation n'est demandé ou conservé.
+Les jetons OAuth restent dans le coffre système.
 
-- Clé d'espace aléatoire de 256 bits, tirée à la création.
-- Sous-clés HKDF-SHA256 (sel : identifiant de l'espace) : chiffrement ChaCha20-Poly1305 des
-  objets, et HMAC-SHA256 pour nommer les fichiers joints sans révéler l'empreinte de leur
-  contenu.
-- Chaque objet : en-tête `CLS1`, nonce aléatoire de 96 bits, données associées
-  `espace + nom` (un fichier renommé ou déplacé ne se déchiffre plus). Contenu compressé
-  avant chiffrement.
-- La clé d'espace est déposée dans `space.json` chiffrée par une clé dérivée de la **phrase
-  secrète** (Argon2id, 64 Mio, 3 passes, sel aléatoire ; paramètres bornés à la lecture).
-- **Clé de récupération** : la clé d'espace en base32, affichée une seule fois à la
-  création. Elle remplace la phrase secrète oubliée.
-- Sur chaque ordinateur, la clé d'espace est conservée dans le coffre système ; elle ne
-  passe jamais par SQLite, l'IPC ni les journaux.
-
-Bibliothèques : `ring` (déjà présent par rustls) et `argon2` (RustCrypto). Aucun algorithme
-écrit à la main.
-
-**Sans la phrase secrète ni la clé de récupération, l'espace est illisible, y compris pour
-Candilog** : il n'existe pas de recours. Ce qui reste visible chez le fournisseur : le
-nombre d'ordinateurs (identifiants aléatoires), le nombre, la taille et les dates des lots.
+Les espaces de l'ancien protocole restent chiffrés, mais cette version ne peut plus les
+ouvrir. Ils ne sont pas automatiquement effacés, convertis ou réutilisés. Pour repartir,
+désactiver l'ancien rattachement puis créer un nouvel espace v2 ; l'ancien espace distant
+reste intact et inaccessible depuis le nouveau protocole.
 
 ## Fournisseurs
 
@@ -217,7 +211,7 @@ suppression, écrit par fichier temporaire puis renommage, et refuse un dossier 
 ses propres données.
 
 Limites : Candilog ne contrôle pas l'outil tiers. Un fichier encore en transit est traité
-comme pas encore disponible (nouvel essai) ; un fichier tronqué échoue au déchiffrement et
+comme pas encore disponible (nouvel essai) ; un fichier tronqué échoue à la validation et
 bloque cette seule installation jusqu'à sa livraison complète. Plusieurs ordinateurs
 peuvent écrire en même temps sans risque : chacun n'écrit que ses propres fichiers. Un
 dossier démonté n'est jamais recréé vide : l'état passe en erreur temporaire.
@@ -285,12 +279,12 @@ La tâche de fond lance un cycle au démarrage, après 5 s de calme suivant une 
 (au plus tard 60 s), toutes les 5 minutes pour les services cloud (2 minutes pour un
 dossier), sur demande, et après chaque reprise. Échecs passagers : nouveaux essais à 30 s,
 1, 2, 5, 10 puis 15 minutes ; une limite de débit attend le délai annoncé. Session
-révoquée, clé absente ou espace d'une version plus récente bloquent les cycles automatiques
+révoquée, ancien espace ou espace d'une version plus récente bloquent les cycles automatiques
 jusqu'à une action de l'utilisateur. La tâche est annulée à la fermeture de la fenêtre ; une
 transaction en cours se termine ou s'annule en entier.
 
 États : non configuré, suspendu, synchronisé, en cours, modifications en attente, hors
-ligne, reconnexion nécessaire, phrase secrète nécessaire, erreur temporaire, conflit,
+ligne, reconnexion nécessaire, erreur temporaire, conflit,
 restauration en cours, mise à jour nécessaire. L'événement `sync://status` les pousse à
 l'interface.
 
@@ -298,7 +292,8 @@ l'interface.
 
 Le scénario est toujours **choisi explicitement** :
 
-1. **Créer l'espace** (emplacement vide) : phrase secrète, puis envoi des données locales.
+1. **Créer l'espace** (emplacement sans espace v2) : avertissement sur l'absence de
+   chiffrement, puis envoi des données locales.
 2. **Récupérer l'espace** : les données locales sont remplacées, après une sauvegarde
    complète dans le dossier des exports (`candilog-avant-synchronisation-<date>.sqlite`).
    Tout l'espace est téléchargé et vérifié **avant** le remplacement, qui se fait en une
@@ -308,9 +303,9 @@ Le scénario est toujours **choisi explicitement** :
 
 Sans données locales, 2 et 3 reviennent au même.
 
-Changer de fournisseur : désactiver (les données locales et l'ancien espace ne sont pas
-touchés), éventuellement créer une sauvegarde, puis configurer le nouveau. Les espaces ne
-sont jamais mélangés : chacun a son identifiant et sa clé.
+Pour changer de fournisseur : désactiver la synchronisation (les données locales et l'ancien
+espace ne sont pas touchés), éventuellement créer une sauvegarde, puis configurer le nouveau.
+Les espaces ne sont jamais mélangés : chacun a son identifiant et son namespace.
 
 ## Restauration
 
@@ -319,8 +314,8 @@ sont jamais mélangés : chacun a son identifiant et sa clé.
 - **Restaurer une sauvegarde locale** : remplace la base (procédure de `docs/DATA.md`) et
   **détache** la synchronisation. Pour la reprendre, reconfigurer l'emplacement et choisir
   « Fusionner » (les différences avec l'espace deviennent des conflits) ou « Récupérer ».
-- **Clé absente** (nouveau poste avec une base copiée, trousseau effacé) : saisir la phrase
-  secrète ou la clé de récupération ; l'ordinateur reçoit une nouvelle identité.
+- **Ancien espace chiffré** : la synchronisation est bloquée sans modifier l'espace. Désactiver
+  le rattachement puis créer ou rejoindre un espace v2 ; aucune migration automatique n'est faite.
 
 ## Limites connues
 
@@ -343,11 +338,11 @@ cargo test --manifest-path src-tauri/Cargo.toml --locked features::sync
 ```
 
 Scénarios couverts sans aucun compte réel : protocole et validation des objets,
-arbitrage, deux et trois ordinateurs sur un espace simulé (propagation, idempotence,
-conflits, suppressions concurrentes, coupures, réponses perdues, redémarrage, trous,
+arbitrage, deux et trois ordinateurs sur un espace simulé (données en clair, absence de
+migration des espaces chiffrés, propagation, idempotence, conflits, suppressions
+concurrentes, coupures, réponses perdues, redémarrage, trous,
 instantanés, remplacement, fusion, références et versions courantes), parcours du service
-avec le fournisseur dossier réel sur disque (création, adhésion, mauvaise phrase, clé de
-récupération, déconnexion, changement de fournisseur, dossier démonté, clé absente),
-chiffrement, OAuth contre de faux serveurs (refus, `state` falsifié, révocation,
-renouvellement), adaptateurs Drive et Graph contre des émulations HTTP, migration d'une
+avec le fournisseur dossier réel sur disque (création, adhésion, déconnexion, changement de
+fournisseur, dossier démonté, ancien espace bloqué), OAuth contre de faux serveurs (refus,
+`state` falsifié, révocation, renouvellement), adaptateurs Drive et Graph contre des émulations HTTP, migration d'une
 base existante et instantané SQLite sous écritures concurrentes.

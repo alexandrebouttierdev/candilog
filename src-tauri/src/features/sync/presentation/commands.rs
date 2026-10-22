@@ -13,18 +13,6 @@ use std::sync::Arc;
 use tauri::{AppHandle, State};
 use tauri_plugin_dialog::DialogExt;
 
-/// Longueur maximale d'une phrase secrète ou d'une clé de récupération reçue.
-const MAX_SECRET_BYTES: usize = 1024;
-
-fn bounded(secret: Option<String>) -> AppResult<Option<String>> {
-    match secret {
-        Some(value) if value.len() > MAX_SECRET_BYTES => {
-            Err(AppError::Validation("Secret trop long.".into()))
-        }
-        other => Ok(other),
-    }
-}
-
 /// État courant de la synchronisation.
 #[tauri::command(rename_all = "snake_case")]
 pub async fn sync_status(state: State<'_, AppState>) -> AppResult<SyncStatus> {
@@ -101,25 +89,7 @@ pub async fn sync_setup(
     state: State<'_, AppState>,
     request: SetupRequest,
 ) -> AppResult<SetupOutcome> {
-    let request = SetupRequest {
-        choice: request.choice,
-        passphrase: bounded(request.passphrase)?,
-        recovery_key: bounded(request.recovery_key)?,
-    };
     state.sync.setup(request).await
-}
-
-/// Déverrouille l'espace quand sa clé manque sur cet ordinateur.
-#[tauri::command(rename_all = "snake_case")]
-pub async fn sync_unlock(
-    state: State<'_, AppState>,
-    passphrase: Option<String>,
-    recovery_key: Option<String>,
-) -> AppResult<()> {
-    state
-        .sync
-        .unlock_space(bounded(passphrase)?, bounded(recovery_key)?)
-        .await
 }
 
 /// Active ou suspend la synchronisation automatique.
