@@ -159,6 +159,28 @@ describe("Nouvelle candidature — création rapide d'entreprise", () => {
   });
 });
 
+describe("Nouvelle candidature — type de contrat", () => {
+  it("propose Stage comme type de contrat courant", async () => {
+    const user = userWithoutDelay();
+
+    render(
+      <ApplicationFormModal
+        open
+        application={null}
+        busy={false}
+        onClose={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+      { wrapper },
+    );
+
+    const stage = await screen.findByRole("button", { name: "Stage" });
+    await user.click(stage);
+
+    expect(stage).toHaveAttribute("aria-pressed", "true");
+  });
+});
+
 describe("Nouvelle candidature — garde-fous de la création rapide", () => {
   it("refuse une entreprise sans nom sans appeler le backend", async () => {
     const user = userWithoutDelay();

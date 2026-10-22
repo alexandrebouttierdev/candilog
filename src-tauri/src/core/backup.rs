@@ -390,7 +390,7 @@ mod tests {
         for (table, attendu) in [
             ("sectors", 23),
             ("professional_domains", 22),
-            ("contract_types", 22),
+            ("contract_types", 23),
             ("company_types", 38),
         ] {
             let total: i64 = conn

@@ -30,7 +30,11 @@ fn une_installation_neuve_conserve_les_donnees_apres_redemarrage() {
         .unwrap();
     assert_eq!(referentials.sectors.len(), 23);
     assert_eq!(referentials.professional_domains.len(), 22);
-    assert_eq!(referentials.contract_types.len(), 22);
+    assert_eq!(referentials.contract_types.len(), 23);
+    assert!(referentials
+        .contract_types
+        .iter()
+        .any(|item| item.code == "STAGE" && item.name == "Stage"));
     assert_eq!(referentials.company_types.len(), 38);
 
     let companies = SqliteCompanyRepository::new(pool.clone());
@@ -117,6 +121,6 @@ fn une_installation_neuve_conserve_les_donnees_apres_redemarrage() {
 
     // Les référentiels ne sont ni redoublés ni vidés par le second démarrage.
     let referentials = SqliteReferentialRepository::new(pool).load().unwrap();
-    assert_eq!(referentials.contract_types.len(), 22);
+    assert_eq!(referentials.contract_types.len(), 23);
     assert_eq!(referentials.sectors.len(), 23);
 }

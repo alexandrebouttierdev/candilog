@@ -18,8 +18,9 @@ libre : ils doivent être exactement le nom issu du `ModelRegistry` sous `ai/mod
 
 ## Référentiels métier
 
-Le schéma courant (`PRAGMA user_version = 9`) porte
-quatre catalogues **distincts**, semés par `init_schema.sql` en `INSERT OR IGNORE` :
+Le schéma courant (`PRAGMA user_version = 10`) porte
+quatre catalogues **distincts**, semés par `init_schema.sql` puis complétés par les
+migrations en `INSERT OR IGNORE` :
 
 | Table | Clé | Rôle |
 | --- | --- | --- |
@@ -40,7 +41,8 @@ identifiante n'ajouterait qu'une indirection.
 La base est l'unique source de ces listes : ni Rust ni React n'en tient de copie. Les
 libellés affichés sont résolus par jointure (`sector_name`, `contract_type_name`,
 `professional_domain_name`), jamais dupliqués en colonne — deux sources de vérité que rien
-ne garderait d'accord.
+ne garderait d'accord. La migration 10 ajoute le contrat `STAGE` (« Stage ») aussi bien aux
+bases existantes qu'aux nouvelles installations.
 
 ## Valeurs héritées de l'entreprise
 

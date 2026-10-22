@@ -12,7 +12,7 @@ fn les_quatre_referentiels_sont_peuples_des_le_premier_demarrage() {
         ("sectors", 23),
         ("professional_domains", 22),
         ("company_types", 38),
-        ("contract_types", 22),
+        ("contract_types", 23),
     ] {
         let total: i64 = conn
             .query_row(&format!("SELECT count(*) FROM {table}"), [], |row| {
@@ -40,5 +40,5 @@ fn un_second_demarrage_ne_duplique_aucune_semence() {
     let total: i64 = conn
         .query_row("SELECT count(*) FROM contract_types", [], |row| row.get(0))
         .unwrap();
-    assert_eq!(total, 22);
+    assert_eq!(total, 23);
 }
