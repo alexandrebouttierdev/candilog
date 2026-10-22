@@ -107,7 +107,7 @@ impl RuntimeInstaller {
         let temp_dir = runtime_root.join(format!(".ollama-runtime-{}", uuid::Uuid::new_v4()));
         // Le dossier d'extraction disparaît sur tous les chemins de sortie, y compris une
         // panique : plus besoin de le retirer à la main dans chaque branche d'erreur.
-        let _menage = ResteTemporaire::dossier(temp_dir.clone());
+        let mut _menage = ResteTemporaire::dossier(temp_dir.clone());
         let installed_executable = match artifact.archive_format {
             RuntimeArchiveFormat::Tgz => "ollama",
             RuntimeArchiveFormat::Zip => artifact.executable,
