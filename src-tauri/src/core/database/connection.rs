@@ -44,10 +44,15 @@ const MIGRATIONS: &[(i64, &str)] = &[
         8,
         include_str!("../../../migrations/008_document_versions.sql"),
     ),
+    (9, include_str!("../../../migrations/009_sync.sql")),
+    (
+        10,
+        include_str!("../../../migrations/010_contract_type_stage.sql"),
+    ),
 ];
 
 /// Version de schéma atteinte après la dernière migration.
-pub const LATEST_SCHEMA_VERSION: i64 = 8;
+pub const LATEST_SCHEMA_VERSION: i64 = 10;
 
 /// Vérifie qu'un fichier existant appartient à la génération de schéma prise en charge.
 ///

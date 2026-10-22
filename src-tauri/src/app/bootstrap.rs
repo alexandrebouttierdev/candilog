@@ -15,6 +15,7 @@ use crate::features::profile::presentation::commands as profile;
 use crate::features::referentials::presentation::commands as referentials;
 use crate::features::relations::presentation::commands as relations;
 use crate::features::settings::presentation::commands as settings;
+use crate::features::sync::presentation::commands as sync;
 use crate::features::views::presentation::commands as views;
 use tauri::Manager;
 
@@ -35,10 +36,19 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .manage(state)
+        .setup(|app| {
+            // Tâche de fond de la synchronisation : inerte en mode local, elle ne fait
+            // aucun appel réseau tant qu'aucun espace n'est rattaché.
+            let state = app.state::<AppState>();
+            crate::features::sync::presentation::events::install(app.handle(), &state.sync);
+            tauri::async_runtime::spawn(std::sync::Arc::clone(&state.sync).run());
+            Ok(())
+        })
         .on_window_event(|window, event| {
             if window.label() == "main" && matches!(event, tauri::WindowEvent::Destroyed) {
                 let state = window.state::<AppState>();
                 state.managed_ollama.shutdown();
+                state.sync.shutdown();
             }
         })
         .invoke_handler(tauri::generate_handler![
@@ -148,6 +158,20 @@ pub fn run() {
             relations::relations_add_note,
             relations::relations_delete_note,
             referentials::referentials_load,
+            sync::sync_status,
+            sync::sync_availability,
+            sync::sync_choose_folder,
+            sync::sync_connect,
+            sync::sync_cancel_connect,
+            sync::sync_setup,
+            sync::sync_unlock,
+            sync::sync_set_auto,
+            sync::sync_now,
+            sync::sync_disconnect,
+            sync::sync_restore_from_space,
+            sync::sync_conflicts,
+            sync::sync_resolve_conflict,
+            sync::sync_resolve_all,
         ])
         .run(tauri::generate_context!())
     {

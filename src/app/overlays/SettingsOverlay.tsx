@@ -17,6 +17,7 @@ import {
   UpdatesPage,
   useAboutViewModel,
 } from "@/features/settings";
+import { SyncSettings } from "@/features/sync";
 import { SETTINGS_LABELS, SETTINGS_ORDER } from "./settingsSections";
 import { SHORTCUTS } from "./shortcutList";
 
@@ -127,7 +128,14 @@ function SectionContent({ section }: { section: Section }) {
     case "appearance":
       return <AppearanceSettings />;
     case "data":
-      return <BackupsPage />;
+      return (
+        <>
+          <SyncSettings />
+          <div className="mt-7">
+            <BackupsPage />
+          </div>
+        </>
+      );
     case "ai":
       return (
         <SettingsSection

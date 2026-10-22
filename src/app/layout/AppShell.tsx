@@ -5,6 +5,7 @@ import { CommandProvider } from "@/shared/lib/commands";
 import { AiConfigBridge, AiRequiredModal } from "@/features/ai";
 import { SettingsOverlay } from "@/app/overlays/SettingsOverlay";
 import { RemoteSendDialog } from "@/features/settings";
+import { useSyncEvents } from "@/features/sync";
 import { CommandPalette } from "@/app/palette/CommandPalette";
 import { useShellCommands } from "@/app/palette/useShellCommands";
 import { AiNavigationGuard } from "./AiNavigationGuard";
@@ -43,6 +44,7 @@ function ShellFrame() {
   useShellShortcuts();
   useShellCommands();
   useStartupUpdateCheck();
+  useSyncEvents();
 
   return (
     <div className="flex h-screen min-h-0 flex-col overflow-hidden bg-app text-tx-2">

@@ -90,11 +90,21 @@ Un binaire debug écrit obligatoirement dans `src-tauri/.candilog-dev/` (ancré 
 | `CANDILOG_DATA_DIR` | Remplace le dossier de données (base, exports, journal) |
 | `RUST_LOG` | Niveau de journalisation ; défaut `candilog=info` |
 
+Variables lues **à la compilation** pour proposer Google Drive et OneDrive dans la
+synchronisation (`docs/SYNC.md`) ; sans elles, seuls le mode local et le dossier personnalisé
+sont proposés :
+
+| Variable | Effet |
+| --- | --- |
+| `CANDILOG_GOOGLE_CLIENT_ID` | Identifiant OAuth Google (application de bureau) |
+| `CANDILOG_GOOGLE_CLIENT_SECRET` | Valeur non confidentielle associée par Google à ce client |
+| `CANDILOG_MICROSOFT_CLIENT_ID` | Identifiant d'application Microsoft Entra (client public) |
+
 Le journal est écrit à la fois sur la sortie standard et dans `candilog.log` du dossier de
 données, avec rotation sur cinq fichiers.
 
 La clé API du fournisseur IA vit dans le coffre du système (`keyring`), pas dans SQLite ni
-dans un fichier du dépôt.
+dans un fichier du dépôt. La clé d'un espace de synchronisation et les jetons OAuth aussi.
 
 ## Régénérer les types IPC
 

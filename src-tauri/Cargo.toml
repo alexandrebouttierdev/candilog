@@ -1,6 +1,6 @@
 [package]
 name = "candilog"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 rust-version = "1.91"
 description = "Candilog — suivi de candidatures, entretiens et relances avec assistance IA locale"
@@ -28,7 +28,7 @@ tauri-plugin-clipboard-manager = "2.3"
 # binaire — c'est celui que le plugin de dialogue utilise —, avec les mêmes fonctionnalités.
 rfd = { version = "0.16", default-features = false, features = ["common-controls-v6", "gtk3"] }
 
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "fs", "io-util"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "fs", "io-util", "net"] }
 tokio-util = "0.7"
 futures-util = "0.3"
 # La lignée 0.39 relève son MSRV à 1.95 : rester en 0.38 tant que `rust-version` vaut
@@ -71,6 +71,16 @@ semver = "1"
 # dépendances (transitif) : le déclarer n'ajoute aucune crate, et réimplémenter SHA-256 à la
 # main serait exactement le genre de code qu'il ne faut pas écrire soi-même.
 sha2 = "0.10"
+# Chiffrement côté client de la synchronisation (docs/SYNC.md). `ring` est déjà dans l'arbre
+# (rustls) : le déclarer n'ajoute aucune crate ; il fournit ChaCha20-Poly1305, HKDF, HMAC et
+# l'aléa système. `argon2` (RustCrypto) dérive la clé de la phrase secrète : une dérivation
+# à mémoire dure résiste aux attaques par GPU sur la clé chiffrée stockée chez le
+# fournisseur, ce que PBKDF2 ne fait pas. Lignée 0.5 : elle réutilise `digest` 0.10, déjà
+# présent, quand la 0.6 tirerait une seconde pile `digest`.
+ring = "0.17"
+argon2 = { version = "0.5.3", default-features = false, features = ["alloc"] }
+# Effacement des clés en mémoire après usage. Déjà transitif.
+zeroize = "1"
 jsonrepair-rs = "0.2.1"
 pdf-extract = "0.12.0"
 printpdf = { version = "0.12.5", default-features = false, features = ["png"] }

@@ -1,6 +1,7 @@
 import { useChromeValue } from "@/shared/lib/chrome";
 import type { StatusKey } from "@/shared/lib/chrome";
 import { Kbd } from "@/shared/ui";
+import { SyncStatusIndicator } from "@/features/sync";
 
 /** Contrat clavier commun à tous les écrans : la palette reste toujours atteignable. */
 const ACTIONS: StatusKey = { label: "Actions", shortcut: "mod+k", accent: true };
@@ -22,7 +23,10 @@ export function StatusBar() {
       <p aria-live="polite" className="min-w-0 truncate font-mono text-caps text-tx-5">
         {chrome.status}
       </p>
-      <ul className="ml-auto flex flex-none items-center gap-[13px] text-sub text-tx-3">
+      <div className="ml-auto flex flex-none items-center">
+        <SyncStatusIndicator />
+      </div>
+      <ul className="flex flex-none items-center gap-[13px] text-sub text-tx-3">
         {keys.map((key) => (
           <li key={key.label} className="flex items-center gap-1.5 whitespace-nowrap">
             {key.label}

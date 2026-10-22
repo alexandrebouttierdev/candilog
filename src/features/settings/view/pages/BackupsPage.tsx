@@ -8,8 +8,8 @@ export function BackupsPage() {
 
   return (
     <SettingsSection
-      title="Données"
-      description="Tout reste sur cet ordinateur. Une copie de sauvegarde se fait quand vous le décidez, dans le dossier de votre choix."
+      title="Sauvegarde locale"
+      description="Une copie de sauvegarde se fait quand vous le décidez, dans le dossier de votre choix. Restaurer une sauvegarde désactive la synchronisation de cet ordinateur."
     >
       <SettingsRow label="Créer une sauvegarde" hint="Une archive complète de la base, à conserver où vous voulez.">
         <Button variant="primary" size="compact" disabled={vm.busy !== null} onClick={() => void vm.exportBackup()}>

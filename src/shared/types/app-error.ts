@@ -16,6 +16,8 @@ export const APP_ERROR_CODES = [
   "SERIALIZATION_ERROR",
   "PROVIDER_ERROR",
   "CANCELLED",
+  /** Échec de la synchronisation entre ordinateurs, message déjà rédigé (`docs/SYNC.md`). */
+  "SYNC_ERROR",
   /** Émis par le frontend lorsque l'IPC échoue avant d'atteindre une commande. */
   "IPC_ERROR",
 ] as const;

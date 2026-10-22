@@ -26,7 +26,7 @@ import {
 } from "@/shared/ui";
 
 /** Contrats proposés en premier, dans l'ordre du design ; les autres restent au choix. */
-const CONTRATS_COURANTS = ["CDI", "CDD", "MIS"] as const;
+const CONTRATS_COURANTS = ["CDI", "CDD", "MIS", "STAGE"] as const;
 const AUTRE_CONTRAT = "autre";
 
 /** Date du jour au format saisi, valeur par défaut du champ « Envoyée le ». */
@@ -269,6 +269,7 @@ export function ApplicationFormModal({
                     { value: "CDI", label: "CDI" },
                     { value: "CDD", label: "CDD" },
                     { value: "MIS", label: "Intérim" },
+                    { value: "STAGE", label: "Stage" },
                     { value: AUTRE_CONTRAT, label: "Autre" },
                   ]}
                   onChange={(value) =>

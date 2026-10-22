@@ -264,6 +264,12 @@ jobs:
 
       - name: Construire Candilog
         uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f # v1
+        env:
+          # Applications OAuth de la synchronisation (docs/SYNC.md). Absentes, la version
+          # publiée ne propose que le mode local et le dossier personnalisé.
+          CANDILOG_GOOGLE_CLIENT_ID: ${{ vars.CANDILOG_GOOGLE_CLIENT_ID }}
+          CANDILOG_GOOGLE_CLIENT_SECRET: ${{ secrets.CANDILOG_GOOGLE_CLIENT_SECRET }}
+          CANDILOG_MICROSOFT_CLIENT_ID: ${{ vars.CANDILOG_MICROSOFT_CLIENT_ID }}
         with:
           args: ${{ matrix.args }}
           uploadUpdaterJson: false

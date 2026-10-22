@@ -18,8 +18,9 @@ libre : ils doivent être exactement le nom issu du `ModelRegistry` sous `ai/mod
 
 ## Référentiels métier
 
-Le schéma courant (`PRAGMA user_version = 8`) porte
-quatre catalogues **distincts**, semés par `init_schema.sql` en `INSERT OR IGNORE` :
+Le schéma courant (`PRAGMA user_version = 10`) porte
+quatre catalogues **distincts**, semés par `init_schema.sql` puis complétés par les
+migrations en `INSERT OR IGNORE` :
 
 | Table | Clé | Rôle |
 | --- | --- | --- |
@@ -40,7 +41,8 @@ identifiante n'ajouterait qu'une indirection.
 La base est l'unique source de ces listes : ni Rust ni React n'en tient de copie. Les
 libellés affichés sont résolus par jointure (`sector_name`, `contract_type_name`,
 `professional_domain_name`), jamais dupliqués en colonne — deux sources de vérité que rien
-ne garderait d'accord.
+ne garderait d'accord. La migration 10 ajoute le contrat `STAGE` (« Stage ») aussi bien aux
+bases existantes qu'aux nouvelles installations.
 
 ## Valeurs héritées de l'entreprise
 
@@ -126,6 +128,16 @@ caractères, `noted_on` (`AAAA-MM-JJ`, date du fait et non de la saisie), rattac
 **exactement** une entreprise ou un contact (`CHECK`), supprimée avec sa fiche
 (`ON DELETE CASCADE`). Ce champ est distinct de `companies.notes` / `contacts.notes`, texte
 libre de la fiche. Une remise à zéro des données vide la table.
+
+## Synchronisation (migration 9)
+
+`009_sync.sql` ajoute les tables `sync_*` et trois déclencheurs par table synchronisée, sans
+modifier aucune table métier. Les déclencheurs n'écrivent dans `sync_outbox` que si
+l'ordinateur est rattaché à un espace (drapeau `tracking`) : en mode local, rien n'est
+journalisé. La configuration de la synchronisation vit dans `sync_state` — propre à cet
+ordinateur — et non dans `settings`. Restaurer une sauvegarde ou remettre les données à zéro
+vide ces tables (`core::backup::clear_sync_state`) : l'ordinateur repasse en mode local, et
+une remise à zéro ne publie aucune suppression. Détails : `docs/SYNC.md`.
 
 ## Contraintes portées par le schéma
 

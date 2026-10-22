@@ -3,13 +3,14 @@
 use super::*;
 
 #[test]
-fn les_vingt_deux_contrats_sont_presents_avec_leur_libelle() {
+fn les_vingt_trois_contrats_sont_presents_avec_leur_libelle() {
     let contracts = repo().load().unwrap().contract_types;
 
-    assert_eq!(contracts.len(), 22);
+    assert_eq!(contracts.len(), 23);
     assert_eq!(label(&contracts, "CDI").as_deref(), Some("CDI"));
     assert_eq!(label(&contracts, "CDD").as_deref(), Some("CDD"));
     assert_eq!(label(&contracts, "MIS").as_deref(), Some("Intérim"));
+    assert_eq!(label(&contracts, "STAGE").as_deref(), Some("Stage"));
     assert_eq!(
         label(&contracts, "E2").as_deref(),
         Some("Contrat apprentissage")

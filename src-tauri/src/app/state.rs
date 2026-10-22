@@ -29,6 +29,9 @@ use crate::features::relations::application::RelationHistoryService;
 use crate::features::relations::infrastructure::SqliteRelationHistoryRepository;
 use crate::features::settings::application::SettingsService;
 use crate::features::settings::infrastructure::SqliteSettingsRepository;
+use crate::features::sync::application::SyncService;
+use crate::features::sync::infrastructure::secrets::KeyringSyncSecrets;
+use crate::features::sync::infrastructure::SqliteSyncStore;
 use crate::features::views::application::SavedViewService;
 use crate::features::views::infrastructure::SqliteSavedViewRepository;
 use std::path::PathBuf;
@@ -61,6 +64,8 @@ pub type FollowUps = Arc<FollowUpService<SqliteFollowUpRepository>>;
 /// Service des vues enregistrées de Candidatures.
 pub type Views = Arc<SavedViewService<SqliteSavedViewRepository>>;
 pub type RelationHistory = Arc<RelationHistoryService<SqliteRelationHistoryRepository>>;
+/// Synchronisation facultative entre ordinateurs.
+pub type SyncHandle = Arc<SyncService>;
 /// Service des référentiels métier tel que partagé par les commandes.
 pub type Referentials = Arc<ReferentialService<SqliteReferentialRepository>>;
 
@@ -80,6 +85,7 @@ pub struct AppState {
     pub referentials: Referentials,
     pub views: Views,
     pub relation_history: RelationHistory,
+    pub sync: SyncHandle,
     pub sqlite: SqlitePool,
     pub db_path: PathBuf,
 }
@@ -95,6 +101,7 @@ impl AppState {
             pool,
             paths.database,
             paths.photos_dir,
+            paths.exports_dir,
             ManagedOllamaPaths {
                 runtime_root: paths.managed_ollama_runtime_dir,
                 models_dir: paths.managed_ollama_models_dir,
@@ -110,10 +117,13 @@ impl AppState {
             std::env::temp_dir().join(format!("candilog-photos-{}", uuid::Uuid::new_v4()));
         let managed_root =
             std::env::temp_dir().join(format!("candilog-managed-ollama-{}", uuid::Uuid::new_v4()));
+        let exports_dir =
+            std::env::temp_dir().join(format!("candilog-exports-{}", uuid::Uuid::new_v4()));
         Self::sur_pool(
             pool,
             PathBuf::new(),
             photos_dir,
+            exports_dir,
             ManagedOllamaPaths {
                 runtime_root: managed_root.join("runtime"),
                 models_dir: managed_root.join("models"),
@@ -126,8 +136,15 @@ impl AppState {
         pool: SqlitePool,
         db_path: PathBuf,
         photos_dir: PathBuf,
+        exports_dir: PathBuf,
         managed_paths: ManagedOllamaPaths,
     ) -> AppResult<Self> {
+        let sync = Arc::new(SyncService::new(
+            SqliteSyncStore::new(pool.clone()),
+            photos_dir.clone(),
+            exports_dir,
+            Arc::new(KeyringSyncSecrets),
+        ));
         let managed_ollama = Arc::new(ManagedOllamaService::new(pool.clone(), managed_paths));
         let profile = Arc::new(ProfileService::new(
             SqliteProfileRepository::new(pool.clone()),
@@ -175,6 +192,7 @@ impl AppState {
             relation_history: Arc::new(RelationHistoryService::new(
                 SqliteRelationHistoryRepository::new(pool.clone()),
             )),
+            sync,
             sqlite: pool,
             db_path,
         })

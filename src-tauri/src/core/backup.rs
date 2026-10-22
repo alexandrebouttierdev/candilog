@@ -100,7 +100,9 @@ pub fn import(pool: &SqlitePool, db_path: &Path, source_path: &Path) -> AppResul
     export(pool, rollback.path())?;
     tracing::info!("copie de secours prise avant restauration");
 
-    let replacement = replace(pool, candidate.path()).and_then(|()| validate_current_schema(pool));
+    let replacement = replace(pool, candidate.path())
+        .and_then(|()| validate_current_schema(pool))
+        .and_then(|()| detach_restored_sync(pool));
     let Err(failure) = replacement else {
         tracing::info!("backup restauré");
         return Ok(());
@@ -165,6 +167,39 @@ fn replace(pool: &SqlitePool, source_path: &Path) -> AppResult<()> {
             .map_err(AppError::from)?;
     }
     run_local_migrations(pool)
+}
+
+/// Vide l'état de synchronisation d'une base (`docs/SYNC.md`).
+///
+/// Une sauvegarde restaurée ou une base remise à zéro ne doit pas reprendre l'identité, les
+/// compteurs ni les curseurs d'un rattachement : ils peuvent appartenir à un autre ordinateur
+/// ou à un état antérieur de l'espace, et écrire sous un nom de lot déjà publié. L'ordinateur
+/// repasse en mode local ; l'utilisateur choisit ensuite explicitement comment rejoindre.
+///
+/// # Errors
+/// Erreur SQLite.
+pub fn clear_sync_state(connection: &rusqlite::Connection) -> AppResult<()> {
+    connection.execute_batch(
+        "DELETE FROM sync_flags;
+         DELETE FROM sync_outbox;
+         DELETE FROM sync_records;
+         DELETE FROM sync_cursors;
+         DELETE FROM sync_pending;
+         DELETE FROM sync_conflicts;
+         DELETE FROM sync_deferred;
+         DELETE FROM sync_state;",
+    )?;
+    Ok(())
+}
+
+fn detach_restored_sync(pool: &SqlitePool) -> AppResult<()> {
+    let mut connection = pool
+        .get()
+        .map_err(|error| AppError::Database(error.to_string()))?;
+    let transaction = connection.transaction()?;
+    clear_sync_state(&transaction)?;
+    transaction.commit()?;
+    Ok(())
 }
 
 fn unique_database_path(db_path: &Path, prefix: &str) -> PathBuf {
@@ -252,6 +287,9 @@ pub fn reset_data(pool: &SqlitePool) -> AppResult<()> {
          DELETE FROM saved_views;
          DELETE FROM app_kv;",
     )?;
+    // La remise à zéro reste locale : détachée d'abord, elle ne publie aucune suppression
+    // vers les autres ordinateurs.
+    clear_sync_state(&transaction)?;
     transaction.commit()?;
     Ok(())
 }
@@ -279,7 +317,7 @@ mod tests {
                 .execute_batch(
                     "CREATE TABLE candidatures(id TEXT PRIMARY KEY);
                      INSERT INTO candidatures(id) VALUES ('historique');
-                     PRAGMA user_version = 9;",
+                     PRAGMA user_version = 99;",
                 )
                 .unwrap();
         }
@@ -352,7 +390,7 @@ mod tests {
         for (table, attendu) in [
             ("sectors", 23),
             ("professional_domains", 22),
-            ("contract_types", 22),
+            ("contract_types", 23),
             ("company_types", 38),
         ] {
             let total: i64 = conn
@@ -558,5 +596,55 @@ mod tests {
             .unwrap();
         assert_eq!(version, LATEST_SCHEMA_VERSION);
         assert_eq!(added_columns, 3);
+    }
+
+    #[test]
+    fn restaurer_une_sauvegarde_detache_la_synchronisation() {
+        let directory = tempfile::tempdir().unwrap();
+        let db_path = directory.path().join("candilog.sqlite");
+        let source_path = directory.path().join("sauvegarde.sqlite");
+        let active = open_pool(Some(&db_path)).unwrap();
+        run_local_migrations(&active).unwrap();
+        active
+            .get()
+            .unwrap()
+            .execute_batch(
+                "INSERT INTO sync_state (key, value) VALUES ('config', '{\"provider\":\"folder\"}');
+                 INSERT INTO sync_flags (name) VALUES ('tracking');",
+            )
+            .unwrap();
+        // La sauvegarde a été prise pendant un rattachement : elle en porte l'état.
+        export(&active, &source_path).unwrap();
+        import(&active, &db_path, &source_path).unwrap();
+        let conn = active.get().unwrap();
+        let state: i64 = conn
+            .query_row("SELECT count(*) FROM sync_state", [], |row| row.get(0))
+            .unwrap();
+        let flags: i64 = conn
+            .query_row("SELECT count(*) FROM sync_flags", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!((state, flags), (0, 0));
+    }
+
+    #[test]
+    fn la_remise_a_zero_ne_publie_aucune_suppression() {
+        let pool = open_pool(None).unwrap();
+        run_local_migrations(&pool).unwrap();
+        pool.get()
+            .unwrap()
+            .execute_batch(
+                "INSERT INTO companies (id, name, created_at, updated_at) VALUES ('c1', 'Acme', 't', 't');
+                 INSERT INTO sync_flags (name) VALUES ('tracking');",
+            )
+            .unwrap();
+        reset_data(&pool).unwrap();
+        let conn = pool.get().unwrap();
+        let outbox: i64 = conn
+            .query_row("SELECT count(*) FROM sync_outbox", [], |row| row.get(0))
+            .unwrap();
+        let tracking: i64 = conn
+            .query_row("SELECT count(*) FROM sync_flags", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!((outbox, tracking), (0, 0));
     }
 }
