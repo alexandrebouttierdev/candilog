@@ -38,16 +38,21 @@ impl ManagedOllamaProcess {
         self.stop()?;
         let port = pick_local_port()?;
         let host = format!("127.0.0.1:{port}");
-        let child = Command::new(&self.executable)
+        let mut command = Command::new(&self.executable);
+        command
             .arg("serve")
             .env("OLLAMA_HOST", &host)
             .env("OLLAMA_MODELS", &self.models_dir)
             .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .spawn()
-            .map_err(|error| {
-                AppError::Provider(format!("Le moteur local n'a pas pu démarrer : {error}"))
-            })?;
+            .stderr(Stdio::null());
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            command.creation_flags(0x08000000);
+        }
+        let child = command.spawn().map_err(|error| {
+            AppError::Provider(format!("Le moteur local n'a pas pu démarrer : {error}"))
+        })?;
         *self.child.lock().map_err(lock_err)? = Some(child);
         *self.port.lock().map_err(lock_err)? = Some(port);
         for _ in 0..60 {

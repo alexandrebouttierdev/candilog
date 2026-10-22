@@ -27,8 +27,9 @@ répertoire de modèles séparé de l'Ollama utilisateur (`:11434`). Le catalogu
 l'activation et le benchmark utilisateur passent par `ManagedOllamaService` ; l'adaptateur
 HTTP Ollama existant est réutilisé avec l'endpoint local du processus géré. Le badge
 **Recommandé** du catalogue met en avant **Ministral 3 3B** (`ministral-3:3b`) dès que la
-RAM le permet — bon compromis pour lettres, CV et analyses. Windows n'est
-pas encore supporté (archive `.zip` non extraite).
+RAM le permet — bon compromis pour lettres, CV et analyses. Windows x64 et ARM64 utilisent
+l'archive `.zip` officielle, vérifiée puis extraite dans le dossier privé de Candilog ;
+Linux et macOS conservent leurs archives `.tgz`.
 
 Le catalogue porte cinq modèles, tous capables d'analyser des images, et leur description
 s'en tient à des **faits** vérifiables sur la page Ollama du modèle — paramètres, fenêtre de
