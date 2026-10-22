@@ -32,6 +32,9 @@ ignore = [
     { id = "RUSTSEC-2025-0080", reason = "rust-unic transitif via tauri-utils/urlpattern; aucune mise à jour sûre" },
     { id = "RUSTSEC-2025-0100", reason = "rust-unic transitif via tauri-utils/urlpattern; aucune mise à jour sûre" },
     { id = "RUSTSEC-2025-0098", reason = "rust-unic transitif via tauri-utils/urlpattern; aucune mise à jour sûre" },
+    { id = "RUSTSEC-2026-0370", reason = "zvariant transitif via zbus 5 de keyring et Tauri; migration vers zbus 6 non disponible dans ces dépendances" },
+    { id = "RUSTSEC-2026-0371", reason = "zbus_names transitif via zbus 5 de keyring et Tauri; migration vers zbus 6 non disponible dans ces dépendances" },
+    { id = "RUSTSEC-2026-0372", reason = "zvariant_derive transitif via zbus 5 de keyring et Tauri; migration vers zbus 6 non disponible dans ces dépendances" },
 ]
 
 [licenses]

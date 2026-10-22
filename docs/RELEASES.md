@@ -4,8 +4,11 @@
 
 La politique `cargo-deny` n'ignore que les avis « non maintenu » sans correctif sûr du
 runtime Tauri Linux stable : `proc-macro-error` via les liaisons GTK3, et les crates
-`rust-unic` tirées par `urlpattern` dans `tauri-utils`. Ces exceptions sont réexaminées le
-31 mai 2027 ou dès qu'une version stable de Tauri retire ces chaînes.
+`rust-unic` tirées par `urlpattern` dans `tauri-utils`. Depuis la revue du 22 octobre 2026,
+elle inclut aussi `zbus_names`, `zvariant` et `zvariant_derive`, fusionnés dans zbus 6 mais
+encore requis par zbus 5 dans la version actuelle de keyring et de Tauri. Ces exceptions
+sont réexaminées le 31 mai 2027 ou dès qu'une version stable de ces dépendances retire ces
+chaînes.
 
 **Revue du 4 octobre 2026.** Elle a servi à quelque chose, et c'est l'argument pour la
 refaire. Deux constats :
@@ -23,6 +26,15 @@ refaire. Deux constats :
 
 L'avis `RUSTSEC-2024-0429` (`glib`, *unsound*) reste signalé en avertissement, sans mise à
 jour disponible sur la lignée GTK3 ; il n'est pas bloquant et n'a pas à rejoindre la liste.
+
+**Revue du 22 octobre 2026.** La nouvelle base RustSec a signalé quatre avis corrigibles
+sur `rustls` 0.23.45 (`RUSTSEC-2026-0346` à `-0349`), un sur `rustls-webpki` 0.103.15
+(`RUSTSEC-2026-0382`) et un sur `webpki-roots` 1.0.9 (`RUSTSEC-2026-0381`). Le verrouillage
+a été mis à jour vers 0.23.46, 0.103.16 et 1.0.10 respectivement. Trois avis
+« non maintenue » (`RUSTSEC-2026-0370` à `-0372`) concernent les anciens crates extraits
+de zbus ; RustSec indique qu'aucune mise à jour sûre n'est disponible. Ils restent
+nécessaires via zbus 5 dans keyring/Tauri et sont ignorés individuellement jusqu'à leur
+migration vers zbus 6.
 
 À l'échéance, un `cargo deny check` vert ne prouve rien : il le restera tant que la liste
 n'aura pas changé. La revue consiste à rejouer le contrôle **sans** la liste d'exceptions,
