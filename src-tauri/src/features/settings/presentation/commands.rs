@@ -117,13 +117,12 @@ pub async fn settings_check_update(state: State<'_, AppState>) -> AppResult<Opti
     state.settings.check_update().await
 }
 
-/// Vérification au démarrage : interroge GitHub une fois par jour au plus, et se tait
-/// quand le délai n'est pas écoulé ou que le réseau n'a pas répondu.
+/// Vérification au démarrage : interroge GitHub à chaque lancement et se tait en cas d'échec.
 #[tauri::command(rename_all = "snake_case")]
-pub async fn settings_check_update_if_due(
+pub async fn settings_check_update_on_startup(
     state: State<'_, AppState>,
 ) -> AppResult<Option<UpdateInfo>> {
-    state.settings.check_update_if_due().await
+    Ok(state.settings.check_update_on_startup().await)
 }
 
 /// Télécharge l'installeur (événement `update-progress`), vérifie son empreinte puis l'ouvre.

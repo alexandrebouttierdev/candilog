@@ -4,6 +4,13 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
 [SemVer](https://semver.org/lang/fr/). Chaque version publiée correspond à un tag
 `v<version>` et à une [release GitHub](https://github.com/alexandrebouttierdev/candilog/releases).
 
+## [0.1.3] — 2026-10-22
+
+### Corrigé
+
+- Vérification des mises à jour à chaque démarrage et annonce d'une nouvelle version dans
+  un dialogue qui ouvre directement l'écran Mises à jour.
+
 ## [0.1.2] — 2026-10-22
 
 ### Corrigé

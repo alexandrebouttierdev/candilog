@@ -63,8 +63,8 @@ beforeEach(() => {
     last_error: null,
   });
   vi.spyOn(managedOllamaService, "onProgress").mockResolvedValue(() => undefined);
-  // Par défaut, rien à annoncer : les autres tests n'ont pas à composer avec un toast.
-  vi.spyOn(settingsService, "checkUpdateIfDue").mockResolvedValue(null);
+  // Par défaut, rien à annoncer : les autres tests n'ont pas à composer avec le dialogue.
+  vi.spyOn(settingsService, "checkUpdateOnStartup").mockResolvedValue(null);
 });
 
 describe("coque applicative", () => {
@@ -113,8 +113,8 @@ describe("coque applicative", () => {
     expect(within(lien).getByText("Intelligence artificielle").className).toContain("hidden");
   });
 
-  it("annonce une nouvelle version au démarrage, sans la chercher deux fois", async () => {
-    const verifie = vi.spyOn(settingsService, "checkUpdateIfDue").mockResolvedValue({
+  it("ouvre un dialogue au démarrage et dirige vers les mises à jour", async () => {
+    const verifie = vi.spyOn(settingsService, "checkUpdateOnStartup").mockResolvedValue({
       version: "1.4.0",
       notes: "",
       page_url: "https://github.com/alexandrebouttierdev/candilog/releases/latest",
@@ -123,15 +123,21 @@ describe("coque applicative", () => {
 
     renderShell();
 
-    // Le toast nomme sa destination : le design interdit un bouton dedans.
-    expect(await screen.findByText("Candilog 1.4.0 est disponible")).toBeInTheDocument();
-    expect(screen.getByText(/Réglages › Mises à jour/)).toBeInTheDocument();
+    const dialog = await screen.findByRole("dialog", {
+      name: "Candilog 1.4.0 est disponible",
+    });
+    expect(within(dialog).getByRole("button", { name: "Voir les mises à jour" })).toBeInTheDocument();
     expect(verifie).toHaveBeenCalledTimes(1);
+
+    await userEvent.click(within(dialog).getByRole("button", { name: "Voir les mises à jour" }));
+
+    expect(await screen.findByRole("dialog", { name: "Réglages" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Mises à jour" })).toHaveAttribute("aria-current", "page");
   });
 
   it("ne dit rien au démarrage quand aucune version n'est annoncée", async () => {
     renderShell();
-    await waitFor(() => expect(settingsService.checkUpdateIfDue).toHaveBeenCalled());
+    await waitFor(() => expect(settingsService.checkUpdateOnStartup).toHaveBeenCalled());
     expect(screen.queryByText(/est disponible/)).not.toBeInTheDocument();
   });
 

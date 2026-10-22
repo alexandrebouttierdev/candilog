@@ -1,21 +1,20 @@
-import { useEffect, useRef } from "react";
-import { useUiStore } from "@/shared/lib/ui-store";
+import { useEffect, useRef, useState } from "react";
 // Module feuille et non baril de feature : la coque charge ce hook à chaque démarrage, et un
 // baril tirerait tout ce qu'il réexporte dans le chunk d'entrée (voir `useNavCounts`).
 import { settingsService } from "@/features/settings/services/settingsService";
+import type { UpdateInfo } from "@/shared/types/generated/settings";
 
 /**
- * Annonce une nouvelle version au démarrage (`docs/RELEASES.md`).
+ * Recherche une nouvelle version au démarrage (`docs/RELEASES.md`).
  *
- * Toute la politique est côté Rust : une interrogation de l'API GitHub par jour au plus, et
- * silence quand le réseau n'a pas répondu. Ici il ne reste qu'à dire ce qui a été trouvé.
- *
- * Le toast n'a pas de bouton — le design l'interdit (`docs/DESIGN.md` §7) — il nomme donc sa
- * destination. Il ne remplace pas l'écran Mises à jour, qui reste le seul endroit où l'on
- * vérifie, télécharge et installe.
+ * Chaque lancement interroge GitHub. Une nouvelle version est présentée par le dialogue
+ * de la coque ; les erreurs réseau restent silencieuses au démarrage.
  */
-export function useStartupUpdateCheck(): void {
-  const notify = useUiStore((state) => state.notify);
+export function useStartupUpdateCheck(): {
+  update: UpdateInfo | null;
+  dismiss: () => void;
+} {
+  const [update, setUpdate] = useState<UpdateInfo | null>(null);
   // Un effet monté deux fois (mode strict) ne doit pas poser deux fois la même question.
   const demande = useRef(false);
 
@@ -23,18 +22,13 @@ export function useStartupUpdateCheck(): void {
     if (demande.current) return;
     demande.current = true;
     void settingsService
-      .checkUpdateIfDue()
-      .then((update) => {
-        if (!update) return;
-        notify({
-          tone: "info",
-          title: `Candilog ${update.version} est disponible`,
-          detail: "Réglages › Mises à jour",
-        });
-      })
+      .checkUpdateOnStartup()
+      .then((available) => setUpdate(available))
       .catch(() => {
         // La revue dans un navigateur n'a pas de runtime Tauri, et un démarrage n'est pas le
         // moment d'annoncer une panne que l'utilisateur n'a pas provoquée.
       });
-  }, [notify]);
+  }, []);
+
+  return { update, dismiss: () => setUpdate(null) };
 }

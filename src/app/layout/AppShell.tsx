@@ -8,6 +8,8 @@ import { RemoteSendDialog } from "@/features/settings";
 import { useSyncEvents } from "@/features/sync";
 import { CommandPalette } from "@/app/palette/CommandPalette";
 import { useShellCommands } from "@/app/palette/useShellCommands";
+import { useUiStore } from "@/shared/lib/ui-store";
+import { ConfirmDialog } from "@/shared/ui";
 import { AiNavigationGuard } from "./AiNavigationGuard";
 import { Sidebar } from "./Sidebar";
 import { StatusBar } from "./StatusBar";
@@ -43,7 +45,8 @@ export function AppShell() {
 function ShellFrame() {
   useShellShortcuts();
   useShellCommands();
-  useStartupUpdateCheck();
+  const { update, dismiss: dismissUpdate } = useStartupUpdateCheck();
+  const openSettings = useUiStore((state) => state.openSettings);
   useSyncEvents();
 
   return (
@@ -76,6 +79,19 @@ function ShellFrame() {
       </div>
       <RemoteSendDialog />
       <CommandPalette />
+      <ConfirmDialog
+        open={update !== null}
+        title={update ? `Candilog ${update.version} est disponible` : ""}
+        description="Une nouvelle version est disponible. Voulez-vous consulter les détails et choisir si vous souhaitez l’installer ?"
+        register="information"
+        confirmLabel="Voir les mises à jour"
+        cancelLabel="Plus tard"
+        onCancel={dismissUpdate}
+        onConfirm={() => {
+          dismissUpdate();
+          openSettings("updates");
+        }}
+      />
     </div>
   );
 }
