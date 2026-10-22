@@ -547,7 +547,7 @@ barre groupée 40 px dès qu'une case est cochée
 | Échec de chargement | `ErrorBanner` + Réessayer |
 | Avertissement non bloquant (ce qui est affiché reste utilisable, le résultat vaudra ce que vaut ce qui manque) | `Banner` `tone="warning"` — ambre, glyphe `a` |
 | Succès / échec d’écriture sans décision | `notify()` → `Toaster` (2,6 s, centré au-dessus de la barre d’état) |
-| Nouvelle version trouvée au démarrage | `notify()` `info` — titre factuel, destination en détail, **jamais** de bouton (`docs/RELEASES.md`) |
+| Nouvelle version trouvée au démarrage | `ConfirmDialog` `information` — titre factuel, « Plus tard » / « Voir les mises à jour » (`docs/RELEASES.md`) |
 | Décision destructive | `ConfirmDialog` |
 | Rien à montrer | `EmptyState` dans le contenant, pas un écran plein décoratif |
 | Traitement IA en cours | `AiProgress` : étape, barre indéterminée et temps écoulé — **jamais** de pourcentage, il serait inventé |

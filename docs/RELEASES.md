@@ -138,18 +138,13 @@ La mise à jour est **assistée, pas automatique** : le téléchargement, l'inst
 redémarrage restent entre les mains de l'utilisateur. Aucune mise à jour silencieuse n'est
 exécutée.
 
-La **disponibilité**, elle, est vérifiée seule. Au démarrage, la coque appelle
-`settings_check_update_if_due` ; `SettingsService::check_update_if_due` n'interroge l'API
-GitHub qu'une fois par jour au plus (`DELAI_VERIFICATION_MAJ`), l'instant de chaque tentative
-étant retenu dans `app_kv` sous `last_update_check`. L'horodatage est écrit **avant** l'appel
-et quelle qu'en soit l'issue : une panne réseau ou un quota GitHub dépassé ne doit pas
-provoquer une tentative à chaque lancement. Un horodatage illisible ou situé dans le futur
-(horloge déréglée) vaut « à vérifier », faute de quoi l'application resterait bloquée dessus.
-
-Une version trouvée s'annonce par un toast — « Candilog 1.4.0 est disponible · Réglages ›
-Mises à jour ». Sans bouton : le design l'interdit (`docs/DESIGN.md` §7), le toast nomme donc
-sa destination. Une vérification de démarrage qui échoue ne remonte rien ; l'écran Mises à
-jour reste le seul endroit où l'on vérifie sur demande — et là, l'erreur s'affiche.
+La **disponibilité**, elle, est vérifiée seule à chaque démarrage. La coque appelle
+`settings_check_update_on_startup` ; `SettingsService::check_update_on_startup` interroge
+l'API GitHub à chaque lancement et ne persiste aucun délai. Une version trouvée ouvre un
+dialogue — « Candilog 1.4.0 est disponible » — avec l'action « Voir les mises à jour » ;
+l'installation reste un choix explicite de l'utilisateur. Une vérification de démarrage qui
+échoue ne remonte rien ; l'écran Mises à jour reste le seul endroit où l'on vérifie sur
+demande et où l'erreur s'affiche.
 
 Le contrat de nommage entre le workflow et `updater.rs` est verrouillé par un test
 (`les_assets_du_workflow_sont_ceux_que_l_application_attend`) : renommer un asset ici casse
