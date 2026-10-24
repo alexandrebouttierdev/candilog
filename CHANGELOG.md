@@ -4,6 +4,14 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
 [SemVer](https://semver.org/lang/fr/). Chaque version publiée correspond à un tag
 `v<version>` et à une [release GitHub](https://github.com/alexandrebouttierdev/candilog/releases).
 
+## [Non publié]
+
+### Ajouté
+
+- Au premier démarrage, une fenêtre de configuration propose le stockage local ou la
+  synchronisation entre appareils, puis l'accès à la configuration IA immédiatement ou
+  plus tard.
+
 ## [0.1.4] — 2026-10-22
 
 ### Modifié

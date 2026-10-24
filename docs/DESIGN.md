@@ -297,7 +297,10 @@ Il paraît là où l’IA travaille, et nulle part ailleurs :
   raccourci réellement câblé. Notation imprimée par `Kbd` / `formatShortcut` : `⌘K` sous
   macOS, `Ctrl K` ailleurs.
 - Pas de tour d'accueil (décision D1) : le premier lancement ouvre Aujourd'hui, dont l'état
-  vide porte l'amorce.
+  vide porte l'amorce. Une courte modale de configuration peut toutefois proposer le choix
+  initial du stockage local ou de la synchronisation facultative, puis l'accès à la page IA ;
+  elle ne guide pas les écrans et ne masque pas les étapes suivantes. Le choix cloud n'est
+  mémorisé qu'après la configuration effective de la synchronisation.
 
 ## 9. Recettes d’écrans
 
