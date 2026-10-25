@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { QueryWrapper } from "@/shared/lib/test-utils";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { managedOllamaService, settingsService } from "@/features/settings";
+import { syncService } from "@/features/sync/services/syncService";
 import { applicationService } from "@/features/applications";
 import { profileService } from "@/features/profile";
 import type { Settings } from "@/shared/types/generated/settings";
@@ -65,6 +66,25 @@ beforeEach(() => {
   vi.spyOn(managedOllamaService, "onProgress").mockResolvedValue(() => undefined);
   // Par défaut, rien à annoncer : les autres tests n'ont pas à composer avec le dialogue.
   vi.spyOn(settingsService, "checkUpdateOnStartup").mockResolvedValue(null);
+  vi.spyOn(syncService, "status").mockResolvedValue({
+    provider: "local",
+    phase: "not_configured",
+    auto_sync: false,
+    location: null,
+    pending_changes: 0,
+    conflicts: 0,
+    waiting_changes: 0,
+    missing_files: 0,
+    computers: 0,
+    last_success_at: null,
+    last_attempt_at: null,
+    next_attempt_at: null,
+    message: null,
+  });
+  window.localStorage.setItem(
+    "candilog.startup-setup",
+    JSON.stringify({ storage: "local", aiPromptDismissed: true }),
+  );
 });
 
 describe("coque applicative", () => {

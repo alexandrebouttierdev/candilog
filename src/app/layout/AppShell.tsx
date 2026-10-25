@@ -5,7 +5,7 @@ import { CommandProvider } from "@/shared/lib/commands";
 import { AiConfigBridge, AiRequiredModal } from "@/features/ai";
 import { SettingsOverlay } from "@/app/overlays/SettingsOverlay";
 import { RemoteSendDialog } from "@/features/settings";
-import { useSyncEvents } from "@/features/sync";
+import { StartupSetupModal, useSyncEvents } from "@/features/sync";
 import { CommandPalette } from "@/app/palette/CommandPalette";
 import { useShellCommands } from "@/app/palette/useShellCommands";
 import { useUiStore } from "@/shared/lib/ui-store";
@@ -60,6 +60,7 @@ function ShellFrame() {
       <AiNavigationGuard />
       <AiConfigBridge />
       <AiRequiredModal />
+      <StartupSetupModal />
       <TitleBar />
       <div className="relative flex min-h-0 flex-1 flex-col">
         <div className="flex min-h-0 flex-1">

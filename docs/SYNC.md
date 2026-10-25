@@ -9,6 +9,12 @@ abonnement : l'espace est un simple ensemble de fichiers chez le fournisseur cho
 Code : `src-tauri/src/features/sync/` (Rust) et `src/features/sync/` (interface). Réglages
 → « Synchronisation et sauvegarde ».
 
+Au premier démarrage, une courte modale propose de conserver les données sur cet ordinateur
+ou d'ouvrir les réglages pour configurer la synchronisation. Le choix cloud n'est enregistré
+qu'une fois l'espace réellement configuré ; annuler ou quitter les réglages laisse le mode
+local intact. Le choix et l'étape facultative d'accès à l'IA sont mémorisés dans le stockage
+local de l'interface, indépendamment des données synchronisées.
+
 ## Ce qui est synchronisé
 
 | Synchronisé | Reste sur l'ordinateur |
