@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { ConnectionTest } from "@/features/settings";
+import type { ConnectionTest } from "../model/aiStatus";
 
 interface AiRailStatusState {
   connectionTest: ConnectionTest;

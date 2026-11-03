@@ -87,6 +87,10 @@ pub struct AppSettings {
     /// premier envoi (décision D4, `docs/AI.md`), par identifiant (`claude`, …).
     #[serde(default)]
     pub remote_send_consents: BTreeSet<String>,
+    /// Instance SearXNG préférée pour la recherche Web (`docs/AI.md`, « Compléter une
+    /// entreprise ») ; `None` : instances publiques de l'annuaire `searx.space`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub searxng_url: Option<String>,
     #[serde(default)]
     pub theme: ThemePref,
     #[serde(default = "language_fr")]
@@ -140,6 +144,7 @@ impl Default for AppSettings {
             managed_ollama: ManagedOllamaSettings::default(),
             ai_routes: AiRoutes::new(),
             remote_send_consents: BTreeSet::new(),
+            searxng_url: None,
             theme: ThemePref::System,
             language: language_fr(),
         }
@@ -169,6 +174,10 @@ pub struct Settings {
     /// Fournisseurs distants dont le premier envoi n'est plus confirmé.
     #[serde(default)]
     pub remote_send_consents: BTreeSet<String>,
+    /// Instance SearXNG préférée pour la recherche Web.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub searxng_url: Option<String>,
     pub theme: ThemePref,
     pub language: String,
 }
@@ -219,6 +228,7 @@ impl Settings {
             llm_presets,
             ai_routes: value.ai_routes,
             remote_send_consents: value.remote_send_consents,
+            searxng_url: value.searxng_url,
             theme: value.theme,
             language: value.language,
         }
@@ -237,6 +247,7 @@ impl From<Settings> for AppSettings {
             managed_ollama: ManagedOllamaSettings::default(),
             ai_routes: value.ai_routes,
             remote_send_consents: value.remote_send_consents,
+            searxng_url: value.searxng_url,
             theme: value.theme,
             language: value.language,
         };

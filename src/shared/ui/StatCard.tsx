@@ -3,8 +3,8 @@ import { cn } from "@/shared/lib/cn";
 import type { Tone } from "./StatusPill";
 
 const DELTA: Record<Tone, string> = {
-  neutral: "text-ink-faint",
-  accent: "text-accent",
+  neutral: "text-tx-5",
+  accent: "text-ac-tx",
   success: "text-success",
   warning: "text-warning",
   danger: "text-danger",
@@ -34,13 +34,13 @@ export function StatCard({
   return (
     <div
       className={cn(
-        "min-w-0 rounded-card border border-line bg-surface px-[11px] py-2.5",
+        "min-w-0 rounded-card border border-bd bg-panel px-[11px] py-2.5",
         className,
       )}
     >
-      <p className="mb-[13px] truncate text-note font-medium text-ink-muted">{label}</p>
+      <p className="mb-[13px] truncate text-note font-medium text-tx-3">{label}</p>
       <div className="flex items-baseline gap-2">
-        <span className="tabular text-kpi text-ink">{value}</span>
+        <span className="tabular text-kpi text-tx">{value}</span>
         {delta ? (
           <span
             className={cn(

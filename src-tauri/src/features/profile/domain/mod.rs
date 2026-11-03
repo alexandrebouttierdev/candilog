@@ -14,8 +14,8 @@ pub use import::{
     ImportScalarItem, ImportSkillDecision, ImportSkillItem,
 };
 pub use photo::{
-    normaliser, nouveau_nom_fichier, ACCEPTED_EXTENSIONS, MAX_SIDE, MAX_SIDE_SOURCE,
-    MAX_SOURCE_BYTES,
+    is_valid_photo_file, normaliser, nouveau_nom_fichier, ACCEPTED_EXTENSIONS, MAX_SIDE,
+    MAX_SIDE_SOURCE, MAX_SOURCE_BYTES,
 };
 pub use profile::{
     Certification, Education, Experience, Identity, Interest, Language, Profile, ProfilePayload,

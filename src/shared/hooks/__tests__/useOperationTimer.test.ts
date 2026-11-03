@@ -1,14 +1,14 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { useAiTimer } from "../useAiTimer";
+import { useOperationTimer } from "../useOperationTimer";
 
-describe("useAiTimer", () => {
+describe("useOperationTimer", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
   it("ne montre aucune durée avant le premier traitement", () => {
-    const { result } = renderHook(() => useAiTimer(false));
+    const { result } = renderHook(() => useOperationTimer(false));
 
     expect(result.current.durationMs).toBeNull();
     expect(result.current.elapsedMs).toBe(0);
@@ -16,7 +16,7 @@ describe("useAiTimer", () => {
 
   it("fige la durée du traitement à l'arrêt", () => {
     const now = vi.spyOn(Date, "now").mockReturnValue(1_000);
-    const { result } = renderHook(() => useAiTimer(true));
+    const { result } = renderHook(() => useOperationTimer(true));
 
     act(() => {
       result.current.start();
@@ -31,7 +31,7 @@ describe("useAiTimer", () => {
 
   it("retourne la durée mesurée à l'appelant, qui doit la journaliser", () => {
     const now = vi.spyOn(Date, "now").mockReturnValue(1_000);
-    const { result } = renderHook(() => useAiTimer(true));
+    const { result } = renderHook(() => useOperationTimer(true));
     let mesure: number | null = null;
 
     act(() => {
@@ -47,7 +47,7 @@ describe("useAiTimer", () => {
 
   it("efface la durée précédente au démarrage suivant", () => {
     const now = vi.spyOn(Date, "now").mockReturnValue(1_000);
-    const { result } = renderHook(() => useAiTimer(true));
+    const { result } = renderHook(() => useOperationTimer(true));
 
     act(() => {
       result.current.start();

@@ -107,7 +107,7 @@ export function EntityPicker({
         <LineIcon
           name="search"
           size={15}
-          className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink-faint"
+          className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-tx-5"
         />
         <input
           id={id}
@@ -141,7 +141,7 @@ export function EntityPicker({
             type="button"
             aria-label="Effacer la sélection"
             onClick={() => onChange(null)}
-            className="absolute top-1/2 right-2 -translate-y-1/2 rounded-button p-1 text-ink-faint transition-colors duration-150 hover:bg-neutral-tint hover:text-ink"
+            className="absolute top-1/2 right-2 -translate-y-1/2 rounded-button p-1 text-tx-5 transition-colors duration-150 hover:bg-neutral-tint hover:text-tx"
           >
             <span aria-hidden className="block size-[15px] text-center text-[12px] leading-[15px]">
               ✕
@@ -154,16 +154,16 @@ export function EntityPicker({
         <div
           id={listId}
           role="listbox"
-          className="absolute top-full right-0 left-0 z-20 mt-1 overflow-hidden rounded-field border border-line bg-surface shadow-e2"
+          className="absolute top-full right-0 left-0 z-20 mt-1 overflow-hidden rounded-field border border-bd bg-panel shadow-e2"
         >
           {results.isPending ? (
-            <p className="px-3 py-3 text-meta text-ink-faint">Recherche…</p>
+            <p className="px-3 py-3 text-meta text-tx-5">Recherche…</p>
           ) : results.isError ? (
             // Un échec de la commande n'est pas une absence de résultat : annoncer « Aucun
             // résultat » inviterait à créer un doublon d'une entité déjà enregistrée.
             <p className="px-3 py-3 text-meta text-danger">La recherche a échoué.</p>
           ) : items.length === 0 ? (
-            <p className="px-3 py-3 text-meta text-ink-faint">
+            <p className="px-3 py-3 text-meta text-tx-5">
               {emptyHelp ?? "Aucun résultat."}
             </p>
           ) : (
@@ -182,19 +182,19 @@ export function EntityPicker({
                     }}
                     className={cn(
                       "flex w-full items-center gap-2 px-3 py-2 text-left transition-colors duration-150",
-                      option.id === value ? "bg-accent-tint" : "hover:bg-neutral-tint",
+                      option.id === value ? "bg-tint-ac-bg" : "hover:bg-neutral-tint",
                     )}
                   >
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-body text-ink">{option.label}</span>
+                      <span className="block truncate text-body text-tx">{option.label}</span>
                       {option.meta ? (
-                        <span className="block truncate text-meta text-ink-muted">
+                        <span className="block truncate text-meta text-tx-3">
                           {option.meta}
                         </span>
                       ) : null}
                     </span>
                     {option.id === value ? (
-                      <span aria-hidden className="flex-none text-accent">
+                      <span aria-hidden className="flex-none text-ac-tx">
                         ✓
                       </span>
                     ) : null}
@@ -212,7 +212,7 @@ export function EntityPicker({
                 setDraft(null);
                 onCreate(toCreate);
               }}
-              className="flex w-full items-center gap-2 border-t border-line px-3 py-2 text-left text-body text-accent-text transition-colors duration-150 hover:bg-accent-tint"
+              className="flex w-full items-center gap-2 border-t border-bd px-3 py-2 text-left text-body text-ac-tx transition-colors duration-150 hover:bg-tint-ac-bg"
             >
               <span aria-hidden className="w-[15px] flex-none text-center">
                 +

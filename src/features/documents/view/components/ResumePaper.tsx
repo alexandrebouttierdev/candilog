@@ -760,7 +760,7 @@ function RemoveItemButton({ label, onClick, compact = false }: { label: string; 
       data-print-hide
       aria-label={label}
       title={label}
-      className={`absolute z-10 flex items-center justify-center rounded-full border border-control bg-surface text-ink-faint opacity-0 transition-opacity hover:text-danger focus-visible:opacity-100 focus-visible:outline-1 focus-visible:outline-accent-focus group-hover/resume-item:opacity-100 ${compact ? "-top-2.5 -right-2.5 size-4" : "top-0 -right-6 size-5"}`}
+      className={`absolute z-10 flex items-center justify-center rounded-full border border-bd-menu bg-panel text-tx-5 opacity-0 transition-opacity hover:text-danger focus-visible:opacity-100 focus-visible:outline-1 focus-visible:outline-accent-focus group-hover/resume-item:opacity-100 ${compact ? "-top-2.5 -right-2.5 size-4" : "top-0 -right-6 size-5"}`}
       onClick={onClick}
     >
       <span aria-hidden className={compact ? "text-[9px]" : "text-[11px]"}>

@@ -1,6 +1,5 @@
 //! Orchestration du runtime Ollama privé et des modèles Candilog.
 
-use crate::core::database::SqlitePool;
 use crate::core::errors::{AppError, AppResult};
 use crate::features::ai::domain::{
     evaluate_machine_fit, recommended_model_id, InstallManagedModelRequest, ManagedDownloadKind,
@@ -13,7 +12,6 @@ use crate::features::ai::infrastructure::{
     RuntimeInstaller,
 };
 use crate::features::settings::domain::SettingsRepository;
-use crate::features::settings::infrastructure::SqliteSettingsRepository;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use sysinfo::System;
@@ -26,16 +24,18 @@ pub struct ManagedOllamaPaths {
 }
 
 pub struct ManagedOllamaService {
-    pool: SqlitePool,
+    /// Réglages persistés, par leur contrat : le service ne connaît pas leur stockage
+    /// (`docs/CODE_RULES.md` §5).
+    settings: Arc<dyn SettingsRepository>,
     paths: ManagedOllamaPaths,
     process: Arc<Mutex<Option<ManagedOllamaProcess>>>,
     download: Mutex<Option<(ManagedModelId, CancellationToken)>>,
 }
 
 impl ManagedOllamaService {
-    pub fn new(pool: SqlitePool, paths: ManagedOllamaPaths) -> Self {
+    pub fn new(settings: Arc<dyn SettingsRepository>, paths: ManagedOllamaPaths) -> Self {
         Self {
-            pool,
+            settings,
             paths,
             process: Arc::new(Mutex::new(None)),
             download: Mutex::new(None),
@@ -317,16 +317,14 @@ impl ManagedOllamaService {
     }
 
     fn settings(&self) -> AppResult<crate::features::settings::domain::AppSettings> {
-        SqliteSettingsRepository::new(self.pool.clone()).get()
+        self.settings.get()
     }
 
     fn save_settings(
         &self,
         settings: &crate::features::settings::domain::AppSettings,
     ) -> AppResult<()> {
-        SqliteSettingsRepository::new(self.pool.clone())
-            .upsert(settings)
-            .map(|_| ())
+        self.settings.upsert(settings).map(|_| ())
     }
 
     fn persist_runtime_state(

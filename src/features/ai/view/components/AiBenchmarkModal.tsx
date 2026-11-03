@@ -176,45 +176,45 @@ function RunningPanel({
 }) {
   return (
     <div className="flex flex-col gap-4 p-4">
-      <div role="status" className="rounded-card border border-accent-border bg-accent-tint p-4">
+      <div role="status" className="rounded-card border border-accent-border bg-tint-ac-bg p-4">
         <div className="flex items-center gap-2">
-          <span aria-hidden className="size-3 flex-none animate-spin-ring rounded-full border-[1.5px] border-accent border-t-transparent" />
-          <p className="flex-1 text-label font-medium text-ink">Analyse du CV de référence…</p>
-          <span className="tabular text-meta text-accent">{formatElapsed(elapsedMs)}</span>
+          <span aria-hidden className="size-3 flex-none animate-spin-ring rounded-full border-[1.5px] border-ac border-t-transparent" />
+          <p className="flex-1 text-label font-medium text-tx">Analyse du CV de référence…</p>
+          <span className="tabular text-meta text-ac-tx">{formatElapsed(elapsedMs)}</span>
         </div>
-        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface">
-          <div className="import-indeterminate h-full w-1/3 rounded-full bg-accent" />
+        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-panel">
+          <div className="import-indeterminate h-full w-1/3 rounded-full bg-ac" />
         </div>
       </div>
 
       <div className="space-y-2">
-        <p className="text-body text-ink-muted">
+        <p className="text-body text-tx-3">
           Candilog envoie un CV de test à{" "}
-          <span className="font-medium text-ink">{modelLabel}</span> pour mesurer la qualité
+          <span className="font-medium text-tx">{modelLabel}</span> pour mesurer la qualité
           d&apos;extraction (identité, expériences, compétences) et la vitesse sur cet
           ordinateur.
         </p>
-        <p className="text-note text-ink-faint">
+        <p className="text-note text-tx-5">
           Sur un modèle local, comptez souvent 1 à 3 minutes. Aucune donnée de votre profil
           n&apos;est utilisée ni enregistrée.
         </p>
       </div>
 
-      <ul className="space-y-1.5 rounded-button border border-line bg-surface-alt px-3 py-2.5 text-note text-ink-muted">
+      <ul className="space-y-1.5 rounded-button border border-bd bg-group px-3 py-2.5 text-note text-tx-3">
         <li className="flex gap-2">
-          <span aria-hidden className="flex-none text-ink-faint">
+          <span aria-hidden className="flex-none text-tx-5">
             ·
           </span>
           Lecture du PDF de référence
         </li>
         <li className="flex gap-2">
-          <span aria-hidden className="flex-none text-ink-faint">
+          <span aria-hidden className="flex-none text-tx-5">
             ·
           </span>
           Extraction Vision ou Texte selon le modèle
         </li>
         <li className="flex gap-2">
-          <span aria-hidden className="flex-none text-ink-faint">
+          <span aria-hidden className="flex-none text-tx-5">
             ·
           </span>
           Comparaison au résultat attendu
@@ -236,7 +236,7 @@ function ErrorPanel({ error, onRetry }: { error: string; onRetry: () => void }) 
           </span>
           <div className="min-w-0 space-y-1">
             <p className="text-label font-semibold text-danger">Le test n&apos;a pas abouti</p>
-            <p className="text-body text-ink-muted">{error}</p>
+            <p className="text-body text-tx-3">{error}</p>
           </div>
         </div>
       </div>
@@ -270,34 +270,34 @@ function ResultPanel({
   return (
     <div className="flex flex-col gap-4 p-4">
       {result.remote_warning ? (
-        <p className="rounded-button border border-warning bg-warning-tint px-3 py-2 text-note text-ink">
+        <p className="rounded-button border border-warning bg-warning-tint px-3 py-2 text-note text-tx">
           Le CV de benchmark a été envoyé au fournisseur distant configuré.
         </p>
       ) : null}
 
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-2">
-          <p className="text-[1.75rem] font-semibold leading-none tabular-nums text-ink">
+          <p className="text-[1.75rem] font-semibold leading-none tabular-nums text-tx">
             {result.score}
-            <span className="text-section font-medium text-ink-faint"> / 100</span>
+            <span className="text-section font-medium text-tx-5"> / 100</span>
           </p>
           <StatusPill tone={QUALITY_TONES[result.quality]}>
             {QUALITY_LABELS[result.quality]}
           </StatusPill>
         </div>
         <div className="text-right">
-          <p className="text-section font-medium tabular-nums text-ink">
+          <p className="text-section font-medium tabular-nums text-tx">
             {formatDuration(result.metrics.total_ms)}
           </p>
-          <p className="text-note text-ink-faint">durée totale</p>
+          <p className="text-note text-tx-5">durée totale</p>
         </div>
       </div>
 
-      <p className="text-note text-ink-muted">
+      <p className="text-note text-tx-3">
         {result.provider_label}
-        <span className="text-ink-faint"> · </span>
+        <span className="text-tx-5"> · </span>
         {result.model_label}
-        <span className="text-ink-faint"> · </span>
+        <span className="text-tx-5"> · </span>
         {methodLabel}
       </p>
 
@@ -321,22 +321,22 @@ function ResultPanel({
         ) : null}
       </div>
 
-      <div className="space-y-2 border-t border-line-soft pt-3">
-        <p className="text-label font-semibold text-ink">Détail par catégorie</p>
+      <div className="space-y-2 border-t border-bd-soft pt-3">
+        <p className="text-label font-semibold text-tx">Détail par catégorie</p>
         <ul className="flex flex-col gap-2.5">
           {result.categories.map((cat) => {
             const ratio = cat.max_score > 0 ? Math.min(1, cat.score / cat.max_score) : 0;
             return (
               <li key={cat.label} className="space-y-1">
                 <div className="flex justify-between gap-2 text-note">
-                  <span className="text-ink-muted">{cat.label}</span>
-                  <span className="tabular-nums text-ink">
+                  <span className="text-tx-3">{cat.label}</span>
+                  <span className="tabular-nums text-tx">
                     {cat.score} / {cat.max_score}
                   </span>
                 </div>
-                <div className="h-1 overflow-hidden rounded-full bg-fill">
+                <div className="h-1 overflow-hidden rounded-full bg-chip">
                   <div
-                    className="h-full rounded-full bg-accent"
+                    className="h-full rounded-full bg-ac"
                     style={{ width: `${ratio * 100}%` }}
                   />
                 </div>
@@ -346,7 +346,7 @@ function ResultPanel({
         </ul>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 text-note text-ink-faint">
+      <div className="grid grid-cols-3 gap-2 text-note text-tx-5">
         <span>PDF {formatDuration(result.metrics.pdf_extract_ms)}</span>
         <span>Prétrait. {formatDuration(result.metrics.preprocess_ms)}</span>
         <span>Parse {formatDuration(result.metrics.parse_ms)}</span>
@@ -361,9 +361,9 @@ function ResultPanel({
 
 function MetricCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-button border border-line bg-surface-alt px-3 py-2">
-      <p className="text-note text-ink-faint">{label}</p>
-      <p className="mt-0.5 text-label font-semibold tabular-nums text-ink">{value}</p>
+    <div className="rounded-button border border-bd bg-group px-3 py-2">
+      <p className="text-note text-tx-5">{label}</p>
+      <p className="mt-0.5 text-label font-semibold tabular-nums text-tx">{value}</p>
     </div>
   );
 }

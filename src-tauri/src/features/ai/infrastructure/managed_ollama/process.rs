@@ -51,7 +51,9 @@ impl ManagedOllamaProcess {
             command.creation_flags(0x08000000);
         }
         let child = command.spawn().map_err(|error| {
-            AppError::Provider(format!("Le moteur local n'a pas pu démarrer : {error}"))
+            // Le détail système (chemin de l'exécutable, code errno) reste au journal.
+            tracing::error!(%error, "démarrage du moteur local impossible");
+            AppError::Provider("Le moteur local n'a pas pu démarrer.".into())
         })?;
         *self.child.lock().map_err(lock_err)? = Some(child);
         *self.port.lock().map_err(lock_err)? = Some(port);

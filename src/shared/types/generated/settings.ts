@@ -8,7 +8,7 @@ export type About = { version: string, name: string, };
 /**
  * Tâche IA routable vers un modèle précis (écran IA, section « Qui fait quoi »).
  */
-export type AiTask = "generate_resume" | "write_letter" | "analyze_resume" | "extract_offer" | "import_resume";
+export type AiTask = "generate_resume" | "write_letter" | "analyze_resume" | "extract_offer" | "import_resume" | "research_company";
 
 /**
  * Mode d'analyse, rétro-compatible avec les bases antérieures à son introduction.
@@ -40,7 +40,11 @@ ai_routes: { [key in AiTask]?: TaskRoute | null },
 /**
  * Fournisseurs distants dont le premier envoi n'est plus confirmé.
  */
-remote_send_consents: Array<string>, theme: ThemePref, language: string, };
+remote_send_consents: Array<string>, 
+/**
+ * Instance SearXNG préférée pour la recherche Web.
+ */
+searxng_url?: string, theme: ThemePref, language: string, };
 
 /**
  * Modèle assigné à une tâche : un fournisseur et l'un de ses modèles.

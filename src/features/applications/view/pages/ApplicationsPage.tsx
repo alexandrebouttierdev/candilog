@@ -10,6 +10,7 @@ import { sameCriteria } from "../../model/filterFields";
 import { groupingLabel, nextGrouping } from "../../model/grouping";
 import { EMPTY_FILTER } from "../../model/schemas/application-filter.schema";
 import { ApplicationFormModal } from "../components/ApplicationFormModal";
+import { ApplicationPicker } from "../components/ApplicationPicker";
 import { ApplicationToolbar } from "../components/ApplicationToolbar";
 import { ApplicationGroupList } from "../components/ApplicationGroupList";
 import type { Anchor, ListGroup } from "../components/ApplicationGroupList";
@@ -521,6 +522,7 @@ export function ApplicationsPage({
       />
 
       <FollowUpFormModal
+        applicationPicker={ApplicationPicker}
         open={followUpFor !== null}
         follow_up={null}
         application_id={followUpFor?.id ?? null}

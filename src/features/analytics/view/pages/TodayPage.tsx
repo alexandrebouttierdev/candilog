@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { KeyboardEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import type { AgendaItem } from "@/shared/types/generated/analytics";
-import { Statuses, formatReference } from "@/features/applications";
+import { ApplicationPicker, Statuses, formatReference } from "@/features/applications";
 import { FollowUpFormModal } from "@/features/followups";
 import type { FollowUp } from "@/features/followups";
 import { PATHS, applicationsPath } from "@/shared/lib/paths";
@@ -199,6 +199,7 @@ export function TodayPage() {
       </div>
 
       <FollowUpFormModal
+        applicationPicker={ApplicationPicker}
         open={postpone !== null}
         follow_up={postpone}
         busy={vm.isRescheduling}

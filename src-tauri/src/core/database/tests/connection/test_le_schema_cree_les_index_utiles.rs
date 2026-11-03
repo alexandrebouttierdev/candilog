@@ -27,6 +27,7 @@ fn test_le_schema_cree_les_index_utiles() {
         "idx_follow_ups_date",
         "idx_interviews_application",
         "idx_interviews_date",
+        "idx_interviews_contact",
         "idx_resume_versions_created_at",
         "idx_cover_letters_created_at",
     ] {

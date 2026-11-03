@@ -36,6 +36,21 @@ de zbus ; RustSec indique qu'aucune mise à jour sûre n'est disponible. Ils res
 nécessaires via zbus 5 dans keyring/Tauri et sont ignorés individuellement jusqu'à leur
 migration vers zbus 6.
 
+**Revue du 3 novembre 2026.** `RUSTSEC-2026-0386` (`tokio` 1.53.1, *unsound* :
+constructeurs `AsyncFd::new` contraires à l'I/O safety) avait une version corrigée : le
+verrouillage passe à `tokio` 1.54.1, ce qui rend `cargo deny check` à nouveau vert. Au
+passage, deux crates **yankées** (`async-executor` 1.14.0, `clipboard-win` 5.4.1) passent
+en 1.14.1 et 5.4.3, et `quinn-proto` en 0.11.19 (`RUSTSEC-2026-0338`, `-0340`, `-0343`,
+remontés par `cargo audit`) : cette crate n'est pas dans le graphe compilé — `cargo tree
+-i quinn-proto` n'affiche rien —, mais un verrou propre évite qu'un audit la signale à
+chaque lecture. `fs2` et `encoding_rs`, déclarés sans être utilisés par la crate (le vendor
+`pdf-extract` déclare lui-même `encoding_rs`), sont retirés.
+
+La même revue réexamine le **runtime Ollama** de l'IA locale, épinglé par version et par
+empreinte SHA-256 dans `features/ai/infrastructure/managed_ollama/manifest.rs` : `cargo deny`
+ne le voit pas, et ses correctifs de sécurité n'arrivent chez l'utilisateur que si la version
+épinglée monte. La montée se vérifie en installant un modèle sur chaque plateforme.
+
 À l'échéance, un `cargo deny check` vert ne prouve rien : il le restera tant que la liste
 n'aura pas changé. La revue consiste à rejouer le contrôle **sans** la liste d'exceptions,
 comparer ce que l'arbre remonte réellement à ce que `deny.toml` déclare, retirer les avis
@@ -63,7 +78,9 @@ Un push sur `master` (jamais sur `dev`) déclenche le build multi-plateforme et 
 GitHub Release **publique** lorsque le tag `v<version>` n'existe pas encore. Un
 `workflow_dispatch` permet aussi un lancement manuel.
 
-Le job `quality` exécute d'abord lint, tests et build frontend, puis formatage, Clippy,
+Le job `quality` appelle le workflow réutilisable `.github/workflows/quality.yml` — celui
+qui contrôle aussi chaque push sur `dev` et chaque pull request. Il exécute d'abord lint,
+tests et build frontend, puis formatage, Clippy,
 tests Rust, `cargo-deny` et le scénario de bout en bout des documents en mode **synthétique**
 (`CANDILOG_E2E=1 CANDILOG_E2E_SYNTHETIC=1`, sans appel au fournisseur IA ni cache : le rejeu
 lirait `test-output/`, que le dépôt ne versionne pas). Les jobs de build dépendent explicitement de ce contrôle et ne

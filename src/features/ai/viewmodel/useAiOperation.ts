@@ -5,7 +5,7 @@ import {
   type AiOperationKind,
 } from "./ai-operation-store";
 import { AiNotConfiguredError } from "../model/ai-not-configured";
-import { useAiRailStatusStore } from "./ai-rail-status-store";
+import { useAiRailStatusStore } from "@/features/settings";
 import { useAiRequiredStore } from "./ai-required-store";
 
 export function useAiOperation() {

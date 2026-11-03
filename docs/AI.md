@@ -93,9 +93,9 @@ qui porte sur le contenu et non sur la forme (voir « Sorties du modèle »).
 
 ## Routage par tâche (« Qui fait quoi »)
 
-Cinq tâches sont routables (`AiTask`) : générer un CV ciblé, rédiger une lettre (et sa
-correction), analyser un CV, extraire une offre, lire un CV importé. Le routage vit dans les
-réglages (`ai_routes`) :
+Six tâches sont routables (`AiTask`) : générer un CV ciblé, rédiger une lettre (et sa
+correction), analyser un CV, extraire une offre, lire un CV importé, compléter une
+entreprise. Le routage vit dans les réglages (`ai_routes`) :
 
 - **route absente** : la tâche suit le fournisseur principal (`llm`). C'est l'état de toute
   base antérieure au routage, qui garde donc son comportement (décision D3) ;
@@ -118,7 +118,7 @@ fournisseur distant pas encore accepté, `RemoteSendDialog` dit qui reçoit quoi
 combien de tâches ; « Annuler » n'envoie rien. « Ne plus demander pour … » (désactivé par
 défaut) ajoute l'identifiant du fournisseur à `settings.remote_send_consents`, revalidé en
 Rust (fournisseurs distants connus seulement) ; Réglages → Intelligence artificielle le
-remet à zéro. Les cinq tâches passent par cette garde, corrections comprises ; le benchmark,
+remet à zéro. Les six tâches passent par cette garde, corrections comprises ; le benchmark,
 qui n'envoie que le CV de référence, non. Des réglages illisibles laissent passer la garde :
 le backend lit les mêmes réglages pour choisir son fournisseur et échoue alors sans rien
 envoyer.
@@ -432,7 +432,7 @@ traitement composé de plusieurs appels, reprise JSON comprise, cumule leurs tok
 
 La fin d'un traitement est aussi annoncée par un signal sonore, émis une seule fois dans
 `features/ai/services/aiService.ts` pour que plus aucun écran ne puisse l'oublier. La
-préférence « Son de fin de traitement » (Réglages → IA) est locale à la machine
+préférence « Son de fin de traitement » (Réglages → Apparence) est locale à la machine
 (`shared/lib/completion-sound.ts`, `localStorage`) et active par défaut.
 Une opération annulée reste muette même si sa promesse frontend se résout tardivement.
 
@@ -485,6 +485,91 @@ vit dans **Réglages → Apparence**. Le pied de la navigation rappelle le fourn
 son modèle et sa localité (puce verte sur cet ordinateur, ambre pour un envoi distant — la
 puce suit l'adresse, `127.0.0.1` ou `localhost` comptant comme local, une IP de réseau
 privé comme distante).
+
+## Compléter une entreprise
+
+Dans le formulaire **Nouvelle entreprise**, « Compléter avec l'IA » cherche l'entreprise
+d'après son nom et propose secteur, type, taille, site, ville et adresse. Le bouton
+n'apparaît que si le nom est saisi et qu'un fournisseur est prêt
+(`useAiRequiredStore.configured()`) ; si les réglages ne sont pas encore connus, le clic
+ouvre l'invitation à configurer l'IA (`AiRequiredModal`, qui mène directement à l'onglet
+« IA locale » ou « fournisseurs » de l'écran IA, `?onglet=`).
+
+**Principe : rien d'inventé.** Chaque champ porte sa provenance (`FieldOrigin`) et, quand
+elle existe, la page qui le justifie :
+
+| Champ | Source | Rôle du modèle |
+| --- | --- | --- |
+| Ville, adresse, siège ou établissement | Annuaire officiel des entreprises | aucun |
+| Taille | Catégorie (`PME`, `ETI`, `GE`) et tranche d'effectif de l'INSEE | aucun |
+| Secteur | Code d'activité NAF, quand sa section est sans ambiguïté (J, K, F…) | sinon, choix d'un code `S01`… de la liste des secteurs |
+| Type | Nature juridique (association, collectivité…), ou code NAF précis (banque, intérim…) | sinon, choix d'un code du référentiel des types |
+| Site officiel | Wikidata, rapproché par le numéro SIREN (`P1616` → `P856`) | sinon, choix d'une URL `U1`… parmi les résultats de recherche |
+
+Le modèle ne reçoit que les listes des champs encore vides, et ne répond que des
+**codes** (`COMPANY_RESEARCH_SYSTEM`). `ground_classification` écarte tout code absent
+des listes : un secteur inventé, un type « LICORNE » ou une URL recopiée ne passent pas.
+Annuaires, réseaux sociaux et sites d'emploi ne sont jamais proposés comme site officiel
+(`is_directory_site`). Les extraits Web et la page d'accueil du site sont encadrés par
+`bloc_donnees` : ce sont des données, pas des instructions.
+
+**Deux étapes**, annulables par `ai_cancel` et suivies par `ia-progression` :
+
+1. `ai_search_companies` : établissements de l'annuaire, sans appel au modèle. Un seul
+   établissement au nom identique (`confident`) passe directement à la suite ; sinon
+   l'utilisateur choisit — siège social et établissements locaux sont distingués, la ville
+   n'est jamais devinée. Il peut préciser une ville ou un code postal et relancer, ou
+   chercher sur le Web seulement si l'entreprise est absente de l'annuaire.
+2. `ai_research_company` : l'établissement est **relu par son SIRET** dans l'annuaire (rien
+   de ce que l'interface a affiché n'est repris tel quel), puis Wikidata, la recherche Web,
+   la page d'accueil du site connu et enfin le modèle. Une source indisponible ou un modèle
+   en erreur ne font pas échouer : le résultat est partiel, et `warnings` le dit.
+
+L'interface montre ensuite une **vérification** (React Hook Form + Zod) : chaque valeur est
+modifiable, les champs sans information fiable restent vides, et une valeur n'est cochée
+par défaut que si le champ du formulaire est vide — ce que l'utilisateur a saisi n'est
+remplacé que s'il le coche. Rien n'est enregistré avant « Remplir le formulaire » puis
+« Enregistrer ». La charge utile de l'IPC est revalidée par Zod
+(`company-research.schema.ts`) avant affichage.
+
+### Sources de recherche
+
+Toutes gratuites, sans clé ni compte, sans serveur à installer, interrogées depuis le poste
+de l'utilisateur avec un `User-Agent` qui identifie Candilog. Chacune implémente un contrat
+de `domain/company_research.rs` (`CompanyRegistry`, `KnowledgeBase`, `WebSearch`,
+`PageReader`) ; leurs implémentations vivent dans `infrastructure/company_sources/` et
+s'ajoutent ou se remplacent sans toucher au service.
+
+- **API Recherche d'entreprises** (`recherche-entreprises.api.gouv.fr`, base SIRENE, licence
+  ouverte) : une requête par étape, sous la limite annoncée de 7 requêtes par seconde ; un
+  `429` est rapporté avec son délai (`Retry-After`), jamais réessayé en boucle. Seuls les
+  établissements ouverts sont proposés, et une mention « non diffusible » n'est jamais
+  affichée comme adresse.
+- **Wikidata** (SPARQL) : site officiel par le SIREN. Le SIREN est vérifié (neuf chiffres)
+  avant d'être placé dans la requête.
+- **SearXNG** : l'instance choisie par l'utilisateur (Réglages → Intelligence artificielle →
+  « Recherche Web », `settings.searxng_url`), puis des instances publiques de l'annuaire
+  `searx.space`, lu défensivement — son format n'est pas garanti — et gardé six heures en
+  mémoire. Trois instances au plus par recherche ; une instance qui refuse le JSON ou limite
+  le débit est laissée et la suivante essayée. Aucune instance publique n'est supposée
+  disponible : sans elle, la recherche continue sur l'annuaire et Wikidata.
+- **Page d'accueil du site** : l'URL vient de sources externes, elle est donc traitée comme
+  un endpoint distant — HTTP(S), adresse résolue, vérifiée publique et épinglée, redirections
+  revérifiées à chaque saut (trois au plus), 512 Kio lus au plus, titre et description
+  seulement.
+
+Ce qui quitte l'ordinateur est annoncé dans le dialogue : le nom (et la ville précisée) vers
+l'annuaire, Wikidata et SearXNG ; les faits publics trouvés vers le fournisseur IA de la
+tâche « Compléter une entreprise », avec la garde de premier envoi distant (D4).
+
+### Recherche Web native des fournisseurs : non utilisée
+
+Claude, OpenAI et Gemini proposent une recherche Web intégrée, mais facturée à la requête,
+réservée à certains modèles ou API (et, chez Anthropic, à activer par l'organisation), et
+rendue en prose dont chaque fait n'est pas rattachable à une source. Ollama, DeepSeek et
+les endpoints personnalisés n'en ont pas. Candilog emploie donc le **même** mécanisme pour
+tous les fournisseurs : sources vérifiables d'abord, modèle cantonné au classement. Cela
+n'impose aucune nouvelle clé et garde un comportement identique entre IA locale et distante.
 
 ## Cache
 

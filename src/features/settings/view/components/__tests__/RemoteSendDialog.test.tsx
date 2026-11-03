@@ -53,7 +53,7 @@ describe("premier envoi à un service distant", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Lancer" }));
     const dialogue = await screen.findByRole("alertdialog", { name: "Cette tâche sera envoyée à Anthropic" });
-    expect(dialogue).toHaveTextContent("1 sur 5");
+    expect(dialogue).toHaveTextContent("1 sur 6");
     // « Ne plus demander » est désactivé par défaut.
     expect(screen.getByRole("switch", { name: "Ne plus demander pour Anthropic" })).toHaveAttribute("aria-checked", "false");
     await userEvent.click(screen.getByRole("button", { name: "Annuler" }));

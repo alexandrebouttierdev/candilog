@@ -3,10 +3,9 @@ import { formatAiSummary, formatElapsed } from "@/shared/lib/duration";
 import { BetaBadge, Button, EmptyState, ErrorBanner, StatusGlyph } from "@/shared/ui";
 import type { GlyphTone } from "@/shared/ui";
 import { cn } from "@/shared/lib/cn";
-import type { MatchScore } from "@/features/ai";
+import { AiProgressPanel, type MatchScore } from "@/features/ai";
 import type { RequirementEvaluation, RequirementMatchKind } from "@/shared/types/generated/ai";
 import { useResumeAnalysisViewModel } from "../../viewmodel/useResumeAnalysisViewModel";
-import { AiProgress } from "../components/DocumentUi";
 import { GeneratorFrame, PaneSection } from "../components/GeneratorFrame";
 import { OfferSource } from "../components/OfferSource";
 import { StopGenerationDialog } from "../components/StopGenerationDialog";
@@ -148,7 +147,7 @@ export function ResumeAnalysisPage() {
           </div>
         ) : (
           <div className="max-w-[760px] px-[26px] pt-5 pb-8">
-          {running && !vm.stopping ? <AiProgress progress={vm.progress} elapsedMs={vm.elapsedMs} /> : null}
+          {running && !vm.stopping ? <AiProgressPanel progress={vm.progress} elapsedMs={vm.elapsedMs} /> : null}
           {result ? (
             <>
               <h1 className="serif-title text-[21px] leading-tight text-tx">

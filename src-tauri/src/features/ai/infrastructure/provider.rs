@@ -189,6 +189,22 @@ pub async fn build_provider(config: &LlmConfig) -> AppResult<Arc<dyn LlmGenerato
     }))
 }
 
+/// Essai d'un fournisseur pour l'écran des réglages (`settings::domain::ProviderProbe`) :
+/// construit le client HTTP du fournisseur — avec toutes ses gardes d'endpoint — puis
+/// l'interroge.
+pub struct HttpProviderProbe;
+
+#[async_trait]
+impl crate::features::settings::domain::ProviderProbe for HttpProviderProbe {
+    async fn test(&self, config: &LlmConfig) -> AppResult<()> {
+        build_provider(config).await?.test().await
+    }
+
+    async fn list_models(&self, config: &LlmConfig) -> AppResult<Vec<String>> {
+        build_provider(config).await?.list_models().await
+    }
+}
+
 struct ProviderHttp {
     config: LlmConfig,
     endpoint: String,

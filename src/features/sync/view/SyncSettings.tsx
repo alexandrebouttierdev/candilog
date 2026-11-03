@@ -38,7 +38,7 @@ export function SyncSettings() {
         className="mb-3"
         tone="warning"
         title="Synchronisation sans chiffrement"
-        message="Les données synchronisées sont lisibles par le fournisseur de stockage et par toute personne ayant accès à l'emplacement choisi."
+        message="Les données synchronisées sont lisibles par le fournisseur de stockage et par toute personne ayant accès à l'emplacement choisi. Quiconque peut y écrire peut aussi modifier ou supprimer des données sur tous vos ordinateurs : réservez-le à vous seul."
       />
       <dl className="mb-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 rounded-r9 bg-group px-3 py-2.5 text-sub">
         <dt className="font-medium text-tx-3">Sauvegarde</dt>

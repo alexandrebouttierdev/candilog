@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ConfirmDialog, Switch } from "@/shared/ui";
 import { useRemoteSendStore } from "../../viewmodel/useRemoteSendGuard";
+import { AI_TASKS } from "../../model/taskRouting";
 
 /** « Votre profil… » devient « votre profil… » après les deux-points. */
 function lowerFirst(text: string): string {
@@ -33,7 +34,7 @@ export function RemoteSendDialog() {
           ? [
               { label: "Destinataire", value: recipient },
               { label: "Tâche", value: pending.taskLabel },
-              { label: "Tâches concernées", value: `${pending.tasks} sur 5` },
+              { label: "Tâches concernées", value: `${pending.tasks} sur ${AI_TASKS.length}` },
             ]
           : []
       }

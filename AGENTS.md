@@ -103,7 +103,9 @@ impact documentaire ne doit provoquer aucun changement Markdown.
 ## Validation avant de terminer
 
 Exécuter ce que la modification touche. Ces commandes existent réellement — il n'y a ni
-`yarn format`, ni `yarn typecheck` à la racine, ni CI de qualité.
+`yarn format`, ni `yarn typecheck` à la racine. Le workflow `.github/workflows/quality.yml`
+les rejoue sur chaque push vers `dev` et chaque pull request ; il ne dispense pas de les
+lancer avant de terminer.
 
 Frontend (`src/`) :
 

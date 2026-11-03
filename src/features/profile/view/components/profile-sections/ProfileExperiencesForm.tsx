@@ -24,7 +24,7 @@ export function ProfileExperiencesForm({ id, value, onSubmit }: { id: string; va
                 <ProfileField label="Lieu" registration={form.register(`items.${index}.location`)} error={errors?.location?.message} />
                 <ProfileField required label="Début" registration={form.register(`items.${index}.start_date`)} error={errors?.start_date?.message} placeholder="AAAA-MM" />
                 <ProfileField label="Fin" registration={form.register(`items.${index}.end_date`)} disabled={Boolean(values[index]?.current)} error={errors?.end_date?.message} placeholder="AAAA-MM" />
-                <label className="flex min-h-field items-center gap-2 self-end text-body text-ink-muted"><input type="checkbox" {...current} onChange={(event) => { void current.onChange(event); if (event.target.checked) form.setValue(`items.${index}.end_date`, ""); }} /> Poste actuel</label>
+                <label className="flex min-h-field items-center gap-2 self-end text-body text-tx-3"><input type="checkbox" {...current} onChange={(event) => { void current.onChange(event); if (event.target.checked) form.setValue(`items.${index}.end_date`, ""); }} /> Poste actuel</label>
                 <div className="sm:col-span-2"><ProfileArea label="Description" registration={form.register(`items.${index}.description`)} error={errors?.description?.message} /></div>
               </div>
             </ItemCard>

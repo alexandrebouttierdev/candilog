@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { PROFILE_KEY, profileService } from "@/features/profile";
+import { PROFILE_DERIVED_META, PROFILE_KEY, profileService } from "@/features/profile";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 import type { ProfileSection } from "@/shared/types/generated/ai";
@@ -65,6 +65,8 @@ export function useBaseResumeViewModel(initial: BaseResumeInitial = {}) {
   const composed = useQuery({
     queryKey: [...BASE_RESUME_KEY, excluded],
     queryFn: () => documentsService.composeBaseResume(excluded),
+    // Composé depuis le profil : le profil le périme à chaque écriture.
+    meta: PROFILE_DERIVED_META,
     enabled: composeEnabled,
   });
 

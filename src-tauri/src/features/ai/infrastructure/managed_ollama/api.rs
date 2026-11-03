@@ -128,7 +128,9 @@ fn percent(downloaded: u64, total: u64) -> u8 {
 }
 
 fn transport_error(error: reqwest::Error) -> AppError {
-    AppError::Provider(format!("Le moteur local ne répond pas : {error}"))
+    // Une erreur `reqwest` affiche l'URL appelée : elle reste au journal.
+    tracing::warn!(%error, "moteur local injoignable");
+    AppError::Provider("Le moteur local ne répond pas.".into())
 }
 
 #[derive(Debug, Deserialize)]

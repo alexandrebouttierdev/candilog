@@ -6,19 +6,23 @@ Les règles de relation restent : entreprise/candidature en `RESTRICT`, candidat
 
 ## Modèles d'IA locale
 
-`AppPaths` place Mistral Local sous le dossier de données résolu par le système, sans chemin
-spécifique à un OS : `ai/models/` pour les GGUF, `ai/metadata/` et `ai/cache/` pour les
-extensions futures. Les téléchargements incomplets portent le suffixe `.part` dans
-`ai/models/` et ne sont jamais considérés comme installés.
+`AppPaths` place l'IA locale Candilog sous le dossier de données résolu par le système,
+sans chemin spécifique à un OS : `ai/ollama/runtime/` pour le moteur Ollama vérifié,
+`ai/ollama/models/` pour ses modèles (séparés de l'Ollama de l'utilisateur),
+`ai/ollama/downloads/` pour les archives en cours de téléchargement — un fichier incomplet
+y porte le suffixe `.part` et n'est jamais considéré comme installé — et
+`ai/ollama/state/`. Les anciens fichiers `.gguf` de Mistral Local restent sur le disque
+mais ne sont plus gérés (`docs/AI.md`).
 
-La configuration (provider, profil, identifiant, révision, empreinte, chemin, backend,
-statut et benchmark horodaté) réutilise le JSON `settings` de SQLite. Il n'existe pas de
-deuxième magasin de réglages. Les chemins persistés ne sont jamais acceptés comme une entrée
-libre : ils doivent être exactement le nom issu du `ModelRegistry` sous `ai/models/`.
+La configuration (fournisseur, modèle actif, modèles installés, état du moteur et
+benchmark horodaté) réutilise le JSON `settings` de SQLite (`managed_ollama`). Il n'existe
+pas de deuxième magasin de réglages. Le même JSON porte `searxng_url`, l'instance SearXNG
+préférée de la recherche Web (absente par défaut ; revalidée en HTTP(S) à l'enregistrement
+et à la lecture, `docs/AI.md`).
 
 ## Référentiels métier
 
-Le schéma courant (`PRAGMA user_version = 10`) porte
+Le schéma courant (`PRAGMA user_version = 11`) porte
 quatre catalogues **distincts**, semés par `init_schema.sql` puis complétés par les
 migrations en `INSERT OR IGNORE` :
 
@@ -70,8 +74,7 @@ base neuve ne les recrée pas.
 ## Référence et canal d'une candidature
 
 `applications.reference_number` porte la référence affichée `CAN-142`. Un déclencheur
-(`applications_assign_reference`) attribue à **toute** insertion le numéro suivant
-le numéro suivant — écran, import ou restauration, le dépôt n'a pas à y penser — et un index
+(`applications_assign_reference`) attribue à **toute** insertion le numéro suivant — écran, import ou restauration, le dépôt n'a pas à y penser — et un index
 unique interdit les doublons. Un numéro supprimé n'est jamais réattribué : « CAN-003 » ne peut
 pas désigner deux candidatures dans l'historique de l'utilisateur. Le dernier numéro attribué
 est donc retenu dans `app_kv` (`last_application_reference`, migration 5) : un simple
@@ -138,6 +141,12 @@ journalisé. La configuration de la synchronisation vit dans `sync_state` — pr
 ordinateur — et non dans `settings`. Restaurer une sauvegarde ou remettre les données à zéro
 vide ces tables (`core::backup::clear_sync_state`) : l'ordinateur repasse en mode local, et
 une remise à zéro ne publie aucune suppression. Détails : `docs/SYNC.md`.
+
+## Index (migration 11)
+
+`011_interviews_contact_index.sql` indexe `interviews.contact_id` : le contrôle de
+suppression d'un contact (`count(*) … WHERE contact_id = ?1`), son historique et le
+`ON DELETE SET NULL` filtraient sur cette clé étrangère sans index.
 
 ## Contraintes portées par le schéma
 
@@ -243,6 +252,13 @@ ouverture d'écran n'a pas à transporter plusieurs centaines de kilo-octets d'i
 fichier de plus de 8 Mio, puis réencode l'image en PNG borné à 512 px de côté, **rapport
 d'origine conservé**. Le fichier reçoit un nom neuf à chaque enregistrement : réécrire le
 même nom laisserait la webview afficher l'image précédente, qu'elle garde en cache.
+
+Le nom n'est **joint au dossier `photos/` qu'après validation** de sa forme canonique
+(`photo-<uuid>.png`, `profile::domain::is_valid_photo_file`) : la valeur peut venir d'un lot
+de synchronisation ou d'une sauvegarde restaurée, et un `../` ou un chemin absolu y aurait
+désigné n'importe quel fichier de l'utilisateur — lu par `profile_photo`, voire supprimé au
+remplacement ou au retrait de la photo. Un nom invalide est ignoré et journalisé ; la
+synchronisation refuse en plus le lot qui le porte (`docs/SYNC.md`).
 
 Le champ n'est jamais modifié par `profile_save` — le service reprend systématiquement la
 valeur enregistrée. Seules `profile_set_photo`, `profile_remove_photo` et `profile_reset` la

@@ -43,3 +43,5 @@ export type { Assignment } from "./model/taskRouting";
 export { useRemoteSendGuard } from "./viewmodel/useRemoteSendGuard";
 export { RemoteSendDialog } from "./view/components/RemoteSendDialog";
 export { RemoteSendConsents } from "./view/components/RemoteSendConsents";
+export { WebSearchSettings } from "./view/components/WebSearchSettings";
+export { useAiRailStatusStore } from "./viewmodel/ai-rail-status-store";

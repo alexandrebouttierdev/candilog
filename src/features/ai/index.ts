@@ -1,4 +1,5 @@
 export { AiBenchmarkModal } from "./view/components/AiBenchmarkModal";
+export { AiProgressPanel } from "./view/components/AiProgressPanel";
 export { AiConfigBridge } from "./view/components/AiConfigBridge";
 export { AiRequiredModal } from "./view/components/AiRequiredModal";
 export { AiStopButton } from "./view/components/AiStopButton";
@@ -6,8 +7,6 @@ export { AiStopButton } from "./view/components/AiStopButton";
 export { useAiConfigSync } from "./viewmodel/useAiConfigSync";
 export { useAiOperation } from "./viewmodel/useAiOperation";
 export { useAiProgress } from "./viewmodel/useAiProgress";
-export { useAiTimer } from "./viewmodel/useAiTimer";
-export { useAiRailStatusStore } from "./viewmodel/ai-rail-status-store";
 export {
   useAiOperationStore,
   type AiOperationKind,

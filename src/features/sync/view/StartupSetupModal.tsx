@@ -172,7 +172,7 @@ function StorageOption({
       className={`group flex min-h-[148px] cursor-pointer items-start gap-2.5 rounded-r9 border p-3.5 transition-color ${
         selected
           ? "border-ac bg-ac-soft shadow-[inset_0_0_0_1px_var(--ac)]"
-          : "border-bd-soft bg-surface hover:border-ac hover:bg-elev"
+          : "border-bd-soft bg-panel hover:border-ac hover:bg-elev"
       }`}
     >
       <input
@@ -194,7 +194,7 @@ function StorageOption({
 
 function AiSetupStep() {
   return (
-    <div className="rounded-r9 border border-bd-soft bg-surface px-4 py-4">
+    <div className="rounded-r9 border border-bd-soft bg-panel px-4 py-4">
       <div className="flex items-start gap-3">
         <span
           aria-hidden="true"

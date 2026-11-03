@@ -193,7 +193,7 @@ nouvel ordinateur part du plus complet puis rejoue les lots suivants.
 - Les ordinateurs convergent vers le même état une fois les mêmes lots appliqués et les
   conflits tranchés.
 
-## Confidentialité
+## Confidentialité et intégrité
 
 La synchronisation v2 **n'est pas chiffrée** : les lots et instantanés sont compressés, mais
 pas chiffrés ; les fichiers joints sont envoyés tels quels. Leur contenu est donc lisible
@@ -201,6 +201,24 @@ après décompression et l'empreinte SHA-256 des photos est visible dans leur no
 de stockage et toute personne ayant accès à cet emplacement peuvent lire les données
 synchronisées. Aucun secret ni mot de passe de synchronisation n'est demandé ou conservé.
 Les jetons OAuth restent dans le coffre système.
+
+**Intégrité.** Les objets ne sont pas non plus signés : un lot n'est rattaché à aucune
+clé, et toute installation présente sous `v2/changes/` est acceptée. Quiconque peut
+**écrire** dans l'emplacement — partage d'un dossier synchronisé, compte de stockage
+compromis — peut donc publier des modifications ou des suppressions que tous les
+ordinateurs appliqueront. L'interface le dit à la création de l'espace et dans les réglages :
+l'emplacement doit être réservé à l'utilisateur. Google Drive limite ce risque par
+construction (`appDataFolder`, accessible à la seule application OAuth). Authentifier les
+objets demanderait une clé partagée entre les ordinateurs, ce que la v2 a précisément
+retiré ; c'est une décision produit, non un correctif.
+
+Ce qu'un lot reçu touche **hors de la base** est revalidé avant usage : les fichiers
+joints n'acceptent que le nom canonique d'une photo (`photo-<uuid>.png`), et le champ
+`photo` du profil reçu doit avoir la même forme, faute de quoi le lot est refusé — le
+service du profil joint ce nom au dossier des photos, et un `../` y aurait désigné
+n'importe quel fichier de l'utilisateur, à lire ou à supprimer. Le service du profil
+revérifie de son côté ce nom à chaque lecture et suppression, quelle que soit sa
+provenance (synchronisation, sauvegarde restaurée).
 
 Les espaces de l'ancien protocole restent chiffrés, mais cette version ne peut plus les
 ouvrir. Ils ne sont pas automatiquement effacés, convertis ou réutilisés. Pour repartir,

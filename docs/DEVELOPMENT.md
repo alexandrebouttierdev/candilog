@@ -7,7 +7,7 @@ Installer, lancer, régénérer, valider. Les règles de code sont dans
 
 | Outil | Version | Vérifié par |
 | --- | --- | --- |
-| Node.js | 24 | la CI épingle `node-version: "24"` |
+| Node.js | 24 | la CI épingle `node-version: "24"` ; `.nvmrc` pour nvm / fnm |
 | Yarn | 4.9.1, via Corepack | `packageManager` de `package.json` |
 | Rust | 1.91 | `rust-version` de `src-tauri/Cargo.toml` |
 | Cargo | fourni par la toolchain Rust | — |
@@ -35,8 +35,8 @@ Ubuntu, Fedora et RHEL ; `poppler` sous Arch). En développement, l'installer à
 sans elle, l'import Vision échoue avec un message explicite et l'extraction de texte
 retombe sur l'extracteur de flux, à l'ordre de colonnes incorrect.
 
-Le job `quality` du workflow de release l'installe aussi : il exécute les tests Rust, dont
-celui de l'ordre de mise en page à deux colonnes, qui échoue sans `pdftotext`.
+Le workflow qualité (`.github/workflows/quality.yml`) l'installe aussi : il exécute les tests
+Rust, dont celui de l'ordre de mise en page à deux colonnes, qui échoue sans `pdftotext`.
 
 **macOS et Windows n'ont pas d'équivalent** : aucun gestionnaire de paquets n'est supposé
 présent, et les binaires ne sont pas embarqués. L'import Vision y dépend donc d'une
@@ -52,7 +52,8 @@ Outils d'audit des dépendances Rust, non installés par le dépôt — à poser
 (`cargo install cargo-deny cargo-audit --locked`) :
 
 - `cargo-deny` : licences, sources et avis de sécurité selon la politique de `deny.toml`.
-  Le job `quality` l'exécute, donc un avis bloquant interdit toute publication ;
+  Le workflow qualité l'exécute sur `dev`, sur chaque pull request et avant toute
+  publication : un avis bloquant se voit donc dès son apparition, et interdit de publier ;
 - `cargo-audit` : avis RustSec seuls, utile pour une vérification rapide hors politique.
 
 ## Installation
@@ -104,7 +105,8 @@ Le journal est écrit à la fois sur la sortie standard et dans `candilog.log` d
 données, avec rotation sur cinq fichiers.
 
 La clé API du fournisseur IA vit dans le coffre du système (`keyring`), pas dans SQLite ni
-dans un fichier du dépôt. La clé d'un espace de synchronisation et les jetons OAuth aussi.
+dans un fichier du dépôt. Les jetons OAuth de la synchronisation aussi ; la synchronisation
+v2 n'a plus de clé d'espace (`docs/SYNC.md`).
 
 ## Régénérer les types IPC
 
@@ -126,9 +128,10 @@ d'export retenus par le motif, et laisse les autres fichiers de `generated/` amp
 
 ## Valider
 
-Le job `quality` du workflow de release rejoue ces commandes et conditionne tous les builds.
-Elles restent obligatoires localement avant de terminer une tâche : le workflow protège une
-publication, il ne sert pas de boucle de développement.
+Le workflow `.github/workflows/quality.yml` rejoue ces commandes sur chaque push vers `dev`
+et chaque pull request ; le workflow de release l'appelle et en fait dépendre tous ses
+builds. Elles restent obligatoires localement avant de terminer une tâche : la CI signale une
+régression, elle ne sert pas de boucle de développement.
 
 ```bash
 yarn lint
@@ -167,14 +170,14 @@ le formatage Rust, `yarn build` couvre le typage TypeScript.
 `src-tauri/tests/fixtures/profiles/`, et dépose ses artefacts dans `test-output/`
 (profil source, génération, poste de travail, PDF). Il est **ignoré** tant que
 `CANDILOG_E2E` est absent : aucune suite standard ne déclenche d'appel payant. Ni le mode
-synthétique ni le rejeu ne demandent de réseau ou de fournisseur ; le job `quality` du
-workflow de release exécute le **synthétique** à chaque publication
+synthétique ni le rejeu ne demandent de réseau ou de fournisseur ; le workflow qualité
+exécute le **synthétique** sur `dev`, sur chaque pull request et avant chaque publication
 (`CANDILOG_E2E=1 CANDILOG_E2E_SYNTHETIC=1`).
 
 Le rejeu suppose des générations déjà enregistrées dans `test-output/`, qui n'est pas
 versionné : sur un clone neuf, il faut donc commencer par un passage `CANDILOG_E2E_LIVE=1`,
 ou utiliser le mode **synthétique**, qui n'exige ni cache ni fournisseur. C'est ce dernier
-que le job `quality` emploie.
+que le workflow qualité emploie.
 
 ```bash
 # Synthétique : ni cache ni IA. Exerce la composition, la mesure et l'export PDF.
