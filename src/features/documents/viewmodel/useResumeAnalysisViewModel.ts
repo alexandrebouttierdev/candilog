@@ -4,15 +4,14 @@ import {
   isAiNotConfiguredError,
   useAiOperation,
   useAiProgress,
-  useAiRailStatusStore,
-  useAiTimer,
   type AiExecution,
   type ImportedResumeAnalysis,
   type SelectedResumeFile,
 } from "@/features/ai";
+import { useOperationTimer } from "@/shared/hooks/useOperationTimer";
 import { documentsService } from "../services/documentsService";
 import { AppError } from "@/shared/types/app-error";
-import { useRemoteSendGuard } from "@/features/settings";
+import { useAiRailStatusStore, useRemoteSendGuard } from "@/features/settings";
 
 function message(error: unknown): string {
   return error instanceof AppError ? error.message : "Une erreur inattendue s’est produite.";
@@ -32,7 +31,7 @@ export function useResumeAnalysisViewModel() {
   > | null>(null);
   const [error, setError] = useState<string | null>(null);
   const progress = useAiProgress(stopping ? null : (operation?.id ?? null));
-  const timer = useAiTimer(operation !== null && !stopping);
+  const timer = useOperationTimer(operation !== null && !stopping);
 
   async function selectFile(): Promise<void> {
     setSelecting(true);

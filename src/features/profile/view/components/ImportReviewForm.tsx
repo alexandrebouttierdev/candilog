@@ -123,18 +123,18 @@ export function ImportReviewForm({
         maxLeft={340}
         minRight={360}
         left={
-          <div className="flex min-h-0 flex-1 flex-col bg-surface">
-            <div className="flex flex-none items-center gap-2.5 border-b border-line px-[14px] py-[11px]">
+          <div className="flex min-h-0 flex-1 flex-col bg-panel">
+            <div className="flex flex-none items-center gap-2.5 border-b border-bd px-[14px] py-[11px]">
               <TriStateCheckbox
                 checked={checkedItems === catalog.length && catalog.length > 0}
                 indeterminate={checkedItems > 0 && checkedItems < catalog.length}
                 label="Importer toutes les données"
                 onChange={selectAll}
               />
-              <span className="min-w-0 flex-1 truncate text-body font-semibold text-ink">
+              <span className="min-w-0 flex-1 truncate text-body font-semibold text-tx">
                 À importer
               </span>
-              <span className="tabular text-label text-ink-faint">
+              <span className="tabular text-label text-tx-5">
                 {checkedItems}/{catalog.length}
               </span>
             </div>
@@ -152,10 +152,10 @@ export function ImportReviewForm({
                         label={`Importer ${SECTION_ARIA[section]}`}
                         onChange={(next) => selectSection(section, next)}
                       />
-                      <h3 className="min-w-0 flex-1 truncate text-eyebrow font-semibold tracking-wide text-ink-faint uppercase">
+                      <h3 className="min-w-0 flex-1 truncate text-eyebrow font-semibold tracking-wide text-tx-5 uppercase">
                         {SECTION_LABELS[section]}
                       </h3>
-                      <span className="tabular text-meta text-ink-faint">
+                      <span className="tabular text-meta text-tx-5">
                         {checked}/{rows.length}
                       </span>
                     </div>
@@ -168,7 +168,7 @@ export function ImportReviewForm({
                           className={cn(
                             "mb-1 flex items-center gap-1.5 rounded-tile border pr-1.5",
                             focus?.id === row.id
-                              ? "border-accent-border bg-accent-tint"
+                              ? "border-accent-border bg-tint-ac-bg"
                               : "border-transparent hover:bg-neutral-tint",
                             selected ? "" : "opacity-55",
                           )}
@@ -192,11 +192,11 @@ export function ImportReviewForm({
                           >
                             <span className="flex items-start gap-1">
                               <span className="min-w-0 flex-1">
-                                <span className="block truncate text-item font-semibold text-ink">
+                                <span className="block truncate text-item font-semibold text-tx">
                                   {row.title}
                                 </span>
                                 {row.subtitle ? (
-                                  <span className="mt-px block truncate text-label text-ink-faint">
+                                  <span className="mt-px block truncate text-label text-tx-5">
                                     {row.subtitle}
                                   </span>
                                 ) : null}
@@ -219,10 +219,10 @@ export function ImportReviewForm({
           </div>
         }
         right={
-          <div className="flex min-h-0 flex-1 flex-col bg-page">
-            <div className="flex flex-none items-baseline justify-between gap-3 border-b border-line bg-surface px-[22px] py-[11px]">
-              <p className="text-body font-semibold text-ink">Aperçu de l'import</p>
-              <p className="tabular text-meta text-ink-faint">
+          <div className="flex min-h-0 flex-1 flex-col bg-app">
+            <div className="flex flex-none items-baseline justify-between gap-3 border-b border-bd bg-panel px-[22px] py-[11px]">
+              <p className="text-body font-semibold text-tx">Aperçu de l'import</p>
+              <p className="tabular text-meta text-tx-5">
                 {checkedItems === 0
                   ? "Aucun élément"
                   : `${checkedItems} élément${checkedItems > 1 ? "s" : ""}`}
@@ -244,7 +244,7 @@ export function ImportReviewForm({
                 />
               )}
             </div>
-            <div className="flex-none bg-surface px-[18px] pb-3">
+            <div className="flex-none bg-panel px-[18px] pb-3">
               <ImportJournal entries={entries} />
             </div>
           </div>

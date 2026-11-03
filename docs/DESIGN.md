@@ -31,11 +31,14 @@ présent document dit comment l'employer.
 > `src/styles.css`. Ne pas créer de règle nouvelle qui dépende d'un fichier du handoff : elle
 > serait inapplicable.
 
-> **Jetons v1 hérités.** `bg-surface`, `text-ink`, `border-line`, `text-accent`,
-> `rounded-card`, `text-body`… existent encore : ils sont **repointés** sur la palette v2
-> (table en §3) et une trentaine de composants les emploient toujours. Tout code neuf ou
-> retouché n'emploie que les jetons v2 ; un composant qu'on modifie en profondeur passe
-> aux jetons v2 au passage.
+> **Jetons v1 hérités.** Les couleurs v1 qui n'étaient qu'un alias exact d'un jeton v2
+> (`bg-surface`, `text-ink`, `border-line`, `bg-fill`… — table en §3) ont été remplacées
+> partout par leur équivalent ; `text-accent` est passé à `text-ac-tx`, comme la table le
+> prévoit. Restent une soixantaine d'emplois, dans dix-sept composants, de jetons sans
+> équivalent v2 direct : les statuts (`text-danger`, `bg-warning-tint`… — à porter par
+> `StatusGlyph` ou une teinte, décision de design au cas par cas), `bg-fill-hover`,
+> `border-accent-border`, `outline-accent-focus` (le focus global), ainsi que `rounded-card`
+> et `text-body`. Tout code neuf ou retouché n'emploie que les jetons v2.
 
 ---
 

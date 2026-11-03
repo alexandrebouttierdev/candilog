@@ -58,7 +58,7 @@ export function Select({
           invalid,
           cn(
             "appearance-none pr-9",
-            dense && "h-control min-h-control rounded-button bg-fill",
+            dense && "h-control min-h-control rounded-button bg-chip",
           ),
         )}
         {...props}
@@ -67,7 +67,7 @@ export function Select({
       </select>
       <span
         aria-hidden
-        className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-[11px] text-ink-faint"
+        className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-[11px] text-tx-5"
       >
         ▾
       </span>

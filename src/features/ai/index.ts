@@ -6,8 +6,6 @@ export { AiStopButton } from "./view/components/AiStopButton";
 export { useAiConfigSync } from "./viewmodel/useAiConfigSync";
 export { useAiOperation } from "./viewmodel/useAiOperation";
 export { useAiProgress } from "./viewmodel/useAiProgress";
-export { useAiTimer } from "./viewmodel/useAiTimer";
-export { useAiRailStatusStore } from "./viewmodel/ai-rail-status-store";
 export {
   useAiOperationStore,
   type AiOperationKind,

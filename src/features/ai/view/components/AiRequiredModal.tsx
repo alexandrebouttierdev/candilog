@@ -23,7 +23,7 @@ export function AiRequiredModal() {
       }}
       width="480px"
     >
-      <p className="pt-3 text-body leading-relaxed text-ink-muted">
+      <p className="pt-3 text-body leading-relaxed text-tx-3">
         Candilog n’a pas encore de fournisseur ni de modèle IA prêts à l’emploi. Configurez
         l'IA locale, Ollama ou un fournisseur distant dans les réglages, puis réessayez.
       </p>

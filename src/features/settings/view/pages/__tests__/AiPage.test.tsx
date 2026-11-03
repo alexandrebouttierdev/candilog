@@ -77,7 +77,7 @@ describe("écran Intelligence artificielle", () => {
   it("propose l'aide canirun.ai pour Ollama, sans clé API à saisir", async () => {
     vi.spyOn(settingsService, "load").mockResolvedValue(reglages({ provider: "ollama", model: "llama3.2:3b" }));
 
-    render(<AiPage />, { wrapper });
+    render(<AiPage renderBenchmark={() => null} />, { wrapper });
 
     // Ollama est le fournisseur principal : l'écran s'ouvre sur lui.
     expect(await screen.findByRole("tab", { name: /^Ollama/ })).toHaveAttribute("aria-selected", "true");
@@ -102,7 +102,7 @@ describe("écran Intelligence artificielle", () => {
     ]);
     const save = vi.spyOn(settingsService, "save").mockResolvedValue(initial);
 
-    render(<AiPage />, { wrapper });
+    render(<AiPage renderBenchmark={() => null} />, { wrapper });
     await userEvent.click(await screen.findByRole("tab", { name: /^OpenAI/ }));
     await userEvent.click(await screen.findByRole("button", { name: "Actualiser" }));
     await waitFor(() => expect(listModels).toHaveBeenCalledOnce());
@@ -115,7 +115,7 @@ describe("écran Intelligence artificielle", () => {
   });
 
   it("annonce les sections fournisseur sans bandeau d'état en tête", async () => {
-    render(<AiPage />, { wrapper });
+    render(<AiPage renderBenchmark={() => null} />, { wrapper });
 
     await userEvent.click(await screen.findByRole("tab", { name: /^OpenAI/ }));
     expect(screen.getByRole("navigation", { name: "Fournisseurs" })).toBeInTheDocument();
@@ -132,7 +132,7 @@ describe("écran Intelligence artificielle", () => {
       reglages({ provider: "candilog_local", model: "", api_key_configured: false, endpoint: "" }),
     );
 
-    render(<AiPage />, { wrapper });
+    render(<AiPage renderBenchmark={() => null} />, { wrapper });
 
     expect(await screen.findByRole("tab", { name: /IA locale/ })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Tester l'IA" })).not.toBeInTheDocument();
@@ -142,7 +142,7 @@ describe("écran Intelligence artificielle", () => {
   it("affiche un squelette pendant le chargement des réglages", () => {
     vi.spyOn(settingsService, "load").mockReturnValue(new Promise(() => undefined));
 
-    render(<AiPage />, { wrapper });
+    render(<AiPage renderBenchmark={() => null} />, { wrapper });
 
     expect(
       screen.getByRole("status", { name: "Chargement des réglages" }),
@@ -154,7 +154,7 @@ describe("écran Intelligence artificielle", () => {
       new AppError({ code: "DATABASE_ERROR", message: "Réglages inaccessibles." }),
     );
 
-    render(<AiPage />, { wrapper });
+    render(<AiPage renderBenchmark={() => null} />, { wrapper });
 
     expect(await screen.findByText("Réglages inaccessibles.")).toBeInTheDocument();
     expect(
@@ -167,7 +167,7 @@ describe("écran Intelligence artificielle", () => {
       reglages({ api_key_configured: false }),
     );
 
-    render(<AiPage />, { wrapper });
+    render(<AiPage renderBenchmark={() => null} />, { wrapper });
     await userEvent.click(await screen.findByRole("tab", { name: /^OpenAI/ }));
 
     expect(await screen.findByLabelText(/^Clé API/)).toBeInTheDocument();
@@ -177,7 +177,7 @@ describe("écran Intelligence artificielle", () => {
   it("confirme la connexion sous Configuration quand le test aboutit", async () => {
     vi.spyOn(settingsService, "testConnection").mockResolvedValue(undefined);
 
-    render(<AiPage />, { wrapper });
+    render(<AiPage renderBenchmark={() => null} />, { wrapper });
     await userEvent.click(await screen.findByRole("tab", { name: /^OpenAI/ }));
     await userEvent.click(await screen.findByRole("button", { name: "Tester la connexion" }));
 
@@ -189,7 +189,7 @@ describe("écran Intelligence artificielle", () => {
       new AppError({ code: "PROVIDER_ERROR", message: "Clé refusée par le fournisseur." }),
     );
 
-    render(<AiPage />, { wrapper });
+    render(<AiPage renderBenchmark={() => null} />, { wrapper });
     await userEvent.click(await screen.findByRole("tab", { name: /^OpenAI/ }));
     await userEvent.click(await screen.findByRole("button", { name: "Tester la connexion" }));
 
@@ -197,7 +197,7 @@ describe("écran Intelligence artificielle", () => {
   });
 
   it("n'affiche jamais la clé API en clair", async () => {
-    render(<AiPage />, { wrapper });
+    render(<AiPage renderBenchmark={() => null} />, { wrapper });
 
     await userEvent.click(await screen.findByRole("tab", { name: /^OpenAI/ }));
     const champ = await screen.findByLabelText(/^Clé API/);
@@ -233,7 +233,7 @@ describe("écran Intelligence artificielle", () => {
     };
     vi.spyOn(settingsService, "load").mockResolvedValue(initial);
 
-    render(<AiPage />, { wrapper });
+    render(<AiPage renderBenchmark={() => null} />, { wrapper });
     await userEvent.click(await screen.findByRole("tab", { name: /^OpenAI/ }));
 
     expect(await screen.findByDisplayValue("gpt-4o-mini")).toBeInTheDocument();
@@ -252,7 +252,7 @@ describe("écran Intelligence artificielle", () => {
     vi.spyOn(settingsService, "load").mockResolvedValue(
       reglages({ provider: "openai", model: "gpt-4o-mini", api_key_configured: true }),
     );
-    render(<AiPage />, { wrapper });
+    render(<AiPage renderBenchmark={() => null} />, { wrapper });
 
     await userEvent.click(await screen.findByRole("tab", { name: /^OpenAI/ }));
     await screen.findByDisplayValue("gpt-4o-mini");
@@ -268,7 +268,7 @@ describe("écran Intelligence artificielle", () => {
         endpoint: "https://passerelle.interne.test",
       }),
     );
-    render(<AiPage />, { wrapper });
+    render(<AiPage renderBenchmark={() => null} />, { wrapper });
 
     expect(await screen.findByDisplayValue("https://passerelle.interne.test")).toBeInTheDocument();
   });
@@ -284,7 +284,7 @@ describe("écran Intelligence artificielle", () => {
     });
     vi.spyOn(settingsService, "load").mockResolvedValue(initial);
 
-    render(<AiPage />, { wrapper });
+    render(<AiPage renderBenchmark={() => null} />, { wrapper });
     await userEvent.click(await screen.findByRole("tab", { name: /^OpenAI/ }));
 
     expect(await screen.findByDisplayValue("https://passerelle.interne.test")).toBeInTheDocument();
@@ -293,7 +293,7 @@ describe("écran Intelligence artificielle", () => {
 
 describe("écran Intelligence artificielle — qui fait quoi", () => {
   it("montre les cinq tâches, qui suivent le fournisseur principal par défaut", async () => {
-    render(<AiPage />, { wrapper });
+    render(<AiPage renderBenchmark={() => null} />, { wrapper });
 
     const section = await screen.findByRole("region", { name: "Qui fait quoi" });
     for (const tache of ["Générer un CV ciblé", "Rédiger une lettre", "Analyser un CV", "Extraire une offre d'emploi", "Lire un CV importé"]) {
@@ -303,7 +303,7 @@ describe("écran Intelligence artificielle — qui fait quoi", () => {
 
   it("désactive une tâche et enregistre aussitôt le routage", async () => {
     const save = vi.spyOn(settingsService, "save").mockImplementation((settings) => Promise.resolve(settings));
-    render(<AiPage />, { wrapper });
+    render(<AiPage renderBenchmark={() => null} />, { wrapper });
 
     const section = await screen.findByRole("region", { name: "Qui fait quoi" });
     await userEvent.click(within(section).getByRole("button", { name: /^Extraire une offre d'emploi/ }));
@@ -323,7 +323,7 @@ describe("écran Intelligence artificielle — qui fait quoi", () => {
       },
     });
     const save = vi.spyOn(settingsService, "save").mockImplementation((settings) => Promise.resolve(settings));
-    render(<AiPage />, { wrapper });
+    render(<AiPage renderBenchmark={() => null} />, { wrapper });
 
     const section = await screen.findByRole("region", { name: "Qui fait quoi" });
     await userEvent.click(within(section).getByRole("button", { name: /^Analyser un CV/ }));

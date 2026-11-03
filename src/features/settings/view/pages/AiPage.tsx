@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { AiBenchmarkModal, useAiRailStatusStore } from "@/features/ai";
+import { useAiRailStatusStore } from "../../viewmodel/ai-rail-status-store";
 import { AppError } from "@/shared/types/app-error";
 import type { AiTask, AnalysisMode, LlmForm, Settings, TaskRoute } from "@/shared/types/generated/settings";
 import {
@@ -32,6 +32,8 @@ import { LocalInstallOverlay } from "../components/LocalInstallOverlay";
 import { AiTaskRouting } from "../components/AiTaskRouting";
 import { AI_TASKS, assignmentOf, mainLabel } from "../../model/taskRouting";
 import { RemoteModelPicker } from "../components/RemoteModelPicker";
+import { ControlLabel, Temperature } from "../components/AiControls";
+import { FACTS } from "../../model/providerFacts";
 import { ProviderLogo } from "../components/ProviderGrid";
 import { cn } from "@/shared/lib/cn";
 import { type ConnectionTest } from "../../model/aiStatus";
@@ -47,8 +49,22 @@ const MODES: Array<{ value: AnalysisMode; label: string }> = [
 
 type AiTab = "local" | "providers";
 
-/** Intelligence artificielle : fournisseur, modèle, comportement et apparence. */
-export function AiPage() {
+/** Propriétés de la surcouche du benchmark, que la couche `app` fournit à l'écran. */
+export interface AiBenchmarkSlotProps {
+  open: boolean;
+  onClose: () => void;
+  modelLabel: string;
+}
+
+/**
+ * Écran Intelligence artificielle : fournisseur, modèle, comportement et apparence.
+ *
+ * Le benchmark (`AiBenchmarkModal`) appartient à la feature `ai`, qui dépend elle-même des
+ * réglages : l'importer ici refermait un cycle `ai ↔ settings`. La couche `app` le fournit
+ * donc par `renderBenchmark` (`app/router/AiRoute.tsx`), comme elle relie Candidatures et
+ * vues enregistrées.
+ */
+export function AiPage({ renderBenchmark }: { renderBenchmark: (props: AiBenchmarkSlotProps) => ReactNode }) {
   const vm = useSettingsViewModel();
   const notify = useUiStore((state) => state.notify);
   // Sans choix explicite, l'écran s'ouvre sur le fournisseur principal.
@@ -542,111 +558,11 @@ export function AiPage() {
 
       {installOpen ? <LocalInstallOverlay vm={managedVm} onClose={() => setInstallOpen(false)} /> : null}
 
-      <AiBenchmarkModal
-        open={benchmarkOpen}
-        onClose={() => setBenchmarkOpen(false)}
-        modelLabel={benchmarkModelLabel || managedModelLabel || "IA locale"}
-      />
-    </div>
-  );
-}
-
-/** Faits affichés sous le nom d'un fournisseur : aucune promesse de qualité, des faits. */
-interface ProviderFacts {
-  readonly description: string;
-  readonly meters: ReadonlyArray<{ label: string; value: string; level: number; tone: string }>;
-}
-
-const GOOD = "bg-st-g";
-const WARN = "bg-st-a";
-
-function remoteFacts(label: string): ProviderFacts {
-  return {
-    description: `Les données de chaque tâche confiée à ${label} lui sont envoyées pour être traitées. La rédaction est généralement plus rapide et plus fine qu'en local ; l'usage est facturé par ${label} selon votre compte.`,
-    meters: [
-      { label: "Confidentialité", value: `Envoyé à ${label}`, level: 1, tone: WARN },
-      { label: "Coût", value: "Facturé à l'usage", level: 1, tone: WARN },
-      { label: "Hors connexion", value: "Impossible", level: 0, tone: WARN },
-    ],
-  };
-}
-
-const FACTS: Record<ProviderOption["id"], (label: string) => ProviderFacts> = {
-  candilog_local: () => ({
-    description:
-      "Les modèles tournent sur votre machine. Vos CV, vos lettres et vos candidatures ne sortent jamais de l'ordinateur. C'est gratuit et utilisable hors connexion ; en contrepartie, c'est plus lent et la qualité dépend de la taille du modèle installé.",
-    meters: [
-      { label: "Confidentialité", value: "Rien ne sort", level: 3, tone: GOOD },
-      { label: "Coût", value: "Gratuit", level: 3, tone: GOOD },
-      { label: "Hors connexion", value: "Oui", level: 3, tone: GOOD },
-    ],
-  }),
-  ollama: () => ({
-    description:
-      "Votre propre installation d'Ollama, sur cet ordinateur ou sur votre réseau. Les données restent chez vous, sans service tiers.",
-    meters: [
-      { label: "Confidentialité", value: "Reste chez vous", level: 3, tone: GOOD },
-      { label: "Coût", value: "Gratuit", level: 3, tone: GOOD },
-      { label: "Hors connexion", value: "Selon l'installation", level: 2, tone: GOOD },
-    ],
-  }),
-  claude: remoteFacts,
-  openai: remoteFacts,
-  gemini: remoteFacts,
-  mistral: remoteFacts,
-  deepseek: remoteFacts,
-  custom: () => ({
-    description:
-      "Un service compatible OpenAI — LM Studio, un serveur interne… Les données vont à l'adresse que vous indiquez : locale ou distante, c'est elle qui décide.",
-    meters: [
-      { label: "Confidentialité", value: "Selon l'adresse", level: 2, tone: WARN },
-      { label: "Coût", value: "Selon le service", level: 2, tone: WARN },
-      { label: "Hors connexion", value: "Selon l'adresse", level: 1, tone: WARN },
-    ],
-  }),
-};
-
-function ControlLabel({ children }: { children: ReactNode }) {
-  return <p className="mb-1.5 text-label font-mid text-ink-muted">{children}</p>;
-}
-
-function Temperature({ value, onChange }: { value: number; onChange: (value: number) => void }) {
-  const part = Math.round((value / 2) * 100);
-
-  return (
-    <div className="max-w-[380px]">
-      <div className="mb-1.5 flex items-baseline justify-between">
-        <p className="text-label font-mid text-ink-muted">Température</p>
-        <span className="rounded-chip bg-fill px-1.5 py-0.5 font-mono tabular text-meta text-ink">
-          {value.toFixed(1)}
-        </span>
-      </div>
-      <input
-        type="range"
-        min={0}
-        max={2}
-        step={0.1}
-        value={value}
-        aria-label="Température"
-        onChange={(event) => onChange(Number(event.target.value))}
-        style={{
-          background: `linear-gradient(to right, var(--color-accent) 0 ${part}%, var(--color-fill) ${part}% 100%)`,
-        }}
-        className={cn(
-          "h-1.5 w-full cursor-pointer appearance-none rounded-full",
-          "focus-visible:outline-1 focus-visible:outline-accent-focus",
-          "[&::-webkit-slider-thumb]:size-[14px] [&::-webkit-slider-thumb]:appearance-none",
-          "[&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2",
-          "[&::-webkit-slider-thumb]:border-surface [&::-webkit-slider-thumb]:bg-accent",
-          "[&::-moz-range-thumb]:size-[14px] [&::-moz-range-thumb]:rounded-full",
-          "[&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-surface",
-          "[&::-moz-range-thumb]:bg-accent",
-        )}
-      />
-      <div className="mt-1.5 flex justify-between text-meta text-ink-faint">
-        <span>Précise</span>
-        <span>Créative</span>
-      </div>
+      {renderBenchmark({
+        open: benchmarkOpen,
+        onClose: () => setBenchmarkOpen(false),
+        modelLabel: benchmarkModelLabel || managedModelLabel || "IA locale",
+      })}
     </div>
   );
 }

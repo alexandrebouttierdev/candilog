@@ -432,7 +432,7 @@ traitement composé de plusieurs appels, reprise JSON comprise, cumule leurs tok
 
 La fin d'un traitement est aussi annoncée par un signal sonore, émis une seule fois dans
 `features/ai/services/aiService.ts` pour que plus aucun écran ne puisse l'oublier. La
-préférence « Son de fin de traitement » (Réglages → IA) est locale à la machine
+préférence « Son de fin de traitement » (Réglages → Apparence) est locale à la machine
 (`shared/lib/completion-sound.ts`, `localStorage`) et active par défaut.
 Une opération annulée reste muette même si sa promesse frontend se résout tardivement.
 

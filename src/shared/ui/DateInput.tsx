@@ -144,20 +144,20 @@ export function DateInput({
               type="button"
               aria-label="Mois précédent"
               onClick={() => setCurseur((c) => shiftMonth(c.year, c.month, -1))}
-              className="flex size-7 items-center justify-center rounded-button text-ink-muted hover:bg-fill-hover hover:text-ink"
+              className="flex size-7 items-center justify-center rounded-button text-tx-3 hover:bg-fill-hover hover:text-tx"
             >
               <span aria-hidden className="text-[18px] leading-none">
                 ‹
               </span>
             </button>
-            <p className="min-w-0 flex-1 text-center text-note font-semibold capitalize text-ink">
+            <p className="min-w-0 flex-1 text-center text-note font-semibold capitalize text-tx">
               {monthLabel(curseur.year, curseur.month)}
             </p>
             <button
               type="button"
               aria-label="Mois suivant"
               onClick={() => setCurseur((c) => shiftMonth(c.year, c.month, 1))}
-              className="flex size-7 items-center justify-center rounded-button text-ink-muted hover:bg-fill-hover hover:text-ink"
+              className="flex size-7 items-center justify-center rounded-button text-tx-3 hover:bg-fill-hover hover:text-tx"
             >
               <span aria-hidden className="text-[18px] leading-none">
                 ›
@@ -168,7 +168,7 @@ export function DateInput({
             {DAYS.map((day) => (
               <span
                 key={day}
-                className="pb-1 text-center text-micro uppercase text-ink-faint"
+                className="pb-1 text-center text-micro uppercase text-tx-5"
               >
                 {day}
               </span>
@@ -186,12 +186,12 @@ export function DateInput({
                 className={cn(
                   "tabular mx-auto flex size-7 items-center justify-center rounded-pill text-meta",
                   day.iso === choisi
-                    ? "bg-accent font-medium text-on-accent"
+                    ? "bg-ac font-medium text-on-accent"
                     : day.today
-                      ? "font-medium text-accent hover:bg-accent-tint"
+                      ? "font-medium text-ac-tx hover:bg-tint-ac-bg"
                       : day.in_month
-                        ? "text-ink hover:bg-fill-hover"
-                        : "text-ink-faint hover:bg-fill-hover",
+                        ? "text-tx hover:bg-fill-hover"
+                        : "text-tx-5 hover:bg-fill-hover",
                 )}
               >
                 {day.number}
@@ -279,7 +279,7 @@ export function TimeInput({
               );
             })}
           </select>
-          <span className="text-body text-ink-faint">:</span>
+          <span className="text-body text-tx-5">:</span>
           <select
             aria-label="Minutes"
             value={minutes}
@@ -303,17 +303,17 @@ export function TimeInput({
 
 function declencheur(dense: boolean): string {
   return cn(
-    "absolute inset-y-0 right-0 z-10 flex items-center justify-center text-ink-faint",
-    "hover:text-ink focus-visible:outline-1 focus-visible:outline-accent-focus",
+    "absolute inset-y-0 right-0 z-10 flex items-center justify-center text-tx-5",
+    "hover:text-tx focus-visible:outline-1 focus-visible:outline-accent-focus",
     dense ? "w-7" : "w-9",
   );
 }
 
 function denseClasses(invalid: boolean | undefined): string {
   return cn(
-    "h-[25px] min-h-[25px] w-full rounded-chip border bg-fill px-2 pr-7 text-label text-ink",
-    "placeholder:text-ink-disabled focus:border-accent focus:outline-none",
-    invalid ? "border-danger" : "border-control",
+    "h-[25px] min-h-[25px] w-full rounded-chip border bg-chip px-2 pr-7 text-label text-tx",
+    "placeholder:text-ink-disabled focus:border-ac focus:outline-none",
+    invalid ? "border-danger" : "border-bd-menu",
   );
 }
 

@@ -5,7 +5,7 @@ import { useAnalyticsViewModel } from "../../viewmodel/useAnalyticsViewModel";
 import { AnalyticsSkeleton, FollowUpList, PerformanceList } from "../components/AnalyticsUi";
 import { ActivityChart } from "../components/charts";
 import { insightsOf } from "../../model/insights";
-import { channelLabel } from "@/features/applications";
+import { ApplicationPicker, channelLabel } from "@/features/applications";
 import { FollowUpFormModal } from "@/features/followups";
 import { AppError } from "@/shared/types/app-error";
 import { useChrome } from "@/shared/lib/chrome";
@@ -235,6 +235,7 @@ export function AnalyticsPage() {
       </div>
 
       <FollowUpFormModal
+        applicationPicker={ApplicationPicker}
         open={to_follow_up !== null}
         follow_up={null}
         application_id={to_follow_up?.id ?? null}

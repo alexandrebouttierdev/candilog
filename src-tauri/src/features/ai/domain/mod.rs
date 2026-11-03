@@ -38,7 +38,7 @@ pub use scoring::{
 };
 pub use system_resources::*;
 pub use user_benchmark::{
-    benchmark_ground_truth_path, benchmark_pdf_path, build_benchmark_result, load_ground_truth,
+    benchmark_ground_truth_path, build_benchmark_result, load_ground_truth,
     score_extracted_profile, BenchmarkAnalysisOutcome, BenchmarkGroundTruth, BenchmarkScore,
 };
 pub use validation::*;

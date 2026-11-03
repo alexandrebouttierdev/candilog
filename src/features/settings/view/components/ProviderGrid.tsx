@@ -148,16 +148,16 @@ export function ProviderGrid({
               "transition-[background-color,border-color] duration-hover ease-in-out",
               "focus-visible:outline-1 focus-visible:outline-accent-focus",
               selected
-                ? "border-accent bg-accent-tint-12"
-                : "border-control bg-fill hover:border-control-strong hover:bg-fill-hover",
+                ? "border-ac bg-accent-tint-12"
+                : "border-bd-menu bg-chip hover:border-control-strong hover:bg-fill-hover",
             )}
           >
             {selected ? (
-              <span aria-hidden className="absolute right-2 top-1 text-accent">
+              <span aria-hidden className="absolute right-2 top-1 text-ac-tx">
                 ✓
               </span>
             ) : null}
-            <span className="relative flex size-10 flex-none items-center justify-center rounded-tile bg-surface">
+            <span className="relative flex size-10 flex-none items-center justify-center rounded-tile bg-panel">
               {logo ? (
                 <img
                   src={logo.src}
@@ -167,18 +167,18 @@ export function ProviderGrid({
                   className={cn("size-5", logo.mono && "dark:invert")}
                 />
               ) : (
-                <LineIcon name="ai" size={18} className="text-ink-muted" />
+                <LineIcon name="ai" size={18} className="text-tx-3" />
               )}
             </span>
             <span
               className={cn(
                 "w-full truncate text-center text-label font-mid",
-                selected ? "text-accent" : "text-ink-muted",
+                selected ? "text-ac-tx" : "text-tx-3",
               )}
             >
               {fournisseur.label}
             </span>
-            <span className="min-h-8 text-center text-meta leading-tight text-ink-faint">
+            <span className="min-h-8 text-center text-meta leading-tight text-tx-5">
               {fournisseur.hint}
             </span>
             {fournisseur.recommended ? <Tag>Recommandé</Tag> : null}

@@ -79,7 +79,8 @@ function CreateSpaceDialog({
       <Location probe={probe} />
       <p className="mb-3 text-sub leading-[1.5] text-tx-4">
         Le fournisseur de stockage et toute personne ayant accès à cet emplacement pourront lire les candidatures,
-        les CV, les lettres et les fichiers joints synchronisés.
+        les CV, les lettres et les fichiers joints synchronisés. Quiconque peut y écrire pourra aussi modifier ou
+        supprimer ces données sur tous vos ordinateurs : choisissez un emplacement que vous êtes seul à utiliser.
       </p>
       {probe.legacy_space_exists ? (
         <p className="mb-3 rounded-r8 border border-bd-soft px-3 py-2 text-sub leading-[1.5] text-tx-4">

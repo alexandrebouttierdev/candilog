@@ -200,7 +200,9 @@ impl RuntimeInstaller {
             .get(artifact.url)
             .send()
             .await
-            .map_err(|error| AppError::Provider(format!("Téléchargement impossible : {error}")))?;
+            .map_err(|error| {
+                erreur_signalee(&error, "Téléchargement du moteur local impossible.")
+            })?;
         if !response.status().is_success() {
             return Err(AppError::Provider(format!(
                 "Téléchargement refusé ({})",
@@ -221,7 +223,7 @@ impl RuntimeInstaller {
                 return Err(AppError::Cancelled);
             }
             let chunk = chunk.map_err(|error| {
-                AppError::Provider(format!("Téléchargement interrompu : {error}"))
+                erreur_signalee(&error, "Téléchargement du moteur local interrompu.")
             })?;
             hasher.update(&chunk);
             file.write_all(&chunk).map_err(map_io)?;
@@ -290,19 +292,19 @@ fn extract_tgz(archive_path: &Path, destination: &Path) -> AppResult<()> {
     let file = File::open(archive_path).map_err(map_io)?;
     let decoder = GzDecoder::new(file);
     let mut archive = Archive::new(decoder);
-    archive.unpack(destination).map_err(|error| {
-        AppError::Provider(format!("Extraction de l'archive impossible : {error}"))
-    })?;
+    archive
+        .unpack(destination)
+        .map_err(|error| erreur_signalee(&error, "Extraction du moteur local impossible."))?;
     Ok(())
 }
 
 fn extract_zip(archive_path: &Path, destination: &Path) -> AppResult<()> {
     let file = File::open(archive_path).map_err(map_io)?;
     let mut archive = zip::ZipArchive::new(file)
-        .map_err(|error| AppError::Provider(format!("Archive ZIP Ollama invalide : {error}")))?;
-    archive.extract(destination).map_err(|error| {
-        AppError::Provider(format!("Extraction de l'archive ZIP impossible : {error}"))
-    })
+        .map_err(|error| erreur_signalee(&error, "Archive du moteur local invalide."))?;
+    archive
+        .extract(destination)
+        .map_err(|error| erreur_signalee(&error, "Extraction du moteur local impossible."))
 }
 
 fn percent(downloaded: u64, total: u64) -> u8 {
@@ -312,6 +314,13 @@ fn percent(downloaded: u64, total: u64) -> u8 {
     u8::try_from(downloaded.saturating_mul(100) / total)
         .unwrap_or(100)
         .min(100)
+}
+
+/// Journalise le détail technique et ne remonte à l'interface qu'un message rédigé
+/// (`docs/CODE_RULES.md` §13) : une erreur réseau ou d'archive nomme URL et chemins.
+fn erreur_signalee(error: &dyn std::fmt::Display, message: &str) -> AppError {
+    tracing::error!(%error, "installation de l'IA locale : {message}");
+    AppError::Provider(message.into())
 }
 
 fn map_io(error: std::io::Error) -> AppError {

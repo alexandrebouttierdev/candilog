@@ -202,11 +202,24 @@ pub fn is_hex_digest(value: &str) -> bool {
 
 /// Nom d'une photo de profil tel que `profile::domain::photo` le génère. Un nom reçu de
 /// l'espace distant devient un chemin local : rien d'autre que cette forme n'est accepté.
-#[must_use]
-pub fn is_valid_photo_file(name: &str) -> bool {
-    name.strip_prefix("photo-")
-        .and_then(|rest| rest.strip_suffix(".png"))
-        .is_some_and(|uuid| uuid::Uuid::parse_str(uuid).is_ok() && uuid.len() == 36)
+pub use crate::features::profile::domain::is_valid_photo_file;
+
+/// Le profil reçu ne peut désigner qu'une photo au nom canonique.
+///
+/// `profile.data` est un JSON opaque pour le protocole, mais son champ `photo` finit joint
+/// au dossier des photos par le service du profil : un lot forgé y glissait `../…` pour lire
+/// ou faire supprimer un fichier de l'utilisateur.
+fn validate_profile_photo(data: &Row) -> Result<(), InvalidObject> {
+    let Some(serde_json::Value::String(json)) = data.get("data") else {
+        return Ok(());
+    };
+    let profile: serde_json::Value =
+        serde_json::from_str(json).map_err(|_| invalid("profil illisible"))?;
+    match profile.get("photo") {
+        None | Some(serde_json::Value::Null) => Ok(()),
+        Some(serde_json::Value::String(name)) if is_valid_photo_file(name) => Ok(()),
+        Some(_) => Err(invalid("photo du profil invalide")),
+    }
 }
 
 fn validate_version(version: &VersionVector, what: &str) -> Result<(), InvalidObject> {
@@ -294,6 +307,9 @@ pub fn validate_change(change: &RecordChange) -> Result<(), InvalidObject> {
             .ok_or_else(|| invalid("identifiant absent du contenu"))?;
         if key != change.id {
             return Err(invalid("identifiant du contenu incohérent"));
+        }
+        if table.name == entities::PROFILE.name {
+            validate_profile_photo(data)?;
         }
     } else if !change.attachments.is_empty() {
         return Err(invalid("fichier joint sur une suppression"));
@@ -519,6 +535,28 @@ mod tests {
         assert!(validate_change(&forged).is_err());
         forged.attachments[0].file = format!("photo-{INSTALL}.png");
         validate_change(&forged).unwrap();
+    }
+
+    #[test]
+    fn un_profil_dont_la_photo_sort_du_dossier_est_refuse() {
+        let profil = |photo: serde_json::Value| {
+            let mut forged = change("profile", "1");
+            let data = serde_json::json!({ "photo": photo }).to_string();
+            forged.data = Some(Row::from([
+                ("id".into(), serde_json::json!(1)),
+                ("data".into(), serde_json::json!(data)),
+            ]));
+            forged.columns.clear();
+            forged
+        };
+        for nom in ["../../.bashrc", "/etc/passwd", "photo.png"] {
+            assert!(
+                validate_change(&profil(serde_json::json!(nom))).is_err(),
+                "{nom}"
+            );
+        }
+        validate_change(&profil(serde_json::json!(format!("photo-{INSTALL}.png")))).unwrap();
+        validate_change(&profil(serde_json::Value::Null)).unwrap();
     }
 
     #[test]

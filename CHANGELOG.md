@@ -4,6 +4,28 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
 [SemVer](https://semver.org/lang/fr/). Chaque version publiée correspond à un tag
 `v<version>` et à une [release GitHub](https://github.com/alexandrebouttierdev/candilog/releases).
 
+## [Non publié]
+
+### Sécurité
+
+- Le nom de fichier de la photo de profil est revalidé avant tout accès au disque. Un lot de
+  synchronisation ou une sauvegarde forgés pouvaient y placer un chemin vers un autre
+  fichier de l'utilisateur, lu à l'affichage et supprimé au remplacement de la photo ; la
+  synchronisation refuse désormais un tel lot.
+- La webview ne reçoit plus que les permissions qu'elle utilise (événements, déplacement de
+  la fenêtre, ouverture de liens du projet) au lieu de l'ensemble `core:default`.
+- Le refus des adresses locales pour un fournisseur IA distant couvre aussi les plages
+  réservées et les adresses IPv6 qui transportent une IPv4 (NAT64, 6to4).
+- Dépendances : `tokio` 1.54.1 (`RUSTSEC-2026-0386`), `zod` 4.6.7, Vite et Vitest à jour ;
+  crates retirées du registre remplacées.
+
+### Modifié
+
+- Les avertissements de la synchronisation disent aussi que toute personne pouvant écrire
+  dans l'emplacement peut modifier ou supprimer les données synchronisées.
+- Les erreurs de l'installation de l'IA locale n'affichent plus le détail technique (URL,
+  chemins), conservé dans le journal.
+
 ## [0.1.5] — 2026-10-25
 
 ### Ajouté

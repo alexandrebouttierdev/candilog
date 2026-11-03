@@ -5,6 +5,7 @@ use crate::core::database::{open_pool, run_local_migrations, validate_database_f
 use crate::core::errors::AppResult;
 use crate::core::secrets::SecretStore;
 use crate::features::ai::application::{AiService, ManagedOllamaPaths, ManagedOllamaService};
+use crate::features::ai::infrastructure::HttpProviderProbe;
 use crate::features::analytics::application::AnalyticsService;
 use crate::features::analytics::infrastructure::SqliteAnalyticsRepository;
 use crate::features::applications::application::ApplicationService;
@@ -145,7 +146,10 @@ impl AppState {
             exports_dir,
             Arc::new(KeyringSyncSecrets),
         ));
-        let managed_ollama = Arc::new(ManagedOllamaService::new(pool.clone(), managed_paths));
+        let managed_ollama = Arc::new(ManagedOllamaService::new(
+            Arc::new(SqliteSettingsRepository::new(pool.clone())),
+            managed_paths,
+        ));
         let profile = Arc::new(ProfileService::new(
             SqliteProfileRepository::new(pool.clone()),
             photos_dir,
@@ -172,13 +176,18 @@ impl AppState {
             interviews: Arc::new(InterviewService::new(SqliteInterviewRepository::new(
                 pool.clone(),
             ))),
-            ai: Arc::new(AiService::new(pool.clone(), Arc::clone(&managed_ollama))),
+            ai: Arc::new(AiService::new(
+                pool.clone(),
+                Arc::new(SqliteProfileRepository::new(pool.clone())),
+                Arc::clone(&managed_ollama),
+            )),
             managed_ollama,
             settings: Arc::new(SettingsService::new(
                 SqliteSettingsRepository::new(pool.clone()),
                 SecretStore,
                 pool.clone(),
                 db_path.clone(),
+                Arc::new(HttpProviderProbe),
             )),
             followups: Arc::new(FollowUpService::new(SqliteFollowUpRepository::new(
                 pool.clone(),

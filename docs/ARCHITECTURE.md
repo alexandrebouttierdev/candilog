@@ -32,13 +32,34 @@ Vue React → ViewModel (hook) → service frontend → invoke
 
 Les accès au système restent natifs : dialogues de fichier (`core/files.rs`) et lecture du
 presse-papiers (`core/clipboard.rs`, commande `documents_read_clipboard`). La webview
-n'expose ni l'un ni l'autre, et aucune permission large n'est ouverte côté capacités. Elle
+n'expose ni l'un ni l'autre, et aucune permission large n'est ouverte côté capacités : pas
+de `core:default`, seulement l'écoute des événements, le déplacement de la fenêtre et
+l'ouverture de deux origines (`capabilities/default.json`, verrouillé par
+`src-tauri/tests/capabilities.rs`). Elle
 n'a pas non plus accès au dossier de données : la photo de profil, écrite dans
 `AppPaths::photos_dir`, lui parvient en `data:` URL par `profile_photo` (`docs/DATA.md`).
 
 Le `domain` n'importe ni Tauri ni rusqlite. Les vues n'appellent jamais `invoke` directement :
-elles passent par `src/shared/services/ipc.ts`. Les providers IA sont derrière `LlmProvider`.
+elles passent par `src/shared/services/ipc.ts`. Les providers IA sont derrière `LlmGenerator`.
 La clé API reste dans le coffre natif via `keyring`.
+
+## Dépendances entre features
+
+Une feature peut en utiliser une autre, **jamais les deux l'une de l'autre**.
+
+- Frontend : `src/app/__tests__/feature-dependencies.test.ts` lit les imports
+  `@/features/…` et échoue au premier cycle. Quand deux features doivent se rejoindre, la
+  couche `app` les relie (`ApplicationsRoute` : candidatures et vues ; `AiRoute` : l'écran
+  IA des réglages et le benchmark de la feature IA), ou la dépendance passe par composition
+  (`FollowUpFormModal` reçoit son `applicationPicker`) ou par une marque de requête (le
+  profil périme les requêtes portant `PROFILE_DERIVED_META`, sans connaître le CV de base).
+  Les barils de feature ne réexportent pas les pages, chargées en `lazy()` par leur chemin
+  complet : un import profond depuis `app/` reste donc légitime pour une page.
+- Rust : un service applicatif dépend de **contrats**, pas du stockage d'une autre
+  feature. `AiService` reçoit un `ProfileRepository`, `ManagedOllamaService` un
+  `SettingsRepository`, et `SettingsService` essaie un fournisseur IA par `ProviderProbe`
+  (`settings::domain`), implémenté par `HttpProviderProbe` (`ai::infrastructure`).
+  `app/state.rs` choisit les implémentations SQLite et HTTP.
 
 ## CV ciblé — `ResumeWorkspace`
 
@@ -124,9 +145,9 @@ HTTP en cours.
 
 `features/sync` porte la synchronisation facultative entre ordinateurs : déclencheurs SQLite
 qui journalisent chaque écriture métier dans sa transaction, moteur de cycle indépendant du
-fournisseur derrière le contrat `RemoteStore` (dossier, Google Drive, OneDrive), chiffrement
-côté client et tâche de fond lancée par `bootstrap.rs`, annulée à la fermeture de la
-fenêtre. Inerte en mode local. Protocole, garanties et limites : `docs/SYNC.md`.
+fournisseur derrière le contrat `RemoteStore` (dossier, Google Drive, OneDrive), objets
+en clair et non signés — tout ce qu'un lot reçu touche hors de la base est revalidé — et
+tâche de fond lancée par `bootstrap.rs`, annulée à la fermeture de la fenêtre. Inerte en mode local. Protocole, garanties et limites : `docs/SYNC.md`.
 
 ## Le site
 

@@ -5,15 +5,14 @@ import {
   isAiNotConfiguredError,
   useAiOperation,
   useAiProgress,
-  useAiRailStatusStore,
-  useAiTimer,
 } from "@/features/ai";
+import { useOperationTimer } from "@/shared/hooks/useOperationTimer";
 import { formatAiSummary } from "@/shared/lib/duration";
 import { documentsService } from "../services/documentsService";
 import type { CoverLetter } from "@/shared/types/generated/documents";
 import { applyLetterCorrection, letterCorrectionFields } from "../model/letterMarkup";
 import { PROFILE_KEY, profileService } from "@/features/profile";
-import { useRemoteSendGuard } from "@/features/settings";
+import { useAiRailStatusStore, useRemoteSendGuard } from "@/features/settings";
 import type { Identity } from "@/shared/types/generated/profile";
 import type { ProfileSection } from "@/shared/types/generated/ai";
 import { LETTER_ARGUMENTS, sectionOptions, toggleSection } from "../model/profileSections";
@@ -59,7 +58,7 @@ export function useLetterWriterViewModel(initial: CoverLetter | null) {
   const [overflow, setOverflow] = useState(false);
   const [excludedSections, setExcludedSections] = useState<ProfileSection[]>([]);
   const progress = useAiProgress(stopping ? null : (operation?.id ?? null));
-  const timer = useAiTimer(operation !== null && !stopping);
+  const timer = useOperationTimer(operation !== null && !stopping);
   const inIteration = exchanges.length > 0 && !briefOpen;
 
   const profile = useQuery({ queryKey: PROFILE_KEY, queryFn: profileService.load });

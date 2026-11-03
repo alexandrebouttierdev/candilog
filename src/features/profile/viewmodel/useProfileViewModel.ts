@@ -1,11 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BASE_RESUME_KEY } from "@/features/documents";
 import { profileService } from "../services/profileService";
 import type { ImportProfileRequest, Profile, ProfilePayload } from "@/shared/types/generated/profile";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 
 export const PROFILE_KEY = ["profil"] as const;
+
+/**
+ * Marque d'une requête calculée **depuis** le profil (le CV de base composé en Rust, par
+ * exemple) : toute écriture du profil la périme.
+ *
+ * Une marque plutôt que la clé de la requête : le profil n'a pas à connaître les features
+ * qui le lisent — importer la clé du CV de base refermait un cycle `documents ↔ profile`.
+ * C'est la feature consommatrice qui pose `meta: PROFILE_DERIVED_META` sur sa requête.
+ */
+export const PROFILE_DERIVED_META = { derivedFromProfile: true } as const;
 
 /** Clé de la photo, distincte du profil : elle transporte une image, pas des champs. */
 export const PROFILE_PHOTO_KEY = [...PROFILE_KEY, "photo"] as const;
@@ -27,18 +36,20 @@ export function useProfileViewModel() {
   const query = useQuery({ queryKey: PROFILE_KEY, queryFn: profileService.load });
 
   /**
-   * Le CV de base est composé en Rust depuis le profil et mis en cache : toute écriture du
-   * profil périme cette composition. Sans cela, revenir sur l'écran dans les trente secondes
-   * (`staleTime`) y affichait l'ancienne feuille sous la mention « composé depuis votre
-   * profil », avec une colonne de gauche — elle, rafraîchie — qui la contredisait.
+   * Les requêtes calculées depuis le profil (`PROFILE_DERIVED_META`) — le CV de base,
+   * composé en Rust et mis en cache — sont périmées par toute écriture du profil. Sans
+   * cela, revenir sur l'écran dans les trente secondes (`staleTime`) y affichait l'ancienne
+   * feuille sous la mention « composé depuis votre profil », avec une colonne de gauche —
+   * elle, rafraîchie — qui la contredisait.
    */
-  const perimerCvDeBase = () => queryClient.invalidateQueries({ queryKey: BASE_RESUME_KEY });
+  const perimerDerives = () =>
+    queryClient.invalidateQueries({ predicate: (query) => query.meta?.["derivedFromProfile"] === true });
 
   const save = useMutation({
     mutationFn: (profile: Profile) => profileService.save(profile),
     onSuccess: async (payload: ProfilePayload) => {
       queryClient.setQueryData(PROFILE_KEY, payload);
-      await perimerCvDeBase();
+      await perimerDerives();
       notify({ tone: "success", title: "Profil enregistré" });
     },
     onError: (error: unknown) => {
@@ -53,7 +64,7 @@ export function useProfileViewModel() {
     mutationFn: (request: ImportProfileRequest) => profileService.applyImport(request),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: PROFILE_KEY });
-      await perimerCvDeBase();
+      await perimerDerives();
     },
     onError: (error: unknown) => {
       notify({
@@ -71,7 +82,7 @@ export function useProfileViewModel() {
     await queryClient.invalidateQueries({ queryKey: PROFILE_PHOTO_KEY });
     // Chemin partagé par la photo et la réinitialisation : la seconde vide le profil, donc
     // la composition en cache.
-    await perimerCvDeBase();
+    await perimerDerives();
   };
 
   const setPhoto = useMutation({

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, type ComponentType } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -9,7 +9,6 @@ import {
 import { CANAUX_FOLLOW_UP } from "../../model/types";
 import type { FollowUp, NewFollowUp } from "@/shared/types/generated/followUps";
 import { toDisplayDate } from "@/shared/lib/dates";
-import { ApplicationPicker } from "@/features/applications";
 import {
   DateInput,
   FormField,
@@ -44,12 +43,28 @@ function from(follow_up: FollowUp): FollowUpFormInput {
  * concernée » puis « Planification ». Pas de champ heure, contrairement à l'entretien :
  * une relance se programme au jour.
  */
+/**
+ * Sélecteur de candidature attendu par le formulaire : celui de la feature `applications`.
+ *
+ * Reçu en propriété plutôt qu'importé : `applications` programme elle-même des relances
+ * (`useScheduleFollowUp`) et dépend donc de cette feature ; l'importer ici refermait un
+ * cycle `applications ↔ followups`. Chaque écran appelant connaît déjà `applications`.
+ */
+export type ApplicationPickerComponent = ComponentType<{
+  id?: string;
+  describedBy?: string | undefined;
+  invalid?: boolean;
+  value: string | null;
+  onChange: (id: string | null) => void;
+}>;
+
 export function FollowUpFormModal({
   open,
   follow_up,
   application_id,
   day,
   busy,
+  applicationPicker: ApplicationPicker,
   onClose,
   onSubmit,
 }: {
@@ -58,6 +73,7 @@ export function FollowUpFormModal({
   application_id?: string | null;
   day?: string | null;
   busy: boolean;
+  applicationPicker: ApplicationPickerComponent;
   onClose: () => void;
   onSubmit: (values: NewFollowUp) => Promise<unknown>;
 }) {

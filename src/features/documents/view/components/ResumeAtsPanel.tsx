@@ -59,25 +59,25 @@ export function ResumeAtsPanel({
       <section className="space-y-2.5" aria-label="Score ATS et espace disponible dans le CV">
         <div className="flex items-end justify-between gap-3">
           <div>
-            <p className="text-meta font-medium text-ink-faint">Score ATS</p>
-            <p className="tabular text-[22px] font-semibold leading-none text-ink">
-              {workspace.score.total}<span className="ml-1 text-label font-normal text-ink-faint">/ 100</span>
+            <p className="text-meta font-medium text-tx-5">Score ATS</p>
+            <p className="tabular text-[22px] font-semibold leading-none text-tx">
+              {workspace.score.total}<span className="ml-1 text-label font-normal text-tx-5">/ 100</span>
               {atteignable > workspace.score.total ? (
-                <span className="ml-2 text-label font-normal text-ink-faint">
+                <span className="ml-2 text-label font-normal text-tx-5">
                   jusqu’à {atteignable}
                 </span>
               ) : null}
             </p>
           </div>
-          <span className={`tabular text-meta font-semibold ${scoreEvolution > 0 ? "text-success" : scoreEvolution < 0 ? "text-danger" : "text-ink-faint"}`}>
+          <span className={`tabular text-meta font-semibold ${scoreEvolution > 0 ? "text-success" : scoreEvolution < 0 ? "text-danger" : "text-tx-5"}`}>
             {scoreEvolution > 0 ? "+" : ""}{scoreEvolution} pt{Math.abs(scoreEvolution) > 1 ? "s" : ""} depuis la génération
           </span>
         </div>
-        <div className="relative h-1.5 overflow-hidden rounded-pill bg-fill" aria-hidden="true">
+        <div className="relative h-1.5 overflow-hidden rounded-pill bg-chip" aria-hidden="true">
           {/* Deux teintes, comme la barre d'adéquation de la lettre : le score acquis
               par-dessus la part que les actions restantes ajouteraient. */}
           <div
-            className="absolute inset-y-0 left-0 rounded-pill bg-accent-tint"
+            className="absolute inset-y-0 left-0 rounded-pill bg-tint-ac-bg"
             style={{ width: `${atteignable}%` }}
           />
           <div
@@ -86,22 +86,22 @@ export function ResumeAtsPanel({
           />
         </div>
         {lastScoreImpact ? (
-          <p className="flex items-center justify-between gap-3 text-meta text-ink-muted">
+          <p className="flex items-center justify-between gap-3 text-meta text-tx-3">
             <span className="truncate">{lastScoreImpact.label}</span>
-            <span className={`tabular flex-none font-semibold ${lastScoreImpact.delta > 0 ? "text-success" : lastScoreImpact.delta < 0 ? "text-danger" : "text-ink-faint"}`}>
+            <span className={`tabular flex-none font-semibold ${lastScoreImpact.delta > 0 ? "text-success" : lastScoreImpact.delta < 0 ? "text-danger" : "text-tx-5"}`}>
               {lastScoreImpact.delta > 0 ? "+" : ""}{lastScoreImpact.delta} pt{Math.abs(lastScoreImpact.delta) > 1 ? "s" : ""}
             </span>
           </p>
         ) : null}
-        <div className="flex items-center justify-between gap-3 border-t border-line pt-2.5">
-          <p className="text-label font-semibold text-ink">Mise en page</p>
+        <div className="flex items-center justify-between gap-3 border-t border-bd pt-2.5">
+          <p className="text-label font-semibold text-tx">Mise en page</p>
           <StatusPill tone={layout.tone}>
             {layout.label}
           </StatusPill>
         </div>
-        <div className="h-1.5 overflow-hidden rounded-pill bg-fill" aria-hidden="true">
+        <div className="h-1.5 overflow-hidden rounded-pill bg-chip" aria-hidden="true">
           <div
-            className={`h-full rounded-pill ${workspace.layout.overflow ? "bg-danger" : workspace.layout.status === "almost_full" || workspace.layout.status === "full" ? "bg-warning" : "bg-accent"}`}
+            className={`h-full rounded-pill ${workspace.layout.overflow ? "bg-danger" : workspace.layout.status === "almost_full" || workspace.layout.status === "full" ? "bg-warning" : "bg-ac"}`}
             style={{ width: `${Math.min(100, Math.max(4, workspace.layout.used_per_mille / 10))}%` }}
           />
         </div>
@@ -128,7 +128,7 @@ export function ResumeAtsPanel({
               : "Les contenus utiles restent disponibles ci-dessous pour un ajout manuel."}
           />
         ) : (
-          <ol className="divide-y divide-line border-y border-line">
+          <ol className="divide-y divide-bd border-y border-bd">
             {workspace.content_recommendations.map((recommendation) => (
               <ContentRecommendationRow
                 key={recommendation.id}
@@ -155,7 +155,7 @@ export function ResumeAtsPanel({
       {missing.length > 0 ? (
         <section className="space-y-3" aria-labelledby="gaps-title">
           <SectionHeading id="gaps-title" title="Compétences manquantes à vérifier" />
-          <p className="text-meta leading-relaxed text-ink-faint">
+          <p className="text-meta leading-relaxed text-tx-5">
             Demandées par l’offre, mais absentes de votre profil. Ajoutez-les d’abord au profil uniquement si vous les maîtrisez.
           </p>
           <ul className="flex flex-wrap gap-1.5">
@@ -167,7 +167,7 @@ export function ResumeAtsPanel({
       {workspace.proposals.some((proposal) => proposal.kind === "text_replacement") ? (
         <section className="space-y-3" aria-labelledby="writing-title">
           <SectionHeading id="writing-title" title="Optimisations de rédaction" />
-          <ul className="divide-y divide-line border-y border-line">
+          <ul className="divide-y divide-bd border-y border-bd">
             {workspace.proposals.filter((proposal) => proposal.kind === "text_replacement").map((proposal) => (
               <ResumeProposalRow key={proposal.id} proposal={proposal} busy={busy} onAccept={onAccept} onReject={onReject} onUndo={onUndo} />
             ))}
@@ -179,13 +179,13 @@ export function ResumeAtsPanel({
 }
 
 function SectionHeading({ id, title }: { id: string; title: string }) {
-  return <h3 id={id} className="text-label font-semibold text-ink">{title}</h3>;
+  return <h3 id={id} className="text-label font-semibold text-tx">{title}</h3>;
 }
 
 function CompactState({ title, description }: { title: string; description: string }) {
   return (
-    <div className="rounded-card bg-fill p-3">
-      <div><p className="text-label font-medium text-ink">{title}</p><p className="mt-0.5 text-meta leading-relaxed text-ink-faint">{description}</p></div>
+    <div className="rounded-card bg-chip p-3">
+      <div><p className="text-label font-medium text-tx">{title}</p><p className="mt-0.5 text-meta leading-relaxed text-tx-5">{description}</p></div>
     </div>
   );
 }
@@ -205,10 +205,10 @@ function ContentRecommendationRow({ recommendation, workspace, disabled, onApply
   const scoreDelta = recommendation.score_delta ?? 0;
   return (
     <li className="space-y-2.5 py-3 first:pt-2">
-      <div className="flex items-start justify-between gap-2"><p className="min-w-0 text-label font-semibold text-ink">{recommendation.label}</p><span className="flex-none text-meta font-medium text-accent">{relevance}</span></div>
-      {replacement && removed ? <p className="flex items-center gap-1.5 text-meta text-ink-muted"><span className="line-through">{removed}</span><span aria-hidden>→</span><span>{recommendation.label}</span></p> : null}
-      <p className="text-meta leading-relaxed text-ink-muted">{recommendation.reason}</p>
-      <p className={`tabular text-meta font-semibold ${scoreDelta > 0 ? "text-success" : scoreDelta < 0 ? "text-danger" : "text-ink-faint"}`}>
+      <div className="flex items-start justify-between gap-2"><p className="min-w-0 text-label font-semibold text-tx">{recommendation.label}</p><span className="flex-none text-meta font-medium text-ac-tx">{relevance}</span></div>
+      {replacement && removed ? <p className="flex items-center gap-1.5 text-meta text-tx-3"><span className="line-through">{removed}</span><span aria-hidden>→</span><span>{recommendation.label}</span></p> : null}
+      <p className="text-meta leading-relaxed text-tx-3">{recommendation.reason}</p>
+      <p className={`tabular text-meta font-semibold ${scoreDelta > 0 ? "text-success" : scoreDelta < 0 ? "text-danger" : "text-tx-5"}`}>
         {scoreDelta > 0 ? "+" : ""}{scoreDelta} pt{Math.abs(scoreDelta) > 1 ? "s" : ""} ATS
       </p>
       <div className="flex gap-1.5"><Button size="dialog" variant="primary" disabled={disabled} onClick={() => onApply(recommendation.id)}>{replacement ? "Appliquer" : "Ajouter"}</Button><Button size="dialog" variant="ghost" disabled={disabled} onClick={() => onIgnore(recommendation.id)}>Ignorer</Button></div>
@@ -222,7 +222,7 @@ function ProfileLibrary({ items, disabled, onAdd }: { items: ResumeProfileItem[]
       {(["skill", "project", "certification", "language"] as const).map((kind) => {
         const group = items.filter((item) => item.content.type === kind);
         if (group.length === 0) return null;
-        return <div key={kind}><p className="mb-1.5 text-meta font-semibold uppercase tracking-wide text-ink-faint">{ITEM_LABELS[kind]}</p><ul className="divide-y divide-line border-y border-line">{group.map((item) => <li key={item.id} className="flex items-center gap-2 py-2"><div className="min-w-0 flex-1"><p className="truncate text-label text-ink">{item.label}</p>{item.detail ? <p className="truncate text-meta text-ink-faint">{item.detail}</p> : null}</div><Button size="dialog" variant="ghost" disabled={disabled} aria-label={`Ajouter ${item.label}`} onClick={() => onAdd(item.id)}>Ajouter</Button></li>)}</ul></div>;
+        return <div key={kind}><p className="mb-1.5 text-meta font-semibold uppercase tracking-wide text-tx-5">{ITEM_LABELS[kind]}</p><ul className="divide-y divide-bd border-y border-bd">{group.map((item) => <li key={item.id} className="flex items-center gap-2 py-2"><div className="min-w-0 flex-1"><p className="truncate text-label text-tx">{item.label}</p>{item.detail ? <p className="truncate text-meta text-tx-5">{item.detail}</p> : null}</div><Button size="dialog" variant="ghost" disabled={disabled} aria-label={`Ajouter ${item.label}`} onClick={() => onAdd(item.id)}>Ajouter</Button></li>)}</ul></div>;
       })}
     </div>
   );
@@ -232,10 +232,10 @@ function ResumeProposalRow({ proposal, busy, onAccept, onReject, onUndo }: { pro
   const scoreDelta = proposal.gain;
   return (
     <li className="space-y-2.5 py-3">
-      <div className="flex items-start justify-between gap-2"><p className="text-label font-semibold text-ink">{proposal.label}</p>{!proposal.applicable ? <StatusPill tone="neutral">Non applicable</StatusPill> : proposal.status === "accepted" ? <StatusPill tone="success">Appliquée</StatusPill> : proposal.status === "rejected" ? <StatusPill tone="neutral">Ignorée</StatusPill> : null}</div>
-      <p className="text-meta leading-relaxed text-ink-muted">{proposal.proposed_text}</p>
+      <div className="flex items-start justify-between gap-2"><p className="text-label font-semibold text-tx">{proposal.label}</p>{!proposal.applicable ? <StatusPill tone="neutral">Non applicable</StatusPill> : proposal.status === "accepted" ? <StatusPill tone="success">Appliquée</StatusPill> : proposal.status === "rejected" ? <StatusPill tone="neutral">Ignorée</StatusPill> : null}</div>
+      <p className="text-meta leading-relaxed text-tx-3">{proposal.proposed_text}</p>
       {proposal.applicable ? (
-        <p className={`tabular text-meta font-semibold ${scoreDelta > 0 ? "text-success" : scoreDelta < 0 ? "text-danger" : "text-ink-faint"}`}>
+        <p className={`tabular text-meta font-semibold ${scoreDelta > 0 ? "text-success" : scoreDelta < 0 ? "text-danger" : "text-tx-5"}`}>
           {scoreDelta > 0 ? "+" : ""}{scoreDelta} pt{Math.abs(scoreDelta) > 1 ? "s" : ""} ATS
         </p>
       ) : null}

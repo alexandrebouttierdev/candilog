@@ -7,12 +7,12 @@ use crate::core::secrets::SecretStoreContract;
 use crate::core::updater::{self, UpdateInfo as ReleaseInfo};
 use crate::core::utils::validation::validate_optional_http_url;
 use crate::features::ai::domain::{LlmConfig, ProviderKind};
-use crate::features::ai::infrastructure::{build_provider, LlmGenerator};
 use crate::features::settings::domain::{
-    About, AppSettings, LlmForm, ResetOutcome, Settings, SettingsRepository, UpdateAsset,
-    UpdateInfo,
+    About, AppSettings, LlmForm, ProviderProbe, ResetOutcome, Settings, SettingsRepository,
+    UpdateAsset, UpdateInfo,
 };
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 /// Service des réglages, générique sur le dépôt et le coffre (testable hors trousseau).
 pub struct SettingsService<R: SettingsRepository, C: SecretStoreContract> {
@@ -20,16 +20,25 @@ pub struct SettingsService<R: SettingsRepository, C: SecretStoreContract> {
     secret_store: C,
     pool: SqlitePool,
     db_path: PathBuf,
+    /// Essai de connexion et liste des modèles, fournis par la feature IA.
+    probe: Arc<dyn ProviderProbe>,
 }
 
 impl<R: SettingsRepository, C: SecretStoreContract> SettingsService<R, C> {
     #[must_use]
-    pub fn new(repo: R, secret_store: C, pool: SqlitePool, db_path: PathBuf) -> Self {
+    pub fn new(
+        repo: R,
+        secret_store: C,
+        pool: SqlitePool,
+        db_path: PathBuf,
+        probe: Arc<dyn ProviderProbe>,
+    ) -> Self {
         Self {
             repo,
             secret_store,
             pool,
             db_path,
+            probe,
         }
     }
 
@@ -187,8 +196,7 @@ impl<R: SettingsRepository, C: SecretStoreContract> SettingsService<R, C> {
     /// Retourne l'erreur du fournisseur ou de validation.
     pub async fn test_connection(&self, llm: LlmForm, api_key: Option<String>) -> AppResult<()> {
         let config = self.provider_config(llm, api_key)?;
-        let provider = build_provider(&config).await?;
-        LlmGenerator::test(provider.as_ref()).await
+        self.probe.test(&config).await
     }
 
     /// Liste les modèles exposés par le fournisseur du formulaire.
@@ -201,8 +209,7 @@ impl<R: SettingsRepository, C: SecretStoreContract> SettingsService<R, C> {
         api_key: Option<String>,
     ) -> AppResult<Vec<String>> {
         let config = self.provider_config(llm, api_key)?;
-        let provider = build_provider(&config).await?;
-        LlmGenerator::list_models(provider.as_ref()).await
+        self.probe.list_models(&config).await
     }
 
     /// Construit la configuration d'un essai de connexion à partir du formulaire.
@@ -471,6 +478,20 @@ mod tests {
         }
     }
 
+    /// Sonde de test : aucun essai de connexion ne doit partir sur le réseau.
+    struct SondeHorsReseau;
+
+    #[async_trait::async_trait]
+    impl ProviderProbe for SondeHorsReseau {
+        async fn test(&self, _config: &LlmConfig) -> AppResult<()> {
+            Err(AppError::Provider("sonde de test".into()))
+        }
+
+        async fn list_models(&self, _config: &LlmConfig) -> AppResult<Vec<String>> {
+            Err(AppError::Provider("sonde de test".into()))
+        }
+    }
+
     fn service() -> SettingsService<RepoMemoire, CoffreMemoire> {
         let pool = open_pool(None).unwrap();
         run_local_migrations(&pool).unwrap();
@@ -481,6 +502,7 @@ mod tests {
             CoffreMemoire::default(),
             pool,
             PathBuf::new(),
+            Arc::new(SondeHorsReseau),
         )
     }
 
@@ -892,6 +914,7 @@ mod tests {
             },
             pool,
             PathBuf::new(),
+            Arc::new(SondeHorsReseau),
         );
 
         let outcome = service.reset().unwrap();

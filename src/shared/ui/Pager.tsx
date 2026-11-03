@@ -52,13 +52,13 @@ export function Pager({
     <nav
       aria-label={`Pagination des ${label}`}
       className={cn(
-        "flex flex-none flex-wrap items-center border-t border-line bg-surface-alt",
+        "flex flex-none flex-wrap items-center border-t border-bd bg-group",
         dense ? "gap-2.5 px-3.5 py-2.5" : "gap-3.5 px-[19px] py-[11px]",
       )}
     >
       <p
         className={cn(
-          "tabular flex-1 truncate text-label text-ink-faint",
+          "tabular flex-1 truncate text-label text-tx-5",
           dense ? "min-w-0" : "min-w-[150px]",
         )}
       >
@@ -67,13 +67,13 @@ export function Pager({
 
       {pageSizes && onPageSizeChange ? (
         <div className="flex items-center gap-2">
-          <span className="text-label text-ink-faint">Lignes</span>
+          <span className="text-label text-tx-5">Lignes</span>
           <div className="relative">
             <select
               value={page_size}
               aria-label="Nombre de lignes par page"
               onChange={(event) => onPageSizeChange(Number(event.target.value))}
-              className="h-pager appearance-none rounded-control border border-line bg-surface pr-7 pl-2.5 text-note font-medium text-ink"
+              className="h-pager appearance-none rounded-control border border-bd bg-panel pr-7 pl-2.5 text-note font-medium text-tx"
             >
               {pageSizes.map((size) => (
                 <option key={size} value={size}>
@@ -81,7 +81,7 @@ export function Pager({
                 </option>
               ))}
             </select>
-            <span aria-hidden className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 text-ink-faint text-[11px]">
+            <span aria-hidden className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 text-tx-5 text-[11px]">
               ▾
             </span>
           </div>
@@ -104,14 +104,14 @@ export function Pager({
             className={cn(
               "tabular h-pager min-w-pager rounded-control border px-[7px] text-note font-mid transition-colors duration-150",
               number === page
-                ? "border-accent bg-accent text-on-accent"
-                : "border-line bg-surface text-ink-muted hover:bg-neutral-tint",
+                ? "border-ac bg-ac text-on-accent"
+                : "border-bd bg-panel text-tx-3 hover:bg-neutral-tint",
             )}
           >
             {number}
           </button>
         ))}
-        {page_count > 3 ? <span className="px-1 text-note text-ink-faint">…</span> : null}
+        {page_count > 3 ? <span className="px-1 text-note text-tx-5">…</span> : null}
         <PagerArrow
           glyph="›"
           label="Page suivante"
@@ -145,10 +145,10 @@ function PagerArrow({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "flex size-pager items-center justify-center rounded-control border border-line transition-colors duration-150",
+        "flex size-pager items-center justify-center rounded-control border border-bd transition-colors duration-150",
         disabled
-          ? "cursor-not-allowed bg-neutral-tint text-ink-faint"
-          : cn("bg-surface hover:bg-neutral-tint", accent ? "text-accent" : "text-ink-muted"),
+          ? "cursor-not-allowed bg-neutral-tint text-tx-5"
+          : cn("bg-panel hover:bg-neutral-tint", accent ? "text-ac-tx" : "text-tx-3"),
       )}
     >
       <span aria-hidden className="text-[16px] leading-none">
@@ -177,14 +177,14 @@ export function ColumnPager({
   const { from, to, hasPrev, hasNext } = page_bounds(page, page_size, total);
 
   return (
-    <div className="flex items-center justify-between gap-2 border-t border-line px-3 py-2">
+    <div className="flex items-center justify-between gap-2 border-t border-bd px-3 py-2">
       <ColumnArrow
         glyph="‹"
         label={`Page précédente de ${label}`}
         disabled={!hasPrev}
         onClick={() => onPageChange(page - 1)}
       />
-      <span className="tabular text-meta text-ink-faint">
+      <span className="tabular text-meta text-tx-5">
         {from}–{to} sur {total}
       </span>
       <ColumnArrow
@@ -218,10 +218,10 @@ function ColumnArrow({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "flex size-6 items-center justify-center rounded-pill border border-line transition-colors duration-150",
+        "flex size-6 items-center justify-center rounded-pill border border-bd transition-colors duration-150",
         disabled
-          ? "cursor-not-allowed bg-neutral-tint text-ink-faint"
-          : cn("bg-surface hover:bg-neutral-tint", accent ? "text-accent" : "text-ink-muted"),
+          ? "cursor-not-allowed bg-neutral-tint text-tx-5"
+          : cn("bg-panel hover:bg-neutral-tint", accent ? "text-ac-tx" : "text-tx-3"),
       )}
     >
       <span aria-hidden className="text-[15px] leading-none">

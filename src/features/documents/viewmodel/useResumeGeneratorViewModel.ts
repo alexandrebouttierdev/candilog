@@ -5,11 +5,10 @@ import {
   isAiNotConfiguredError,
   useAiOperation,
   useAiProgress,
-  useAiRailStatusStore,
-  useAiTimer,
   type AiExecution,
   type ResumeGeneration,
 } from "@/features/ai";
+import { useOperationTimer } from "@/shared/hooks/useOperationTimer";
 import { useUiStore } from "@/shared/lib/ui-store";
 import { AppError } from "@/shared/types/app-error";
 import type { ProfileSection, ResumeTone } from "@/shared/types/generated/ai";
@@ -17,7 +16,7 @@ import type { ResumeWorkspace } from "@/shared/types/generated/documents";
 import { RESUME_SECTIONS, sectionOptions, toggleSection } from "../model/profileSections";
 import { profileGaps } from "../model/profileReadiness";
 import { PROFILE_KEY, profileService } from "@/features/profile";
-import { useRemoteSendGuard } from "@/features/settings";
+import { useAiRailStatusStore, useRemoteSendGuard } from "@/features/settings";
 import { documentsService } from "../services/documentsService";
 import { exportResumePdf } from "./documentExport";
 import { RESUME_KEY } from "./documentKeys";
@@ -59,7 +58,7 @@ export function useResumeGeneratorViewModel(initial: ResumeGeneratorInitial) {
     Pick<AiExecution<unknown>, "elapsed_ms" | "tokens_used"> | null
   >(null);
   const progress = useAiProgress(stopping ? null : (operation?.id ?? null));
-  const timer = useAiTimer(operation !== null && !stopping);
+  const timer = useOperationTimer(operation !== null && !stopping);
 
   useEffect(() => {
     mounted.current = true;

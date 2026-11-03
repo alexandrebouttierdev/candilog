@@ -13,10 +13,9 @@ import {
   importProfileFromResume,
   isAiNotConfiguredError,
   useAiOperation,
-  useAiRailStatusStore,
 } from "@/features/ai";
 import { AppError } from "@/shared/types/app-error";
-import { useRemoteSendGuard } from "@/features/settings";
+import { useAiRailStatusStore, useRemoteSendGuard } from "@/features/settings";
 import { BetaBadge, Button, ConfirmDialog, ErrorBanner, LineIcon, WorkSurface } from "@/shared/ui";
 import { formatAiSummary } from "@/shared/lib/duration";
 import {
@@ -356,13 +355,13 @@ export function ProfileImportModal({
             {fallbackUsed || methodUsed ? (
               <div className="flex-none space-y-2 px-[18px] pt-3">
                 {fallbackUsed ? (
-                  <p className="rounded-button border border-line bg-surface-alt px-3 py-2 text-note text-ink">
+                  <p className="rounded-button border border-bd bg-group px-3 py-2 text-note text-tx">
                     L'analyse visuelle a échoué. Candilog a poursuivi automatiquement avec
                     l'analyse du texte.
                   </p>
                 ) : null}
                 {methodUsed ? (
-                  <p className="text-meta text-ink-faint">
+                  <p className="text-meta text-tx-5">
                     Méthode utilisée : {methodUsed === "vision" ? "Vision" : "Texte"}
                   </p>
                 ) : null}
@@ -417,7 +416,7 @@ function AnalysisMethodPicker({
   return (
     <fieldset className="space-y-2" disabled={disabled}>
       <legend className="caps mb-2">Méthode d'analyse</legend>
-      <label className="flex cursor-pointer gap-3 rounded-button border border-line px-3 py-2.5 has-[:disabled]:cursor-default">
+      <label className="flex cursor-pointer gap-3 rounded-button border border-bd px-3 py-2.5 has-[:disabled]:cursor-default">
         <input
           type="radio"
           name="cv-analysis-method"
@@ -427,18 +426,18 @@ function AnalysisMethodPicker({
           onChange={() => onChange("vision")}
         />
         <span className="min-w-0">
-          <span className="block text-body font-medium text-ink">Vision — recommandé</span>
-          <span className="block text-meta text-ink-muted">
+          <span className="block text-body font-medium text-tx">Vision — recommandé</span>
+          <span className="block text-meta text-tx-3">
             Analyse directement la mise en page du CV avec le modèle multimodal.
           </span>
           {!visionAvailable ? (
-            <span className="mt-1 block text-meta text-ink-faint">
+            <span className="mt-1 block text-meta text-tx-5">
               Ce modèle ne prend pas en charge l'analyse visuelle. Le mode Texte sera utilisé.
             </span>
           ) : null}
         </span>
       </label>
-      <label className="flex cursor-pointer gap-3 rounded-button border border-line px-3 py-2.5">
+      <label className="flex cursor-pointer gap-3 rounded-button border border-bd px-3 py-2.5">
         <input
           type="radio"
           name="cv-analysis-method"
@@ -447,8 +446,8 @@ function AnalysisMethodPicker({
           onChange={() => onChange("text")}
         />
         <span className="min-w-0">
-          <span className="block text-body font-medium text-ink">Texte</span>
-          <span className="block text-meta text-ink-muted">
+          <span className="block text-body font-medium text-tx">Texte</span>
+          <span className="block text-meta text-tx-3">
             Extrait d'abord le contenu du PDF puis l'analyse avec le modèle.
           </span>
         </span>
@@ -469,13 +468,13 @@ function PickFile({
       type="button"
       disabled={waiting}
       onClick={onChoose}
-      className="flex w-full flex-col items-center gap-2 rounded-card border border-dashed border-line px-6 py-6 text-center disabled:cursor-default"
+      className="flex w-full flex-col items-center gap-2 rounded-card border border-dashed border-bd px-6 py-6 text-center disabled:cursor-default"
     >
-      <LineIcon name="import" size={20} className="text-ink-faint" />
-      <span className="text-body font-medium text-ink">
+      <LineIcon name="import" size={20} className="text-tx-5" />
+      <span className="text-body font-medium text-tx">
         {waiting ? "Sélection du fichier…" : "Choisir et analyser un CV PDF"}
       </span>
-      <span className="text-meta text-ink-muted">
+      <span className="text-meta text-tx-3">
         {waiting
           ? "La fenêtre de sélection de votre système est ouverte : l'analyse démarrera une fois le CV choisi."
           : "Lecture locale · 10 Mo maximum"}

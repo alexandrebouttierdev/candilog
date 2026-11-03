@@ -149,7 +149,7 @@ export function LetterEditor({
           {alignment.label}
         </Button>
       ))}
-      <span aria-hidden className="mx-1 h-4 w-px bg-line" />
+      <span aria-hidden className="mx-1 h-4 w-px bg-bd" />
       <Select
         aria-label="Taille du texte"
         disabled={readOnly}
@@ -172,7 +172,7 @@ export function LetterEditor({
 
   return (
     <DocumentPanel title="Document" action={barre} className="flex min-h-0 flex-col">
-      <div className="flex min-h-0 flex-1 flex-col items-center gap-3 overflow-y-auto bg-page p-[26px]">
+      <div className="flex min-h-0 flex-1 flex-col items-center gap-3 overflow-y-auto bg-app p-[26px]">
         <LetterPaper
           fields={fields}
           identity={identity}

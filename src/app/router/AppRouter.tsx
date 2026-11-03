@@ -39,9 +39,7 @@ const LetterWriterPage = lazy(() =>
 const ResumeAnalysisPage = lazy(() =>
   import("@/features/documents/view/pages/DocumentsPages").then((m) => ({ default: m.ResumeAnalysisPage })),
 );
-const AiPage = lazy(() =>
-  import("@/features/settings/view/pages/AiPage").then((m) => ({ default: m.AiPage })),
-);
+const AiRoute = lazy(() => import("./AiRoute").then((m) => ({ default: m.AiRoute })));
 
 /**
  * Atelier du design system, réservé au développement.
@@ -105,7 +103,7 @@ export const ROUTES: RouteObject[] = [
   { path: "documents/base-resume", element: <BaseResumePage /> },
   { path: "documents/write-cover-letter", element: <LetterWriterPage /> },
   { path: "documents/analyze", element: <ResumeAnalysisPage /> },
-  { path: "ai", element: <AiPage /> },
+  { path: "ai", element: <AiRoute /> },
   { path: "profile", element: <ProfilePage /> },
   ...Object.entries(LEGACY_REDIRECTS).map(([from, to]) => ({
     path: from.slice(1),

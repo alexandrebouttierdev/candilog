@@ -421,8 +421,9 @@ Emplacements :
 **Non-régression :** un bug reproductible automatiquement → test qui échoue d'abord →
 correctif → test vert.
 
-Les chaînes de commandes IPC frontend sont synchronisées avec Rust
-(`commandes-ipc.test.ts`). Préserver ce contrat.
+Les chaînes de commandes IPC frontend, leurs **arguments** et les noms d'événements sont
+synchronisés avec Rust (`commandes-ipc.test.ts`) : un argument mal nommé échoue au test et
+non à l'exécution. Préserver ce contrat.
 
 ---
 
@@ -518,10 +519,10 @@ Audit d'éventuelles nouvelles crates :
 cargo deny --manifest-path src-tauri/Cargo.toml check
 ```
 
-Le job `quality` du workflow de release (`.github/workflows/release.yml`) rejoue ces
-vérifications avant d'autoriser les builds multi-plateformes. Ce filet de publication ne
-remplace pas le contrôle local : une tâche ne se termine pas en déléguant sa validation au
-prochain push sur `master`.
+Le workflow `.github/workflows/quality.yml` rejoue ces vérifications sur chaque push vers
+`dev` et chaque pull request, et le workflow de release l'appelle avant d'autoriser les
+builds multi-plateformes. Ce filet ne remplace pas le contrôle local : une tâche ne se
+termine pas en déléguant sa validation au prochain push.
 
 ---
 

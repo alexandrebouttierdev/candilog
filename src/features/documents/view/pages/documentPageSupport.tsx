@@ -18,7 +18,7 @@ export { RESUME_KEY, COVER_LETTERS_KEY } from "../../viewmodel/documentKeys";
  */
 export function TexteNonVerifie() {
   return (
-    <p className="text-meta text-ink-faint">
+    <p className="text-meta text-tx-5">
       Commentaire rédigé par le modèle, à partir de l’offre fournie. Le score, lui, est
       calculé par Candilog.
     </p>

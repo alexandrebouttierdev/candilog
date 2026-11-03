@@ -45,7 +45,7 @@ export function ProfileSkillChoiceDialog({
       onSubmit={() => void ajouter()}
     >
       <div className="space-y-3 pt-3">
-        <p className="text-body text-ink-muted">
+        <p className="text-body text-tx-3">
           « {pending?.skill} » vient d’être ajoutée à ce CV. L’ajouter aussi à votre profil
           général la rendra disponible pour vos prochains CV.
         </p>

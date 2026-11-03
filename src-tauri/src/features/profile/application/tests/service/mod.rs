@@ -527,3 +527,53 @@ fn appliquer_un_import_de_cv_conserve_la_photo() {
     );
     assert!(photos.path().join(&nom).is_file());
 }
+
+/// Profil dont la photo désigne un fichier **hors** du dossier des photos, comme pourrait
+/// le faire un lot de synchronisation forgé ou une sauvegarde modifiée à la main.
+fn profil_a_photo_forgee(nom: &str) -> Memoire {
+    let repo = Memoire::default();
+    *repo.profile.lock().unwrap() = Some(Profile {
+        photo: Some(nom.into()),
+        ..Profile::default()
+    });
+    repo
+}
+
+#[test]
+fn un_nom_de_photo_hors_du_dossier_n_est_jamais_lu() {
+    let racine = tempfile::tempdir().unwrap();
+    let photos = racine.path().join("photos");
+    std::fs::create_dir_all(&photos).unwrap();
+    let victime = racine.path().join("victime.png");
+    std::fs::write(&victime, b"secret").unwrap();
+
+    for nom in ["../victime.png", victime.to_str().unwrap()] {
+        let service = ProfileService::new(profil_a_photo_forgee(nom), photos.clone());
+        assert_eq!(service.photo_path().unwrap(), None, "{nom}");
+        assert_eq!(service.photo_data_url().unwrap(), None, "{nom}");
+        assert_eq!(service.photo_bytes().unwrap(), None, "{nom}");
+    }
+}
+
+#[test]
+fn un_nom_de_photo_hors_du_dossier_n_est_jamais_supprime() {
+    let racine = tempfile::tempdir().unwrap();
+    let photos = racine.path().join("photos");
+    std::fs::create_dir_all(&photos).unwrap();
+    let victime = racine.path().join("victime.png");
+    std::fs::write(&victime, b"secret").unwrap();
+
+    let service = ProfileService::new(profil_a_photo_forgee("../victime.png"), photos.clone());
+    service.remove_photo().unwrap();
+    assert!(victime.exists(), "retrait de la photo");
+
+    let service = ProfileService::new(profil_a_photo_forgee("../victime.png"), photos.clone());
+    service.reset().unwrap();
+    assert!(victime.exists(), "réinitialisation du profil");
+
+    let source = racine.path().join("source.png");
+    std::fs::write(&source, png_de_test()).unwrap();
+    let service = ProfileService::new(profil_a_photo_forgee("../victime.png"), photos);
+    service.set_photo(&source).unwrap();
+    assert!(victime.exists(), "remplacement de la photo");
+}
