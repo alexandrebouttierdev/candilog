@@ -10,6 +10,7 @@ import {
   labelDay,
   labelWeek,
 } from "../../model/month";
+import { ApplicationPicker } from "@/features/applications";
 import { GridMonth } from "../components/GridMonth";
 import { ViewDay, ViewWeek } from "../components/ViewAgenda";
 import { InterviewFormModal } from "@/features/interviews";
@@ -202,6 +203,7 @@ export function CalendarPage() {
       />
 
       <FollowUpFormModal
+        applicationPicker={ApplicationPicker}
         open={edition.kind === "relance"}
         follow_up={edition.kind === "relance" ? edition.target : null}
         day={edition.kind === "relance" ? edition.day : null}

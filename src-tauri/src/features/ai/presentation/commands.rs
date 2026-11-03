@@ -4,10 +4,12 @@ use crate::app::state::AppState;
 use crate::core::errors::{AppError, AppResult};
 use crate::core::files::select_source;
 use crate::features::ai::domain::{
-    ActiveModelCapabilities, AiExecution, AiProgress, CoverLetterRequest, ImportedResumeAnalysis,
-    LanguageCorrectionRequest, LanguageCorrectionResult, LetterFit, LetterFitRequest,
-    ListingAnalysis, ProfileImportAnalysis, ProfileImportProgress, ProfileImportRequest,
-    ResumeAnalysisRequest, ResumeGeneration, ResumeGenerationRequest, SelectedResumeFile,
+    ActiveModelCapabilities, AiExecution, AiProgress, CompanyResearchRequest,
+    CompanyResearchResult, CompanySearchRequest, CompanySearchResult, CoverLetterRequest,
+    ImportedResumeAnalysis, LanguageCorrectionRequest, LanguageCorrectionResult, LetterFit,
+    LetterFitRequest, ListingAnalysis, ProfileImportAnalysis, ProfileImportProgress,
+    ProfileImportRequest, ResumeAnalysisRequest, ResumeGeneration, ResumeGenerationRequest,
+    SelectedResumeFile,
 };
 use tauri::{AppHandle, Emitter, State};
 
@@ -33,6 +35,27 @@ pub async fn ai_analyze_listing(
     text: String,
 ) -> AppResult<AiExecution<ListingAnalysis>> {
     state.ai.analyze_listing(text).await
+}
+
+/// Établissements de l'annuaire correspondant au nom d'une entreprise (« Compléter avec
+/// l'IA », formulaire entreprise).
+#[tauri::command(rename_all = "snake_case")]
+pub async fn ai_search_companies(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    request: CompanySearchRequest,
+) -> AppResult<AiExecution<CompanySearchResult>> {
+    state.ai.search_companies(request, notifier(app)).await
+}
+
+/// Informations publiques de l'établissement choisi, à vérifier avant remplissage.
+#[tauri::command(rename_all = "snake_case")]
+pub async fn ai_research_company(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    request: CompanyResearchRequest,
+) -> AppResult<AiExecution<CompanyResearchResult>> {
+    state.ai.research_company(request, notifier(app)).await
 }
 
 /// Adéquation d'une lettre à l'offre, calculée localement.

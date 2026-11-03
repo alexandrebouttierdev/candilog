@@ -1,10 +1,10 @@
 import { render, screen } from "@testing-library/react";
-import { AiProgress } from "../DocumentUi";
+import { AiProgressPanel } from "../AiProgressPanel";
 
-describe("DocumentUi", () => {
+describe("AiProgressPanel", () => {
   it("expose l'étape et le temps écoulé, sans pourcentage inventé", () => {
     render(
-      <AiProgress
+      <AiProgressPanel
         progress={{ generation_id: "op-1", step: "Analyse ATS", chunk: null, tokens_used: null }}
         elapsedMs={72_000}
       />,
@@ -17,7 +17,7 @@ describe("DocumentUi", () => {
 
   it("affiche le total de tokens consommés à côté du temps écoulé", () => {
     render(
-      <AiProgress
+      <AiProgressPanel
         progress={{
           generation_id: "op-1",
           step: "Analyse ATS",
@@ -32,7 +32,7 @@ describe("DocumentUi", () => {
 
   it("affiche un zéro communiqué par le fournisseur", () => {
     render(
-      <AiProgress
+      <AiProgressPanel
         progress={{ generation_id: "op-1", step: "Terminé", chunk: null, tokens_used: 0 }}
         elapsedMs={1_000}
       />,
@@ -42,7 +42,7 @@ describe("DocumentUi", () => {
 
   it("estime le débit tokens/s quand le total et le temps sont connus", () => {
     render(
-      <AiProgress
+      <AiProgressPanel
         progress={{
           generation_id: "op-1",
           step: "Analyse ATS",

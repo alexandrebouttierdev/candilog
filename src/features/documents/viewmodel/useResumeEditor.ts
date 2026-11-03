@@ -5,14 +5,13 @@ import type { ResumeField, ResumeSectionKind } from "../model/resumeWorkspace";
 import { documentsService } from "../services/documentsService";
 import type { ResumeWorkspace } from "@/shared/types/generated/documents";
 import { PROFILE_KEY, profileService } from "@/features/profile";
-import { useRemoteSendGuard } from "@/features/settings";
+import { useAiRailStatusStore, useRemoteSendGuard } from "@/features/settings";
 import { AppError } from "@/shared/types/app-error";
 import { runResumeRecalculation } from "./resumeRecalculation";
 import {
   aiService,
   isAiNotConfiguredError,
   useAiOperation,
-  useAiRailStatusStore,
 } from "@/features/ai";
 
 /** Pile d'annulation/rétablissement bornée : au-delà, les plus anciens états sont perdus. */

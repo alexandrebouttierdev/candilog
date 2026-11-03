@@ -58,7 +58,7 @@ export function Banner({
     danger: "border-danger-border bg-danger-tint text-danger",
     warning: "border-warning-border bg-warning-tint text-warning",
     success: "border-success-border bg-success-tint text-success",
-    accent: "border-accent-border bg-accent-tint text-accent",
+    accent: "border-accent-border bg-tint-ac-bg text-ac-tx",
   } as const;
 
   return (
@@ -76,7 +76,7 @@ export function Banner({
       <div className="min-w-0 flex-1">
         <p className="text-body font-semibold">{title}</p>
         {message ? (
-          <p className="mt-[3px] text-label leading-normal text-ink-muted">{message}</p>
+          <p className="mt-[3px] text-label leading-normal text-tx-3">{message}</p>
         ) : null}
       </div>
       {children ? <div className="flex flex-none items-center gap-2">{children}</div> : null}

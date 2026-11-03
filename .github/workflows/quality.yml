@@ -1,0 +1,117 @@
+# Contrôle qualité : lint, tests et build frontend, formatage, Clippy, tests Rust,
+# cargo-deny et scénario de bout en bout des documents (`docs/DEVELOPMENT.md`).
+#
+# Exécuté à chaque push sur `dev` et sur chaque pull request, pour qu'une régression ou un
+# nouvel avis de sécurité soit vu au moment où il arrive, et non au moment de publier ;
+# rejoué par `release.yml`, dont les builds en dépendent. Aucun secret ni droit d'écriture.
+
+name: Qualité
+
+on:
+  push:
+    branches:
+      - dev
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  # Un nouveau push sur `dev` ou dans une pull request remplace le contrôle en cours de la
+  # même branche. Appelé par la release (`master`), le contrôle n'est jamais annulé : la
+  # publication en cours échouerait avec lui. Dans un workflow appelé, `github.event_name`
+  # est celui de l'appelant ; c'est donc la branche qui décide.
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/dev' }}
+
+jobs:
+  quality:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      # `poppler-utils` n'est pas un prérequis de construction mais une dépendance
+      # d'exécution (`docs/DEVELOPMENT.md`) : ce job exécute les tests Rust, et sans
+      # `pdftotext` l'extraction de texte retombe sur l'ordre du flux — le test de mise en
+      # page à deux colonnes échoue alors que le code est correct.
+      - name: Installer les dépendances système
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang \
+            cmake \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            xdg-utils \
+            poppler-utils
+
+      - name: Installer Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          # Majeure explicite et non `lts/*` : l'arrivée d'un nouveau LTS changeait la
+          # version sous le job sans qu'aucune ligne du dépôt ne bouge. Node 26 expose un
+          # `localStorage` global indéfini qui masque celui de jsdom (cf. le substitut de
+          # `src/shared/lib/test-setup.ts`) — exactement le genre de rupture qu'une montée
+          # subie fait découvrir sur une publication. La montée reste une décision datée.
+          node-version: "24"
+
+      # Corepack s'active **après** `setup-node` : il dépose ses shims à côté du `node`
+      # alors actif, et `setup-node` met le sien en tête de `PATH`. Activé avant, les shims
+      # visent une autre installation et `yarn` retombe sur celui de l'image (1.22.22), qui
+      # refuse le `packageManager: yarn@4.9.1` du dépôt — l'échec du build Windows.
+      #
+      # `cache: yarn` est retiré pour la même raison : `setup-node` exécute `yarn cache dir`
+      # avant que Corepack n'ait fourni Yarn 4, donc avec ce même Yarn 1.22.22. Le cache est
+      # global (`enableGlobalCache`), donc sans chemin commun aux trois systèmes.
+      - name: Activer Corepack (Yarn épinglé par package.json)
+        run: corepack enable
+
+      - name: Installer Rust
+        uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable
+        with:
+          toolchain: "1.91"
+          components: rustfmt, clippy
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          workspaces: "./src-tauri -> target"
+
+      - name: Vérifier le frontend
+        run: |
+          yarn install --immutable
+          yarn lint
+          yarn test
+          yarn build
+
+      - name: Installer cargo-deny
+        run: cargo install cargo-deny --locked --version 0.20.2
+
+      - name: Vérifier le natif
+        run: |
+          cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check
+          cargo clippy --manifest-path src-tauri/Cargo.toml --locked --all-targets -- -D warnings
+          cargo test --manifest-path src-tauri/Cargo.toml --locked --all-targets
+          cargo deny --manifest-path src-tauri/Cargo.toml check
+
+      # Le scénario de bout en bout des documents est derrière une variable d'environnement
+      # parce qu'il écrit des artefacts ; il ne demande ni modèle, ni réseau, ni affichage,
+      # et couvre la seule chaîne que les tests unitaires ne parcourent pas d'un bout à
+      # l'autre : profil → génération → composition → PDF. Le laisser hors CI revenait à ne
+      # jamais l'exécuter (`docs/DEVELOPMENT.md`).
+      - name: Vérifier la chaîne complète des documents
+        env:
+          CANDILOG_E2E: "1"
+          # Mode synthétique et non rejeu : le rejeu lit les générations enregistrées sous
+          # `test-output/`, qui n'est pas versionné et n'existe donc pas sur un checkout
+          # neuf — l'étape échouait sur les dix profils, « aucune génération enregistrée ».
+          # Le mode synthétique compose des artefacts factuels sans cache ni appel IA, et
+          # exerce ce que cette étape doit protéger : composition, mesure et export PDF.
+          CANDILOG_E2E_SYNTHETIC: "1"
+        run: cargo test --manifest-path src-tauri/Cargo.toml --locked --test e2e_documents

@@ -31,7 +31,7 @@ export function ImportDraft({
               className={
                 section === "interests"
                   ? "flex flex-wrap gap-2 px-[17px] py-3"
-                  : "divide-y divide-line"
+                  : "divide-y divide-bd"
               }
             >
               {sectionRows.map((row) => (
@@ -355,18 +355,18 @@ function Comparison({ existing, proposed }: { existing: string[]; proposed: stri
   return (
     <div className="mb-2 grid grid-cols-[1fr_auto_1fr] items-start gap-2 text-meta">
       <div>
-        <p className="text-eyebrow text-ink-faint uppercase">Existant</p>
+        <p className="text-eyebrow text-tx-5 uppercase">Existant</p>
         {existing.map((line, index) => (
-          <p key={line} className={line !== proposed[index] ? "text-accent" : "text-ink-muted"}>
+          <p key={line} className={line !== proposed[index] ? "text-ac-tx" : "text-tx-3"}>
             {line}
           </p>
         ))}
       </div>
-      <span className="text-ink-faint">→</span>
+      <span className="text-tx-5">→</span>
       <div>
-        <p className="text-eyebrow text-ink-faint uppercase">CV</p>
+        <p className="text-eyebrow text-tx-5 uppercase">CV</p>
         {proposed.map((line, index) => (
-          <p key={line} className={line !== existing[index] ? "text-accent" : "text-ink-muted"}>
+          <p key={line} className={line !== existing[index] ? "text-ac-tx" : "text-tx-3"}>
             {line}
           </p>
         ))}
@@ -392,7 +392,7 @@ function Resolution({
   return (
     <fieldset className="flex flex-wrap gap-x-4 gap-y-1">
       {options.map((option) => (
-        <label key={option.value} className="flex items-center gap-1.5 text-meta text-ink-muted">
+        <label key={option.value} className="flex items-center gap-1.5 text-meta text-tx-3">
           <input type="radio" value={option.value} {...register(name)} />
           {option.label}
         </label>

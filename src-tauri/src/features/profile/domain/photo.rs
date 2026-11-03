@@ -31,6 +31,19 @@ pub fn nouveau_nom_fichier() -> String {
     format!("photo-{}.png", uuid::Uuid::new_v4())
 }
 
+/// Indique si `name` a la forme exacte d'un nom produit par [`nouveau_nom_fichier`].
+///
+/// Le nom enregistré dans le profil devient un chemin sous le dossier des photos. Il peut
+/// pourtant venir d'ailleurs que de cet écran — lot de synchronisation, sauvegarde
+/// restaurée — : un `../` ou un chemin absolu y désignerait n'importe quel fichier de
+/// l'utilisateur, à lire ou à supprimer. Seule cette forme est donc jamais jointe au dossier.
+#[must_use]
+pub fn is_valid_photo_file(name: &str) -> bool {
+    name.strip_prefix("photo-")
+        .and_then(|rest| rest.strip_suffix(".png"))
+        .is_some_and(|uuid| uuid::Uuid::parse_str(uuid).is_ok() && uuid.len() == 36)
+}
+
 /// Valide une image choisie par l'utilisateur et la normalise en PNG borné.
 ///
 /// Le rapport largeur / hauteur est préservé : la photo est inscrite dans un carré de

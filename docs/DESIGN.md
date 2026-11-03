@@ -31,11 +31,14 @@ présent document dit comment l'employer.
 > `src/styles.css`. Ne pas créer de règle nouvelle qui dépende d'un fichier du handoff : elle
 > serait inapplicable.
 
-> **Jetons v1 hérités.** `bg-surface`, `text-ink`, `border-line`, `text-accent`,
-> `rounded-card`, `text-body`… existent encore : ils sont **repointés** sur la palette v2
-> (table en §3) et une trentaine de composants les emploient toujours. Tout code neuf ou
-> retouché n'emploie que les jetons v2 ; un composant qu'on modifie en profondeur passe
-> aux jetons v2 au passage.
+> **Jetons v1 hérités.** Les couleurs v1 qui n'étaient qu'un alias exact d'un jeton v2
+> (`bg-surface`, `text-ink`, `border-line`, `bg-fill`… — table en §3) ont été remplacées
+> partout par leur équivalent ; `text-accent` est passé à `text-ac-tx`, comme la table le
+> prévoit. Restent une soixantaine d'emplois, dans dix-sept composants, de jetons sans
+> équivalent v2 direct : les statuts (`text-danger`, `bg-warning-tint`… — à porter par
+> `StatusGlyph` ou une teinte, décision de design au cas par cas), `bg-fill-hover`,
+> `border-accent-border`, `outline-accent-focus` (le focus global), ainsi que `rounded-card`
+> et `text-body`. Tout code neuf ou retouché n'emploie que les jetons v2.
 
 ---
 
@@ -525,10 +528,10 @@ barre groupée 40 px dès qu'une case est cochée
   envoi distant » (`RemoteSendConsents`) — les services dispensés, « Redemander ».
 - Premier envoi distant (`RemoteSendDialog`, `states/dialog-confirm-remote-send.png`) :
   registre confirmation, « Cette tâche sera envoyée à Anthropic », ce qui part et pour quelle
-  tâche, conséquences (destinataire, tâche, « 1 sur 5 »), interrupteur « Ne plus demander
+  tâche, conséquences (destinataire, tâche, « 1 sur 6 »), interrupteur « Ne plus demander
   pour … » **désactivé** par défaut, « Annuler » / « Envoyer ». Monté une fois dans la coque.
 
-- IA (`screens/12`, `13`) : colonne **Fournisseurs** de 190 px (onglets verticaux : état « Local · n modèles », « Clé enregistrée », « Aucune clé », point vert quand le fournisseur est prêt, mention « principal » ; en pied de colonne, le `BetaBadge` et la phrase qui en donne la conséquence — relire tout ce que l'IA produit), puis le détail : nom en serif, description **factuelle** et trois jauges — confidentialité, coût, hors connexion ; jamais une promesse de qualité. L'IA locale affiche ses modèles installés en lignes (`ManagedOllamaPanel` : Utiliser, Tester, Supprimer) et ouvre **Installer l'IA locale** (`LocalInstallOverlay`, `screens/14`, sur `WorkSurface`) : à gauche les trois étapes et la fiche du modèle choisi, au centre les modèles en boutons radio avec jauges, puis le déroulé et « Installation terminée » ; annulation et échec s'affichent en place, jamais par toast, un fournisseur distant sa configuration (modèle et `RemoteModelPicker` après Actualiser, clé jamais rendue en clair, mode, température). **L'endpoint n'apparaît que là où il décrit un choix** : « Personnalisé », dont c'est l'objet, et Ollama, dont l'utilisateur désigne l'hôte — l'adresse des cinq services cloud est fixe, et l'exposer n'offrait aucun réglage tout en laissant une faute de frappe casser le fournisseur en silence. Une valeur déjà personnalisée reste visible, pour rester corrigeable avec « Tester la connexion » (`T`) et « Enregistrer », qui en fait le fournisseur principal. En bas, **Qui fait quoi** (`AiTaskRouting`, routage décrit dans `docs/AI.md`) : cinq tâches, le modèle de chacune, point vert (local), ambre (distant) ou gris (désactivée) ; le sélecteur propose le fournisseur principal, les modèles installés, les fournisseurs distants configurés et « Aucun » ; le choix est enregistré aussitôt, sans repli. Le fournisseur local s’appelle **« IA locale »**, jamais d’après une famille de modèles. Même principe pour les distants : la carte porte le nom de l’**éditeur** — Anthropic, Google, Mistral AI, OpenAI, DeepSeek — et la famille de modèles passe en indice. C’est l’éditeur qui reçoit les données, donc lui que l’utilisateur doit reconnaître avant d’accepter un envoi ; `taskRouting` réutilise ce libellé comme destinataire plutôt que d’en tenir une seconde liste. La liste **Profils disponibles** reprend les `evaluations` du backend (`compatibility` + `reason`) : un profil `unsupported` est étiqueté « Incompatible » et son installation est désactivée. Un benchmark `too_slow` avertit **toujours**, y compris sur le plus petit profil où aucun repli n’existe. Le résultat d'un test de connexion est un message fixe : la prose du modèle n’est pas un état.
+- IA (`screens/12`, `13`) : colonne **Fournisseurs** de 190 px (onglets verticaux : état « Local · n modèles », « Clé enregistrée », « Aucune clé », point vert quand le fournisseur est prêt, mention « principal » ; en pied de colonne, le `BetaBadge` et la phrase qui en donne la conséquence — relire tout ce que l'IA produit), puis le détail : nom en serif, description **factuelle** et trois jauges — confidentialité, coût, hors connexion ; jamais une promesse de qualité. L'IA locale affiche ses modèles installés en lignes (`ManagedOllamaPanel` : Utiliser, Tester, Supprimer) et ouvre **Installer l'IA locale** (`LocalInstallOverlay`, `screens/14`, sur `WorkSurface`) : à gauche les trois étapes et la fiche du modèle choisi, au centre les modèles en boutons radio avec jauges, puis le déroulé et « Installation terminée » ; annulation et échec s'affichent en place, jamais par toast, un fournisseur distant sa configuration (modèle et `RemoteModelPicker` après Actualiser, clé jamais rendue en clair, mode, température). **L'endpoint n'apparaît que là où il décrit un choix** : « Personnalisé », dont c'est l'objet, et Ollama, dont l'utilisateur désigne l'hôte — l'adresse des cinq services cloud est fixe, et l'exposer n'offrait aucun réglage tout en laissant une faute de frappe casser le fournisseur en silence. Une valeur déjà personnalisée reste visible, pour rester corrigeable avec « Tester la connexion » (`T`) et « Enregistrer », qui en fait le fournisseur principal. En bas, **Qui fait quoi** (`AiTaskRouting`, routage décrit dans `docs/AI.md`) : six tâches, le modèle de chacune, point vert (local), ambre (distant) ou gris (désactivée) ; le sélecteur propose le fournisseur principal, les modèles installés, les fournisseurs distants configurés et « Aucun » ; le choix est enregistré aussitôt, sans repli. Le fournisseur local s’appelle **« IA locale »**, jamais d’après une famille de modèles. Même principe pour les distants : la carte porte le nom de l’**éditeur** — Anthropic, Google, Mistral AI, OpenAI, DeepSeek — et la famille de modèles passe en indice. C’est l’éditeur qui reçoit les données, donc lui que l’utilisateur doit reconnaître avant d’accepter un envoi ; `taskRouting` réutilise ce libellé comme destinataire plutôt que d’en tenir une seconde liste. La liste **Profils disponibles** reprend les `evaluations` du backend (`compatibility` + `reason`) : un profil `unsupported` est étiqueté « Incompatible » et son installation est désactivée. Un benchmark `too_slow` avertit **toujours**, y compris sur le plus petit profil où aucun repli n’existe. Le résultat d'un test de connexion est un message fixe : la prose du modèle n’est pas un état.
 
 ### Formulaires
 
@@ -536,6 +539,25 @@ barre groupée 40 px dès qu'une case est cochée
 - Champs : `FormField` + `TextInput` / `Select` / `TextArea` / `DateInput` / `TimeInput` / `EntityPicker`.
 - Erreur **sous** le champ (`aria-invalid`, `aria-describedby`), jamais une infobulle seule.
 - Requis : mention `obligatoire` en ambre (`st-a`) tant que le champ est vide, pas de contour rouge.
+
+### Compléter une entreprise avec l'IA
+
+- Formulaire **Nouvelle entreprise** : bouton secondaire « Compléter avec l'IA » à droite du
+  champ Nom, visible dès que le nom est saisi et qu'un fournisseur IA est prêt.
+- Dialogue imbriqué (`CompanyResearchDialog`, `ModalHost`) : `BetaBadge` et phrase qui dit ce
+  qui quitte l'ordinateur ; progression `AiProgressPanel` (« Arrêter ») ; choix de
+  l'établissement en boutons radio — nom, enseigne, `Tag` « Siège social » ou
+  « Établissement », ville, adresse, activité, lien « Fiche » — avec « Relancer » (nom, ville
+  ou code postal) et « Aucun ne correspond : rechercher sur le Web seulement » ; état vide
+  « Aucun établissement trouvé » ; erreur réseau (« Connexion impossible ») ou de service,
+  avec « Réessayer ».
+- Vérification : une ligne par champ — case « Remplir » (champ vide) ou « Remplacer » (champ
+  déjà saisi, décochée par défaut), valeur modifiable, provenance et « Voir la source » ;
+  « Aucune information fiable trouvée » quand rien n'est sûr. `Banner` ambre « Recherche
+  partiellement réussie » si une source ou l'IA ont manqué ; liste « Sources consultées ».
+  « Remplir le formulaire » ne verse que les champs cochés, sans enregistrer.
+- Invitation « IA non configurée » (`AiRequiredModal`) : deux cartes, « Modèle local » et
+  « Fournisseur externe », qui ouvrent l'onglet correspondant de l'écran IA.
 
 ### Destruction
 

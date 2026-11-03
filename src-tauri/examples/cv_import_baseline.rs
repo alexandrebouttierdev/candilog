@@ -140,14 +140,34 @@ async fn main() {
         std::process::exit(1);
     }
     let managed = Arc::new(ManagedOllamaService::new(
-        pool.clone(),
+        Arc::new(
+            candilog_lib::features::settings::infrastructure::SqliteSettingsRepository::new(
+                pool.clone(),
+            ),
+        ),
         ManagedOllamaPaths {
             runtime_root: models_dir.join("managed/runtime"),
             models_dir: models_dir.join("managed/models"),
             downloads_dir: models_dir.join("managed/downloads"),
         },
     ));
-    let service = AiService::new(pool, managed);
+    let profiles = Arc::new(
+        candilog_lib::features::profile::infrastructure::SqliteProfileRepository::new(pool.clone()),
+    );
+    let company_research = candilog_lib::features::ai::application::CompanyResearchDeps {
+        sources: candilog_lib::features::ai::infrastructure::production_sources().unwrap_or_else(
+            |error| {
+                eprintln!("sources de recherche indisponibles : {error:?}");
+                std::process::exit(1);
+            },
+        ),
+        referentials: Arc::new(
+            candilog_lib::features::referentials::infrastructure::SqliteReferentialRepository::new(
+                pool.clone(),
+            ),
+        ),
+    };
+    let service = AiService::new(pool, profiles, managed, company_research);
 
     let results_path = out_dir.join("results.json");
     let journal_path = out_dir.join("journal.md");

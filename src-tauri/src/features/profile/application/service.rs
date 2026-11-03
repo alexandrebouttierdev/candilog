@@ -4,7 +4,7 @@ use crate::core::errors::{AppError, AppResult};
 use crate::core::utils::text::search_key;
 use crate::core::utils::validation::{is_valid_email, validate_optional_http_url};
 use crate::features::profile::domain::{
-    apply_decisions, build_preview, normaliser, nouveau_nom_fichier, Identity,
+    apply_decisions, build_preview, is_valid_photo_file, normaliser, nouveau_nom_fichier, Identity,
     ImportProfilePreview, ImportProfileRequest, ImportProfileResult, Profile, ProfilePayload,
     ProfileRepository, Skill, MAX_SOURCE_BYTES,
 };
@@ -152,10 +152,11 @@ impl<R: ProfileRepository> ProfileService<R> {
     /// `AppError::Database` si le profil ne peut pas être lu.
     pub fn photo_path(&self) -> AppResult<Option<PathBuf>> {
         let (profile, _) = self.repo.get()?;
-        Ok(profile.photo.as_deref().and_then(|nom| {
-            let chemin = self.photos_dir.join(nom);
-            chemin.is_file().then_some(chemin)
-        }))
+        Ok(profile
+            .photo
+            .as_deref()
+            .and_then(|nom| self.chemin_photo(nom))
+            .filter(|chemin| chemin.is_file()))
     }
 
     /// Réinitialise **le seul profil** : identité, sections et photo.
@@ -189,9 +190,25 @@ impl<R: ProfileRepository> ProfileService<R> {
         Ok(())
     }
 
+    /// Chemin d'une photo sous le dossier des photos, ou `None` si le nom n'a pas la forme
+    /// canonique (`docs/DATA.md` § Photo de profil).
+    ///
+    /// Le nom vient du profil enregistré, que la synchronisation ou une restauration peuvent
+    /// avoir écrit : il n'est joint au dossier qu'une fois validé.
+    fn chemin_photo(&self, nom: &str) -> Option<PathBuf> {
+        if is_valid_photo_file(nom) {
+            Some(self.photos_dir.join(nom))
+        } else {
+            tracing::warn!("nom de photo de profil invalide ignoré");
+            None
+        }
+    }
+
     /// Supprime un fichier photo devenu inutile, sans faire échouer l'opération appelante.
     fn supprimer_fichier(&self, nom: &str) {
-        let chemin = self.photos_dir.join(nom);
+        let Some(chemin) = self.chemin_photo(nom) else {
+            return;
+        };
         match std::fs::remove_file(&chemin) {
             Ok(()) => {}
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}

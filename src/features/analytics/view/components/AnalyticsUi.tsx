@@ -35,14 +35,14 @@ export function FollowUpList({
       {items.map((item) => (
         <li
           key={item.id}
-          className="flex items-center gap-[11px] border-b border-line px-[19px] py-3 last:border-b-0"
+          className="flex items-center gap-[11px] border-b border-bd px-[19px] py-3 last:border-b-0"
         >
-          <span className="flex size-7 flex-none items-center justify-center rounded-button bg-neutral-tint text-meta font-strong text-ink-muted">
+          <span className="flex size-7 flex-none items-center justify-center rounded-button bg-neutral-tint text-meta font-strong text-tx-3">
             {initials(item.company_name ?? item.job_title)}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-body font-mid text-ink">{item.job_title}</p>
-            <p className="truncate text-label text-ink-faint">
+            <p className="truncate text-body font-mid text-tx">{item.job_title}</p>
+            <p className="truncate text-label text-tx-5">
               {item.company_name ?? "Entreprise"} · envoyée le {formatDate(item.sent_date, "long")}
             </p>
           </div>
@@ -89,9 +89,9 @@ export function PerformanceList({
       {rows.map((row) => (
         <div
           key={row.label}
-          className="flex items-center justify-between gap-3.5 border-t border-line py-2.5"
+          className="flex items-center justify-between gap-3.5 border-t border-bd py-2.5"
         >
-          <dt className="min-w-0 text-note text-ink-muted">{row.label}</dt>
+          <dt className="min-w-0 text-note text-tx-3">{row.label}</dt>
           <dd
             className={cn(
               "tabular flex-none text-body font-semibold",
@@ -99,7 +99,7 @@ export function PerformanceList({
                 ? "text-success"
                 : row.tone === "warning"
                   ? "text-warning"
-                  : "text-ink",
+                  : "text-tx",
             )}
           >
             {row.value}
@@ -120,7 +120,7 @@ export function AnalyticsSkeleton() {
     >
       <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr))]">
         {Array.from({ length: 4 }, (_, index) => (
-          <div key={index} className="rounded-card border border-line bg-surface px-[18px] py-4">
+          <div key={index} className="rounded-card border border-bd bg-panel px-[18px] py-4">
             <Skeleton className="h-3 w-24" />
             <Skeleton className="mt-[19px] h-6 w-16" />
           </div>

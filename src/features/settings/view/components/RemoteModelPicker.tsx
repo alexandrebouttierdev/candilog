@@ -45,14 +45,14 @@ export function RemoteModelPicker({
               "transition-[background-color,border-color] duration-hover",
               "focus-visible:outline-1 focus-visible:outline-accent-focus",
               selected
-                ? "border-accent bg-accent-tint-12"
-                : "border-line bg-surface hover:border-control-strong hover:bg-fill",
+                ? "border-ac bg-accent-tint-12"
+                : "border-bd bg-panel hover:border-control-strong hover:bg-chip",
             )}
           >
             <span
               className={cn(
                 "flex size-7 flex-none items-center justify-center rounded-tile",
-                selected ? "bg-surface" : "bg-fill",
+                selected ? "bg-panel" : "bg-chip",
               )}
               aria-hidden="true"
             >
@@ -65,19 +65,19 @@ export function RemoteModelPicker({
                   className={cn("size-4 object-contain", logo.mono && "dark:invert")}
                 />
               ) : (
-                <LineIcon name="ai" size={15} className="text-ink-muted" />
+                <LineIcon name="ai" size={15} className="text-tx-3" />
               )}
             </span>
             <span
               className={cn(
                 "min-w-0 flex-1 truncate font-mono text-note leading-snug",
-                selected ? "font-mid text-ink" : "text-ink-muted",
+                selected ? "font-mid text-tx" : "text-tx-3",
               )}
             >
               {model}
             </span>
             {selected ? (
-              <span aria-hidden className="flex-none text-accent">
+              <span aria-hidden className="flex-none text-ac-tx">
                 ✓
               </span>
             ) : null}

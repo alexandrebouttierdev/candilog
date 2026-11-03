@@ -118,7 +118,11 @@ fn ai_service(pool: SqlitePool) -> Result<AiService, String> {
     ));
     let managed = Arc::new(
         candilog_lib::features::ai::application::ManagedOllamaService::new(
-            pool.clone(),
+            Arc::new(
+                candilog_lib::features::settings::infrastructure::SqliteSettingsRepository::new(
+                    pool.clone(),
+                ),
+            ),
             candilog_lib::features::ai::application::ManagedOllamaPaths {
                 runtime_root: managed_root.join("runtime"),
                 models_dir: managed_root.join("models"),
@@ -126,7 +130,19 @@ fn ai_service(pool: SqlitePool) -> Result<AiService, String> {
             },
         ),
     );
-    Ok(AiService::new(pool, managed))
+    let profiles = Arc::new(
+        candilog_lib::features::profile::infrastructure::SqliteProfileRepository::new(pool.clone()),
+    );
+    let company_research = candilog_lib::features::ai::application::CompanyResearchDeps {
+        sources: candilog_lib::features::ai::infrastructure::production_sources()
+            .map_err(|error| format!("sources de recherche indisponibles : {error:?}"))?,
+        referentials: Arc::new(
+            candilog_lib::features::referentials::infrastructure::SqliteReferentialRepository::new(
+                pool.clone(),
+            ),
+        ),
+    };
+    Ok(AiService::new(pool, profiles, managed, company_research))
 }
 
 /// Un cas de test : le profil source et le dossier où déposer ses artefacts.

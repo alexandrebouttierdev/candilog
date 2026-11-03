@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type AiOperationKind = "analyse" | "generation" | "import" | "correction";
+export type AiOperationKind = "analyse" | "generation" | "import" | "correction" | "recherche";
 
 export interface AiOperation {
   readonly id: string;

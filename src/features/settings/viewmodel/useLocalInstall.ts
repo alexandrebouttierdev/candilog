@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { LocalModelProbe, ManagedModelDefinition } from "@/shared/types/generated/ai";
 import { AppError } from "@/shared/types/app-error";
 import { useUiStore } from "@/shared/lib/ui-store";
-import { useAiTimer } from "@/features/ai";
+import { useOperationTimer } from "@/shared/hooks/useOperationTimer";
 import { currentStep, laterStep } from "../model/localInstall";
 import type { InstallPhase, InstallStepKey } from "../model/localInstall";
 import { managedOllamaService } from "../services/managedOllamaService";
@@ -37,7 +37,7 @@ export function useLocalInstall(vm: ManagedOllamaViewModel) {
   const [verifying, setVerifying] = useState(false);
   const [probe, setProbe] = useState<LocalModelProbe | null>(null);
   const [probeError, setProbeError] = useState<string | null>(null);
-  const timer = useAiTimer(phase === "run");
+  const timer = useOperationTimer(phase === "run");
 
   const mounted = useRef(true);
   useEffect(() => {

@@ -5,7 +5,7 @@ import type { Company } from "@/features/companies";
 import { ContactFormModal } from "@/features/contacts";
 import type { Contact } from "@/features/contacts";
 import { FollowUpFormModal } from "@/features/followups";
-import { useScheduleFollowUp } from "@/features/applications";
+import { ApplicationPicker, useScheduleFollowUp } from "@/features/applications";
 import type { Application } from "@/features/applications";
 import { PATHS, applicationsPath } from "@/shared/lib/paths";
 import { useChrome } from "@/shared/lib/chrome";
@@ -317,6 +317,7 @@ export function RelationsPage({ kind }: { kind: RelationKind }) {
         onSubmit={(input) => vm.saveContact({ id: form?.kind === "contact" ? (form.editing?.id ?? null) : null, input })}
       />
       <FollowUpFormModal
+        applicationPicker={ApplicationPicker}
         open={followUpFor !== null}
         follow_up={null}
         application_id={followUpFor?.id ?? null}

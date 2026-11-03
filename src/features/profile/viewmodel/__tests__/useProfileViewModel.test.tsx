@@ -2,11 +2,10 @@ import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { BASE_RESUME_KEY } from "@/features/documents";
 import { useUiStore } from "@/shared/lib/ui-store";
 import type { Profile, ProfilePayload } from "@/shared/types/generated/profile";
 import { profileService } from "../../services/profileService";
-import { useProfileViewModel } from "../useProfileViewModel";
+import { PROFILE_DERIVED_META, useProfileViewModel } from "../useProfileViewModel";
 
 const identite: Profile["identity"] = {
   first_name: "Jean",
@@ -45,15 +44,22 @@ const payload: ProfilePayload = {
   updated_at: null,
 };
 
-/** Clé effective de la composition : le ViewModel du CV de base y ajoute les sections. */
-const COMPOSITION_KEY = [...BASE_RESUME_KEY, []];
+/** Requête dérivée du profil, comme la composition du CV de base (`PROFILE_DERIVED_META`). */
+const COMPOSITION_KEY = ["composition-derivee"];
+/** Requête sans rapport avec le profil : aucune écriture du profil ne doit la périmer. */
+const AUTRE_KEY = ["sans-rapport"];
 
 function contexte() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   // Une composition déjà en cache, comme après une visite du CV de base.
-  client.setQueryData(COMPOSITION_KEY, { marqueur: "composition périmée" });
+  void client.prefetchQuery({
+    queryKey: COMPOSITION_KEY,
+    queryFn: () => ({ marqueur: "composition périmée" }),
+    meta: PROFILE_DERIVED_META,
+  });
+  client.setQueryData(AUTRE_KEY, { marqueur: "intacte" });
   function wrapper({ children }: { children: ReactNode }) {
     return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
   }
@@ -80,6 +86,7 @@ describe("invalidation de la composition du CV de base", () => {
     await act(async () => { await result.current.save(profil); });
 
     await waitFor(() => expect(client.getQueryState(COMPOSITION_KEY)?.isInvalidated).toBe(true));
+    expect(client.getQueryState(AUTRE_KEY)?.isInvalidated).toBe(false);
   });
 
   it("périme la composition quand un import est appliqué", async () => {

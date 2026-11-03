@@ -22,7 +22,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "min-w-0 rounded-card border border-line bg-surface",
+        "min-w-0 rounded-card border border-bd bg-panel",
         padded && "px-[19px] py-[17px]",
         clipped && "overflow-hidden",
         className,
@@ -51,7 +51,7 @@ export function CardTitle({
 }) {
   return (
     <div className={cn("flex items-center justify-between gap-3", className)}>
-      <span className={cn("truncate text-ink", compact ? "text-body font-semibold" : "text-section")}>
+      <span className={cn("truncate text-tx", compact ? "text-body font-semibold" : "text-section")}>
         {children}
       </span>
       {meta}
@@ -77,7 +77,7 @@ export function CardHeader({
       {...(meta ? { meta } : {})}
       compact={compact}
       className={cn(
-        "border-b border-line",
+        "border-b border-bd",
         compact ? "px-[17px] py-[13px]" : "px-[19px] py-[14px]",
       )}
     >
@@ -88,5 +88,5 @@ export function CardHeader({
 
 /** Métadonnée grise à droite d'un titre de carte (« 3 à venir », « 7 derniers jours »). */
 export function CardMeta({ children }: { children: ReactNode }) {
-  return <span className="flex-none text-label text-ink-faint">{children}</span>;
+  return <span className="flex-none text-label text-tx-5">{children}</span>;
 }

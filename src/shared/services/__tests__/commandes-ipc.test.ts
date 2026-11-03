@@ -230,3 +230,147 @@ describe("contrat des événements", () => {
     }
   });
 });
+
+/** Découpe au premier niveau d'imbrication (`<>`, `()`, `{}`, `[]`) sur les virgules. */
+function splitTopLevel(text: string): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let current = "";
+  for (const char of text) {
+    if ("<({[".includes(char)) depth += 1;
+    if (">)}]".includes(char)) depth -= 1;
+    if (char === "," && depth === 0) {
+      parts.push(current);
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  parts.push(current);
+  return parts.map((part) => part.trim()).filter((part) => part !== "");
+}
+
+/** Contenu entre la parenthèse (ou accolade) ouvrante à `start` et sa fermante. */
+function balanced(source: string, start: number): string {
+  const open = source[start]!;
+  const close = open === "(" ? ")" : "}";
+  let depth = 0;
+  for (let index = start; index < source.length; index += 1) {
+    if (source[index] === open) depth += 1;
+    if (source[index] === close) depth -= 1;
+    if (depth === 0) return source.slice(start + 1, index);
+  }
+  throw new Error(`délimiteur non refermé à ${start}`);
+}
+
+/** Types injectés par Tauri, que le frontend ne transmet jamais. */
+const INJECTED = /^(?:tauri::)?(?:State|AppHandle|Window|WebviewWindow|Webview)\b/;
+
+/**
+ * Paramètres attendus par chaque commande Rust : nom → caractère facultatif (`Option<…>`).
+ */
+function rustParameters(): Map<string, Map<string, boolean>> {
+  const files = globSync("src-tauri/src/features/*/presentation/*.rs", { cwd: root });
+  const commands = new Map<string, Map<string, boolean>>();
+  for (const file of files) {
+    const source = readFileSync(`${root}/${file}`, "utf8");
+    for (const match of source.matchAll(
+      /#\[tauri::command(?:\([^)]*\))?\]\s*(?:pub\s+)?(?:async\s+)?fn\s+(\w+)(?:<[^>]*>)?\s*\(/g,
+    )) {
+      const open = match.index + match[0].length - 1;
+      const parameters = new Map<string, boolean>();
+      for (const parameter of splitTopLevel(balanced(source, open))) {
+        const [name, type] = parameter.split(/:(.*)/s).map((part) => part.trim());
+        if (!name || !type || INJECTED.test(type)) continue;
+        parameters.set(name.replace(/^_/, ""), type.startsWith("Option<"));
+      }
+      commands.set(match[1]!, parameters);
+    }
+  }
+  return commands;
+}
+
+/**
+ * Clés d'arguments transmises par chaque appel `ipc("commande", { … })` des services.
+ * `null` quand l'objet n'est pas littéral (variable, décomposition) : non vérifiable ici.
+ */
+function calledArguments(): { command: string; file: string; keys: string[] | null }[] {
+  const files = globSync("src/{features/*/services,shared/services}/*.ts", { cwd: root });
+  const calls: { command: string; file: string; keys: string[] | null }[] = [];
+  for (const file of files) {
+    const source = readFileSync(`${root}/${file}`, "utf8");
+    for (const match of source.matchAll(/\bipc\s*(?:<[\s\S]*?>)?\s*\(\s*"([^"]+)"\s*(,?)\s*/g)) {
+      const command = match[1]!;
+      const after = match.index + match[0].length;
+      if (match[2] === "" || source[after] === ")") {
+        calls.push({ command, file, keys: [] });
+        continue;
+      }
+      if (source[after] !== "{") {
+        calls.push({ command, file, keys: null });
+        continue;
+      }
+      const entries = splitTopLevel(balanced(source, after));
+      if (entries.some((entry) => entry.startsWith("..."))) {
+        calls.push({ command, file, keys: null });
+        continue;
+      }
+      calls.push({ command, file, keys: entries.map((entry) => entry.split(":")[0]!.trim().replace(/"/g, "")) });
+    }
+  }
+  return calls;
+}
+
+/**
+ * Noms des **arguments**, troisième angle mort après les noms de commandes et
+ * d'événements : `ipc("companies_get", { identifiant })` compile des deux côtés et ne
+ * rejette « missing required key id » qu'à l'exécution. Le type de retour, lui, reste
+ * affirmé par l'appelant, mais il s'appuie sur les types générés par ts-rs.
+ */
+describe("contrat des arguments IPC", () => {
+  it("lit les paramètres des deux côtés", () => {
+    const rust = rustParameters();
+    expect(rust.get("companies_update")).toEqual(
+      new Map([
+        ["id", false],
+        ["input", false],
+      ]),
+    );
+    expect(rust.get("ai_select_resume_file")?.size).toBe(0);
+    const calls = calledArguments();
+    expect(calls.filter((call) => call.keys !== null).length).toBeGreaterThan(80);
+  });
+
+  it("transmet exactement les arguments attendus par chaque commande", () => {
+    const rust = rustParameters();
+    const ecarts: string[] = [];
+    for (const call of calledArguments()) {
+      const expected = rust.get(call.command);
+      if (!expected || call.keys === null) continue;
+      const unknown = call.keys.filter((key) => !expected.has(key));
+      const missing = [...expected]
+        .filter(([name, optional]) => !optional && !call.keys!.includes(name))
+        .map(([name]) => name);
+      if (unknown.length > 0 || missing.length > 0) {
+        ecarts.push(`${call.file} ${call.command} : inconnus [${unknown.join(", ")}], manquants [${missing.join(", ")}]`);
+      }
+    }
+    expect(ecarts).toEqual([]);
+  });
+
+  it("ne laisse hors contrôle que les appels paginés, dont l'objet est construit à part", () => {
+    const opaques = calledArguments()
+      .filter((call) => call.keys === null)
+      .map((call) => call.command)
+      .sort();
+    expect(opaques).toEqual(
+      [
+        "applications_list_page",
+        "companies_list_page",
+        "contacts_list_page",
+        "documents_cover_letters_list_page",
+        "documents_resume_list_page",
+      ].filter((command) => opaques.includes(command)),
+    );
+  });
+});

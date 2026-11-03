@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   companyFormSchema,
@@ -8,7 +8,10 @@ import {
 } from "../../model/schemas/company-form.schema";
 import type { Company, NewCompany } from "@/shared/types/generated/companies";
 import { CompanySizes, useReferentials } from "@/features/referentials";
-import { FormField, FormSection, ModalHost, Select, TextArea, TextInput } from "@/shared/ui";
+import { useAiRequiredStore } from "@/features/ai";
+import { Button, FormField, FormSection, ModalHost, Select, TextArea, TextInput } from "@/shared/ui";
+import { useCompanyResearch } from "../../viewmodel/useCompanyResearch";
+import { CompanyResearchDialog } from "./CompanyResearchDialog";
 
 /** Valeurs d'un formulaire vierge. */
 const EMPTY_FORM: CompanyFormInput = {
@@ -65,6 +68,19 @@ export function CompanyFormModal({
     resolver: zodResolver(companyFormSchema),
     defaultValues: EMPTY_FORM,
   });
+  const research = useCompanyResearch();
+  const name = useWatch({ control: form.control, name: "name" });
+  // `false` : aucun fournisseur prêt, le bouton se cache. `null` (réglages pas encore lus)
+  // le laisse visible : un clic ouvre alors l'invitation à configurer l'IA.
+  const aiConfigured = useAiRequiredStore((state) => state.configured());
+  const canResearch = company === null && name.trim() !== "" && aiConfigured !== false;
+
+  /** Verse les champs validés dans le formulaire, comme une saisie de l'utilisateur. */
+  const applyResearch = (patch: Partial<CompanyFormInput>) => {
+    for (const [field, value] of Object.entries(patch) as [keyof CompanyFormInput, string][]) {
+      form.setValue(field, value, { shouldDirty: true, shouldValidate: form.formState.isSubmitted });
+    }
+  };
 
   // La modale n'est démontée qu'à la fermeture : sans réinitialisation à l'ouverture, elle
   // rouvrirait sur les valeurs de l'entité précédemment éditée.
@@ -102,12 +118,25 @@ export function CompanyFormModal({
             <div className="col-span-2">
               <FormField label="Nom" required error={form.formState.errors.name?.message}>
                 {(props) => (
-                  <TextInput
-                    {...props}
-                    {...form.register("name")}
-                    placeholder="Nom de l'entreprise"
-                    invalid={Boolean(form.formState.errors.name)}
-                  />
+                  <div className="flex items-center gap-2">
+                    <TextInput
+                      {...props}
+                      {...form.register("name")}
+                      placeholder="Nom de l'entreprise"
+                      invalid={Boolean(form.formState.errors.name)}
+                    />
+                    {canResearch ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="flex-none"
+                        disabled={research.running}
+                        onClick={() => research.search(name, form.getValues("city") ?? "")}
+                      >
+                        {research.running ? "Recherche…" : "Compléter avec l'IA"}
+                      </Button>
+                    ) : null}
+                  </div>
                 )}
               </FormField>
             </div>
@@ -195,6 +224,9 @@ export function CompanyFormModal({
           </div>
         </FormSection>
       </form>
+      {research.open ? (
+        <CompanyResearchDialog vm={research} current={form.getValues()} onApply={applyResearch} />
+      ) : null}
     </ModalHost>
   );
 }

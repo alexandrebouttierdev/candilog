@@ -13,12 +13,12 @@ export function ImportJournal({
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <div className="border-t border-line pt-3">
+    <div className="border-t border-bd pt-3">
       <button
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
-        className="inline-flex items-center gap-1 text-label font-medium text-ink-muted hover:text-ink"
+        className="inline-flex items-center gap-1 text-label font-medium text-tx-3 hover:text-tx"
       >
         <span aria-hidden className="w-3 text-center">
           {open ? "▾" : "›"}
@@ -26,13 +26,13 @@ export function ImportJournal({
         Journal d'import
       </button>
       {open ? (
-        <ol className="mt-2 max-h-40 space-y-1 overflow-y-auto font-mono text-meta text-ink-muted">
+        <ol className="mt-2 max-h-40 space-y-1 overflow-y-auto font-mono text-meta text-tx-3">
           {entries.length === 0 ? (
             <li>Aucun événement pour le moment.</li>
           ) : (
             entries.map((entry, index) => (
               <li key={`${entry.at}-${index}`} className="flex gap-3">
-                <span className="tabular text-ink-faint">{formatJournalTime(entry.at)}</span>
+                <span className="tabular text-tx-5">{formatJournalTime(entry.at)}</span>
                 <span>{entry.message}</span>
               </li>
             ))

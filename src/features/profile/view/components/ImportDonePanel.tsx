@@ -22,8 +22,8 @@ export function ImportDonePanel({
           </span>
         </span>
         <div className="min-w-0">
-          <h3 className="text-heading text-ink">Profil importé</h3>
-          <p className="mt-1 text-body text-ink-muted">{summarySentence(result)}</p>
+          <h3 className="text-heading text-tx">Profil importé</h3>
+          <p className="mt-1 text-body text-tx-3">{summarySentence(result)}</p>
         </div>
       </div>
       <div className="grid grid-cols-3 gap-2.5">
@@ -31,11 +31,11 @@ export function ImportDonePanel({
         <StatCard label="Mis à jour" value={String(result.replaced)} />
         <StatCard label="Ignorés" value={String(result.skipped)} />
       </div>
-      <p className="mt-4 text-label text-ink-faint">
+      <p className="mt-4 text-label text-tx-5">
         Terminé en {formatDuration(totalMs)}
       </p>
       {aiMetrics ? (
-        <p className="mt-1.5 text-label text-ink-faint">
+        <p className="mt-1.5 text-label text-tx-5">
           {formatAiSummary("Analysé", aiMetrics.elapsed_ms, aiMetrics.tokens_used)}
         </p>
       ) : null}

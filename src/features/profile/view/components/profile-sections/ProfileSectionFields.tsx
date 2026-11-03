@@ -115,10 +115,10 @@ export function ItemCard({
   children: ReactNode;
 }) {
   return (
-    <fieldset className="rounded-card border border-line bg-surface-alt p-4">
+    <fieldset className="rounded-card border border-bd bg-group p-4">
       <legend className="sr-only">{title}</legend>
       <div className="mb-4 flex items-center gap-2">
-        <p className="min-w-0 flex-1 truncate text-section text-ink">{title}</p>
+        <p className="min-w-0 flex-1 truncate text-section text-tx">{title}</p>
         <Button
           variant="ghost"
           aria-label={`Supprimer ${title}`}
@@ -134,7 +134,7 @@ export function ItemCard({
 
 function EmptyInline({ text }: { text: string }) {
   return (
-    <p className="rounded-card border border-dashed border-line bg-surface-alt px-4 py-8 text-center text-body text-ink-muted">
+    <p className="rounded-card border border-dashed border-bd bg-group px-4 py-8 text-center text-body text-tx-3">
       {text}
     </p>
   );

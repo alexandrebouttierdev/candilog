@@ -67,7 +67,7 @@ export function SplitPane({
       >
         <div
           className={cn(
-            "absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-line transition-colors",
+            "absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-bd transition-colors",
             "group-hover:bg-line-strong",
             dragging && "bg-accent-focus",
           )}
