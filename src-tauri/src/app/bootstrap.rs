@@ -106,6 +106,8 @@ pub fn run() {
             interviews::interviews_save,
             interviews::interviews_delete,
             ai::ai_analyze_listing,
+            ai::ai_search_companies,
+            ai::ai_research_company,
             ai::ai_evaluate_cover_letter,
             ai::ai_generate_resume,
             ai::ai_generate_cover_letter,

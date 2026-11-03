@@ -6,6 +6,17 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le v
 
 ## [Non publié]
 
+### Ajouté
+
+- « Compléter avec l'IA » dans le formulaire d'ajout d'une entreprise : recherche dans
+  l'annuaire officiel des entreprises, choix de l'établissement quand il y en a plusieurs
+  (siège ou établissement local, ville, adresse), puis secteur, type, taille, site officiel,
+  ville et adresse proposés avec leurs sources, à vérifier avant de remplir le formulaire.
+  Aucune clé ni abonnement : annuaire public, Wikidata et SearXNG, avec l'IA locale comme
+  avec un fournisseur externe.
+- Réglages → Intelligence artificielle : instance SearXNG préférée pour la recherche Web.
+- L'invitation à configurer l'IA propose directement l'IA locale ou un fournisseur externe.
+
 ### Sécurité
 
 - Le nom de fichier de la photo de profil est revalidé avant tout accès au disque. Un lot de

@@ -79,6 +79,17 @@ fn provider_label(provider: &ProviderKind) -> String {
     }
 }
 
+/// Instance SearXNG préférée de l'utilisateur, revalidée : seule une adresse HTTP(S)
+/// part vers la recherche Web.
+///
+/// # Errors
+/// `Database` si les réglages ne peuvent être lus.
+pub fn load_searxng_url(pool: &SqlitePool) -> AppResult<Option<String>> {
+    Ok(read_settings(pool)?.searxng_url.filter(|url| {
+        url::Url::parse(url).is_ok_and(|parsed| matches!(parsed.scheme(), "http" | "https"))
+    }))
+}
+
 fn read_settings(pool: &SqlitePool) -> AppResult<SettingsStockes> {
     let raw: Option<String> = connection(pool)?
         .query_row("SELECT data FROM settings WHERE id = 1", [], |row| {
@@ -96,6 +107,7 @@ fn read_settings(pool: &SqlitePool) -> AppResult<SettingsStockes> {
             llm: LlmConfig::default(),
             llm_presets: std::collections::BTreeMap::new(),
             ai_routes: std::collections::BTreeMap::new(),
+            searxng_url: None,
         }),
     }
 }

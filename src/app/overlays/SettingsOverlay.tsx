@@ -13,6 +13,7 @@ import {
   AppearanceSettings,
   BackupsPage,
   RemoteSendConsents,
+  WebSearchSettings,
   SettingsSection,
   UpdatesPage,
   useAboutViewModel,
@@ -153,6 +154,7 @@ function SectionContent({ section }: { section: Section }) {
           </Button>
           <div className="mt-5">
             <RemoteSendConsents />
+            <WebSearchSettings />
           </div>
         </SettingsSection>
       );

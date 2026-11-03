@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAiRailStatusStore } from "../../viewmodel/ai-rail-status-store";
 import { AppError } from "@/shared/types/app-error";
 import type { AiTask, AnalysisMode, LlmForm, Settings, TaskRoute } from "@/shared/types/generated/settings";
@@ -68,7 +69,12 @@ export function AiPage({ renderBenchmark }: { renderBenchmark: (props: AiBenchma
   const vm = useSettingsViewModel();
   const notify = useUiStore((state) => state.notify);
   // Sans choix explicite, l'écran s'ouvre sur le fournisseur principal.
-  const [chosenTab, setTab] = useState<AiTab | null>(null);
+  // `?onglet=local|fournisseurs` : ouvert depuis l'invitation à configurer l'IA.
+  const [searchParams] = useSearchParams();
+  const requestedTab = searchParams.get("onglet");
+  const [chosenTab, setTab] = useState<AiTab | null>(
+    requestedTab === "local" ? "local" : requestedTab === "fournisseurs" ? "providers" : null,
+  );
   const [draft, setDraft] = useState<Settings | null>(null);
   const [apiKeyDraft, setApiKeyDraft] = useState("");
   /** Brouillons de clé par fournisseur : basculer ne doit pas écraser la saisie en cours. */

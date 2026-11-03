@@ -16,7 +16,9 @@ mais ne sont plus gérés (`docs/AI.md`).
 
 La configuration (fournisseur, modèle actif, modèles installés, état du moteur et
 benchmark horodaté) réutilise le JSON `settings` de SQLite (`managed_ollama`). Il n'existe
-pas de deuxième magasin de réglages.
+pas de deuxième magasin de réglages. Le même JSON porte `searxng_url`, l'instance SearXNG
+préférée de la recherche Web (absente par défaut ; revalidée en HTTP(S) à l'enregistrement
+et à la lecture, `docs/AI.md`).
 
 ## Référentiels métier
 

@@ -57,6 +57,115 @@ export type AtsRecommendationSection = "profile" | "experience";
  */
 export type BenchmarkQualityLabel = "weak" | "average" | "fair" | "good" | "very_good" | "excellent";
 
+/**
+ * Établissement trouvé dans l'annuaire officiel, présenté au choix de l'utilisateur.
+ */
+export type CompanyCandidate = { 
+/**
+ * SIRET de l'établissement : l'identifiant que la seconde étape relit dans l'annuaire.
+ */
+siret: string, siren: string, 
+/**
+ * Dénomination de l'entreprise (unité légale), normalisée.
+ */
+name: string, 
+/**
+ * Enseigne ou nom commercial de l'établissement, s'il en a un.
+ */
+trade_name: string | null, city: string | null, postal_code: string | null, 
+/**
+ * Adresse complète, normalisée ; `None` si l'annuaire ne la diffuse pas.
+ */
+address: string | null, 
+/**
+ * Siège social de l'entreprise, et non un établissement local.
+ */
+head_office: boolean, 
+/**
+ * Code d'activité (NAF) de l'établissement, et son libellé de section.
+ */
+activity_code: string | null, activity_label: string | null, 
+/**
+ * Nature juridique de l'entreprise (code INSEE à quatre chiffres).
+ */
+legal_category: string | null, 
+/**
+ * Catégorie d'entreprise de l'INSEE : `PME`, `ETI` ou `GE`.
+ */
+size_category: string | null, 
+/**
+ * Tranche d'effectif salarié de l'entreprise (code INSEE).
+ */
+workforce_range: string | null, 
+/**
+ * Nombre d'établissements ouverts de l'entreprise.
+ */
+open_establishments: number | null, 
+/**
+ * Fiche publique de l'établissement, pour vérification.
+ */
+source_url: string, };
+
+/**
+ * Valeurs proposées pour les champs du formulaire entreprise.
+ */
+export type CompanyResearchFields = { name: ResearchedField, 
+/**
+ * Identifiant d'un secteur du référentiel.
+ */
+sector_id: ResearchedField, 
+/**
+ * Code d'un type d'entreprise du référentiel.
+ */
+company_type_id: ResearchedField, 
+/**
+ * Valeur de `CompanySize` (`PME`, `ETI`…).
+ */
+company_size: ResearchedField, website: ResearchedField, city: ResearchedField, address: ResearchedField, };
+
+/**
+ * Complète les informations d'un établissement choisi, ou d'une entreprise absente de
+ * l'annuaire (`siret = None` : recherche Web seule).
+ */
+export type CompanyResearchRequest = { generation_id: string, name: string, siret: string | null, };
+
+/**
+ * Informations trouvées, à vérifier avant tout remplissage.
+ */
+export type CompanyResearchResult = { fields: CompanyResearchFields, sources: Array<ResearchSource>, 
+/**
+ * Ce qui n'a pas pu être consulté (service indisponible, IA en erreur…) : le résultat
+ * est alors partiel, et le dit.
+ */
+warnings: Array<string>, 
+/**
+ * Le modèle a été consulté.
+ */
+ai_used: boolean, };
+
+/**
+ * Recherche des établissements d'une entreprise d'après son nom.
+ */
+export type CompanySearchRequest = { generation_id: string, name: string, 
+/**
+ * Ville ou code postal, pour départager des homonymes.
+ */
+location: string | null, };
+
+/**
+ * Résultat de la recherche d'établissements.
+ */
+export type CompanySearchResult = { candidates: Array<CompanyCandidate>, 
+/**
+ * Un seul établissement, au nom identique à la recherche : la sélection peut être
+ * sautée, la vérification reste montrée avant tout remplissage.
+ */
+confident: boolean, 
+/**
+ * Établissements trouvés au-delà de ceux présentés.
+ */
+truncated: boolean, };
+
 export type ContentRelevance = "very_relevant" | "relevant" | "secondary";
 
 export type CoverLetterRequest = { generation_id: string, company: string | null, job_title: string | null, tone: string | null, length: string | null, context: string | null, previous_cover_letter: string | null, instruction: string | null, 
@@ -77,6 +186,11 @@ export type CvAnalysisMethod = "vision" | "text";
  * Méthode effectivement utilisée pour produire le résultat.
  */
 export type CvAnalysisMethodUsed = "vision" | "text";
+
+/**
+ * D'où vient la valeur proposée pour un champ.
+ */
+export type FieldOrigin = "registry" | "wikidata" | "web_search" | "ai";
 
 export type GeneratedEducation = { degree: string, school: string, };
 
@@ -255,6 +369,28 @@ export type RequirementEvaluation = { requirement: string, category: Requirement
 export type RequirementImportance = "contextual" | "informational" | "optional" | "preferred" | "important" | "mandatory";
 
 export type RequirementMatchKind = "exact" | "equivalent" | "transferable" | "partial" | "missing" | "unknown";
+
+/**
+ * Page consultée pendant la recherche.
+ */
+export type ResearchSource = { label: string, url: string, };
+
+/**
+ * Valeur proposée pour un champ du formulaire, avec sa provenance.
+ */
+export type ResearchedField = { 
+/**
+ * `None` : aucune information fiable trouvée.
+ */
+value: string | null, origin: FieldOrigin | null, 
+/**
+ * Page qui justifie la valeur.
+ */
+source_url: string | null, 
+/**
+ * Précision affichée sous la valeur (« d'après le code NAF 62.02A »).
+ */
+note: string | null, };
 
 /**
  * Demande d'analyse d'un CV déjà choisi par `ai_select_resume_file`.

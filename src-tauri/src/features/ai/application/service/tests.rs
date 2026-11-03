@@ -244,7 +244,18 @@ fn test_service() -> (AiService, tempfile::TempDir) {
     let profiles = Arc::new(
         crate::features::profile::infrastructure::SqliteProfileRepository::new(pool.clone()),
     );
-    (AiService::new(pool, profiles, managed), directory)
+    let company_research = CompanyResearchDeps {
+        sources: crate::features::ai::infrastructure::production_sources().unwrap(),
+        referentials: Arc::new(
+            crate::features::referentials::infrastructure::SqliteReferentialRepository::new(
+                pool.clone(),
+            ),
+        ),
+    };
+    (
+        AiService::new(pool, profiles, managed, company_research),
+        directory,
+    )
 }
 
 /// Le chemin analysé ne peut venir que du dialogue natif : sans sélection préalable,

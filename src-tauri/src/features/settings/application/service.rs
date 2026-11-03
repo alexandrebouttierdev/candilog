@@ -366,6 +366,14 @@ fn validate(settings: &Settings, api_key_configured: bool) -> AppResult<()> {
             "Les confirmations d'envoi distant enregistrées sont invalides.".into(),
         ));
     }
+    if let Some(url) = settings.searxng_url.as_deref() {
+        if url.trim().is_empty() || url.len() > 200 {
+            return Err(AppError::Validation(
+                "L'adresse de l'instance SearXNG est invalide.".into(),
+            ));
+        }
+        validate_optional_http_url(Some(url), "L'adresse de l'instance SearXNG")?;
+    }
     for (task, route) in &settings.ai_routes {
         if let Some(route) = route {
             let model = route.model.trim();
@@ -512,6 +520,7 @@ mod tests {
             llm_presets: Default::default(),
             ai_routes: Default::default(),
             remote_send_consents: Default::default(),
+            searxng_url: None,
             theme: ThemePref::System,
             language: "fr".into(),
         }
@@ -538,6 +547,27 @@ mod tests {
 
         let relu = service.load().unwrap();
         assert!(relu.remote_send_consents.contains("claude"));
+    }
+
+    #[test]
+    fn l_instance_searxng_est_persistee_et_validee() {
+        let service = service();
+        let mut settings = form(ollama());
+        settings.searxng_url = Some("https://searx.exemple.fr".into());
+        service.save(settings, None).unwrap();
+        assert_eq!(
+            service.load().unwrap().searxng_url.as_deref(),
+            Some("https://searx.exemple.fr")
+        );
+
+        for invalide in ["javascript:alert(1)", "ftp://searx.exemple.fr", "   "] {
+            let mut settings = form(ollama());
+            settings.searxng_url = Some(invalide.into());
+            assert!(
+                matches!(service.save(settings, None), Err(AppError::Validation(_))),
+                "{invalide}"
+            );
+        }
     }
 
     #[test]

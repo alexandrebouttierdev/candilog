@@ -135,6 +135,8 @@ pub enum AiTask {
     ExtractOffer,
     /// Lire un CV importé pour remplir le profil.
     ImportResume,
+    /// Compléter une fiche entreprise d'après les informations publiques trouvées.
+    ResearchCompany,
 }
 
 impl AiTask {
@@ -147,6 +149,7 @@ impl AiTask {
             Self::AnalyzeResume => "Analyser un CV",
             Self::ExtractOffer => "Extraire une offre d'emploi",
             Self::ImportResume => "Lire un CV importé",
+            Self::ResearchCompany => "Compléter une entreprise",
         }
     }
 }
@@ -185,6 +188,9 @@ pub struct SettingsStockes {
     pub llm_presets: BTreeMap<String, StoredPreset>,
     #[serde(default)]
     pub ai_routes: AiRoutes,
+    /// Instance SearXNG préférée de l'utilisateur, s'il en a choisi une.
+    #[serde(default)]
+    pub searxng_url: Option<String>,
 }
 
 /// Configuration d'une tâche routée vers `route`, à partir des réglages mémorisés de son

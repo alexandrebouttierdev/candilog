@@ -1,4 +1,5 @@
 export { AiBenchmarkModal } from "./view/components/AiBenchmarkModal";
+export { AiProgressPanel } from "./view/components/AiProgressPanel";
 export { AiConfigBridge } from "./view/components/AiConfigBridge";
 export { AiRequiredModal } from "./view/components/AiRequiredModal";
 export { AiStopButton } from "./view/components/AiStopButton";

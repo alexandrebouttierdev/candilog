@@ -292,11 +292,11 @@ describe("écran Intelligence artificielle", () => {
 });
 
 describe("écran Intelligence artificielle — qui fait quoi", () => {
-  it("montre les cinq tâches, qui suivent le fournisseur principal par défaut", async () => {
+  it("montre les six tâches, qui suivent le fournisseur principal par défaut", async () => {
     render(<AiPage renderBenchmark={() => null} />, { wrapper });
 
     const section = await screen.findByRole("region", { name: "Qui fait quoi" });
-    for (const tache of ["Générer un CV ciblé", "Rédiger une lettre", "Analyser un CV", "Extraire une offre d'emploi", "Lire un CV importé"]) {
+    for (const tache of ["Générer un CV ciblé", "Rédiger une lettre", "Analyser un CV", "Extraire une offre d'emploi", "Lire un CV importé", "Compléter une entreprise"]) {
       expect(within(section).getByRole("button", { name: new RegExp(`^${tache}, modèle OpenAI · gpt-4o, distant`) })).toBeInTheDocument();
     }
   });

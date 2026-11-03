@@ -6,7 +6,9 @@ use crate::core::errors::{AppError, AppResult};
 use crate::features::ai::domain::*;
 #[cfg(test)]
 use crate::features::ai::infrastructure::GenerationOutput;
-use crate::features::ai::infrastructure::{benchmark_pdf_path, load_config, load_task_config};
+use crate::features::ai::infrastructure::{
+    benchmark_pdf_path, load_config, load_searxng_url, load_task_config,
+};
 use crate::features::ai::infrastructure::{
     build_provider, extract_pdf, render_pdf_pages, try_extract_pdf_text, LlmGenerator, VisionImage,
 };
@@ -18,10 +20,13 @@ use std::sync::{Arc, Mutex};
 use tokio_util::sync::CancellationToken;
 
 mod benchmark;
+mod company_research;
 mod documents;
 mod profile_import;
 mod prompts;
 mod resume_analysis;
+
+pub use company_research::CompanyResearchDeps;
 
 #[cfg(test)]
 use benchmark::*;
@@ -34,6 +39,8 @@ pub struct AiService {
     pool: SqlitePool,
     /// Profil lu par son contrat : la feature IA ne connaît pas son stockage.
     profiles: Arc<dyn ProfileRepository>,
+    /// Sources et référentiels de « Compléter une entreprise ».
+    company_research: CompanyResearchDeps,
     managed_ollama: Arc<ManagedOllamaService>,
     generations: Mutex<HashMap<String, Arc<CancellationToken>>>,
     /// Dernier CV choisi dans le dialogue natif, jamais exposé à l'IPC.
@@ -51,10 +58,12 @@ impl AiService {
         pool: SqlitePool,
         profiles: Arc<dyn ProfileRepository>,
         managed_ollama: Arc<ManagedOllamaService>,
+        company_research: CompanyResearchDeps,
     ) -> Self {
         Self {
             pool,
             profiles,
+            company_research,
             managed_ollama,
             generations: Mutex::new(HashMap::new()),
             selected_resume: Mutex::new(None),

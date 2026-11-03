@@ -4,8 +4,10 @@ use crate::core::config::AppPaths;
 use crate::core::database::{open_pool, run_local_migrations, validate_database_file, SqlitePool};
 use crate::core::errors::AppResult;
 use crate::core::secrets::SecretStore;
-use crate::features::ai::application::{AiService, ManagedOllamaPaths, ManagedOllamaService};
-use crate::features::ai::infrastructure::HttpProviderProbe;
+use crate::features::ai::application::{
+    AiService, CompanyResearchDeps, ManagedOllamaPaths, ManagedOllamaService,
+};
+use crate::features::ai::infrastructure::{production_sources, HttpProviderProbe};
 use crate::features::analytics::application::AnalyticsService;
 use crate::features::analytics::infrastructure::SqliteAnalyticsRepository;
 use crate::features::applications::application::ApplicationService;
@@ -180,6 +182,13 @@ impl AppState {
                 pool.clone(),
                 Arc::new(SqliteProfileRepository::new(pool.clone())),
                 Arc::clone(&managed_ollama),
+                CompanyResearchDeps {
+                    sources: production_sources().map_err(|error| {
+                        tracing::error!(?error, "sources de recherche d'entreprise indisponibles");
+                        crate::core::errors::AppError::Http("client HTTP indisponible".into())
+                    })?,
+                    referentials: Arc::new(SqliteReferentialRepository::new(pool.clone())),
+                },
             )),
             managed_ollama,
             settings: Arc::new(SettingsService::new(

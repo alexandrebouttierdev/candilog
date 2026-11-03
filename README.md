@@ -66,6 +66,10 @@ votre accord avant le premier envoi.
 - Fiche avec l'historique complet (candidatures, statuts, entretiens, relances) et des
   notes datées pour ce qui se passe hors de l'application : un appel, une réponse.
 - Export CSV des entreprises et des contacts.
+- « Compléter avec l'IA » : à partir du seul nom, l'établissement est retrouvé dans
+  l'annuaire officiel des entreprises (choix de la ville quand il y en a plusieurs), puis
+  secteur, type, taille, site officiel et adresse sont proposés avec leurs sources, à
+  vérifier avant de remplir la fiche. Gratuit, sans clé, avec l'IA locale ou distante.
 
 **CV et lettres de motivation**
 - Générateur de CV ciblé sur une offre : sections du profil à inclure, ton, déroulé des

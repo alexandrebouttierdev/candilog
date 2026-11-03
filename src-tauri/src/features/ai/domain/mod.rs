@@ -1,5 +1,6 @@
 //! Contrats et modèles de l'assistance IA.
 
+mod company_research;
 mod config;
 mod cover_letter;
 mod cv_analysis;
@@ -17,6 +18,7 @@ mod user_benchmark;
 mod validation;
 
 pub use crate::core::utils::text::search_key;
+pub use company_research::*;
 pub use config::*;
 pub use cover_letter::*;
 pub use cv_analysis::*;

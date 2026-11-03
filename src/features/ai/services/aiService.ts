@@ -17,7 +17,15 @@ import type {
   CvAnalysisMethod,
   UserBenchmarkRequest,
 } from "../model/types";
-import type { LetterFit, LetterFitRequest, UserBenchmarkResult } from "@/shared/types/generated/ai";
+import type {
+  CompanyResearchRequest,
+  CompanyResearchResult,
+  CompanySearchRequest,
+  CompanySearchResult,
+  LetterFit,
+  LetterFitRequest,
+  UserBenchmarkResult,
+} from "@/shared/types/generated/ai";
 
 /**
  * Signale la fin d'un traitement IA.
@@ -51,6 +59,11 @@ export const aiService = {
   importProfile: (request: ProfileImportRequest) =>
     announce(ipc<AiExecution<ProfileImportAnalysis> | null>("ai_import_profile", { request }), request.generation_id),
   activeModelCapabilities: () => ipc<ActiveModelCapabilities>("ai_active_model_capabilities"),
+  /** Établissements de l'annuaire : rapide, sans appel au modèle, donc sans signal sonore. */
+  searchCompanies: (request: CompanySearchRequest) =>
+    ipc<AiExecution<CompanySearchResult>>("ai_search_companies", { request }),
+  researchCompany: (request: CompanyResearchRequest) =>
+    announce(ipc<AiExecution<CompanyResearchResult>>("ai_research_company", { request }), request.generation_id),
   cancel: (generation_id: string) => {
     cancelledGenerations.add(generation_id);
     return ipc<void>("ai_cancel", { generation_id }).catch((error: unknown) => {

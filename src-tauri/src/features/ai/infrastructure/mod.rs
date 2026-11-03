@@ -1,6 +1,7 @@
 //! Accès aux fournisseurs, paramètres historiques et fichiers PDF.
 
 mod benchmark_pdf;
+mod company_sources;
 mod config_repository;
 mod managed_ollama;
 mod pdf;
@@ -8,7 +9,8 @@ mod provider;
 mod system_resources;
 
 pub use benchmark_pdf::benchmark_pdf_path;
-pub use config_repository::{load_config, load_task_config};
+pub use company_sources::production_sources;
+pub use config_repository::{load_config, load_searxng_url, load_task_config};
 pub use managed_ollama::{
     require_runtime_artifact, ManagedOllamaApi, ManagedOllamaProcess, RuntimeArchiveFormat,
     RuntimeInstaller,

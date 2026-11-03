@@ -21,7 +21,7 @@ export interface RemoteSendRequest {
   readonly taskLabel: string;
   /** Ce qui quitte l'ordinateur, en clair : « Votre profil et le texte de l'offre ». */
   readonly content: string;
-  /** Tâches routées vers ce fournisseur, sur les cinq. */
+  /** Tâches routées vers ce fournisseur, sur l'ensemble des tâches routables. */
   readonly tasks: number;
 }
 

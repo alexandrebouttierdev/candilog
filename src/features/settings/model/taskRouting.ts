@@ -3,13 +3,14 @@ import type { ManagedModelStatus } from "@/shared/types/generated/ai";
 import { defaultEndpoint, getProvider, idProvider, providerById } from "./providers";
 import type { ProviderOption } from "./providers";
 
-/** Les cinq tâches routables, dans l'ordre de l'écran (`docs/AI.md`, « Routage par tâche »). */
+/** Les six tâches routables, dans l'ordre de l'écran (`docs/AI.md`, « Routage par tâche »). */
 export const AI_TASKS: ReadonlyArray<{ value: AiTask; label: string }> = [
   { value: "generate_resume", label: "Générer un CV ciblé" },
   { value: "write_letter", label: "Rédiger une lettre" },
   { value: "analyze_resume", label: "Analyser un CV" },
   { value: "extract_offer", label: "Extraire une offre d'emploi" },
   { value: "import_resume", label: "Lire un CV importé" },
+  { value: "research_company", label: "Compléter une entreprise" },
 ];
 
 /** Assignation lisible d'une tâche. */
@@ -90,7 +91,7 @@ export function remoteSendToConfirm(task: AiTask, settings: Settings): TaskDesti
   return settings.remote_send_consents.includes(destination.providerId) ? null : destination;
 }
 
-/** Nombre de tâches qu'un fournisseur distant recevrait : « Tâches concernées — 1 sur 5 ». */
+/** Nombre de tâches qu'un fournisseur distant recevrait : « Tâches concernées — 1 sur 6 ». */
 export function tasksSentTo(providerId: ProviderOption["id"], settings: Settings): number {
   return AI_TASKS.filter((task) => {
     const destination = taskDestination(task.value, settings);

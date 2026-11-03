@@ -26,7 +26,10 @@ Vue React → ViewModel (hook) → service frontend → invoke
 - `src-tauri/src/features/` : domaines métier (`domain`, `application`, `infrastructure`,
   `presentation`). L'IA vit dans `features/ai/` (prompts, providers HTTP, extraction PDF,
   scoring ATS). L'IA locale Candilog suit `commande → ManagedOllamaService → runtime Ollama`
-  et réutilise l'adaptateur HTTP Ollama existant.
+  et réutilise l'adaptateur HTTP Ollama existant. « Compléter une entreprise » y vit aussi :
+  contrats des sources dans `domain/company_research.rs`, implémentations HTTP (annuaire
+  des entreprises, Wikidata, SearXNG, lecture de page) dans
+  `infrastructure/company_sources/`, injectées par `app/state.rs` (`CompanyResearchDeps`).
 - `src-tauri/src/infrastructure/` : PDF d'export (CV et lettres).
 - `src-tauri/migrations/` : schéma SQLite embarqué (`init_schema.sql`, `PRAGMA user_version`).
 

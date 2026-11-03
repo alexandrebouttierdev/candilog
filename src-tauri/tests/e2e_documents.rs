@@ -133,7 +133,16 @@ fn ai_service(pool: SqlitePool) -> Result<AiService, String> {
     let profiles = Arc::new(
         candilog_lib::features::profile::infrastructure::SqliteProfileRepository::new(pool.clone()),
     );
-    Ok(AiService::new(pool, profiles, managed))
+    let company_research = candilog_lib::features::ai::application::CompanyResearchDeps {
+        sources: candilog_lib::features::ai::infrastructure::production_sources()
+            .map_err(|error| format!("sources de recherche indisponibles : {error:?}"))?,
+        referentials: Arc::new(
+            candilog_lib::features::referentials::infrastructure::SqliteReferentialRepository::new(
+                pool.clone(),
+            ),
+        ),
+    };
+    Ok(AiService::new(pool, profiles, managed, company_research))
 }
 
 /// Un cas de test : le profil source et le dossier où déposer ses artefacts.
