@@ -28,7 +28,7 @@ export const FAQ: readonly EntreeFaq[] = [
   {
     question: "Que puis-je faire avec Candilog\u00a0?",
     reponse:
-      "Vous pouvez suivre vos candidatures en Kanban ou en liste, tenir un répertoire d'entreprises et de contacts, organiser vos entretiens et relances dans un calendrier, gérer votre profil professionnel, générer des CV et des lettres ciblés, les exporter en PDF et suivre vos statistiques.",
+      "Vous pouvez suivre vos candidatures en Kanban ou en liste, tenir un répertoire d'entreprises et de contacts, organiser vos entretiens et relances dans un calendrier, gérer votre profil professionnel, générer des CV et des lettres ciblés, les exporter en PDF, suivre vos statistiques et synchroniser vos données entre plusieurs ordinateurs.",
   },
   {
     question: "À quoi sert l'analyse ATS\u00a0?",
@@ -48,7 +48,12 @@ export const FAQ: readonly EntreeFaq[] = [
   {
     question: "Mes données restent-elles privées\u00a0?",
     reponse:
-      "Vos candidatures, documents et notes sont enregistrés sur votre ordinateur. Si vous connectez un fournisseur d'IA en ligne, le contenu nécessaire à la tâche demandée (une offre, un CV) est transmis à ce fournisseur au moment où vous lancez l'analyse. Avec un modèle local (Ollama), aucune donnée n'est envoyée à un service externe.",
+      "Vos candidatures, documents et notes sont enregistrés sur votre ordinateur. Si vous connectez un fournisseur d'IA en ligne, le contenu nécessaire à la tâche demandée (une offre, un CV) est transmis à ce fournisseur au moment où vous lancez l'analyse. Avec un modèle local (Ollama), aucune donnée n'est envoyée à un service externe. Si vous activez la synchronisation, vos données sont également copiées, sans chiffrement, à l'emplacement que vous choisissez (un dossier, Google Drive ou OneDrive).",
+  },
+  {
+    question: "Puis-je utiliser Candilog sur plusieurs ordinateurs\u00a0?",
+    reponse:
+      "Oui, si vous le souhaitez. La synchronisation est facultative et désactivée par défaut. Vous la configurez dans les Réglages avec un dossier de votre choix (par exemple Dropbox, iCloud Drive ou Nextcloud), Google Drive ou Microsoft OneDrive. Candilog n'a ni serveur ni compte\u00a0: vos données sont stockées chez le service que vous choisissez, sans chiffrement. Elles restent utilisables hors ligne, et une modification faite en parallèle sur deux ordinateurs vous est présentée pour décision plutôt qu'écrasée.",
   },
   {
     question: "Sur quels systèmes Candilog est-il disponible\u00a0?",
