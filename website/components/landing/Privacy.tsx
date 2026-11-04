@@ -2,10 +2,15 @@ import { FauxBouton, FauxSwitch, StatusGlyph } from "@/components/landing/app/pr
 import { Reveal } from "@/components/ui/Reveal";
 
 /* Faits vérifiés dans le code : base locale, sauvegarde et restauration
-   (`useBackupsViewModel`), coffre système pour les clés, sorties réseau limitées
-   (`docs/DATA.md`, `docs/AI.md`). Formulation alignée sur la FAQ calibrée. */
+   (`useBackupsViewModel`), coffre système pour les clés, synchronisation facultative et
+   non chiffrée (`docs/SYNC.md`), sorties réseau limitées (`docs/DATA.md`, `docs/AI.md`).
+   Formulation alignée sur la FAQ calibrée. */
 const FAITS = [
-  ["Aucun compte", "Pas d'inscription, pas de serveur Candilog, pas de synchronisation."],
+  ["Aucun compte", "Pas d'inscription ni de serveur Candilog."],
+  [
+    "Synchronisation facultative",
+    "Entre vos ordinateurs, par un dossier de votre choix, Google Drive ou OneDrive. Désactivée par défaut, et sans chiffrement\u00a0: réservez cet emplacement à votre seul usage.",
+  ],
   [
     "Sauvegarde en un fichier",
     "Sauvegarder, restaurer ou tout réinitialiser depuis les Réglages. Une restauration est vérifiée avant de remplacer quoi que ce soit.",
@@ -13,7 +18,7 @@ const FAITS = [
   ["Clés d'API protégées", "Rangées dans le trousseau de votre système, jamais réaffichées en clair."],
   [
     "Connexions sortantes limitées",
-    "Le fournisseur d'IA que vous choisissez, la vérification des mises à jour et les liens que vous ouvrez.",
+    "Le fournisseur d'IA et le service de synchronisation que vous choisissez, la vérification des mises à jour et les liens que vous ouvrez.",
   ],
 ] as const;
 
@@ -78,7 +83,9 @@ export function Privacy() {
             Vos candidatures, documents et notes sont enregistrés sur votre ordinateur. Si vous
             connectez un fournisseur d&apos;IA en ligne, le contenu nécessaire à la tâche demandée
             lui est transmis au moment où vous la lancez. Avec l&apos;IA locale, aucune donnée
-            n&apos;est envoyée à un service externe.
+            n&apos;est envoyée à un service externe. Si vous activez la synchronisation, vos
+            données sont aussi copiées à l&apos;emplacement choisi&nbsp;: un dossier, Google Drive
+            ou OneDrive.
           </p>
           <dl className="m-0 flex flex-col border-t border-bd">
             {FAITS.map(([terme, definition]) => (

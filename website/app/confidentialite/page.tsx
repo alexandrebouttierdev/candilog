@@ -25,12 +25,13 @@ const SOMMAIRE = [
   { href: "#local", libelle: "1. Vos données principales sont stockées localement" },
   { href: "#documents", libelle: "2. Documents" },
   { href: "#externes", libelle: "3. Fonctionnalités utilisant des services externes" },
-  { href: "#site", libelle: "4. Site internet" },
-  { href: "#cookies", libelle: "5. Cookies et traceurs" },
-  { href: "#technique", libelle: "6. Données techniques de l'hébergement" },
-  { href: "#droits", libelle: "7. Vos droits" },
-  { href: "#securite", libelle: "8. Sécurité" },
-  { href: "#evolution", libelle: "9. Évolution de cette politique" },
+  { href: "#synchronisation", libelle: "4. Synchronisation entre ordinateurs" },
+  { href: "#site", libelle: "5. Site internet" },
+  { href: "#cookies", libelle: "6. Cookies et traceurs" },
+  { href: "#technique", libelle: "7. Données techniques de l'hébergement" },
+  { href: "#droits", libelle: "8. Vos droits" },
+  { href: "#securite", libelle: "9. Sécurité" },
+  { href: "#evolution", libelle: "10. Évolution de cette politique" },
 ] as const;
 
 const FOURNISSEURS = [
@@ -39,6 +40,22 @@ const FOURNISSEURS = [
   { nom: "Google Gemini", detail: "Fonctions assistées par IA, si vous connectez ce fournisseur avec votre propre clé." },
   { nom: "Mistral AI", detail: "Fonctions assistées par IA, si vous connectez ce fournisseur avec votre propre clé." },
   { nom: "Ollama", detail: "Modèle exécuté localement sur votre appareil\u00a0: ce mode ne nécessite pas de transmettre vos informations à un service externe." },
+] as const;
+
+/* Fournisseurs de `docs/SYNC.md` : portées OAuth et emplacements réellement utilisés. */
+const STOCKAGES = [
+  {
+    nom: "Dossier de votre choix",
+    detail: "Un dossier de votre ordinateur, éventuellement synchronisé par un outil tiers (Dropbox, iCloud Drive, Nextcloud, partage réseau…). Candilog n'y écrit que dans un sous-dossier «\u00a0candilog-sync\u00a0».",
+  },
+  {
+    nom: "Google Drive",
+    detail: "Uniquement le dossier caché réservé à Candilog dans votre Drive (autorisation «\u00a0drive.appdata\u00a0»)\u00a0: Candilog n'a pas accès à vos autres fichiers.",
+  },
+  {
+    nom: "Microsoft OneDrive",
+    detail: "Uniquement le dossier «\u00a0Applications/Candilog\u00a0» de votre OneDrive (autorisation «\u00a0Files.ReadWrite.AppFolder\u00a0»)\u00a0: Candilog n'a pas accès à vos autres fichiers.",
+  },
 ] as const;
 
 export default function Page() {
@@ -75,7 +92,8 @@ export default function Page() {
           <P>
             Les documents que vous importez ou créez dans Candilog sont enregistrés sur votre
             appareil&nbsp;; ils ne quittent votre ordinateur que si vous lancez une fonctionnalité
-            qui nécessite un service externe.
+            qui nécessite un service externe ou si vous activez la synchronisation entre
+            ordinateurs.
           </P>
           <P>
             Lorsque certaines fonctionnalités nécessitent un traitement externe, les informations
@@ -99,6 +117,36 @@ export default function Page() {
             entete="Fournisseurs pouvant être configurés dans l'application"
             lignes={FOURNISSEURS}
             note="Les catégories d'informations transmises dépendent de la fonctionnalité utilisée&nbsp;: selon le cas, le texte d'une offre, le contenu d'un document que vous soumettez à l'analyse ou les éléments de votre profil nécessaires à la demande. Les conditions et politiques de confidentialité de chaque fournisseur s'appliquent à ces traitements. Le choix du fournisseur, la fourniture de la clé et le déclenchement de chaque traitement restent à votre initiative."
+          />
+        </LegalSection>
+
+        <LegalSection id="synchronisation" titre="Synchronisation entre ordinateurs">
+          <P>
+            La synchronisation est facultative et désactivée par défaut. Si vous l&apos;activez,
+            vos données Candilog (candidatures, entreprises, contacts, entretiens, relances, CV,
+            lettres, profil et sa photo) sont copiées à l&apos;emplacement que vous choisissez, afin
+            d&apos;être retrouvées sur vos autres ordinateurs. Vos réglages, vos clés d&apos;API et
+            les modèles d&apos;IA téléchargés restent sur chaque ordinateur.
+          </P>
+          <P>
+            Ces données sont stockées chez le service que vous choisissez, et non sur un serveur de
+            l&apos;éditeur&nbsp;: Candilog n&apos;a ni serveur ni compte de synchronisation.
+            Elles sont compressées mais <strong>ne sont pas chiffrées</strong>&nbsp;: le fournisseur
+            de stockage et toute personne ayant accès à cet emplacement peuvent les lire ou les
+            modifier. Réservez-le à votre seul usage.
+          </P>
+          <P>
+            Pour Google Drive et OneDrive, vous autorisez Candilog depuis votre navigateur, auprès
+            du fournisseur. Le jeton d&apos;accès obtenu est conservé dans le trousseau de votre
+            système. Vous pouvez à tout moment désactiver la synchronisation dans les Réglages
+            ou retirer l&apos;accès de Candilog depuis votre compte Google ou Microsoft&nbsp;; les
+            données déjà copiées chez le fournisseur ne sont pas supprimées automatiquement par
+            la désactivation.
+          </P>
+          <TableauFournisseurs
+            entete="Emplacements de synchronisation disponibles"
+            lignes={STOCKAGES}
+            note="Les conditions et politiques de confidentialité de Google et de Microsoft s'appliquent aux données que vous stockez chez eux. Le choix de l'emplacement et l'activation de la synchronisation restent à votre initiative."
           />
         </LegalSection>
 

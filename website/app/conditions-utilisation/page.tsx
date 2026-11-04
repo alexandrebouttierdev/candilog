@@ -121,6 +121,14 @@ export default function Page() {
             l&apos;utilisateur.
           </P>
           <P>
+            L&apos;utilisateur peut activer une synchronisation facultative entre ses ordinateurs,
+            vers un emplacement qu&apos;il choisit (dossier, Google Drive ou Microsoft OneDrive).
+            Les données y sont stockées sans chiffrement&nbsp;; l&apos;utilisateur est responsable
+            du choix de cet emplacement et de son accès, qui doit lui être réservé. La
+            synchronisation ne remplace pas une sauvegarde&nbsp;: une suppression faite sur un
+            ordinateur est reportée sur les autres.
+          </P>
+          <P>
             L&apos;utilisateur est responsable de la protection de son appareil et de la réalisation
             de sauvegardes adaptées de ses données, sauf lorsqu&apos;une fonctionnalité proposée par
             Candilog indique explicitement un fonctionnement différent.
@@ -131,7 +139,8 @@ export default function Page() {
           <P>
             Certaines fonctionnalités peuvent nécessiter des services fournis par des tiers,
             notamment les fournisseurs d&apos;intelligence artificielle que l&apos;utilisateur
-            choisit de connecter avec sa propre clé.
+            choisit de connecter avec sa propre clé et les services de stockage (Google Drive,
+            Microsoft OneDrive) qu&apos;il choisit pour la synchronisation.
           </P>
           <P>
             Leur disponibilité, leurs conditions d&apos;utilisation et leurs politiques de
